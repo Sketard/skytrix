@@ -2,15 +2,26 @@ import {
   ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, isDevMode, OnDestroy, OnInit, signal, untracked,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { NgTemplateOutlet } from '@angular/common';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 
 import { ReplayConnectionService } from './replay-connection.service';
 import { ReplayForkService } from './replay-fork.service';
 import { ReplayDuelAdapter } from './replay-duel-adapter';
 import { ReplayTransportService } from './replay-transport.service';
-import { TimelineBarComponent } from './timeline-bar/timeline-bar.component';
+import { TimelineBarComponent, type ZoomLevel } from './timeline-bar/timeline-bar.component';
 import { TransportBarComponent } from './transport-bar/transport-bar.component';
+import { TimelineStepperComponent } from './timeline-stepper/timeline-stepper.component';
+import type { TimelineSegment } from './timeline-bar/timeline-bar.component';
+import { TurnPickerSheetComponent } from './turn-picker-sheet/turn-picker-sheet.component';
+import { ReplayTopbarComponent } from './topbar/replay-topbar.component';
+import { ReplayLoadingSkeletonComponent } from './loading-skeleton/replay-loading-skeleton.component';
+import { ReplayEndOverlayComponent } from './end-overlay/replay-end-overlay.component';
+import { ReplayCheatSheetComponent } from './cheat-sheet/replay-cheat-sheet.component';
+import { ReplayBottomSheetComponent } from './bottom-sheet/replay-bottom-sheet.component';
+import { BoardSwipeNavigatorDirective } from './board-swipe-navigator.directive';
+import { deriveOutcome, type ReplayOutcome } from './replay-outcome.util';
+import type { ReplayMetadataMsg } from '../duel-ws-replay.types';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { OrientationLockComponent } from '../../../shared/orientation-lock/orientation-lock.component';
@@ -76,11 +87,19 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     TimelineBarComponent, TransportBarComponent, DebugLogPanelComponent,
     PvpPromptDialogComponent, PvpChainOverlayComponent, PvpDuelOverlaysComponent,
     OrientationLockComponent,
-    MatProgressSpinner, TranslateModule,
+    ReplayTopbarComponent, ReplayLoadingSkeletonComponent,
+    ReplayEndOverlayComponent, ReplayCheatSheetComponent, ReplayBottomSheetComponent,
+    TimelineStepperComponent, TurnPickerSheetComponent,
+    BoardSwipeNavigatorDirective,
+    NgTemplateOutlet,
+    TranslateModule,
   ],
+  host: {
+    '[class.is-narrow]': 'isNarrow()',
+  },
 })
 export class ReplayPageComponent implements OnInit, OnDestroy {
-  private readonly replayConnection = inject(ReplayConnectionService);
+  readonly replayConnection = inject(ReplayConnectionService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly notify = inject(NotificationService);
@@ -124,7 +143,24 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private static readonly PREF_ANIMATIONS = 'replay.animationsEnabled';
   private static readonly PREF_PROMPT_MODE = 'replay.promptMode';
   private static readonly PREF_PERSPECTIVE = 'replay.perspectiveIndex';
+  private static readonly PREF_ZOOM_LEVEL  = 'replay.zoomLevel';
+  private static readonly NARROW_BREAKPOINT_PX = 760; // D1
   readonly animationsEnabled = signal(localStorage.getItem(ReplayPageComponent.PREF_ANIMATIONS) === 'true');
+
+  // F4 overlay + bottom-sheet open state (uniquely managed at the page level
+  // so the keyboard handler + swipe directive can stay in sync).
+  readonly cheatSheetOpen = signal(false);
+  readonly pickerOpen     = signal(false);
+  readonly optionsOpen    = signal(false);
+  readonly detailsOpen    = signal(false);
+  readonly copyJustSucceeded = signal(false);
+  /** Zoom state lifted from `TimelineBarComponent` (D21). Persisted via localStorage. */
+  readonly zoomLevel = signal<ZoomLevel>(this.restoreZoomLevel());
+  /** True when the viewport is `<= NARROW_BREAKPOINT_PX` — toggled by a
+   *  `matchMedia('(max-width: 759px)')` listener (mobile-first inversion of D1). */
+  readonly isNarrow = signal(window.matchMedia(`(max-width: ${ReplayPageComponent.NARROW_BREAKPOINT_PX - 1}px)`).matches);
+  private narrowMql: MediaQueryList | null = null;
+  private narrowMqlHandler: ((e: MediaQueryListEvent) => void) | null = null;
 
   readonly boardStates = computed(() => {
     const live = this.replayConnection.boardStates();
@@ -220,6 +256,123 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   readonly loading = computed(() => this.boardStates().length === 0 && !this.replayConnection.error());
 
+  /** Index of the current turn inside `turns()` — used by stepper + picker. */
+  readonly currentTurnIndex = computed<number>(() => {
+    const idx = this.currentIndex();
+    const turns = this.turns();
+    const found = turns.findIndex(t => idx >= t.startIndex && idx <= t.endIndex);
+    return found === -1 ? 0 : found;
+  });
+
+  /** Local auth user side (0 = player 1, 1 = player 2) inside this replay.
+   *  Used by `<app-replay-topbar>` to derive the outcome from the (perspective-
+   *  independent) metadata.result. */
+  readonly mySide = computed<0 | 1>(() => {
+    const meta = this.replayConnection.metadata() as ReplayMetadataMsg | null;
+    if (!meta) return 0;
+    const userPseudo = this.authService.user()?.pseudo;
+    if (!userPseudo) return 0;
+    return meta.playerUsernames[1] === userPseudo ? 1 : 0;
+  });
+
+  /** Composed pieces of the transport-bar context zone (D9). Split from the
+   *  legacy `positionLabel` string so each piece can be hidden independently
+   *  (D13 cascade). */
+  readonly turnLabelText = computed<string>(() => {
+    const state = this.currentState();
+    if (!state) return '';
+    const bs = state.boardState;
+    if (bs.turnCount === 0) return this.translate.instant('replay.timeline.setup');
+    const total = this.turns().length;
+    return this.translate.instant('replay.timeline.turn', { n: bs.turnCount }) + (total > 0 ? ` / ${total}` : '');
+  });
+
+  readonly playerPositionLabel = computed<string | null>(() => {
+    const tp = this.currentState()?.boardState?.turnPlayer;
+    if (tp == null) return null;
+    return `P${tp + 1}`;
+  });
+
+  readonly phaseLabel = computed<string | null>(() => {
+    const phase = this.currentState()?.boardState?.phase;
+    if (!phase) return null;
+    return this.phaseService.phaseDisplayName(phase);
+  });
+
+  readonly eventLabel = computed<string | null>(() => this.currentState()?.label ?? null);
+
+  /** Display name of the currently-perspective-active player (shown on the
+   *  perspective swap button). */
+  readonly perspectiveName = computed<string>(() => {
+    const meta = this.replayConnection.metadata() as ReplayMetadataMsg | null;
+    return meta?.playerUsernames?.[this.perspectiveIndex()] ?? '';
+  });
+
+  /** Drives the gold dot indicator on the mobile `⋯ More` button — true when
+   *  any visionnage option is set to a non-default value. */
+  readonly hasNonDefaultOption = computed<boolean>(() =>
+    this.animationsEnabled() !== false
+    || this.promptMode() !== 'decision'
+    || this.perspectiveIndex() !== 0,
+  );
+
+  /** End-overlay view model — null while the replay isn't over OR metadata is
+   *  missing. Mapping done via D19 `deriveOutcome`. */
+  readonly endOverlayState = computed<{
+    outcome: ReplayOutcome; selfLp: number; oppLp: number; selfName: string; oppName: string;
+  } | null>(() => {
+    if (!this.atEnd()) return null;
+    const meta = this.replayConnection.metadata() as ReplayMetadataMsg | null;
+    if (!meta) return null;
+    const lastState = this.boardStates()[this.computedUpTo()];
+    if (!lastState) return null;
+    const side = this.mySide();
+    const outcome = deriveOutcome(meta.result, side);
+    return {
+      outcome,
+      selfLp: lastState.boardState.players[side]?.lp ?? 0,
+      oppLp:  lastState.boardState.players[side === 0 ? 1 : 0]?.lp ?? 0,
+      selfName: meta.playerUsernames[side] ?? '',
+      oppName:  meta.playerUsernames[side === 0 ? 1 : 0] ?? '',
+    };
+  });
+
+  /** Whether the `BoardSwipeNavigator` should be muted (a sheet/overlay is
+   *  consuming touches). */
+  readonly swipeDisabled = computed<boolean>(() =>
+    this.pickerOpen() || this.optionsOpen() || this.detailsOpen()
+    || this.cheatSheetOpen() || this.endOverlayState() != null,
+  );
+
+  /** Sub-event bullets of the CURRENT turn, fed to `<app-timeline-stepper>`
+   *  on narrow viewports. Same segment shape used by the desktop timeline-bar. */
+  readonly currentTurnSubEvents = computed<readonly TimelineSegment[]>(() => {
+    const turns = this.turns();
+    const turn = turns[this.currentTurnIndex()];
+    if (!turn) return [];
+    const states = this.boardStates();
+    const HIDDEN_LABELS = new Set(['MSG_CHAIN_END']);
+    const segments: TimelineSegment[] = [];
+    let i = turn.startIndex;
+    const end = turn.startIndex + turn.eventCount;
+    while (i < end) {
+      if (states[i]?.chainIndex != null) {
+        const chainIndices: number[] = [];
+        while (i < end && states[i]?.chainIndex != null) {
+          chainIndices.push(i);
+          i++;
+        }
+        segments.push({ type: 'chain', indices: chainIndices });
+      } else if (HIDDEN_LABELS.has(states[i]?.label)) {
+        i++;
+      } else {
+        segments.push({ type: 'single', idx: i });
+        i++;
+      }
+    }
+    return segments;
+  });
+
   readonly progressText = computed(() => {
     const last = this.replayConnection.lastReceivedTurn();
     const meta = this.replayConnection.metadata();
@@ -291,6 +444,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   // Phase announcement tracking
   private lastAnnouncedPhase: string | null = null;
+
+  // F4 — clear copyJustSucceeded after 1.5s so .btn--success-flash flips off.
+  private copyFlashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private restoreZoomLevel(): ZoomLevel {
+    const raw = localStorage.getItem(ReplayPageComponent.PREF_ZOOM_LEVEL);
+    const parsed = raw ? Number.parseInt(raw, 10) : 1;
+    return (parsed === 2 || parsed === 3) ? (parsed as ZoomLevel) : 1;
+  }
 
   constructor() {
     this.cardInspection.init(this.cardDataCache);
@@ -426,9 +588,20 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       isBoardActive: () => true,
     });
     this.adapter.perspectiveIndex.set(this.perspectiveIndex());
+
+    // F4 — width-driven `.is-narrow` host class (D1). matchMedia change events
+    // fire only on the breakpoint crossing, so the initial value is read at
+    // signal construction time above.
+    this.narrowMql = window.matchMedia(`(max-width: ${ReplayPageComponent.NARROW_BREAKPOINT_PX - 1}px)`);
+    this.narrowMqlHandler = (e: MediaQueryListEvent) => this.isNarrow.set(e.matches);
+    this.narrowMql.addEventListener('change', this.narrowMqlHandler);
   }
 
   ngOnDestroy(): void {
+    if (this.narrowMql && this.narrowMqlHandler) {
+      this.narrowMql.removeEventListener('change', this.narrowMqlHandler);
+    }
+    if (this.copyFlashTimer !== null) clearTimeout(this.copyFlashTimer);
     this.transport.destroy();
     this.abortAndClean();
     this.orchestrator.destroy();
@@ -491,11 +664,82 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  // --- F4 — overlays, sheets, end-overlay, copy-link, zoom ---
+
+  onOpenCheatSheet(): void   { this.cheatSheetOpen.set(true); }
+  onCloseCheatSheet(): void  { this.cheatSheetOpen.set(false); }
+  onOpenOptions(): void      { this.optionsOpen.set(true); }
+  onCloseOptions(): void     { this.optionsOpen.set(false); }
+  onOpenDetails(): void      { this.detailsOpen.set(true); }
+  onCloseDetails(): void     { this.detailsOpen.set(false); }
+  onOpenPicker(): void       { this.pickerOpen.set(true); }
+  onClosePicker(): void      { this.pickerOpen.set(false); }
+
+  onBackToHub(): void        { this.router.navigate(['/pvp/history']); }
+  onEndOverlayReplay(): void { this.onSkipStart(); }
+  onEndOverlayLibrary(): void { this.onBackToHub(); }
+  /** Soft-dismiss the end overlay (Esc/← from inside the component). We pause
+   *  the timer and step back one event so the overlay disappears and the user
+   *  can scrub freely. */
+  onEndOverlayDismissed(): void { this.onStepBack(); }
+
+  onZoomLevelChange(level: ZoomLevel): void {
+    this.zoomLevel.set(level);
+    localStorage.setItem(ReplayPageComponent.PREF_ZOOM_LEVEL, String(level));
+  }
+
+  onSeekToTurn(turnIndex: number): void {
+    this.abortAndClean();
+    this.transport.seekToTurn(turnIndex, this.turns());
+  }
+
+  onSeekToTurnAndClose(turnIndex: number): void {
+    this.onSeekToTurn(turnIndex);
+    this.onClosePicker();
+  }
+
+  onSwipeLeft(): void  { this.onSeekToTurn(this.currentTurnIndex() + 1); }
+  onSwipeRight(): void { this.onSeekToTurn(this.currentTurnIndex() - 1); }
+
+  /** D20 — copy a shareable seekTo URL for the current event index. Falls
+   *  back to `execCommand('copy')` when the Clipboard API is unavailable
+   *  (HTTP localhost, older browsers). */
+  async onCopyLink(): Promise<void> {
+    const replayId = this.route.snapshot.paramMap.get('replayId');
+    if (!replayId) return;
+    const url = `${window.location.origin}/pvp/replay/${replayId}?seekTo=${this.currentIndex()}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const input = document.createElement('input');
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      try { document.execCommand('copy'); } finally { document.body.removeChild(input); }
+    }
+    this.copyJustSucceeded.set(true);
+    if (this.copyFlashTimer !== null) clearTimeout(this.copyFlashTimer);
+    this.copyFlashTimer = setTimeout(() => {
+      this.copyFlashTimer = null;
+      this.copyJustSucceeded.set(false);
+    }, 1500);
+    this.notify.success('replay.viewer.copyLinkToast');
+  }
+
   // --- Keyboard handler ---
 
   onKeydown(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+    // Esc closes any open overlay/sheet first — drops the duel keyboard map
+    // when the user is interacting with a modal.
+    if (event.key === 'Escape') {
+      if (this.cheatSheetOpen()) { this.onCloseCheatSheet(); return; }
+      if (this.pickerOpen())     { this.onClosePicker(); return; }
+      if (this.optionsOpen())    { this.onCloseOptions(); return; }
+      if (this.detailsOpen())    { this.onCloseDetails(); return; }
+    }
 
     switch (event.key) {
       case 'ArrowRight': this.onStepForward(); break;
@@ -509,6 +753,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       case 'm': case 'M': this.onTogglePromptMode(); break;
       case 'v': case 'V': this.onTogglePerspective(); break;
       case 'd': case 'D': this.debugPanelOpen.update(v => !v); break;
+      // `?` — Shift+/ on QWERTY US AND Shift+, on AZERTY FR both emit
+      // the literal character U+003F regardless of physical key, so testing
+      // `event.key === '?'` covers both layouts without `event.code` magic.
+      case '?': this.onOpenCheatSheet(); break;
     }
   }
 

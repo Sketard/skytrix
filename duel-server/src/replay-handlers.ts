@@ -228,6 +228,7 @@ export async function handleReplayConnection(ws: WebSocket, jwt: string, replayI
     divergenceWarning,
     totalResponses: replayData.playerResponses.length,
     cardCodes,
+    durationSec: replayData.metadata.durationSec,
   }));
 
   // Mark as alive for heartbeat (shared with duel connections via wss.clients)

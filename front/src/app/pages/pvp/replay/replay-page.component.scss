@@ -4,28 +4,19 @@
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  background: #0a0a0a;
+  background: var(--surface-bg);
   overflow: hidden;
 }
 
-.replay-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 16px;
-  color: #b0b0b0;
-
-  p {
-    font-size: 14px;
-  }
-}
+// F4 — replay loading skeleton primitive: fills the viewport while
+// boardStates() is empty. The legacy `.replay-loading` Material spinner
+// block has been removed (replaced by <app-replay-loading-skeleton>).
 
 .replay-viewer {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   outline: none;
   --pvp-hand-card-height: 12dvh;
 
@@ -109,8 +100,24 @@
   }
 
   app-timeline-bar,
+  app-timeline-stepper,
   app-transport-bar {
     position: relative;
     z-index: z.$z-pvp-card-travel + 1; // above traveling card floats (900)
   }
+}
+
+// F4 — Bottom-sheet backdrop wrapper used for picker / options / details.
+// The .bottom-sheet-backdrop visual rules come from the Viewer F0 partial
+// (`_bottom-sheet.scss`); this rule is purely a position-stacking guard so
+// the sheet always overlays the playing board / transport bar.
+.replay-page__sheet-backdrop {
+  z-index: 2000;
+}
+
+.replay-page__sheet-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }

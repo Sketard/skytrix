@@ -1,12 +1,25 @@
 @if (loading()) {
-  <div class="replay-loading" role="region" [attr.aria-label]="'a11y.loadingReplay' | translate" aria-live="polite">
-    <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'a11y.loadingReplay' | translate"></mat-progress-spinner>
-    <p>{{ progressText() }}</p>
-  </div>
+  <app-replay-loading-skeleton
+    [current]="replayConnection.lastReceivedTurn() + 1"
+    [total]="(replayConnection.metadata()?.turnCount ?? null)" />
 } @else {
   <app-orientation-lock />
+
+  <!-- F4 — Top chrome -->
+  <app-replay-topbar
+    [metadata]="replayConnection.metadata()"
+    [mySide]="mySide()"
+    [copyJustSucceeded]="copyJustSucceeded()"
+    (back)="onBackToHub()"
+    (copyLink)="onCopyLink()"
+    (openDetails)="onOpenDetails()" />
+
   <div class="replay-viewer" (keydown)="onKeydown($event)" tabindex="0">
-    <div class="board-area">
+    <div class="board-area"
+         appBoardSwipeNavigator
+         [appBoardSwipeNavigatorDisabled]="swipeDisabled()"
+         (swipeLeft)="onSwipeLeft()"
+         (swipeRight)="onSwipeRight()">
       <!-- Opponent Hand (top, omniscient — all cards visible) -->
       <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
                          side="opponent"
@@ -80,28 +93,58 @@
                               [hintContext]="adapter.activeHint()"
                               [confirmedCards]="adapter.activeConfirmedCards()"
                               (longPressInspect)="onCardInspectRequest($event)" />
+
+      <!-- F4 — End overlay slides in when atEnd() (D18: 2 CTAs, no Fork) -->
+      @if (endOverlayState(); as eo) {
+        <app-replay-end-overlay
+          [outcome]="eo.outcome"
+          [selfLp]="eo.selfLp"
+          [oppLp]="eo.oppLp"
+          [selfName]="eo.selfName"
+          [oppName]="eo.oppName"
+          (replay)="onEndOverlayReplay()"
+          (library)="onEndOverlayLibrary()"
+          (dismissed)="onEndOverlayDismissed()" />
+      }
     </div>
 
-    <!-- Timeline Bar -->
+    <!-- Timeline Bar (desktop — hidden under .is-narrow via :host CSS) -->
     <app-timeline-bar [turns]="turns()"
                        [currentIndex]="currentIndex()"
                        [computedUpTo]="computedUpTo()"
                        [totalEvents]="totalEvents()"
                        [boardStates]="boardStates()"
                        [ownPlayerIndex]="perspectiveIndex()"
+                       [zoomLevel]="zoomLevel()"
+                       (zoomLevelChange)="onZoomLevelChange($event)"
                        (seekTo)="onSeek($event)"
                        (scrubbing)="onScrub($event)" />
 
-    <!-- Transport Bar — F4 will pass the new structured context fields
-         (turnLabel / playerPositionLabel / phaseLabel / eventLabel) +
-         zoomLevel / cheatSheet / moreOptions outputs. The old positionLabel
-         string is no longer plumbed since the F3 refactor split it. -->
+    <!-- Timeline Stepper (mobile — visible under .is-narrow via :host CSS) -->
+    <app-timeline-stepper
+      [turns]="turns()"
+      [currentTurnIndex]="currentTurnIndex()"
+      [computedUpToIndex]="computedUpTo()"
+      [subEvents]="currentTurnSubEvents()"
+      (prevTurn)="onSwipeRight()"
+      (nextTurn)="onSwipeLeft()"
+      (openPicker)="onOpenPicker()"
+      (seekSubEvent)="onSeek($event)" />
+
+    <!-- Transport Bar (F3 — 3 zones, structured context) -->
     <app-transport-bar [isPlaying]="isPlaying()"
                         [atEnd]="atEnd()"
                         [forking]="fork.forking()"
+                        [turnLabel]="turnLabelText()"
+                        [playerPositionLabel]="playerPositionLabel()"
+                        [phaseLabel]="phaseLabel()"
+                        [eventLabel]="eventLabel()"
                         [animationsEnabled]="animationsEnabled()"
                         [promptMode]="promptMode()"
                         [perspectiveIndex]="perspectiveIndex()"
+                        [perspectiveName]="perspectiveName()"
+                        [zoomLevel]="zoomLevel()"
+                        [hasNonDefaultOption]="hasNonDefaultOption()"
                         (skipStart)="onSkipStart()"
                         (stepBack)="onStepBack()"
                         (playPause)="onPlayPause()"
@@ -110,7 +153,10 @@
                         (fork)="onFork()"
                         (toggleAnimations)="onToggleAnimations()"
                         (togglePromptMode)="onTogglePromptMode()"
-                        (togglePerspective)="onTogglePerspective()" />
+                        (togglePerspective)="onTogglePerspective()"
+                        (zoomLevelChange)="onZoomLevelChange($event)"
+                        (openCheatSheet)="onOpenCheatSheet()"
+                        (openMoreOptions)="onOpenOptions()" />
 
     <!-- Debug Log Panel -->
     <app-debug-log-panel [entries]="debugLogEntries()"
@@ -128,5 +174,84 @@
                                        [initialForceExpanded]="inspectorForceExpanded()"
                                        (dismissed)="closeInspector()" />
     }
+
+    <!-- F4 — Overlays + bottom-sheets -->
+    @if (cheatSheetOpen()) {
+      <app-replay-cheat-sheet (close)="onCloseCheatSheet()" />
+    }
+
+    @if (pickerOpen()) {
+      <div class="replay-page__sheet-backdrop bottom-sheet-backdrop is-open" (click)="onClosePicker()">
+        <app-replay-bottom-sheet
+          (click)="$event.stopPropagation()"
+          [title]="'replay.viewer.picker.title' | translate"
+          icon="grid_view"
+          (close)="onClosePicker()">
+          <app-turn-picker-sheet
+            [turns]="turns()"
+            [currentTurnIndex]="currentTurnIndex()"
+            [computedUpToIndex]="computedUpTo()"
+            [boardStates]="boardStates()"
+            [perspectiveIndex]="perspectiveIndex()"
+            (jumpToTurn)="onSeekToTurnAndClose($event)"
+            (closed)="onClosePicker()" />
+        </app-replay-bottom-sheet>
+      </div>
+    }
+
+    @if (optionsOpen()) {
+      <div class="replay-page__sheet-backdrop bottom-sheet-backdrop is-open" (click)="onCloseOptions()">
+        <app-replay-bottom-sheet
+          (click)="$event.stopPropagation()"
+          [title]="'replay.viewer.bottomSheet.options.title' | translate"
+          icon="tune"
+          (close)="onCloseOptions()">
+          <button type="button" class="btn btn--ghost btn--full" (click)="onToggleAnimations(); onCloseOptions()">
+            {{ (animationsEnabled() ? 'replay.transport.disableAnimations' : 'replay.transport.enableAnimations') | translate }}
+          </button>
+          <button type="button" class="btn btn--ghost btn--full" (click)="onTogglePromptMode(); onCloseOptions()">
+            {{ (promptMode() === 'decision' ? 'replay.transport.skipDecisions' : 'replay.transport.showDecisions') | translate }}
+          </button>
+          <button type="button" class="btn btn--ghost btn--full" (click)="onTogglePerspective(); onCloseOptions()">
+            {{ (perspectiveIndex() === 0 ? 'replay.transport.viewAsPlayer2' : 'replay.transport.viewAsPlayer1') | translate }}
+          </button>
+          <button type="button" class="btn btn--ghost btn--full" (click)="onCopyLink(); onCloseOptions()">
+            {{ 'replay.viewer.bottomSheet.options.copyLink' | translate }}
+          </button>
+          <button type="button" class="btn btn--ghost btn--full" (click)="onOpenCheatSheet(); onCloseOptions()">
+            {{ 'replay.viewer.cheatSheet.title' | translate }}
+          </button>
+          <button type="button" class="btn btn--ghost btn--full" (click)="onFork(); onCloseOptions()" [disabled]="fork.forking()">
+            {{ 'replay.transport.fork' | translate }}
+            <span class="text-eyebrow replay-page__sheet-hint">{{ 'replay.viewer.bottomSheet.options.forkHint' | translate }}</span>
+          </button>
+        </app-replay-bottom-sheet>
+      </div>
+    }
+
+    @if (detailsOpen()) {
+      <div class="replay-page__sheet-backdrop bottom-sheet-backdrop is-open" (click)="onCloseDetails()">
+        <app-replay-bottom-sheet
+          (click)="$event.stopPropagation()"
+          [title]="'replay.viewer.bottomSheet.details.title' | translate"
+          icon="info"
+          (close)="onCloseDetails()">
+          <ng-container *ngTemplateOutlet="detailsContent" />
+        </app-replay-bottom-sheet>
+      </div>
+    }
   </div>
 }
+
+<!-- Details sheet content — kept in a template so the markup stays readable.
+     Reads metadata directly (loading state already gated by parent @if). -->
+<ng-template #detailsContent>
+  @if (replayConnection.metadata(); as meta) {
+    <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.opponentLabel' | translate }}: {{ meta.playerUsernames[mySide() === 0 ? 1 : 0] }}</p>
+    <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.deckLabel' | translate }}: {{ meta.deckNames[mySide() === 0 ? 1 : 0] }}</p>
+    <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.turns' | translate }}: {{ meta.turnCount }}</p>
+    @if (meta.durationSec; as d) {
+      <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.duration' | translate }}: {{ d }}s</p>
+    }
+  }
+</ng-template>

@@ -92,6 +92,7 @@ class StubReplayTransport {
   togglePlay = jasmine.createSpy('togglePlay');
   skipStart = jasmine.createSpy('skipStart');
   skipEnd = jasmine.createSpy('skipEnd');
+  seekToTurn = jasmine.createSpy('seekToTurn');
   haltPlaybackTimer = jasmine.createSpy('haltPlaybackTimer');
   restart = jasmine.createSpy('restart');
   maybeAdvance = jasmine.createSpy('maybeAdvance');
@@ -170,7 +171,7 @@ class StubCardTravelEngine {
 }
 
 class StubAuthService {
-  user = signal<{ id: string } | null>({ id: 'user-1' });
+  user = signal<{ id: string; pseudo?: string } | null>({ id: 'user-1', pseudo: 'AxelTest' });
 }
 
 class StubNotification {
@@ -728,5 +729,224 @@ describe('ReplayPageComponent — hand getters', () => {
     adapter.setRendered(state);
     expect(component.playerHand()).toEqual([]);
     expect(component.opponentHand()).toEqual([]);
+  });
+});
+
+// =============================================================================
+// F4 — keyboard, sheet open/close, end-overlay, copy-link, zoom, seekToTurn
+// =============================================================================
+
+describe('ReplayPageComponent — F4 wiring', () => {
+  let fixture: ComponentFixture<ReplayPageComponent>;
+  let component: ReplayPageComponent;
+  let conn: StubReplayConnection;
+  let transport: StubReplayTransport;
+
+  beforeEach(() => {
+    clearReplayPrefs();
+    localStorage.removeItem('replay.zoomLevel');
+    setupTestBed();
+    fixture = TestBed.createComponent(ReplayPageComponent);
+    component = fixture.componentInstance;
+    conn = connOf(fixture);
+    transport = transportOf(fixture);
+  });
+
+  function press(key: string): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { key, cancelable: true });
+    Object.defineProperty(event, 'target', { value: document.body });
+    component.onKeydown(event);
+    return event;
+  }
+
+  // ── ? opens cheat sheet on QWERTY + AZERTY ────────────────────────────────
+  it('"?" key opens the cheat sheet (QWERTY US + AZERTY FR both emit U+003F)', () => {
+    expect(component.cheatSheetOpen()).toBe(false);
+    press('?');
+    expect(component.cheatSheetOpen()).toBe(true);
+  });
+
+  // ── Escape closes overlays in priority order ──────────────────────────────
+  it('Escape closes the cheat sheet first when open', () => {
+    component.cheatSheetOpen.set(true);
+    press('Escape');
+    expect(component.cheatSheetOpen()).toBe(false);
+  });
+
+  it('Escape closes the picker before falling through to other overlays', () => {
+    component.pickerOpen.set(true);
+    component.optionsOpen.set(true);
+    press('Escape');
+    expect(component.pickerOpen()).toBe(false);
+    // optionsOpen unchanged — picker had priority and consumed the Esc.
+    expect(component.optionsOpen()).toBe(true);
+  });
+
+  // ── Sheet open/close handlers ─────────────────────────────────────────────
+  it('onOpen* / onClose* flip their respective signals', () => {
+    component.onOpenCheatSheet();   expect(component.cheatSheetOpen()).toBe(true);
+    component.onCloseCheatSheet();  expect(component.cheatSheetOpen()).toBe(false);
+    component.onOpenPicker();       expect(component.pickerOpen()).toBe(true);
+    component.onClosePicker();      expect(component.pickerOpen()).toBe(false);
+    component.onOpenOptions();      expect(component.optionsOpen()).toBe(true);
+    component.onCloseOptions();     expect(component.optionsOpen()).toBe(false);
+    component.onOpenDetails();      expect(component.detailsOpen()).toBe(true);
+    component.onCloseDetails();     expect(component.detailsOpen()).toBe(false);
+  });
+
+  // ── Zoom level persistence ────────────────────────────────────────────────
+  it('onZoomLevelChange updates the signal AND persists to localStorage', () => {
+    expect(component.zoomLevel()).toBe(1);
+    component.onZoomLevelChange(3);
+    expect(component.zoomLevel()).toBe(3);
+    expect(localStorage.getItem('replay.zoomLevel')).toBe('3');
+  });
+
+  it('restores zoomLevel from localStorage on construction', () => {
+    // Tear down the previous fixture + module, then build a fresh one with
+    // a pre-seeded pref so the new instance reads it at field initialiser time.
+    fixture.destroy();
+    TestBed.resetTestingModule();
+    localStorage.setItem('replay.zoomLevel', '2');
+    setupTestBed();
+    const fx2 = TestBed.createComponent(ReplayPageComponent);
+    expect(fx2.componentInstance.zoomLevel()).toBe(2);
+    fx2.destroy();
+  });
+
+  // ── onSeekToTurn delegates to transport with abortAndClean ────────────────
+  it('onSeekToTurn calls transport.seekToTurn with the current turns()', () => {
+    conn.boardStates.set([
+      makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
+    ]);
+    component.onSeekToTurn(1);
+    expect(transport.seekToTurn).toHaveBeenCalledWith(1, jasmine.any(Array));
+  });
+
+  it('onSwipeLeft delegates to onSeekToTurn(currentTurnIndex + 1)', () => {
+    conn.boardStates.set([
+      makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'),
+    ]);
+    transport.currentIndex.set(0);
+    component.onSwipeLeft();
+    expect(transport.seekToTurn).toHaveBeenCalledWith(1, jasmine.any(Array));
+  });
+
+  // ── endOverlayState ───────────────────────────────────────────────────────
+  it('endOverlayState is null until atEnd() is true', () => {
+    conn.boardStates.set([makePrecomputed(1)]);
+    conn.computedUpTo.set(0);
+    transport.currentIndex.set(0);
+    conn.metadata.set({ playerUsernames: ['AxelTest', 'Opp'], result: 'victory' });
+    // Not at end yet (atEnd needs upTo > 0 + currentIndex >= upTo, but upTo=0 → atEnd=false)
+    expect(component.endOverlayState()).toBeNull();
+  });
+
+  it('endOverlayState maps result via deriveOutcome from local perspective', () => {
+    conn.boardStates.set([makePrecomputed(1), makePrecomputed(2)]);
+    conn.computedUpTo.set(1);
+    transport.currentIndex.set(1);
+    conn.metadata.set({
+      playerUsernames: ['AxelTest', 'OppName'],
+      deckNames: ['MyDeck', 'OppDeck'],
+      result: 'victory',
+      turnCount: 2,
+    } as unknown);
+    const eo = component.endOverlayState();
+    expect(eo).not.toBeNull();
+    expect(eo?.outcome).toBe('victory');
+    expect(eo?.selfName).toBe('AxelTest');
+    expect(eo?.oppName).toBe('OppName');
+  });
+
+  it('endOverlayState returns null when metadata is missing even at end', () => {
+    conn.boardStates.set([makePrecomputed(1), makePrecomputed(2)]);
+    conn.computedUpTo.set(1);
+    transport.currentIndex.set(1);
+    conn.metadata.set(null);
+    expect(component.endOverlayState()).toBeNull();
+  });
+
+  // ── onCopyLink ────────────────────────────────────────────────────────────
+  // window.location is not configurable in Karma, so we use the real origin
+  // and only verify the writeText was called with a URL containing the
+  // seekTo query param + the replayId. Full URL exactness is verified
+  // implicitly by inspecting the call argument shape.
+  it('onCopyLink writes the URL with seekTo + flashes the success state', async () => {
+    transport.currentIndex.set(7);
+    const writeSpy = jasmine.createSpy('writeText').and.resolveTo();
+    spyOnProperty(navigator, 'clipboard', 'get').and.returnValue({ writeText: writeSpy } as unknown as Clipboard);
+
+    await component.onCopyLink();
+
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+    const url = writeSpy.calls.mostRecent().args[0] as string;
+    expect(url).toContain('/pvp/replay/replay-42?seekTo=7');
+    expect(component.copyJustSucceeded()).toBe(true);
+  });
+
+  it('onCopyLink falls back to execCommand when navigator.clipboard fails', async () => {
+    transport.currentIndex.set(3);
+    const writeSpy = jasmine.createSpy('writeText').and.rejectWith(new Error('no clipboard'));
+    spyOnProperty(navigator, 'clipboard', 'get').and.returnValue({ writeText: writeSpy } as unknown as Clipboard);
+    const execSpy = spyOn(document, 'execCommand').and.returnValue(true);
+
+    await component.onCopyLink();
+
+    expect(writeSpy).toHaveBeenCalled();
+    expect(execSpy).toHaveBeenCalledWith('copy');
+    expect(component.copyJustSucceeded()).toBe(true);
+  });
+
+  // ── hasNonDefaultOption ───────────────────────────────────────────────────
+  it('hasNonDefaultOption flags any non-default visionnage option', () => {
+    expect(component.hasNonDefaultOption()).toBe(false);
+    component.animationsEnabled.set(true);
+    expect(component.hasNonDefaultOption()).toBe(true);
+    component.animationsEnabled.set(false);
+    component.promptMode.set('result');
+    expect(component.hasNonDefaultOption()).toBe(true);
+  });
+
+  // ── isNarrow / matchMedia ─────────────────────────────────────────────────
+  it('exposes isNarrow signal driven by matchMedia(< 760px)', () => {
+    // The constructor reads window.matchMedia which jsdom-like envs honour
+    // (defaults to false unless the test forces it). We only verify the
+    // signal exists + is boolean — the listener wiring is in ngOnInit, not
+    // tested here because ngOnInit is gated behind connect() in the legacy
+    // suite.
+    expect(typeof component.isNarrow()).toBe('boolean');
+  });
+
+  // ── currentTurnIndex ──────────────────────────────────────────────────────
+  it('currentTurnIndex resolves to the turn containing currentIndex', () => {
+    conn.boardStates.set([
+      makePrecomputed(0, 'setup'),
+      makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
+      makePrecomputed(2, 'c'),
+    ]);
+    transport.currentIndex.set(0);  expect(component.currentTurnIndex()).toBe(0); // setup
+    transport.currentIndex.set(2);  expect(component.currentTurnIndex()).toBe(1); // turn 1
+    transport.currentIndex.set(3);  expect(component.currentTurnIndex()).toBe(2); // turn 2
+  });
+
+  // ── perspectiveName ───────────────────────────────────────────────────────
+  it('perspectiveName picks the right pseudo from metadata', () => {
+    conn.metadata.set({ playerUsernames: ['AxelTest', 'OppName'] } as unknown);
+    component.perspectiveIndex.set(0);
+    expect(component.perspectiveName()).toBe('AxelTest');
+    component.perspectiveIndex.set(1);
+    expect(component.perspectiveName()).toBe('OppName');
+  });
+
+  // ── mySide ────────────────────────────────────────────────────────────────
+  it('mySide returns 1 when auth pseudo matches the second player', () => {
+    conn.metadata.set({ playerUsernames: ['Other', 'AxelTest'] } as unknown);
+    expect(component.mySide()).toBe(1);
+  });
+
+  it('mySide returns 0 when auth pseudo matches the first player (or default)', () => {
+    conn.metadata.set({ playerUsernames: ['AxelTest', 'Other'] } as unknown);
+    expect(component.mySide()).toBe(0);
   });
 });
