@@ -37,7 +37,11 @@ public class RoomEventService {
     /**
      * Subscribe a participant (creator or joiner) to the room's SSE stream.
      * Non-participants get 403. WAITING + READY + CREATING_DUEL are valid;
-     * everything else (ACTIVE, ENDED, CLOSED) rejects with 409.
+     * ACTIVE with a wsToken minted for this user emits an immediate
+     * {@code room-ready} and completes (closes the race where the client
+     * opens the EventSource just after {@code startDuel} flipped the room
+     * to ACTIVE). ACTIVE without a token (pathological) and ENDED/CLOSED
+     * still reject with 409.
      */
     public SseEmitter subscribe(String roomCode, RoomDTO room, Long userId) {
         boolean isCreator = userId.equals(room.getPlayer1().getId());
@@ -47,6 +51,9 @@ public class RoomEventService {
                     org.springframework.http.HttpStatus.FORBIDDEN, "Only room participants can subscribe");
         }
         var status = room.getStatus();
+        if (status == RoomStatus.ACTIVE && room.getWsToken() != null) {
+            return immediateRoomReadyEmitter(room);
+        }
         if (status != RoomStatus.WAITING && status != RoomStatus.READY && status != RoomStatus.CREATING_DUEL) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Room is not in a subscribable state");
@@ -157,6 +164,25 @@ public class RoomEventService {
     }
 
     // ---------- private helpers ----------
+
+    /**
+     * Race resolver: client opened EventSource just after the room flipped
+     * to ACTIVE. Mint an emitter that delivers {@code room-ready} synchronously
+     * with the participant-scoped DTO (wsToken already set by RoomMapper)
+     * then completes — same shape the client would have received via the
+     * push path, so no client-side branching needed.
+     */
+    private SseEmitter immediateRoomReadyEmitter(RoomDTO room) {
+        var emitter = new SseEmitter(0L);
+        try {
+            emitter.send(SseEmitter.event().name("room-ready").data(room, MediaType.APPLICATION_JSON));
+            emitter.complete();
+        } catch (IOException e) {
+            log.warn("Failed to send immediate room-ready for room {}", room.getRoomCode(), e);
+            emitter.completeWithError(e);
+        }
+        return emitter;
+    }
 
     private void sendTo(String roomCode, Long userId, String eventName, Object payload, boolean complete) {
         var roomEmitters = emitters.get(roomCode);
