@@ -130,8 +130,8 @@
 
   <!-- States -->
   @if (store.loading() && store.replays().length === 0) {
-    <div class="hub-loading" aria-busy="true" [attr.aria-label]="'common.loading' | translate">
-      <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+    <div class="replay-list-skeleton">
+      <app-replay-card-skeleton [count]="4"></app-replay-card-skeleton>
     </div>
   } @else if (store.error()) {
     <div class="empty-state empty-state--error">

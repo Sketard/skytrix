@@ -544,6 +544,7 @@
     "loadingDiceArena": "Chargement de l'arène de dés",
     "loadingRooms": "Chargement des rooms",
     "loadingDecks": "Chargement des decks",
+    "loadingReplays": "Chargement des replays",
     "loadingWaitingRoom": "Chargement de la salle d'attente"
   },
   "solver": {

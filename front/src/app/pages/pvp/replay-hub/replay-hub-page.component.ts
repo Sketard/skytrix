@@ -13,6 +13,7 @@ import { ReplayDTO } from '../../../core/model/dto/replay-dto';
 import { DuelResult } from '../../../core/enums/duel-result.enum';
 import { AuthService } from '../../../services/auth.service';
 import { AvatarComponent } from '../../../shared/avatar/avatar.component';
+import { ReplayCardSkeletonComponent } from '../../../shared/skel';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../components/confirm-dialog/confirm-dialog.component';
 import { ReplayHubStore, ReplayFilter, ReplaySortMode } from './replay-hub-store';
 
@@ -48,6 +49,7 @@ const REPLAY_CARD_ITEM_SIZE_PX = 104;
     ScrollingModule,
     TranslateModule,
     AvatarComponent,
+    ReplayCardSkeletonComponent,
   ],
   providers: [ReplayHubStore],
   templateUrl: './replay-hub-page.component.html',

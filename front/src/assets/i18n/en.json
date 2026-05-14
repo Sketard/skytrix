@@ -544,6 +544,7 @@
     "loadingDiceArena": "Loading dice arena",
     "loadingRooms": "Loading rooms",
     "loadingDecks": "Loading decks",
+    "loadingReplays": "Loading replays",
     "loadingWaitingRoom": "Loading waiting room"
   },
   "solver": {

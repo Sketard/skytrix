@@ -208,6 +208,86 @@
 }
 
 // =============================================================================
+// COMPOSITE — Replay card skeleton (Replay Hub list placeholder)
+// Mirrors `.replay-card` grid layout (avatar + info + pill + meta + actions)
+// so the swap to the real list doesn't shift the layout. Same 5-column
+// template at >=640px, 3-column template at <640px.
+// =============================================================================
+.replay-card-skel {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  grid-template-areas: 'avatar info pill meta action';
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--gradient-card-ds);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--elevation-1);
+
+  @media (max-width: 640px) {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'avatar info action'
+      'pill   meta meta';
+    gap: 10px 12px;
+    padding: 12px 14px;
+  }
+
+  .skel-avatar {
+    @extend %skel-block;
+    grid-area: avatar;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+  }
+
+  .skel-lines {
+    grid-area: info;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .skel-pill {
+    grid-area: pill;
+    width: 84px;
+    height: 26px;
+  }
+
+  .skel-meta {
+    grid-area: meta;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+    min-width: 80px;
+
+    @media (max-width: 640px) {
+      align-items: flex-start;
+      flex-direction: row;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+  }
+
+  .skel-action {
+    @extend %skel-block;
+    grid-area: action;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+
+    @media (max-width: 480px) {
+      width: 36px;
+      height: 36px;
+    }
+  }
+}
+
+// =============================================================================
 // COMPOSITE — Dice arena skeleton (pre-duel arena, before DICE_ROLL prompt)
 // Mirrors _mockups/mockup-1-holo-arena.html `.dice-arena-skel` (ll. 1540-1576).
 // Geometry uses the same clamp() cqw scale as the live `.dice-screen-arena`
