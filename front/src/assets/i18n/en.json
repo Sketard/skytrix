@@ -663,28 +663,6 @@
     }
   },
   "replay": {
-    "matchHistory": {
-      "title": "Match History",
-      "deckName": "Deck",
-      "opponent": "Opponent",
-      "turns": "Turns",
-      "result": "Result",
-      "date": "Date",
-      "empty": "No replays yet. Complete a PvP duel to see it here.",
-      "openReplay": "Open replay",
-      "victory": "Victory",
-      "defeat": "Defeat",
-      "draw": "Draw",
-      "timeout": "Timeout",
-      "disconnect": "Disconnect",
-      "surrender": "Surrender",
-      "opponentTimeout": "Win (opponent timeout)",
-      "opponentDisconnect": "Win (opponent disconnect)",
-      "opponentSurrender": "Win (opponent surrender)",
-      "delete": "Delete replay",
-      "deleteConfirm": "Are you sure you want to permanently delete this replay?",
-      "deleteSuccess": "Replay deleted"
-    },
     "hub": {
       "title": "Replay library",
       "subtitle": "Your saved duels",
