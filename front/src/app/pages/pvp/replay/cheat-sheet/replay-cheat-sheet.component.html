@@ -1,0 +1,36 @@
+<div class="replay-cheat-sheet__panel surface-card surface-card--flat">
+  <header class="replay-cheat-sheet__header">
+    <h2 class="text-gold-gradient replay-cheat-sheet__title">
+      {{ 'replay.viewer.cheatSheet.title' | translate }}
+    </h2>
+    <button
+      type="button"
+      class="icon-btn icon-btn--md"
+      [attr.aria-label]="'common.close' | translate"
+      (click)="close.emit()">
+      ✕
+    </button>
+  </header>
+
+  <div class="replay-cheat-sheet__body">
+    @for (section of sections; track section.titleKey) {
+      <section class="replay-cheat-sheet__section">
+        <h3 class="section-header__title section-header__title--no-bar">
+          {{ section.titleKey | translate }}
+        </h3>
+        <div class="replay-cheat-sheet__list">
+          @for (item of section.items; track item.labelKey) {
+            <div class="replay-cheat-sheet__item">
+              <span>{{ item.labelKey | translate }}</span>
+              <div class="replay-cheat-sheet__keys">
+                @for (k of item.keys; track $index; let last = $last) {
+                  <kbd class="text-code text-code--inline">{{ k }}</kbd>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+</div>

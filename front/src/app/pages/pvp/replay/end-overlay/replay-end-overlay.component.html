@@ -1,0 +1,50 @@
+<div class="replay-end-overlay__panel surface-card surface-card--flat">
+  <header class="replay-end-overlay__header">
+    <span
+      class="pill pill--lg pill--celebrated"
+      [class.pill--gold]="pillVariant() === 'gold'"
+      [class.pill--neutral]="pillVariant() === 'neutral'"
+      [class.pill--cyan]="pillVariant() === 'cyan'">
+      {{ outcomeI18n() | translate }}
+    </span>
+  </header>
+
+  <div class="replay-end-overlay__score">
+    <div class="replay-end-overlay__score-side">
+      <span class="text-eyebrow">{{ selfName() }}</span>
+      <span
+        class="text-mono replay-end-overlay__lp"
+        [class.text-gold-gradient]="winnerSide() === 'self'">
+        {{ selfLp() }}
+      </span>
+    </div>
+    <span class="text-eyebrow replay-end-overlay__vs">{{ 'replay.viewer.endOverlay.vs' | translate }}</span>
+    <div class="replay-end-overlay__score-side">
+      <span class="text-eyebrow">{{ oppName() }}</span>
+      <span
+        class="text-mono replay-end-overlay__lp"
+        [class.text-gold-gradient]="winnerSide() === 'opp'">
+        {{ oppLp() }}
+      </span>
+    </div>
+  </div>
+
+  <div class="replay-end-overlay__actions">
+    <button
+      type="button"
+      class="btn btn--primary btn--lg btn--cta btn--cta-shimmer"
+      (click)="replay.emit()">
+      {{ 'replay.viewer.endOverlay.replay' | translate }}
+    </button>
+    <button
+      type="button"
+      class="btn btn--ghost btn--lg btn--cta"
+      (click)="library.emit()">
+      {{ 'replay.viewer.endOverlay.library' | translate }}
+    </button>
+  </div>
+
+  <p class="text-eyebrow replay-end-overlay__dismiss">
+    {{ 'replay.viewer.endOverlay.dismissHint' | translate }}
+  </p>
+</div>

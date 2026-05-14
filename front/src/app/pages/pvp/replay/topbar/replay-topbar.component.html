@@ -1,0 +1,73 @@
+<header class="page-header page-header--compact page-header--bordered">
+  <!-- LEFT: back button -->
+  <button
+    type="button"
+    class="btn btn--ghost btn--sm btn--icon-leading replay-topbar__back"
+    [attr.aria-label]="'replay.hub.back' | translate"
+    (click)="back.emit()">
+    <span aria-hidden="true">←</span>
+    <span class="replay-topbar__back-label">{{ 'replay.hub.back' | translate }}</span>
+  </button>
+
+  <!-- CENTER: match summary -->
+  @if (metadata(); as meta) {
+    <div class="replay-topbar__summary" [attr.aria-label]="'replay.hub.list.title' | translate">
+      <div class="replay-topbar__chip">
+        <app-avatar [pseudo]="selfName()" size="sm" />
+        <div class="replay-topbar__chip-meta">
+          <span class="replay-topbar__chip-name">{{ selfName() }}</span>
+          <span class="replay-topbar__chip-deck text-eyebrow">{{ selfDeck() }}</span>
+        </div>
+        @if (selfResultTag(); as tag) {
+          <span
+            class="pill pill--xs"
+            [class.pill--gold]="tag === 'win'"
+            [class.pill--neutral]="tag === 'loss'">
+            {{ ('replay.viewer.endOverlay.' + (tag === 'win' ? 'victory' : 'defeat')) | translate }}
+          </span>
+        }
+      </div>
+      <span class="text-eyebrow replay-topbar__vs">vs</span>
+      <div class="replay-topbar__chip">
+        @if (oppResultTag(); as tag) {
+          <span
+            class="pill pill--xs"
+            [class.pill--gold]="tag === 'win'"
+            [class.pill--neutral]="tag === 'loss'">
+            {{ ('replay.viewer.endOverlay.' + (tag === 'win' ? 'victory' : 'defeat')) | translate }}
+          </span>
+        }
+        <div class="replay-topbar__chip-meta">
+          <span class="replay-topbar__chip-name">{{ oppName() }}</span>
+          <span class="replay-topbar__chip-deck text-eyebrow">{{ oppDeck() }}</span>
+        </div>
+        <app-avatar [pseudo]="oppName()" size="sm" />
+      </div>
+    </div>
+  }
+
+  <!-- RIGHT: meta pills + actions -->
+  <div class="replay-topbar__right">
+    @if (durationLabel(); as dur) {
+      <span class="pill pill--neutral pill--xs replay-topbar__meta">
+        <span aria-hidden="true">⧗</span>
+        <span class="text-mono">{{ dur }}</span>
+      </span>
+    }
+    <button
+      type="button"
+      class="icon-btn icon-btn--md"
+      [class.btn--success-flash]="copyJustSucceeded()"
+      [attr.aria-label]="'replay.viewer.bottomSheet.options.copyLink' | translate"
+      (click)="copyLink.emit()">
+      🔗
+    </button>
+    <button
+      type="button"
+      class="btn btn--ghost btn--sm replay-topbar__details-btn"
+      [attr.aria-label]="'replay.viewer.bottomSheet.details.title' | translate"
+      (click)="openDetails.emit()">
+      ⓘ
+    </button>
+  </div>
+</header>

@@ -1,0 +1,33 @@
+// Layout only — visuals come from DS Wave 1 utility classes (.pill / .text-eyebrow).
+// Cascade-hide rules (D13) — applied through the host class so this works the
+// same when context-pill is dropped into the desktop transport-bar OR the
+// mobile stepper. Both consume the same MQ surface (`.is-narrow` from the page
+// host + native `@media (max-width: ...)`).
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.context-pill__event {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 30ch;
+}
+
+// ≤ 920px → drop phase chip + event label (D13 step 1)
+@media (max-width: 920px) {
+  .context-pill__phase,
+  .context-pill__event {
+    display: none;
+  }
+}
+
+// ≤ 480px → drop position too (D13 step 2). Turn pill always remains.
+@media (max-width: 480px) {
+  .context-pill__position {
+    display: none;
+  }
+}

@@ -1,0 +1,9 @@
+// Component-scoped layout — visuals all come from `_bottom-sheet.scss`
+// (Viewer F0 partial: `.bottom-sheet`, `.bottom-sheet-header`,
+// `.bottom-sheet-title`, `.bottom-sheet-close`, `.bottom-sheet-body`).
+//
+// The wrapper sets :host display-mode so the .bottom-sheet block inside
+// behaves as a self-contained flex column with the partial-defined max-height.
+:host {
+  display: block;
+}

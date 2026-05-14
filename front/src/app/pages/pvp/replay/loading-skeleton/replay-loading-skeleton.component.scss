@@ -1,0 +1,70 @@
+// Layout only — every visible block comes from <app-skel> primitives + DS
+// utility classes (`.surface-card`, `.pill`). No colours / no animations
+// defined here; the shimmer + pulse-dot are inherited from skel.scss + _pills.scss.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-height: 100dvh;
+}
+
+.replay-loading-skeleton__topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.replay-loading-skeleton__topbar-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.replay-loading-skeleton__board {
+  flex: 1 1 auto;
+  min-height: 320px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.replay-loading-skeleton__hand-row {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.replay-loading-skeleton__field {
+  display: block;
+  min-height: 160px;
+}
+
+.replay-loading-skeleton__timeline {
+  flex-shrink: 0;
+}
+
+.replay-loading-skeleton__transport {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.replay-loading-skeleton__transport-controls {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.replay-loading-skeleton__progress {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-5);
+  transform: translateX(-50%);
+  z-index: 10;
+}

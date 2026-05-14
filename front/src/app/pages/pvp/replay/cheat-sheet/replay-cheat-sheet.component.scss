@@ -1,0 +1,94 @@
+// Layout-only — visuals come from DS utility classes (.surface-card,
+// .text-gold-gradient, .section-header__title, .icon-btn, .text-code--inline).
+:host {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 10, 0.5); // backdrop scrim — composite value, no equivalent token
+  backdrop-filter: blur(4px);
+  z-index: 2100;
+  padding: var(--space-4);
+  animation: ds-cheat-sheet-fade var(--transition-fast) var(--ease-out) both;
+}
+
+.replay-cheat-sheet__panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-5);
+}
+
+.replay-cheat-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.replay-cheat-sheet__title {
+  font: var(--weight-bold) var(--text-lg) / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.replay-cheat-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.replay-cheat-sheet__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.replay-cheat-sheet__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.replay-cheat-sheet__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.replay-cheat-sheet__keys {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+@keyframes ds-cheat-sheet-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  :host {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .replay-cheat-sheet__panel {
+    max-width: 100%;
+    max-height: 90dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+}

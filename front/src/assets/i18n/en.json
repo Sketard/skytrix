@@ -737,13 +737,53 @@
     "viewer": {
       "loading": "Loading replay...",
       "loadingProgress": "Loading replay... Turn {{current}}/{{total}}",
+      "loadingProgressDetailed": "Loaded {{current}} / {{total}} turns",
       "divergenceWarning": "This replay was recorded with a different script/engine version — results may differ from the original duel",
       "error": "Replay error",
       "connectionLost": "Connection lost — navigation continues, fork disabled",
       "forkDismissHint": "Dismiss to cancel fork",
       "continue": "Continue",
       "forkError": "Fork failed — please try again",
-      "forkIndicator": "Solo — Forked from Turn {{turn}}, Event {{idx}}"
+      "forkIndicator": "Solo — Forked from Turn {{turn}}, Event {{idx}}",
+      "copyLinkToast": "Moment link copied ✓",
+      "endOverlay": {
+        "victory": "Victory",
+        "defeat": "Defeat",
+        "draw": "Draw",
+        "vs": "vs",
+        "replay": "Replay",
+        "library": "Library",
+        "dismissHint": "Esc or ← to resume playback"
+      },
+      "cheatSheet": {
+        "title": "Keyboard shortcuts",
+        "section": {
+          "playback": "Playback",
+          "viewing": "Viewing",
+          "actions": "Actions"
+        },
+        "playPause": "Play / pause",
+        "stepEvent": "Previous / next event",
+        "skipBoundary": "Skip to start / end",
+        "perspective": "Toggle perspective",
+        "animations": "Animations on / off",
+        "promptMode": "Decision / result mode",
+        "debug": "Debug panel",
+        "logLevel": "Log level",
+        "fork": "Fork at this point",
+        "copyLink": "Copy link to this moment",
+        "help": "Show this help",
+        "close": "Close / exit overlays"
+      },
+      "bottomSheet": {
+        "options": {
+          "title": "Options",
+          "copyLink": "Copy link to this moment"
+        },
+        "details": {
+          "title": "Duel details"
+        }
+      }
     },
     "transport": {
       "skipStart": "Skip to start",

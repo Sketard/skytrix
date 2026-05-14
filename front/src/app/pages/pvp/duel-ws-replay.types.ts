@@ -92,6 +92,9 @@ export interface ReplayMetadataMsg {
   totalResponses: number;
   /** Unique card codes from both decklists — for upfront image prefetch. */
   cardCodes: number[];
+  /** Duel duration in seconds — shipped by hub-rework B1 for the topbar pill.
+   *  Optional: legacy replays recorded before B1 don't carry it. */
+  durationSec?: number;
 }
 
 export interface ReplayErrorMsg {

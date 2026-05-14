@@ -1,0 +1,56 @@
+<!-- Topbar wireframe -->
+<div class="replay-loading-skeleton__topbar">
+  <app-skel variant="rect" width="100px" height="32px" />
+  <div class="replay-loading-skeleton__topbar-summary">
+    <app-skel variant="circle" width="32px" height="32px" />
+    <app-skel variant="text-md" width="120px" />
+    <app-skel variant="pill" width="22px" height="20px" />
+  </div>
+  <app-skel variant="pill" width="80px" height="24px" />
+</div>
+
+<!-- Board wireframe -->
+<div class="replay-loading-skeleton__board surface-card surface-card--low">
+  <div class="replay-loading-skeleton__hand-row">
+    @for (i of [0,1,2,3]; track i) {
+      <app-skel variant="rect" width="42px" height="60px" />
+    }
+  </div>
+  <div class="replay-loading-skeleton__field">
+    <app-skel variant="rect" width="100%" height="100%" />
+  </div>
+  <div class="replay-loading-skeleton__hand-row">
+    @for (i of [0,1,2,3,4]; track i) {
+      <app-skel variant="rect" width="42px" height="60px" />
+    }
+  </div>
+</div>
+
+<!-- Timeline wireframe -->
+<div class="replay-loading-skeleton__timeline">
+  <app-skel variant="rect" width="100%" height="40px" />
+</div>
+
+<!-- Transport wireframe -->
+<div class="replay-loading-skeleton__transport">
+  <app-skel variant="pill" width="80px" height="24px" />
+  <div class="replay-loading-skeleton__transport-controls">
+    @for (i of [0,1,2,3,4]; track i) {
+      <app-skel variant="circle" width="36px" height="36px" />
+    }
+  </div>
+  <app-skel variant="rect" width="200px" height="32px" />
+</div>
+
+<!-- Progress indicator (DS Wave 1 §2.6 pulse-dot integrated) -->
+<div class="replay-loading-skeleton__progress">
+  @if (hasProgress()) {
+    <span class="pill pill--gold pill--md pill--live">
+      {{ 'replay.viewer.loadingProgressDetailed' | translate: progressParams() }}
+    </span>
+  } @else {
+    <span class="pill pill--gold pill--md pill--live">
+      {{ 'replay.viewer.loading' | translate }}
+    </span>
+  }
+</div>

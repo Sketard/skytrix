@@ -737,13 +737,53 @@
     "viewer": {
       "loading": "Chargement du replay...",
       "loadingProgress": "Chargement du replay... Tour {{current}}/{{total}}",
+      "loadingProgressDetailed": "Chargé {{current}} / {{total}} tours",
       "divergenceWarning": "Ce replay a été enregistré avec une version différente du script/moteur — les résultats peuvent différer du duel original",
       "error": "Erreur de replay",
       "connectionLost": "Connexion perdue — la navigation continue, le fork est désactivé",
       "forkDismissHint": "Fermer pour annuler le fork",
       "continue": "Continuer",
       "forkError": "Échec du fork — veuillez réessayer",
-      "forkIndicator": "Solo — Fork depuis le tour {{turn}}, événement {{idx}}"
+      "forkIndicator": "Solo — Fork depuis le tour {{turn}}, événement {{idx}}",
+      "copyLinkToast": "Lien du moment copié ✓",
+      "endOverlay": {
+        "victory": "Victoire",
+        "defeat": "Défaite",
+        "draw": "Égalité",
+        "vs": "vs",
+        "replay": "Rejouer",
+        "library": "Bibliothèque",
+        "dismissHint": "Esc ou ← pour reprendre la lecture"
+      },
+      "cheatSheet": {
+        "title": "Raccourcis clavier",
+        "section": {
+          "playback": "Lecture",
+          "viewing": "Visionnage",
+          "actions": "Actions"
+        },
+        "playPause": "Lecture / pause",
+        "stepEvent": "Évènement précédent / suivant",
+        "skipBoundary": "Aller au début / à la fin",
+        "perspective": "Changer de perspective",
+        "animations": "Animations on / off",
+        "promptMode": "Mode décisions / résultats",
+        "debug": "Panneau de debug",
+        "logLevel": "Niveau de log",
+        "fork": "Forker à ce point",
+        "copyLink": "Copier le lien à ce moment",
+        "help": "Afficher cette aide",
+        "close": "Fermer / quitter overlays"
+      },
+      "bottomSheet": {
+        "options": {
+          "title": "Options",
+          "copyLink": "Copier le lien à ce moment"
+        },
+        "details": {
+          "title": "Détails du duel"
+        }
+      }
     },
     "transport": {
       "skipStart": "Aller au début",
