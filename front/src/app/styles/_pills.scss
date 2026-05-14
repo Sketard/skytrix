@@ -135,15 +135,5 @@
   color: var(--text-muted);
 }
 
-// =============================================================================
-// Legacy aliases — `.lobby-section-count` (badge) en attendant migration HTML.
-// Bit-exact lobby-page.component.scss:229-236.
-// =============================================================================
-.lobby-section-count {
-  font: var(--weight-bold) 0.7rem / 1 'Inter', sans-serif;
-  color: var(--gold);
-  background: var(--gold-soft-12);
-  padding: 4px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--gold-soft-30);
-}
+// Legacy alias `.lobby-section-count` removed in Commit 3. Source of truth
+// is now `.badge.badge--gold`.

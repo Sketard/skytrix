@@ -45,55 +45,5 @@
 // Modifier mobile / full-width
 .search-bar--full { width: 100%; }
 
-// =============================================================================
-// Legacy alias — `.lobby-search-bar` + `.lobby-search-clear`
-// Bit-exact lobby-page.component.scss:286-344.
-// =============================================================================
-.lobby-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  transition: border-color var(--transition-normal) var(--ease-inout),
-              background var(--transition-normal) var(--ease-inout);
-
-  &:focus-within {
-    border-color: var(--gold-soft-50);
-    background: var(--surface-hover);
-  }
-
-  mat-icon {
-    color: var(--text-muted);
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
-  }
-}
-
-.lobby-search-clear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: color var(--transition-fast) var(--ease-out),
-              background var(--transition-fast) var(--ease-out);
-
-  &:hover {
-    color: var(--text-primary);
-    background: var(--surface-hover);
-  }
-
-  mat-icon {
-    font-size: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
-  }
-}
+// Legacy aliases `.lobby-search-bar` + `.lobby-search-clear` removed in
+// Commit 3. Source of truth: `.search-bar` + `.icon-btn.icon-btn--sm`.

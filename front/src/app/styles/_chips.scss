@@ -85,52 +85,6 @@
   }
 }
 
-// =============================================================================
-// Legacy aliases — `.lobby-filter-chip` + `.lobby-filter-divider`
-// (période coexistence — à retirer Commit 3 si grep zero).
-// =============================================================================
-.lobby-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-overlay);
-  border: 1px solid var(--border-soft);
-  color: var(--text-secondary);
-  font: var(--weight-semibold) var(--text-xs) / 1 'Inter', sans-serif;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
-  transition: color var(--transition-fast) var(--ease-out),
-              background var(--transition-fast) var(--ease-out),
-              border-color var(--transition-fast) var(--ease-out);
-
-  &:hover {
-    color: var(--text-primary);
-    border-color: var(--border-medium);
-  }
-
-  &[aria-pressed='true'] {
-    background: var(--gold-soft-12);
-    border-color: var(--gold-soft-50);
-    color: var(--gold-50);
-
-    mat-icon { color: var(--gold); }
-  }
-
-  mat-icon {
-    font-size: 14px !important;
-    width: 14px !important;
-    height: 14px !important;
-  }
-}
-
-.lobby-filter-divider {
-  display: inline-block;
-  width: 1px;
-  height: 20px;
-  background: var(--border-soft);
-  align-self: center;
-}
+// Legacy aliases `.lobby-filter-chip` + `.lobby-filter-divider` removed in
+// Commit 3 — F0-B migration confirmed zero remaining consumers. Source of
+// truth is `.chip` + `.chip-divider`.
