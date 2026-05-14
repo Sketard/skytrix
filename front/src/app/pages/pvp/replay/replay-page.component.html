@@ -4,6 +4,7 @@
     <p>{{ progressText() }}</p>
   </div>
 } @else {
+  <app-orientation-lock />
   <div class="replay-viewer" (keydown)="onKeydown($event)" tabindex="0">
     <div class="board-area">
       <!-- Opponent Hand (top, omniscient — all cards visible) -->

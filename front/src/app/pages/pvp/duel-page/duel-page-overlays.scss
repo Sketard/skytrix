@@ -4,44 +4,10 @@
 // NOTE — connection-overlay / disconnect-grace-overlay / blocked-tab-overlay /
 // rematch-starting-overlay have been migrated to <app-system-overlay>
 // (see app/components/system-overlay/). The shared SCSS lives there too.
-// This file now only owns surfaces that intentionally diverge from the
-// system-overlay design: orientation lock, RPS reveal, result outcome.
-
-// === Orientation Lock Overlay ===
-.orientation-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #1a1a2e;
-  z-index: z.$z-pvp-orientation-lock;
-}
-
-.orientation-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  text-align: center;
-  padding: 32px;
-}
-
-.rotate-icon {
-  color: rgba(255, 255, 255, 0.6);
-  animation: rotate-hint 2s ease-in-out infinite;
-}
-
-@keyframes rotate-hint {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-90deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rotate-icon {
-    animation: none;
-  }
-}
+// orientation-overlay / .rotate-icon / @keyframes rotate-hint live in the
+// <app-orientation-lock> component (shared/orientation-lock/) — reused by
+// PvP duel and Replay viewer. This file now only owns surfaces that
+// intentionally diverge from the system-overlay design: RPS reveal, result.
 
 // === RPS Result Overlay (Story 2.3) ===
 .rps-overlay {
