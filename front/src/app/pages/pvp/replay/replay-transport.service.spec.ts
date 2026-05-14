@@ -3,7 +3,7 @@ import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReplayTransportService } from './replay-transport.service';
 import type { ReplayDuelAdapter } from './replay-duel-adapter';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
-import type { PreComputedState } from '../replay-ws.types';
+import type { PreComputedState, TurnMeta } from '../replay-ws.types';
 import { EMPTY_DUEL_STATE } from '../types';
 
 // =============================================================================
@@ -388,4 +388,67 @@ describe('ReplayTransportService — destroy', () => {
     // time via the cleared timer.
     expect(adapter.jumpToState).toHaveBeenCalledTimes(1);
   }));
+});
+
+// =============================================================================
+// seekToTurn (F2 — mobile stepper / turn-picker)
+// =============================================================================
+
+describe('ReplayTransportService — seekToTurn', () => {
+  const turns: TurnMeta[] = [
+    { turnNumber: 0, startIndex: 0, endIndex: 2, p1LP: 8000, p2LP: 8000, eventCount: 3 },
+    { turnNumber: 1, startIndex: 3, endIndex: 5, p1LP: 8000, p2LP: 8000, eventCount: 3 },
+    { turnNumber: 2, startIndex: 6, endIndex: 8, p1LP: 8000, p2LP: 8000, eventCount: 3 },
+  ];
+
+  it('delegates to seek(turn.startIndex) when the target turn is computed', () => {
+    const { svc, adapter, boardStates } = setup({
+      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
+      computedUpTo: 8,
+    });
+    svc.seekToTurn(2, turns);
+    expect(svc.currentIndex()).toBe(6);
+    expect(adapter.jumpToState).toHaveBeenCalledWith(boardStates()[6]);
+  });
+
+  it('no-ops when turnIndex is out of bounds (negative)', () => {
+    const { svc, adapter } = setup({
+      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
+      computedUpTo: 8,
+    });
+    svc.seekToTurn(-1, turns);
+    expect(svc.currentIndex()).toBe(0);
+    expect(adapter.jumpToState).not.toHaveBeenCalled();
+  });
+
+  it('no-ops when turnIndex is out of bounds (past end)', () => {
+    const { svc, adapter } = setup({
+      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
+      computedUpTo: 8,
+    });
+    svc.seekToTurn(5, turns);
+    expect(svc.currentIndex()).toBe(0);
+    expect(adapter.jumpToState).not.toHaveBeenCalled();
+  });
+
+  it('refuses to seek to a turn whose startIndex is past computedUpTo', () => {
+    const { svc, adapter } = setup({
+      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
+      // Only turns 0 + 1 are computed; turn 2 starts at index 6 which is past computedUpTo=5
+      computedUpTo: 5,
+    });
+    svc.seekToTurn(2, turns);
+    expect(svc.currentIndex()).toBe(0);
+    expect(adapter.jumpToState).not.toHaveBeenCalled();
+  });
+
+  it('pauses playback when seeking (inherits the seek() contract)', () => {
+    const { svc } = setup({
+      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
+      computedUpTo: 8,
+    });
+    svc.isPlaying.set(true);
+    svc.seekToTurn(1, turns);
+    expect(svc.isPlaying()).toBeFalse();
+  });
 });

@@ -1,0 +1,79 @@
+@if (setupEntries().length > 0) {
+  <section class="turn-picker__section">
+    <h3 class="section-header__title section-header__title--no-bar">
+      {{ 'replay.viewer.picker.section.setup' | translate }}
+    </h3>
+    <div class="turn-picker__grid">
+      @for (entry of setupEntries(); track entry.turnIndex) {
+        <button
+          type="button"
+          #turnCard
+          [attr.data-turn-index]="entry.turnIndex"
+          class="turn-picker__card surface-card surface-card--interactive"
+          [class.turn-picker__card--current]="entry.isCurrent"
+          [class.turn-picker__card--not-computed]="!entry.isComputed"
+          [disabled]="!entry.isComputed"
+          [attr.aria-current]="entry.isCurrent ? 'true' : null"
+          [attr.aria-disabled]="!entry.isComputed ? 'true' : null"
+          (click)="onCardClick(entry)">
+          <header class="turn-picker__card-header">
+            <span class="turn-picker__num">T{{ entry.meta.turnNumber }}</span>
+          </header>
+          @if (entry.state) {
+            <app-mini-board-thumbnail
+              variant="picker"
+              [state]="entry.state.boardState"
+              [perspectiveIndex]="perspectiveIndex()" />
+          }
+          <footer class="turn-picker__card-footer text-eyebrow">
+            @if (!entry.isComputed) {
+              <span>{{ 'replay.viewer.picker.notComputed' | translate }}</span>
+            } @else {
+              <span>{{ entry.meta.eventCount }} evt</span>
+            }
+          </footer>
+        </button>
+      }
+    </div>
+  </section>
+}
+
+@if (turnEntries().length > 0) {
+  <section class="turn-picker__section">
+    <h3 class="section-header__title section-header__title--no-bar">
+      {{ 'replay.viewer.picker.section.turns' | translate }}
+    </h3>
+    <div class="turn-picker__grid">
+      @for (entry of turnEntries(); track entry.turnIndex) {
+        <button
+          type="button"
+          #turnCard
+          [attr.data-turn-index]="entry.turnIndex"
+          class="turn-picker__card surface-card surface-card--interactive"
+          [class.turn-picker__card--current]="entry.isCurrent"
+          [class.turn-picker__card--not-computed]="!entry.isComputed"
+          [disabled]="!entry.isComputed"
+          [attr.aria-current]="entry.isCurrent ? 'true' : null"
+          [attr.aria-disabled]="!entry.isComputed ? 'true' : null"
+          (click)="onCardClick(entry)">
+          <header class="turn-picker__card-header">
+            <span class="turn-picker__num">T{{ entry.meta.turnNumber }}</span>
+          </header>
+          @if (entry.state) {
+            <app-mini-board-thumbnail
+              variant="picker"
+              [state]="entry.state.boardState"
+              [perspectiveIndex]="perspectiveIndex()" />
+          }
+          <footer class="turn-picker__card-footer text-eyebrow">
+            @if (!entry.isComputed) {
+              <span>{{ 'replay.viewer.picker.notComputed' | translate }}</span>
+            } @else {
+              <span>{{ entry.meta.eventCount }} evt</span>
+            }
+          </footer>
+        </button>
+      }
+    </div>
+  </section>
+}

@@ -783,7 +783,21 @@
         "details": {
           "title": "Duel details"
         }
-      }
+      },
+      "stepper": {
+        "prevTurn": "Previous turn",
+        "nextTurn": "Next turn",
+        "openPicker": "Choose a turn"
+      },
+      "picker": {
+        "title": "Go to turn",
+        "section": {
+          "setup": "Setup",
+          "turns": "Duel turns"
+        },
+        "notComputed": "Computing…"
+      },
+      "swipeHint": "Swipe to change turn"
     },
     "transport": {
       "skipStart": "Skip to start",

@@ -1,7 +1,7 @@
 import { Injectable, signal, type Signal } from '@angular/core';
 import type { ReplayDuelAdapter } from './replay-duel-adapter';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
-import type { PreComputedState } from '../replay-ws.types';
+import type { PreComputedState, TurnMeta } from '../replay-ws.types';
 import { EMPTY_DUEL_STATE } from '../types';
 
 /**
@@ -130,6 +130,22 @@ export class ReplayTransportService {
     this.currentIndex.set(idx);
     const state = this.getCfg().boardStates()[idx];
     if (state) this.getCfg().adapter.jumpToState(state);
+  }
+
+  /**
+   * Jump to the start of a specific turn (used by the mobile stepper picker — F2).
+   * Refuses on out-of-bounds indexes or when the target turn's startIndex hasn't
+   * been pre-computed yet. Otherwise delegates to {@link seek} which handles
+   * pausing playback + jumpToState.
+   *
+   * The caller is expected to have already invoked `abortAndClean()` before
+   * (same contract as the other transport ops — see class header).
+   */
+  seekToTurn(turnIndex: number, turns: readonly TurnMeta[]): void {
+    const turn = turns[turnIndex];
+    if (!turn) return;
+    if (turn.startIndex > this.getCfg().computedUpTo()) return;
+    this.seek(turn.startIndex);
   }
 
   /**

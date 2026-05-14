@@ -1,0 +1,6 @@
+// Visuals come from `_mini-board.scss` (Viewer F0 partial — global classes).
+// The host only needs to behave as a sizing container; the .mini-board child
+// already has its own width / aspect-ratio.
+:host {
+  display: inline-block;
+}

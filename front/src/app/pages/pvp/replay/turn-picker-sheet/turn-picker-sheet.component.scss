@@ -1,0 +1,95 @@
+// Layout-only — visuals come from DS Wave 1 (.surface-card, .surface-card--interactive,
+// .section-header__title, .text-eyebrow) + `_mini-board.scss` (Viewer F0 partial).
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.turn-picker__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.turn-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.turn-picker__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2);
+  text-align: left;
+  min-height: 44px;
+  cursor: pointer;
+  position: relative;
+
+  // is-current — gold ring (uses .surface-card--accent-gold tokens? no, custom
+  // accent because the picker has its own emphasis pattern. Composed from tokens.)
+  &.turn-picker__card--current {
+    border-color: var(--gold);
+    background: var(--gold-soft-12);
+    box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 16px var(--gold-soft-25);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold);
+      z-index: 2;
+    }
+  }
+
+  &.turn-picker__card--not-computed {
+    pointer-events: none;
+    opacity: 0.55;
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        var(--gold-soft-04) 0px,
+        var(--gold-soft-04) 6px,
+        var(--surface-bg-deep) 6px,
+        var(--surface-bg-deep) 12px
+      );
+
+    .turn-picker__num {
+      color: var(--text-muted);
+    }
+  }
+}
+
+.turn-picker__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.turn-picker__num {
+  font: var(--weight-black) var(--text-sm) / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--gold-50);
+}
+
+.turn-picker__card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+@media (max-width: 480px) {
+  .turn-picker__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

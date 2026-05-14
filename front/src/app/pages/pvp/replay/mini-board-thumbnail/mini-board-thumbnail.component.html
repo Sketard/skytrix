@@ -1,0 +1,22 @@
+<div [class]="hostClass()" aria-hidden="true">
+  <div class="mini-hand">
+    @for (i of handArray(oppHandCount()); track i) {
+      <div class="mini-hand-card"></div>
+    }
+  </div>
+  <div class="mini-field-row">
+    @for (occ of oppMonsters(); track $index) {
+      <div class="mini-zone" [class.has-card]="occ"></div>
+    }
+  </div>
+  <div class="mini-field-row">
+    @for (occ of selfMonsters(); track $index) {
+      <div class="mini-zone" [class.has-card]="occ"></div>
+    }
+  </div>
+  <div class="mini-hand">
+    @for (i of handArray(selfHandCount()); track i) {
+      <div class="mini-hand-card"></div>
+    }
+  </div>
+</div>

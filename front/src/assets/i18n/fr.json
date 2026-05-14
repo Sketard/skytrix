@@ -783,7 +783,21 @@
         "details": {
           "title": "Détails du duel"
         }
-      }
+      },
+      "stepper": {
+        "prevTurn": "Tour précédent",
+        "nextTurn": "Tour suivant",
+        "openPicker": "Choisir un tour"
+      },
+      "picker": {
+        "title": "Aller au tour",
+        "section": {
+          "setup": "Préparation",
+          "turns": "Tours du duel"
+        },
+        "notComputed": "Calcul en cours…"
+      },
+      "swipeHint": "Glisse pour changer de tour"
     },
     "transport": {
       "skipStart": "Aller au début",

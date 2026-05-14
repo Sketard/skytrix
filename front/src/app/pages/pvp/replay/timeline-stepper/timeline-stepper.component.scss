@@ -1,0 +1,138 @@
+// Layout-only — icon-btn / typography come from DS Wave 1.
+// The pill is a viewer-specific composite (gold-soft glow + dot progress +
+// chevron), kept scoped because no DS utility composes these all.
+:host {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
+  border-top: 1px solid var(--gold-soft-25);
+}
+
+// Visible only on narrow viewports (D1 — width-driven) or when the page host
+// flag `.is-narrow` is set (preview tools, manual narrow toggle).
+@media (max-width: 760px) {
+  :host { display: flex; }
+}
+:host-context(.is-narrow) { display: flex; }
+
+.timeline-stepper__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.timeline-stepper__nav {
+  flex: 0 0 44px;
+  height: 44px;
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+}
+
+.timeline-stepper__pill {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  background: var(--gold-soft-08);
+  border: 1px solid var(--gold-soft-25);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast) var(--ease-out);
+  min-width: 0;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--gold-soft-12);
+    border-color: var(--gold-soft-40);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.timeline-stepper__pill-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.timeline-stepper__pill-num {
+  font: var(--weight-black) var(--text-md) / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--gold-50);
+}
+
+.timeline-stepper__pill-total {
+  letter-spacing: 0.06em;
+}
+
+.timeline-stepper__dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 4px;
+}
+
+.timeline-stepper__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold-soft-25);
+  transition: all var(--transition-fast) var(--ease-out);
+
+  &.is-active {
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold-soft-50);
+    width: 6px;
+    height: 6px;
+  }
+}
+
+.timeline-stepper__chevron {
+  color: var(--gold);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.timeline-stepper__sub-events {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.timeline-stepper__sub-event {
+  flex: 0 0 24px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--gold-soft-25);
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--gold-soft-40);
+  }
+
+  &:active {
+    background: var(--gold);
+  }
+}
+
+// Hide dot progress under 480px (D13 cramped).
+@media (max-width: 480px) {
+  .timeline-stepper__dots {
+    display: none;
+  }
+}

@@ -1,0 +1,49 @@
+<div class="timeline-stepper__row">
+  <button
+    type="button"
+    class="icon-btn icon-btn--lg timeline-stepper__nav"
+    [attr.aria-label]="'replay.viewer.stepper.prevTurn' | translate"
+    [disabled]="!canStepPrev()"
+    (click)="onPrev()">
+    ◀
+  </button>
+
+  <button
+    type="button"
+    class="timeline-stepper__pill"
+    [attr.aria-label]="'replay.viewer.stepper.openPicker' | translate"
+    (click)="onPickerOpen()">
+    <span class="timeline-stepper__pill-main">
+      <span class="timeline-stepper__pill-num">{{ turnLabel() }}</span>
+      <span class="text-eyebrow timeline-stepper__pill-total">/ {{ totalTurns() }}</span>
+    </span>
+    <span class="timeline-stepper__dots" aria-hidden="true">
+      @for (active of dotState(); track $index) {
+        <span class="timeline-stepper__dot" [class.is-active]="active"></span>
+      }
+    </span>
+    <span aria-hidden="true" class="timeline-stepper__chevron">▾</span>
+  </button>
+
+  <button
+    type="button"
+    class="icon-btn icon-btn--lg timeline-stepper__nav"
+    [attr.aria-label]="'replay.viewer.stepper.nextTurn' | translate"
+    [disabled]="!canStepNext()"
+    (click)="onNext()">
+    ▶
+  </button>
+</div>
+
+@if (subEvents().length > 0) {
+  <div class="timeline-stepper__sub-events" role="group" [attr.aria-label]="'replay.viewer.stepper.openPicker' | translate">
+    @for (seg of subEvents(); track $index) {
+      <button
+        type="button"
+        class="timeline-stepper__sub-event"
+        [attr.aria-label]="'event ' + $index"
+        (click)="onSubEventClick(seg)">
+      </button>
+    }
+  </div>
+}
