@@ -18,12 +18,14 @@
 // Tokens only — no hex / no rgba inline / no `!important`.
 // =============================================================================
 
+@use 'z-layers' as z;
+
 .bottom-sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(5, 5, 10, 0.5); // backdrop scrim — composite value, no equivalent token
   backdrop-filter: blur(4px);
-  z-index: 2000;
+  z-index: z.$z-overlay;
   align-items: flex-end;
   justify-content: center;
   animation: ds-bottom-sheet-fade var(--transition-fast) var(--ease-out) both;

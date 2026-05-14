@@ -2,7 +2,7 @@
 title: Replay Viewer — Rework Implementation Tracking
 author: Sally (UX Designer) + Axel
 date: 2026-05-14
-status: APPROVED — ready for implementation
+status: F0+F1+F2+F3+F4+F5(auto) SHIPPED — QA manuel responsive/a11y/cross-browser pending
 scope: Page `/pvp/replay/:replayId` refonte Holographic Arena + responsive mobile width-driven
 mockup: _mockups/mockup-replay-viewer.html
 related:
@@ -11,6 +11,31 @@ related:
   - memory/project_replay_rework_2026_05_14.md
   - memory/project_pvp_lobby_rework_plan.md
 ---
+
+> ## Statut implémentation (2026-05-14)
+>
+> **5 commits livrés sur branche `design-system` (post Hub-rework)** :
+>
+> | Commit | Phase | Surface |
+> |---|---|---|
+> | `506d024a` | **F0** | 3 SCSS partials (`_bottom-sheet`, `_chain-owner-palette`, `_mini-board`) + 6 tokens chain-owner + alias `$bp-replay-narrow: 760px` + import order. **+311 lignes**. |
+> | `4f9570e8` | **F1** | 6 chrome components standalone (`<app-context-pill>`, `<app-replay-loading-skeleton>`, `<app-replay-end-overlay>`, `<app-replay-cheat-sheet>`, `<app-replay-topbar>`, `<app-replay-bottom-sheet>`) + `deriveOutcome` helper + spec + `ReplayMetadataMsg.durationSec?` (types front+back). **+1611 lignes**, **56 specs**. |
+> | `0545aa93` | **F2** | `<app-mini-board-thumbnail>`, `<app-turn-picker-sheet>`, `<app-timeline-stepper>`, `BoardSwipeNavigatorDirective`, `ReplayTransportService.seekToTurn`. **+1242 lignes**, **56 specs**. |
+> | `458ca4b6` | **F3** | `<app-timeline-zoom-control>` + refonte `TimelineBarComponent` (zoomLevel input D21, hover popover via mini-board-thumbnail) + refonte `TransportBarComponent` (3 zones grid, Material → DS Wave 1, ⋯ More mobile). **+942 lignes net**, **26 specs**. |
+> | `a22ac77d` | **F4** | `ReplayPageComponent` template + ts + scss + spec : topbar + stepper + bottom-sheets + end-overlay + cheat-sheet + skeleton + swipe + transport rewiring + `onCopyLink` + `onSeekToTurn` + matchMedia narrow + `?` AZERTY + zoomLevel persisté + `durationSec` propagé dans `replay-handlers.ts` WS. **+632 lignes net**, **19 specs F4**. |
+>
+> **Totaux** : 65 fichiers / +4714 / -312 lignes / **263 replay specs vert** (vs 137 baseline pre-F1).
+>
+> **F5 — partie automatisable SHIPPÉE** (commit C6) :
+> - ✅ Clés i18n FR+EN ajoutées : `bottomSheet.options.forkHint`, `bottomSheet.details.{opponentLabel,deckLabel,turns,duration,date,events,summary}`, `viewer.protocolMismatch` (8 clés × 2 langues). 43/43 clés viewer présentes FR+EN.
+> - ✅ DS §6 garde-fous PASS sur `pages/pvp/replay/**` : 0 hex hardcodé, 0 `!important`, 0 keyframe non-`ds-`, 0 BEM kebab, 0 `mat-raised-button`. Suppression d'un bloc `@media (prefers-reduced-motion)` local redondant avec le global `_a11y.scss`. Bascule des `z-index` hardcodés vers tokens `z.$z-overlay` / `z.$z-card-overlay` dans `_bottom-sheet.scss` + `_mini-board.scss`.
+> - ✅ 263/263 replay specs toujours vert après edits.
+>
+> **F5 — QA manuel restant** (à faire en local) :
+> - QA responsive manuel (360 / 414 / 768 / 1024 / 1280 / 1920px).
+> - Audit Lighthouse a11y ≥ 95.
+> - QA cross-browser desktop (Chrome / Firefox / Safari) + touch device (iPhone + iPad).
+> - Effort restant : ~1h30.
 
 # Replay Viewer — Refonte Holographic Arena + Mobile
 

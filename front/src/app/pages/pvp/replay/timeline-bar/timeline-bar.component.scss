@@ -52,10 +52,6 @@
   &.timeline-bar__track--zoom-l3 {
     width: 300%;
   }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
 }
 
 .timeline-bar__turn {

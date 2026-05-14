@@ -741,6 +741,7 @@
       "divergenceWarning": "Ce replay a été enregistré avec une version différente du script/moteur — les résultats peuvent différer du duel original",
       "error": "Erreur de replay",
       "connectionLost": "Connexion perdue — la navigation continue, le fork est désactivé",
+      "protocolMismatch": "Version du client obsolète — rafraîchis la page pour mettre à jour",
       "forkDismissHint": "Fermer pour annuler le fork",
       "continue": "Continuer",
       "forkError": "Échec du fork — veuillez réessayer",
@@ -778,10 +779,18 @@
       "bottomSheet": {
         "options": {
           "title": "Options",
-          "copyLink": "Copier le lien à ce moment"
+          "copyLink": "Copier le lien à ce moment",
+          "forkHint": "Mieux sur un écran plus grand"
         },
         "details": {
-          "title": "Détails du duel"
+          "title": "Détails du duel",
+          "opponentLabel": "Adversaire",
+          "deckLabel": "Deck",
+          "turns": "Tours",
+          "duration": "Durée",
+          "date": "Date",
+          "events": "Évènements",
+          "summary": "{{duration}} · {{turns}} tours · {{events}} évènements"
         }
       },
       "stepper": {
