@@ -48,7 +48,16 @@ export function buildPreDuelSnapshot(session: ActiveDuelSession, playerIndex: 0 
     }
     case 'DUELING':
       return [];
+    default:
+      return assertNever(session.phase);
   }
+}
+
+/** Exhaustiveness check: if a new SessionPhase is added without a
+ *  case above, TypeScript will fail at compile time on the `never`
+ *  parameter type. */
+function assertNever(x: never): never {
+  throw new Error(`Unhandled SessionPhase in buildPreDuelSnapshot: ${String(x)}`);
 }
 
 function buildDiceResult(session: ActiveDuelSession): ServerMessage | null {

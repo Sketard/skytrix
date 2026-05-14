@@ -71,11 +71,11 @@ export class PvpDiceArenaComponent {
 
   // ---- Local durable signals -----------------------------------------------
 
-  /** Timestamp (ms) at which the rolling animation expires, or `null` if not
-   *  rolling. Set when DICE_RESULT arrives, cleared by a setTimeout aligned
-   *  to `DICE_ROLL_ANIM_DURATION_MS`. Reactive, so `stage` recomputes when
+  /** True while the local rolling animation is playing — set when
+   *  DICE_RESULT arrives, cleared by a setTimeout aligned to
+   *  `DICE_ROLL_ANIM_DURATION_MS`. Reactive, so `stage` recomputes when
    *  the timer fires. */
-  private readonly _rollingUntil = signal<number | null>(null);
+  private readonly _rollingActive = signal<boolean>(false);
 
   /** Truthy once FIRST_PLAYER_RESULT has been seen during this dice flow.
    *  The server clears `firstPlayerResult` on DUEL_STARTING, so we can't
@@ -99,12 +99,6 @@ export class PvpDiceArenaComponent {
   /** Last DICE_RESULT we bound to `resultMy`/`resultOpp`, kept by reference
    *  to detect a new result (rematch tie reroll → fresh object). */
   private animationStartedFor: unknown = null;
-
-  /** Reactive "now()" — bumped when timers fire. We don't read raw
-   *  `Date.now()` from the `computed` (it would never re-run on its own).
-   *  Instead the rolling-expiry timer simply mutates `_rollingUntil` to
-   *  `null`, which triggers stage recomputation. */
-  // (no extra ticker needed)
 
   // ---- Displayed dice values ----------------------------------------------
 
@@ -146,9 +140,9 @@ export class PvpDiceArenaComponent {
     if (this.ws.firstPlayerResult() !== null) return 'final';
     // Dice physics window — covers both the local 1.8s anim after DICE_RESULT
     // and the "inProgress" wait between sending DICE_ROLL and getting the
-    // result. The local timer (`_rollingUntil`) is the precise driver; the
+    // result. The local flag (`_rollingActive`) is the precise driver; the
     // remote `diceInProgress` is the fallback when we joined mid-roll.
-    if (this._rollingUntil() !== null) return 'rolling';
+    if (this._rollingActive()) return 'rolling';
     if (this.ws.diceResult() !== null) return 'result';
     if (this.ws.diceInProgress()) return 'rolling';
     if (this.ws.pendingPrompt()?.type === 'DICE_ROLL') return 'ready';
@@ -161,7 +155,6 @@ export class PvpDiceArenaComponent {
 
   // ---- Side-effect timers + latches ---------------------------------------
 
-  private rollTimer: ReturnType<typeof setTimeout> | null = null;
   private autoRollTimer: ReturnType<typeof setTimeout> | null = null;
   private rollingExpiryTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -188,24 +181,26 @@ export class PvpDiceArenaComponent {
 
     // 2) On a new DICE_RESULT (fresh object reference), bind the displayed
     //    dice values + arm the rolling-expiry timer. The expiry resets
-    //    `_rollingUntil` to null, which makes `stage` flip to `result`.
+    //    `_rollingActive` to false, which makes `stage` flip to `result`.
     effect(() => {
       const result = this.ws.diceResult();
       untracked(() => {
         if (result === null || this.animationStartedFor === result) return;
-        this.animationStartedFor = result;
+        // Each new DICE_RESULT supersedes any in-flight rolling timer; we
+        // clear it first so the last fresh result wins idempotently.
+        const myToken = result;
+        this.animationStartedFor = myToken;
         // Bind dice values BEFORE entering 'rolling' so the tumble keyframes
         // and the post-roll resting pose target the same face.
         this.resultMy.set(result.dice0);
         this.resultOpp.set(result.dice1);
-        const until = performance.now() + DICE_ROLL_ANIM_DURATION_MS;
-        this._rollingUntil.set(until);
+        this._rollingActive.set(true);
         if (this.rollingExpiryTimer) clearTimeout(this.rollingExpiryTimer);
         this.rollingExpiryTimer = setTimeout(() => {
           this.rollingExpiryTimer = null;
           // Only clear if this is still our expiry (no newer result armed
-          // a different timer). Compare by reading the current signal.
-          if (this._rollingUntil() === until) this._rollingUntil.set(null);
+          // a different timer that would have replaced animationStartedFor).
+          if (this.animationStartedFor === myToken) this._rollingActive.set(false);
         }, DICE_ROLL_ANIM_DURATION_MS);
       });
     });
@@ -237,7 +232,7 @@ export class PvpDiceArenaComponent {
           this.animationStartedFor = null;
           this.resultMy.set(null);
           this.resultOpp.set(null);
-          this._rollingUntil.set(null);
+          this._rollingActive.set(false);
           this._finalSeen.set(false);
           this.finalGoFirst.set(null);
           this.prewarmedForDuel = false;
@@ -264,7 +259,6 @@ export class PvpDiceArenaComponent {
 
   private clearTimers(): void {
     this.clearAutoRollTimer();
-    if (this.rollTimer) { clearTimeout(this.rollTimer); this.rollTimer = null; }
     if (this.rollingExpiryTimer) { clearTimeout(this.rollingExpiryTimer); this.rollingExpiryTimer = null; }
   }
 
