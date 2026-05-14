@@ -264,6 +264,12 @@ export class RoomStateMachineService {
       this.redirectWithError('error.DUEL_CONNECT_FAILED');
       return;
     }
+    // Idempotency guard: startDuel() races the HTTP response and the SSE
+    // `room-ready` event — both call this method. A double WS connect
+    // kills the first handshake in-flight and surfaces as "connection
+    // lost" on the dice screen. Bail if we've already bridged.
+    const state = this.roomState();
+    if (state === 'connecting' || state === 'duel-loading' || state === 'active') return;
     this.roomState.set('connecting');
     this.tabGuard.init(room.roomCode);
     this.tabGuard.broadcast();

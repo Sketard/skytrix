@@ -364,6 +364,27 @@ describe('RoomStateMachineService', () => {
       expect(wsService.connect).toHaveBeenCalledWith('tok-xyz');
     });
 
+    it('startDuel() — SSE `ready` + HTTP success → wsService.connect fires ONCE (no double-handshake)', () => {
+      // Regression guard: the HTTP response and the SSE `room-ready`
+      // event both reach the client after POST /start. Without the
+      // idempotency guard in connectWhenReady, both would call
+      // wsService.connect → the second handshake kills the first
+      // in-flight and surfaces as "connection lost" on the dice screen.
+      const readyRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      roomApi.getRoom.and.returnValue(of(readyRoom));
+      service.fetchRoom('ABC123');
+
+      const activeRoom = makeRoom({ status: 'ACTIVE', wsToken: 'tok-xyz', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      roomApi.startDuel.and.returnValue(of(activeRoom));
+
+      service.startDuel();
+      // Now the SSE delivers `ready` with the same room — second
+      // connectWhenReady call must be a no-op.
+      sseSubject.next({ kind: 'ready', room: activeRoom });
+
+      expect(wsService.connect).toHaveBeenCalledOnceWith('tok-xyz');
+    });
+
     it('kickPlayer() → posts to /kick + state rolls back to waiting + player2 cleared', () => {
       const readyRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
       roomApi.getRoom.and.returnValue(of(readyRoom));
