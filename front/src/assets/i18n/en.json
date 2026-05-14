@@ -796,7 +796,8 @@
       "stepper": {
         "prevTurn": "Previous turn",
         "nextTurn": "Next turn",
-        "openPicker": "Choose a turn"
+        "openPicker": "Choose a turn",
+        "subEventAria": "Event"
       },
       "zoom": {
         "label": "Zoom",

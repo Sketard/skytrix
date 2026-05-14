@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterRender, computed, inject, input, output, signal, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, viewChildren } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { MiniBoardThumbnailComponent } from '../mini-board-thumbnail/mini-board-thumbnail.component';
 import type { Player } from '../../duel-ws.types';
@@ -43,7 +43,7 @@ export class TurnPickerSheetComponent {
   readonly closed = output<void>();
 
   private readonly cardEls = viewChildren<ElementRef<HTMLElement>>('turnCard');
-  private hasScrolledOnce = signal(false);
+  private readonly injector = inject(Injector);
 
   protected readonly entries = computed<PickerEntry[]>(() => {
     const turns = this.turns();
@@ -66,15 +66,15 @@ export class TurnPickerSheetComponent {
     // Auto-scroll the current card into view once, on the first render after
     // the picker opens. 250ms timeout lets the parent bottom-sheet's slide-in
     // animation settle so the scroll lands on the final layout (spec §F2).
-    afterRender(() => {
-      if (this.hasScrolledOnce()) return;
+    // `afterNextRender` self-disarms after the first render — no signal-write
+    // inside render phase, no per-CD overhead.
+    afterNextRender(() => {
       const idx = this.currentTurnIndex();
       if (idx < 0) return;
       const card = this.cardEls().find(ref => Number(ref.nativeElement.dataset['turnIndex']) === idx);
       if (!card) return;
-      this.hasScrolledOnce.set(true);
       setTimeout(() => card.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 250);
-    });
+    }, { injector: this.injector });
   }
 
   protected onCardClick(entry: PickerEntry): void {

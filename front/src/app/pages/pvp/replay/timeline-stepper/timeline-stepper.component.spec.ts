@@ -24,9 +24,16 @@ describe('TimelineStepperComponent', () => {
     el = fixture.nativeElement;
   });
 
-  function bind(turns: TurnMeta[], current: number, upTo: number, subs: TimelineSegment[] = []) {
+  function bind(
+    turns: TurnMeta[],
+    current: number,
+    upTo: number,
+    subs: TimelineSegment[] = [],
+    currentEventIndex: number = turns[current]?.startIndex ?? 0,
+  ) {
     fixture.componentRef.setInput('turns', turns);
     fixture.componentRef.setInput('currentTurnIndex', current);
+    fixture.componentRef.setInput('currentEventIndex', currentEventIndex);
     fixture.componentRef.setInput('computedUpToIndex', upTo);
     fixture.componentRef.setInput('subEvents', subs);
     fixture.detectChanges();
@@ -86,5 +93,26 @@ describe('TimelineStepperComponent', () => {
     const bullets = el.querySelectorAll('.timeline-stepper__sub-event');
     (bullets[1] as HTMLButtonElement).click();
     expect(seekSpy).toHaveBeenCalledOnceWith(1); // first index of chain segment
+  });
+
+  it('R3 — dots fill progressively as currentEventIndex advances inside the turn', () => {
+    // Turn 1 covers events 3..9 (eventCount = 7). Start of turn ⇒ no dot lit.
+    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, [], 3);
+    const dotsAtStart = el.querySelectorAll('.timeline-stepper__dot');
+    expect(Array.from(dotsAtStart).map(d => d.classList.contains('is-active'))).toEqual(
+      [false, false, false, false, false, false, false],
+    );
+
+    // Mid-turn: 4 events in (offset 4 / 7 ≈ 0.57) ⇒ first ~4 dots lit.
+    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, [], 7);
+    const dotsMid = el.querySelectorAll('.timeline-stepper__dot');
+    const litMid = Array.from(dotsMid).map(d => d.classList.contains('is-active'));
+    expect(litMid[0]).toBe(true);
+    expect(litMid[6]).toBe(false);
+
+    // End of turn: progress = 1 ⇒ all 7 dots lit.
+    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, [], 10);
+    const dotsEnd = el.querySelectorAll('.timeline-stepper__dot');
+    expect(Array.from(dotsEnd).every(d => d.classList.contains('is-active'))).toBe(true);
   });
 });

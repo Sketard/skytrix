@@ -41,7 +41,7 @@
       <button
         type="button"
         class="timeline-stepper__sub-event"
-        [attr.aria-label]="'event ' + $index"
+        [attr.aria-label]="('replay.viewer.stepper.subEventAria' | translate) + ' ' + ($index + 1)"
         (click)="onSubEventClick(seg)">
       </button>
     }

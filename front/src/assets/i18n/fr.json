@@ -796,7 +796,8 @@
       "stepper": {
         "prevTurn": "Tour précédent",
         "nextTurn": "Tour suivant",
-        "openPicker": "Choisir un tour"
+        "openPicker": "Choisir un tour",
+        "subEventAria": "Évènement"
       },
       "zoom": {
         "label": "Zoom",

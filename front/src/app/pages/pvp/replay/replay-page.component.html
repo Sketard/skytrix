@@ -124,6 +124,7 @@
     <app-timeline-stepper
       [turns]="turns()"
       [currentTurnIndex]="currentTurnIndex()"
+      [currentEventIndex]="transport.currentIndex()"
       [computedUpToIndex]="computedUpTo()"
       [subEvents]="currentTurnSubEvents()"
       (prevTurn)="onSwipeRight()"

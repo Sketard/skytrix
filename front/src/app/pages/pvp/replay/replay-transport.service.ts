@@ -79,19 +79,20 @@ export class ReplayTransportService {
   // Public transport controls
   // =============================================================================
 
-  seek(index: number): void {
+  /** Pause playback + jump to `index` (clamped to 0 on the low end). Shared
+   *  by every imperative seek; bounds-check on the *high* end is enforced by
+   *  the caller (out-of-range index simply leaves the rendered state at the
+   *  last known step). */
+  private jumpTo(index: number): void {
     this.pausePlayback();
+    if (index < 0) return;
     this.currentIndex.set(index);
     const state = this.getCfg().boardStates()[index];
     if (state) this.getCfg().adapter.jumpToState(state);
   }
 
-  scrub(index: number): void {
-    this.pausePlayback();
-    this.currentIndex.set(index);
-    const state = this.getCfg().boardStates()[index];
-    if (state) this.getCfg().adapter.jumpToState(state);
-  }
+  seek(index: number): void  { this.jumpTo(index); }
+  scrub(index: number): void { this.jumpTo(index); }
 
   stepForward(): void {
     this.pausePlayback();
@@ -99,12 +100,7 @@ export class ReplayTransportService {
   }
 
   stepBack(): void {
-    this.pausePlayback();
-    const prev = this.currentIndex() - 1;
-    if (prev < 0) return;
-    this.currentIndex.set(prev);
-    const state = this.getCfg().boardStates()[prev];
-    if (state) this.getCfg().adapter.jumpToState(state);
+    this.jumpTo(this.currentIndex() - 1);
   }
 
   togglePlay(): void {
@@ -118,18 +114,11 @@ export class ReplayTransportService {
   }
 
   skipStart(): void {
-    this.pausePlayback();
-    this.currentIndex.set(0);
-    const state = this.getCfg().boardStates()[0];
-    if (state) this.getCfg().adapter.jumpToState(state);
+    this.jumpTo(0);
   }
 
   skipEnd(): void {
-    this.pausePlayback();
-    const idx = this.getCfg().computedUpTo();
-    this.currentIndex.set(idx);
-    const state = this.getCfg().boardStates()[idx];
-    if (state) this.getCfg().adapter.jumpToState(state);
+    this.jumpTo(this.getCfg().computedUpTo());
   }
 
   /**
@@ -221,9 +210,6 @@ export class ReplayTransportService {
 
   private startPlayback(): void {
     const c = this.getCfg();
-    console.log('[PLAY:START] idx=%d computedUpTo=%d t=%dms',
-      this.currentIndex(), c.computedUpTo(), performance.now() | 0);
-
     if (c.computedUpTo() <= 0) return;
     if (this.currentIndex() >= c.computedUpTo()) return;
     this.isPlaying.set(true);

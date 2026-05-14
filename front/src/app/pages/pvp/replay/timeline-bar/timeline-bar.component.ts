@@ -17,6 +17,37 @@ export type TimelineSegment =
   | { type: 'single'; idx: number }
   | { type: 'chain'; indices: number[] };
 
+/** Labels that act as chain separators but should NOT render as visible bullets
+ *  in the timeline/stepper sub-event row. Adding a new server-side hidden label
+ *  here keeps the desktop bar AND the mobile stepper in sync. */
+const HIDDEN_SUB_EVENT_LABELS = new Set(['MSG_CHAIN_END']);
+
+/** Walks a turn's pre-computed states and groups them into single-event or
+ *  chain segments, skipping hidden separator labels. Pure function — safe to
+ *  call from both the timeline-bar (memoized per turn) and the page-level
+ *  computed that feeds the mobile stepper. */
+export function buildSubEventSegments(turn: TurnMeta, states: readonly PreComputedState[]): TimelineSegment[] {
+  const segments: TimelineSegment[] = [];
+  let i = turn.startIndex;
+  const end = turn.startIndex + turn.eventCount;
+  while (i < end) {
+    if (states[i]?.chainIndex != null) {
+      const chainIndices: number[] = [];
+      while (i < end && states[i]?.chainIndex != null) {
+        chainIndices.push(i);
+        i++;
+      }
+      segments.push({ type: 'chain', indices: chainIndices });
+    } else if (HIDDEN_SUB_EVENT_LABELS.has(states[i]?.label)) {
+      i++; // separator only — drop
+    } else {
+      segments.push({ type: 'single', idx: i });
+      i++;
+    }
+  }
+  return segments;
+}
+
 @Component({
   selector: 'app-timeline-bar',
   templateUrl: './timeline-bar.component.html',
@@ -339,33 +370,9 @@ export class TimelineBarComponent implements OnDestroy {
   private segmentCache = new Map<number, TimelineSegment[]>();
 
   subEventSegments(turn: TurnMeta): TimelineSegment[] {
-    let cached = this.segmentCache.get(turn.startIndex);
+    const cached = this.segmentCache.get(turn.startIndex);
     if (cached && this.segmentCacheCount.get(turn.startIndex) === turn.eventCount) return cached;
-
-    const states = this.boardStates();
-    const segments: TimelineSegment[] = [];
-    let i = turn.startIndex;
-    const end = turn.startIndex + turn.eventCount;
-
-    // Labels that act as chain separators but should not render as bullets
-    const HIDDEN_LABELS = new Set(['MSG_CHAIN_END']);
-
-    while (i < end) {
-      if (states[i]?.chainIndex != null) {
-        const chainIndices: number[] = [];
-        while (i < end && states[i]?.chainIndex != null) {
-          chainIndices.push(i);
-          i++;
-        }
-        segments.push({ type: 'chain', indices: chainIndices });
-      } else if (HIDDEN_LABELS.has(states[i]?.label)) {
-        i++; // skip — separator only, not a visible bullet
-      } else {
-        segments.push({ type: 'single', idx: i });
-        i++;
-      }
-    }
-
+    const segments = buildSubEventSegments(turn, this.boardStates());
     this.segmentCache.set(turn.startIndex, segments);
     this.segmentCacheCount.set(turn.startIndex, turn.eventCount);
     return segments;

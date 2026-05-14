@@ -29,6 +29,7 @@ import type { TimelineSegment } from '../timeline-bar/timeline-bar.component';
 export class TimelineStepperComponent {
   readonly turns = input.required<readonly TurnMeta[]>();
   readonly currentTurnIndex = input.required<number>();
+  readonly currentEventIndex = input.required<number>();
   readonly computedUpToIndex = input.required<number>();
   readonly subEvents = input<readonly TimelineSegment[]>([]);
 
@@ -55,15 +56,21 @@ export class TimelineStepperComponent {
     return t.turnNumber === 0 ? 'T0' : `T${t.turnNumber}`;
   });
 
-  // 7-dot progress mirrors the spec mockup. Each dot represents an evenly-spaced
-  // fraction of the current turn's events. Cached length = 7 (hidden under
-  // 480px via CSS).
+  // 7-dot progress bar — fills left-to-right as the user advances inside the
+  // current turn. Each dot covers `eventCount / 7` events; a dot is "filled"
+  // once `currentEventIndex` has crossed its threshold. Hidden under 480px via
+  // CSS (decorative — `aria-hidden` on the wrapper).
   protected readonly dotState = computed<readonly boolean[]>(() => {
     const t = this.currentTurn();
-    if (!t || t.eventCount <= 0) return [false, false, false, false, false, false, false];
-    // Always at least one dot active — the "current" position dot.
-    const activeIdx = Math.min(6, Math.floor((6 * 1) / Math.max(1, this.subEvents().length)));
-    return Array.from({ length: 7 }, (_, i) => i <= activeIdx);
+    const empty = [false, false, false, false, false, false, false];
+    if (!t || t.eventCount <= 0) return empty;
+    const offset = this.currentEventIndex() - t.startIndex;
+    if (offset < 0) return empty;
+    // Progress in [0, 1] — clamp so the last dot stays lit at the turn boundary.
+    const progress = Math.min(1, offset / t.eventCount);
+    // Number of dots fully filled, in [0, 7]. We compare to (i + 0.5)/7 so a
+    // dot lights up around its midpoint rather than only at its right edge.
+    return Array.from({ length: 7 }, (_, i) => progress >= (i + 0.5) / 7);
   });
 
   protected onPrev(): void {
