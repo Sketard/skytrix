@@ -26,7 +26,8 @@ public abstract class ReplayMapper {
                     meta.result().flip(),
                     meta.date(),
                     meta.scriptsHash(),
-                    meta.ocgcoreVersion()
+                    meta.ocgcoreVersion(),
+                    meta.durationSec()
             ));
         }
         return dto;

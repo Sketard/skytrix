@@ -11,5 +11,6 @@ public record ReplayMetadata(
         DuelResult result,
         String date,
         String scriptsHash,
-        String ocgcoreVersion
+        String ocgcoreVersion,
+        Integer durationSec
 ) {}

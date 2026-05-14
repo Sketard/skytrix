@@ -31,6 +31,7 @@ const FAKE_METADATA: ReplayMetadata = {
   date: '2026-05-10',
   scriptsHash: 'h',
   ocgcoreVersion: 'v',
+  durationSec: 0,
 };
 
 interface ScriptedTick {

@@ -8,6 +8,7 @@ export interface ReplayMetadata {
   date: string;
   scriptsHash: string;
   ocgcoreVersion: string;
+  durationSec?: number;
 }
 
 export interface ReplayDTO {

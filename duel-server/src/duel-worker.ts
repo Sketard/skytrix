@@ -78,6 +78,7 @@ let playerUsernames: [string, string] = ['', ''];
 let deckNames: [string, string] = ['', ''];
 let duelResult: string | null = null;
 let replayEmitted = false;
+let duelStartMs = 0;
 
 // =============================================================================
 // Worker Snapshot Wrapper (P0-3bis.2)
@@ -1188,6 +1189,7 @@ function emitReplayData(): void {
         date: new Date().toISOString(),
         scriptsHash: getScriptsHash(),
         ocgcoreVersion: getOcgcoreVersion(),
+        durationSec: Math.round((Date.now() - duelStartMs) / 1000),
       },
     },
   });
@@ -1458,6 +1460,7 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
   capturedResponses = [];
   duelResult = null;
   replayEmitted = false;
+  duelStartMs = Date.now();
   // P0-3bis.4 — defensive: clear any leftover rollback snapshot in case
   // cleanup() was skipped (re-init without prior duel-end signal).
   setLastIdleSnapshot(null);

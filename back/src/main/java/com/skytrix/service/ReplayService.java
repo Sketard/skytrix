@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.skytrix.mapper.ReplayMapper;
 import com.skytrix.model.dto.replay.ReplayDTO;
+import com.skytrix.model.dto.replay.ReplayStatsDTO;
 import com.skytrix.model.entity.Replay;
 import com.skytrix.repository.ReplayRepository;
 import com.skytrix.repository.UserRepository;
@@ -79,6 +80,15 @@ public class ReplayService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to delete this replay");
         }
         replayRepository.delete(replay);
+    }
+
+    @Transactional(readOnly = true)
+    public ReplayStatsDTO getStatsForUser(Long userId) {
+        var stats = replayRepository.getStatsForUser(userId);
+        long total = stats.getTotal();
+        long victories = stats.getVictories();
+        double winrate = total == 0 ? 0.0 : Math.round((double) victories / total * 100.0) / 100.0;
+        return new ReplayStatsDTO(total, victories, stats.getDefeats(), stats.getDraws(), winrate);
     }
 
     @Transactional

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.skytrix.model.dto.replay.ReplayDTO;
+import com.skytrix.model.dto.replay.ReplayStatsDTO;
 import com.skytrix.security.AuthService;
 import com.skytrix.service.ReplayService;
 import com.skytrix.utils.CustomPageable;
@@ -37,6 +38,12 @@ public class ReplayController {
 
     @Value("${duel-server.internal-key:dev-internal-key}")
     private String internalKey;
+
+    @GetMapping("/replays/stats")
+    public ReplayStatsDTO getStats() {
+        var userId = authService.getConnectedUserId();
+        return replayService.getStatsForUser(userId);
+    }
 
     @GetMapping("/replays")
     public CustomPageable<ReplayDTO> getMatchHistory(

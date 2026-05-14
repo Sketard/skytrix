@@ -52,6 +52,7 @@ function makeReplayData(): WorkerReplayPayload {
       date: '2026-05-11',
       scriptsHash: 'abc',
       ocgcoreVersion: '1.2.3',
+      durationSec: 120,
     },
   };
 }
