@@ -819,17 +819,43 @@ describe('ReplayPageComponent — F4 wiring', () => {
     conn.boardStates.set([
       makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
     ]);
+    conn.computedUpTo.set(2);
     component.onSeekToTurn(1);
     expect(transport.seekToTurn).toHaveBeenCalledWith(1, jasmine.any(Array));
+  });
+
+  it('onSeekToTurn no-ops when target turn is not yet computed', () => {
+    conn.boardStates.set([
+      makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
+    ]);
+    conn.computedUpTo.set(0); // setup computed only — turn 1 starts at index 1, not yet reached
+    component.onSeekToTurn(1);
+    expect(transport.seekToTurn).not.toHaveBeenCalled();
+  });
+
+  it('onSeekToTurn no-ops on out-of-range index', () => {
+    conn.boardStates.set([makePrecomputed(0, 'setup'), makePrecomputed(1, 'a')]);
+    conn.computedUpTo.set(1);
+    component.onSeekToTurn(42);
+    expect(transport.seekToTurn).not.toHaveBeenCalled();
   });
 
   it('onSwipeLeft delegates to onSeekToTurn(currentTurnIndex + 1)', () => {
     conn.boardStates.set([
       makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'),
     ]);
+    conn.computedUpTo.set(1);
     transport.currentIndex.set(0);
     component.onSwipeLeft();
     expect(transport.seekToTurn).toHaveBeenCalledWith(1, jasmine.any(Array));
+  });
+
+  it('onSwipeLeft at last turn does NOT call transport.seekToTurn (bounds guard)', () => {
+    conn.boardStates.set([makePrecomputed(0, 'setup'), makePrecomputed(1, 'a')]);
+    conn.computedUpTo.set(1);
+    transport.currentIndex.set(1); // already on the last computed turn
+    component.onSwipeLeft();
+    expect(transport.seekToTurn).not.toHaveBeenCalled();
   });
 
   // ── endOverlayState ───────────────────────────────────────────────────────

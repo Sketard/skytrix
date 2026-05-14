@@ -1,4 +1,5 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ReplayService } from '../../../services/replay.service';
@@ -223,9 +224,11 @@ export class ReplayHubStore {
     // Reactive to deck list changes — keeps the "myDeck" filter targeted
     // at the first deck of the user's collection. Falls back to '' when the
     // collection is empty (chip disabled in the template).
-    this.deckBuildService.decks$.subscribe(decks => {
-      this.defaultDeckName.set(decks?.[0]?.name ?? '');
-    });
+    this.deckBuildService.decks$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(decks => {
+        this.defaultDeckName.set(decks?.[0]?.name ?? '');
+      });
   }
 }
 

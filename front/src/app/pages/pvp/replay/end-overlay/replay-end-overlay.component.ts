@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, inject, input, output } from '@angular/core';
+import { A11yModule } from '@angular/cdk/a11y';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import type { ReplayOutcome } from '../replay-outcome.util';
 
@@ -14,14 +15,16 @@ import type { ReplayOutcome } from '../replay-outcome.util';
   selector: 'app-replay-end-overlay',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule],
+  imports: [TranslateModule, A11yModule],
   templateUrl: './replay-end-overlay.component.html',
   styleUrl: './replay-end-overlay.component.scss',
   host: {
     role: 'dialog',
-    'aria-modal': 'false',
+    'aria-modal': 'true',
     '[attr.aria-label]': 'ariaLabel()',
     tabindex: '-1',
+    cdkTrapFocus: '',
+    cdkTrapFocusAutoCapture: '',
   },
 })
 export class ReplayEndOverlayComponent {
@@ -60,7 +63,6 @@ export class ReplayEndOverlayComponent {
   });
 
   @HostListener('document:keydown.escape')
-  @HostListener('document:keydown.arrowLeft')
   onDismissKey(): void {
     this.dismissed.emit();
   }

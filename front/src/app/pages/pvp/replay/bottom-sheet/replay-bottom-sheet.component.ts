@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { A11yModule } from '@angular/cdk/a11y';
 import { MatDialogRef } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
 import { BottomSheetHandleComponent } from '../../../../shared/bottom-sheet-handle/bottom-sheet-handle.component';
@@ -20,9 +21,17 @@ import { BottomSheetHandleComponent } from '../../../../shared/bottom-sheet-hand
   selector: 'app-replay-bottom-sheet',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, BottomSheetHandleComponent],
+  imports: [TranslateModule, BottomSheetHandleComponent, A11yModule],
   templateUrl: './replay-bottom-sheet.component.html',
   styleUrl: './replay-bottom-sheet.component.scss',
+  host: {
+    role: 'dialog',
+    'aria-modal': 'true',
+    '[attr.aria-label]': 'title()',
+    tabindex: '-1',
+    cdkTrapFocus: '',
+    cdkTrapFocusAutoCapture: '',
+  },
 })
 export class ReplayBottomSheetComponent {
   /** Title shown in the header — can be a raw string or an i18n key (caller passes already-translated text). */

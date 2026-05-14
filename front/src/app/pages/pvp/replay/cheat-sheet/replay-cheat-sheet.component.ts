@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostListener, output } from '@angular/core';
+import { A11yModule } from '@angular/cdk/a11y';
 import { TranslateModule } from '@ngx-translate/core';
 import { i18nAttr } from '../../../../shared/i18n';
 
@@ -25,13 +26,16 @@ interface CheatSection {
   selector: 'app-replay-cheat-sheet',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule],
+  imports: [TranslateModule, A11yModule],
   templateUrl: './replay-cheat-sheet.component.html',
   styleUrl: './replay-cheat-sheet.component.scss',
   host: {
     role: 'dialog',
     'aria-modal': 'true',
     '[attr.aria-label]': 'ariaLabel()',
+    tabindex: '-1',
+    cdkTrapFocus: '',
+    cdkTrapFocusAutoCapture: '',
   },
 })
 export class ReplayCheatSheetComponent {

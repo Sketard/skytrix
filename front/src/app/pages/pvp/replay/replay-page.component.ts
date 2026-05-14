@@ -12,7 +12,7 @@ import { ReplayTransportService } from './replay-transport.service';
 import { TimelineBarComponent, type ZoomLevel } from './timeline-bar/timeline-bar.component';
 import { TransportBarComponent } from './transport-bar/transport-bar.component';
 import { TimelineStepperComponent } from './timeline-stepper/timeline-stepper.component';
-import type { TimelineSegment } from './timeline-bar/timeline-bar.component';
+import { buildSubEventSegments, type TimelineSegment } from './timeline-bar/timeline-bar.component';
 import { TurnPickerSheetComponent } from './turn-picker-sheet/turn-picker-sheet.component';
 import { ReplayTopbarComponent } from './topbar/replay-topbar.component';
 import { ReplayLoadingSkeletonComponent } from './loading-skeleton/replay-loading-skeleton.component';
@@ -345,32 +345,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   );
 
   /** Sub-event bullets of the CURRENT turn, fed to `<app-timeline-stepper>`
-   *  on narrow viewports. Same segment shape used by the desktop timeline-bar. */
+   *  on narrow viewports. Shares `buildSubEventSegments` with the desktop
+   *  timeline-bar so hidden-label policy stays in one place. */
   readonly currentTurnSubEvents = computed<readonly TimelineSegment[]>(() => {
-    const turns = this.turns();
-    const turn = turns[this.currentTurnIndex()];
+    const turn = this.turns()[this.currentTurnIndex()];
     if (!turn) return [];
-    const states = this.boardStates();
-    const HIDDEN_LABELS = new Set(['MSG_CHAIN_END']);
-    const segments: TimelineSegment[] = [];
-    let i = turn.startIndex;
-    const end = turn.startIndex + turn.eventCount;
-    while (i < end) {
-      if (states[i]?.chainIndex != null) {
-        const chainIndices: number[] = [];
-        while (i < end && states[i]?.chainIndex != null) {
-          chainIndices.push(i);
-          i++;
-        }
-        segments.push({ type: 'chain', indices: chainIndices });
-      } else if (HIDDEN_LABELS.has(states[i]?.label)) {
-        i++;
-      } else {
-        segments.push({ type: 'single', idx: i });
-        i++;
-      }
-    }
-    return segments;
+    return buildSubEventSegments(turn, this.boardStates());
   });
 
   readonly progressText = computed(() => {
@@ -689,8 +669,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   }
 
   onSeekToTurn(turnIndex: number): void {
+    // Bound-check BEFORE abortAndClean — out-of-range indices (swipe at first/
+    // last turn, picker click on a not-computed turn) must not tear down
+    // in-flight animations for a seek that will silently no-op.
+    const turns = this.turns();
+    const turn = turns[turnIndex];
+    if (!turn) return;
+    if (turn.startIndex > this.computedUpTo()) return;
     this.abortAndClean();
-    this.transport.seekToTurn(turnIndex, this.turns());
+    this.transport.seekToTurn(turnIndex, turns);
   }
 
   onSeekToTurnAndClose(turnIndex: number): void {
@@ -743,7 +730,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
     switch (event.key) {
       case 'ArrowRight': this.onStepForward(); break;
-      case 'ArrowLeft': this.onStepBack(); break;
+      // ArrowLeft inside the end-overlay dismisses it (and steps back via the
+      // dismiss handler) — without this gate the page handler AND the overlay's
+      // own listener would both fire stepBack, jumping two events.
+      case 'ArrowLeft':
+        if (this.endOverlayState() != null) this.onEndOverlayDismissed();
+        else this.onStepBack();
+        break;
       case ' ': event.preventDefault(); this.onPlayPause(); break;
       case 'Home': this.onSkipStart(); break;
       case 'End': this.onSkipEnd(); break;

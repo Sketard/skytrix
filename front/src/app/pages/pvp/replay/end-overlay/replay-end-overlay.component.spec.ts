@@ -103,10 +103,10 @@ describe('ReplayEndOverlayComponent', () => {
     expect(dismissSpy).toHaveBeenCalled();
   });
 
-  it('emits dismissed() on ArrowLeft', () => {
+  it('does NOT listen ArrowLeft (parent routes it to avoid double stepBack — H1 fix)', () => {
     bind('victory');
     const dismissSpy = spyOn(fixture.componentInstance.dismissed, 'emit');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
-    expect(dismissSpy).toHaveBeenCalled();
+    expect(dismissSpy).not.toHaveBeenCalled();
   });
 });
