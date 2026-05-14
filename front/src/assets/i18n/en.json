@@ -180,8 +180,7 @@
     "preparing": {
       "title": "PREPARING DUEL...",
       "opponentJoined": "Opponent joined! Setting up duel...",
-      "loading": "Loading room...",
-      "takingLong": "Taking longer than expected..."
+      "loading": "Loading room..."
     },
     "connection": {
       "lost": "Connection lost. Unable to reach server.",
@@ -254,10 +253,6 @@
       "selectCard": "Select a card",
       "selectEffect": "Select an effect",
       "effect": "Effect {{n}}"
-    },
-    "loading": {
-      "lp": "8000 LP",
-      "vs": "VS"
     },
     "reason": {
       "win": { "winner": "Opponent's LP reduced to 0", "loser": "Your LP reduced to 0" },
@@ -688,6 +683,70 @@
       "delete": "Delete replay",
       "deleteConfirm": "Are you sure you want to permanently delete this replay?",
       "deleteSuccess": "Replay deleted"
+    },
+    "hub": {
+      "title": "Replay library",
+      "subtitle": "Your saved duels",
+      "back": "Lobby",
+      "stats": {
+        "total": "Replays",
+        "victories": "Victories",
+        "defeats": "Defeats",
+        "winrate": "Win rate"
+      },
+      "search": {
+        "placeholder": "Filter by opponent or deck…"
+      },
+      "filter": {
+        "all": "All",
+        "wins": "Wins",
+        "losses": "Losses",
+        "myDeck": "My deck",
+        "last7days": "Last 7 days"
+      },
+      "list": {
+        "title": "Replays",
+        "count": "{{count}} results"
+      },
+      "sort": {
+        "newest": "Newest",
+        "oldest": "Oldest",
+        "mostTurns": "Most turns"
+      },
+      "empty": {
+        "title": "No replays yet",
+        "desc": "Play a duel online or in sandbox — your matches will be saved here.",
+        "ctaPvp": "Play PvP",
+        "ctaSandbox": "Sandbox"
+      },
+      "noResults": {
+        "title": "No results",
+        "desc": "Adjust filters or search to see more replays.",
+        "clearFilter": "Clear filters"
+      },
+      "error": {
+        "title": "Unable to load replays",
+        "retry": "Retry"
+      },
+      "card": {
+        "vsPrefix": "vs",
+        "vsDeckPrefix": "vs",
+        "open": "Open",
+        "delete": "Delete",
+        "deleteConfirm": "Delete this replay permanently?",
+        "turns": "{{n}} turns",
+        "result": {
+          "victory": "Victory",
+          "defeat": "Defeat",
+          "draw": "Draw",
+          "timeout": "Timeout",
+          "timeoutOpp": "Opp. timeout",
+          "surrender": "Surrender",
+          "surrenderOpp": "Opp. surrender",
+          "disconnect": "Disconnect",
+          "disconnectOpp": "Opp. disconn."
+        }
+      }
     },
     "paginator": {
       "itemsPerPage": "Items per page:",

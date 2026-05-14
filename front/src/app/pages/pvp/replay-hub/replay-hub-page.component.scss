@@ -1,0 +1,265 @@
+@use '../../../styles/responsive' as r;
+
+// =============================================================================
+// Replay Hub — page-local layout + replay-card grid.
+// Consumes DS Wave 1 partials: .page-header / .search-bar / .chip / .section-header
+// / .badge / .pill / .icon-btn / .surface-card / .empty-state / .btn.
+// Only PAGE-SPECIFIC styles live here (layout, replay-card grid template).
+// =============================================================================
+
+:host {
+  display: block;
+  position: relative;
+  isolation: isolate;
+  padding: var(--space-fluid-md, 16px);
+  min-height: 100dvh;
+
+  @include r.respond-above(r.$bp-tablet) {
+    padding: var(--space-fluid-lg, 24px);
+  }
+}
+
+.hub-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+// Override the h1 fluid size to match the lobby — DS spec defers to consumer.
+.page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
+
+// =============================================================================
+// Stats strip — 2/4 grid responsive
+// =============================================================================
+.hub-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.hub-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+.hub-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
+.hub-stat-icon--total   { background: var(--cyan-soft-15);  color: var(--cyan-300); }
+.hub-stat-icon--win     { background: var(--gold-soft-12);  color: var(--gold); }
+.hub-stat-icon--loss    { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+.hub-stat-icon--winrate { background: var(--gold-soft-12);  color: var(--gold-50); }
+
+.hub-stat-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.hub-stat-value {
+  font: var(--weight-bold) 1.4rem / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.hub-stat-value--gold   { color: var(--gold-50); }
+.hub-stat-value--muted  { color: var(--text-secondary); }
+
+.hub-stat-label {
+  font: var(--weight-semibold) var(--text-xs) / 1 'Inter', sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+// =============================================================================
+// Replay list viewport — virtual-scroll with explicit height (cf. spec audit)
+// =============================================================================
+.replay-list-viewport {
+  display: block;
+  // Bounded height is REQUIRED by cdk-virtual-scroll. Same pattern as lobby.
+  height: 65vh;
+  max-height: 65vh;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  // Fade bottom hint of scrollability.
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+  mask-image:         linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+
+  ::ng-deep .cdk-virtual-scroll-content-wrapper {
+    width: 100%;
+  }
+}
+
+// =============================================================================
+// Replay card — grid layout (avatar + info + pill + meta + actions)
+// `.surface-card` from DS provides apparence; this defines layout only.
+// =============================================================================
+.replay-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  grid-template-areas: 'avatar info pill meta actions';
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  color: inherit;
+
+  @media (max-width: 640px) {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'avatar info actions'
+      'pill   meta meta';
+    gap: 10px 12px;
+    padding: 12px 14px;
+  }
+
+  // Hover-reveal delete button on desktop only.
+  @media (min-width: 480px) {
+    &:hover .icon-btn--ghost-hover-only,
+    &:focus-within .icon-btn--ghost-hover-only {
+      opacity: 1;
+    }
+  }
+}
+
+.replay-card__avatar  { grid-area: avatar; }
+.replay-card__info    { grid-area: info; min-width: 0; }
+.replay-card__times   { grid-area: meta; }
+.replay-card__actions { grid-area: actions; }
+.replay-card .pill    { grid-area: pill; align-self: center; }
+
+.replay-card__title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.replay-card__vs-prefix {
+  font: var(--weight-semibold) var(--text-xs) 'Inter', sans-serif;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.replay-card__opponent {
+  font: var(--weight-bold) 1.05rem / 1.1 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replay-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.replay-card__deck,
+.replay-card__vs-deck {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  mat-icon {
+    font-size: 14px !important;
+    width: 14px !important;
+    height: 14px !important;
+    color: var(--gold-soft-50);
+  }
+}
+
+.replay-card__times {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  @media (max-width: 640px) {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+.replay-card__date,
+.replay-card__turns {
+  white-space: nowrap;
+}
+
+.replay-card__date {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--text-secondary);
+}
+
+// =============================================================================
+// Loading state — centered spinner
+// =============================================================================
+.hub-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+}
+
+// =============================================================================
+// Empty state — actions row (multi-CTA case)
+// =============================================================================
+.empty-state__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+
+  @media (min-width: 480px) {
+    flex-direction: row;
+  }
+}
+
+// =============================================================================
+// Mat menu — sort menu active state (matches lobby convention)
+// =============================================================================
+::ng-deep .mat-mdc-menu-item.is-active {
+  color: var(--gold) !important;
+  font-weight: var(--weight-semibold);
+}

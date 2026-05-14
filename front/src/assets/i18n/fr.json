@@ -180,8 +180,7 @@
     "preparing": {
       "title": "PRÉPARATION DU DUEL...",
       "opponentJoined": "Adversaire connecté ! Préparation du duel...",
-      "loading": "Chargement de la room...",
-      "takingLong": "Plus long que prévu..."
+      "loading": "Chargement de la room..."
     },
     "connection": {
       "lost": "Connexion perdue. Impossible de joindre le serveur.",
@@ -254,10 +253,6 @@
       "selectCard": "Choisir une carte",
       "selectEffect": "Choisir un effet",
       "effect": "Effet {{n}}"
-    },
-    "loading": {
-      "lp": "8000 LP",
-      "vs": "VS"
     },
     "reason": {
       "win": { "winner": "Les LP de l'adversaire réduits à 0", "loser": "Vos LP réduits à 0" },
@@ -688,6 +683,70 @@
       "delete": "Supprimer le replay",
       "deleteConfirm": "Voulez-vous vraiment supprimer définitivement ce replay ?",
       "deleteSuccess": "Replay supprimé"
+    },
+    "hub": {
+      "title": "Bibliothèque de replays",
+      "subtitle": "Tes duels enregistrés",
+      "back": "Lobby",
+      "stats": {
+        "total": "Replays",
+        "victories": "Victoires",
+        "defeats": "Défaites",
+        "winrate": "Winrate"
+      },
+      "search": {
+        "placeholder": "Filtrer par adversaire ou deck…"
+      },
+      "filter": {
+        "all": "Tous",
+        "wins": "Victoires",
+        "losses": "Défaites",
+        "myDeck": "Mon deck",
+        "last7days": "7 derniers jours"
+      },
+      "list": {
+        "title": "Replays",
+        "count": "{{count}} résultats"
+      },
+      "sort": {
+        "newest": "Plus récents",
+        "oldest": "Plus anciens",
+        "mostTurns": "Plus de tours"
+      },
+      "empty": {
+        "title": "Aucun replay pour le moment",
+        "desc": "Joue un duel en ligne ou en bac à sable — tes parties seront automatiquement enregistrées ici.",
+        "ctaPvp": "Jouer en PvP",
+        "ctaSandbox": "Bac à sable"
+      },
+      "noResults": {
+        "title": "Aucun résultat",
+        "desc": "Modifie les filtres ou la recherche pour voir d'autres replays.",
+        "clearFilter": "Effacer les filtres"
+      },
+      "error": {
+        "title": "Impossible de charger les replays",
+        "retry": "Réessayer"
+      },
+      "card": {
+        "vsPrefix": "vs",
+        "vsDeckPrefix": "vs",
+        "open": "Ouvrir",
+        "delete": "Supprimer",
+        "deleteConfirm": "Voulez-vous vraiment supprimer définitivement ce replay ?",
+        "turns": "{{n}} tours",
+        "result": {
+          "victory": "Victoire",
+          "defeat": "Défaite",
+          "draw": "Égalité",
+          "timeout": "Timeout",
+          "timeoutOpp": "Timeout adv.",
+          "surrender": "Abandon",
+          "surrenderOpp": "Abandon adv.",
+          "disconnect": "Déconnexion",
+          "disconnectOpp": "Déconn. adv."
+        }
+      }
     },
     "paginator": {
       "itemsPerPage": "Éléments par page :",

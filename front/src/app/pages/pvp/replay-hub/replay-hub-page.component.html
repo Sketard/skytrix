@@ -1,0 +1,239 @@
+<div class="screen-bg" aria-hidden="true">
+  <div class="screen-bg-grid"></div>
+  <div class="screen-bg-glow screen-bg-glow--gold"></div>
+  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+</div>
+
+<div class="hub-container">
+  <header class="page-header">
+    <div class="page-header__title-group">
+      <mat-icon class="page-header__icon">play_circle</mat-icon>
+      <div class="page-header__text">
+        <h1 class="page-header__title text-gold-gradient">{{ 'replay.hub.title' | translate }}</h1>
+        <span class="page-header__subtitle">{{ 'replay.hub.subtitle' | translate }}</span>
+      </div>
+    </div>
+    <button type="button"
+            class="btn btn--ghost btn--sm"
+            (click)="goToLobby()"
+            [attr.aria-label]="'replay.hub.back' | translate">
+      <mat-icon>arrow_back</mat-icon>
+      <span>{{ 'replay.hub.back' | translate }}</span>
+    </button>
+  </header>
+
+  <!-- Stats strip -->
+  @if (store.stats(); as stats) {
+    <section class="hub-stats" [attr.aria-label]="'replay.hub.stats.total' | translate">
+      <div class="surface-card surface-card--accent-cyan hub-stat-card">
+        <span class="hub-stat-icon hub-stat-icon--total">
+          <mat-icon>movie</mat-icon>
+        </span>
+        <div class="hub-stat-content">
+          <span class="hub-stat-value">{{ stats.total }}</span>
+          <span class="hub-stat-label">{{ 'replay.hub.stats.total' | translate }}</span>
+        </div>
+      </div>
+      <div class="surface-card surface-card--accent-gold hub-stat-card">
+        <span class="hub-stat-icon hub-stat-icon--win">
+          <mat-icon>emoji_events</mat-icon>
+        </span>
+        <div class="hub-stat-content">
+          <span class="hub-stat-value hub-stat-value--gold">{{ stats.victories }}</span>
+          <span class="hub-stat-label">{{ 'replay.hub.stats.victories' | translate }}</span>
+        </div>
+      </div>
+      <div class="surface-card surface-card--accent-neutral hub-stat-card">
+        <span class="hub-stat-icon hub-stat-icon--loss">
+          <mat-icon>close</mat-icon>
+        </span>
+        <div class="hub-stat-content">
+          <span class="hub-stat-value hub-stat-value--muted">{{ stats.defeats }}</span>
+          <span class="hub-stat-label">{{ 'replay.hub.stats.defeats' | translate }}</span>
+        </div>
+      </div>
+      <div class="surface-card surface-card--accent-gold hub-stat-card">
+        <span class="hub-stat-icon hub-stat-icon--winrate">
+          <mat-icon>trending_up</mat-icon>
+        </span>
+        <div class="hub-stat-content">
+          <span class="hub-stat-value hub-stat-value--gold">{{ winratePercent() }}%</span>
+          <span class="hub-stat-label">{{ 'replay.hub.stats.winrate' | translate }}</span>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- Search -->
+  <label class="search-bar">
+    <mat-icon class="search-bar__icon">search</mat-icon>
+    <input
+      type="text"
+      class="search-bar__input"
+      [placeholder]="'replay.hub.search.placeholder' | translate"
+      [value]="store.searchQuery()"
+      (input)="onSearchInput($event)"
+      [attr.aria-label]="'replay.hub.search.placeholder' | translate" />
+    @if (hasSearchActive()) {
+      <button
+        type="button"
+        class="icon-btn icon-btn--sm"
+        [attr.aria-label]="'common.clear' | translate"
+        (click)="clearSearch()">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+  </label>
+
+  <!-- Filters -->
+  <div class="chip-row" role="group" [attr.aria-label]="'replay.hub.filter.all' | translate">
+    @for (f of filterModes; track f.id) {
+      <button type="button"
+              class="chip"
+              [class.chip--active]="store.activeFilter() === f.id"
+              [disabled]="f.needsDeck && !store.hasDecks()"
+              [attr.aria-pressed]="store.activeFilter() === f.id"
+              (click)="setActiveFilter(f.id)">
+        @if (f.icon) { <mat-icon class="chip__icon">{{ f.icon }}</mat-icon> }
+        <span>{{ 'replay.hub.filter.' + f.id | translate }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- List header -->
+  <div class="section-header">
+    <div class="section-header__title-group">
+      <span class="section-header__title">{{ 'replay.hub.list.title' | translate }}</span>
+      @if (!store.loading() && !store.error()) {
+        <span class="badge badge--gold">
+          {{ 'replay.hub.list.count' | translate: { count: store.filteredReplays().length } }}
+        </span>
+      }
+    </div>
+    <button type="button"
+            class="btn btn--ghost btn--sm"
+            [attr.aria-label]="'replay.hub.sort.newest' | translate"
+            [matMenuTriggerFor]="sortMenu">
+      <mat-icon>sort</mat-icon>
+      <span>{{ sortLabelKey() | translate }}</span>
+    </button>
+    <mat-menu #sortMenu="matMenu" xPosition="before">
+      @for (mode of sortModes; track mode) {
+        <button mat-menu-item type="button"
+                [class.is-active]="store.sortMode() === mode"
+                (click)="setSortMode(mode)">
+          {{ 'replay.hub.sort.' + mode | translate }}
+        </button>
+      }
+    </mat-menu>
+  </div>
+
+  <!-- States -->
+  @if (store.loading() && store.replays().length === 0) {
+    <div class="hub-loading" aria-busy="true" [attr.aria-label]="'common.loading' | translate">
+      <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+    </div>
+  } @else if (store.error()) {
+    <div class="empty-state empty-state--error">
+      <mat-icon class="empty-state__icon">wifi_off</mat-icon>
+      <p class="empty-state__title">{{ 'replay.hub.error.title' | translate }}</p>
+      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="store.fetchSnapshot()">
+        <mat-icon>refresh</mat-icon>
+        {{ 'replay.hub.error.retry' | translate }}
+      </button>
+    </div>
+  } @else if (showEmptyState()) {
+    <div class="empty-state empty-state--rich">
+      <mat-icon class="empty-state__icon">history</mat-icon>
+      <p class="empty-state__title">{{ 'replay.hub.empty.title' | translate }}</p>
+      <p class="empty-state__desc">{{ 'replay.hub.empty.desc' | translate }}</p>
+      <div class="empty-state__actions">
+        <button type="button" class="btn btn--primary btn--lg btn--cta btn--cta-shimmer" (click)="goToLobby()">
+          <mat-icon>sports_esports</mat-icon>
+          {{ 'replay.hub.empty.ctaPvp' | translate }}
+        </button>
+      </div>
+    </div>
+  } @else if (showNoResultsState()) {
+    <div class="empty-state">
+      <mat-icon class="empty-state__icon">search_off</mat-icon>
+      <p class="empty-state__title">{{ 'replay.hub.noResults.title' | translate }}</p>
+      <p class="empty-state__desc">{{ 'replay.hub.noResults.desc' | translate }}</p>
+      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="clearFilters()">
+        <mat-icon>backspace</mat-icon>
+        {{ 'replay.hub.noResults.clearFilter' | translate }}
+      </button>
+    </div>
+  } @else {
+    <cdk-virtual-scroll-viewport
+        #viewport
+        class="replay-list-viewport"
+        [itemSize]="replayCardItemSize"
+        minBufferPx="240"
+        maxBufferPx="480"
+        (scrolledIndexChange)="onScrolledIndexChange($event, viewport)">
+      <a *cdkVirtualFor="let replay of store.filteredReplays(); trackBy: trackByReplayId"
+         class="replay-card surface-card surface-card--interactive"
+         [class.surface-card--accent-gold]="resultMeta(replay).variant === 'gold'"
+         [class.surface-card--accent-cyan]="resultMeta(replay).variant === 'cyan'"
+         [class.surface-card--accent-neutral]="resultMeta(replay).variant === 'neutral'"
+         [class.surface-card--accent-warning]="resultMeta(replay).variant === 'warning'"
+         [class.surface-card--accent-danger]="resultMeta(replay).variant === 'danger'"
+         [attr.aria-label]="('replay.hub.card.open' | translate) + ' — ' + opponentName(replay)"
+         (click)="openReplay(replay)"
+         (keydown.enter)="openReplay(replay)">
+        <div class="replay-card__avatar">
+          <app-avatar [pseudo]="opponentName(replay)" size="md"></app-avatar>
+        </div>
+        <div class="replay-card__info">
+          <div class="replay-card__title">
+            <span class="replay-card__vs-prefix">{{ 'replay.hub.card.vsPrefix' | translate }}</span>
+            <span class="replay-card__opponent">{{ opponentName(replay) }}</span>
+          </div>
+          <div class="replay-card__meta">
+            <span class="replay-card__deck">
+              <mat-icon>style</mat-icon>
+              {{ myDeckName(replay) }}
+            </span>
+            <span class="replay-card__vs-deck">
+              <mat-icon>swap_horiz</mat-icon>
+              {{ 'replay.hub.card.vsDeckPrefix' | translate }} {{ opponentDeckName(replay) }}
+            </span>
+          </div>
+        </div>
+        <span class="pill pill--md"
+              [class.pill--gold]="resultMeta(replay).variant === 'gold'"
+              [class.pill--cyan]="resultMeta(replay).variant === 'cyan'"
+              [class.pill--neutral]="resultMeta(replay).variant === 'neutral'"
+              [class.pill--warning]="resultMeta(replay).variant === 'warning'"
+              [class.pill--danger]="resultMeta(replay).variant === 'danger'">
+          <mat-icon class="pill__icon">{{ resultMeta(replay).icon }}</mat-icon>
+          <span>{{ resultMeta(replay).i18nKey | translate }}</span>
+        </span>
+        <div class="replay-card__times">
+          <span class="replay-card__date">{{ replay.createdAt | date: 'dd/MM · HH:mm' }}</span>
+          <span class="replay-card__turns">
+            {{ 'replay.hub.card.turns' | translate: { n: replay.metadata.turnCount } }}
+            @if (durationText(replay)) {
+              · {{ durationText(replay) }}
+            }
+          </span>
+        </div>
+        <div class="replay-card__actions">
+          <button type="button"
+                  class="icon-btn icon-btn--md icon-btn--danger icon-btn--ghost-hover-only"
+                  [attr.aria-label]="'replay.hub.card.delete' | translate"
+                  [matTooltip]="'replay.hub.card.delete' | translate"
+                  [disabled]="deletingId() === replay.id"
+                  (click)="deleteReplay(replay, $event)">
+            @if (deletingId() === replay.id) {
+              <mat-progress-spinner mode="indeterminate" diameter="16"></mat-progress-spinner>
+            } @else {
+              <mat-icon>delete_outline</mat-icon>
+            }
+          </button>
+        </div>
+      </a>
+    </cdk-virtual-scroll-viewport>
+  }
+</div>

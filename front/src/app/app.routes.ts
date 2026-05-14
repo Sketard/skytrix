@@ -32,13 +32,13 @@ export const routes: Routes = [
   {
     path: 'pvp/history',
     loadComponent: () =>
-      import('./pages/match-history-page/match-history-page.component').then(m => m.MatchHistoryPageComponent),
-    canActivate: [AuthService, adminGuard],
+      import('./pages/pvp/replay-hub/replay-hub-page.component').then(m => m.ReplayHubPageComponent),
+    canActivate: [AuthService],
   },
   {
     path: 'pvp/replay/:replayId',
     loadComponent: () => import('./pages/pvp/replay/replay-page.component').then(m => m.ReplayPageComponent),
-    canActivate: [AuthService, adminGuard],
+    canActivate: [AuthService],
   },
   {
     path: 'pvp/duel/:roomCode',

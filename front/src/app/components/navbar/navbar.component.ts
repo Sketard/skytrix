@@ -46,7 +46,7 @@ export class NavbarComponent {
     new Tab('nav.tab.deckBuilder', 'folder', '/decks'),
     new Tab('nav.tab.cardSearch', 'search', '/search'),
     new Tab('nav.tab.pvpArena', 'gamepad', '/pvp'),
-    new Tab('nav.tab.replayPvp', 'play_circle', '/pvp/history', 'ADMIN'),
+    new Tab('nav.tab.replayPvp', 'play_circle', '/pvp/history'),
     new Tab('nav.tab.settings', 'settings_suggest', '/parameters', 'ADMIN'),
   ];
 
