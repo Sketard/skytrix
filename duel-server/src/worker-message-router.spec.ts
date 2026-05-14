@@ -65,6 +65,7 @@ function makeSession(worker: FakeWorker | null = makeWorker()): ActiveDuelSessio
     endedAt: null,
     phase: 'DUELING',
     firstPlayerState: null,
+    chosenFirstPlayer: null,
     worker: worker as unknown as ActiveDuelSession['worker'],
     workerTerminated: false,
     awaitingResponse: [false, false],

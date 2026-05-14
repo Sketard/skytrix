@@ -83,6 +83,7 @@ function makeSession(spy: SpyHooks, opts: { withWorker?: boolean; phase?: 'DUELI
     endedAt: null,
     phase: opts.phase ?? 'DUELING',
     firstPlayerState: null,
+    chosenFirstPlayer: null,
     worker: worker as unknown as ActiveDuelSession['worker'],
     workerTerminated: false,
     awaitingResponse: [false, false],

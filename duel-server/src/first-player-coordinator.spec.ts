@@ -60,6 +60,7 @@ function makeSession(): ActiveDuelSession {
     endedAt: null,
     phase: 'WAITING_PLAYERS',
     firstPlayerState: null,
+    chosenFirstPlayer: null,
     worker: null,
     workerTerminated: false,
     awaitingResponse: [false, false],
@@ -332,6 +333,9 @@ describe('first-player-coordinator', () => {
       const handled = handlePreDuelResponse(s, 0, 'SELECT_FIRST_PLAYER', { goFirst: true });
       expect(handled).toBe(true);
       expect(s.phase).toBe('FIRST_PLAYER_RESOLVED');
+      // Stored for refresh-resync: sendStateSnapshot reads this to re-emit
+      // FIRST_PLAYER_RESULT during the 2.5s announce window.
+      expect(s.chosenFirstPlayer).toBe(0);
 
       const finals = firstPlayerResultMsgs(spy);
       expect(finals).toHaveLength(2);
@@ -472,12 +476,14 @@ s.phase = 'DUELING';
   // ==========================================================================
 
   describe('disposeFirstPlayer', () => {
-    it('clears all timers and nulls firstPlayerState', () => {
-startFirstPlayerPhase(s);
+    it('clears all timers and nulls firstPlayerState + chosenFirstPlayer', () => {
+      startFirstPlayerPhase(s);
+      s.chosenFirstPlayer = 1;
 
       disposeFirstPlayer(s);
 
       expect(s.firstPlayerState).toBeNull();
+      expect(s.chosenFirstPlayer).toBeNull();
       vi.advanceTimersByTime(DICE_ROLL_TIMEOUT_MS);
       expect(diceResultMsgs(spy)).toHaveLength(0);
     });

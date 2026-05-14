@@ -41,6 +41,7 @@ import {
   PROTOCOL_VERSION,
 } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
+import { buildPreDuelSnapshot } from './pre-duel-snapshot.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
@@ -439,6 +440,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       duelId,
       phase: 'WAITING_PLAYERS',
       firstPlayerState: null,
+      chosenFirstPlayer: null,
       players: [
         { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
         { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
@@ -1109,12 +1111,24 @@ function resendPendingPrompt(session: ActiveDuelSession, playerIndex: 0 | 1): vo
   }
 }
 
-// Story 5.2 — DRY: reusable state snapshot for reconnection + REQUEST_STATE_SYNC
+// Story 5.2 — DRY: reusable state snapshot for reconnection + REQUEST_STATE_SYNC.
+// Pre-duel resync (refresh during dice / first-player pick / announce) is
+// delegated to `buildPreDuelSnapshot` (pure, easily testable). DUELING-phase
+// resync (re-emit DUEL_STARTING + STATE_SYNC + CHAIN_STATE) stays inline.
 function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void {
-  // Re-send OCGCore player index (lost on page refresh)
-  if (session.phase === 'DUELING') {
-    sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, playerIndex) } as ServerMessage);
+  if (session.phase !== 'DUELING') {
+    for (const msg of buildPreDuelSnapshot(session, playerIndex)) {
+      // DICE_RESULT needs per-player filter (swaps dice0/dice1 so each side
+      // reads its own roll as "player 1"). Other messages pass through.
+      const out = msg.type === 'DICE_RESULT' ? filterMessage(msg, playerIndex) : msg;
+      if (out) sendToPlayer(session, playerIndex, out);
+    }
+    sendTimerStateToPlayer(session, playerIndex);
+    return;
   }
+
+  // Re-send OCGCore player index (lost on page refresh)
+  sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, playerIndex) } as ServerMessage);
   if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
     const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
     const filtered = filterMessage(stateSync, playerIndex);

@@ -164,13 +164,13 @@
             }
           }
 
-          @if (stage() === 'final' && firstPlayerResult(); as fp) {
-            <div class="dice-final-announce" [class.dice-final-announce--second]="!fp.goFirst">
+          @if (stage() === 'final' && finalGoFirst() !== null) {
+            <div class="dice-final-announce" [class.dice-final-announce--second]="!finalGoFirst()">
               <div class="dice-final-announce__icon">
-                <span class="material-icons-round" aria-hidden="true">{{ fp.goFirst ? 'play_circle' : 'skip_next' }}</span>
+                <span class="material-icons-round" aria-hidden="true">{{ finalGoFirst() ? 'play_circle' : 'skip_next' }}</span>
               </div>
               <div class="dice-final-announce__headline">
-                {{ (fp.goFirst ? 'duel.firstPlayer.youFirst' : 'duel.firstPlayer.youSecond') | translate }}
+                {{ (finalGoFirst() ? 'duel.firstPlayer.youFirst' : 'duel.firstPlayer.youSecond') | translate }}
               </div>
               <div class="dice-final-announce__progress" aria-hidden="true">
                 <div class="dice-final-announce__progress-bar"></div>

@@ -96,6 +96,7 @@ function clearCoordinatorTimers(session: ActiveDuelSession): void {
 export function disposeFirstPlayer(session: ActiveDuelSession): void {
   clearCoordinatorTimers(session);
   session.firstPlayerState = null;
+  session.chosenFirstPlayer = null;
 }
 
 // ───── Step 1: enter ROLLING_DICE, prompt both players ──────────────────────
@@ -232,6 +233,7 @@ function broadcastFinalAndBridge(session: ActiveDuelSession, firstPlayer: 0 | 1)
   cfg.sendToPlayer(session, 0, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 0 });
   cfg.sendToPlayer(session, 1, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 1 });
   session.phase = 'FIRST_PLAYER_RESOLVED';
+  session.chosenFirstPlayer = firstPlayer;
   pushTimer(session, setTimeout(() => {
     if (session.phase !== 'FIRST_PLAYER_RESOLVED') return;
     cfg.startDuelWithOrder(session, firstPlayer);

@@ -17,6 +17,7 @@ function makeSession(duelId = 'd1'): ActiveDuelSession {
     endedAt: null,
     phase: 'WAITING_PLAYERS',
     firstPlayerState: null,
+    chosenFirstPlayer: null,
     worker: null,
     workerTerminated: false,
     awaitingResponse: [false, false],

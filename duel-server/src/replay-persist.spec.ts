@@ -18,6 +18,7 @@ function makeSession(p1Id = '100', p2Id = '200'): ActiveDuelSession {
     endedAt: null,
     phase: 'DUELING',
     firstPlayerState: null,
+    chosenFirstPlayer: null,
     worker: null,
     workerTerminated: false,
     awaitingResponse: [false, false],

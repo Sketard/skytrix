@@ -349,6 +349,13 @@ export interface DuelSession {
 export interface ActiveDuelSession extends DuelSession {
   phase: SessionPhase;
   firstPlayerState: FirstPlayerState | null;
+  /** Set when the SELECT_FIRST_PLAYER pick (or timeout default) resolves
+   *  the pre-duel turn-order — i.e. on the transition into
+   *  `FIRST_PLAYER_RESOLVED`. Allows `sendStateSnapshot` to re-emit the
+   *  FIRST_PLAYER_RESULT broadcast for a client refreshing during the
+   *  2.5s announce window. Reset alongside `firstPlayerState` by
+   *  `disposeFirstPlayer`. */
+  chosenFirstPlayer: 0 | 1 | null;
   worker: import('node:worker_threads').Worker | null;
   workerTerminated: boolean;
   awaitingResponse: [boolean, boolean];
