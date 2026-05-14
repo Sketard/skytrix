@@ -193,6 +193,16 @@
   --border-soft:       rgba(255, 255, 255, 0.10);
   --border-medium:     rgba(255, 255, 255, 0.18);
 
+  // --- Dialog (holo-modal Material skin — `_holo-modal.scss` only)
+  --surface-dialog-from: #1a1a2e;
+  --surface-dialog-to:   #14141f;
+  --surface-dialog-deep: #0f1729;
+  --gradient-dialog-surface: linear-gradient(160deg, var(--surface-dialog-from) 0%, var(--surface-dialog-to) 100%);
+
+  // --- Semantic flat tones (filled-button container colors)
+  --danger-flat:  #b71c1c;
+  --warning-flat: #ff9800;
+
   // --- Gradients DS — shared composites consumed by .screen-bg utility
   // and any card/dialog/skeleton that wants the holo-arena mood. Single
   // source so dialog skins stay in lockstep.

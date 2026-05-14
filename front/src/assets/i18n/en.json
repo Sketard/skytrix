@@ -695,8 +695,7 @@
       "empty": {
         "title": "No replays yet",
         "desc": "Play a duel online or in sandbox — your matches will be saved here.",
-        "ctaPvp": "Play PvP",
-        "ctaSandbox": "Sandbox"
+        "ctaPvp": "Play PvP"
       },
       "noResults": {
         "title": "No results",

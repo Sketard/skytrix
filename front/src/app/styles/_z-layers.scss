@@ -5,6 +5,7 @@
 // Usage: @use 'z-layers' as z; then z.$z-*
 // Simulator components keep hardcoded values until simulator stories migrate.
 
+$z-background: -1; // behind the document flow (e.g. .screen-bg decorative layer)
 $z-card-overlay: 1;
 $z-ui-button: 10;
 $z-hand-backdrop: 20;

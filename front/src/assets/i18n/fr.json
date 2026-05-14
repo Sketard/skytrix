@@ -695,8 +695,7 @@
       "empty": {
         "title": "Aucun replay pour le moment",
         "desc": "Joue un duel en ligne ou en bac à sable — tes parties seront automatiquement enregistrées ici.",
-        "ctaPvp": "Jouer en PvP",
-        "ctaSandbox": "Bac à sable"
+        "ctaPvp": "Jouer en PvP"
       },
       "noResults": {
         "title": "Aucun résultat",

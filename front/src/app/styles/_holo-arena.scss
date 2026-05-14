@@ -1,3 +1,5 @@
+@use 'z-layers' as z;
+
 // =============================================================================
 // Holo-arena background utility — animated perspective grid + dual glow blobs.
 // Mirrors `_mockups/mockup-1-holo-arena.html` `.screen-bg` (lines 257-277).
@@ -22,7 +24,7 @@
   // navbar at z-index: auto in the shell context), so we keep absolute.
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: z.$z-background;
   overflow: hidden;
   pointer-events: none;
   background: var(--gradient-arena-radial);

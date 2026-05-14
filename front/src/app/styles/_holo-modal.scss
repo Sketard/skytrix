@@ -143,7 +143,8 @@
   }
 
   .mat-mdc-dialog-surface {
-    background: linear-gradient(160deg, #1a1a2e 0%, #14141f 100%) !important;
+    // !important: override Material's default surface chrome.
+    background: var(--gradient-dialog-surface) !important;
     border: 1px solid var(--gold-soft-30) !important;
     border-bottom: none !important;
     border-radius: 16px 16px 0 0 !important;
@@ -211,7 +212,7 @@
   font-weight: var(--weight-semibold);
   font-size: var(--text-sm);
   background: transparent;
-  color: #c0c0c0;
+  color: var(--text-secondary);
   border: 1px solid var(--border-medium);
   border-radius: 8px;
   cursor: pointer;
@@ -269,22 +270,23 @@
 // Used by surrender / inactivity / generic confirm dialogs in PvP.
 // =============================================================================
 .pvp-dialog-panel {
-  --mdc-dialog-container-color: #0f1729;
+  --mdc-dialog-container-color: var(--surface-dialog-deep);
   --mdc-dialog-container-shape: 12px;
-  --mdc-dialog-subhead-color: #eee;
-  --mdc-dialog-supporting-text-color: #9e9e9e;
+  --mdc-dialog-subhead-color: var(--text-primary);
+  --mdc-dialog-supporting-text-color: var(--text-muted);
 
   .mat-mdc-dialog-surface {
+    // !important: override Material's default surface chrome.
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
   }
 
   .mat-mdc-dialog-title {
-    color: #eee;
+    color: var(--text-primary);
   }
 
   .mat-mdc-dialog-content {
-    color: #9e9e9e;
+    color: var(--text-muted);
   }
 
   .mat-mdc-dialog-actions {
@@ -297,25 +299,29 @@
     }
 
     .mat-mdc-unelevated-button {
+      // hex: pure white literal (no themed alternative — high-contrast label on
+      // gold/danger/warning filled-button surfaces). Wave 1 exception per §6 c.2.
       --mdc-filled-button-label-text-color: #fff;
     }
   }
 
   // --- Surrender (danger) ---
   &--danger .mat-mdc-dialog-surface {
-    border-top: 3px solid #b71c1c !important;
+    // !important: override Material's default top-border on the surface.
+    border-top: 3px solid var(--danger-flat) !important;
   }
 
   &--danger .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
-    --mdc-filled-button-container-color: #b71c1c;
+    --mdc-filled-button-container-color: var(--danger-flat);
   }
 
   // --- Inactivity (warning) ---
   &--warning .mat-mdc-dialog-surface {
-    border-top: 3px solid #ff9800 !important;
+    // !important: override Material's default top-border on the surface.
+    border-top: 3px solid var(--warning-flat) !important;
   }
 
   &--warning .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
-    --mdc-filled-button-container-color: #ff9800;
+    --mdc-filled-button-container-color: var(--warning-flat);
   }
 }

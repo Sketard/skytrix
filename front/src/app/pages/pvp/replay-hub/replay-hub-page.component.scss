@@ -62,6 +62,7 @@
   flex-shrink: 0;
 
   mat-icon {
+    // !important: override mat-icon's default 24px host bind.
     font-size: 20px !important;
     width: 20px !important;
     height: 20px !important;
@@ -70,7 +71,7 @@
 
 .hub-stat-icon--total   { background: var(--cyan-soft-15);  color: var(--cyan-300); }
 .hub-stat-icon--win     { background: var(--gold-soft-12);  color: var(--gold); }
-.hub-stat-icon--loss    { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+.hub-stat-icon--loss    { background: var(--surface-overlay); color: var(--text-muted); }
 .hub-stat-icon--winrate { background: var(--gold-soft-12);  color: var(--gold-50); }
 
 .hub-stat-content {
@@ -140,7 +141,7 @@
   }
 
   // Hover-reveal delete button on desktop only.
-  @media (min-width: 480px) {
+  @include r.respond-above(r.$bp-pvp-narrow) {
     &:hover .icon-btn--ghost-hover-only,
     &:focus-within .icon-btn--ghost-hover-only {
       opacity: 1;
@@ -197,6 +198,7 @@
   white-space: nowrap;
 
   mat-icon {
+    // !important: override mat-icon's default 24px host bind.
     font-size: 14px !important;
     width: 14px !important;
     height: 14px !important;
@@ -260,6 +262,7 @@
 // Mat menu — sort menu active state (matches lobby convention)
 // =============================================================================
 ::ng-deep .mat-mdc-menu-item.is-active {
+  // !important: override Material's default menu-item color cascade.
   color: var(--gold) !important;
   font-weight: var(--weight-semibold);
 }
