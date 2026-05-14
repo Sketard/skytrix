@@ -111,6 +111,7 @@
     "ROOM_JOIN_FAILED": "Impossible de rejoindre la room",
     "ROOM_NOT_FOUND": "Room introuvable ou déjà terminée",
     "ROOM_CLOSED": "Cette room a été fermée",
+    "KICKED_FROM_ROOM": "L'hôte t'a exclu de la room",
     "TOO_MANY_ATTEMPTS": "Trop de tentatives échouées",
     "DUEL_CONNECT_FAILED": "Impossible de se connecter au duel",
     "PROXY_GENERATION_FAILED": "Erreur lors de la génération des proxies",
@@ -168,6 +169,10 @@
       "shareLinkTitle": "Partager le lien",
       "autoCloseIn": "Fermeture automatique dans",
       "cancelRoom": "Annuler la room",
+      "leaveRoom": "Quitter la room",
+      "startDuel": "Lancer la partie",
+      "kickPlayer": "Exclure",
+      "hostWillStart": "L'hôte va lancer la partie...",
       "yourDeck": "Votre Deck :",
       "share": "Partager",
       "copyLink": "Copier le lien"

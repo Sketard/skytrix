@@ -8,7 +8,7 @@ import { Subject, of, throwError } from 'rxjs';
 import { signal } from '@angular/core';
 
 import { RoomStateMachineService } from './room-state-machine.service';
-import { RoomApiService } from '../room-api.service';
+import { RoomApiService, type RoomEvent } from '../room-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
@@ -39,15 +39,18 @@ describe('RoomStateMachineService', () => {
   let auth: { user: ReturnType<typeof signal<{ id: number } | null>> };
   let wsService: jasmine.SpyObj<DuelWebSocketService>;
   let tabGuard: jasmine.SpyObj<DuelTabGuardService>;
-  let sseSubject: Subject<RoomDTO>;
+  let sseSubject: Subject<RoomEvent>;
 
   beforeEach(() => {
-    sseSubject = new Subject<RoomDTO>();
+    sseSubject = new Subject<RoomEvent>();
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
     notify = jasmine.createSpyObj<NotificationService>('NotificationService', ['error', 'success']);
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    roomApi = jasmine.createSpyObj<RoomApiService>('RoomApiService', ['getRoom', 'joinRoom', 'subscribeToRoomEvents']);
+    roomApi = jasmine.createSpyObj<RoomApiService>('RoomApiService',
+      ['getRoom', 'joinRoom', 'subscribeToRoomEvents', 'startDuel', 'kickPlayer', 'announceBrowsing', 'announceLeftBrowsing']);
     roomApi.subscribeToRoomEvents.and.returnValue(sseSubject.asObservable());
+    roomApi.announceBrowsing.and.returnValue(of(undefined as unknown as void));
+    roomApi.announceLeftBrowsing.and.returnValue(of(undefined as unknown as void));
     auth = { user: signal<{ id: number } | null>({ id: 100 }) };
     wsService = jasmine.createSpyObj<DuelWebSocketService>('DuelWebSocketService', ['connect']);
     tabGuard = jasmine.createSpyObj<DuelTabGuardService>('DuelTabGuardService', ['init', 'broadcast']);
@@ -160,7 +163,7 @@ describe('RoomStateMachineService', () => {
     });
 
     it('ACTIVE without wsToken → notify DUEL_CONNECT_FAILED + navigate /pvp + arrête la SSE active (M17 bug fix)', () => {
-      // Simulate the failure scenario: SSE delivers ACTIVE but wsToken is null.
+      // Simulate the failure scenario: SSE delivers a `ready` event with status ACTIVE but wsToken null.
       const initialRoom = makeRoom({ status: 'CREATING_DUEL' });
       roomApi.getRoom.and.returnValue(of(initialRoom));
       service.fetchRoom('ABC123');
@@ -168,7 +171,7 @@ describe('RoomStateMachineService', () => {
 
       // SSE pushes ACTIVE with no wsToken
       const activeRoom = makeRoom({ status: 'ACTIVE', wsToken: null });
-      sseSubject.next(activeRoom);
+      sseSubject.next({ kind: 'ready', room: activeRoom });
 
       expect(notify.error).toHaveBeenCalledWith('error.DUEL_CONNECT_FAILED');
       expect(router.navigate).toHaveBeenCalledWith(['/pvp']);
@@ -176,7 +179,7 @@ describe('RoomStateMachineService', () => {
 
       // Bug fix: SSE must be stopped — pushing again must not re-trigger anything
       const ignored = makeRoom({ status: 'ACTIVE', wsToken: 'late-tok' });
-      sseSubject.next(ignored);
+      sseSubject.next({ kind: 'ready', room: ignored });
       expect(wsService.connect).not.toHaveBeenCalled();
     });
   });
@@ -185,7 +188,7 @@ describe('RoomStateMachineService', () => {
     it('WAITING + non-participant → opens deck picker dialog', () => {
       auth.user.set({ id: 999 });
       const room = makeRoom({ status: 'WAITING', player1: { id: 100, pseudo: 'p1', role: 'USER' }, player2: null });
-      const afterClosed = new Subject<number | null>();
+      const afterClosed = new Subject<{ id: number; name: string } | undefined>();
       dialog.open.and.returnValue({ afterClosed: () => afterClosed.asObservable() } as never);
       roomApi.getRoom.and.returnValue(of(room));
 
@@ -193,38 +196,38 @@ describe('RoomStateMachineService', () => {
 
       expect(dialog.open).toHaveBeenCalled();
       // User cancels the dialog
-      afterClosed.next(null);
+      afterClosed.next(undefined);
       expect(router.navigate).toHaveBeenCalledWith(['/pvp']);
     });
 
-    it('non-participant accepts deck → joinRoom → re-runs handleRoomStatus', () => {
+    it('non-participant accepts deck → joinRoom → re-runs handleRoomStatus (READY waiting room)', () => {
       auth.user.set({ id: 999 });
       const initialRoom = makeRoom({ status: 'WAITING', player2: null });
-      const joinedRoom = makeRoom({ status: 'CREATING_DUEL', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      const joinedRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
 
-      const afterClosed = new Subject<number>();
+      const afterClosed = new Subject<{ id: number; name: string }>();
       dialog.open.and.returnValue({ afterClosed: () => afterClosed.asObservable() } as never);
       roomApi.getRoom.and.returnValue(of(initialRoom));
       roomApi.joinRoom.and.returnValue(of(joinedRoom));
 
       service.fetchRoom('ABC123');
-      afterClosed.next(20);
+      afterClosed.next({ id: 20, name: 'My Deck' });
 
       expect(roomApi.joinRoom).toHaveBeenCalledWith('ABC123', 20);
-      expect(service.roomState()).toBe('creating-duel');
+      expect(service.roomState()).toBe('ready');
       expect(service.decklistId).toBe(20);
     });
 
     it('joinRoom 409 (full) → notify ROOM_FULL + navigate', () => {
       auth.user.set({ id: 999 });
       const initialRoom = makeRoom({ status: 'WAITING', player2: null });
-      const afterClosed = new Subject<number>();
+      const afterClosed = new Subject<{ id: number; name: string }>();
       dialog.open.and.returnValue({ afterClosed: () => afterClosed.asObservable() } as never);
       roomApi.getRoom.and.returnValue(of(initialRoom));
       roomApi.joinRoom.and.returnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
 
       service.fetchRoom('ABC123');
-      afterClosed.next(20);
+      afterClosed.next({ id: 20, name: 'Deck' });
 
       expect(notify.error).toHaveBeenCalledWith('error.ROOM_FULL');
       expect(router.navigate).toHaveBeenCalledWith(['/pvp']);
@@ -239,7 +242,7 @@ describe('RoomStateMachineService', () => {
       expect(service.roomState()).toBe('waiting');
 
       const activeRoom = makeRoom({ status: 'ACTIVE', wsToken: 'tok-xyz' });
-      sseSubject.next(activeRoom);
+      sseSubject.next({ kind: 'ready', room: activeRoom });
 
       expect(service.roomState()).toBe('connecting');
       expect(wsService.connect).toHaveBeenCalledWith('tok-xyz');
@@ -296,8 +299,84 @@ describe('RoomStateMachineService', () => {
 
       expect(router.navigate).toHaveBeenCalledWith(['/pvp']);
       // SSE arrêtée: subsequent emissions must be no-op
-      sseSubject.next(makeRoom({ status: 'ACTIVE', wsToken: 'late' }));
+      sseSubject.next({ kind: 'ready', room: makeRoom({ status: 'ACTIVE', wsToken: 'late' }) });
       expect(wsService.connect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('READY state — start / kick (Waiting Room Ready State)', () => {
+    it('joiner accepts deck → joinRoom returns READY → state=ready + isJoiner=true', () => {
+      auth.user.set({ id: 999 });
+      const initialRoom = makeRoom({ status: 'WAITING', player2: null });
+      const joinedRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+
+      const afterClosed = new Subject<{ id: number; name: string }>();
+      dialog.open.and.returnValue({ afterClosed: () => afterClosed.asObservable() } as never);
+      roomApi.getRoom.and.returnValue(of(initialRoom));
+      roomApi.joinRoom.and.returnValue(of(joinedRoom));
+
+      service.fetchRoom('ABC123');
+      afterClosed.next({ id: 20, name: 'Deck' });
+
+      expect(service.roomState()).toBe('ready');
+      expect(service.isJoiner()).toBe(true);
+      expect(service.isCreator()).toBe(false);
+    });
+
+    it('creator-side SSE joined-ready event → state flips waiting → ready', () => {
+      const initialRoom = makeRoom({ status: 'WAITING' });
+      roomApi.getRoom.and.returnValue(of(initialRoom));
+      service.fetchRoom('ABC123');
+      expect(service.roomState()).toBe('waiting');
+
+      const readyRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      sseSubject.next({ kind: 'joined-ready', room: readyRoom });
+
+      expect(service.roomState()).toBe('ready');
+      expect(service.isCreator()).toBe(true);
+    });
+
+    it('joiner-side SSE kicked event → notify KICKED_FROM_ROOM + navigate /pvp', () => {
+      auth.user.set({ id: 999 });
+      const readyRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      roomApi.getRoom.and.returnValue(of(readyRoom));
+      service.fetchRoom('ABC123');
+      expect(service.roomState()).toBe('ready');
+
+      sseSubject.next({ kind: 'kicked' });
+
+      expect(notify.error).toHaveBeenCalledWith('error.KICKED_FROM_ROOM');
+      expect(router.navigate).toHaveBeenCalledWith(['/pvp']);
+    });
+
+    it('startDuel() → flips to creating-duel + posts to /start', () => {
+      const readyRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      roomApi.getRoom.and.returnValue(of(readyRoom));
+      service.fetchRoom('ABC123');
+
+      const activeRoom = makeRoom({ status: 'ACTIVE', wsToken: 'tok-xyz', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      roomApi.startDuel.and.returnValue(of(activeRoom));
+
+      service.startDuel();
+
+      expect(roomApi.startDuel).toHaveBeenCalledWith('ABC123');
+      // HTTP fallback path triggers connectWhenReady too
+      expect(wsService.connect).toHaveBeenCalledWith('tok-xyz');
+    });
+
+    it('kickPlayer() → posts to /kick + state rolls back to waiting + player2 cleared', () => {
+      const readyRoom = makeRoom({ status: 'READY', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
+      roomApi.getRoom.and.returnValue(of(readyRoom));
+      service.fetchRoom('ABC123');
+      expect(service.roomState()).toBe('ready');
+
+      roomApi.kickPlayer.and.returnValue(of(undefined as unknown as void));
+
+      service.kickPlayer();
+
+      expect(roomApi.kickPlayer).toHaveBeenCalledWith('ABC123');
+      expect(service.roomState()).toBe('waiting');
+      expect(service.room()?.player2).toBeNull();
     });
   });
 });

@@ -40,6 +40,20 @@ export class RoomApiService {
     return this.http.post<RoomDTO>(`/api/rooms/${roomCode}/join`, { decklistId });
   }
 
+  /** Creator-only: bridge a READY room to ACTIVE. Returns the creator's
+   *  RoomDTO with wsToken populated. The joiner receives the same signal
+   *  via the `room-ready` SSE event (with their own wsToken). */
+  startDuel(roomCode: string): Observable<RoomDTO> {
+    return this.http.post<RoomDTO>(`/api/rooms/${roomCode}/start`, {});
+  }
+
+  /** Creator-only: kick the joiner from a READY room — the room returns
+   *  to WAITING and resurfaces in the lobby. The joiner's SSE receives
+   *  a `kicked` event and their UI bounces them back to /pvp. */
+  kickPlayer(roomCode: string): Observable<void> {
+    return this.http.post<void>(`/api/rooms/${roomCode}/kick`, {});
+  }
+
   quickDuel(decklistId1: number, decklistId2: number, firstPlayer: number, skipShuffle: boolean, turnTimeSecs: number): Observable<QuickDuelResponse> {
     return this.http.post<QuickDuelResponse>('/api/rooms/quick-duel', { decklistId1, decklistId2, firstPlayer, skipShuffle, turnTimeSecs });
   }
@@ -67,23 +81,32 @@ export class RoomApiService {
   }
 
   /**
-   * Per-room SSE used by the creator's WAITING screen. Emits:
-   *   - `{ kind: 'browsing', user }`  — a non-participant opened the deck
-   *     picker (so the slot can render their pseudo as "en sélection").
-   *   - `{ kind: 'left-browsing' }`   — they cancelled.
-   *   - `{ kind: 'ready', room }`     — duel is starting; subscriber
-   *     completes after this.
+   * Per-room SSE used by participants' WAITING screens (creator AND joiner
+   * subscribe). Emits:
+   *   - `{ kind: 'browsing', user }`     — a non-participant opened the
+   *     deck picker (creator-side only — joiner doesn't care).
+   *   - `{ kind: 'left-browsing' }`      — they cancelled.
+   *   - `{ kind: 'joined-ready', room }` — joiner picked a deck, room
+   *     status flipped to READY (creator-side only). Stream stays open.
+   *   - `{ kind: 'kicked' }`             — creator kicked the joiner
+   *     (joiner-side only). Subscriber should redirect to /pvp.
+   *   - `{ kind: 'ready', room }`        — duel is starting; subscriber
+   *     completes after this. Both sides receive their own RoomDTO with
+   *     their own wsToken.
    */
   subscribeToRoomEvents(roomCode: string): Observable<RoomEvent> {
     return this.openEventSource<RoomEvent>(`/api/rooms/${roomCode}/events`, {
       events: {
         'opponent-browsing':      data => ({ kind: 'browsing', user: data as BrowsingUser }),
         'opponent-left-browsing': () => ({ kind: 'left-browsing' }),
+        'room-joined-ready':      data => ({ kind: 'joined-ready', room: data as RoomDTO }),
+        'kicked':                 () => ({ kind: 'kicked' }),
         'room-ready':             data => ({ kind: 'ready', room: data as RoomDTO }),
       },
-      // The lifecycle is open until `room-ready`; we can't use
-      // `completeOnFirstEvent` because the browsing pings should leave
-      // the stream alive. The state-machine completes manually on `ready`.
+      // The lifecycle is open until `room-ready` (or `kicked` for the
+      // joiner). We can't use `completeOnFirstEvent` because the
+      // browsing / joined-ready pings should leave the stream alive.
+      // The state-machine completes manually on terminal events.
     });
   }
 
@@ -160,4 +183,6 @@ export interface BrowsingUser { id: number; pseudo: string; }
 export type RoomEvent =
   | { kind: 'browsing'; user: BrowsingUser }
   | { kind: 'left-browsing' }
+  | { kind: 'joined-ready'; room: RoomDTO }
+  | { kind: 'kicked' }
   | { kind: 'ready'; room: RoomDTO };

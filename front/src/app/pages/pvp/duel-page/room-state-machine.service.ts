@@ -14,7 +14,7 @@ import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import { DeckPickerDialogComponent, deckPickerDialogConfig } from '../lobby-page/deck-picker-dialog.component';
 
-export type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'duel-loading' | 'active' | 'error';
+export type RoomState = 'loading' | 'waiting' | 'ready' | 'creating-duel' | 'connecting' | 'duel-loading' | 'active' | 'error';
 
 /**
  * Encapsulates the room lifecycle: fetch, poll, join (deck-picker dialog),
@@ -27,8 +27,10 @@ export type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' |
  * Set by RoomStateMachineService:
  *   loading       ← fetchRoom() entry point
  *   waiting       ← handleRoomStatus(WAITING + isParticipant)
- *   creating-duel ← handleRoomStatus(CREATING_DUEL)
- *   connecting    ← connectWhenReady(room.wsToken)  // also via SSE ACTIVE event
+ *   ready         ← handleRoomStatus(READY + isParticipant) — both players
+ *                   in the waiting room, creator gets start/kick buttons
+ *   creating-duel ← handleRoomStatus(CREATING_DUEL) | startDuel() in-flight
+ *   connecting    ← connectWhenReady(room.wsToken)  // also via SSE ready event
  *   error         ← startSseSubscription error fallback
  *
  * Set EXTERNALLY (forceState) — owned by collaborator services:
@@ -143,6 +145,20 @@ export class RoomStateMachineService {
     });
   }
 
+  /** True when the connected user is the room creator (player1). */
+  readonly isCreator = computed(() => {
+    const r = this.room();
+    const uid = this.authService.user()?.id;
+    return !!r && !!uid && r.player1.id === uid;
+  });
+
+  /** True when the connected user is the joiner (player2). */
+  readonly isJoiner = computed(() => {
+    const r = this.room();
+    const uid = this.authService.user()?.id;
+    return !!r && !!uid && r.player2 !== null && r.player2.id === uid;
+  });
+
   private handleRoomStatus(room: RoomDTO): void {
     const currentUserId = this.authService.user()?.id;
     const isParticipant = currentUserId === room.player1.id || (room.player2 !== null && currentUserId === room.player2.id);
@@ -154,6 +170,19 @@ export class RoomStateMachineService {
           this.startSseSubscription(room.roomCode);
         } else {
           this.openDeckPickerForJoin(room.roomCode);
+        }
+        break;
+      case 'READY':
+        if (isParticipant) {
+          // Both players sit in the same waiting room; the UI splits
+          // between creator (start/kick buttons) and joiner ("host will
+          // start") via isCreator/isJoiner signals.
+          this.roomState.set('ready');
+          this.startSseSubscription(room.roomCode);
+        } else {
+          // Non-participant landed on a READY room → it's "full" enough,
+          // bounce back to the lobby.
+          this.redirectWithError('error.ROOM_FULL');
         }
         break;
       case 'CREATING_DUEL':
@@ -261,9 +290,23 @@ export class RoomStateMachineService {
           case 'left-browsing':
             this.browsingOpponent.set(null);
             break;
+          case 'joined-ready':
+            // Joiner picked a deck and is now in the room (creator-side
+            // event). Clear the browsing slot, refresh the room DTO so
+            // player2 + status=READY surface, and flip to the ready state.
+            this.browsingOpponent.set(null);
+            this.room.set(event.room);
+            this.roomState.set('ready');
+            break;
+          case 'kicked':
+            // Creator booted us. Bounce to /pvp with an error toast —
+            // the kicker is the only one who sees the room slide back
+            // to WAITING in the lobby.
+            this.redirectWithError('error.KICKED_FROM_ROOM');
+            break;
           case 'ready':
-            // Real join — clear the browsing slot (the room DTO now has the
-            // real player2) and bridge to the duel.
+            // Duel bridge — clear the browsing slot (the room DTO now
+            // has the real player2) and bridge to the duel.
             this.browsingOpponent.set(null);
             this.room.set(event.room);
             if (event.room.status === 'ACTIVE') {
@@ -329,5 +372,73 @@ export class RoomStateMachineService {
     this.stopPolling$.next();
     this.stopCountdown();
     this.router.navigate(['/pvp']);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ready-state actions (creator only — UI gates with isCreator())
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Creator clicks "Lancer la partie" on a READY room. The state flips
+   * to `creating-duel` for instant feedback; the existing SSE subscription
+   * delivers the `room-ready` event once the duel-server is up and bridges
+   * us into the duel (joiner gets their own `room-ready` event in parallel).
+   */
+  startDuel(): void {
+    const code = this.room()?.roomCode;
+    if (!code) return;
+    this.roomState.set('creating-duel');
+    this.roomApiService.startDuel(code).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: room => {
+        this.room.set(room);
+        // The server has already emitted `room-ready` over SSE by the
+        // time this HTTP response lands; the SSE handler will call
+        // connectWhenReady. We also fall through here as a safety net
+        // in case SSE happens to be slower than the HTTP round-trip.
+        if (room.status === 'ACTIVE') {
+          this.connectWhenReady(room);
+        }
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status === 503) {
+          // Duel server unavailable — back-end rolled the room to
+          // WAITING and dropped player2. The creator's next event
+          // will be `getRoom` on the next state push; surface a toast
+          // and bounce back to waiting.
+          this.notify.error('error.DUEL_CONNECT_FAILED');
+          this.roomState.set('waiting');
+        } else {
+          this.redirectWithError('error.DUEL_CONNECT_FAILED');
+        }
+      },
+    });
+  }
+
+  /**
+   * Creator clicks "Kick" on a READY room. The room flips back to
+   * WAITING and resurfaces in the lobby; the joiner receives a `kicked`
+   * SSE event and is redirected.
+   */
+  kickPlayer(): void {
+    const code = this.room()?.roomCode;
+    if (!code) return;
+    this.roomApiService.kickPlayer(code).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        // Optimistic: rebuild the room DTO without player2 and flip
+        // ourselves back to waiting. The SSE pipe stays alive so the
+        // creator immediately sees a new browsing user if one shows up.
+        const current = this.room();
+        if (current) {
+          this.room.set({ ...current, player2: null, status: 'WAITING' });
+        }
+        this.browsingOpponent.set(null);
+        this.roomState.set('waiting');
+      },
+      error: () => this.notify.error('error.UNKNOWN'),
+    });
   }
 }

@@ -8,6 +8,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
 import { NotificationService } from '../../../core/services/notification.service';
+import { OrientationLockComponent } from '../../../shared/orientation-lock/orientation-lock.component';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
@@ -91,6 +92,7 @@ import { environment } from '../../../../environments/environment';
     PvpDuelOverlaysComponent,
     PvpDiceArenaComponent,
     SystemOverlayComponent,
+    OrientationLockComponent,
     AvatarComponent, WaitingRoomSkeletonComponent,
     TranslatePipe,
   ],
@@ -142,6 +144,8 @@ export class DuelPageComponent implements OnInit {
   readonly browsingOpponent = this.roomService.browsingOpponent;
   readonly countdown = this.roomService.countdown;
   readonly canShare = this.roomService.canShare;
+  readonly isCreator = this.roomService.isCreator;
+  readonly isJoiner = this.roomService.isJoiner;
 
   readonly connectionStatus = this.wsService.connectionStatus;
   readonly isLost = computed(() => this.connectionStatus() === 'lost');
@@ -159,7 +163,6 @@ export class DuelPageComponent implements OnInit {
   readonly duelLoadingReady = computed(() => this.boardReady() && this.thumbnailsReady());
   readonly loadingTimeout = signal(false);
 
-  readonly isPortrait = signal(false);
 
   readonly renderedState = computed(() => this.wsService.boardStateView.renderedState());
   readonly logicalState = computed(() => this.wsService.boardStateView.logicalState());
@@ -521,7 +524,7 @@ export class DuelPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.initOrientationLock();
+    // (no-op — orientation lock is now its own component, see <app-orientation-lock>)
   }
 
   // --- Template-facing delegations to roomService ---
@@ -570,6 +573,14 @@ export class DuelPageComponent implements OnInit {
 
   leaveRoom(): void {
     this.roomService.leaveRoom();
+  }
+
+  startDuel(): void {
+    this.roomService.startDuel();
+  }
+
+  kickPlayer(): void {
+    this.roomService.kickPlayer();
   }
 
   retry(): void {
@@ -896,15 +907,6 @@ export class DuelPageComponent implements OnInit {
     if (!player) return [];
     const handZone = player.zones.find((z: BoardZone) => z.zoneId === 'HAND');
     return handZone?.cards ?? [];
-  }
-
-  private initOrientationLock(): void {
-    const mql = window.matchMedia('(orientation: portrait)');
-    this.isPortrait.set(mql.matches);
-
-    const handler = (e: MediaQueryListEvent) => this.isPortrait.set(e.matches);
-    mql.addEventListener('change', handler);
-    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
   private mapDuelEndReason(reason: string, isWinner: boolean): string {

@@ -1,16 +1,18 @@
 <!-- Screen background lives on the host (position: fixed; inset: 0), not
      inside `.duel-container`, so it doesn't scroll with the waiting-room
      content when the container becomes scrollable. -->
-@if (roomState() === 'waiting' || roomState() === 'creating-duel' || roomState() === 'loading') {
+@if (roomState() === 'waiting' || roomState() === 'ready' || roomState() === 'creating-duel' || roomState() === 'loading') {
   <div class="screen-bg" aria-hidden="true">
     <div class="screen-bg-grid"></div>
     <div class="screen-bg-glow screen-bg-glow--gold"></div>
     <div class="screen-bg-glow screen-bg-glow--cyan"></div>
   </div>
 }
-<div class="duel-container" [class.duel-container--scrollable]="roomState() === 'waiting'">
-  <!-- Story 2.1 — Waiting Room State (Phase 1.7 refonte) -->
-  @if (roomState() === 'waiting') {
+<div class="duel-container" [class.duel-container--scrollable]="roomState() === 'waiting' || roomState() === 'ready'">
+  <!-- Story 2.1 — Waiting Room State (Phase 1.7 refonte)
+       READY state shares the waiting container; opponent slot + action bar
+       branch internally on `isCreator()` / `isJoiner()`. -->
+  @if (roomState() === 'waiting' || roomState() === 'ready') {
     @if (room(); as r) {
       <div class="waiting-container" role="region" [attr.aria-label]="'duel.waiting.title' | translate">
         <button type="button" class="waiting-back-btn"
@@ -42,19 +44,28 @@
             <div class="duelist-vs" aria-hidden="true">VS</div>
 
             <div class="duelist-slot">
-              @if (browsingOpponent(); as opp) {
-                <app-avatar class="duelist-avatar-wrapper"
-                            [pseudo]="opp.pseudo"
+              @if (roomState() === 'ready' && r.player2) {
+                <app-avatar class="duelist-avatar-wrapper duelist-avatar--ready"
+                            [pseudo]="r.player2.pseudo"
                             size="xl">
                 </app-avatar>
-                <span class="duelist-name">{{ opp.pseudo }}</span>
-                <span class="duelist-state duelist-state--waiting">{{ 'duel.waiting.opponentPicking' | translate }}</span>
+                <span class="duelist-name">{{ r.player2.pseudo }}</span>
+                <span class="duelist-state duelist-state--ready">{{ 'duel.waiting.ready' | translate }}</span>
               } @else {
-                <div class="duelist-avatar duelist-avatar--empty" aria-hidden="true">
-                  <mat-icon>person_add</mat-icon>
-                </div>
-                <span class="duelist-name duelist-name--empty">{{ 'duel.waiting.opponentSearching' | translate }}</span>
-                <span class="duelist-state duelist-state--searching">{{ 'duel.waiting.searching' | translate }}</span>
+                @if (browsingOpponent(); as opp) {
+                  <app-avatar class="duelist-avatar-wrapper"
+                              [pseudo]="opp.pseudo"
+                              size="xl">
+                  </app-avatar>
+                  <span class="duelist-name">{{ opp.pseudo }}</span>
+                  <span class="duelist-state duelist-state--waiting">{{ 'duel.waiting.opponentPicking' | translate }}</span>
+                } @else {
+                  <div class="duelist-avatar duelist-avatar--empty" aria-hidden="true">
+                    <mat-icon>person_add</mat-icon>
+                  </div>
+                  <span class="duelist-name duelist-name--empty">{{ 'duel.waiting.opponentSearching' | translate }}</span>
+                  <span class="duelist-state duelist-state--searching">{{ 'duel.waiting.searching' | translate }}</span>
+                }
               }
             </div>
           </div>
@@ -98,15 +109,48 @@
           </div>
         }
 
-        <div class="waiting-actions">
-          <button type="button"
-                  class="waiting-cancel-btn"
-                  [attr.aria-label]="'duel.leaveRoom' | translate"
-                  (click)="leaveRoom()">
-            <mat-icon>close</mat-icon>
-            {{ 'duel.waiting.cancelRoom' | translate }}
-          </button>
-        </div>
+        @if (roomState() === 'ready' && isCreator()) {
+          <div class="waiting-actions waiting-actions--ready">
+            <button type="button"
+                    class="waiting-start-btn"
+                    [attr.aria-label]="'duel.waiting.startDuel' | translate"
+                    (click)="startDuel()">
+              <mat-icon>play_arrow</mat-icon>
+              {{ 'duel.waiting.startDuel' | translate }}
+            </button>
+            <button type="button"
+                    class="waiting-kick-btn"
+                    [attr.aria-label]="'duel.waiting.kickPlayer' | translate"
+                    (click)="kickPlayer()">
+              <mat-icon>person_remove</mat-icon>
+              {{ 'duel.waiting.kickPlayer' | translate }}
+            </button>
+          </div>
+        } @else if (roomState() === 'ready' && isJoiner()) {
+          <p class="waiting-host-hint" aria-live="polite">
+            <mat-icon>hourglass_empty</mat-icon>
+            {{ 'duel.waiting.hostWillStart' | translate }}
+          </p>
+          <div class="waiting-actions">
+            <button type="button"
+                    class="waiting-cancel-btn"
+                    [attr.aria-label]="'duel.leaveRoom' | translate"
+                    (click)="leaveRoom()">
+              <mat-icon>close</mat-icon>
+              {{ 'duel.waiting.leaveRoom' | translate }}
+            </button>
+          </div>
+        } @else {
+          <div class="waiting-actions">
+            <button type="button"
+                    class="waiting-cancel-btn"
+                    [attr.aria-label]="'duel.leaveRoom' | translate"
+                    (click)="leaveRoom()">
+              <mat-icon>close</mat-icon>
+              {{ 'duel.waiting.cancelRoom' | translate }}
+            </button>
+          </div>
+        }
       </div>
     } @else {
       <app-waiting-room-skeleton></app-waiting-room-skeleton>
@@ -173,16 +217,7 @@
   <!-- Duel UI (only when active/connecting) -->
   @if (roomState() === 'active' || roomState() === 'connecting') {
     <!-- Orientation lock overlay (portrait blocking) -->
-    @if (isPortrait()) {
-      <div class="orientation-overlay" role="alertdialog" aria-modal="true" [attr.aria-label]="'duel.misc.rotateLandscape' | translate">
-        <div class="orientation-content">
-          <svg class="rotate-icon" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
-            <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.38zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
-          </svg>
-          <p>{{ 'duel.misc.rotateLandscape' | translate }}</p>
-        </div>
-      </div>
-    }
+    <app-orientation-lock />
 
     <!-- Story 2.3 — "Connecting to duel..." fallback (before DICE_ROLL arrives) -->
     @if (roomState() === 'connecting' && !wsService.pendingPrompt() && !wsService.diceResult() && !wsService.diceInProgress()) {
