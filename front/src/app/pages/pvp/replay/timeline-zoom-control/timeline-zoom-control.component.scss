@@ -1,0 +1,29 @@
+// Layout-only — pills come from DS Wave 1.
+// Caché sous 920px (spec D7): the control is a power-user-only feature and the
+// transport-bar cluster needs the space for the More button + perspective.
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.timeline-zoom-control__hint {
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+button.pill {
+  cursor: pointer;
+  border: 1px solid transparent;
+
+  &.pill--gold {
+    // Active level — extra ring to distinguish from hover state.
+    box-shadow: 0 0 0 1px var(--gold-soft-40);
+  }
+}
+
+@media (max-width: 920px) {
+  :host {
+    display: none;
+  }
+}

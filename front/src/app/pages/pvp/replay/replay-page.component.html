@@ -92,11 +92,13 @@
                        (seekTo)="onSeek($event)"
                        (scrubbing)="onScrub($event)" />
 
-    <!-- Transport Bar -->
+    <!-- Transport Bar — F4 will pass the new structured context fields
+         (turnLabel / playerPositionLabel / phaseLabel / eventLabel) +
+         zoomLevel / cheatSheet / moreOptions outputs. The old positionLabel
+         string is no longer plumbed since the F3 refactor split it. -->
     <app-transport-bar [isPlaying]="isPlaying()"
                         [atEnd]="atEnd()"
                         [forking]="fork.forking()"
-                        [positionLabel]="positionLabel()"
                         [animationsEnabled]="animationsEnabled()"
                         [promptMode]="promptMode()"
                         [perspectiveIndex]="perspectiveIndex()"

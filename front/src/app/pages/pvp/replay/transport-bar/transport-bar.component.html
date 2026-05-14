@@ -1,83 +1,123 @@
 <div class="transport-bar">
-  @if (positionLabel(); as label) {
-    <span class="position-label">{{ label }}</span>
-  }
 
-  <button mat-icon-button
-          [attr.aria-label]="'replay.transport.skipStart' | translate"
-          [matTooltip]="'replay.transport.skipStart' | translate"
-          (click)="skipStart.emit()">
-    <mat-icon>skip_previous</mat-icon>
-  </button>
+  <!-- LEFT: context (D9) -->
+  <div class="transport-bar__context">
+    <app-context-pill
+      [turnLabel]="turnLabel()"
+      [position]="playerPositionLabel()"
+      [phase]="phaseLabel()"
+      [eventLabel]="eventLabel()" />
+  </div>
 
-  <button mat-icon-button
-          [attr.aria-label]="'replay.transport.stepBack' | translate"
-          [matTooltip]="'replay.transport.stepBack' | translate"
-          (click)="stepBack.emit()">
-    <mat-icon>arrow_left</mat-icon>
-  </button>
+  <!-- CENTER: transport controls -->
+  <div class="transport-bar__controls" role="group" [attr.aria-label]="'replay.viewer.cheatSheet.section.playback' | translate">
+    <button
+      type="button"
+      class="icon-btn icon-btn--md"
+      [attr.aria-label]="'replay.transport.skipStart' | translate"
+      [title]="'replay.transport.skipStart' | translate"
+      (click)="skipStart.emit()">
+      ⏮
+    </button>
+    <button
+      type="button"
+      class="icon-btn icon-btn--md"
+      [attr.aria-label]="'replay.transport.stepBack' | translate"
+      [title]="'replay.transport.stepBack' | translate"
+      (click)="stepBack.emit()">
+      ◀
+    </button>
+    <button
+      type="button"
+      class="icon-btn icon-btn--lg icon-btn--round transport-bar__play btn--cta-shimmer"
+      [attr.aria-label]="playAriaKey() | translate"
+      [title]="playAriaKey() | translate"
+      [disabled]="atEnd() && !isPlaying()"
+      (click)="playPause.emit()">
+      {{ playIcon() }}
+    </button>
+    <button
+      type="button"
+      class="icon-btn icon-btn--md"
+      [attr.aria-label]="'replay.transport.stepForward' | translate"
+      [title]="'replay.transport.stepForward' | translate"
+      (click)="stepForward.emit()">
+      ▶
+    </button>
+    <button
+      type="button"
+      class="icon-btn icon-btn--md"
+      [attr.aria-label]="'replay.transport.skipEnd' | translate"
+      [title]="'replay.transport.skipEnd' | translate"
+      (click)="skipEnd.emit()">
+      ⏭
+    </button>
+  </div>
 
-  <button mat-icon-button
-          [attr.aria-label]="(isPlaying() ? 'replay.transport.pause' : 'replay.transport.play') | translate"
-          [matTooltip]="(isPlaying() ? 'replay.transport.pause' : 'replay.transport.play') | translate"
-          [disabled]="atEnd() && !isPlaying()"
-          (click)="playPause.emit()">
-    <mat-icon>{{ isPlaying() ? 'pause' : 'play_arrow' }}</mat-icon>
-  </button>
+  <!-- RIGHT: options -->
+  <div class="transport-bar__options" role="group">
+    <app-timeline-zoom-control
+      [level]="zoomLevel()"
+      (levelChange)="zoomLevelChange.emit($event)" />
 
-  <button mat-icon-button
-          [attr.aria-label]="'replay.transport.stepForward' | translate"
-          [matTooltip]="'replay.transport.stepForward' | translate"
-          (click)="stepForward.emit()">
-    <mat-icon>arrow_right</mat-icon>
-  </button>
+    <button
+      type="button"
+      class="icon-btn icon-btn--md transport-bar__toggle"
+      [class.icon-btn--active]="animationsEnabled()"
+      [attr.aria-label]="animationsAriaKey() | translate"
+      [title]="animationsAriaKey() | translate"
+      (click)="toggleAnimations.emit()">
+      ✦
+    </button>
+    <button
+      type="button"
+      class="icon-btn icon-btn--md transport-bar__toggle"
+      [class.icon-btn--active]="promptMode() === 'decision'"
+      [attr.aria-label]="promptAriaKey() | translate"
+      [title]="promptAriaKey() | translate"
+      (click)="togglePromptMode.emit()">
+      💬
+    </button>
+    <button
+      type="button"
+      class="btn btn--ghost btn--sm btn--icon-leading transport-bar__perspective"
+      [attr.aria-label]="perspectiveAriaKey() | translate"
+      [title]="perspectiveAriaKey() | translate"
+      (click)="togglePerspective.emit()">
+      <span aria-hidden="true">P{{ perspectiveIndex() + 1 }}</span>
+      @if (perspectiveName()) {
+        <span class="transport-bar__perspective-name">{{ perspectiveName() }}</span>
+      }
+      <span aria-hidden="true">⇄</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn--ghost btn--sm btn--icon-leading transport-bar__fork"
+      [attr.aria-label]="'replay.transport.fork' | translate"
+      [title]="'replay.transport.fork' | translate"
+      [disabled]="forking()"
+      (click)="fork.emit()">
+      <span aria-hidden="true">⑂</span>
+      <span class="transport-bar__fork-label">{{ 'replay.transport.fork' | translate }}</span>
+    </button>
+    <button
+      type="button"
+      class="icon-btn icon-btn--md transport-bar__cheat"
+      [attr.aria-label]="'replay.viewer.cheatSheet.help' | translate"
+      [title]="'replay.viewer.cheatSheet.help' | translate"
+      (click)="openCheatSheet.emit()">
+      ⌨
+    </button>
 
-  <button mat-icon-button
-          [attr.aria-label]="'replay.transport.skipEnd' | translate"
-          [matTooltip]="'replay.transport.skipEnd' | translate"
-          (click)="skipEnd.emit()">
-    <mat-icon>skip_next</mat-icon>
-  </button>
+    <!-- Mobile-only ⋯ More button — collapses toggles + fork + perspective. -->
+    <button
+      type="button"
+      class="icon-btn icon-btn--lg transport-bar__more"
+      [class.transport-bar__more--has-non-default]="hasNonDefaultOption()"
+      [attr.aria-label]="'replay.viewer.bottomSheet.options.title' | translate"
+      (click)="openMoreOptions.emit()">
+      ⋯
+    </button>
+  </div>
 
-  <button mat-icon-button
-          [attr.aria-label]="'replay.transport.fork' | translate"
-          [matTooltip]="'replay.transport.fork' | translate"
-          [disabled]="forking()"
-          (click)="fork.emit()">
-    @if (forking()) {
-      <mat-spinner diameter="18"></mat-spinner>
-    } @else {
-      <mat-icon>fork_right</mat-icon>
-    }
-  </button>
-
-  <span class="separator"></span>
-
-  <button mat-icon-button
-          class="toggle-btn"
-          [attr.aria-label]="(animationsEnabled() ? 'replay.transport.disableAnimations' : 'replay.transport.enableAnimations') | translate"
-          [matTooltip]="(animationsEnabled() ? 'replay.transport.disableAnimations' : 'replay.transport.enableAnimations') | translate"
-          [class.active]="animationsEnabled()"
-          [class.inactive]="!animationsEnabled()"
-          (click)="toggleAnimations.emit()">
-    <mat-icon>{{ animationsEnabled() ? 'animation' : 'motion_photos_off' }}</mat-icon>
-  </button>
-
-  <button mat-icon-button
-          class="toggle-btn"
-          [attr.aria-label]="(promptMode() === 'decision' ? 'replay.transport.skipDecisions' : 'replay.transport.showDecisions') | translate"
-          [matTooltip]="(promptMode() === 'decision' ? 'replay.transport.skipDecisions' : 'replay.transport.showDecisions') | translate"
-          [class.active]="promptMode() === 'decision'"
-          [class.inactive]="promptMode() !== 'decision'"
-          (click)="togglePromptMode.emit()">
-    <mat-icon>{{ promptMode() === 'decision' ? 'message' : 'speaker_notes_off' }}</mat-icon>
-  </button>
-
-  <button mat-icon-button
-          class="perspective-btn"
-          [attr.aria-label]="(perspectiveIndex() === 0 ? 'replay.transport.viewAsPlayer2' : 'replay.transport.viewAsPlayer1') | translate"
-          [matTooltip]="(perspectiveIndex() === 0 ? 'replay.transport.viewAsPlayer2' : 'replay.transport.viewAsPlayer1') | translate"
-          (click)="togglePerspective.emit()">
-    <span class="player-label">{{ perspectiveIndex() === 0 ? 'P1' : 'P2' }}</span>
-  </button>
 </div>

@@ -789,6 +789,10 @@
         "nextTurn": "Tour suivant",
         "openPicker": "Choisir un tour"
       },
+      "zoom": {
+        "label": "Zoom",
+        "level": "Zoom {{n}}×"
+      },
       "picker": {
         "title": "Aller au tour",
         "section": {

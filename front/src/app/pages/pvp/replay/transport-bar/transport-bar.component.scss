@@ -1,4 +1,12 @@
-@use 'responsive' as r;
+// =============================================================================
+// Transport-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
+//
+// Layout-only SCSS. All visual styling comes from DS Wave 1 utility classes
+// (`.icon-btn`, `.btn--ghost`, `.btn--cta-shimmer`, `.pill`). The play button
+// gets a custom 52px gold gradient override — documented as the single
+// composite exception that DS Wave 1 doesn't provide (`.btn--primary.--round`
+// isn't a defined composition).
+// =============================================================================
 
 :host {
   display: block;
@@ -6,68 +14,123 @@
 
 .transport-bar {
   position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
+  border-top: 1px solid var(--gold-soft-12);
+  min-height: 64px;
+}
+
+.transport-bar__context {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.transport-bar__controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--surface-nav);
-
-  button {
-    color: #fff;
-  }
+  gap: var(--space-2);
+  justify-self: center;
 }
 
-.separator {
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.2);
-  margin: 0 4px;
-}
-
-.toggle-btn {
-  &.active {
-    opacity: 1;
-    color: var(--accent, #69f0ae) !important;
-  }
-
-  &.inactive {
-    opacity: 0.4;
-    color: rgba(255, 255, 255, 0.35) !important;
-
-    mat-icon {
-      text-decoration: line-through;
-    }
-  }
-}
-
-.perspective-btn {
-  display: inline-flex !important;
+.transport-bar__options {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+}
 
-  .player-label {
-    font-size: 0.875rem;
-    font-weight: 700;
-    line-height: 1;
+// Play button — DS Wave 1 doesn't define `.btn--primary.--round` so the gold
+// gradient + 52px size is a composite custom rule, documented at file head.
+// Consumes the same tokens as `.btn--primary` (gold-100 / gold / gold-700).
+.transport-bar__play {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse);
+  box-shadow:
+    0 4px 16px var(--gold-soft-40),
+    inset 0 1px 0 var(--gold-soft-30);
+  font-size: 20px;
+  line-height: 1;
+  border: none;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow:
+      0 8px 24px var(--gold-soft-50),
+      inset 0 1px 0 var(--gold-soft-30);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
-.position-label {
-  position: absolute;
-  left: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  white-space: nowrap;
+.transport-bar__perspective-name {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 35%;
+  white-space: nowrap;
 }
 
-// Mobile: 44px touch targets
-@include r.respond-below(r.$bp-tablet) {
-  .transport-bar button {
-    @include r.touch-target-min;
+// `⋯` More button gets a small gold dot indicator when any non-default
+// option is active (animations off, decision-mode, etc. — page-driven).
+.transport-bar__more {
+  display: none; // shown only under 480px
+  position: relative;
+
+  &.transport-bar__more--has-non-default::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold-soft-50);
+  }
+}
+
+// =============================================================================
+// Cascade hide (D13)
+// =============================================================================
+
+// ≤ 920px → hide fork label + perspective name (cramped, icons remain)
+@media (max-width: 920px) {
+  .transport-bar__fork-label,
+  .transport-bar__perspective-name {
+    display: none;
+  }
+}
+
+// ≤ 480px → collapse toggles + fork + perspective into ⋯ More.
+// Play stays prominent; step buttons stay (transport is the primary action).
+@media (max-width: 480px) {
+  .transport-bar {
+    grid-template-columns: 1fr auto auto;
+    padding: var(--space-2);
+  }
+
+  .transport-bar__toggle,
+  .transport-bar__perspective,
+  .transport-bar__fork,
+  .transport-bar__cheat {
+    display: none;
+  }
+
+  .transport-bar__more {
+    display: inline-flex;
   }
 }

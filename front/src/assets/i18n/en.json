@@ -789,6 +789,10 @@
         "nextTurn": "Next turn",
         "openPicker": "Choose a turn"
       },
+      "zoom": {
+        "label": "Zoom",
+        "level": "Zoom {{n}}×"
+      },
       "picker": {
         "title": "Go to turn",
         "section": {

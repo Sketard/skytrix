@@ -1,35 +1,56 @@
 @use 'responsive' as r;
 @use 'z-layers' as z;
 
+// =============================================================================
+// Timeline-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
+//
+// Track / chain-groups / segments / playhead are component-scoped — no DS
+// utility class matches their exact composite role. Tokens-only: no hex,
+// no rgba gold inline (consume `var(--gold*)` from `_tokens.scss`).
+// The chain-group SCSS modifiers (`--self` / `--opp`) consume the helper
+// classes from `_chain-owner-palette.scss` (Viewer F0 partial).
+// =============================================================================
+
 :host {
   display: block;
   position: relative;
   user-select: none;
 }
 
+// Caché sous .is-narrow (D1) — `<app-timeline-stepper>` prend le relais.
+@media (max-width: 760px) {
+  :host { display: none; }
+}
+:host-context(.is-narrow) { display: none; }
+
 .timeline-bar {
   position: relative;
   padding: 0;
   overflow-x: scroll;
   overflow-y: hidden;
-  background: var(--surface-nav);
+  background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
+  border-top: 1px solid var(--gold-soft-12);
 }
 
-.track {
+.timeline-bar__track {
   display: flex;
   position: relative;
-  height: 52px;
-  cursor: pointer;
+  height: 56px;
+  cursor: grab;
   min-width: 100%;
   width: 100%;
-  transition: width 200ms ease;
+  transition: width var(--transition-normal) var(--ease-out);
 
-  &.zoom-l2 {
-    width: 150%;
+  &:active {
+    cursor: grabbing;
   }
 
-  &.zoom-l3 {
-    width: 250%;
+  &.timeline-bar__track--zoom-l2 {
+    width: 200%;
+  }
+
+  &.timeline-bar__track--zoom-l3 {
+    width: 300%;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -37,7 +58,7 @@
   }
 }
 
-.turn-segment {
+.timeline-bar__turn {
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
@@ -45,172 +66,187 @@
   min-width: 0;
   padding: 2px 6px;
   height: 100%;
-  background: var(--surface-elevated);
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.1);
-  transition: background 150ms;
+  background: var(--surface-overlay);
+  box-shadow: inset -1px 0 0 var(--border-subtle);
+  transition: background var(--transition-fast) var(--ease-out);
   cursor: pointer;
 
   &:hover {
-    background: var(--surface-card-hover);
+    background: var(--gold-soft-06);
   }
 
-  &.current {
-    background: rgba(201, 168, 76, 0.25);
-    border-bottom: 2px solid var(--pvp-accent);
+  &.timeline-bar__turn--current {
+    background: var(--gold-soft-12);
+    border-bottom: 2px solid var(--gold);
   }
 
-  &.not-computed {
-    opacity: 0.3;
+  &.timeline-bar__turn--not-computed {
+    // Diagonal shimmer pattern hints "still computing" (D7 visual).
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--gold-soft-04) 0px, var(--gold-soft-04) 8px,
+      var(--surface-bg-deep) 8px, var(--surface-bg-deep) 16px
+    );
+    opacity: 0.45;
     pointer-events: none;
   }
 }
 
-.turn-label {
-  font-size: 12px;
-  font-weight: 800;
+.timeline-bar__turn-label {
+  font: var(--weight-bold) var(--text-xs) / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  padding: 0 6px;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  line-height: 18px;
+  padding: 4px 6px 0;
+  flex: 0 0 auto;
 }
 
-.sub-events {
+.timeline-bar__sub-events {
   display: flex;
-  gap: 2px;
+  gap: 3px;
   justify-content: center;
   align-items: center;
   width: 100%;
   align-self: stretch;
   flex-shrink: 0;
   padding: 3px 0;
+  flex: 1;
 }
 
 .sub-event {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   flex: 0 0 auto;
   border-radius: 50%;
   background: var(--text-secondary);
   opacity: 0.4;
   cursor: pointer;
-  transition: transform 150ms ease-out, opacity 150ms ease-out, background 150ms ease-out;
+  transition: all var(--transition-fast) var(--ease-out);
 
   &:hover {
-    transform: scale(1.3);
-    opacity: 0.8;
-    background: var(--pvp-accent);
+    transform: scale(1.4);
+    opacity: 0.9;
+    background: var(--gold);
   }
 
+  // Class name kept as `current` (no BEM) because `syncPlayhead` queries
+  // `.sub-event.current` via DOM selector — see timeline-bar.component.ts.
+  // Same goes for `not-computed`.
+  &.sub-event--current,
   &.current {
-    background: var(--pvp-accent);
+    background: var(--gold);
     opacity: 1;
+    box-shadow: 0 0 6px var(--gold-soft-50);
   }
 
+  &.sub-event--not-computed,
   &.not-computed {
     opacity: 0.15;
     pointer-events: none;
   }
-
 }
 
+// chain-group--self / --opp come from `_chain-owner-palette.scss` (Viewer F0).
+// We only add the base `.chain-group` layout here.
 .chain-group {
   display: flex;
-  gap: 2px;
+  gap: 3px;
   align-items: center;
-  background: rgba(230, 126, 34, 0.2);
-  border: 1px solid rgba(230, 126, 34, 0.4);
-  border-radius: 6px;
-  padding: 2px 3px;
+  padding: 3px 5px;
+  border-radius: var(--radius-sm);
 }
 
-.playhead {
+// Playhead — kept as plain class because `syncPlayhead` queries it via
+// `.playhead`. Aliased via the BEM class for SCSS-side targeting.
+.playhead,
+.timeline-bar__playhead {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 2px;
-  background: var(--pvp-accent);
   pointer-events: none;
+  background: var(--gold);
+  box-shadow: 0 0 12px var(--gold), 0 0 4px var(--gold-50);
   transform: translateX(-1px);
-  box-shadow: 0 0 4px var(--pvp-accent);
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold-soft-60);
+    transform: translateX(-50%);
+  }
 }
 
-// Hover preview popover (persistent instance, hidden by default)
-.hover-popover {
+// Hover preview popover — fixed position so it escapes overflow:hidden on
+// the timeline-bar. `.surface-card` background comes from DS Wave 1.
+.timeline-bar__popover {
   position: absolute;
   bottom: calc(100% + 8px);
   transform: translateX(-50%);
-  background: var(--surface-card);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  padding: 4px;
+  padding: var(--space-2);
   pointer-events: none;
   z-index: z.$z-pvp-timeline-popover;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   display: none;
+  flex-direction: column;
+  gap: var(--space-1);
 
-  &.visible {
-    display: block;
+  &.timeline-bar__popover--visible {
+    display: flex;
+  }
+
+  &.timeline-bar__popover--not-computed {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--gold-soft-04) 0px, var(--gold-soft-04) 8px,
+      var(--surface-bg-deep) 8px, var(--surface-bg-deep) 16px
+    );
   }
 }
 
-.preview-board {
-  width: 200px;
-  height: 150px;
-  overflow: hidden;
-  border-radius: 4px;
-
-  app-pvp-board-container {
-    display: block;
-    transform: scale(0.25);
-    transform-origin: top left;
-    width: 800px;
-    height: 600px;
-    pointer-events: none;
-  }
+.timeline-bar__popover-info,
+.timeline-bar__popover-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
 }
 
-.hover-info {
-  padding: 4px;
-  font-size: 10px;
-  color: var(--text-secondary);
+.timeline-bar__popover-label {
+  font: var(--weight-semibold) var(--text-xs) / 1.2 'Inter', sans-serif;
+  color: var(--gold-50);
+  max-width: 240px;
   text-align: center;
 }
 
-.hover-label {
-  font-size: 10px;
-  color: var(--pvp-accent);
-  margin-top: 2px;
+.timeline-bar__popover-lp {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
 }
 
-.hover-text-only {
-  padding: 8px 12px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  text-align: center;
-}
+.timeline-bar__popover-lp-self { color: var(--gold-50); }
+.timeline-bar__popover-lp-opp  { color: var(--cyan-300); }
+.timeline-bar__popover-lp-sep  { color: var(--text-disabled); }
 
-// Responsive
+// Mobile fallback handled by :host display:none above. Legacy fallbacks
+// retained for tablet edge cases.
 @include r.respond-below(r.$bp-tablet) {
-  .track {
-    // No zoom on mobile/tablet
-    &.zoom-l2, &.zoom-l3 {
+  .timeline-bar__track {
+    &.timeline-bar__track--zoom-l2,
+    &.timeline-bar__track--zoom-l3 {
       width: 100%;
     }
-  }
-
-  .hover-popover {
-    display: none;
-  }
-}
-
-@include r.respond-below(r.$bp-pvp-narrow) {
-  .turn-label {
-    font-size: 8px;
   }
 }

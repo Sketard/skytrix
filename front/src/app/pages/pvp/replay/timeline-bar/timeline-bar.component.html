@@ -8,25 +8,25 @@
      tabindex="0">
 
   <!-- Turn segments track -->
-  <div class="track"
+  <div class="timeline-bar__track"
        #track
-       [class.zoom-l2]="zoomLevel() === 2"
-       [class.zoom-l3]="zoomLevel() === 3"
+       [class.timeline-bar__track--zoom-l2]="zoomLevel() === 2"
+       [class.timeline-bar__track--zoom-l3]="zoomLevel() === 3"
        [style.--max-events]="maxEventCount()"
        (mousedown)="onMouseDown($event)"
        (touchstart)="onTouchStart($event)"
        (wheel)="onWheel($event)">
 
     @for (turn of turns(); track turn.turnNumber) {
-      <div class="turn-segment"
-           [class.current]="isCurrentTurn(turn)"
-           [class.not-computed]="!isComputed(turn)"
+      <div class="timeline-bar__turn"
+           [class.timeline-bar__turn--current]="isCurrentTurn(turn)"
+           [class.timeline-bar__turn--not-computed]="!isComputed(turn)"
            (click)="onTurnClick(turn); $event.stopPropagation()"
            (mouseenter)="onTurnMouseEnter($event, turn)"
            (mousemove)="onTurnMouseMove($event)"
            (mouseleave)="onTurnMouseLeave()">
 
-        <span class="turn-label">
+        <span class="timeline-bar__turn-label">
           @if (turn.turnNumber === 0) {
             {{ 'replay.timeline.setup' | translate }}
           } @else {
@@ -34,10 +34,12 @@
           }
         </span>
 
-        <div class="sub-events">
+        <div class="timeline-bar__sub-events">
           @for (seg of subEventSegments(turn); track $index) {
             @if (seg.type === 'chain') {
-              <div class="chain-group">
+              <div class="chain-group"
+                   [class.chain-group--self]="chainSegmentIsSelf(seg.indices[0])"
+                   [class.chain-group--opp]="!chainSegmentIsSelf(seg.indices[0])">
                 @for (idx of seg.indices; track idx) {
                   <div class="sub-event"
                        [class.current]="idx === currentIndex()"
@@ -63,53 +65,40 @@
     }
 
     <!-- Playhead — positioned via direct DOM write in afterRender -->
-    <div class="playhead"></div>
+    <div class="timeline-bar__playhead playhead"></div>
   </div>
 
 </div>
 
 <!-- Hover preview popover — outside .timeline-bar to avoid overflow-y clipping -->
-<div class="hover-popover"
-     [class.visible]="previewVisible() && isDesktop()"
+<div class="timeline-bar__popover surface-card surface-card--flat"
+     [class.timeline-bar__popover--visible]="previewVisible() && isDesktop()"
+     [class.timeline-bar__popover--not-computed]="hoveredBeyondComputed()"
      [style.left.px]="hoverX()">
   @if (hoveredBeyondComputed()) {
-    <!-- Text-only summary for not-yet-computed turns -->
     @if (hoveredTurnInfo(); as turnInfo) {
-      <div class="hover-text-only">
-        {{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}
-        · {{ 'replay.timeline.events' | translate: { count: turnInfo.eventCount } }}
+      <div class="timeline-bar__popover-text">
+        <span class="text-eyebrow">{{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}
+        · {{ 'replay.timeline.events' | translate: { count: turnInfo.eventCount } }}</span>
         @if (hoveredLabel(); as label) {
-          <div class="hover-label">{{ label }}</div>
+          <span class="timeline-bar__popover-label">{{ label }}</span>
         }
       </div>
     }
   } @else {
-    <!-- Board preview -->
-    <div class="preview-board">
-      <app-pvp-board-container [preview]="true" [readOnly]="true"
-                               [duelState]="hoveredState()"
-                               [ownPlayerIndex]="ownPlayerIndex()"
-                               [displayedPhase]="hoveredState().phase"
-                               [displayedTurnPlayer]="hoveredState().turnPlayer"
-                               [displayedTurnCount]="hoveredState().turnCount"
-                               [timerState]="null"
-                               [highlightedZones]="emptySet"
-                               [actionablePrompt]="null"
-                               [opponentDisconnected]="false"
-                               [animatingZone]="null"
-                               [animatingLp]="null"
-                               [activeChainLinks]="emptyArray"
-                               [chainPhase]="'idle'"
-                               [targetedZoneKeys]="emptyStringSet"
-                               [preTargetZoneKeys]="emptyStringSet"
-                               [revealedZoneKeys]="emptyStringSet" />
-    </div>
+    <app-mini-board-thumbnail
+      [state]="hoveredState()"
+      [perspectiveIndex]="ownPlayerIndex()" />
     @if (hoveredTurnInfo(); as turnInfo) {
-      <div class="hover-info">
-        {{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}
-        · LP: {{ turnInfo.p1LP }} / {{ turnInfo.p2LP }}
+      <div class="timeline-bar__popover-info">
+        <span class="text-eyebrow">{{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}</span>
+        <span class="text-mono timeline-bar__popover-lp">
+          <span class="timeline-bar__popover-lp-self">{{ turnInfo.p1LP }}</span>
+          <span class="timeline-bar__popover-lp-sep">/</span>
+          <span class="timeline-bar__popover-lp-opp">{{ turnInfo.p2LP }}</span>
+        </span>
         @if (hoveredLabel(); as label) {
-          <div class="hover-label">{{ label }}</div>
+          <span class="timeline-bar__popover-label">{{ label }}</span>
         }
       </div>
     }

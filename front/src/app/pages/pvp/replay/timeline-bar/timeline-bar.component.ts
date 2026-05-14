@@ -3,13 +3,15 @@ import {
 } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/pvp-board-container.component';
+import { MiniBoardThumbnailComponent } from '../mini-board-thumbnail/mini-board-thumbnail.component';
 import type { TurnMeta } from '../../replay-ws.types';
 import type { PreComputedState } from '../../replay-ws.types';
 import type { Player } from '../../duel-ws.types';
 import type { DuelState } from '../../types';
-import { EMPTY_DUEL_STATE, EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../../types';
+import { EMPTY_DUEL_STATE } from '../../types';
 import { TIMELINE_BAR_TRANSITION_FALLBACK_MS } from '../../duel-page/animation-constants';
+
+export type ZoomLevel = 1 | 2 | 3;
 
 export type TimelineSegment =
   | { type: 'single'; idx: number }
@@ -21,7 +23,7 @@ export type TimelineSegment =
   styleUrl: './timeline-bar.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, PvpBoardContainerComponent],
+  imports: [TranslateModule, MiniBoardThumbnailComponent],
 })
 export class TimelineBarComponent implements OnDestroy {
   // Inputs
@@ -31,13 +33,16 @@ export class TimelineBarComponent implements OnDestroy {
   readonly totalEvents = input.required<number>();
   readonly boardStates = input.required<PreComputedState[]>();
   readonly ownPlayerIndex = input<Player>(0);
+  /** Zoom state lifted to the page (D21) — 1× / 2× / 3×.
+   *  Source of truth: `ReplayPageComponent.zoomLevel` signal, wired to both
+   *  this input AND the `<app-timeline-zoom-control>` in the transport bar.
+   *  `onWheel` emits `zoomLevelChange` instead of mutating the local signal. */
+  readonly zoomLevel = input<ZoomLevel>(1);
 
   // Outputs
   readonly seekTo = output<number>();
   readonly scrubbing = output<number>();
-
-  // Zoom state: 3 levels
-  readonly zoomLevel = signal<1 | 2 | 3>(1);
+  readonly zoomLevelChange = output<ZoomLevel>();
 
   // Hover preview state
   readonly hoveredIndex = signal<number | null>(null);
@@ -147,11 +152,6 @@ export class TimelineBarComponent implements OnDestroy {
     return this.boardStates()[idx]?.label ?? null;
   });
 
-  // Shared inert defaults for board preview
-  readonly emptySet = EMPTY_ZONE_SET;
-  readonly emptyStringSet = EMPTY_STRING_SET;
-  readonly emptyArray = EMPTY_ARRAY;
-
   constructor() {
     this.pointerMql.addEventListener('change', this.pointerMqlHandler);
     afterRender(() => this.syncPlayhead());
@@ -231,12 +231,18 @@ export class TimelineBarComponent implements OnDestroy {
     if (!this.isDesktop()) return;
     event.preventDefault();
     const prev = this.zoomLevel();
+    let next: ZoomLevel = prev;
     if (event.deltaY < 0 && prev < 3) {
-      this.zoomLevel.set((prev + 1) as 1 | 2 | 3);
+      next = (prev + 1) as ZoomLevel;
     } else if (event.deltaY > 0 && prev > 1) {
-      this.zoomLevel.set((prev - 1) as 1 | 2 | 3);
+      next = (prev - 1) as ZoomLevel;
     }
-    if (this.zoomLevel() === prev) return;
+    if (next === prev) return;
+    // Emit to the page-owned signal (D21). The page will flip its zoomLevel
+    // signal, which flows back through our input — the cursor-anchored rAF
+    // loop below uses the current scrollWidth which already reflects the new
+    // CSS scale because Angular's input update is synchronous with the emit.
+    this.zoomLevelChange.emit(next);
 
     const container = this.timelineBarEl()?.nativeElement;
     if (!container) return;
@@ -309,6 +315,24 @@ export class TimelineBarComponent implements OnDestroy {
   isCurrentTurn(turn: TurnMeta): boolean {
     const idx = this.currentIndex();
     return idx >= turn.startIndex && idx <= turn.endIndex;
+  }
+
+  /**
+   * Self-vs-opp colour for chain segments: true → `--self-*` (perspective
+   * matches the turn player at chain start), false → `--opp-*`. Used by the
+   * SCSS modifiers `.chain-group--self` / `--opp` (from `_chain-owner-palette`).
+   *
+   * Proxy: we read the `boardState.turnPlayer` from the FIRST event of the
+   * chain. This is a reasonable approximation — most chains are initiated by
+   * the turn player; opp counter-chains land on subsequent links of the same
+   * segment but the visual stays grouped under the initiator. If proper
+   * per-link ownership becomes needed, plumb `chainPlayer` through
+   * `PreComputedState` (server-side change).
+   */
+  chainSegmentIsSelf(firstIndex: number): boolean {
+    const state = this.boardStates()[firstIndex];
+    if (!state) return true;
+    return state.boardState.turnPlayer === this.ownPlayerIndex();
   }
 
   // Memoization for segments (avoids new array per CD cycle)
