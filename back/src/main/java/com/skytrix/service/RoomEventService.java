@@ -63,6 +63,47 @@ public class RoomEventService {
         }
     }
 
+    /**
+     * Notify the creator that a non-participant is currently picking a deck
+     * (i.e. opened the deck-picker dialog after hitting the room URL). Sent
+     * by {@code RoomService.announceBrowsing}. Payload carries the browsing
+     * user's pseudo so the creator's waiting-room can show the slot filled.
+     */
+    public void sendOpponentBrowsing(String roomCode, Object browsingUserDto) {
+        var emitter = emitters.get(roomCode);
+        if (emitter == null) return;
+
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("opponent-browsing")
+                    .data(browsingUserDto, MediaType.APPLICATION_JSON));
+        } catch (IOException e) {
+            log.warn("Failed to send SSE opponent-browsing for room {}", roomCode, e);
+            // Drop the emitter on the floor — Tomcat will reap it.
+            emitters.remove(roomCode, emitter);
+        }
+    }
+
+    /**
+     * Notify the creator that the previously-browsing opponent has cancelled
+     * (closed the dialog without joining, or navigated away). Sent by
+     * {@code RoomService.announceLeftBrowsing}. Payload-less event — the
+     * front falls back to the "waiting" UI when this fires.
+     */
+    public void sendOpponentLeftBrowsing(String roomCode) {
+        var emitter = emitters.get(roomCode);
+        if (emitter == null) return;
+
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("opponent-left-browsing")
+                    .data("", MediaType.APPLICATION_JSON));
+        } catch (IOException e) {
+            log.warn("Failed to send SSE opponent-left-browsing for room {}", roomCode, e);
+            emitters.remove(roomCode, emitter);
+        }
+    }
+
     /** Evict and complete the emitter for a room that ended or was deleted. */
     public void evict(String roomCode) {
         var emitter = emitters.remove(roomCode);

@@ -139,6 +139,7 @@ export class DuelPageComponent implements OnInit {
   // Delegate room signals to service
   readonly roomState = this.roomService.roomState;
   readonly room = this.roomService.room;
+  readonly browsingOpponent = this.roomService.browsingOpponent;
   readonly countdown = this.roomService.countdown;
   readonly canShare = this.roomService.canShare;
 

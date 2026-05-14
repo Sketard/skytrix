@@ -90,4 +90,22 @@ public class RoomController {
             @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
         roomService.endRoom(roomCode);
     }
+
+    /** Notify the room creator that a non-participant is picking a deck (i.e.
+     *  is sitting on the deck-picker dialog after hitting the deep-link). */
+    @PostMapping("/{roomCode}/announce-browsing")
+    @ResponseStatus(code = HttpStatus.NO_CONTENT)
+    public void announceBrowsing(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        roomService.announceBrowsing(roomCode);
+    }
+
+    /** Notify the room creator that the browsing opponent has cancelled
+     *  (closed the dialog without joining or navigated away). */
+    @PostMapping("/{roomCode}/announce-left-browsing")
+    @ResponseStatus(code = HttpStatus.NO_CONTENT)
+    public void announceLeftBrowsing(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        roomService.announceLeftBrowsing(roomCode);
+    }
 }

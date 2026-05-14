@@ -8,7 +8,7 @@ import { Clipboard } from '@angular/cdk/clipboard';
 import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '../../../core/services/notification.service';
 import { RoomDTO } from '../room.types';
-import { RoomApiService } from '../room-api.service';
+import { RoomApiService, type BrowsingUser } from '../room-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
@@ -63,6 +63,10 @@ export class RoomStateMachineService {
   readonly roomState = signal<RoomState>('loading');
   readonly room = signal<RoomDTO | null>(null);
   readonly deckName = signal('');
+  /** Non-participant who has the deck picker open for this room — set on
+   *  the `opponent-browsing` SSE event, cleared on `opponent-left-browsing`
+   *  or `room-ready`. Drives the waiting screen's "opponent slot" UI. */
+  readonly browsingOpponent = signal<BrowsingUser | null>(null);
 
   readonly countdownTick = signal(Date.now());
   readonly countdown = computed(() => {
@@ -173,6 +177,12 @@ export class RoomStateMachineService {
       this.redirectWithError('error.TOO_MANY_ATTEMPTS');
       return;
     }
+    // Fire-and-forget: tell the creator their slot just filled with us.
+    // Failure is non-fatal (best-effort presence ping).
+    this.roomApiService.announceBrowsing(roomCode).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({ error: () => {} });
+
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
       ...deckPickerDialogConfig(),
       data: { context: 'join' },
@@ -185,6 +195,11 @@ export class RoomStateMachineService {
         // triggers the 500 "Impossible de rejoindre la room" Axel observed
         // on direct-URL deep-links.
         if (!result) {
+          // User cancelled the dialog — tell the creator their slot just
+          // emptied, then navigate back to the lobby.
+          this.roomApiService.announceLeftBrowsing(roomCode).pipe(
+            takeUntilDestroyed(this.destroyRef),
+          ).subscribe({ error: () => {} });
           this.router.navigate(['/pvp']);
           return EMPTY;
         }
@@ -238,10 +253,23 @@ export class RoomStateMachineService {
       takeUntil(this.stopPolling$),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: room => {
-        this.room.set(room);
-        if (room.status === 'ACTIVE') {
-          this.connectWhenReady(room);
+      next: event => {
+        switch (event.kind) {
+          case 'browsing':
+            this.browsingOpponent.set(event.user);
+            break;
+          case 'left-browsing':
+            this.browsingOpponent.set(null);
+            break;
+          case 'ready':
+            // Real join — clear the browsing slot (the room DTO now has the
+            // real player2) and bridge to the duel.
+            this.browsingOpponent.set(null);
+            this.room.set(event.room);
+            if (event.room.status === 'ACTIVE') {
+              this.connectWhenReady(event.room);
+            }
+            break;
         }
       },
       error: () => {

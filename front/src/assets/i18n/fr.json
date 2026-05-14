@@ -162,6 +162,7 @@
       "ready": "Prêt",
       "searching": "Recherche",
       "opponentSearching": "En attente...",
+      "opponentPicking": "Choisit son deck...",
       "roomCodeLabel": "Code de la room",
       "shareHint": "Partage ce code à un ami pour le faire rejoindre directement",
       "shareLinkTitle": "Partager le lien",

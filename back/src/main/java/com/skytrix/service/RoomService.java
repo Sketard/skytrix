@@ -223,6 +223,53 @@ public class RoomService {
         return roomMapper.toRoomDTO(room, requestingUserId);
     }
 
+    /**
+     * Non-participant signals they're picking a deck for this room (deck-picker
+     * dialog just opened). Forwards an `opponent-browsing` SSE event to the
+     * room creator so the waiting screen can show the slot filled by their
+     * incoming opponent (pseudo only). Idempotent + side-effect-free: no DB
+     * write, no state change — purely a presence ping.
+     *
+     * 403 if the caller is the room creator (irrelevant — they don't browse
+     * their own room), 404 if the room doesn't exist, 409 if it's no longer
+     * in a joinable state.
+     */
+    @Transactional(readOnly = true)
+    public void announceBrowsing(String roomCode) {
+        var user = authService.getConnectedUser();
+        var room = roomRepository.findByRoomCode(roomCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+        if (user.getId().equals(room.getPlayer1().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot browse your own room");
+        }
+        if (room.getStatus() != RoomStatus.WAITING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Room is not in waiting state");
+        }
+        // Send a minimal payload — pseudo is all the creator needs to render.
+        // Pass a plain HashMap (not Map.of) to avoid the ImmutableCollections
+        // converter mismatch the SSE encoder choked on previously.
+        var payload = new java.util.HashMap<String, Object>();
+        payload.put("id", user.getId());
+        payload.put("pseudo", user.getPseudo());
+        roomEventService.sendOpponentBrowsing(roomCode, payload);
+    }
+
+    /**
+     * Non-participant cancels their deck pick (dialog closed without joining)
+     * or navigates away. Forwards an `opponent-left-browsing` SSE event so
+     * the creator's UI falls back to the "waiting for an opponent" state.
+     * Idempotent: a duplicate call after a real join (status changed) is
+     * silently swallowed since the SSE emitter is already evicted.
+     */
+    @Transactional(readOnly = true)
+    public void announceLeftBrowsing(String roomCode) {
+        var user = authService.getConnectedUser();
+        var room = roomRepository.findByRoomCode(roomCode).orElse(null);
+        if (room == null) return;
+        if (user.getId().equals(room.getPlayer1().getId())) return;
+        roomEventService.sendOpponentLeftBrowsing(roomCode);
+    }
+
     @Transactional(readOnly = true)
     public List<RoomDTO> listOpenRooms() {
         var userId = authService.getConnectedUserId();

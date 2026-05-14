@@ -42,11 +42,20 @@
             <div class="duelist-vs" aria-hidden="true">VS</div>
 
             <div class="duelist-slot">
-              <div class="duelist-avatar duelist-avatar--empty" aria-hidden="true">
-                <mat-icon>person_add</mat-icon>
-              </div>
-              <span class="duelist-name duelist-name--empty">{{ 'duel.waiting.opponentSearching' | translate }}</span>
-              <span class="duelist-state duelist-state--searching">{{ 'duel.waiting.searching' | translate }}</span>
+              @if (browsingOpponent(); as opp) {
+                <app-avatar class="duelist-avatar-wrapper"
+                            [pseudo]="opp.pseudo"
+                            size="xl">
+                </app-avatar>
+                <span class="duelist-name">{{ opp.pseudo }}</span>
+                <span class="duelist-state duelist-state--waiting">{{ 'duel.waiting.opponentPicking' | translate }}</span>
+              } @else {
+                <div class="duelist-avatar duelist-avatar--empty" aria-hidden="true">
+                  <mat-icon>person_add</mat-icon>
+                </div>
+                <span class="duelist-name duelist-name--empty">{{ 'duel.waiting.opponentSearching' | translate }}</span>
+                <span class="duelist-state duelist-state--searching">{{ 'duel.waiting.searching' | translate }}</span>
+              }
             </div>
           </div>
         </div>

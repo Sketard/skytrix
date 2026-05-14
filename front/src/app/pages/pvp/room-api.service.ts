@@ -51,15 +51,39 @@ export class RoomApiService {
     return this.http.delete<void>(`/api/admin/rooms/${roomCode}`);
   }
 
+  /** Non-participant signals they're on the deck picker for this room.
+   *  Fire-and-forget: the creator's SSE receives an `opponent-browsing`
+   *  event with the user's pseudo so their waiting screen can show the
+   *  slot occupied. Idempotent server-side. */
+  announceBrowsing(roomCode: string): Observable<void> {
+    return this.http.post<void>(`/api/rooms/${roomCode}/announce-browsing`, {});
+  }
+
+  /** Non-participant cancels their deck pick — the SSE receives an
+   *  `opponent-left-browsing` event so the creator falls back to the
+   *  "waiting" UI. Idempotent server-side. */
+  announceLeftBrowsing(roomCode: string): Observable<void> {
+    return this.http.post<void>(`/api/rooms/${roomCode}/announce-left-browsing`, {});
+  }
+
   /**
-   * Per-room SSE: emits the room DTO when the duel is ready and completes.
-   * Used by the WAITING screen on the room owner's side to bridge to the
-   * board once the opponent joins.
+   * Per-room SSE used by the creator's WAITING screen. Emits:
+   *   - `{ kind: 'browsing', user }`  — a non-participant opened the deck
+   *     picker (so the slot can render their pseudo as "en sélection").
+   *   - `{ kind: 'left-browsing' }`   — they cancelled.
+   *   - `{ kind: 'ready', room }`     — duel is starting; subscriber
+   *     completes after this.
    */
-  subscribeToRoomEvents(roomCode: string): Observable<RoomDTO> {
-    return this.openEventSource<RoomDTO>(`/api/rooms/${roomCode}/events`, {
-      events: { 'room-ready': data => data as RoomDTO },
-      completeOnFirstEvent: true,
+  subscribeToRoomEvents(roomCode: string): Observable<RoomEvent> {
+    return this.openEventSource<RoomEvent>(`/api/rooms/${roomCode}/events`, {
+      events: {
+        'opponent-browsing':      data => ({ kind: 'browsing', user: data as BrowsingUser }),
+        'opponent-left-browsing': () => ({ kind: 'left-browsing' }),
+        'room-ready':             data => ({ kind: 'ready', room: data as RoomDTO }),
+      },
+      // The lifecycle is open until `room-ready`; we can't use
+      // `completeOnFirstEvent` because the browsing pings should leave
+      // the stream alive. The state-machine completes manually on `ready`.
     });
   }
 
@@ -130,3 +154,10 @@ export type LobbyEvent =
   | { kind: 'created'; room: RoomDTO }
   | { kind: 'removed'; roomCode: string }
   | { kind: 'updated'; room: RoomDTO };
+
+export interface BrowsingUser { id: number; pseudo: string; }
+
+export type RoomEvent =
+  | { kind: 'browsing'; user: BrowsingUser }
+  | { kind: 'left-browsing' }
+  | { kind: 'ready'; room: RoomDTO };

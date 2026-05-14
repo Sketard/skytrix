@@ -162,6 +162,7 @@
       "ready": "Ready",
       "searching": "Searching",
       "opponentSearching": "Waiting...",
+      "opponentPicking": "Picking deck...",
       "roomCodeLabel": "Room code",
       "shareHint": "Share this code with a friend so they can join directly",
       "shareLinkTitle": "Share link",
