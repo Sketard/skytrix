@@ -155,13 +155,18 @@ export class DuelPageComponent implements OnInit {
   private readonly retryCount = signal(0);
   readonly canRetry = computed(() => this.retryCount() < DuelPageComponent.MAX_RETRIES && this.wsService.canRetry());
 
-  // Story 2.3 — Board ready when first BOARD_STATE arrives (both players populated with LP)
-  readonly boardReady = computed(() => this.logicalState().players.length === 2 && this.logicalState().players[0].lp > 0);
+  // Story 2.3 — Board ready when first BOARD_STATE arrives. EMPTY_DUEL_STATE
+  // seeds lp=8000 before the worker has spawned, so gating on lp would flip true
+  // immediately and skip the duel-loading screen entirely. Gate on deckCount>0
+  // for both players — only a real BOARD_STATE from the worker populates this.
+  readonly boardReady = computed(() => {
+    const s = this.logicalState();
+    return s.players.length === 2 && s.players[0].deckCount > 0 && s.players[1].deckCount > 0;
+  });
 
   // Story 2.4 — Duel loading: thumbnails pre-cached (or all settled with fallback)
   readonly thumbnailsReady = signal(false);
   readonly duelLoadingReady = computed(() => this.boardReady() && this.thumbnailsReady());
-  readonly loadingTimeout = signal(false);
 
 
   readonly renderedState = computed(() => this.wsService.boardStateView.renderedState());
@@ -514,7 +519,6 @@ export class DuelPageComponent implements OnInit {
       duelLoadingReady: this.duelLoadingReady,
       roomState: this.roomState,
       thumbnailsReady: this.thumbnailsReady,
-      loadingTimeout: this.loadingTimeout,
     });
 
     // Story 3.3 — Connection effects (extracted to DuelConnectionEffectsService)

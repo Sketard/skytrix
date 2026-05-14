@@ -13,6 +13,7 @@
 
       <h1 class="dice-screen-title">
         @switch (stage()) {
+          @case ('prep')    { {{ 'duel.preparing.title' | translate }} }
           @case ('ready')   { {{ 'duel.dice.titleReady' | translate }} }
           @case ('rolling') { {{ 'duel.dice.titleRolling' | translate }} }
           @case ('result')  { {{ 'duel.dice.titleResult' | translate }} }
@@ -21,6 +22,7 @@
       </h1>
       <p class="dice-screen-subtitle">
         @switch (stage()) {
+          @case ('prep')    { {{ 'duel.preparing.opponentJoined' | translate }} }
           @case ('ready')   { {{ 'duel.dice.subtitleReady' | translate }} }
           @case ('rolling') { {{ 'duel.dice.subtitleRolling' | translate }} }
           @case ('result')  { {{ 'duel.dice.subtitleResult' | translate }} }
@@ -33,9 +35,18 @@
         <div class="dice-screen-arena-content">
 
           <!-- Dice stage: stays mounted across ready/rolling/result so the
-               physics animation isn't restarted by mount/unmount cycles. -->
-          <div class="dice-stage">
+               physics animation isn't restarted by mount/unmount cycles.
+               In `prep` we hide the cubes (values unknown) and render a
+               discreet pulsing indicator over the table instead. -->
+          <div class="dice-stage" [class.dice-stage--prep]="stage() === 'prep'">
             <div class="dice-table" aria-hidden="true"></div>
+            @if (stage() === 'prep') {
+              <div class="dice-prep-pulse" aria-hidden="true">
+                <span class="dice-prep-pulse__dot"></span>
+                <span class="dice-prep-pulse__dot"></span>
+                <span class="dice-prep-pulse__dot"></span>
+              </div>
+            }
             <div class="dice-pair dice-style-obsidian">
               <!-- Player A (own side) -->
               <div class="dice-scene dice-scene--a">

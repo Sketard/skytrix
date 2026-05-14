@@ -131,6 +131,51 @@
   perspective-origin: 50% 30%;
   padding: clamp(10px, 3cqw, 20px);
   overflow: hidden;
+
+  // Hide the cubes during the `prep` stage — dice values are unknown
+  // until DICE_RESULT lands, and the resting "start" pose would render
+  // them off-screen anyway. We keep the table visible as the arena's
+  // signature element and overlay a discreet 3-dot pulse on top.
+  &--prep .dice-pair { display: none; }
+}
+
+// Pre-roll "preparing" indicator — 3 dots pulsing in sequence above
+// the table, gold-tinted to match the arena palette. Replaces the
+// generic "PRÉPARATION DU DUEL…" full-screen flash that used to render
+// between waiting-room → dice arena.
+.dice-prep-pulse {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--dice-size, 64px) * 0.9);
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  z-index: 1;
+
+  &__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--gold-soft-60);
+    box-shadow: 0 0 8px var(--gold-soft-55);
+    animation: dice-prep-pulse-blink 1.2s ease-in-out infinite;
+
+    &:nth-child(2) { animation-delay: 0.18s; }
+    &:nth-child(3) { animation-delay: 0.36s; }
+  }
+}
+
+@keyframes dice-prep-pulse-blink {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-prep-pulse__dot {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
 .dice-table {

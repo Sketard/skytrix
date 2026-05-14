@@ -431,29 +431,46 @@ describe('DuelPageComponent — boardReady + duelLoadingReady (C1.1)', () => {
     expect(component.boardReady()).toBe(false);
   });
 
-  it('boardReady() is false when both players exist but player[0].lp === 0', () => {
-    // Seed shape: 2 players present but LP not yet populated (the server
-    // sends LP only on the first BOARD_STATE; the gate prevents flashing
-    // the board before that). A refactor that loosens the check to `>= 0`
-    // would silently flip this gate.
-    ws.setLogical(makeState(0, 8000));
+  it('boardReady() is false when both players exist but deckCount === 0 (EMPTY_DUEL_STATE shape)', () => {
+    // Regression guard for 2026-05-14 fix: EMPTY_DUEL_STATE seeds lp=8000
+    // before any BOARD_STATE arrives, so gating on LP flipped boardReady true
+    // immediately and skipped the duel-loading screen. The gate must require
+    // a real worker BOARD_STATE — only those populate deckCount.
+    ws.setLogical(makeState(8000, 8000));
     expect(component.boardReady()).toBe(false);
   });
 
-  it('boardReady() is true once player[0].lp > 0 (post first BOARD_STATE)', () => {
-    ws.setLogical(makeState(8000, 8000));
+  it('boardReady() is false when only one player has a populated deck', () => {
+    ws.setLogical(makeState(8000, 8000, { players: [
+      { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
+      { lp: 8000, deckCount: 0, extraCount: 0, zones: [] },
+    ] }));
+    expect(component.boardReady()).toBe(false);
+  });
+
+  it('boardReady() is true once both players have deckCount > 0 (post first BOARD_STATE)', () => {
+    ws.setLogical(makeState(8000, 8000, { players: [
+      { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
+      { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
+    ] }));
     expect(component.boardReady()).toBe(true);
   });
 
   it('duelLoadingReady() is false while boardReady=true but thumbnailsReady=false', () => {
-    ws.setLogical(makeState(8000, 8000));
+    ws.setLogical(makeState(8000, 8000, { players: [
+      { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
+      { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
+    ] }));
     component.thumbnailsReady.set(false);
     expect(component.boardReady()).toBe(true);
     expect(component.duelLoadingReady()).toBe(false);
   });
 
   it('duelLoadingReady() is true only when both boardReady and thumbnailsReady', () => {
-    ws.setLogical(makeState(8000, 8000));
+    ws.setLogical(makeState(8000, 8000, { players: [
+      { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
+      { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
+    ] }));
     component.thumbnailsReady.set(true);
     expect(component.duelLoadingReady()).toBe(true);
   });

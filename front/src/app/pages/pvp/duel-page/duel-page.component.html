@@ -168,14 +168,11 @@
     }
   }
 
-  <!-- Story 2.1 — Creating Duel Transitional State -->
-  @if (roomState() === 'creating-duel') {
-    <div class="waiting-room" role="region" [attr.aria-label]="'duel.preparing.title' | translate">
-      <h1 class="waiting-room__title">{{ 'duel.preparing.title' | translate }}</h1>
-      <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.preparing.title' | translate"></mat-progress-spinner>
-      <p class="waiting-room__status">{{ 'duel.preparing.opponentJoined' | translate }}</p>
-    </div>
-  }
+  <!-- Story 2.1 — Creating Duel Transitional State —
+       the `creating-duel` UI is owned by <app-pvp-dice-arena> in its
+       `prep` stage (mounted below, outside the active/connecting gate)
+       so the transition into Stage 1 'ready' is a continuous fade
+       instead of a full-screen "PRÉPARATION DU DUEL…" flash. -->
 
   <!-- Story 2.1 — Loading State -->
   @if (roomState() === 'loading') {
@@ -200,43 +197,22 @@
     </app-system-overlay>
   }
 
-  <!-- Story 2.4 — Duel Loading Screen -->
-  @if (roomState() === 'duel-loading') {
-    <div class="duel-loading" role="region" [attr.aria-label]="'duel.preparing.title' | translate">
-      <h1 class="duel-loading__title">{{ 'duel.preparing.title' | translate }}</h1>
-      @if (room(); as r) {
-        <div class="duel-loading__players">
-          <div class="duel-loading__player">
-            <span class="duel-loading__name">{{ r.player1.pseudo }}</span>
-            <span class="duel-loading__lp">{{ 'duel.loading.lp' | translate }}</span>
-          </div>
-          <span class="duel-loading__vs">{{ 'duel.loading.vs' | translate }}</span>
-          <div class="duel-loading__player">
-            <span class="duel-loading__name">{{ r.player2?.pseudo }}</span>
-            <span class="duel-loading__lp">{{ 'duel.loading.lp' | translate }}</span>
-          </div>
-        </div>
-      }
-      <mat-progress-spinner mode="indeterminate" [diameter]="64" [attr.aria-label]="'duel.preparing.loading' | translate"></mat-progress-spinner>
-      @if (loadingTimeout()) {
-        <p class="duel-loading__timeout">{{ 'duel.preparing.takingLong' | translate }}</p>
-        <button mat-button class="duel-loading__lobby-btn" (click)="backToLobby()">{{ 'duel.connection.backToLobby' | translate }}</button>
-      }
-    </div>
-  }
+  <!-- Story 2.4 — Duel Loading Screen — covered by <app-pvp-dice-arena>
+       in its `final` stage (held until `roomState === 'active'`), so no
+       separate "PRÉPARATION DU DUEL…" screen is needed here. The
+       `loadingTimeout` 15s safety still fires via duel-loading-effects;
+       it just doesn't render an intermediate screen anymore. -->
 
   <!-- Duel UI (only when active/connecting) -->
   @if (roomState() === 'active' || roomState() === 'connecting') {
     <!-- Orientation lock overlay (portrait blocking) -->
     <app-orientation-lock />
 
-    <!-- Story 2.3 — "Connecting to duel..." fallback (before DICE_ROLL arrives) -->
-    @if (roomState() === 'connecting' && !wsService.pendingPrompt() && !wsService.diceResult() && !wsService.diceInProgress()) {
-      <div class="connecting-fallback" role="region" [attr.aria-label]="'duel.connection.connecting' | translate" aria-live="polite">
-        <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.connection.connecting' | translate"></mat-progress-spinner>
-        <p>{{ 'duel.connection.connecting' | translate }}</p>
-      </div>
-    }
+    <!-- Story 2.3 — "Connecting to duel..." fallback —
+         covered by <app-pvp-dice-arena> in its `prep` stage now (the
+         arena is mounted unconditionally and shows its chrome while
+         `preparing()` is true, until DICE_ROLL lands). -->
+
 
     <!-- Duel overlays (opponent thinking glow, phase/chain announcements) -->
     <app-pvp-duel-overlays
@@ -397,11 +373,6 @@
 
     }
 
-    <!-- Pre-duel dice arena (Phase 3.14): owns the full pre-duel UX
-         between waiting-room → board — auto-roll, dice physics, result
-         banner, first-player pick, "You go first/second" announce. -->
-    <app-pvp-dice-arena />
-
     <!-- Story 5.2 — Blocked tab overlay (single-tab enforcement) -->
     @if (tabGuard.isBlocked()) {
       <app-system-overlay variant="blocked"
@@ -531,6 +502,24 @@
                             (closed)="debugLog.panelOpen.set(false)"
                             (clearRequested)="debugLog.clearLogs()" />
     }
+  }
+
+  <!-- Pre-duel dice arena (Phase 3.14): owns the full pre-duel UX
+       between waiting-room → board — auto-roll, dice physics, result
+       banner, first-player pick, "You go first/second" announce.
+       Mounted across `creating-duel | connecting | duel-loading | active`
+       so:
+         - the `prep` stage covers the gap between "Lancer la partie"
+           click and the first DICE_ROLL prompt
+         - the `final` stage keeps its 2.5s announce window even after
+           BOARD_STATE arrives (which flips roomState to 'duel-loading')
+       Without `duel-loading` in this list, the duel-loading screen
+       would briefly steal the layer between `final` and `idle` and
+       flash "PRÉPARATION DU DUEL…". -->
+  @if (roomState() === 'creating-duel' || roomState() === 'connecting' || roomState() === 'duel-loading' || roomState() === 'active') {
+    <app-pvp-dice-arena
+      [preparing]="roomState() === 'creating-duel' || roomState() === 'connecting'"
+      [holdFinal]="roomState() !== 'active'" />
   }
 
   <!-- Story 3.1 — Surrender Confirmation Dialog Template -->

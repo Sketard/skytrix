@@ -1,4 +1,4 @@
-import { DestroyRef, effect, Injectable, inject, Signal, untracked, WritableSignal } from '@angular/core';
+import { effect, Injectable, inject, Signal, untracked, WritableSignal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -30,17 +30,14 @@ export class DuelLoadingEffectsService {
   private readonly artService = inject(DuelCardArtService);
   private readonly http = inject(HttpClient);
   private readonly notify = inject(NotificationService);
-  private readonly destroyRef = inject(DestroyRef);
 
   private prefetchStarted = false;
-  private loadingTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
   initEffects(config: {
     boardReady: Signal<boolean>;
     duelLoadingReady: Signal<boolean>;
     roomState: WritableSignal<RoomState>;
     thumbnailsReady: WritableSignal<boolean>;
-    loadingTimeout: WritableSignal<boolean>;
   }): void {
     // Story 2.1 — Countdown timer tick + expiration (delegates to roomService)
     effect(() => {
@@ -64,27 +61,26 @@ export class DuelLoadingEffectsService {
       }
     });
 
-    // Story 2.4 — Transition to 'duel-loading' on first BOARD_STATE
+    // Story 2.4 — Transition to 'duel-loading' on first BOARD_STATE.
+    // No longer gated on `diceResult` — the dice arena is mounted across
+    // creating-duel/connecting/active and self-dismisses 2.5s after the
+    // FIRST_PLAYER_RESULT banner. It overlays the board independently;
+    // gating roomState on it would deadlock since diceResult is never
+    // cleared at runtime (only between sessions on a new DICE_ROLL).
     effect(() => {
       const ready = config.boardReady();
-      const rpsVisible = this.wsService.diceResult();
-      if (ready && !rpsVisible && config.roomState() === 'connecting') {
+      if (ready && config.roomState() === 'connecting') {
         untracked(() => config.roomState.set('duel-loading'));
       }
     });
 
-    // Story 2.4 — When entering 'duel-loading', start thumbnail pre-fetch + 15s timeout
+    // Story 2.4 — When entering 'duel-loading', start thumbnail pre-fetch.
     effect(() => {
       const state = config.roomState();
       if (state === 'duel-loading' && !this.prefetchStarted) {
         untracked(() => {
           this.prefetchStarted = true;
           this.preFetchCardImages(config.thumbnailsReady);
-          this.loadingTimeoutRef = setTimeout(() => {
-            if (config.roomState() === 'duel-loading') {
-              config.loadingTimeout.set(true);
-            }
-          }, 15000);
         });
       }
     });
@@ -94,10 +90,6 @@ export class DuelLoadingEffectsService {
       const ready = config.duelLoadingReady();
       if (ready && config.roomState() === 'duel-loading') {
         untracked(() => {
-          if (this.loadingTimeoutRef) {
-            clearTimeout(this.loadingTimeoutRef);
-            this.loadingTimeoutRef = null;
-          }
           config.roomState.set('active');
           this.wsService.setBoardActive(true);
         });
@@ -112,9 +104,6 @@ export class DuelLoadingEffectsService {
     // turn-choice buttons after 3s — root cause of the "dice end → duel
     // launches immediately" regression.)
 
-    this.destroyRef.onDestroy(() => {
-      if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
-    });
   }
 
   private async preFetchCardImages(thumbnailsReady: WritableSignal<boolean>): Promise<void> {

@@ -5,6 +5,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  input,
   signal,
   untracked,
 } from '@angular/core';
@@ -16,7 +17,6 @@ import { DiceResultMsg } from '../../duel-ws.types';
 import {
   DICE_AUTO_ROLL_DELAY_MS,
   DICE_ROLL_ANIM_DURATION_MS,
-  DICE_FINAL_ANNOUNCE_MS,
 } from '../../pvp-timings';
 
 /** Pre-duel dice arena (Phase 3.14, since 2026-05-13). Owns the full
@@ -27,12 +27,14 @@ import {
  *   - Stage 3 "result"  — final pose + roll-vs-strip + outcome sub-block
  *                         (won = SELECT_FIRST_PLAYER pick, lost = spinner,
  *                         draw = auto re-roll banner).
- *   - Stage 4 "final"   — "You go first / second" announce (~2.5s) after
- *                         FIRST_PLAYER_RESULT.
+ *   - Stage 4 "final"   — "You go first / second" announce after
+ *                         FIRST_PLAYER_RESULT. Stays visible until
+ *                         `holdFinal` flips to false (room enters
+ *                         `active`), at which point the board takes over.
  *
  *  DICE_ROLL + SELECT_FIRST_PLAYER are NOT routed through the prompt
  *  dialog any more — this arena owns them end-to-end. */
-type Stage = 'idle' | 'ready' | 'rolling' | 'result' | 'final';
+type Stage = 'idle' | 'prep' | 'ready' | 'rolling' | 'result' | 'final';
 type TurnChoice = 'first' | 'second';
 
 
@@ -49,6 +51,20 @@ export class PvpDiceArenaComponent {
   private readonly artService = inject(DuelCardArtService);
   private readonly destroyRef = inject(DestroyRef);
   private prewarmedForDuel = false;
+
+  /** Set by the duel-page wrapper while the room is in `creating-duel`
+   *  or the pre-DICE_ROLL window of `connecting`. Drives the `prep` stage
+   *  so the arena mounts with its full chrome (bg, title, tag) instead of
+   *  a separate "PRÉPARATION DU DUEL…" screen flashing right before it. */
+  readonly preparing = input<boolean>(false);
+
+  /** True whenever `roomState !== 'active'`. The arena stays in `final`
+   *  for the entire duration this flag is true so the announce overlay
+   *  covers the gap between FIRST_PLAYER_RESULT and the board becoming
+   *  visible (DECK_PREFETCH → DUEL_STARTING → BOARD_STATE → thumbnails
+   *  preloaded). When it flips to false, the deferred dismiss effect
+   *  drops the arena to `idle` and the board takes over. */
+  readonly holdFinal = input<boolean>(false);
 
   readonly stage = signal<Stage>('idle');
   readonly turnChoice = signal<TurnChoice>('first');
@@ -84,8 +100,14 @@ export class PvpDiceArenaComponent {
   });
 
   private rollTimer: ReturnType<typeof setTimeout> | null = null;
-  private finalTimer: ReturnType<typeof setTimeout> | null = null;
   private animationStartedFor: DiceResultMsg | null = null;
+
+  /** Once FIRST_PLAYER_RESULT has been seen during this lifecycle, we
+   *  stay in `final` until `holdFinal` flips to false (page active).
+   *  The server clears `firstPlayerResult` on DUEL_STARTING so we can't
+   *  read it back later — this flag is the durable witness. Reset on
+   *  rematch (fresh DICE_ROLL prompt). */
+  private finalArmed = false;
 
   constructor() {
     this.destroyRef.onDestroy(() => this.clearTimers());
@@ -98,7 +120,22 @@ export class PvpDiceArenaComponent {
       const inProgress = this.ws.diceInProgress();
       const result = this.diceResult();
       const finalRes = this.firstPlayerResult();
-      untracked(() => this.recomputeStage(prompt?.type ?? null, inProgress, result, finalRes));
+      const preparing = this.preparing();
+      untracked(() => this.recomputeStage(prompt?.type ?? null, inProgress, result, finalRes, preparing));
+    });
+
+    // Final stage dismiss: keep the announce on screen until the page
+    // enters `active` (board is ready behind us). `firstPlayerResult` is
+    // cleared by the server on DUEL_STARTING, so we use `finalArmed` as
+    // a durable witness that we passed through the final stage.
+    effect(() => {
+      const hold = this.holdFinal();
+      untracked(() => {
+        if (!hold && this.finalArmed && this.stage() === 'final') {
+          this.finalArmed = false;
+          this.stage.set('idle');
+        }
+      });
     });
   }
 
@@ -107,12 +144,13 @@ export class PvpDiceArenaComponent {
     inProgress: boolean,
     result: DiceResultMsg | null,
     finalRes: { goFirst: boolean } | null,
+    preparing: boolean,
   ): void {
     if (finalRes) {
       if (this.stage() !== 'final') {
         this.stage.set('final');
-        this.scheduleFinalDismiss();
-        // Phase 3.16: piggyback the 2.5s announce window to warm the browser
+        this.finalArmed = true;
+        // Phase 3.16: piggyback the announce window to warm the browser
         // image cache for the local deck. DUEL_STARTING has already landed
         // (it precedes FIRST_PLAYER_RESULT), so ws.cardCodes() is populated.
         // prefetchCard is idempotent + fire-and-forget so this is safe even
@@ -155,13 +193,24 @@ export class PvpDiceArenaComponent {
       this.animationStartedFor = null;
       this.resultMy.set(null);
       this.resultOpp.set(null);
-      // Rematch: a new dice flow starts → reset the prewarm latch so the
-      // next `final` stage can re-prefetch (the deck may have changed).
+      // Rematch: a new dice flow starts → reset the prewarm latch + the
+      // finalArmed witness so the next `final` stage can re-prefetch and
+      // re-dismiss on the new `active` transition.
       this.prewarmedForDuel = false;
+      this.finalArmed = false;
       if (this.stage() !== 'ready') {
         this.stage.set('ready');
         this.scheduleAutoRoll();
       }
+      return;
+    }
+
+    // No dice context yet but the room is preparing → show the arena
+    // chrome (bg + title) so the transition into Stage 1 'ready' is a
+    // continuous fade rather than a separate "PRÉPARATION DU DUEL…" screen
+    // flashing in between.
+    if (preparing) {
+      if (this.stage() !== 'prep') this.stage.set('prep');
       return;
     }
 
@@ -178,16 +227,7 @@ export class PvpDiceArenaComponent {
     }, DICE_AUTO_ROLL_DELAY_MS);
   }
 
-  private scheduleFinalDismiss(): void {
-    this.clearFinalTimer();
-    this.finalTimer = setTimeout(() => {
-      // After the announce window, the server has already sent DUEL_STARTING
-      // and the board takes over. We just yield the visual to idle.
-      this.stage.set('idle');
-    }, DICE_FINAL_ANNOUNCE_MS);
-  }
-
-  /** Fire-and-forget warmup for the deck card art during the 2.5s announce.
+  /** Fire-and-forget warmup for the deck card art during the announce.
    *  DuelCardArtService.prefetchCard is per-code idempotent so re-entering
    *  `final` after a reconnect mid-window is a no-op. We additionally gate
    *  on a local flag so the call is made at most once per dice-arena
@@ -202,20 +242,12 @@ export class PvpDiceArenaComponent {
 
   private clearTimers(): void {
     this.clearRollTimer();
-    this.clearFinalTimer();
   }
 
   private clearRollTimer(): void {
     if (this.rollTimer) {
       clearTimeout(this.rollTimer);
       this.rollTimer = null;
-    }
-  }
-
-  private clearFinalTimer(): void {
-    if (this.finalTimer) {
-      clearTimeout(this.finalTimer);
-      this.finalTimer = null;
     }
   }
 

@@ -79,9 +79,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .waiting-room ::ng-deep .mdc-circular-progress__indeterminate-container,
-  .waiting-room ::ng-deep .mdc-circular-progress__spinner-layer,
-  .duel-loading ::ng-deep .mdc-circular-progress__indeterminate-container,
-  .duel-loading ::ng-deep .mdc-circular-progress__spinner-layer {
+  .waiting-room ::ng-deep .mdc-circular-progress__spinner-layer {
     animation: none !important;
   }
 }
@@ -645,82 +643,6 @@
     width: 18px !important;
     height: 18px !important;
     color: var(--gold, #d4a437);
-  }
-}
-
-// === Connecting Fallback (Story 2.3) ===
-.connecting-fallback {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 16px;
-
-  p {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.7);
-    margin: 0;
-  }
-}
-
-// === Duel Loading Screen (Story 2.4) ===
-.duel-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 24px;
-  padding: 24px;
-  text-align: center;
-
-  &__title {
-    font-size: 1.4rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    margin: 0;
-  }
-
-  &__players {
-    display: flex;
-    align-items: center;
-    gap: 32px;
-  }
-
-  &__player {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-
-  &__name {
-    font-size: 1.1rem;
-    font-weight: 500;
-  }
-
-  &__lp {
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  &__vs {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  &__timeout {
-    font-size: 1rem;
-    color: #ffeb3b;
-    margin: 0;
-  }
-
-  &__lobby-btn {
-    min-height: 44px;
-    min-width: 44px;
-    color: rgba(255, 255, 255, 0.8);
   }
 }
 
