@@ -45,10 +45,21 @@
 
             <div class="duelist-slot">
               @if (roomState() === 'ready' && r.player2) {
-                <app-avatar class="duelist-avatar-wrapper duelist-avatar--ready"
-                            [pseudo]="r.player2.pseudo"
-                            size="xl">
-                </app-avatar>
+                <div class="duelist-avatar-with-kick">
+                  <app-avatar class="duelist-avatar-wrapper duelist-avatar--ready"
+                              [pseudo]="r.player2.pseudo"
+                              size="xl">
+                  </app-avatar>
+                  @if (isCreator()) {
+                    <button type="button"
+                            class="duelist-kick-btn"
+                            [attr.aria-label]="'duel.waiting.kickPlayer' | translate"
+                            [title]="'duel.waiting.kickPlayer' | translate"
+                            (click)="kickPlayer()">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </div>
                 <span class="duelist-name">{{ r.player2.pseudo }}</span>
                 <span class="duelist-state duelist-state--ready">{{ 'duel.waiting.ready' | translate }}</span>
               } @else {
@@ -119,11 +130,11 @@
               {{ 'duel.waiting.startDuel' | translate }}
             </button>
             <button type="button"
-                    class="waiting-kick-btn"
-                    [attr.aria-label]="'duel.waiting.kickPlayer' | translate"
-                    (click)="kickPlayer()">
-              <mat-icon>person_remove</mat-icon>
-              {{ 'duel.waiting.kickPlayer' | translate }}
+                    class="waiting-cancel-btn"
+                    [attr.aria-label]="'duel.leaveRoom' | translate"
+                    (click)="leaveRoom()">
+              <mat-icon>close</mat-icon>
+              {{ 'duel.waiting.cancelRoom' | translate }}
             </button>
           </div>
         } @else if (roomState() === 'ready' && isJoiner()) {

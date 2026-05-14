@@ -536,15 +536,16 @@
   }
 }
 
-// ── READY state action bar (creator: start + kick) ────────────────────────
-// Primary CTA gold + tertiary kick — joiner sees a hint line + the
-// existing "Quitter la room" cancel below it.
+// ── READY state action bar (creator: start CTA + cancel) ─────────────────
+// "Exclure" is rendered as a ✕ on the joiner's avatar (see
+// .duelist-avatar-with-kick below) rather than a separate action — that
+// keeps the action bar focused on the primary CTA (Lancer la partie).
 .waiting-actions--ready {
   flex-direction: row;
   gap: 12px;
 
   .waiting-start-btn,
-  .waiting-kick-btn {
+  .waiting-cancel-btn {
     flex: 1 1 0;
   }
 }
@@ -580,30 +581,50 @@
   &:active { transform: translateY(0); }
 }
 
-.waiting-kick-btn {
-  min-height: 48px;
-  font: var(--weight-semibold) 0.85rem / 1 'Inter', sans-serif;
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md);
-  cursor: pointer;
+// ── Kick badge on the joiner's avatar (creator view only) ─────────────────
+// ✕ button overlayed top-right on the avatar — KISS UX: the action sits
+// on the thing it acts on.
+.duelist-avatar-with-kick {
+  position: relative;
+  display: inline-block;
+}
+
+.duelist-kick-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  background: rgba(20, 20, 24, 0.92);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   transition: all var(--transition-normal) var(--ease-inout);
 
   mat-icon {
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
 
   &:hover {
-    background: rgba(220, 90, 90, 0.12);
+    background: rgba(220, 90, 90, 0.22);
     color: #ff8a8a;
-    border-color: rgba(220, 90, 90, 0.35);
+    border-color: rgba(220, 90, 90, 0.55);
+    transform: scale(1.08);
+  }
+
+  &:active { transform: scale(0.95); }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold, #d4a437);
+    outline-offset: 2px;
   }
 }
 
