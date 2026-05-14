@@ -91,6 +91,26 @@ public class RoomController {
         roomService.endRoom(roomCode);
     }
 
+    /**
+     * Creator-only: bridge a READY room to ACTIVE (spins up OCGCore). Returns
+     * the creator's RoomDTO with wsToken populated. The joiner receives a
+     * `room-ready` SSE event with their own DTO (own wsToken).
+     */
+    @PostMapping("/{roomCode}/start")
+    @ResponseStatus(code = HttpStatus.OK)
+    public RoomDTO startDuel(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        return roomService.startDuel(roomCode);
+    }
+
+    /** Creator-only: kick the joiner from a READY room. */
+    @PostMapping("/{roomCode}/kick")
+    @ResponseStatus(code = HttpStatus.NO_CONTENT)
+    public void kickPlayer(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        roomService.kickPlayer(roomCode);
+    }
+
     /** Notify the room creator that a non-participant is picking a deck (i.e.
      *  is sitting on the deck-picker dialog after hitting the deep-link). */
     @PostMapping("/{roomCode}/announce-browsing")

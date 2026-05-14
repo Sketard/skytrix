@@ -68,6 +68,25 @@ public class RoomCleanupScheduler {
         }
     }
 
+    @Scheduled(fixedRate = 300_000)
+    @Transactional
+    public void cleanupOrphanedReadyRooms() {
+        // READY = both decks picked, awaiting creator's "start duel" click.
+        // Same 30-min ceiling as WAITING — if the creator never clicks start,
+        // we reap the room so the joiner isn't held captive forever.
+        var threshold = Instant.now().minus(30, ChronoUnit.MINUTES);
+        var orphanedRooms = roomRepository.findByStatusAndCreatedAtBefore(RoomStatus.READY, threshold);
+
+        for (var room : orphanedRooms) {
+            room.setStatus(RoomStatus.CLOSED);
+            log.info("Cleaned up orphaned ready room: {} (code: {})", room.getId(), room.getRoomCode());
+        }
+
+        if (!orphanedRooms.isEmpty()) {
+            log.info("Cleaned up {} orphaned ready rooms", orphanedRooms.size());
+        }
+    }
+
     @Scheduled(fixedRate = 120_000)
     @Transactional
     public void cleanupStuckCreatingDuelRooms() {

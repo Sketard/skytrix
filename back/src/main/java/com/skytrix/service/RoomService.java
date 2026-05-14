@@ -94,9 +94,12 @@ public class RoomService {
         });
     }
 
-    // TODO [H3 review]: pessimistic lock held during duelServerClient.createDuel() external HTTP call.
-    // Post-MVP: split into claim (short tx) -> external call -> activate/rollback (short tx)
-    // to avoid holding DB connection/lock during external IO.
+    /**
+     * Joiner picks a deck and lands in the shared waiting room. No
+     * duel-server resources are allocated yet — the room moves WAITING →
+     * READY, and the creator decides next ({@link #startDuel} to bridge
+     * to OCGCore, or {@link #kickPlayer} to reset to WAITING).
+     */
     @Transactional
     public RoomDTO joinRoom(String roomCode, JoinRoomDTO dto) {
         var user = authService.getConnectedUser();
@@ -110,24 +113,64 @@ public class RoomService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot join your own room");
         }
 
-        var deckCards = validateDeck(dto.getDecklistId(), user.getId());
+        validateDeck(dto.getDecklistId(), user.getId());
 
         room.setPlayer2(user);
         room.setPlayer2DecklistId(dto.getDecklistId());
+        room.setStatus(RoomStatus.READY);
+        roomRepository.save(room);
+
+        var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
+        var roomCodeForBroadcast = room.getRoomCode();
+        afterCommit(() -> {
+            // Notify the creator that someone joined and the room is now
+            // READY. The creator's UI flips to the "start / kick" panel.
+            roomEventService.sendRoomJoinedReady(roomCodeForBroadcast, creatorDto);
+            // Room left WAITING → drop it from every lobby listing.
+            roomLobbyEventService.broadcastRoomRemoved(roomCodeForBroadcast);
+        });
+
+        log.info("Room {} joined by user {} — awaiting creator start", room.getRoomCode(), user.getPseudo());
+        return roomMapper.toRoomDTO(room, user.getId());
+    }
+
+    /**
+     * Creator-only: bridge a READY room to ACTIVE by spinning up an OCGCore
+     * duel on the duel-server. This is the "Lancer la partie" button.
+     * Failures roll the room back to WAITING (joiner is dropped) so the
+     * creator can wait for someone else.
+     */
+    // TODO [H3 review]: pessimistic lock held during duelServerClient.createDuel() external HTTP call.
+    // Post-MVP: split into claim (short tx) -> external call -> activate/rollback (short tx)
+    // to avoid holding DB connection/lock during external IO.
+    @Transactional
+    public RoomDTO startDuel(String roomCode) {
+        var user = authService.getConnectedUser();
+        var room = roomRepository.findByRoomCodeForUpdate(roomCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+
+        if (!user.getId().equals(room.getPlayer1().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the room creator can start the duel");
+        }
+        if (room.getStatus() != RoomStatus.READY || room.getPlayer2() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Room is not ready to start");
+        }
+
+        var deck1Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer1DecklistId());
+        var deck2Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer2DecklistId());
+        var deck1 = extractDeck(deck1Cards);
+        var deck2 = extractDeck(deck2Cards);
+        validatePasscodesOrThrow(deck1, deck1Cards, deck2, deck2Cards);
+
         room.setStatus(RoomStatus.CREATING_DUEL);
         roomRepository.save(room);
 
         try {
-            var deck1Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer1DecklistId());
-            var deck1 = extractDeck(deck1Cards);
-            var deck2 = extractDeck(deckCards);
-            validatePasscodesOrThrow(deck1, deck1Cards, deck2, deckCards);
-
             // soloMode=false: duel-server handles RPS at app layer before starting OCGCore
             var response = duelServerClient.createDuel(
                     room.getPlayer1().getId().toString(),
                     deck1,
-                    user.getId().toString(),
+                    room.getPlayer2().getId().toString(),
                     deck2
             );
 
@@ -140,22 +183,60 @@ public class RoomService {
             roomRepository.save(room);
 
             var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
+            var joinerDto = roomMapper.toRoomDTO(room, room.getPlayer2().getId());
             var roomCodeForBroadcast = room.getRoomCode();
-            afterCommit(() -> {
-                roomEventService.sendRoomReady(roomCodeForBroadcast, creatorDto);
-                // Room left WAITING → drop it from every lobby listing.
-                roomLobbyEventService.broadcastRoomRemoved(roomCodeForBroadcast);
-            });
+            afterCommit(() -> roomEventService.sendRoomReady(roomCodeForBroadcast,
+                    room.getPlayer1().getId(), creatorDto,
+                    room.getPlayer2().getId(), joinerDto));
 
-            log.info("Room {} joined by user {} — duel {} started", room.getRoomCode(), user.getPseudo(), room.getDuelServerId());
-            return roomMapper.toRoomDTO(room, user.getId());
+            log.info("Room {} started by user {} — duel {}", room.getRoomCode(), user.getPseudo(), room.getDuelServerId());
+            return creatorDto;
         } catch (RestClientException e) {
+            // Roll back to WAITING and drop the joiner — let the creator
+            // wait for someone else rather than leave them stranded in READY.
             room.setStatus(RoomStatus.WAITING);
             room.setPlayer2(null);
             room.setPlayer2DecklistId(null);
             roomRepository.save(room);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Duel server unavailable", e);
         }
+    }
+
+    /**
+     * Creator-only: bounce the joiner back to the lobby. The room returns
+     * to WAITING and resurfaces in the lobby listing. No ban — the joiner
+     * can re-enter immediately if they want to.
+     */
+    @Transactional
+    public void kickPlayer(String roomCode) {
+        var user = authService.getConnectedUser();
+        var room = roomRepository.findByRoomCodeForUpdate(roomCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+
+        if (!user.getId().equals(room.getPlayer1().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the room creator can kick");
+        }
+        if (room.getStatus() != RoomStatus.READY || room.getPlayer2() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Room has no joiner to kick");
+        }
+
+        var kickedUserId = room.getPlayer2().getId();
+        room.setPlayer2(null);
+        room.setPlayer2DecklistId(null);
+        room.setStatus(RoomStatus.WAITING);
+        roomRepository.save(room);
+
+        var dtoForBroadcast = roomMapper.toRoomDTO(room, null);
+        var roomCodeForBroadcast = room.getRoomCode();
+        afterCommit(() -> {
+            // Joiner gets the boot — their SSE receives a `kicked` event,
+            // their UI redirects to /pvp with an error toast.
+            roomEventService.sendKicked(roomCodeForBroadcast, kickedUserId);
+            // Room is back in the lobby — re-broadcast so listings refresh.
+            roomLobbyEventService.broadcastRoomCreated(dtoForBroadcast);
+        });
+
+        log.info("Room {} — user {} kicked by creator {}", room.getRoomCode(), kickedUserId, user.getPseudo());
     }
 
     @Transactional
