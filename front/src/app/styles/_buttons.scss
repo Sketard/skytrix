@@ -47,6 +47,11 @@
 }
 
 // --- Variants ----------------------------------------------------------------
+// IMPORTANT: `.btn` is designed for NATIVE <button> / <a> elements.
+// Do NOT combine with `mat-raised-button` / `mat-stroked-button` etc — Material
+// 19's MDC layer applies its own `.mdc-button` styles that conflict with our
+// gradient/border without massive overrides. When ripple is required, use a
+// composable approach in Wave 2 (`<app-button>` wraps Material + applies DS).
 .btn--primary {
   background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
   color: var(--text-inverse);

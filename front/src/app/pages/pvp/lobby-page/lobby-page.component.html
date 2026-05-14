@@ -5,47 +5,47 @@
 </div>
 
 <div class="lobby-container">
-  <header class="lobby-header">
-    <div class="lobby-header-title">
-      <mat-icon class="lobby-title-icon">sports_esports</mat-icon>
-      <div class="lobby-header-text">
-        <h1>
+  <header class="page-header">
+    <div class="page-header__title-group">
+      <mat-icon class="page-header__icon">sports_esports</mat-icon>
+      <div class="page-header__text">
+        <h1 class="page-header__title text-gold-gradient">
           {{ 'lobby.title' | translate }}
           <span class="alpha-chip">{{ 'lobby.alpha' | translate }}</span>
         </h1>
-        <span class="lobby-subtitle">{{ 'lobby.subtitle' | translate }}</span>
+        <span class="page-header__subtitle">{{ 'lobby.subtitle' | translate }}</span>
       </div>
     </div>
   </header>
 
   <div class="cta-row">
-    <button mat-raised-button
-            class="lobby-cta lobby-cta--primary"
+    <button type="button"
+            class="btn btn--primary btn--lg btn--cta btn--cta-shimmer"
             [attr.aria-label]="'a11y.createRoom' | translate"
             [disabled]="creatingRoom()"
             (click)="createRoom()">
       <mat-icon>add_circle</mat-icon>
-      <span class="lobby-cta-label">{{ 'lobby.createRoom' | translate }}</span>
+      <span>{{ 'lobby.createRoom' | translate }}</span>
     </button>
-    <button mat-stroked-button
-            class="lobby-cta lobby-cta--solo"
+    <button type="button"
+            class="btn btn--secondary btn--lg btn--cta"
             [attr.aria-label]="'a11y.sandbox' | translate"
             [disabled]="creatingRoom()"
             (click)="quickDuel()">
       <mat-icon>bolt</mat-icon>
-      <span class="lobby-cta-label">{{ 'lobby.sandbox' | translate }}</span>
+      <span>{{ 'lobby.sandbox' | translate }}</span>
     </button>
   </div>
 
-  <div class="lobby-section-header">
-    <div class="lobby-section-title-group">
-      <span class="lobby-section-title">{{ 'lobby.openRooms' | translate }}</span>
-      <span class="lobby-section-count" [attr.aria-label]="'lobby.roomsCount' | translate: { count: roomsCount() }">
+  <div class="section-header">
+    <div class="section-header__title-group">
+      <span class="section-header__title">{{ 'lobby.openRooms' | translate }}</span>
+      <span class="badge badge--gold" [attr.aria-label]="'lobby.roomsCount' | translate: { count: roomsCount() }">
         {{ roomsCount() }}
       </span>
     </div>
     <button type="button"
-            class="lobby-section-filter"
+            class="btn btn--ghost btn--sm"
             [attr.aria-label]="'lobby.sort.label' | translate"
             [matMenuTriggerFor]="sortMenu">
       <mat-icon>sort</mat-icon>
@@ -71,10 +71,11 @@
     </app-error-banner>
   }
 
-  <label class="lobby-search-bar">
-    <mat-icon>search</mat-icon>
+  <label class="search-bar">
+    <mat-icon class="search-bar__icon">search</mat-icon>
     <input
       type="text"
+      class="search-bar__input"
       [placeholder]="'lobby.filterPlaceholder' | translate"
       [value]="searchQuery()"
       (input)="onSearchInput($event)"
@@ -82,7 +83,7 @@
     @if (hasSearchActive()) {
       <button
         type="button"
-        class="lobby-search-clear"
+        class="icon-btn icon-btn--sm"
         [attr.aria-label]="'common.clear' | translate"
         (click)="clearSearch()">
         <mat-icon>close</mat-icon>
@@ -96,20 +97,20 @@
     </div>
   } @else if (store.error()) {
     <div class="empty-state empty-state--error">
-      <mat-icon class="empty-state-icon">wifi_off</mat-icon>
-      <p class="empty-state-title">{{ 'lobby.emptyError' | translate }}</p>
-      <button type="button" class="empty-state-cta" (click)="store.fetchSnapshot()">
+      <mat-icon class="empty-state__icon">wifi_off</mat-icon>
+      <p class="empty-state__title">{{ 'lobby.emptyError' | translate }}</p>
+      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="store.fetchSnapshot()">
         <mat-icon>refresh</mat-icon>
         {{ 'common.retry' | translate }}
       </button>
     </div>
   } @else if (showEmptyState()) {
     <div class="empty-state">
-      <mat-icon class="empty-state-icon">groups</mat-icon>
-      <p class="empty-state-title">{{ 'lobby.emptyTitle' | translate }}</p>
-      <p class="empty-state-desc">{{ 'lobby.emptySubtitle' | translate }}</p>
+      <mat-icon class="empty-state__icon">groups</mat-icon>
+      <p class="empty-state__title">{{ 'lobby.emptyTitle' | translate }}</p>
+      <p class="empty-state__desc">{{ 'lobby.emptySubtitle' | translate }}</p>
       <button type="button"
-              class="empty-state-cta"
+              class="btn btn--primary btn--lg btn--cta"
               [disabled]="creatingRoom()"
               (click)="createRoom()">
         <mat-icon>add_circle</mat-icon>
@@ -118,10 +119,10 @@
     </div>
   } @else if (showNoResultsState()) {
     <div class="empty-state">
-      <mat-icon class="empty-state-icon">search_off</mat-icon>
-      <p class="empty-state-title">{{ 'lobby.noResultsTitle' | translate }}</p>
-      <p class="empty-state-desc">{{ 'lobby.noResultsSubtitle' | translate }}</p>
-      <button type="button" class="empty-state-cta" (click)="clearSearch()">
+      <mat-icon class="empty-state__icon">search_off</mat-icon>
+      <p class="empty-state__title">{{ 'lobby.noResultsTitle' | translate }}</p>
+      <p class="empty-state__desc">{{ 'lobby.noResultsSubtitle' | translate }}</p>
+      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="clearSearch()">
         <mat-icon>backspace</mat-icon>
         {{ 'lobby.clearSearch' | translate }}
       </button>
@@ -134,7 +135,7 @@
         maxBufferPx="480">
       <div *cdkVirtualFor="let room of filteredRooms(); trackBy: trackByRoomCode"
            class="room-card"
-           [class.room-card--new]="store.isNewRoom(room.roomCode)">
+           [class.card-entry]="store.isNewRoom(room.roomCode)">
         <div class="room-avatar-wrap">
           <app-avatar class="room-avatar" [pseudo]="room.player1.pseudo" size="md"></app-avatar>
           @if (room.player1.role === 'ADMIN') {
@@ -151,7 +152,7 @@
             <span class="room-time">{{ room.createdAt | relativeTime }}</span>
           </div>
           <div class="room-status">
-            <span class="room-status-dot" aria-hidden="true"></span>
+            <span class="pulse-dot pulse-dot--sm" aria-hidden="true"></span>
             <span class="room-status-text">{{ 'lobby.waitingOpponent' | translate }}</span>
           </div>
         </div>

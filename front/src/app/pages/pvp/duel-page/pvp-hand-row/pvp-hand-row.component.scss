@@ -93,13 +93,11 @@
   color: #000;
   pointer-events: none;
   z-index: 5;
-  animation: chain-badge-pulse 1s ease-in-out infinite alternate;
+  animation: ds-chain-badge-pulse 1s ease-in-out infinite alternate;
 }
 
-@keyframes chain-badge-pulse {
-  from { opacity: 0.4; transform: translate(-50%, -50%) scale(0.9); }
-  to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
-}
+// `@keyframes chain-badge-pulse` removed — consolidated into `_motion.scss`
+// as `ds-chain-badge-pulse` (DS Wave 1 §2.2). Bit-exact reproduction preserved.
 
 @media (prefers-reduced-motion: reduce) {
   .hand-card--actionable,

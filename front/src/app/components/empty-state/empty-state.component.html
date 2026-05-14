@@ -1,8 +1,8 @@
 <div class="empty-state">
-  <p class="empty-state-message">{{ message() }}</p>
+  <p class="empty-state__title">{{ message() }}</p>
   @if (ctaLink()) {
-    <a class="empty-state-cta" [routerLink]="ctaLink()">{{ ctaLabel() }}</a>
+    <a class="btn btn--primary btn--lg btn--cta" [routerLink]="ctaLink()">{{ ctaLabel() }}</a>
   } @else if (ctaLabel()) {
-    <button class="empty-state-cta" (click)="ctaAction.emit()">{{ ctaLabel() }}</button>
+    <button class="btn btn--primary btn--lg btn--cta" (click)="ctaAction.emit()">{{ ctaLabel() }}</button>
   }
 </div>

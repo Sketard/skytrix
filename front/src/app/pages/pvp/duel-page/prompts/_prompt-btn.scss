@@ -57,8 +57,10 @@
 
 // Replay read-only: golden pulse on the chosen option, dim the rest.
 // Same visual language as zone-chosen-glow on the board.
+// Keyframe `ds-chosen-pulse` is declared globally in `_motion.scss`
+// (DS Wave 1 §2.2) — accessible from any component's view encapsulation.
 @mixin replay-chosen-pulse {
-  animation: replay-chosen-pulse 800ms ease-out 1 forwards;
+  animation: ds-chosen-pulse 800ms ease-out 1 forwards;
   opacity: 1;
 }
 

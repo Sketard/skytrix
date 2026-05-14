@@ -28,59 +28,11 @@
 }
 
 // ── Header ──────────────────────────────────────────────────────────────────
-.lobby-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.lobby-header-title {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.lobby-title-icon {
-  color: var(--gold);
-  font-size: 38px !important;
-  width: 38px !important;
-  height: 38px !important;
-  filter: drop-shadow(0 0 14px var(--gold-soft-50));
-}
-
-.lobby-header-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-
-  h1 {
-    font-family: 'Rajdhani', 'Inter', sans-serif;
-    margin: 0;
-    font-size: clamp(1.4rem, 5vw, 1.85rem);
-    font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
-    line-height: 1.1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    text-wrap: balance;
-    background: linear-gradient(135deg, var(--gold-50) 0%, var(--gold) 50%, var(--gold-900) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-}
-
-.lobby-subtitle {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
+// `.page-header*` styles vivent dans `front/src/app/styles/_page-header.scss`
+// (DS Wave 1 §2.10). Override local du h1 font-size pour rester fluide
+// (clamp 1.4→1.85rem) au lieu du --text-xl token DS — sera unifié Wave 1.5
+// si le clamp s'avère équivalent.
+.page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
 
 .alpha-chip {
   font-size: 0.6rem;
@@ -106,22 +58,14 @@
   }
 }
 
-.lobby-cta {
-  position: relative;
+// `.btn` styles vivent dans `front/src/app/styles/_buttons.scss` (DS Wave 1 §2.5).
+// Lobby CTA-specific overrides (taille Rajdhani 1rem + min-height 58px + border-radius 14px)
+// retained as a tactical override since the lobby CTAs are physically larger than the DS .btn--lg.
+.btn.btn--lg {
   min-height: 58px !important;
   padding: 0 24px !important;
   font: var(--weight-bold) 1rem / 1 'Rajdhani', sans-serif !important;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   border-radius: 14px !important;
-  cursor: pointer;
-  overflow: hidden;
-  transition: transform var(--transition-normal) var(--ease-inout),
-              box-shadow var(--transition-normal) var(--ease-inout),
-              filter var(--transition-normal) var(--ease-inout);
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
   gap: 10px;
 
   mat-icon {
@@ -133,147 +77,11 @@
   }
 }
 
-.lobby-cta-label {
-  position: relative;
-  z-index: 1;
-}
-
-.lobby-cta--primary {
-  background: linear-gradient(135deg, var(--gold-100) 0%, var(--gold) 50%, var(--gold-700) 100%) !important;
-  color: var(--text-inverse) !important;
-  border: none !important;
-  box-shadow:
-    0 6px 24px var(--gold-soft-30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.4), transparent 70%);
-    background-size: 200% 200%;
-    animation: lobby-cta-shimmer 4s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  &:hover:not(:disabled) {
-    transform: translateY(-1px);
-    filter: brightness(1.08);
-    box-shadow:
-      0 10px 32px var(--gold-soft-50),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4),
-      inset 0 -2px 0 rgba(0, 0, 0, 0.2);
-  }
-}
-
-.lobby-cta--solo {
-  background: var(--cyan-soft-15) !important;
-  color: var(--cyan-300) !important;
-  border: 1px solid var(--cyan-soft-40) !important;
-
-  &:hover:not(:disabled) {
-    background: var(--cyan-soft-25) !important;
-    border-color: var(--cyan-500) !important;
-    box-shadow: 0 6px 20px var(--cyan-soft-25);
-  }
-}
-
-.lobby-cta:disabled {
-  opacity: var(--pvp-disabled-opacity);
-  cursor: not-allowed;
-}
-
-@keyframes lobby-cta-shimmer {
-  0%, 100% { background-position: 200% 200%; opacity: 0; }
-  50%      { background-position: -50% -50%; opacity: 1; }
-}
-
-// ── Section header (title + count) ──────────────────────────────────────────
-.lobby-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.lobby-section-title-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.lobby-section-title {
-  font: var(--weight-bold) 0.75rem / 1 'Rajdhani', sans-serif;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  position: relative;
-  padding-left: 14px;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 14px;
-    background: var(--gold);
-    border-radius: 2px;
-    box-shadow: 0 0 8px var(--gold-soft-50);
-  }
-}
-
-.lobby-section-count {
-  font: var(--weight-bold) 0.7rem / 1 'Inter', sans-serif;
-  color: var(--gold);
-  background: var(--gold-soft-12);
-  padding: 4px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--gold-soft-30);
-}
-
-// ── Sort filter button (Plus récentes / oldest / pseudo A→Z) ───────────────
-// Mirrors mockup-1-holo-arena.html `.lobby-section-filter` (ll. 393-399).
-// The title-group on the left is allowed to grow; this button stays at the
-// right edge of the section header.
-.lobby-section-title-group { margin-right: auto; }
-
-.lobby-section-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font: var(--weight-semibold) 0.75rem / 1 'Inter', sans-serif;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: color var(--transition-normal) var(--ease-inout),
-              border-color var(--transition-normal) var(--ease-inout),
-              background var(--transition-normal) var(--ease-inout);
-
-  mat-icon {
-    font-size: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
-  }
-
-  &:hover,
-  &[aria-expanded='true'] {
-    color: var(--gold);
-    border-color: var(--gold-soft-40);
-    background: var(--gold-soft-08);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--gold-soft-50);
-    outline-offset: 2px;
-  }
-}
+// ── Section header / search-bar ─────────────────────────────────────────────
+// `.section-header*`, `.badge.badge--gold`, `.btn.btn--ghost.btn--sm`,
+// `.search-bar*`, `.icon-btn--sm` styles vivent dans les partials DS Wave 1
+// (cf. _section-header.scss / _pills.scss / _buttons.scss / _search-bar.scss
+// / _icon-button.scss).
 
 // Mark the currently-selected sort option in the Material menu with the
 // gold accent so the user can read it at a glance when re-opening.
@@ -282,66 +90,7 @@
   font-weight: var(--weight-semibold);
 }
 
-// ── Search bar (filter by pseudo) ───────────────────────────────────────────
-.lobby-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  transition: border-color var(--transition-normal) var(--ease-inout),
-              background var(--transition-normal) var(--ease-inout);
-
-  &:focus-within {
-    border-color: var(--gold-soft-50);
-    background: var(--surface-hover);
-  }
-
-  mat-icon {
-    color: var(--text-muted);
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
-  }
-
-  input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    font: var(--weight-normal) 0.88rem / 1 'Inter', sans-serif;
-    color: var(--text-primary);
-    min-width: 0;
-
-    &::placeholder {
-      color: var(--text-disabled);
-    }
-  }
-}
-
-.lobby-search-clear {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--text-muted);
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  transition: color var(--transition-normal) var(--ease-inout);
-
-  &:hover {
-    color: var(--text-primary);
-  }
-
-  mat-icon {
-    font-size: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
-  }
-}
+// Clear button uses `.icon-btn.icon-btn--sm` from `_icon-button.scss` (DS Wave 1 §2.8).
 
 // ── Room list viewport (CDK virtual scroll + fade scroll mask) ─────────────
 // Phase 3.13: ported from a plain scrollable <div> to <cdk-virtual-scroll-viewport>.
@@ -440,9 +189,8 @@
     }
   }
 
-  &--new {
-    animation: room-card-new 600ms var(--ease-out);
-  }
+  // SSE-push "new" room indicator now uses utility `.card-entry`
+  // (DS Wave 1, _motion.scss `ds-card-entry` keyframe).
 
   // Admin trash : always visible on mobile (no hover possible on touch),
   // hover-revealed on desktop (≥480px). Keyboard users get it on focus.
@@ -550,13 +298,8 @@
   }
 }
 
-@keyframes room-card-new {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-    box-shadow: 0 0 0 2px var(--gold-soft-50);
-  }
-}
+// `@keyframes room-card-new` removed — consolidated into `_motion.scss`
+// as `ds-card-entry` (DS Wave 1 §2.2). Template uses `.card-entry` utility.
 
 .room-info {
   display: flex;
@@ -589,40 +332,21 @@
   flex-shrink: 0;
 }
 
+// `.room-status-dot` migrated to `.pulse-dot.pulse-dot--sm` utility class
+// (DS Wave 1 §2.2). Color inheritance via `currentColor` — the dot reads
+// its parent's `color`. We scope `color: var(--success)` on the row, then
+// override the text back to `--text-muted` so the green stays on the dot only.
 .room-status {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 0.82rem;
-  color: var(--text-muted);
-}
-
-.room-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--success);
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.7);
-  position: relative;
-  flex-shrink: 0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    background: rgba(76, 175, 80, 0.4);
-    animation: room-status-pulse 1.6s ease-in-out infinite;
-  }
-}
-
-@keyframes room-status-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50%      { transform: scale(1.8); opacity: 0; }
+  color: var(--success); // applies to .pulse-dot child via currentColor
 }
 
 .room-status-text {
   font-style: italic;
+  color: var(--text-muted);
 }
 
 // ── Join button ────────────────────────────────────────────────────────────
