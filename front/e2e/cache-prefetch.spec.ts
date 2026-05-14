@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Request, type Response, type BrowserContext } from '@playwright/test';
+import { BASE_URL, BACK_URL, ADMIN, loginViaUI, waitForBoard } from './helpers';
 
 /**
  * Validates the 3 cache/prefetch fixes shipped after the PvP audit:
@@ -16,14 +17,10 @@ import { test, expect, type Page, type Request, type Response, type BrowserConte
  * Login: admin / admin. Decks: 19 (Fireking, p1), 20 (Radiant Typhoon, p2).
  */
 
-const BASE_URL = 'http://localhost:4200';
-const BACK_URL = 'http://localhost:8080';
 const DECK_P1 = 19; // Fireking
 const DECK_P2 = 20; // Radiant Typhoon (different cardCodes from Fireking — required for P2/P3 spoil checks)
-const USERNAME = 'admin';
-const PASSWORD = 'admin';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Spec-specific helpers ──────────────────────────────────────────────────
 
 interface QuickDuelResponse {
   roomCode: string;
@@ -35,15 +32,6 @@ interface CapturedRequest {
   url: string;
   status?: number;
   responseTimeMs?: number;
-}
-
-/** Login via the front UI form so the auth state is visible to Angular guards. */
-async function loginViaUI(page: Page): Promise<void> {
-  await page.goto(`${BASE_URL}/login`);
-  await page.getByRole('textbox', { name: /Pseudo/i }).fill(USERNAME);
-  await page.getByRole('textbox', { name: /Mot de passe/i }).fill(PASSWORD);
-  await page.getByRole('button', { name: /Se connecter/i }).click();
-  await page.waitForURL(url => !url.toString().endsWith('/login'), { timeout: 10000 });
 }
 
 /** Capture all /api/documents/* requests on the page; return the array (mutated as requests fire). */
@@ -87,11 +75,6 @@ async function startSoloDuelViaUI(page: Page, deckName: string): Promise<void> {
   await page.getByRole('button', { name: /Lancer|Confirm|Démarrer/i }).click();
 }
 
-/** Wait until the duel board is rendered (loading screen → board). */
-async function waitForBoard(page: Page, timeoutMs = 30000): Promise<void> {
-  await page.waitForSelector('[data-zone]', { timeout: timeoutMs });
-}
-
 /** Extract unique cardCode passcodes from the captured request URLs. */
 function extractCardCodes(requests: CapturedRequest[]): Set<number> {
   const codes = new Set<number>();
@@ -121,7 +104,7 @@ test.describe('PvP image cache & prefetch (P1+P2+P3 + follow-ups)', () => {
 
   test('P1: /api/documents/small/code/* carries long-lived immutable Cache-Control', async ({ request }) => {
     const loginRes = await request.post(`${BACK_URL}/api/login`, {
-      headers: { Authorization: 'Basic ' + Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64') },
+      headers: { Authorization: 'Basic ' + Buffer.from(`${ADMIN.pseudo}:${ADMIN.password}`).toString('base64') },
     });
     expect(loginRes.status()).toBe(200);
 
@@ -137,7 +120,7 @@ test.describe('PvP image cache & prefetch (P1+P2+P3 + follow-ups)', () => {
   });
 
   test('P2: solo duel with two different decks → only own deck cardCodes prefetched (no spoil)', async ({ page, context }) => {
-    await loginViaUI(page);
+    await loginViaUI(page, ADMIN);
 
     // Get expected cardCodes from each deck
     const deck1Codes = await getDeckCardCodes(context, DECK_P1);
@@ -202,7 +185,7 @@ test.describe('PvP image cache & prefetch (P1+P2+P3 + follow-ups)', () => {
   });
 
   test('B1: JIT prefetch — switching to opponent reveals their cards', async ({ page, context }) => {
-    await loginViaUI(page);
+    await loginViaUI(page, ADMIN);
 
     const deck1Codes = await getDeckCardCodes(context, DECK_P1);
     const deck2Codes = await getDeckCardCodes(context, DECK_P2);
@@ -242,7 +225,7 @@ test.describe('PvP image cache & prefetch (P1+P2+P3 + follow-ups)', () => {
   });
 
   test('B2: reconnect mid-duel — F5 reuses the disk cache', async ({ page }) => {
-    await loginViaUI(page);
+    await loginViaUI(page, ADMIN);
 
     const requests = captureDocumentRequests(page);
     await startSoloDuelViaUI(page, 'Fireking');
@@ -275,7 +258,7 @@ test.describe('PvP image cache & prefetch (P1+P2+P3 + follow-ups)', () => {
   });
 
   test('B5: cross-duel cache — second duel reuses the disk cache', async ({ page }) => {
-    await loginViaUI(page);
+    await loginViaUI(page, ADMIN);
 
     // First duel — primes the cache
     const firstRequests = captureDocumentRequests(page);
