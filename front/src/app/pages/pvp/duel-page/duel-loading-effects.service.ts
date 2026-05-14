@@ -7,7 +7,6 @@ import { RoomStateMachineService } from './room-state-machine.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { preloadCardImages } from '../pvp-card.utils';
 import type { RoomState } from './room-state-machine.service';
-import { RPS_DISMISS_DRAW_MS, RPS_DISMISS_WINNER_MS } from './ui-timing-constants';
 
 interface IndexedCardDetailDTO {
   card: {
@@ -35,7 +34,6 @@ export class DuelLoadingEffectsService {
 
   private prefetchStarted = false;
   private loadingTimeoutRef: ReturnType<typeof setTimeout> | null = null;
-  private rpsAutoDismissTimeout: ReturnType<typeof setTimeout> | null = null;
 
   initEffects(config: {
     boardReady: Signal<boolean>;
@@ -106,20 +104,16 @@ export class DuelLoadingEffectsService {
       }
     });
 
-    // Story 2.3 — RPS result auto-dismiss
-    effect(() => {
-      const rps = this.wsService.diceResult();
-      if (!rps) return;
-      untracked(() => {
-        if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
-        const duration = rps.winner !== null ? RPS_DISMISS_WINNER_MS : RPS_DISMISS_DRAW_MS;
-        this.rpsAutoDismissTimeout = setTimeout(() => this.wsService.clearDiceResult(), duration);
-      });
-    });
+    // (Story 2.3's RPS auto-dismiss was removed when the pre-duel flow
+    // moved from RPS to 2D6 dice in Phase 3.14 — pvp-dice-arena.component
+    // now owns the full overlay lifecycle, including the post-`final`
+    // dismiss timer (scheduleFinalDismiss). Auto-clearing diceResult here
+    // would race against the user's SELECT_FIRST_PLAYER pick and hide the
+    // turn-choice buttons after 3s — root cause of the "dice end → duel
+    // launches immediately" regression.)
 
     this.destroyRef.onDestroy(() => {
       if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
-      if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
     });
   }
 

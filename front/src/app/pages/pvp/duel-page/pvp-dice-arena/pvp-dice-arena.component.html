@@ -109,24 +109,19 @@
                   <span class="dice-turn-choice__label">{{ 'duel.dice.whoStarts' | translate }}</span>
                   <div class="dice-turn-options">
                     <button type="button" class="dice-turn-option"
-                            [class.selected]="turnChoice() === 'first'"
-                            (click)="selectTurnChoice('first')">
+                            [disabled]="firstPlayerResponseSent()"
+                            (click)="chooseAndConfirm('first')">
                       <span class="material-icons-round" aria-hidden="true">play_circle</span>
                       <span class="dice-turn-option__title">{{ 'duel.firstPlayer.iStart' | translate }}</span>
                     </button>
                     <button type="button" class="dice-turn-option"
-                            [class.selected]="turnChoice() === 'second'"
-                            (click)="selectTurnChoice('second')">
+                            [disabled]="firstPlayerResponseSent()"
+                            (click)="chooseAndConfirm('second')">
                       <span class="material-icons-round" aria-hidden="true">skip_next</span>
                       <span class="dice-turn-option__title">{{ 'duel.firstPlayer.opponentStarts' | translate }}</span>
                     </button>
                   </div>
                 </div>
-
-                <button type="button" class="dice-launch-btn" (click)="confirmTurnChoice()">
-                  <span class="material-icons-round" aria-hidden="true">bolt</span>
-                  <span>{{ 'duel.dice.launchDuel' | translate }}</span>
-                </button>
               }
               @case ('lost') {
                 <div class="dice-banner dice-banner--lost">

@@ -54,6 +54,9 @@ export class PvpDiceArenaComponent {
   readonly turnChoice = signal<TurnChoice>('first');
   readonly diceResult = computed(() => this.ws.diceResult());
   readonly firstPlayerResult = computed(() => this.ws.firstPlayerResult());
+  // Used by the template to disable the two turn-choice buttons once the
+  // user has clicked one (single-shot — the response is fire-and-confirm).
+  readonly firstPlayerResponseSent = computed(() => this.ws.firstPlayerResponseSent());
 
   /** Displayed dice values after the rolling animation lands. We mirror the
    *  server's DICE_RESULT here so Stage 2 can pin to the right face. Reset on
@@ -218,14 +221,16 @@ export class PvpDiceArenaComponent {
 
   // ---- Stage 3 (won) actions ----------------------------------------------
 
-  selectTurnChoice(choice: TurnChoice): void {
-    this.turnChoice.set(choice);
-  }
-
-  confirmTurnChoice(): void {
+  /** One-shot turn-order pick — clicking a button immediately sends the
+   *  SELECT_FIRST_PLAYER response (no intermediate "Launch the duel" step).
+   *  The two buttons disable themselves via `firstPlayerResponseSent()` to
+   *  prevent double-clicks while the response is in flight. */
+  chooseAndConfirm(choice: TurnChoice): void {
+    if (this.firstPlayerResponseSent()) return;
     const prompt = this.ws.pendingPrompt();
     if (prompt?.type !== 'SELECT_FIRST_PLAYER') return;
-    this.ws.sendResponse('SELECT_FIRST_PLAYER', { goFirst: this.turnChoice() === 'first' });
+    this.turnChoice.set(choice);
+    this.ws.sendResponse('SELECT_FIRST_PLAYER', { goFirst: choice === 'first' });
   }
 
   // Templates use these to render the 6-face dice cube. We render all 6 faces
