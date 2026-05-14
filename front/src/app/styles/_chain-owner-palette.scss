@@ -1,0 +1,37 @@
+// =============================================================================
+// Chain owner palette partial — Replay Viewer F0
+// =============================================================================
+// Source: _mockups/mockup-replay-viewer.html (ll. 49-55 :root + ll. 390-402)
+//
+// Consumes the 6 chain-owner tokens added to `_tokens.scss`:
+//   --self-blue, --self-blue-soft, --self-blue-glow
+//   --opp-amber, --opp-amber-soft, --opp-amber-glow
+//
+// Exposes helper mixins for any component that needs to colour-code chain
+// segments by owner (self = local perspective, opp = opponent). Used by
+// `TimelineBarComponent` (chain-group rendering).
+//
+// Semantic note: self/opp is perspective-relative — when the viewer swaps
+// perspective (V key), the same chain may flip from self to opp colour. This
+// is intentional; the tokens describe "your" vs "their" chains.
+// =============================================================================
+
+@mixin chain-group-self {
+  background: var(--self-blue-soft);
+  border: 1px solid var(--self-blue-glow);
+}
+
+@mixin chain-group-opp {
+  background: var(--opp-amber-soft);
+  border: 1px solid var(--opp-amber-glow);
+}
+
+// Utility classes — components that don't need the mixin form can target these
+// directly via `class="chain-group chain-group--self"`.
+.chain-group--self {
+  @include chain-group-self;
+}
+
+.chain-group--opp {
+  @include chain-group-opp;
+}

@@ -163,6 +163,17 @@
   --gold-soft-55: rgba(201, 168, 76, 0.55);
   --gold-soft-60: rgba(201, 168, 76, 0.60);
 
+  // --- Chain owner palette (Replay Viewer — perspective-relative) ---
+  // self = local perspective, opp = opponent. When the viewer flips perspective
+  // (V key), the same chain swaps colours — this is intentional.
+  // Sourced from `_mockups/mockup-replay-viewer.html` ll. 49-55.
+  --self-blue:       #1e5ac8;
+  --self-blue-soft:  rgba(30, 90, 200, 0.25);
+  --self-blue-glow:  rgba(96, 165, 250, 0.55);
+  --opp-amber:       #b45309;
+  --opp-amber-soft:  rgba(180, 83, 9, 0.30);
+  --opp-amber-glow:  rgba(245, 158, 11, 0.55);
+
   // --- Cyan (secondary / "second player" accent) ---
   --cyan-300: #79b8ff;
   --cyan-500: #4a90d9;

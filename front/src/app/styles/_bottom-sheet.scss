@@ -1,0 +1,111 @@
+// =============================================================================
+// Bottom-sheet partial — Replay Viewer F0 (DS Wave 1 extension)
+// =============================================================================
+// Source: _mockups/mockup-replay-viewer.html (ll. 1630-1693)
+//
+// Provides the wrapper / backdrop / header / body / title / close classes used
+// by replay viewer sheets (options, details, picker). The bottom-sheet handle
+// itself is NOT styled here — it lives in the shared `<app-bottom-sheet-handle>`
+// component (see `front/src/app/shared/bottom-sheet-handle/`) which already
+// renders `.bottom-sheet-handle-bar` and owns the drag-to-close behaviour.
+// Drop `<app-bottom-sheet-handle>` as the first child of the dialog template;
+// do NOT add a manual `.bottom-sheet-handle` div.
+//
+// Consumers: `<app-replay-bottom-sheet>` (F1) — wraps a `MatDialog` opened
+// bottom-sheet style, includes `<app-bottom-sheet-handle>`, applies these
+// classes to its inner sections.
+//
+// Tokens only — no hex / no rgba inline / no `!important`.
+// =============================================================================
+
+.bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 10, 0.5); // backdrop scrim — composite value, no equivalent token
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  align-items: flex-end;
+  justify-content: center;
+  animation: ds-bottom-sheet-fade var(--transition-fast) var(--ease-out) both;
+  display: none;
+
+  &.is-open {
+    display: flex;
+  }
+}
+
+.bottom-sheet {
+  width: 100%;
+  max-width: 540px;
+  background: linear-gradient(180deg, var(--surface-card-ds), var(--surface-bg-deep));
+  border: 1px solid var(--gold-soft-25);
+  border-bottom: none;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow:
+    0 -16px 48px rgba(0, 0, 0, 0.5),
+    0 0 80px var(--gold-soft-12);
+  overflow: hidden;
+  animation: ds-bottom-sheet-rise var(--transition-slow) var(--ease-spring) both;
+  display: flex;
+  flex-direction: column;
+  max-height: 85dvh;
+}
+
+.bottom-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-5) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.bottom-sheet-title {
+  font: var(--weight-bold) var(--text-md) / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: linear-gradient(135deg, var(--gold-50), var(--gold), var(--gold-700));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  .material-icons-round {
+    font-size: 18px;
+    color: var(--gold);
+    -webkit-text-fill-color: var(--gold);
+  }
+}
+
+.bottom-sheet-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-sheet-body {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@keyframes ds-bottom-sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ds-bottom-sheet-rise {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -16,6 +16,7 @@ $bp-tablet: 768px;
 $bp-desktop-sm: 1024px;
 $bp-pvp-narrow: 480px;  // PvP duel page — portrait phones
 $bp-pvp-tiny: 400px;    // PvP duel page — very small phones (≤400px)
+$bp-replay-narrow: 760px; // Replay viewer — width-driven stepper threshold (D1)
 
 // Mobile-first responsive mixins
 @mixin respond-above($bp) {

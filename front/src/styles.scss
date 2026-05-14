@@ -39,6 +39,9 @@
 @use 'app/styles/page-header';
 @use 'app/styles/section-header';
 @use 'app/styles/empty-state';
+@use 'app/styles/bottom-sheet';          // Viewer F0
+@use 'app/styles/chain-owner-palette';   // Viewer F0
+@use 'app/styles/mini-board';            // Viewer F0
 @use 'app/styles/holo-modal';
 
 // 5. Legacy (read-only, do not extend)

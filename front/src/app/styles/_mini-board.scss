@@ -1,0 +1,148 @@
+// =============================================================================
+// Mini-board partial — Replay Viewer F0
+// =============================================================================
+// Source: _mockups/mockup-replay-viewer.html (ll. 493-579 hover-popover-board
+// + ll. 922-958 turn-picker-mini-board)
+//
+// Shared layout primitives for `<app-mini-board-thumbnail>` (F2) — consumed by
+// the timeline-bar hover popover (desktop) AND the turn-picker grid (mobile).
+// One source of truth for "what does a 1:6 scale board look like".
+//
+// Variants:
+//   .mini-board                     — default size (260px hover popover)
+//   .mini-board--picker             — scaled down for grid (3-col cards)
+//   .mini-board--not-computed       — diagonal stripes + "Calcul en cours…"
+//
+// Tokens only — no hex / no rgba inline / no `!important`.
+// =============================================================================
+
+.mini-board {
+  width: 260px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(ellipse at center, var(--gold-soft-04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--surface-card-ds), var(--surface-card-low));
+  border: 1px solid var(--gold-soft-25);
+  box-shadow: inset 0 0 0 1px var(--surface-overlay);
+  display: grid;
+  grid-template-rows: auto 1fr 1fr auto;
+  padding: 6px 8px;
+  gap: 4px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    pointer-events: none;
+    border: 1px dashed var(--gold-soft-12);
+    border-radius: 4px;
+  }
+}
+
+.mini-hand {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.mini-hand-card {
+  width: 14px;
+  height: 20px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, var(--surface-card-ds), var(--surface-card-low));
+  border: 1px solid var(--border-soft);
+}
+
+.mini-field-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.mini-zone {
+  aspect-ratio: 2 / 3;
+  border-radius: 2px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--gold-soft-10);
+
+  &.has-card {
+    background: linear-gradient(135deg, var(--surface-card-ds), var(--surface-card-low));
+    border-color: var(--gold-soft-30);
+    box-shadow: inset 0 0 0 1px var(--surface-overlay);
+  }
+}
+
+// Picker variant: shrink the inner geometry for grid display while keeping
+// the same DOM tree from <app-mini-board-thumbnail>.
+.mini-board--picker {
+  width: auto;
+  padding: 4px;
+  gap: 2px;
+  border-color: var(--border-subtle);
+
+  &::before {
+    inset: 2px;
+  }
+
+  .mini-hand {
+    gap: 1px;
+  }
+
+  .mini-hand-card {
+    width: 6px;
+    height: 9px;
+    border-radius: 1px;
+  }
+
+  .mini-field-row {
+    gap: 2px;
+  }
+
+  .mini-zone {
+    border-radius: 1px;
+  }
+}
+
+// Not-computed variant — shimmering stripes hint that the board state for
+// this turn hasn't been pre-computed yet.
+.mini-board--not-computed {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      var(--gold-soft-04) 0px,
+      var(--gold-soft-04) 8px,
+      var(--surface-bg-deep) 8px,
+      var(--surface-bg-deep) 16px
+    );
+  border-color: var(--gold-soft-25);
+
+  > * {
+    visibility: hidden;
+  }
+
+  &::after {
+    content: 'Calcul en cours…';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    visibility: visible;
+    font: var(--weight-semibold) var(--text-xs) 'Inter';
+    color: var(--gold-50);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-bg-deep);
+    border: 1px solid var(--gold-soft-25);
+  }
+}
