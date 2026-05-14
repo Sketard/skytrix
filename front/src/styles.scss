@@ -1,12 +1,59 @@
-@import 'material';
-@import 'app/styles/tokens';
-@import 'app/styles/scrollbar';
-@import 'app/styles/holo-arena';
-@import 'app/styles/empty-state';
-@import 'app/styles/holo-modal';
-@import 'app/styles/variable';
-@import 'app/styles/long-press';
-@import 'app/shared/skel/skel';
+// =============================================================================
+// Skytrix — global stylesheet entrypoint.
+// DS Wave 1 (2026-05-14) — `@use` migration + strict import order §1.3 spec.
+//
+// Order is critical:
+//   1. Foundations (tokens MUST come first — a11y/motion/typography rely on it)
+//   2. Background / surfaces / scroll
+//   3. Building blocks (composables: card-surface, buttons, pills, chips,
+//      icon-button)
+//   4. Composites (search-bar, page-header, section-header, empty-state,
+//      holo-modal)
+//   5. Legacy (variable.scss, long-press — frozen, do not extend)
+//   6. Skel (composite of motion + card-surface)
+//   7. Material overrides (MUST be last to win specificity)
+//
+// SCSS variables (`$blue`, `$black`, `$grey`, `$white`) are accessed via the
+// `v` namespace (`@use 'app/styles/variable' as v`).
+// =============================================================================
+
+// 1. Foundations
+@use 'app/styles/tokens';
+@use 'app/styles/a11y';
+@use 'app/styles/motion';
+@use 'app/styles/typography';
+
+// 2. Background / surfaces / scroll
+@use 'app/styles/holo-arena';
+@use 'app/styles/scrollbar';
+
+// 3. Building blocks
+@use 'app/styles/card-surface';
+@use 'app/styles/buttons';
+@use 'app/styles/pills';
+@use 'app/styles/chips';
+@use 'app/styles/icon-button';
+
+// 4. Composites
+@use 'app/styles/search-bar';
+@use 'app/styles/page-header';
+@use 'app/styles/section-header';
+@use 'app/styles/empty-state';
+@use 'app/styles/holo-modal';
+
+// 5. Legacy (read-only, do not extend)
+@use 'app/styles/variable' as v;
+@use 'app/styles/long-press';
+
+// 6. Skel (consumer of motion + card-surface)
+@use 'app/shared/skel/skel';
+
+// 7. Material overrides (MUST be last)
+@use 'app/styles/material';
+
+// =============================================================================
+// Global resets + plumbing (kept here — too small to extract to a partial)
+// =============================================================================
 
 *,
 *::before,
@@ -43,7 +90,7 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px #252525 inset;
-  -webkit-text-fill-color: $white;
+  -webkit-text-fill-color: v.$white;
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -118,20 +165,20 @@ input[type='number'] {
   padding: 0.5rem;
   transition: all 0.1s ease 0s;
   white-space: nowrap;
-  box-shadow: $blue 0px 0px 0px 2px;
+  box-shadow: v.$blue 0px 0px 0px 2px;
   font-weight: 600;
-  background-color: $black;
+  background-color: v.$black;
   color: rgb(238, 238, 238);
   font-size: 0.8rem;
 }
 
 .mat-mdc-unelevated-button:not(:disabled) {
-  --mdc-filled-button-label-text-color: #{$white};
-  --mdc-filled-button-container-color: #{$black};
+  --mdc-filled-button-label-text-color: #{v.$white};
+  --mdc-filled-button-container-color: #{v.$black};
 }
 
 .mat-mdc-unelevated-button[disabled], .mat-mdc-unelevated-button.mat-mdc-button-disabled {
-  --mdc-filled-button-disabled-label-text-color: #{$grey};
+  --mdc-filled-button-disabled-label-text-color: #{v.$grey};
 }
 
 .mdc-switch--checked {
@@ -152,57 +199,10 @@ a, button {
 }
 
 // === PvP Dialog Base ===
-.pvp-dialog-panel {
-  --mdc-dialog-container-color: #0f1729;
-  --mdc-dialog-container-shape: 12px;
-  --mdc-dialog-subhead-color: #eee;
-  --mdc-dialog-supporting-text-color: #9e9e9e;
-
-  .mat-mdc-dialog-surface {
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
-  }
-
-  .mat-mdc-dialog-title {
-    color: #eee;
-  }
-
-  .mat-mdc-dialog-content {
-    color: #9e9e9e;
-  }
-
-  .mat-mdc-dialog-actions {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    gap: 8px;
-
-    .mat-mdc-outlined-button {
-      --mdc-outlined-button-label-text-color: rgba(255, 255, 255, 0.5);
-      --mdc-outlined-button-outline-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .mat-mdc-unelevated-button {
-      --mdc-filled-button-label-text-color: #fff;
-    }
-  }
-
-  // --- Surrender (danger) ---
-  &--danger .mat-mdc-dialog-surface {
-    border-top: 3px solid #b71c1c !important;
-  }
-
-  &--danger .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
-    --mdc-filled-button-container-color: #b71c1c;
-  }
-
-  // --- Inactivity (warning) ---
-  &--warning .mat-mdc-dialog-surface {
-    border-top: 3px solid #ff9800 !important;
-  }
-
-  &--warning .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
-    --mdc-filled-button-container-color: #ff9800;
-  }
-}
+// Note: `.pvp-dialog-panel` block migrated to `_holo-modal.scss` (DS Wave 1
+// §3.3). All consumers (duel-page, deck-list, control-bar, match-history,
+// duel-prompt-effects) keep their `panelClass: 'pvp-dialog-panel'` — the
+// rules now resolve from `_holo-modal.scss` instead.
 
 .snackbar-panel {
   // panelClass applied on overlay pane
@@ -235,6 +235,10 @@ a, button {
 // with class `target-float`. Global because they live outside Angular's view
 // encapsulation (appended directly to the duel-page native element).
 // Active = newest float (full reticle). Demoted = older floats (red halo only).
+//
+// Keyframes `target-float-*` keep their prefix (implicitly unique, scope global
+// PvP — not migrated to `ds-*` in Wave 1, cf. spec §1.2 exception).
+// `prefers-reduced-motion` géré globalement par `_a11y.scss`.
 .target-float {
   &::before,
   &::after {
@@ -304,15 +308,3 @@ a, button {
       0 0 18px rgba(255, 51, 68, 0.65);
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .target-float--active::before,
-  .target-float--active::after {
-    animation: none;
-    opacity: 1;
-  }
-  .target-float--demoted {
-    animation: none;
-  }
-}
-

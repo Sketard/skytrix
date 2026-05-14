@@ -1,0 +1,160 @@
+// =============================================================================
+// Page Header — header vertical + variant `--compact` (sticky horizontal viewer).
+// Source: DS spec 2026-05-14, §2.10.
+// Sources extraction: L `.lobby-header` · H `.hub-header` · V `.replay-topbar`
+// (variant compact).
+// =============================================================================
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.page-header__title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.page-header__icon {
+  font-size: 38px !important;
+  width: 38px !important;
+  height: 38px !important;
+  color: var(--gold);
+  filter: drop-shadow(0 0 14px var(--gold-soft-50));
+}
+
+.page-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.page-header__title {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  text-wrap: balance;
+  // Le gradient gold est appliqué via `.text-gold-gradient` (cf. _typography.scss)
+  // → consommer ainsi : <h1 class="page-header__title text-gold-gradient">
+}
+
+.page-header__subtitle {
+  font: var(--weight-bold) var(--text-xs) / 1.1 'Inter', sans-serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+// --- Variants ---------------------------------------------------------------
+.page-header--bordered {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-3);
+}
+
+// Sticky horizontal — viewer + écrans pleine page futurs.
+.page-header--compact {
+  position: sticky;
+  top: 0;
+  flex-direction: row;
+  background: linear-gradient(180deg, rgba(15, 15, 28, 0.96), rgba(15, 15, 28, 0.78));
+  backdrop-filter: blur(12px);
+  padding: var(--space-3) var(--space-4);
+
+  .page-header__icon { font-size: 24px !important; width: 24px !important; height: 24px !important; }
+  .page-header__title { font-size: var(--text-md); }
+  .page-header__subtitle { display: none; }
+}
+
+// --- Mobile -----------------------------------------------------------------
+@media (max-width: 480px) {
+  .page-header {
+    gap: var(--space-2);
+  }
+
+  .page-header__icon {
+    font-size: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .page-header__title {
+    font-size: 1.15rem;
+    line-height: 1.05;
+  }
+
+  .page-header__subtitle {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+  }
+}
+
+// =============================================================================
+// Legacy aliases — `.lobby-header` + sub-éléments.
+// Bit-exact lobby-page.component.scss:31-83.
+// =============================================================================
+.lobby-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lobby-header-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.lobby-title-icon {
+  color: var(--gold);
+  font-size: 38px !important;
+  width: 38px !important;
+  height: 38px !important;
+  filter: drop-shadow(0 0 14px var(--gold-soft-50));
+}
+
+.lobby-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  h1 {
+    font-family: 'Rajdhani', 'Inter', sans-serif;
+    margin: 0;
+    font-size: clamp(1.4rem, 5vw, 1.85rem);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    text-wrap: balance;
+    background: linear-gradient(135deg, var(--gold-50) 0%, var(--gold) 50%, var(--gold-900) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.lobby-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}

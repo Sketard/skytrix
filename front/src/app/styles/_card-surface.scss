@@ -1,0 +1,96 @@
+// =============================================================================
+// Card Surface — apparence uniquement (background, border, shadow,
+// accent-line, blur, hover).
+// Source: DS spec 2026-05-14, §2.4. H `.replay-card`, `.hub-stat-card`,
+// `.hub-empty` · V `.turn-picker-card`.
+//
+// **Doctrine** : ce partial fournit l'APPARENCE. Le LAYOUT du contenu reste
+// à la charge du consommateur (display: grid/flex + grid-template-areas).
+// Aucun slot, aucune structure d'enfant prescrite. Garde-fou §6 critère 10
+// — pas de `display`/`grid-template-*` ici.
+// =============================================================================
+
+.surface-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-card-ds);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-1);
+  backdrop-filter: blur(8px);
+}
+
+.surface-card--interactive {
+  cursor: pointer;
+  transition: transform var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: var(--gold-soft-40);
+    box-shadow: var(--elevation-3), 0 0 0 1px var(--gold-soft-25);
+  }
+}
+
+// --- Accent line variants ----------------------------------------------------
+// Vertical accent bar (3px) ancrée à gauche, gradient transparent → color → transparent.
+.surface-card--accent-gold,
+.surface-card--accent-cyan,
+.surface-card--accent-neutral,
+.surface-card--accent-warning,
+.surface-card--accent-danger {
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12%;
+    bottom: 12%;
+    width: 3px;
+    opacity: 0.6;
+    transition: opacity var(--transition-fast) var(--ease-out),
+                width   var(--transition-fast) var(--ease-out);
+  }
+}
+
+.surface-card--accent-gold::before {
+  background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+}
+
+.surface-card--accent-cyan::before {
+  background: linear-gradient(to bottom, transparent, var(--cyan-500), transparent);
+}
+
+.surface-card--accent-neutral::before {
+  background: linear-gradient(to bottom, transparent, var(--text-muted), transparent);
+}
+
+.surface-card--accent-warning::before {
+  background: linear-gradient(to bottom, transparent, var(--warning), transparent);
+}
+
+.surface-card--accent-danger::before {
+  background: linear-gradient(to bottom, transparent, var(--danger-strong), transparent);
+}
+
+// Hover : accent line se renforce (opacité + width).
+.surface-card--interactive:hover {
+  &.surface-card--accent-gold::before,
+  &.surface-card--accent-cyan::before,
+  &.surface-card--accent-neutral::before,
+  &.surface-card--accent-warning::before,
+  &.surface-card--accent-danger::before {
+    opacity: 1;
+    width: 4px;
+  }
+}
+
+// --- Tone modifiers ----------------------------------------------------------
+.surface-card--low {
+  background: var(--surface-card-low);
+}
+
+.surface-card--flat {
+  box-shadow: none;
+  backdrop-filter: none;
+}

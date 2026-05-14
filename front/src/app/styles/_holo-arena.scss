@@ -38,12 +38,8 @@
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
   opacity: 0.6;
-  animation: screen-bg-grid-drift 24s linear infinite;
-}
-
-@keyframes screen-bg-grid-drift {
-  from { background-position: 0 0; }
-  to   { background-position: 48px 48px; }
+  // Keyframe `ds-grid-drift` déclarée dans `_motion.scss` (DS Wave 1 §2.2).
+  animation: ds-grid-drift 24s linear infinite;
 }
 
 .screen-bg-glow {
@@ -75,6 +71,4 @@
   opacity: 0.35;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .screen-bg-grid { animation: none; }
-}
+// `prefers-reduced-motion` géré globalement par `_a11y.scss`.

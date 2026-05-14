@@ -1,0 +1,99 @@
+// =============================================================================
+// Search Bar — input + clear + focus-within border.
+// Source: DS spec 2026-05-14, §2.9.
+// Sources extraction: L `.lobby-search-bar` · H `.hub-search-bar`.
+//
+// Note: `.search-bar__clear` est un `.icon-btn.icon-btn--sm` côté template.
+// Pas de @extend ici — on garde la composition côté HTML pour lisibilité.
+// =============================================================================
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  &:focus-within {
+    border-color: var(--gold-soft-50);
+    background: var(--surface-hover);
+  }
+}
+
+.search-bar__icon {
+  color: var(--text-muted);
+  font-size: 18px !important; // !important: override mat-icon default
+  flex-shrink: 0;
+}
+
+.search-bar__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: var(--weight-normal) var(--text-sm) 'Inter', sans-serif;
+  color: var(--text-primary);
+
+  &::placeholder { color: var(--text-disabled); }
+}
+
+// Modifier mobile / full-width
+.search-bar--full { width: 100%; }
+
+// =============================================================================
+// Legacy alias — `.lobby-search-bar` + `.lobby-search-clear`
+// Bit-exact lobby-page.component.scss:286-344.
+// =============================================================================
+.lobby-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-normal) var(--ease-inout),
+              background var(--transition-normal) var(--ease-inout);
+
+  &:focus-within {
+    border-color: var(--gold-soft-50);
+    background: var(--surface-hover);
+  }
+
+  mat-icon {
+    color: var(--text-muted);
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+  }
+}
+
+.lobby-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  mat-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+}

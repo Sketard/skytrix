@@ -1,0 +1,122 @@
+// =============================================================================
+// Section Header — titre + count + action.
+// Source: DS spec 2026-05-14, §2.11.
+// Sources extraction: L `.lobby-section-header` · H `.hub-list-header`.
+//
+// Le count est un `.badge.badge--gold` (cf. _pills.scss).
+// L'action est un `.btn.btn--ghost.btn--sm` (cf. _buttons.scss).
+// =============================================================================
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.section-header__title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-header__title {
+  position: relative;
+  padding-left: 14px;
+  margin: 0;
+  font: var(--weight-bold) 0.75rem / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 14px;
+    background: var(--gold);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--gold-soft-50);
+  }
+}
+
+// Modifier no-bar — désactive l'accent bar gauche.
+.section-header__title--no-bar {
+  padding-left: 0;
+
+  &::before { display: none; }
+}
+
+// =============================================================================
+// Legacy aliases — `.lobby-section-*` (période coexistence).
+// Bit-exact lobby-page.component.scss:193-227 + 242 + 244-276.
+// =============================================================================
+.lobby-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.lobby-section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.lobby-section-title {
+  font: var(--weight-bold) 0.75rem / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  position: relative;
+  padding-left: 14px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 14px;
+    background: var(--gold);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--gold-soft-50);
+  }
+}
+
+.lobby-section-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--weight-semibold) 0.75rem / 1 'Inter', sans-serif;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color var(--transition-normal) var(--ease-inout),
+              border-color var(--transition-normal) var(--ease-inout),
+              background var(--transition-normal) var(--ease-inout);
+
+  mat-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  &:hover,
+  &[aria-expanded='true'] {
+    color: var(--gold);
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-08);
+  }
+}

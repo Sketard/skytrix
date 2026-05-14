@@ -1,17 +1,25 @@
 // =============================================================================
-// Empty State — shared "no boîte vide, toujours une voie de sortie" utility.
-// Spec source: _mockups/mockup-1-holo-arena.html (EMPTY STATES block, ll. 1648-1702).
-// Convention skytrix: Material Icons xxl + opacity réduite + titre + sous-titre + CTA.
+// Empty State — "no boîte vide, toujours une voie de sortie" utility.
+// Source: DS spec 2026-05-14, §2.12 (refacto BEM `__` + variant `--rich`).
+// Spec mockup: _mockups/mockup-1-holo-arena.html (EMPTY STATES block, 1648-1702).
 //
-// Usage:
+// Usage (BEM strict) :
 //   <div class="empty-state">
-//     <mat-icon class="empty-state-icon">groups</mat-icon>
-//     <p class="empty-state-title">...</p>
-//     <p class="empty-state-desc">...</p>
-//     <button class="empty-state-cta">...</button>
+//     <mat-icon class="empty-state__icon">groups</mat-icon>
+//     <p class="empty-state__title">…</p>
+//     <p class="empty-state__desc">…</p>
+//     <button class="btn btn--primary btn--lg btn--cta">…</button>
 //   </div>
 //
-// Use --error variant for failure states (icon red-shifted, message tone shifts).
+// Variants :
+//   - `.empty-state--rich`  — Hub (icône XL 96px + min-height 320px + 2 CTAs)
+//   - `.empty-state--error` — failure state (icon red-shifted)
+//
+// La CTA n'a plus de classe dédiée — utiliser `.btn.btn--primary.btn--lg.btn--cta`
+// (DRY avec _buttons.scss).
+//
+// `prefers-reduced-motion` est géré globalement par `_a11y.scss`.
+// `:focus-visible` est géré globalement par `_a11y.scss`.
 // =============================================================================
 
 .empty-state {
@@ -23,18 +31,63 @@
   padding: clamp(40px, 8vw, 64px) clamp(20px, 5vw, 32px);
   gap: 16px;
   min-height: 280px;
-  animation: empty-state-in 360ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  animation: ds-empty-state-in 360ms var(--ease-out);
 }
 
-@keyframes empty-state-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+.empty-state__icon {
+  font-size: 96px !important; // !important: override mat-icon default 24px
+  width: 96px !important;
+  height: 96px !important;
+  color: rgba(201, 168, 76, 0.3);
+  filter: drop-shadow(0 4px 16px rgba(201, 168, 76, 0.2));
+  margin-bottom: 8px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .empty-state { animation: none; }
+.empty-state--error .empty-state__icon {
+  color: rgba(255, 82, 82, 0.4);
+  filter: drop-shadow(0 4px 16px rgba(255, 82, 82, 0.2));
 }
 
+.empty-state__title {
+  margin: 0;
+  font: var(--weight-bold) clamp(1.1rem, 4vw, 1.35rem) / 1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.empty-state__desc {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 320px;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+// =============================================================================
+// Variant `--rich` — Hub empty state (icône XL + min-height + 2 CTAs row).
+// =============================================================================
+.empty-state--rich {
+  min-height: 320px;
+  padding: var(--space-8) var(--space-4);
+
+  .empty-state__icon {
+    font-size: 96px !important;
+    width: 96px !important;
+    height: 96px !important;
+    filter: drop-shadow(0 0 24px var(--gold-soft-12));
+  }
+
+  .empty-state__title {
+    font: var(--weight-bold) var(--text-lg) 'Rajdhani', sans-serif;
+    letter-spacing: 0.05em;
+  }
+}
+
+// =============================================================================
+// Legacy aliases — kebab-simple classes (période coexistence, à retirer Commit 3).
+// =============================================================================
 .empty-state-icon {
   font-size: 96px !important;
   width: 96px !important;
@@ -66,6 +119,9 @@
   text-wrap: balance;
 }
 
+// La CTA legacy reste pour ne pas casser le composant `<app-empty-state>`
+// (components/empty-state/empty-state.component.html) — sera supprimée Commit 3
+// après migration vers `.btn.btn--primary.btn--lg.btn--cta`.
 .empty-state-cta {
   margin-top: 8px;
   display: inline-flex;
@@ -95,11 +151,6 @@
     background: var(--gold);
     color: var(--text-inverse);
     box-shadow: 0 6px 20px var(--gold-soft-40);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--gold-soft-50);
-    outline-offset: 2px;
   }
 
   &:disabled {

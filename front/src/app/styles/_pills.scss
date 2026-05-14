@@ -1,0 +1,149 @@
+// =============================================================================
+// Pills + Badges — status / label / résultat (pill) vs compteur (badge).
+// Source: DS spec 2026-05-14, §2.6 + audit PvP §2.2.
+// Sources extraction: H `.replay-result--*` · V `.context-turn-pill` /
+// `.context-phase` / `.replay-meta-pill` / `.player-chip-result--*`.
+//
+// Cf. §1.4 spec pour distinguer pill / chip / badge.
+// =============================================================================
+
+// =============================================================================
+// `.pill` — status / label, NON-INTERACTIF (aria-pressed interdit).
+// =============================================================================
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-weight: var(--weight-bold);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.pill__icon {
+  font-size: 14px !important; // !important: override mat-icon default 24px
+}
+
+// --- Variants tonals --------------------------------------------------------
+.pill--gold {
+  background: var(--gold-soft-12);
+  border: 1px solid var(--gold-soft-25);
+  color: var(--gold-50);
+
+  .pill__icon { color: var(--gold); }
+}
+
+.pill--cyan {
+  background: var(--cyan-soft-15);
+  border: 1px solid var(--cyan-soft-25);
+  color: var(--cyan-300);
+}
+
+.pill--neutral {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+}
+
+.pill--warning {
+  background: var(--warning-soft);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: var(--warning);
+}
+
+.pill--danger {
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: var(--danger-strong);
+}
+
+.pill--success {
+  background: var(--success-soft);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: var(--success);
+}
+
+// --- Sizes ------------------------------------------------------------------
+.pill--xs { padding: 3px 8px;  font-size: 0.62rem; }
+.pill--sm { padding: 4px 10px; font-size: 0.7rem; } // default
+.pill--md { padding: 7px 14px; font-size: 0.75rem; }
+.pill--lg { padding: 8px 16px; font-size: 0.85rem; }
+
+// --- Modifiers --------------------------------------------------------------
+// Celebrated (winner pill end-overlay, etc.) — letter-spacing + text-shadow.
+.pill--celebrated {
+  letter-spacing: 0.18em;
+
+  &.pill--gold    { text-shadow: 0 0 12px var(--gold-soft-50); }
+  &.pill--cyan    { text-shadow: 0 0 12px var(--cyan-soft-50); }
+  &.pill--success { text-shadow: 0 0 12px rgba(76, 175, 80, 0.4); }
+}
+
+// Live (waiting room, duel-in-progress, dice rolling). Pulse-dot intégré via
+// `::before` — couleur héritée de la variant courante via `currentColor`.
+.pill.pill--live {
+  &::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+    position: relative;
+    flex-shrink: 0;
+    animation: ds-pulse-dot 1.6s ease-in-out infinite;
+  }
+}
+
+// =============================================================================
+// `.badge` — compteur / indicateur numérique. NON-INTERACTIF.
+// Distinct de `.pill` : moins arrondi, font Inter, pas de uppercase/spacing.
+// =============================================================================
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: var(--gold-soft-12);
+  border: 1px solid var(--gold-soft-25);
+  color: var(--gold);
+  font: var(--weight-bold) 0.7rem / 1 'Inter', sans-serif;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.badge--gold {
+  // Default (déjà appliqué via `.badge`)
+}
+
+.badge--cyan {
+  background: var(--cyan-soft-15);
+  border-color: var(--cyan-soft-25);
+  color: var(--cyan-300);
+}
+
+.badge--neutral {
+  background: var(--surface-overlay);
+  border-color: var(--border-soft);
+  color: var(--text-muted);
+}
+
+// =============================================================================
+// Legacy aliases — `.lobby-section-count` (badge) en attendant migration HTML.
+// Bit-exact lobby-page.component.scss:229-236.
+// =============================================================================
+.lobby-section-count {
+  font: var(--weight-bold) 0.7rem / 1 'Inter', sans-serif;
+  color: var(--gold);
+  background: var(--gold-soft-12);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--gold-soft-30);
+}

@@ -1,0 +1,57 @@
+// =============================================================================
+// Typography — utility classes typographiques transverses (sans toucher aux
+// titres locaux des composants).
+// Source: DS spec 2026-05-14, §2.3 + audit PvP §2.3.
+// =============================================================================
+
+// Gold gradient text — pattern dupliqué dans 3 mockups + ex `_empty-state.scss`.
+.text-gold-gradient {
+  background: linear-gradient(135deg, var(--gold-50) 0%, var(--gold) 50%, var(--gold-900) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent; // fallback browsers sans -webkit-text-fill-color
+}
+
+// Eyebrow — sur-titre Rajdhani uppercase letter-spaced.
+.text-eyebrow {
+  font: var(--weight-bold) var(--text-xs) / 1.1 'Inter', sans-serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+// Mono / Rajdhani / balance utilities
+.text-mono     { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.text-rajdhani { font-family: 'Rajdhani', 'Inter', sans-serif; }
+.text-balance  { text-wrap: balance; }
+
+// =============================================================================
+// `.text-code` — monospace display large (room code, replay ID, share link)
+// Source: `.room-code-value` (duel-page-ui:375-393).
+// =============================================================================
+.text-code {
+  font: var(--weight-bold) clamp(1.3rem, 6vw, 2rem) / 1 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: clamp(0.08em, 0.5vw, 0.18em);
+  color: var(--gold-50);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.4);
+  text-align: center;
+  border: 1px solid var(--gold-soft-30);
+  user-select: all;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+// Inline variant — debug ID dans un log, code dans une phrase.
+.text-code--inline {
+  display: inline;
+  font: var(--weight-bold) 0.9em / 1 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: normal;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--gold-50);
+  user-select: all;
+}

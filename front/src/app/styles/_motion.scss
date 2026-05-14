@@ -1,0 +1,179 @@
+// =============================================================================
+// Motion — DS keyframes (`ds-*`) consolidées + utility classes d'animation.
+// Source: DS spec 2026-05-14, §2.2 + audit PvP §2.4.
+//
+// Convention: toute keyframe DS est préfixée `ds-` (DS-D4). Les keyframes
+// composants Angular peuvent rester locales si leur préfixe est implicitement
+// unique (`pvp-*`, `target-float-*`, etc.) — voir §6 critère 1 spec.
+//
+// La gestion globale de `prefers-reduced-motion` vit dans `_a11y.scss` (un
+// seul bloc pour tout le projet) — ne PAS redéclarer ici.
+// =============================================================================
+
+// =============================================================================
+// Keyframes DS — single source of truth
+// =============================================================================
+
+// Skeleton sweep (déplacé depuis skel.scss, qui devient consommateur)
+@keyframes ds-skel-sweep {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+// Rotation 360° linéaire
+@keyframes ds-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+// Pulse opacity (indicateur live, status dot halo)
+@keyframes ds-pulse-dot {
+  0%, 100% { transform: scale(1);   opacity: 0.4; }
+  50%      { transform: scale(1.4); opacity: 0.15; }
+}
+
+// Blink subtil (timeline current state, duelist waiting)
+@keyframes ds-state-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+// Sweep diagonal gold sur surface (deck-picker shimmer)
+@keyframes ds-shimmer {
+  0%   { transform: translateX(-100%) skewX(-20deg); }
+  100% { transform: translateX(200%)  skewX(-20deg); }
+}
+
+// Drift translationnel grid (holo-arena background) — remplace screen-bg-grid-drift
+@keyframes ds-grid-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 48px 48px; }
+}
+
+// Sweep vertical light beam (dice arena)
+@keyframes ds-beam-sweep {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  50%  { opacity: 0.8; }
+  100% { transform: translateY(100%);  opacity: 0; }
+}
+
+// Pulse box-shadow gold "ready" (waiting room duelist box)
+@keyframes ds-duelist-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--gold-soft-50); }
+  50%      { box-shadow: 0 0 0 8px transparent; }
+}
+
+// Fade in (opacity 0 → 1)
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+// Slide up (translateY 8px → 0 + fade)
+@keyframes ds-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// Slide down (translateY -8px → 0 + fade)
+@keyframes ds-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// Empty state apparition — remplace empty-state-in
+@keyframes ds-empty-state-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// --- Post-audit PvP (2026-05-14) -------------------------------------------
+
+// CTA shimmer (gold "wow" buttons) — remplace lobby-cta-shimmer
+@keyframes ds-cta-shimmer {
+  0%, 100% { background-position: 200% 200%; opacity: 0; }
+  50%      { background-position: -50% -50%; opacity: 1; }
+}
+
+// Card entry (SSE push, optimistic add) — remplace room-card-new
+@keyframes ds-card-entry {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    box-shadow: 0 0 0 2px var(--gold-soft-50);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: var(--elevation-1);
+  }
+}
+
+// Choix validé sur prompt cards — remplace replay-chosen-pulse (×4 dupliqué)
+// Values bit-exactes depuis prompt-card-grid.component.scss:186-190.
+@keyframes ds-chosen-pulse {
+  0%   { box-shadow: 0 0 0 rgba(201, 168, 76, 0); }
+  40%  { box-shadow: 0 0 20px 6px rgba(201, 168, 76, 0.8); }
+  100% { box-shadow: 0 0 8px 2px rgba(201, 168, 76, 0.3); }
+}
+
+// Chain badge pulse — remplace chain-badge-pulse (×2 dupliqué)
+// Values bit-exactes depuis pvp-board-container.component.scss:558-561.
+@keyframes ds-chain-badge-pulse {
+  from { opacity: 0.4; transform: translate(-50%, -50%) scale(0.9); }
+  to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
+}
+
+// =============================================================================
+// Utility classes — animations + transitions
+// =============================================================================
+
+.fade-in    { animation: ds-fade-in    var(--transition-normal) var(--ease-out) both; }
+.slide-up   { animation: ds-slide-up   var(--transition-normal) var(--ease-out) both; }
+.slide-down { animation: ds-slide-down var(--transition-normal) var(--ease-out) both; }
+
+.is-spinning { animation: ds-spin 800ms linear infinite; }
+.is-pulsing  { animation: ds-pulse-dot 1.6s ease-in-out infinite; }
+.is-blinking { animation: ds-state-blink 1.8s ease-in-out infinite; }
+.is-chosen   { animation: ds-chosen-pulse 800ms var(--ease-out); }
+.card-entry  { animation: ds-card-entry 600ms var(--ease-out); }
+
+.transition-fast   { transition: all var(--transition-fast)   var(--ease-out); }
+.transition-normal { transition: all var(--transition-normal) var(--ease-out); }
+.transition-slow   { transition: all var(--transition-slow)   var(--ease-out); }
+
+// Stagger pattern — consommateur set --stagger-index via inline style.
+.stagger-children > * {
+  animation: ds-fade-in var(--transition-normal) var(--ease-out) both;
+  animation-delay: calc(var(--stagger-index, 0) * 50ms);
+}
+
+// =============================================================================
+// `.pulse-dot` utility — indicateur live autonome
+// Source: lobby `.room-status-dot` + duel-page-ui `.waiting-status-tag .pulse-dot`.
+// Color is portée par le parent (`color: var(--gold)`, `--cyan`, `--success`).
+// =============================================================================
+.pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.4;
+    animation: ds-pulse-dot 1.6s ease-in-out infinite;
+  }
+}
+
+.pulse-dot--sm { width: 6px;  height: 6px; }
+.pulse-dot--lg { width: 10px; height: 10px; }

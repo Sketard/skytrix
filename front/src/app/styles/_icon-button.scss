@@ -1,0 +1,92 @@
+// =============================================================================
+// Icon Button — icône seule (label aria attendu côté HTML).
+// Source: DS spec 2026-05-14, §2.8.
+// Sources extraction: H `.replay-action-btn` (delete) · V `.replay-icon-btn`
+// + `.transport-toggle`.
+//
+// Convention: `<button class="icon-btn icon-btn--md" aria-label="…">`.
+// `aria-label` est obligatoire — critère de PR review.
+// =============================================================================
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              opacity var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .material-icons-round,
+  mat-icon { font-size: 16px; }
+}
+
+// --- Sizes ------------------------------------------------------------------
+.icon-btn--sm {
+  width: 28px;
+  height: 28px;
+
+  .material-icons-round,
+  mat-icon { font-size: 14px; }
+}
+
+.icon-btn--md {
+  width: 34px;
+  height: 34px;
+
+  .material-icons-round,
+  mat-icon { font-size: 16px; }
+}
+
+.icon-btn--lg {
+  width: 44px; // touch-target-min
+  height: 44px;
+
+  .material-icons-round,
+  mat-icon { font-size: 20px; }
+}
+
+// --- Variants ---------------------------------------------------------------
+.icon-btn--danger:hover:not(:disabled) {
+  color: var(--danger-strong);
+  border-color: rgba(255, 82, 82, 0.3);
+  background: rgba(255, 82, 82, 0.08);
+}
+
+.icon-btn--active {
+  background: var(--gold-soft-12);
+  border-color: var(--gold-soft-50);
+  color: var(--gold-50);
+
+  .material-icons-round,
+  mat-icon { color: var(--gold); }
+}
+
+.icon-btn--round {
+  border-radius: 50%;
+}
+
+// Hover-revealed (desktop) — opacity 0 par défaut, le parent expose au hover :
+//   .parent:hover .icon-btn--ghost-hover-only { opacity: 1; }
+// Le consommateur définit ce sélecteur dans son propre SCSS (pas DS-wide).
+.icon-btn--ghost-hover-only {
+  opacity: 0;
+  transition: opacity var(--transition-fast) var(--ease-out);
+}

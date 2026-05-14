@@ -1,0 +1,73 @@
+// =============================================================================
+// A11y — Accessibility primitives + global rules.
+// Source: DS spec 2026-05-14, §2.1 / §1.7 / §1.8 / §1.9.
+// Loaded FIRST after _tokens (cf. styles.scss ordre §1.3).
+//
+// Responsibilities:
+//   - Dark-only colour scheme (DS-D7).
+//   - Global focus ring (gold 2px outline + 2px offset).
+//   - Global reduced-motion handler — single source of truth for the
+//     `prefers-reduced-motion: reduce` query across the SCSS layer.
+//   - Print v1 — body { display: none } (DS-D10).
+//   - sr-only utility (mixin + class).
+//
+// Composants Angular qui ont besoin d'un fallback custom (passer à opacity:1
+// au lieu du 0.01ms global, par ex.) utilisent `@include respect-reduced-motion`
+// — voir _a11y.scss mixin plus bas.
+// =============================================================================
+
+:root {
+  color-scheme: dark; // DS-D7 — pas de variant light v1
+}
+
+// --- Global focus ring (gold) -----------------------------------------------
+*:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: inherit;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+// --- Global reduced-motion --------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// --- Print v1 ---------------------------------------------------------------
+@media print {
+  body { display: none; }
+}
+
+// --- Mixin escape-hatch -----------------------------------------------------
+// Rare cas où un composant veut un fallback custom au reduced-motion (ex.
+// passer une animation à `opacity: 1` direct plutôt qu'au 0.01ms global).
+@mixin respect-reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+// --- Screen-reader-only -----------------------------------------------------
+@mixin sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only { @include sr-only; }

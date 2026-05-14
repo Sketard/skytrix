@@ -262,3 +262,60 @@
     filter: grayscale(0.4);
   }
 }
+
+// =============================================================================
+// `.pvp-dialog-panel` — Material dialog overrides (migrated 2026-05-14 from
+// styles.scss for cohabitation cleanliness, DS Wave 1 §3.3).
+// Used by surrender / inactivity / generic confirm dialogs in PvP.
+// =============================================================================
+.pvp-dialog-panel {
+  --mdc-dialog-container-color: #0f1729;
+  --mdc-dialog-container-shape: 12px;
+  --mdc-dialog-subhead-color: #eee;
+  --mdc-dialog-supporting-text-color: #9e9e9e;
+
+  .mat-mdc-dialog-surface {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .mat-mdc-dialog-title {
+    color: #eee;
+  }
+
+  .mat-mdc-dialog-content {
+    color: #9e9e9e;
+  }
+
+  .mat-mdc-dialog-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 8px;
+
+    .mat-mdc-outlined-button {
+      --mdc-outlined-button-label-text-color: rgba(255, 255, 255, 0.5);
+      --mdc-outlined-button-outline-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .mat-mdc-unelevated-button {
+      --mdc-filled-button-label-text-color: #fff;
+    }
+  }
+
+  // --- Surrender (danger) ---
+  &--danger .mat-mdc-dialog-surface {
+    border-top: 3px solid #b71c1c !important;
+  }
+
+  &--danger .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
+    --mdc-filled-button-container-color: #b71c1c;
+  }
+
+  // --- Inactivity (warning) ---
+  &--warning .mat-mdc-dialog-surface {
+    border-top: 3px solid #ff9800 !important;
+  }
+
+  &--warning .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
+    --mdc-filled-button-container-color: #ff9800;
+  }
+}

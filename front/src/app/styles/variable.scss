@@ -1,3 +1,28 @@
+// =============================================================================
+// LEGACY — SCSS variables historiques (light-theme era pré-2026-02).
+// =============================================================================
+// **DO NOT EXTEND** — ne pas ajouter de nouvelles variables ici.
+// **DO NOT DELETE** — utilisé par `mixin.scss` (ban-info) + `styles.scss`
+// (autofill, mdc-button overrides) + composants legacy (card-list,
+// custom-tooltip, deck-card-zone, loader, card-search-page, material.scss,
+// test.component.scss).
+//
+// Migration vers tokens CSS @ `_tokens.scss` se fait au cas par cas lors des
+// reworks d'écran (cf. memory: project_design_system_strategy.md migration
+// mapping).
+//
+// Variables actives :
+//   $black             — referenced lobby-styles legacy + sim background
+//   $blue              — referenced styles.scss autofill
+//   $grey              — referenced styles.scss disabled state
+//   $white             — referenced styles.scss autofill
+//   $unselected-black  — superseded by --accent-primary-dim (token)
+//
+// Audit 2026-05-14 (Wave 1 Niveau 1 refacto) : aucune référence dans les
+// nouveaux partials Wave 1 (a11y, motion, typography, card-surface, buttons,
+// pills, chips, icon-button, search-bar, page-header, section-header).
+// =============================================================================
+
 $black: #303030;
 $red: #a30000;
 $purple: #6d005b;

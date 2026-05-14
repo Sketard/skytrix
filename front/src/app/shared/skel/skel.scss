@@ -6,14 +6,10 @@
 //
 // Spec source: _mockups/mockup-1-holo-arena.html (SKELETON SCREENS block).
 // Convention: project_skeleton_screens_convention.md.
+//
+// Keyframe `ds-skel-sweep` est déclarée dans `_motion.scss` (DS Wave 1 §2.2).
+// `prefers-reduced-motion` est géré globalement par `_a11y.scss`.
 // =============================================================================
-
-// Single shimmer source — every shape that animates references this @keyframes.
-@keyframes skel-sweep {
-  0%   { transform: translateX(-100%); }
-  60%  { transform: translateX(100%); }
-  100% { transform: translateX(100%); }
-}
 
 // Shared placeholder block: position container + sweep overlay via ::after.
 // Used on every skeleton primitive so the shimmer rule lives in one place.
@@ -33,15 +29,7 @@
       transparent 100%
     );
     transform: translateX(-100%);
-    animation: skel-sweep 1.4s ease-in-out infinite;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skel::after,
-  [class*='skel-']::after,
-  [class*='-skel']::after {
-    animation: none;
+    animation: ds-skel-sweep 1.4s ease-in-out infinite;
   }
 }
 

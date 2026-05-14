@@ -1,0 +1,136 @@
+// =============================================================================
+// Chips — INTERACTIF (filter actif/inactif, toggle).
+// Source: DS spec 2026-05-14, §2.7.
+// Sources extraction: L `.lobby-filter-chip` · H `.hub-filter-chip`.
+//
+// Cf. §1.4 spec : chip = interactif, cursor: pointer + role="button" ou
+// aria-pressed obligatoire côté HTML (critère de PR review).
+// =============================================================================
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font: var(--weight-semibold) var(--text-xs) / 1 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+  }
+}
+
+.chip__icon {
+  font-size: 14px !important; // !important: override mat-icon default
+}
+
+// --- Active state -----------------------------------------------------------
+// Default active → gold. Variants cyan/neutral via additional modifier.
+.chip.chip--active {
+  background: var(--gold-soft-12);
+  border-color: var(--gold-soft-50);
+  color: var(--gold-50);
+
+  .chip__icon { color: var(--gold); }
+}
+
+.chip.chip--active.chip--cyan {
+  background: var(--cyan-soft-15);
+  border-color: var(--cyan-soft-50);
+  color: var(--cyan-300);
+}
+
+.chip.chip--active.chip--neutral {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+// --- Sizes ------------------------------------------------------------------
+.chip--sm { padding: 6px 10px; font-size: 0.65rem; }
+.chip--md { /* default */ }
+
+// --- Visual divider inline (pas un chip lui-même) ---------------------------
+.chip-divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: var(--border-soft);
+  align-self: center;
+}
+
+// --- Container row ----------------------------------------------------------
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+
+  // Mobile / parent étroit — bascule en horizontal scroll avec fade-right.
+  @container chip-row (max-width: 480px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 24px), transparent 100%);
+  }
+}
+
+// =============================================================================
+// Legacy aliases — `.lobby-filter-chip` + `.lobby-filter-divider`
+// (période coexistence — à retirer Commit 3 si grep zero).
+// =============================================================================
+.lobby-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font: var(--weight-semibold) var(--text-xs) / 1 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--gold-soft-12);
+    border-color: var(--gold-soft-50);
+    color: var(--gold-50);
+
+    mat-icon { color: var(--gold); }
+  }
+
+  mat-icon {
+    font-size: 14px !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+}
+
+.lobby-filter-divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: var(--border-soft);
+  align-self: center;
+}
