@@ -174,87 +174,89 @@
         minBufferPx="240"
         maxBufferPx="480"
         (scrolledIndexChange)="onScrolledIndexChange($event, viewport)">
-      <a *cdkVirtualFor="let replay of store.filteredReplays(); trackBy: trackByReplayId"
-         class="replay-card surface-card surface-card--interactive"
-         [class.surface-card--accent-gold]="resultMeta(replay).variant === 'gold'"
-         [class.surface-card--accent-cyan]="resultMeta(replay).variant === 'cyan'"
-         [class.surface-card--accent-neutral]="resultMeta(replay).variant === 'neutral'"
-         [class.surface-card--accent-warning]="resultMeta(replay).variant === 'warning'"
-         [class.surface-card--accent-danger]="resultMeta(replay).variant === 'danger'"
-         [attr.aria-label]="('replay.hub.card.open' | translate) + ' — ' + opponentName(replay)"
-         [routerLink]="['/pvp/replay', replay.id]"
-         (keydown.space)="openReplay($event, replay)">
-        <div class="replay-card__avatar">
-          <app-avatar [pseudo]="opponentName(replay)" size="md"></app-avatar>
-        </div>
-        <div class="replay-card__info">
-          <div class="replay-card__title">
-            <span class="replay-card__vs-prefix">{{ 'replay.hub.card.vsPrefix' | translate }}</span>
-            <span class="replay-card__opponent">{{ opponentName(replay) || ('replay.hub.card.opponentUnknown' | translate) }}</span>
-          </div>
-          <div class="replay-card__meta">
-            @if (myDeckName(replay); as deck) {
-              <span class="replay-card__deck">
-                <mat-icon>style</mat-icon>
-                {{ deck }}
+      <ng-container *cdkVirtualFor="let item of displayedItems(); trackBy: trackByDisplayed">
+        @if (!isCard(item)) {
+          <!-- Skeleton placeholder — fetchingMore is in flight, the card
+               below is the one being loaded. Keeps the loading hint inside
+               the scroll context, right after the last real card. -->
+          <app-replay-card-skeleton
+            [count]="1"
+            class="replay-list-skeleton--inline"></app-replay-card-skeleton>
+        } @else {
+          @let replay = item.replay;
+          <a class="replay-card surface-card surface-card--interactive"
+             [class.surface-card--accent-gold]="resultMeta(replay).variant === 'gold'"
+             [class.surface-card--accent-cyan]="resultMeta(replay).variant === 'cyan'"
+             [class.surface-card--accent-neutral]="resultMeta(replay).variant === 'neutral'"
+             [class.surface-card--accent-warning]="resultMeta(replay).variant === 'warning'"
+             [class.surface-card--accent-danger]="resultMeta(replay).variant === 'danger'"
+             [attr.aria-label]="('replay.hub.card.open' | translate) + ' — ' + opponentName(replay)"
+             [routerLink]="['/pvp/replay', replay.id]"
+             (keydown.space)="openReplay($event, replay)">
+            <div class="replay-card__avatar">
+              <app-avatar [pseudo]="opponentName(replay)" size="md"></app-avatar>
+            </div>
+            <div class="replay-card__info">
+              <div class="replay-card__title">
+                <span class="replay-card__vs-prefix">{{ 'replay.hub.card.vsPrefix' | translate }}</span>
+                <span class="replay-card__opponent">{{ opponentName(replay) || ('replay.hub.card.opponentUnknown' | translate) }}</span>
+              </div>
+              <div class="replay-card__meta">
+                @if (myDeckName(replay); as deck) {
+                  <span class="replay-card__deck">
+                    <mat-icon>style</mat-icon>
+                    {{ deck }}
+                  </span>
+                }
+                @if (opponentDeckName(replay); as deck) {
+                  <span class="replay-card__vs-deck">
+                    {{ 'replay.hub.card.vsDeckPrefix' | translate }} {{ deck }}
+                  </span>
+                }
+              </div>
+            </div>
+            <span class="pill pill--md"
+                  [class.pill--gold]="resultMeta(replay).variant === 'gold'"
+                  [class.pill--cyan]="resultMeta(replay).variant === 'cyan'"
+                  [class.pill--neutral]="resultMeta(replay).variant === 'neutral'"
+                  [class.pill--warning]="resultMeta(replay).variant === 'warning'"
+                  [class.pill--danger]="resultMeta(replay).variant === 'danger'">
+              <mat-icon class="pill__icon">{{ resultMeta(replay).icon }}</mat-icon>
+              <span>{{ resultMeta(replay).i18nKey | translate }}</span>
+            </span>
+            <div class="replay-card__times">
+              <span class="replay-card__date">{{ replay.createdAt | date: 'dd/MM · HH:mm' }}</span>
+              <span class="replay-card__turns">
+                {{ 'replay.hub.card.turns' | translate: { n: replay.metadata.turnCount } }}
+                @if (durationText(replay)) {
+                  · {{ durationText(replay) }}
+                }
               </span>
-            }
-            @if (opponentDeckName(replay); as deck) {
-              <span class="replay-card__vs-deck">
-                {{ 'replay.hub.card.vsDeckPrefix' | translate }} {{ deck }}
+            </div>
+            <div class="replay-card__actions">
+              <!-- Mockup §replay-open-cta — gold pill that slides in on hover.
+                   Decorative only (the whole card is a routerLink, so we don't
+                   wire a click here — `pointer-events: none` in SCSS). -->
+              <span class="replay-card__open-cta" aria-hidden="true">
+                <span>{{ 'replay.hub.card.open' | translate }}</span>
+                <mat-icon>arrow_forward</mat-icon>
               </span>
-            }
-          </div>
-        </div>
-        <span class="pill pill--md"
-              [class.pill--gold]="resultMeta(replay).variant === 'gold'"
-              [class.pill--cyan]="resultMeta(replay).variant === 'cyan'"
-              [class.pill--neutral]="resultMeta(replay).variant === 'neutral'"
-              [class.pill--warning]="resultMeta(replay).variant === 'warning'"
-              [class.pill--danger]="resultMeta(replay).variant === 'danger'">
-          <mat-icon class="pill__icon">{{ resultMeta(replay).icon }}</mat-icon>
-          <span>{{ resultMeta(replay).i18nKey | translate }}</span>
-        </span>
-        <div class="replay-card__times">
-          <span class="replay-card__date">{{ replay.createdAt | date: 'dd/MM · HH:mm' }}</span>
-          <span class="replay-card__turns">
-            {{ 'replay.hub.card.turns' | translate: { n: replay.metadata.turnCount } }}
-            @if (durationText(replay)) {
-              · {{ durationText(replay) }}
-            }
-          </span>
-        </div>
-        <div class="replay-card__actions">
-          <!-- Mockup §replay-open-cta — gold pill that slides in on hover.
-               Decorative only (the whole card is a routerLink, so we don't
-               wire a click here — `pointer-events: none` in SCSS). -->
-          <span class="replay-card__open-cta" aria-hidden="true">
-            <span>{{ 'replay.hub.card.open' | translate }}</span>
-            <mat-icon>arrow_forward</mat-icon>
-          </span>
-          <button type="button"
-                  class="icon-btn icon-btn--md icon-btn--danger icon-btn--ghost-hover-only"
-                  [attr.aria-label]="'replay.hub.card.delete' | translate"
-                  [matTooltip]="'replay.hub.card.delete' | translate"
-                  [disabled]="deletingId() === replay.id"
-                  (click)="deleteReplay(replay, $event)">
-            @if (deletingId() === replay.id) {
-              <mat-progress-spinner mode="indeterminate" diameter="16"></mat-progress-spinner>
-            } @else {
-              <mat-icon>delete_outline</mat-icon>
-            }
-          </button>
-        </div>
-      </a>
+              <button type="button"
+                      class="icon-btn icon-btn--md icon-btn--danger icon-btn--ghost-hover-only"
+                      [attr.aria-label]="'replay.hub.card.delete' | translate"
+                      [matTooltip]="'replay.hub.card.delete' | translate"
+                      [disabled]="deletingId() === replay.id"
+                      (click)="deleteReplay(replay, $event)">
+                @if (deletingId() === replay.id) {
+                  <mat-progress-spinner mode="indeterminate" diameter="16"></mat-progress-spinner>
+                } @else {
+                  <mat-icon>delete_outline</mat-icon>
+                }
+              </button>
+            </div>
+          </a>
+        }
+      </ng-container>
     </cdk-virtual-scroll-viewport>
-
-    <!-- Inline skeleton at the bottom of the list while loadNextPage is
-         in-flight — Q6-3. Placed OUTSIDE the virtual-scroll viewport
-         (cdk-virtual-scroll-viewport hides non-`*cdkVirtualFor` children),
-         as a flex sibling. Doesn't scroll with the viewport but appears in
-         the same visual column right under the last rendered card. -->
-    @if (store.fetchingMore()) {
-      <app-replay-card-skeleton [count]="2" class="replay-list-skeleton--inline"></app-replay-card-skeleton>
-    }
   }
 </div>

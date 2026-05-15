@@ -107,22 +107,15 @@
 // =============================================================================
 // Replay list viewport — virtual-scroll with explicit height (cf. spec audit)
 // =============================================================================
-// Inline skeleton (Q6-3) — flex sibling rendered just below the
-// virtual-scroll viewport. The viewport can't host non-`*cdkVirtualFor`
-// children (CDK hides them), so we put the skeleton outside as a fixed-
-// height flex item that appears above the page's bottom edge while
-// `loadNextPage()` is in flight. Reuses the same .replay-card layout so
-// the visual continuity with the rendered cards is preserved.
+// Inline skeleton — rendered as a sentinel item inside `*cdkVirtualFor`
+// after the last real card. Sits in the scroll context so it appears
+// right after the last visible replay-card (not at the bottom of empty
+// viewport). Same visual weight as a card so the user reads it as
+// "next card loading".
 .replay-list-skeleton--inline {
   display: block;
-  flex: 0 0 auto;
-  margin-top: -28px; // overlap the viewport mask fade so it visually
-  // continues from the last rendered card without a visible gap.
-  padding-right: 4px;
   pointer-events: none;
   opacity: 0.85;
-  position: relative;
-  z-index: 1;
 }
 
 .replay-list-viewport {

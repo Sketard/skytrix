@@ -34,6 +34,15 @@ const RESULT_META: Record<DuelResult, ResultMeta> = {
 
 const REPLAY_CARD_ITEM_SIZE_PX = 104;
 
+/** Virtual-scroll item — real replay or skeleton placeholder. The skeleton
+ *  variant is rendered inside the viewport (after the last real card) only
+ *  while `loadNextPage()` is in flight, so the loading indicator sits in
+ *  the scroll context next to the replays instead of below the empty
+ *  bottom of the viewport. */
+type DisplayedItem =
+  | { kind: 'card'; replay: ReplayDTO }
+  | { kind: 'skeleton'; id: string };
+
 @Component({
   selector: 'app-replay-hub-page',
   standalone: true,
@@ -93,6 +102,20 @@ export class ReplayHubPageComponent implements OnInit {
     return Math.round(s.winrate * 100);
   });
 
+  /** Items rendered by the virtual-scroll. Real replay-cards followed by 2
+   *  skeleton-sentinel placeholders while `fetchingMore()` is in flight —
+   *  this keeps the skeleton positioned right after the last visible card
+   *  (in-list) instead of as a sibling at the bottom of the viewport,
+   *  which is what the user expected (Q7-skeleton follow-up). */
+  readonly displayedItems = computed<DisplayedItem[]>(() => {
+    const cards: DisplayedItem[] = this.store.filteredReplays().map(r => ({ kind: 'card' as const, replay: r }));
+    if (this.store.fetchingMore()) {
+      cards.push({ kind: 'skeleton' as const, id: '__skeleton-1' });
+      cards.push({ kind: 'skeleton' as const, id: '__skeleton-2' });
+    }
+    return cards;
+  });
+
   ngOnInit(): void {
     this.store.start();
   }
@@ -150,6 +173,12 @@ export class ReplayHubPageComponent implements OnInit {
   // ── Track / sort labels ────────────────────────────────────────────────────
   trackByReplayId(_index: number, item: ReplayDTO): string {
     return item.id;
+  }
+  trackByDisplayed(_index: number, item: DisplayedItem): string {
+    return item.kind === 'card' ? item.replay.id : item.id;
+  }
+  isCard(item: DisplayedItem): item is { kind: 'card'; replay: ReplayDTO } {
+    return item.kind === 'card';
   }
   sortLabelKey(): string {
     return `replay.hub.sort.${this.store.sortMode()}`;
