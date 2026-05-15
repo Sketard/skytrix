@@ -2,30 +2,28 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import type { DuelState } from '../../types';
 import type { Player, ZoneId } from '../../duel-ws.types';
 
+type PlayerState = DuelState['players'][number];
+
 const MAIN_ZONE_IDS: readonly ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5'];
 const SPELL_ZONE_IDS: readonly ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 const EMZ_ZONE_IDS: readonly ZoneId[] = ['EMZ_L', 'EMZ_R'];
 
-// Lightweight 1:6-scale board preview rendered from a `DuelState`. Used by:
-//   - TimelineBar hover popover (F3) — replaces the heavy
-//     `<app-pvp-board-container [preview]>` instance the old code mounted on
-//     every hover (D-decision 2026-05-14).
-//   - TurnPickerSheet grid (F2) — one instance per turn × 11+ turns; perf
-//     budget < 5ms per instance is the target.
+// Lightweight 1:6-scale board preview rendered from a `DuelState`. Three
+// variants exposed via `[variant]` keep ONE component for two surfaces with
+// different richness needs:
 //
-// Layout: 4 rows × 7 cells.
-//   Row 1 — opponent hand (count-only ghost cards)
-//   Row 2 — opponent M1..M5 + EMZ_L + EMZ_R (monster lane)
-//   Row 3 — self M1..M5 + EMZ_L + EMZ_R
-//   Row 4 — self hand (count-only ghost cards)
-//
-// SZONE is omitted v1 — the 7-col grid would need 4 rows × 7 to fit it, and
-// the timeline popover values "monsters present" much more than "trap set".
-// Re-add later if QA flags it. (EMZ shows occupied state to highlight Link/
-// Pendulum summons.)
+//   - `default`  — 4-row layout (hand opp / mzone opp / mzone self / hand self).
+//                   The original picker-grade preview kept for back-compat.
+//   - `picker`   — same DOM as default, scaled down via CSS for the mobile
+//                  turn picker grid (~9 cards visible at once).
+//   - `hover`    — 6-row layout + footer. Matches master's scaled board: hand,
+//                  SZONE, MZONE for both players + a footer with LP / phase /
+//                  turn / pile counts (DECK / GY / BANISHED / EXTRA). Used by
+//                  the desktop timeline-bar hover popover where one instance
+//                  shows at a time and information density wins over perf.
 //
 // All visuals come from `_mini-board.scss` (Viewer F0 partial). The component
-// only maps `DuelState → boolean[]` for each cell.
+// only maps `DuelState → boolean[] + counts` for each row / counter.
 @Component({
   selector: 'app-mini-board-thumbnail',
   standalone: true,
@@ -37,43 +35,66 @@ export class MiniBoardThumbnailComponent {
   readonly state = input.required<DuelState>();
   /** 0 = self at bottom (default), 1 = self at top (perspective flipped). */
   readonly perspectiveIndex = input<Player>(0);
-  /** Optional variant: `'picker'` shrinks the inner geometry for the grid. */
-  readonly variant = input<'default' | 'picker'>('default');
+  readonly variant = input<'default' | 'picker' | 'hover'>('default');
 
-  // Player at the bottom row (self) is always players[perspectiveIndex]; top
-  // row (opp) is the other. The `MZONE` array always has exactly 5 entries.
   protected readonly selfPlayer = computed(() => this.state().players[this.perspectiveIndex()]);
   protected readonly oppPlayer  = computed(() => this.state().players[this.perspectiveIndex() === 0 ? 1 : 0]);
 
-  protected readonly selfHandCount = computed(() => this.handCount(this.selfPlayer()));
-  protected readonly oppHandCount  = computed(() => this.handCount(this.oppPlayer()));
+  protected readonly selfHandCount = computed(() => this.zoneCardCount(this.selfPlayer(), 'HAND'));
+  protected readonly oppHandCount  = computed(() => this.zoneCardCount(this.oppPlayer(),  'HAND'));
 
-  // 7-cell rows: 5 MZONE cells + 2 trailing nulls (padding to keep grid symmetric
-  // with the SZONE row that future versions may add). Picker variant keeps the
-  // same 7-col footprint — it's a CSS scale, not a DOM change.
   protected readonly selfMonsters = computed(() => this.monsterRow(this.selfPlayer()));
   protected readonly oppMonsters  = computed(() => this.monsterRow(this.oppPlayer()));
 
+  protected readonly selfSpells   = computed(() => this.spellRow(this.selfPlayer()));
+  protected readonly oppSpells    = computed(() => this.spellRow(this.oppPlayer()));
+
+  /** Footer chip values (hover variant only — `default`/`picker` ignore these). */
+  protected readonly selfLp = computed(() => this.selfPlayer()?.lp ?? 0);
+  protected readonly oppLp  = computed(() => this.oppPlayer()?.lp  ?? 0);
+  protected readonly selfPiles = computed(() => this.piles(this.selfPlayer()));
+  protected readonly oppPiles  = computed(() => this.piles(this.oppPlayer()));
+  protected readonly turnLabel = computed(() => {
+    const s = this.state();
+    return s.turnCount > 0 ? `T${s.turnCount}` : 'T0';
+  });
+  protected readonly phaseLabel = computed(() => this.state().phase);
+
   protected readonly hostClass = computed(() => {
-    return this.variant() === 'picker' ? 'mini-board mini-board--picker' : 'mini-board';
+    const v = this.variant();
+    if (v === 'picker') return 'mini-board mini-board--picker';
+    if (v === 'hover')  return 'mini-board mini-board--hover';
+    return 'mini-board';
   });
 
-  private handCount(player: DuelState['players'][number] | undefined): number {
+  /** Hover variant gets the SZONE row + footer; default/picker keep the 4-row layout. */
+  protected readonly showSpellRows = computed(() => this.variant() === 'hover');
+  protected readonly showFooter    = computed(() => this.variant() === 'hover');
+
+  private zoneCardCount(player: PlayerState | undefined, id: ZoneId): number {
     if (!player) return 0;
-    return player.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? 0;
+    return player.zones.find(z => z.zoneId === id)?.cards.length ?? 0;
   }
 
-  // Each main / EMZ zone holds 0 or 1 cards in OCGCore's board model. A zone
-  // is "occupied" when it exists in the player's zones array AND its first
-  // card has a non-null cardCode (null means face-down / hidden, which still
-  // counts as occupied for the thumbnail).
-  private monsterRow(player: DuelState['players'][number] | undefined): boolean[] {
+  private monsterRow(player: PlayerState | undefined): boolean[] {
     if (!player) return [false, false, false, false, false, false, false];
     const ids: readonly ZoneId[] = [...MAIN_ZONE_IDS, ...EMZ_ZONE_IDS];
-    return ids.map(id => {
-      const zone = player.zones.find(z => z.zoneId === id);
-      return (zone?.cards.length ?? 0) > 0;
-    });
+    return ids.map(id => this.zoneCardCount(player, id) > 0);
+  }
+
+  private spellRow(player: PlayerState | undefined): boolean[] {
+    if (!player) return [false, false, false, false, false, false, false];
+    return SPELL_ZONE_IDS.map(id => this.zoneCardCount(player, id) > 0).concat([false, false]);
+  }
+
+  private piles(player: PlayerState | undefined): { deck: number; gy: number; banished: number; extra: number } {
+    if (!player) return { deck: 0, gy: 0, banished: 0, extra: 0 };
+    return {
+      deck:     player.deckCount,
+      extra:    player.extraCount,
+      gy:       this.zoneCardCount(player, 'GY'),
+      banished: this.zoneCardCount(player, 'BANISHED'),
+    };
   }
 
   protected handArray(count: number): number[] {

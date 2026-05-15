@@ -86,7 +86,13 @@
       </div>
     }
   } @else {
+    <!-- Hover popover (desktop) and turn picker (mobile) share a single
+         lightweight component. The component reads `[variant]` to render a
+         richer `hover` layout (SZONE row + LP/turn/phase footer + pile
+         counts) — matching master's scaled board preview — without the DI
+         cascade a real `<app-pvp-board-container>` would pull in. -->
     <app-mini-board-thumbnail
+      variant="hover"
       [state]="hoveredState()"
       [perspectiveIndex]="ownPlayerIndex()" />
     @if (hoveredTurnInfo(); as turnInfo) {

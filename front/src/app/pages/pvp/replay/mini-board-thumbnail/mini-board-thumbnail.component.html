@@ -4,19 +4,58 @@
       <div class="mini-hand-card"></div>
     }
   </div>
+
+  @if (showSpellRows()) {
+    <div class="mini-field-row mini-field-row--spell">
+      @for (occ of oppSpells(); track $index) {
+        <div class="mini-zone mini-zone--spell" [class.has-card]="occ"></div>
+      }
+    </div>
+  }
+
   <div class="mini-field-row">
     @for (occ of oppMonsters(); track $index) {
       <div class="mini-zone" [class.has-card]="occ"></div>
     }
   </div>
+
   <div class="mini-field-row">
     @for (occ of selfMonsters(); track $index) {
       <div class="mini-zone" [class.has-card]="occ"></div>
     }
   </div>
+
+  @if (showSpellRows()) {
+    <div class="mini-field-row mini-field-row--spell">
+      @for (occ of selfSpells(); track $index) {
+        <div class="mini-zone mini-zone--spell" [class.has-card]="occ"></div>
+      }
+    </div>
+  }
+
   <div class="mini-hand">
     @for (i of handArray(selfHandCount()); track i) {
       <div class="mini-hand-card"></div>
     }
   </div>
+
+  @if (showFooter()) {
+    <div class="mini-board__footer">
+      <span class="mini-board__lp mini-board__lp--opp">{{ oppLp() }}</span>
+      <span class="mini-board__piles mini-board__piles--opp">
+        <span class="mini-board__pile-chip" title="Deck">D {{ oppPiles().deck }}</span>
+        <span class="mini-board__pile-chip" title="GY">GY {{ oppPiles().gy }}</span>
+        <span class="mini-board__pile-chip" title="Banished">B {{ oppPiles().banished }}</span>
+        <span class="mini-board__pile-chip" title="Extra">E {{ oppPiles().extra }}</span>
+      </span>
+      <span class="mini-board__turn">{{ turnLabel() }} · {{ phaseLabel() }}</span>
+      <span class="mini-board__piles mini-board__piles--self">
+        <span class="mini-board__pile-chip" title="Deck">D {{ selfPiles().deck }}</span>
+        <span class="mini-board__pile-chip" title="GY">GY {{ selfPiles().gy }}</span>
+        <span class="mini-board__pile-chip" title="Banished">B {{ selfPiles().banished }}</span>
+        <span class="mini-board__pile-chip" title="Extra">E {{ selfPiles().extra }}</span>
+      </span>
+      <span class="mini-board__lp mini-board__lp--self">{{ selfLp() }}</span>
+    </div>
+  }
 </div>
