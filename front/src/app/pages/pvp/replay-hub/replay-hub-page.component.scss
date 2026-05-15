@@ -8,11 +8,15 @@
 // =============================================================================
 
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   position: relative;
   isolation: isolate;
   padding: var(--space-fluid-md, 16px);
-  min-height: 100dvh;
+  height: 100dvh;
+  // The infinite-scroll viewport handles its own overflow — locking the
+  // host prevents the page-level scroll the user reported in Q5-1.
+  overflow: hidden;
 
   @include r.respond-above(r.$bp-tablet) {
     padding: var(--space-fluid-lg, 24px);
@@ -23,9 +27,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0; // critical for nested flex children to shrink
   gap: 22px;
   max-width: 980px;
   margin: 0 auto;
+  width: 100%;
 }
 
 // Override the h1 fluid size to match the lobby — DS spec defers to consumer.
@@ -102,9 +109,11 @@
 // =============================================================================
 .replay-list-viewport {
   display: block;
-  // Bounded height is REQUIRED by cdk-virtual-scroll. Same pattern as lobby.
-  height: 65vh;
-  max-height: 65vh;
+  // Flex-driven height — the host is 100dvh, sibling sections take their
+  // intrinsic height, the viewport eats whatever remains. Min-height: 0 lets
+  // it actually shrink (default flex-children floor is content size).
+  flex: 1;
+  min-height: 0;
   overscroll-behavior: contain;
   padding-right: 4px;
   // Fade bottom hint of scrollability.
@@ -131,20 +140,56 @@
   text-decoration: none;
   color: inherit;
 
+  // Mobile redesign (Q5-4) — compact 2-row layout that keeps the visual
+  // hierarchy tight. Title row holds avatar + opponent + result pill + tap
+  // delete button. Sub row groups decks (left) and date/turns/duration
+  // (right) on a single line. Smaller avatar, tighter padding.
   @media (max-width: 640px) {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr auto auto;
     grid-template-areas:
-      'avatar info actions'
-      'pill   meta meta';
-    gap: 10px 12px;
-    padding: 12px 14px;
+      'avatar info pill   actions'
+      'avatar meta meta   meta';
+    gap: 4px 10px;
+    padding: 10px 12px;
+    align-items: center;
+
+    .replay-card__avatar app-avatar { transform: scale(0.85); transform-origin: left center; }
+    .replay-card__times {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      justify-content: flex-end;
+    }
+    // Decks meta on mobile : single line, ellipsis if too long.
+    .replay-card__info > .replay-card__meta {
+      flex-wrap: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    // Pull info-meta (decks) OUT of info on mobile by hiding its container
+    // and re-displaying decks in the bottom row via a manual order. We can't
+    // restructure the DOM here, so we use `display: contents` instead — info
+    // becomes transparent in the grid, and its child .replay-card__meta is
+    // placed in the `meta` area directly.
+    .replay-card__info { display: contents; }
+    .replay-card__title { grid-area: info; min-width: 0; }
+    .replay-card__info > .replay-card__meta { grid-area: meta; }
   }
 
-  // Hover-reveal delete button on desktop only.
+  // Desktop — hover reveals the ghost delete button + the gold "Open" pill.
   @include r.respond-above(r.$bp-pvp-narrow) {
     &:hover .icon-btn--ghost-hover-only,
     &:focus-within .icon-btn--ghost-hover-only {
       opacity: 1;
+    }
+  }
+
+  // Mobile — the delete button stays visible (no hover). Pinned to the
+  // bottom-right of the meta row so it doesn't squeeze the title.
+  @media (max-width: 640px) {
+    .icon-btn--ghost-hover-only {
+      opacity: 0.7;
     }
   }
 }
@@ -157,7 +202,8 @@
 
 // Mockup §hub-filters — search-bar et chips alignés sur la même ligne au
 // desktop (search prend tout l'espace flexible, chips droite), stack vertical
-// sur mobile.
+// sur mobile. Sur mobile, la chip-row passe en scroll horizontal pour rester
+// sur une seule ligne sans wrapper (Q5-3).
 .hub-filters {
   display: flex;
   flex-direction: column;
@@ -171,6 +217,27 @@
 
   .search-bar { flex: 1 1 auto; min-width: 0; }
   .chip-row   { flex: 0 0 auto; }
+
+  // Q5-3 mobile chips scroll: keep filters on one line + horizontal scroll.
+  // `overflow-x: auto` + `flex-wrap: nowrap` is the standard chip-strip
+  // pattern (Material 3, iOS pill-row). Fade right edge to hint scroll.
+  @media (max-width: 640px) {
+    .chip-row {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      // Prevent the chip-row from forcing its parent to grow horizontally.
+      // It scrolls inside its allocated width.
+      max-width: 100%;
+      scrollbar-width: none; // Firefox
+      -webkit-mask-image: linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
+      mask-image:         linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
+      padding-right: 8px;
+
+      &::-webkit-scrollbar { display: none; }
+      .chip { flex: 0 0 auto; }
+    }
+  }
 }
 
 // Mockup §replay-open-cta — gold pill that slides in from the right at hover.

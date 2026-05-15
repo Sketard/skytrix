@@ -34,8 +34,20 @@
     pointer-events: none;
   }
 
+  // mat-icon ships with `width/height/line-height: 24px`; without overriding
+  // the box too, the actual glyph (16/14/20px) drifts inside that 24px frame
+  // and the flex center fails. Pin all three dims to the requested glyph
+  // size so the icon lands dead-center on the button.
   .material-icons-round,
-  mat-icon { font-size: 16px; }
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 // --- Sizes ------------------------------------------------------------------
@@ -44,7 +56,12 @@
   height: 28px;
 
   .material-icons-round,
-  mat-icon { font-size: 14px; }
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+  }
 }
 
 .icon-btn--md {
@@ -52,7 +69,12 @@
   height: 34px;
 
   .material-icons-round,
-  mat-icon { font-size: 16px; }
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+  }
 }
 
 .icon-btn--lg {
@@ -60,7 +82,12 @@
   height: 44px;
 
   .material-icons-round,
-  mat-icon { font-size: 20px; }
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+  }
 }
 
 // --- Variants ---------------------------------------------------------------

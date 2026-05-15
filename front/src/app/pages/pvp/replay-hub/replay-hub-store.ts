@@ -147,7 +147,11 @@ export class ReplayHubStore {
       next: page => {
         this.replays.set(page.elements);
         this.totalElements.set(page.size);
-        this.currentOffset.set(page.elements.length);
+        // `currentOffset` tracks the Spring page index (0-based). After page 0
+        // landed, the next page to request is index 1. See `loadNextPage` for
+        // the protocol — the back's `offset` query param is actually a page
+        // index, not a row offset (see ReplayController.java:50).
+        this.currentOffset.set(1);
         this.loading.set(false);
       },
       error: err => {
@@ -168,11 +172,16 @@ export class ReplayHubStore {
   loadNextPage(): void {
     if (this.fetchingMore() || !this.hasMore() || this.loading()) return;
     this.fetchingMore.set(true);
-    const offset = this.currentOffset();
-    this.replayService.getMatchHistory(offset, PAGE_SIZE).subscribe({
+    // `currentOffset` is the *page index* to request next (0-based, see
+    // fetchSnapshot). The back's `offset` query param is mapped to
+    // `PageRequest.of(page, size)` — Spring page semantics. Sending a row
+    // offset (e.g. 20 after one page of 20) would resolve to page=20 and
+    // return an empty array, which was the Q5-6 bug.
+    const pageIndex = this.currentOffset();
+    this.replayService.getMatchHistory(pageIndex, PAGE_SIZE).subscribe({
       next: page => {
         this.replays.update(prev => [...prev, ...page.elements]);
-        this.currentOffset.set(offset + page.elements.length);
+        this.currentOffset.set(pageIndex + 1);
         // Refresh totalElements in case rows landed mid-scroll.
         this.totalElements.set(page.size);
         this.fetchingMore.set(false);

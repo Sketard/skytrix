@@ -109,10 +109,19 @@ export class ReplayHubPageComponent implements OnInit {
     return r.metadata.playerUsernames[this.opponentSide(r)] ?? '';
   }
   myDeckName(r: ReplayDTO): string {
-    return r.metadata.deckNames[this.mySide(r)] ?? '';
+    return this.realDeckName(r.metadata.deckNames[this.mySide(r)]);
   }
   opponentDeckName(r: ReplayDTO): string {
-    return r.metadata.deckNames[this.opponentSide(r)] ?? '';
+    return this.realDeckName(r.metadata.deckNames[this.opponentSide(r)]);
+  }
+  /** The duel-server falls back to the literal string `'Deck'` when a player
+   *  has no named deck (see duel-server/src/server.ts:476). The hub-card
+   *  doesn't want to render that placeholder — it would just clutter the
+   *  meta line. Treat 'Deck' (case-insensitive) as "missing" and let the
+   *  template's `@if` skip the row. */
+  private realDeckName(raw: string | undefined | null): string {
+    if (!raw) return '';
+    return raw.trim().toLowerCase() === 'deck' ? '' : raw;
   }
   resultMeta(r: ReplayDTO): ResultMeta {
     return RESULT_META[r.metadata.result];
