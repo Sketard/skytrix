@@ -1,0 +1,3352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Mockup — Replay Viewer (Holographic Arena)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+/* ============================================================
+   DS TOKENS — mirror of front/src/app/styles/_tokens.scss
+   ============================================================ */
+:root {
+  --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
+  --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
+  --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+  --text-xl:  clamp(1.35rem, 1.20rem + 0.75vw, 1.60rem);
+  --text-2xl: clamp(1.70rem, 1.40rem + 1.50vw, 2.20rem);
+
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-7: 32px; --space-8: 40px;
+
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+  --radius-pill: 999px;
+
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.30);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.40);
+  --elevation-4: 0 16px 48px rgba(0, 0, 0, 0.50);
+
+  /* Gold (self / Millennium accent) */
+  --gold-50: #ffe9a8; --gold-100: #d4b25a;
+  --gold: #C9A84C;   --gold-700: #a8862e;
+  --gold-soft-08: rgba(201, 168, 76, 0.08);
+  --gold-soft-12: rgba(201, 168, 76, 0.12);
+  --gold-soft-25: rgba(201, 168, 76, 0.25);
+  --gold-soft-40: rgba(201, 168, 76, 0.40);
+  --gold-soft-50: rgba(201, 168, 76, 0.50);
+
+  /* Cyan (secondary accent — solo/fork mode) */
+  --cyan-300: #79b8ff;  --cyan-500: #4a90d9;
+  --cyan-soft-15: rgba(74, 144, 217, 0.15);
+  --cyan-soft-25: rgba(74, 144, 217, 0.25);
+  --cyan-soft-40: rgba(74, 144, 217, 0.40);
+
+  /* Chain owner palette (cohérent P0-1 audit) */
+  --self-blue: #1e5ac8;
+  --self-blue-soft: rgba(30, 90, 200, 0.25);
+  --self-blue-glow: rgba(96, 165, 250, 0.55);
+  --opp-amber: #b45309;
+  --opp-amber-soft: rgba(180, 83, 9, 0.30);
+  --opp-amber-glow: rgba(245, 158, 11, 0.55);
+
+  --success: #4caf50; --warning: #ffc107; --danger: #ff5252;
+
+  --surface-bg: #0a0a14;
+  --surface-bg-deep: #0f0f1c;
+  --surface-card: rgba(30, 30, 46, 0.85);
+  --surface-card-low: rgba(22, 22, 36, 0.85);
+  --surface-nav: rgba(15, 15, 28, 0.92);
+  --surface-overlay: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-soft: rgba(255, 255, 255, 0.10);
+  --border-medium: rgba(255, 255, 255, 0.18);
+
+  --text-primary: #eaeaea;
+  --text-secondary: #c0c0c0;
+  --text-muted: #9e9e9e;
+  --text-disabled: #6e6e6e;
+  --text-inverse: #1a1208;
+
+  --transition-fast: 150ms;
+  --transition-normal: 250ms;
+  --transition-slow: 400ms;
+  --ease-out: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --focus-ring-color: var(--gold);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --touch-target-min: 44px;
+}
+
+*:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: inherit;
+}
+*:focus:not(:focus-visible) { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+.material-icons-round { font-family: 'Material Icons Round'; user-select: none; }
+
+/* ============================================================
+   Toolbar (mockup-only)
+   ============================================================ */
+.preview-toolbar {
+  position: fixed; top: 12px; right: 12px; display: flex; gap: 6px;
+  z-index: 9000; background: rgba(10, 10, 20, 0.92); padding: 6px;
+  border-radius: 10px; border: 1px solid var(--border-soft);
+  backdrop-filter: blur(10px); flex-wrap: wrap;
+  max-width: calc(100vw - 24px);
+}
+.preview-toolbar a, .preview-toolbar button {
+  font: 600 0.78rem 'Inter'; padding: 6px 10px;
+  border-radius: 6px; background: transparent; color: var(--text-secondary);
+  border: none; cursor: pointer; text-decoration: none;
+}
+.preview-toolbar a:hover, .preview-toolbar button:hover { background: var(--surface-hover); color: var(--text-primary); }
+.preview-toolbar .active { background: var(--gold-soft-12); color: var(--gold); }
+.preview-toolbar .sep { width: 1px; height: 18px; background: var(--border-soft); align-self: center; }
+.preview-toolbar .device-select {
+  font: 600 0.74rem 'Inter'; padding: 6px 8px; border-radius: 6px;
+  background: var(--surface-overlay); color: var(--text-secondary);
+  border: 1px solid var(--border-soft); cursor: pointer;
+}
+
+html[data-device="360"]  body { max-width: 360px;  margin: 0 auto; box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 32px var(--gold-soft-12); }
+html[data-device="414"]  body { max-width: 414px;  margin: 0 auto; box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 32px var(--gold-soft-12); }
+html[data-device="768"]  body { max-width: 768px;  margin: 0 auto; box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 32px var(--gold-soft-12); }
+html[data-device="1024"] body { max-width: 1024px; margin: 0 auto; box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 32px var(--gold-soft-12); }
+html[data-device="1280"] body { max-width: 1280px; margin: 0 auto; box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 32px var(--gold-soft-12); }
+html[data-device="1920"] body { max-width: 1920px; margin: 0 auto; box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 32px var(--gold-soft-12); }
+html[data-device]:not([data-device="auto"]) body { min-height: 100vh; background: var(--surface-bg); }
+html[data-device]:not([data-device="auto"]) { background: #050509; }
+
+/* ============================================================
+   Screen wrapper — all replay states stack here
+   ============================================================ */
+.screen { position: relative; min-height: 100vh; display: none; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* Arena background — same gradient as lobby Holo, with subtle grid */
+.screen-bg {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: radial-gradient(ellipse at top, #14142a 0%, #0f0f1c 60%, #0a0a14 100%);
+}
+.screen-bg-grid {
+  position: absolute; inset: -10% -10% -20% -10%;
+  background-image:
+    linear-gradient(to right, rgba(201, 168, 76, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(201, 168, 76, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  transform: perspective(900px) rotateX(60deg) translateY(-5%);
+  transform-origin: 50% 30%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 60%, transparent 95%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 60%, transparent 95%);
+  opacity: 0.4;
+}
+.screen-bg-glow { position: absolute; border-radius: 50%; filter: blur(100px); pointer-events: none; }
+.screen-bg-glow--gold { top: -25%; left: -15%; width: 55vw; height: 55vw; max-width: 700px; max-height: 700px;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.40), transparent 70%); opacity: 0.35; }
+.screen-bg-glow--cyan { bottom: -25%; right: -15%; width: 55vw; height: 55vw; max-width: 700px; max-height: 700px;
+  background: radial-gradient(circle, rgba(74, 144, 217, 0.35), transparent 70%); opacity: 0.30; }
+
+/* ============================================================
+   TOP CHROME — replay header (perspective, players, back btn)
+   ============================================================ */
+.replay-topbar {
+  position: relative; z-index: 10;
+  display: grid; grid-template-columns: auto 1fr auto;
+  align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(180deg, rgba(15, 15, 28, 0.96), rgba(15, 15, 28, 0.78));
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+}
+.replay-back-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px 8px 10px; border-radius: var(--radius-md);
+  background: transparent; border: 1px solid var(--border-soft);
+  color: var(--text-secondary); cursor: pointer;
+  font: 600 var(--text-sm) 'Inter'; transition: all var(--transition-fast) var(--ease-out);
+}
+.replay-back-btn:hover { color: var(--gold); border-color: var(--gold-soft-40); background: var(--gold-soft-08); }
+.replay-back-btn .material-icons-round { font-size: 18px; }
+
+.replay-match-summary {
+  display: flex; align-items: center; gap: var(--space-3);
+  justify-self: center; min-width: 0;
+}
+.replay-vs-tag {
+  font: 700 0.65rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text-muted); padding: 0 var(--space-2);
+}
+.player-chip { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.player-chip-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 0.85rem/1 'Rajdhani', sans-serif; color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.player-chip-avatar--p1 { background: linear-gradient(135deg, hsl(45, 70%, 55%), hsl(45, 60%, 35%)); }
+.player-chip-avatar--p2 { background: linear-gradient(135deg, hsl(210, 65%, 55%), hsl(210, 55%, 35%)); }
+.player-chip-name { font: 700 var(--text-sm)/1.1 'Inter'; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.player-chip-deck { font: 500 var(--text-xs)/1.1 'Inter'; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-chip-meta { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.player-chip-result {
+  font: 700 0.62rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px; line-height: 1; white-space: nowrap;
+}
+.player-chip-result--win { background: var(--gold-soft-25); color: var(--gold-50); }
+.player-chip-result--loss { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+.replay-toolbar-right { display: flex; align-items: center; gap: var(--space-2); }
+.replay-meta-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  background: var(--surface-overlay); border: 1px solid var(--border-subtle);
+  font: 700 var(--text-xs) 'Inter'; color: var(--text-secondary);
+}
+.replay-meta-pill .material-icons-round { font-size: 14px; color: var(--text-muted); }
+.replay-icon-btn {
+  width: 36px; height: 36px; border-radius: var(--radius-md);
+  background: transparent; border: 1px solid var(--border-soft);
+  color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.replay-icon-btn:hover { color: var(--gold); border-color: var(--gold-soft-40); background: var(--gold-soft-08); }
+.replay-icon-btn .material-icons-round { font-size: 18px; }
+.replay-icon-btn.success-flash {
+  color: var(--success); border-color: rgba(76,175,80,0.5); background: rgba(76,175,80,0.08);
+}
+
+/* ============================================================
+   BOARD AREA — placeholder (existing component re-used)
+   ============================================================ */
+.board-area {
+  position: relative; flex: 1; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4); overflow: hidden;
+}
+.board-frame {
+  position: relative;
+  width: 100%; max-width: 1100px; aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(ellipse at center, rgba(201,168,76,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(20,20,36,0.7), rgba(10,10,20,0.7));
+  border: 1px solid var(--gold-soft-25);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.04),
+    0 0 40px var(--gold-soft-12),
+    var(--elevation-3);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font: 500 var(--text-sm) 'Inter';
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.board-frame::before {
+  content: ''; position: absolute; inset: 8px; pointer-events: none;
+  border: 1px dashed rgba(201,168,76,0.15); border-radius: 10px;
+}
+.board-frame-label { display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0.5; }
+.board-frame-label .material-icons-round { font-size: 48px; color: var(--gold); }
+
+/* Hand row sketches */
+.hand-sketch {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; pointer-events: none;
+}
+.hand-sketch--top { top: 4px; }
+.hand-sketch--bottom { bottom: 4px; }
+.hand-card-sketch {
+  width: 44px; height: 64px; border-radius: 4px;
+  background: linear-gradient(135deg, rgba(30,30,46,0.85), rgba(22,22,36,0.85));
+  border: 1px solid var(--border-soft);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* ============================================================
+   TIMELINE BAR — Holographic refactor
+   ============================================================ */
+.timeline-bar {
+  position: relative;
+  background: linear-gradient(180deg, rgba(15,15,28,0.95), rgba(10,10,20,0.98));
+  border-top: 1px solid var(--gold-soft-25);
+  box-shadow: inset 0 1px 0 rgba(201,168,76,0.08), 0 -4px 16px rgba(0,0,0,0.3);
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-color: var(--gold-soft-25) transparent;
+  scrollbar-width: thin;
+}
+.timeline-bar::-webkit-scrollbar { height: 6px; }
+.timeline-bar::-webkit-scrollbar-track { background: transparent; }
+.timeline-bar::-webkit-scrollbar-thumb { background: var(--gold-soft-25); }
+.timeline-bar::-webkit-scrollbar-thumb:hover { background: var(--gold-soft-40); }
+
+.timeline-track {
+  display: flex; position: relative; height: 56px;
+  min-width: 100%; cursor: grab;
+  /* Drag-to-seek : mousedown + mousemove emit scrubbing (preview in real time),
+     mouseup commits via seekTo. Implemented in timeline-bar.component.ts via
+     onMouseDown / onTouchStart with global listeners on window for move/up.
+     Cursor changes to 'grabbing' during the scrub. */
+}
+.timeline-track:active { cursor: grabbing; }
+.timeline-track:active .sub-event,
+.timeline-track:active .turn-segment { pointer-events: none; }
+.turn-segment {
+  flex: 1 1 0; display: flex; flex-direction: column;
+  align-items: center; min-width: 0;
+  padding: 4px 6px;
+  background: transparent;
+  border-right: 1px solid rgba(201,168,76,0.06);
+  transition: background var(--transition-fast) var(--ease-out);
+  position: relative; cursor: pointer;
+}
+.turn-segment:last-child { border-right: none; }
+.turn-segment:hover {
+  background: linear-gradient(180deg, rgba(201,168,76,0.06), transparent 80%);
+}
+.turn-segment.current {
+  background: linear-gradient(180deg, var(--gold-soft-12), transparent 70%);
+}
+.turn-segment.current::after {
+  content: ''; position: absolute; left: 8%; right: 8%; bottom: 0;
+  height: 2px; background: var(--gold);
+  box-shadow: 0 0 8px var(--gold-soft-50);
+}
+.turn-segment.not-computed {
+  opacity: 0.35; pointer-events: none;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0px, transparent 6px,
+    rgba(201,168,76,0.04) 6px, rgba(201,168,76,0.04) 12px
+  );
+  animation: not-computed-shimmer 3s linear infinite;
+}
+@keyframes not-computed-shimmer {
+  0% { background-position: 0 0; }
+  100% { background-position: 24px 24px; }
+}
+.turn-label {
+  font: 700 var(--text-xs)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); padding: 0 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+.turn-segment.current .turn-label { color: var(--gold-50); }
+
+.sub-events {
+  display: flex; gap: 3px; justify-content: center; align-items: center;
+  flex: 1; padding: 6px 0; flex-wrap: wrap; min-height: 26px;
+}
+.sub-event {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(201,168,76,0.35); cursor: pointer;
+  transition: transform var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
+}
+.sub-event:hover {
+  transform: scale(1.4); background: var(--gold);
+  box-shadow: 0 0 8px var(--gold-soft-50);
+}
+.sub-event.current {
+  background: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+  transform: scale(1.3);
+}
+.sub-event.not-computed { background: rgba(255,255,255,0.12); pointer-events: none; }
+
+/* Chain groups — palette P0-1 (blue self / amber opponent) */
+.chain-group {
+  display: flex; gap: 3px; align-items: center;
+  padding: 3px 5px;
+  border-radius: var(--radius-sm);
+}
+.chain-group--self {
+  background: var(--self-blue-soft);
+  border: 1px solid rgba(96, 165, 250, 0.5);
+}
+.chain-group--opp {
+  background: var(--opp-amber-soft);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+/* Playhead */
+.playhead {
+  position: absolute; top: 0; bottom: 0;
+  width: 2px; pointer-events: none;
+  background: var(--gold);
+  box-shadow: 0 0 12px var(--gold), 0 0 4px var(--gold-50);
+  transform: translateX(-1px);
+}
+.playhead::before {
+  content: ''; position: absolute; top: -5px; left: 50%;
+  width: 11px; height: 11px; border-radius: 50%;
+  transform: translateX(-50%);
+  background: var(--gold); box-shadow: 0 0 12px var(--gold);
+}
+
+/* ============================================================
+   TIMELINE ZOOM — 3 levels (desktop only, wheel scroll on track)
+   ============================================================
+   L1 (default) : bande complète tient sur 100% du viewport.
+   L2 : bullets agrandies, .timeline-bar scroll horizontalement.
+   L3 : encore plus large, chaque évènement bien séparé.
+   Angular impl : zoomLevel signal 1|2|3, wheel-anchored zoom.
+   In the mockup, we toggle classes via the zoom controls. */
+.timeline-track { transition: min-width var(--transition-normal) var(--ease-out); }
+.timeline-track.zoom-l2 { min-width: 200%; }
+.timeline-track.zoom-l3 { min-width: 350%; }
+.timeline-track.zoom-l2 .sub-event { width: 10px; height: 10px; }
+.timeline-track.zoom-l3 .sub-event { width: 12px; height: 12px; }
+.timeline-track.zoom-l2 .turn-label { font-size: var(--text-xs); }
+.timeline-track.zoom-l3 .turn-label { font-size: var(--text-sm); }
+.timeline-track.zoom-l3 .sub-events { gap: 5px; }
+
+/* Mini-control "1× 2× 3×" — lives in the transport-bar (right cluster).
+   Hidden under .is-narrow because the timeline-bar itself is replaced
+   by the mobile stepper, so a zoom for it makes no sense. */
+.timeline-zoom-control {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+}
+.is-narrow .timeline-zoom-control { display: none; }
+/* Below 920px : transport gets cramped, hide the zoom (uncommon power-user feature). */
+@media (max-width: 920px) { .timeline-zoom-control { display: none; } }
+.timeline-zoom-btn {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  font: 700 0.66rem/1 'JetBrains Mono', monospace;
+  color: var(--text-muted); cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.timeline-zoom-btn:hover { color: var(--text-secondary); background: var(--surface-hover); }
+.timeline-zoom-btn.active {
+  background: var(--gold-soft-12);
+  color: var(--gold); box-shadow: 0 0 4px var(--gold-soft-25);
+}
+.timeline-zoom-hint {
+  font: 600 0.6rem/1 'Inter';
+  color: var(--text-disabled);
+  padding: 0 4px;
+  letter-spacing: 0.04em;
+}
+
+/* Hover popover (board preview)
+   Lives outside .timeline-bar (which has overflow:hidden) — JS positions it. */
+.hover-popover {
+  position: fixed;
+  left: 0; top: 0; /* JS sets via transform */
+  background: var(--surface-card);
+  border: 1px solid var(--gold-soft-25);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  box-shadow: var(--elevation-3), 0 0 32px var(--gold-soft-12);
+  z-index: 500; pointer-events: none;
+  backdrop-filter: blur(12px);
+  opacity: 0; visibility: hidden;
+  transition: opacity 150ms var(--ease-out);
+}
+.hover-popover.is-visible { opacity: 1; visibility: visible; }
+.hover-popover::after {
+  content: ''; position: absolute; top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--gold-soft-25);
+}
+
+/* Mini-board frame — mirrors the real board container at 1:6 scale */
+.hover-popover-board {
+  width: 260px; aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm); overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(ellipse at center, rgba(201,168,76,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(20,20,36,0.85), rgba(10,10,20,0.85));
+  border: 1px solid var(--gold-soft-25);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  display: grid;
+  grid-template-rows: auto 1fr 1fr auto;
+  padding: 6px 8px; gap: 4px;
+}
+.hover-popover-board::before {
+  content: ''; position: absolute; inset: 4px; pointer-events: none;
+  border: 1px dashed rgba(201,168,76,0.12); border-radius: 4px;
+}
+
+/* Hand rows — 4-5 mini ghost cards */
+.mini-hand {
+  display: flex; justify-content: center; gap: 2px;
+  position: relative; z-index: 1;
+}
+.mini-hand-card {
+  width: 14px; height: 20px; border-radius: 2px;
+  background: linear-gradient(135deg, rgba(50,50,70,0.9), rgba(30,30,46,0.9));
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+/* Field row — 7 zones */
+.mini-field-row {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 4px; align-items: center;
+  position: relative; z-index: 1;
+}
+.mini-zone {
+  aspect-ratio: 2 / 3;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(201, 168, 76, 0.10);
+}
+.mini-zone.has-card {
+  background: linear-gradient(135deg, rgba(50,50,70,0.95), rgba(30,30,46,0.95));
+  border-color: rgba(201,168,76,0.30);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* Popover footer info */
+.hover-popover-info {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 4px 2px; gap: 8px; min-width: 260px;
+}
+.hover-popover-label {
+  font: 700 var(--text-xs)/1.1 'Rajdhani', sans-serif;
+  letter-spacing: 0.05em; color: var(--gold);
+  text-transform: uppercase;
+}
+.hover-popover-lp {
+  font: 700 var(--text-xs)/1 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 6px;
+}
+.hover-popover-lp .self { color: var(--gold-50); }
+.hover-popover-lp .opp { color: var(--cyan-300); }
+.hover-popover-lp .sep { color: var(--text-disabled); }
+
+/* not-computed popover variant — diagonal stripes + hint */
+.hover-popover--not-computed .hover-popover-board {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(201,168,76,0.05) 0px, rgba(201,168,76,0.05) 8px,
+      rgba(15,15,28,0.85) 8px, rgba(15,15,28,0.85) 16px
+    );
+  border-color: var(--gold-soft-25);
+}
+.hover-popover--not-computed .hover-popover-board > * { display: none; }
+.hover-popover--not-computed .hover-popover-board::after {
+  content: 'Calcul en cours…';
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font: 600 var(--text-xs) 'Inter'; color: var(--gold-50);
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  background: rgba(10,10,20,0.85);
+  border: 1px solid var(--gold-soft-25);
+}
+
+/* ============================================================
+   TRANSPORT BAR — dock obsidienne, 3 zones
+   ============================================================ */
+.transport-bar {
+  position: relative; z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(180deg, rgba(20,20,36,0.95), rgba(10,10,20,0.98));
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 -2px 12px rgba(0,0,0,0.4);
+  min-height: 64px;
+}
+
+/* Zone gauche : turn / position context */
+.transport-context {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-width: 0;
+}
+.context-turn-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  background: var(--gold-soft-12); border: 1px solid var(--gold-soft-25);
+}
+.context-turn-pill-number {
+  font: 900 var(--text-sm)/1 'Rajdhani', sans-serif;
+  color: var(--gold-50);
+}
+.context-turn-pill-label {
+  font: 600 var(--text-xs)/1 'Inter'; color: var(--text-secondary);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.context-position {
+  font: 700 var(--text-xs)/1.1 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+}
+.context-position .current { color: var(--gold); }
+.context-phase {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  background: var(--surface-overlay); border: 1px solid var(--border-soft);
+  font: 600 var(--text-xs)/1 'Inter';
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+}
+.context-phase .material-icons-round {
+  font-size: 13px; color: var(--gold);
+}
+.context-event-label {
+  font: 500 var(--text-sm)/1.2 'Inter'; color: var(--text-secondary);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1;
+}
+
+/* Zone centre : transport principal */
+.transport-controls {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.transport-btn {
+  width: 40px; height: 40px; border-radius: var(--radius-md);
+  background: var(--surface-overlay); border: 1px solid var(--border-soft);
+  color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.transport-btn:hover {
+  color: var(--gold); border-color: var(--gold-soft-40);
+  background: var(--gold-soft-08);
+  transform: translateY(-1px);
+}
+.transport-btn:disabled {
+  opacity: 0.3; cursor: not-allowed; transform: none;
+}
+.transport-btn .material-icons-round { font-size: 22px; }
+
+.transport-btn--play {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse); border: none;
+  box-shadow: 0 4px 16px var(--gold-soft-40),
+    inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.2);
+  position: relative; overflow: hidden;
+}
+.transport-btn--play::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.4), transparent 70%);
+  opacity: 0; transition: opacity var(--transition-normal) var(--ease-out);
+}
+.transport-btn--play:hover::before { opacity: 1; }
+.transport-btn--play:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 8px 24px var(--gold-soft-50),
+    inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.2);
+  transform: translateY(-1px);
+}
+.transport-btn--play .material-icons-round { font-size: 28px; position: relative; z-index: 1; }
+
+.transport-btn--play.is-paused { /* show play icon */ }
+.transport-btn--play.is-playing {
+  background: linear-gradient(135deg, rgba(40,40,60,0.95), rgba(20,20,36,0.95));
+  color: var(--gold-50); border: 1px solid var(--gold-soft-40);
+  box-shadow: 0 0 16px var(--gold-soft-25), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Zone droite : options (toggles + perspective + fork) */
+.transport-options {
+  display: flex; align-items: center; gap: var(--space-2);
+  justify-content: flex-end;
+}
+.transport-toggle {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border-radius: var(--radius-md);
+  background: var(--surface-overlay); border: 1px solid var(--border-soft);
+  color: var(--text-muted); cursor: pointer;
+  font: 600 var(--text-xs)/1 'Inter';
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.transport-toggle .material-icons-round { font-size: 16px; }
+.transport-toggle:hover { color: var(--text-secondary); border-color: var(--border-medium); }
+.transport-toggle.active {
+  color: var(--gold); border-color: var(--gold-soft-40);
+  background: var(--gold-soft-08);
+}
+.transport-toggle.active .material-icons-round { color: var(--gold); }
+.transport-toggle .label-short { display: inline; }
+
+/* Perspective: shows mini-avatar */
+.transport-perspective {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 4px; border-radius: var(--radius-pill);
+  background: var(--surface-overlay); border: 1px solid var(--border-soft);
+  cursor: pointer; transition: all var(--transition-fast) var(--ease-out);
+}
+.transport-perspective:hover { border-color: var(--gold-soft-40); }
+.transport-perspective-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 0.78rem/1 'Rajdhani', sans-serif; color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.transport-perspective-avatar--p1 { background: linear-gradient(135deg, hsl(45, 70%, 55%), hsl(45, 60%, 35%)); }
+.transport-perspective-avatar--p2 { background: linear-gradient(135deg, hsl(210, 65%, 55%), hsl(210, 55%, 35%)); }
+.transport-perspective-label {
+  font: 600 var(--text-xs)/1 'Inter'; color: var(--text-secondary);
+}
+.transport-perspective-swap-icon {
+  font-size: 14px !important; color: var(--text-muted);
+}
+
+.transport-fork {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: var(--radius-md);
+  background: var(--cyan-soft-15); border: 1px solid var(--cyan-soft-40);
+  color: var(--cyan-300); cursor: pointer;
+  font: 700 var(--text-xs)/1 'Inter';
+  letter-spacing: 0.04em; text-transform: uppercase;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.transport-fork .material-icons-round { font-size: 18px; }
+.transport-fork:hover {
+  background: var(--cyan-soft-25); border-color: var(--cyan-500);
+  box-shadow: 0 4px 16px var(--cyan-soft-25);
+  transform: translateY(-1px);
+}
+
+/* Discrete ghost icon — for tertiary actions (cheat sheet, etc.) */
+.transport-icon-ghost {
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  background: transparent; border: none;
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast) var(--ease-out);
+  margin-left: 2px;
+}
+.transport-icon-ghost:hover {
+  color: var(--gold); background: var(--gold-soft-08);
+}
+.transport-icon-ghost .material-icons-round { font-size: 18px; }
+
+/* ============================================================
+   TIMELINE STEPPER — mobile/landscape replacement for .timeline-bar
+   ============================================================
+   Activated under ≤ 760px AND in is-narrow preview.
+   Replaces the cramped per-turn segments with:
+   - Prev/Next chevrons (44×44 cibles tactiles WCAG)
+   - Tour pill ouvrant le picker grille (bottom sheet)
+   - Sub-events dots du tour courant uniquement (seek fin intra-tour)
+   Hidden by default; the responsive blocks below swap visibility. */
+.timeline-stepper {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(15,15,28,0.95), rgba(10,10,20,0.98));
+  border-top: 1px solid var(--gold-soft-25);
+  box-shadow: inset 0 1px 0 rgba(201,168,76,0.08), 0 -4px 16px rgba(0,0,0,0.3);
+  position: relative;
+  min-height: 64px;
+}
+.stepper-nav-btn {
+  width: 44px; height: 44px; flex: 0 0 44px;
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay); border: 1px solid var(--border-soft);
+  color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.stepper-nav-btn:hover, .stepper-nav-btn:focus-visible {
+  color: var(--gold); border-color: var(--gold-soft-40);
+  background: var(--gold-soft-08);
+}
+.stepper-nav-btn:active { transform: scale(0.94); }
+.stepper-nav-btn:disabled {
+  opacity: 0.3; cursor: not-allowed; transform: none;
+}
+.stepper-nav-btn .material-icons-round { font-size: 24px; }
+
+.stepper-pill {
+  flex: 1 1 auto;
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  background: var(--gold-soft-08);
+  border: 1px solid var(--gold-soft-25);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast) var(--ease-out);
+  min-width: 0;
+}
+.stepper-pill:hover, .stepper-pill:focus-visible {
+  background: var(--gold-soft-12); border-color: var(--gold-soft-40);
+}
+.stepper-pill:active { transform: scale(0.98); }
+.stepper-pill-main {
+  display: flex; align-items: baseline; gap: 4px;
+  font: 800 var(--text-md)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--gold-50);
+}
+.stepper-pill-total {
+  font: 600 var(--text-xs)/1 'Inter';
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+.stepper-pill-chevron {
+  color: var(--gold);
+}
+.stepper-pill-chevron .material-icons-round { font-size: 18px; }
+.stepper-pill .dot-progress {
+  display: flex; gap: 4px; align-items: center;
+  margin-left: 4px;
+}
+.stepper-pill .dot-progress .dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--gold-soft-25);
+}
+.stepper-pill .dot-progress .dot.is-active {
+  background: var(--gold); box-shadow: 0 0 6px var(--gold-soft-50);
+  width: 6px; height: 6px;
+}
+
+/* Sub-events row : only current turn, sits below the stepper */
+.stepper-subevents {
+  display: none;
+  align-items: center; justify-content: center;
+  gap: 4px; flex-wrap: wrap;
+  padding: 6px 12px 8px;
+  background: linear-gradient(180deg, rgba(10,10,20,0.98), rgba(15,15,28,0.95));
+  border-top: 1px solid var(--border-subtle);
+  min-height: 28px;
+}
+/* .stepper-subevents .sub-event / .chain-group reuse the existing
+   styles defined in the TIMELINE BAR block above — no override here. */
+
+/* ============================================================
+   TURN PICKER SHEET — grille 3 colonnes mini-board
+   ============================================================ */
+.turn-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.turn-picker-card {
+  display: flex; flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: all var(--transition-fast) var(--ease-out);
+  text-align: left; min-height: 44px;
+  position: relative;
+}
+.turn-picker-card:hover, .turn-picker-card:focus-visible {
+  border-color: var(--gold-soft-40);
+  background: var(--gold-soft-08);
+  transform: translateY(-1px);
+}
+.turn-picker-card:active { transform: translateY(0) scale(0.98); }
+.turn-picker-card.is-current {
+  border-color: var(--gold);
+  background: var(--gold-soft-12);
+  box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 16px var(--gold-soft-25);
+}
+.turn-picker-card.is-current::before {
+  content: ''; position: absolute; top: 6px; right: 6px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 0 8px var(--gold);
+  z-index: 2;
+}
+.turn-picker-card.not-computed {
+  pointer-events: none; opacity: 0.55;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(201,168,76,0.04) 0px, rgba(201,168,76,0.04) 6px,
+    rgba(15,15,28,0.7) 6px, rgba(15,15,28,0.7) 12px
+  );
+}
+.turn-picker-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 4px;
+}
+.turn-picker-num {
+  font: 800 var(--text-sm)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--gold-50);
+}
+.turn-picker-card.not-computed .turn-picker-num { color: var(--text-muted); }
+.turn-picker-player {
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 0.55rem/1 'Rajdhani', sans-serif; color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.turn-picker-player--p1 { background: linear-gradient(135deg, hsl(45, 70%, 55%), hsl(45, 60%, 35%)); }
+.turn-picker-player--p2 { background: linear-gradient(135deg, hsl(210, 65%, 55%), hsl(210, 55%, 35%)); }
+.turn-picker-mini-board {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background:
+    radial-gradient(ellipse at center, rgba(201,168,76,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(20,20,36,0.85), rgba(10,10,20,0.85));
+  border: 1px solid var(--border-subtle);
+  display: grid;
+  grid-template-rows: auto 1fr 1fr auto;
+  padding: 4px;
+  gap: 2px;
+}
+.turn-picker-mini-board .mini-hand { gap: 1px; }
+.turn-picker-mini-board .mini-hand-card { width: 6px; height: 9px; border-radius: 1px; }
+.turn-picker-mini-board .mini-field-row { gap: 2px; }
+.turn-picker-mini-board .mini-zone { border-radius: 1px; }
+.turn-picker-card.not-computed .turn-picker-mini-board > * { visibility: hidden; }
+.turn-picker-card.not-computed .turn-picker-mini-board {
+  position: relative;
+}
+.turn-picker-card.not-computed .turn-picker-mini-board::after {
+  content: '⏳';
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px; filter: grayscale(1);
+}
+.turn-picker-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 4px;
+  font: 600 var(--text-xs)/1 'Inter';
+  color: var(--text-muted);
+}
+.turn-picker-events {
+  display: flex; align-items: center; gap: 3px;
+}
+.turn-picker-events .material-icons-round { font-size: 12px; }
+.turn-picker-card.is-current .turn-picker-events { color: var(--gold-50); }
+
+/* Picker section label (groups Setup, then "Tours") */
+.turn-picker-section {
+  font: 700 var(--text-xs)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold);
+  margin: var(--space-3) 0 var(--space-1);
+  padding: 0 4px;
+}
+.turn-picker-section:first-child { margin-top: 0; }
+
+/* Swipe hint on board (mobile only) */
+.swipe-hint {
+  position: absolute; left: 50%; bottom: 12px;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  background: rgba(10,10,20,0.85);
+  border: 1px solid var(--gold-soft-25);
+  font: 500 var(--text-xs) 'Inter'; color: var(--text-muted);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-normal) var(--ease-out);
+  z-index: 5;
+}
+.swipe-hint.is-visible { opacity: 1; }
+.swipe-hint .material-icons-round { font-size: 14px; color: var(--gold); }
+
+/* Brief swipe flash on board edge during swipe gesture */
+.board-area .swipe-flash {
+  position: absolute; top: 0; bottom: 0;
+  width: 80px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out);
+  z-index: 4;
+}
+.board-area .swipe-flash--left {
+  left: 0;
+  background: linear-gradient(90deg, var(--gold-soft-25), transparent);
+}
+.board-area .swipe-flash--right {
+  right: 0;
+  background: linear-gradient(-90deg, var(--gold-soft-25), transparent);
+}
+.board-area .swipe-flash.is-active { opacity: 1; }
+
+/* Mobile responsive : labels disappear, transport stacks on 2 lines */
+/* ============================================================
+   RESPONSIVE — 4 breakpoints
+   ============================================================
+   1024+  : full desktop (no rule needed)
+   ≤ 920  : tablet — transport stacks, button labels shrink
+   ≤ 760  : small tablet — topbar collapses, timeline → stepper
+   ≤ 480  : mobile — full compact layout (cheat sheet bottom sheet,
+            popovers full-width, end-overlay full-width)
+   The mobile-landscape overrides above already collapse the transport;
+   these rules complement them for narrow viewports regardless of
+   orientation.
+
+   ⚠️ TIMELINE STRATEGY UNDER ≤ 760px :
+   La bande des tours (.timeline-bar) est *masquée* et remplacée par
+   un stepper (◀ pill ▶) + ligne sub-events du tour courant.
+   Picker grille 3 cols dans #turnPickerSheet ouvre via tap sur pill. */
+
+/* === Tablet (≤ 920px) === */
+@media (max-width: 920px) {
+  .transport-bar {
+    grid-template-columns: auto 1fr auto;
+    column-gap: var(--space-2);
+    padding: var(--space-3);
+    min-height: 56px;
+  }
+  /* Context squeezes to turn pill + position only */
+  .transport-context .context-event-label { display: none; }
+  .transport-context .context-phase { display: none; }
+  .transport-context { gap: var(--space-2); }
+
+  /* Buttons keep icons, labels shrink */
+  .transport-toggle .label-short { display: none; }
+  .transport-fork { padding: 8px; }
+  .transport-fork .label-fork { display: none; }
+  .transport-perspective-label { display: none; }
+  .transport-perspective { padding: 4px 6px 4px 4px; }
+
+  /* Topbar drops the "vs" between players, decks shrink */
+  .player-chip-deck { font-size: 0.65rem; max-width: 100px; }
+  .replay-vs-tag { padding: 0 var(--space-1); font-size: 0.55rem; }
+}
+
+/* === Small tablet (≤ 760px) === */
+@media (max-width: 760px) {
+  .replay-topbar {
+    grid-template-columns: auto 1fr auto;
+    padding: var(--space-2) var(--space-3);
+    column-gap: var(--space-2);
+  }
+  .replay-back-btn { padding: 6px 10px 6px 8px; }
+  .replay-back-btn span:not(.material-icons-round) { display: none; }
+  .player-chip-deck { display: none; }
+  .player-chip-name { max-width: 80px; font-size: var(--text-xs); }
+  .player-chip-avatar { width: 26px; height: 26px; font-size: 0.7rem; }
+  .player-chip-result { padding: 2px 5px; font-size: 0.55rem; }
+  .replay-vs-tag { padding: 0 var(--space-1); }
+  /* Only one meta pill survives (date) */
+  .replay-meta-pill:first-child { display: none; }
+
+  /* Timeline desktop is hidden ; stepper takes over */
+  .timeline-bar { display: none; }
+  .timeline-stepper { display: flex; }
+  .stepper-subevents { display: flex; }
+  .swipe-hint { display: flex; }
+
+  /* End-overlay full-width-ish */
+  .end-overlay {
+    left: 12px; right: 12px;
+    transform: none;
+    min-width: 0; max-width: none;
+  }
+  .end-overlay-actions { width: 100%; }
+  .end-overlay-actions .end-overlay-btn { flex: 1; justify-content: center; }
+}
+
+/* === Mobile (≤ 480px) === */
+@media (max-width: 480px) {
+  /* Topbar : back icon + opponent only + details button */
+  .replay-match-summary { gap: var(--space-1); }
+  .replay-match-summary .player-chip:first-child { display: none; }
+  .replay-vs-tag { display: none; }
+  .replay-meta-pill { display: none; }
+  #copyLinkBtn { display: none; }
+  .replay-mobile-details-btn { display: flex !important; }
+
+  /* Transport switches to compact mode (same as mobile-landscape) */
+  .transport-context .context-position { display: none; }
+  .transport-options .transport-toggle,
+  .transport-options .transport-perspective,
+  .transport-options .transport-fork,
+  .transport-options .transport-icon-ghost { display: none; }
+  .transport-more-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: var(--radius-md);
+    background: var(--surface-overlay); border: 1px solid var(--border-soft);
+    color: var(--text-secondary); cursor: pointer;
+    font: 600 var(--text-xs)/1 'Inter';
+    position: relative;
+  }
+  .transport-more-btn:hover { color: var(--gold); border-color: var(--gold-soft-40); }
+  .transport-more-btn .material-icons-round { font-size: 18px; }
+  .transport-more-btn.has-non-default::after {
+    content: ''; position: absolute; top: 6px; right: 6px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold); box-shadow: 0 0 6px var(--gold-soft-50);
+  }
+
+  /* Transport buttons slightly smaller, play stays prominent */
+  .transport-btn { width: 36px; height: 36px; }
+  .transport-btn .material-icons-round { font-size: 20px; }
+  .transport-btn--play { width: 48px; height: 48px; }
+  .transport-btn--play .material-icons-round { font-size: 26px; }
+  .transport-controls { gap: var(--space-1); }
+
+  /* Stepper : compresse le pill, garde 44×44 sur ◀ ▶ */
+  .timeline-stepper { padding: 6px 8px; min-height: 56px; }
+  .stepper-pill { padding: 6px 8px; }
+  .stepper-pill-main { font-size: var(--text-sm); }
+  .stepper-pill .dot-progress { display: none; }
+  .stepper-subevents { padding: 4px 8px 6px; }
+  .sub-event { width: 6px; height: 6px; }
+  .chain-group { padding: 2px 3px; }
+
+  /* Picker grille : 3 cols restent, mais paddings serrés */
+  .turn-picker-grid { gap: var(--space-2); }
+  .turn-picker-card { padding: 6px; gap: 4px; }
+
+  /* Hover popover full-width-ish — but on mobile we rely on tap-and-hold
+     instead, so the popover never opens via real hover on touch devices.
+     Keep this as a guarantee against a stylus or hybrid device. */
+  .hover-popover { left: 8px !important; right: 8px !important;
+    transform: none !important; max-width: calc(100vw - 16px); }
+  .hover-popover-board { width: 100%; }
+
+  /* Cheat sheet → become a bottom sheet on mobile */
+  .cheat-sheet-backdrop { align-items: flex-end; padding: 0; }
+  .cheat-sheet {
+    max-width: none; width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 85dvh;
+  }
+  .cheat-sheet-header { padding: var(--space-3) var(--space-4); }
+  .cheat-sheet-title { font-size: var(--text-md); }
+
+  /* Topbar back button collapse to icon-only */
+  .replay-back-btn { padding: 6px 8px; }
+}
+
+/* ============================================================
+   STATE 1 — LOADING SKELETON (board + timeline + transport)
+   ============================================================ */
+.replay-loading-skeleton .board-frame {
+  border-color: var(--border-subtle);
+  box-shadow: var(--elevation-2);
+}
+.skel-rect, .skel-circle {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.04) 100%);
+  background-size: 200% 100%;
+  animation: skel-sweep 1.4s var(--ease-inout) infinite;
+  border-radius: var(--radius-sm);
+}
+.skel-circle { border-radius: 50%; }
+@keyframes skel-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skel-board-content {
+  width: 100%; height: 100%;
+  display: grid; grid-template-rows: auto 1fr 1fr auto;
+  padding: 16px; gap: 12px;
+}
+.skel-board-hand {
+  display: flex; justify-content: center; gap: 4px;
+}
+.skel-hand-card { width: 44px; height: 64px; }
+.skel-board-row {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 8px; align-items: center;
+}
+.skel-zone { aspect-ratio: 2/3; max-width: 80px; margin: 0 auto; width: 100%; }
+
+.skel-timeline-track {
+  display: flex; height: 56px; padding: 8px;
+  gap: 12px; align-items: center;
+}
+.skel-turn-block { height: 100%; flex: 1; }
+
+.skel-transport {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; padding: var(--space-3) var(--space-4); gap: var(--space-3);
+}
+.skel-transport-pill { width: 100px; height: 28px; }
+.skel-transport-controls { display: flex; gap: 8px; align-items: center; justify-self: center; }
+.skel-transport-btn { width: 40px; height: 40px; border-radius: var(--radius-md); }
+.skel-transport-btn--play { width: 52px; height: 52px; border-radius: 50%; }
+.skel-transport-options { display: flex; gap: 8px; justify-self: end; }
+.skel-transport-toggle { width: 60px; height: 36px; border-radius: var(--radius-md); }
+
+.replay-loading-hint {
+  position: absolute; left: 50%; bottom: 24px;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 18px; border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: 1px solid var(--gold-soft-25);
+  box-shadow: var(--elevation-2);
+  backdrop-filter: blur(10px);
+  font: 500 var(--text-sm) 'Inter'; color: var(--text-secondary);
+  white-space: nowrap;
+}
+.replay-loading-hint .material-icons-round {
+  font-size: 16px; color: var(--gold);
+  animation: hint-spin 2s linear infinite;
+}
+.replay-loading-text strong {
+  font-weight: 800; color: var(--gold-50);
+  font-variant-numeric: tabular-nums;
+}
+.replay-loading-label {
+  color: var(--text-muted); font-style: italic;
+  margin-left: 4px;
+}
+@keyframes hint-spin { to { transform: rotate(360deg); } }
+/* Mobile : hide the event label in the loading hint to keep it short */
+@media (max-width: 480px) {
+  .replay-loading-label { display: none; }
+}
+
+/* ============================================================
+   STATE 3 — END-OF-REPLAY OVERLAY (slide-in)
+   ============================================================ */
+.end-overlay {
+  position: absolute; left: 50%; bottom: 32px;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  background: linear-gradient(180deg, rgba(30,30,46,0.95), rgba(15,15,28,0.98));
+  border: 1px solid var(--gold-soft-25);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-4), 0 0 60px var(--gold-soft-12);
+  backdrop-filter: blur(16px);
+  z-index: 100; min-width: 320px; max-width: 90%;
+  animation: end-overlay-slide 400ms var(--ease-spring) both;
+}
+@keyframes end-overlay-slide {
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.end-overlay-header { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.end-overlay-result {
+  font: 900 var(--text-2xl)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  background: linear-gradient(135deg, var(--gold-50) 0%, var(--gold) 50%, var(--gold-700) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.end-overlay-result.is-loss {
+  background: none; -webkit-text-fill-color: var(--text-muted); color: var(--text-muted);
+}
+.end-overlay-meta {
+  font: 600 var(--text-xs) 'Inter'; color: var(--text-muted);
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.end-overlay-score {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-bg-deep); border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+}
+.end-overlay-score-side { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.end-overlay-score-player {
+  font: 700 var(--text-xs) 'Inter'; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 6px;
+}
+.end-overlay-score-lp {
+  font: 900 var(--text-xl)/1 'JetBrains Mono', monospace;
+}
+.end-overlay-score-lp--winner { color: var(--gold-50); text-shadow: 0 0 12px var(--gold-soft-50); }
+.end-overlay-score-lp--loser { color: var(--text-muted); }
+.end-overlay-score-vs {
+  font: 700 var(--text-xs) 'Rajdhani', sans-serif;
+  color: var(--text-disabled);
+  letter-spacing: 0.15em;
+}
+
+.end-overlay-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
+.end-overlay-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: var(--radius-md);
+  font: 700 var(--text-sm)/1 'Inter';
+  letter-spacing: 0.04em; cursor: pointer;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.end-overlay-btn .material-icons-round { font-size: 18px; }
+.end-overlay-btn--primary {
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse); border: none;
+  box-shadow: 0 4px 16px var(--gold-soft-40), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.end-overlay-btn--primary:hover { filter: brightness(1.08); transform: translateY(-1px);
+  box-shadow: 0 8px 24px var(--gold-soft-50), inset 0 1px 0 rgba(255,255,255,0.3); }
+.end-overlay-btn--secondary {
+  background: var(--cyan-soft-15); border: 1px solid var(--cyan-soft-40);
+  color: var(--cyan-300);
+}
+.end-overlay-btn--secondary:hover {
+  background: var(--cyan-soft-25); border-color: var(--cyan-500);
+  box-shadow: 0 4px 16px var(--cyan-soft-25); transform: translateY(-1px);
+}
+.end-overlay-btn--ghost {
+  background: transparent; border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+}
+.end-overlay-btn--ghost:hover {
+  border-color: var(--border-medium); color: var(--text-primary);
+  background: var(--surface-hover);
+}
+.end-overlay-dismiss-hint {
+  font: 500 var(--text-xs) 'Inter'; color: var(--text-disabled);
+  display: flex; align-items: center; gap: 6px;
+}
+.end-overlay-dismiss-hint kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; padding: 1px 5px;
+  border-radius: 3px; background: var(--surface-overlay);
+  border: 1px solid var(--border-medium);
+  font: 700 0.7rem 'JetBrains Mono'; color: var(--text-secondary);
+}
+
+/* ============================================================
+   STATE 4 — CHEAT SHEET MODAL (keyboard shortcuts)
+   ============================================================ */
+.cheat-sheet-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(5, 5, 10, 0.7);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: var(--space-4);
+  animation: cheat-fade 200ms var(--ease-out) both;
+}
+.cheat-sheet-backdrop.is-open { display: flex; }
+@keyframes cheat-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.cheat-sheet {
+  width: 100%; max-width: 540px;
+  background: linear-gradient(180deg, rgba(30,30,46,0.98), rgba(15,15,28,0.99));
+  border: 1px solid var(--gold-soft-25);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-4), 0 0 80px var(--gold-soft-12);
+  overflow: hidden;
+  animation: cheat-rise 300ms var(--ease-spring) both;
+}
+@keyframes cheat-rise {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cheat-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, rgba(201,168,76,0.06), transparent);
+}
+.cheat-sheet-title {
+  font: 700 var(--text-lg)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, var(--gold-50), var(--gold), var(--gold-700));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.cheat-sheet-title .material-icons-round {
+  font-size: 22px; color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+  filter: drop-shadow(0 0 8px var(--gold-soft-40));
+}
+.cheat-sheet-close {
+  width: 36px; height: 36px; border-radius: var(--radius-md);
+  background: transparent; border: 1px solid var(--border-soft);
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.cheat-sheet-close:hover { color: var(--text-primary); border-color: var(--border-medium); }
+
+.cheat-sheet-body { padding: var(--space-4) var(--space-5) var(--space-5); }
+.cheat-section { margin-bottom: var(--space-5); }
+.cheat-section:last-child { margin-bottom: 0; }
+.cheat-section-title {
+  font: 700 var(--text-xs) 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--space-3);
+  position: relative; padding-left: 14px;
+}
+.cheat-section-title::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%); width: 3px; height: 12px;
+  background: var(--gold); border-radius: 2px;
+  box-shadow: 0 0 6px var(--gold-soft-50);
+}
+.cheat-list { display: flex; flex-direction: column; gap: 6px; }
+.cheat-item {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3);
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--surface-overlay); border: 1px solid var(--border-subtle);
+}
+.cheat-item-label {
+  font: 500 var(--text-sm) 'Inter'; color: var(--text-secondary);
+}
+.cheat-item-keys { display: flex; gap: 4px; align-items: center; }
+.cheat-key {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 26px; padding: 4px 8px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--surface-hover), var(--surface-overlay));
+  border: 1px solid var(--border-medium);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04);
+  font: 700 0.78rem 'JetBrains Mono', monospace;
+  color: var(--text-primary);
+}
+.cheat-key-plus {
+  font: 700 0.7rem 'Inter'; color: var(--text-muted); padding: 0 2px;
+}
+
+/* ============================================================
+   STATE 5 — TOAST (bookmark copied)
+   ============================================================ */
+.toast {
+  position: fixed; top: 80px; left: 50%;
+  transform: translateX(-50%);
+  display: none; align-items: center; gap: 10px;
+  padding: 10px 18px; border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  box-shadow: var(--elevation-3);
+  backdrop-filter: blur(10px);
+  z-index: 2000;
+  font: 600 var(--text-sm) 'Inter'; color: var(--text-primary);
+  animation: toast-in 250ms var(--ease-spring) both;
+}
+.toast.is-visible { display: flex; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.toast .material-icons-round { font-size: 18px; color: var(--success); }
+
+/* ============================================================
+   ORIENTATION LOCK — copy of PvP duel-page-overlays.scss
+   ============================================================
+   Same pattern, same look. Triggered by @media (orientation: portrait)
+   on narrow viewports. Reused via the future OrientationLockService
+   (planned Angular factoring, see memory). */
+.orientation-overlay {
+  position: fixed; inset: 0;
+  display: none;
+  justify-content: center; align-items: center;
+  background: #1a1a2e;
+  z-index: 9500;
+}
+.orientation-content {
+  display: flex; flex-direction: column;
+  align-items: center; gap: var(--space-6);
+  text-align: center; padding: var(--space-7);
+  color: rgba(255,255,255,0.85);
+}
+.orientation-content p {
+  font: 600 var(--text-md) 'Inter';
+  color: rgba(255,255,255,0.85);
+  max-width: 260px; line-height: 1.4;
+}
+.rotate-icon {
+  color: rgba(255, 255, 255, 0.6);
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-90deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-icon { animation: none; }
+}
+
+/* The orientation-overlay was used by PvP to ask the user to rotate their
+   phone. Replay is width-driven and does NOT lock orientation — the overlay
+   is kept here only for visual reference; it is no longer triggered. */
+
+/* ============================================================
+   NARROW VIEWPORT — compact transport + bottom sheets
+   ============================================================
+   WIDTH-DRIVEN (≤ 760px), independent of orientation and height.
+   iPad portrait, phone landscape AND phone portrait all converge
+   on the same compact UI. The `.is-narrow` class on .replay-screen
+   reproduces these rules for the dev preview toggle (📱 Mobile button)
+   without resizing the actual browser window. */
+.transport-more-btn { display: none; }
+.bottom-sheet-backdrop { display: none; }
+.replay-mobile-details-btn { display: none; }
+
+@media (max-width: 760px) {
+  .transport-context .context-position,
+  .transport-context .context-phase,
+  .transport-context .context-event-label { display: none; }
+  .transport-context { gap: var(--space-2); }
+
+  .transport-options .transport-toggle,
+  .transport-options .transport-perspective,
+  .transport-options .transport-fork,
+  .transport-options .transport-icon-ghost { display: none; }
+
+  .transport-more-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: var(--radius-md);
+    background: var(--surface-overlay); border: 1px solid var(--border-soft);
+    color: var(--text-secondary); cursor: pointer;
+    font: 600 var(--text-xs)/1 'Inter';
+    transition: all var(--transition-fast) var(--ease-out);
+    position: relative;
+  }
+  .transport-more-btn:hover { color: var(--gold); border-color: var(--gold-soft-40); }
+  .transport-more-btn .material-icons-round { font-size: 18px; }
+  .transport-more-btn.has-non-default::after {
+    content: ''; position: absolute; top: 6px; right: 6px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold); box-shadow: 0 0 6px var(--gold-soft-50);
+  }
+
+  .replay-meta-pill { display: none; }
+  #copyLinkBtn { display: none; }
+  .replay-match-summary { gap: var(--space-2); }
+  .player-chip-deck { display: none; }
+  .player-chip-meta { gap: 1px; }
+  .replay-vs-tag { padding: 0 4px; font-size: 0.6rem; }
+  .player-chip-name { max-width: 70px; font-size: var(--text-xs); }
+  .player-chip-avatar { width: 26px; height: 26px; font-size: 0.7rem; }
+  .replay-mobile-details-btn { display: flex !important; }
+
+  .timeline-track { height: 44px; }
+  .turn-label { font-size: 0.6rem; }
+  .sub-event { width: 7px; height: 7px; }
+
+  .end-overlay {
+    left: 8px; right: 8px; bottom: 8px;
+    transform: none;
+    min-width: 0; max-width: none;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+  }
+  .end-overlay-result { font-size: var(--text-xl); }
+  .end-overlay-actions { flex-direction: column; width: 100%; }
+  .end-overlay-actions .end-overlay-btn { width: 100%; justify-content: center; }
+}
+
+/* Desktop preview toggle — same effect as the @media above */
+.is-narrow .transport-context .context-position,
+.is-narrow .transport-context .context-phase,
+.is-narrow .transport-context .context-event-label { display: none; }
+.is-narrow .transport-context { gap: var(--space-2); }
+.is-narrow .transport-options .transport-toggle,
+.is-narrow .transport-options .transport-perspective,
+.is-narrow .transport-options .transport-fork,
+.is-narrow .transport-options .transport-icon-ghost { display: none; }
+.is-narrow .transport-more-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border-radius: var(--radius-md);
+  background: var(--surface-overlay); border: 1px solid var(--border-soft);
+  color: var(--text-secondary); cursor: pointer;
+  font: 600 var(--text-xs)/1 'Inter';
+  position: relative;
+}
+.is-narrow .transport-more-btn:hover { color: var(--gold); border-color: var(--gold-soft-40); }
+.is-narrow .transport-more-btn .material-icons-round { font-size: 18px; }
+.is-narrow .transport-more-btn.has-non-default::after {
+  content: ''; position: absolute; top: 6px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 0 6px var(--gold-soft-50);
+}
+.is-narrow .replay-meta-pill { display: none; }
+.is-narrow #copyLinkBtn { display: none; }
+.is-narrow .replay-match-summary { gap: var(--space-2); }
+.is-narrow .player-chip-deck { display: none; }
+.is-narrow .player-chip-meta { gap: 1px; }
+.is-narrow .replay-vs-tag { padding: 0 4px; font-size: 0.6rem; }
+.is-narrow .player-chip-name { max-width: 70px; font-size: var(--text-xs); }
+.is-narrow .player-chip-avatar { width: 26px; height: 26px; font-size: 0.7rem; }
+.is-narrow .replay-mobile-details-btn { display: flex !important; }
+/* `.is-narrow` mirrors the @media(max-width: 760px) block — same rules,
+   same dimensions. The preview toggle (📱 Mobile) clamps body to 414px,
+   adds .is-narrow on #screen, and these rules fire so the stepper shows
+   up regardless of the real browser-window width. */
+.is-narrow .timeline-bar { display: none; }
+.is-narrow .timeline-stepper { display: flex; }
+.is-narrow .stepper-subevents { display: flex; }
+.is-narrow .swipe-hint { display: flex; }
+.is-narrow .end-overlay {
+  left: 8px; right: 8px; bottom: 8px;
+  transform: none; min-width: 0; max-width: none;
+  padding: var(--space-4); border-radius: var(--radius-lg);
+}
+.is-narrow .end-overlay-result { font-size: var(--text-xl); }
+.is-narrow .end-overlay-actions { flex-direction: column; width: 100%; }
+.is-narrow .end-overlay-actions .end-overlay-btn { width: 100%; justify-content: center; }
+
+/* "Details" mini button in topbar — only visible in mobile landscape */
+.replay-mobile-details-btn {
+  align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted); cursor: pointer;
+  font: 600 0.65rem/1 'Inter';
+}
+.replay-mobile-details-btn .material-icons-round { font-size: 14px; }
+
+/* ============================================================
+   BOTTOM SHEET — "Options" + "État au tour X" preview variant
+   ============================================================ */
+.bottom-sheet-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(5,5,10,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  align-items: flex-end; justify-content: center;
+  animation: bs-fade 200ms var(--ease-out) both;
+}
+.bottom-sheet-backdrop.is-open { display: flex; }
+@keyframes bs-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.bottom-sheet {
+  width: 100%; max-width: 540px;
+  background: linear-gradient(180deg, rgba(30,30,46,0.98), rgba(15,15,28,0.99));
+  border: 1px solid var(--gold-soft-25);
+  border-bottom: none;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: 0 -16px 48px rgba(0,0,0,0.5), 0 0 80px var(--gold-soft-12);
+  overflow: hidden;
+  animation: bs-rise 280ms var(--ease-spring) both;
+  display: flex; flex-direction: column;
+  max-height: 85dvh;
+}
+@keyframes bs-rise {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.bottom-sheet-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: var(--border-medium);
+  margin: 8px auto;
+  flex-shrink: 0;
+}
+.bottom-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-2) var(--space-5) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.bottom-sheet-title {
+  font: 700 var(--text-md)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, var(--gold-50), var(--gold), var(--gold-700));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.bottom-sheet-title .material-icons-round {
+  font-size: 18px; color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+}
+.bottom-sheet-close {
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  background: transparent; border: 1px solid var(--border-soft);
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.bottom-sheet-body {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+
+.bs-option {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 12px 14px; border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer; min-height: 52px;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.bs-option:hover { border-color: var(--border-medium); }
+.bs-option-icon {
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  background: var(--gold-soft-08);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold); flex-shrink: 0;
+}
+.bs-option-icon .material-icons-round { font-size: 18px; }
+.bs-option-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bs-option-label {
+  font: 600 var(--text-sm)/1.2 'Inter';
+  color: var(--text-primary);
+}
+.bs-option-meta {
+  font: 500 var(--text-xs)/1 'Inter';
+  color: var(--text-muted);
+}
+.bs-option-state {
+  font: 700 var(--text-xs)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 6px 10px; border-radius: var(--radius-pill);
+  background: var(--surface-bg-deep);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.bs-option-state--on {
+  background: var(--gold-soft-12);
+  border-color: var(--gold-soft-40);
+  color: var(--gold-50);
+}
+.bs-option-state--off { color: var(--text-muted); }
+.bs-option-chevron { color: var(--text-muted); }
+.bs-option-chevron .material-icons-round { font-size: 20px; }
+.bs-option--fork .bs-option-icon { background: var(--cyan-soft-15); color: var(--cyan-300); }
+.bs-divider {
+  height: 1px; background: var(--border-subtle);
+  margin: var(--space-1) 0;
+}
+
+/* Preview sheet (tap-and-hold variant) */
+.bs-preview-board {
+  width: 100%; aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md); overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(ellipse at center, rgba(201,168,76,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(20,20,36,0.85), rgba(10,10,20,0.85));
+  border: 1px solid var(--gold-soft-25);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  display: grid;
+  grid-template-rows: auto 1fr 1fr auto;
+  padding: 8px 10px; gap: 5px;
+}
+.bs-preview-board::before {
+  content: ''; position: absolute; inset: 4px; pointer-events: none;
+  border: 1px dashed rgba(201,168,76,0.12); border-radius: 4px;
+}
+.bs-preview-board .mini-hand,
+.bs-preview-board .mini-field-row { position: relative; z-index: 1; }
+.bs-preview-board .mini-hand-card { width: 18px; height: 26px; }
+.bs-preview-info {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3) 0 0;
+}
+.bs-preview-info .label {
+  font: 700 var(--text-sm)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.05em; color: var(--gold-50);
+  text-transform: uppercase;
+}
+.bs-preview-info .lp {
+  font: 700 var(--text-sm)/1 'JetBrains Mono', monospace;
+}
+.bs-preview-info .lp .self { color: var(--gold-50); }
+.bs-preview-info .lp .opp { color: var(--cyan-300); }
+.bs-preview-info .lp .sep { color: var(--text-disabled); padding: 0 4px; }
+
+/* ============================================================
+   STATE-SWITCHER VARIANTS — viewing | loading | atEnd | cheatSheet
+   ============================================================
+   Default = everything hidden, the active state class shows its
+   slot. `.end-overlay` sits on top of viewing (it's an overlay). */
+.replay-viewer-content,
+.replay-loading-skeleton,
+.end-overlay {
+  display: none !important;
+}
+.timeline-bar-skel { display: none !important; }
+
+/* VIEWING — board visible, no overlay, no skeleton */
+.is-state-viewing .replay-viewer-content {
+  display: flex !important;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+}
+
+/* LOADING — skeleton board + skeleton timeline strip */
+.is-state-loading .replay-loading-skeleton {
+  display: flex !important;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.is-state-loading .timeline-bar-skel { display: block !important; }
+.is-state-loading .playhead,
+.is-state-loading .turn-segment { visibility: hidden; }
+/* Stepper skeleton state : disable interactions, blur the pill text */
+.is-state-loading .timeline-stepper .stepper-nav-btn,
+.is-state-loading .timeline-stepper .stepper-pill { pointer-events: none; opacity: 0.4; }
+.is-state-loading .stepper-subevents { visibility: hidden; }
+/* Mobile : sub the timeline-bar-skel for a stepper-shaped skeleton */
+@media (max-width: 760px) {
+  .is-state-loading .timeline-stepper {
+    background: linear-gradient(180deg, rgba(15,15,28,0.95), rgba(10,10,20,0.98));
+  }
+  .is-state-loading .timeline-stepper::after {
+    content: '';
+    position: absolute; inset: 8px;
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0.04) 0%,
+      rgba(255,255,255,0.10) 50%,
+      rgba(255,255,255,0.04) 100%);
+    background-size: 200% 100%;
+    animation: skel-sweep 1.4s var(--ease-inout) infinite;
+    border-radius: var(--radius-md);
+    z-index: 1;
+  }
+  .is-state-loading .timeline-stepper > * { opacity: 0 !important; }
+}
+.is-narrow.is-state-loading .timeline-stepper {
+  background: linear-gradient(180deg, rgba(15,15,28,0.95), rgba(10,10,20,0.98));
+}
+.is-narrow.is-state-loading .timeline-stepper::after {
+  content: '';
+  position: absolute; inset: 8px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.04) 100%);
+  background-size: 200% 100%;
+  animation: skel-sweep 1.4s var(--ease-inout) infinite;
+  border-radius: var(--radius-md);
+  z-index: 1;
+}
+.is-narrow.is-state-loading .timeline-stepper > * { opacity: 0 !important; }
+
+/* AT-END — board still visible underneath, overlay floats on top */
+.is-state-at-end .replay-viewer-content {
+  display: flex !important;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.is-state-at-end .end-overlay { display: flex !important; }
+
+/* end-overlay slide animation override on narrow viewports — pure vertical
+   slide (the centered translateX is dropped when the overlay goes edge-to-edge) */
+@media (max-width: 760px) {
+  @keyframes end-overlay-slide {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Toolbar (mockup-only) -->
+<div class="preview-toolbar">
+  <button onclick="setState('viewing')" class="state-btn active" data-state="viewing">Viewing</button>
+  <button onclick="setState('loading')" class="state-btn" data-state="loading">Loading</button>
+  <button onclick="setState('atEnd')" class="state-btn" data-state="atEnd">End overlay</button>
+  <button onclick="toggleCheatSheet()" class="state-btn">Cheat sheet</button>
+  <button onclick="showToast()" class="state-btn">Toast share</button>
+  <button onclick="toggleHoverPreview()" class="state-btn" id="hoverPreviewBtn">Hover preview</button>
+  <span class="sep"></span>
+  <button onclick="setDevice('auto')" class="state-btn mobile-btn active" data-mobile="auto">🖥 Desktop</button>
+  <button onclick="setDevice('414')" class="state-btn mobile-btn" data-mobile="414">📱 Mobile</button>
+  <span class="sep"></span>
+  <button onclick="openSheet('optionsSheet')" class="state-btn">Options sheet</button>
+  <button onclick="openSheet('detailsSheet')" class="state-btn">Détails sheet</button>
+  <button onclick="openSheet('previewSheet')" class="state-btn">Preview sheet</button>
+  <span class="sep"></span>
+  <select class="device-select" onchange="setDevice(this.value)">
+    <option value="auto">Auto (responsive)</option>
+    <option value="360">360px (mobile)</option>
+    <option value="414">414px (iPhone Pro)</option>
+    <option value="768">768px (tablet)</option>
+    <option value="1024">1024px (laptop)</option>
+    <option value="1280">1280px (desktop)</option>
+    <option value="1920">1920px (wide)</option>
+  </select>
+  <span class="sep"></span>
+  <a href="./index.html">← Mockups</a>
+</div>
+
+<!-- Background (fixed, always visible) -->
+<div class="screen-bg">
+  <div class="screen-bg-grid"></div>
+  <div class="screen-bg-glow screen-bg-glow--gold"></div>
+  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+</div>
+
+<div class="screen active is-state-viewing" id="screen">
+
+  <!-- ============================================================
+       TOPBAR
+       ============================================================ -->
+  <header class="replay-topbar">
+    <button class="replay-back-btn" aria-label="Retour à la bibliothèque">
+      <span class="material-icons-round">arrow_back</span>
+      <span>Bibliothèque</span>
+    </button>
+
+    <div class="replay-match-summary" aria-label="Résumé du duel">
+      <div class="player-chip" aria-label="Joueur 1">
+        <div class="player-chip-avatar player-chip-avatar--p1">AX</div>
+        <div class="player-chip-meta">
+          <span class="player-chip-name">AxelDuel</span>
+          <span class="player-chip-deck">Snake-Eye Fiendsmith</span>
+        </div>
+        <span class="player-chip-result player-chip-result--win">V</span>
+      </div>
+      <span class="replay-vs-tag">vs</span>
+      <div class="player-chip" aria-label="Joueur 2">
+        <span class="player-chip-result player-chip-result--loss">D</span>
+        <div class="player-chip-meta">
+          <span class="player-chip-name">YubelMaster</span>
+          <span class="player-chip-deck">Yubel</span>
+        </div>
+        <div class="player-chip-avatar player-chip-avatar--p2">YM</div>
+      </div>
+    </div>
+
+    <div class="replay-toolbar-right">
+      <div class="replay-meta-pill" title="Durée du duel">
+        <span class="material-icons-round">schedule</span>
+        <span>14:32</span>
+      </div>
+      <div class="replay-meta-pill" title="Date">
+        <span class="material-icons-round">event</span>
+        <span>11 mai</span>
+      </div>
+      <button class="replay-icon-btn" id="copyLinkBtn" onclick="onCopyLink()" aria-label="Copier le lien à ce moment" title="Copier le lien à ce moment">
+        <span class="material-icons-round">link</span>
+      </button>
+      <button class="replay-mobile-details-btn" onclick="openSheet('detailsSheet')" aria-label="Détails du duel">
+        <span class="material-icons-round">info</span>
+        <span>Détails</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       BOARD AREA
+       ============================================================ -->
+  <main class="board-area">
+
+    <!-- VIEWING state -->
+    <div class="replay-viewer-content" id="boardSwipeArea">
+      <div class="board-frame" aria-label="Plateau de duel">
+        <div class="hand-sketch hand-sketch--top">
+          <div class="hand-card-sketch"></div><div class="hand-card-sketch"></div>
+          <div class="hand-card-sketch"></div><div class="hand-card-sketch"></div>
+        </div>
+        <div class="board-frame-label">
+          <span class="material-icons-round">view_quilt</span>
+          <span>Plateau (composant partagé)</span>
+        </div>
+        <div class="hand-sketch hand-sketch--bottom">
+          <div class="hand-card-sketch"></div><div class="hand-card-sketch"></div>
+          <div class="hand-card-sketch"></div><div class="hand-card-sketch"></div>
+          <div class="hand-card-sketch"></div>
+        </div>
+      </div>
+
+      <!-- Swipe edge flash (mobile gesture feedback) -->
+      <div class="swipe-flash swipe-flash--left" id="swipeFlashLeft" aria-hidden="true"></div>
+      <div class="swipe-flash swipe-flash--right" id="swipeFlashRight" aria-hidden="true"></div>
+
+      <!-- Swipe hint (mobile only, fades after first interaction) -->
+      <div class="swipe-hint" id="swipeHint" aria-hidden="true">
+        <span class="material-icons-round">swipe</span>
+        <span>Glisse pour changer de tour</span>
+      </div>
+    </div>
+
+    <!-- LOADING state -->
+    <div class="replay-loading-skeleton">
+      <div class="board-frame">
+        <div class="skel-board-content">
+          <div class="skel-board-hand">
+            <div class="skel-hand-card skel-rect"></div>
+            <div class="skel-hand-card skel-rect"></div>
+            <div class="skel-hand-card skel-rect"></div>
+            <div class="skel-hand-card skel-rect"></div>
+          </div>
+          <div class="skel-board-row">
+            <div class="skel-zone skel-rect"></div><div class="skel-zone skel-rect"></div>
+            <div class="skel-zone skel-rect"></div><div class="skel-zone skel-rect"></div>
+            <div class="skel-zone skel-rect"></div><div class="skel-zone skel-rect"></div>
+            <div class="skel-zone skel-rect"></div>
+          </div>
+          <div class="skel-board-row">
+            <div class="skel-zone skel-rect"></div><div class="skel-zone skel-rect"></div>
+            <div class="skel-zone skel-rect"></div><div class="skel-zone skel-rect"></div>
+            <div class="skel-zone skel-rect"></div><div class="skel-zone skel-rect"></div>
+            <div class="skel-zone skel-rect"></div>
+          </div>
+          <div class="skel-board-hand">
+            <div class="skel-hand-card skel-rect"></div>
+            <div class="skel-hand-card skel-rect"></div>
+            <div class="skel-hand-card skel-rect"></div>
+            <div class="skel-hand-card skel-rect"></div>
+            <div class="skel-hand-card skel-rect"></div>
+          </div>
+        </div>
+      </div>
+      <div class="replay-loading-hint" role="status" aria-live="polite">
+        <span class="material-icons-round">autorenew</span>
+        <span class="replay-loading-text">
+          Chargé <strong>6 / 11</strong> tours
+          <span class="replay-loading-label">· Activation : Snake-Eye Ash</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- END OVERLAY state -->
+    <div class="end-overlay" role="dialog" aria-label="Fin du replay">
+      <div class="end-overlay-header">
+        <div class="end-overlay-result">Victoire</div>
+        <div class="end-overlay-meta">Tour 11 · 14:32</div>
+      </div>
+      <div class="end-overlay-score">
+        <div class="end-overlay-score-side">
+          <div class="end-overlay-score-player">
+            <span class="player-chip-avatar player-chip-avatar--p1" style="width:20px;height:20px;font-size:0.6rem;">AX</span>
+            AxelDuel
+          </div>
+          <div class="end-overlay-score-lp end-overlay-score-lp--winner">3 600</div>
+        </div>
+        <span class="end-overlay-score-vs">VS</span>
+        <div class="end-overlay-score-side">
+          <div class="end-overlay-score-player">
+            <span class="player-chip-avatar player-chip-avatar--p2" style="width:20px;height:20px;font-size:0.6rem;">YM</span>
+            YubelMaster
+          </div>
+          <div class="end-overlay-score-lp end-overlay-score-lp--loser">0</div>
+        </div>
+      </div>
+      <div class="end-overlay-actions">
+        <button class="end-overlay-btn end-overlay-btn--primary">
+          <span class="material-icons-round">replay</span>
+          Rejouer
+        </button>
+        <button class="end-overlay-btn end-overlay-btn--secondary">
+          <span class="material-icons-round">fork_right</span>
+          Forker à ce point
+        </button>
+        <button class="end-overlay-btn end-overlay-btn--ghost">
+          <span class="material-icons-round">library_books</span>
+          Bibliothèque
+        </button>
+      </div>
+      <div class="end-overlay-dismiss-hint">
+        <kbd>Esc</kbd> ou <kbd>←</kbd> pour fermer et reprendre la lecture
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ============================================================
+       TIMELINE BAR
+       ============================================================ -->
+  <div class="timeline-bar" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42" aria-label="Timeline du duel" tabindex="0">
+    <div class="timeline-track" id="timelineTrack">
+      <!-- Turn 0 (Setup) -->
+      <div class="turn-segment">
+        <span class="turn-label">Setup</span>
+        <div class="sub-events">
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+        </div>
+      </div>
+
+      <!-- Turn 1 -->
+      <div class="turn-segment">
+        <span class="turn-label">Tour 1</span>
+        <div class="sub-events">
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="chain-group chain-group--self">
+            <div class="sub-event"></div>
+            <div class="sub-event"></div>
+          </div>
+          <div class="sub-event"></div>
+        </div>
+      </div>
+
+      <!-- Turn 2 -->
+      <div class="turn-segment">
+        <span class="turn-label">Tour 2</span>
+        <div class="sub-events">
+          <div class="sub-event"></div>
+          <div class="chain-group chain-group--opp">
+            <div class="sub-event"></div>
+            <div class="sub-event"></div>
+            <div class="sub-event"></div>
+          </div>
+          <div class="sub-event"></div>
+        </div>
+      </div>
+
+      <!-- Turn 3 (CURRENT) -->
+      <div class="turn-segment current">
+        <span class="turn-label">Tour 3</span>
+        <div class="sub-events">
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="sub-event current"></div>
+          <div class="sub-event"></div>
+          <div class="chain-group chain-group--self">
+            <div class="sub-event"></div>
+            <div class="sub-event"></div>
+            <div class="sub-event"></div>
+          </div>
+          <div class="sub-event"></div>
+        </div>
+      </div>
+
+      <!-- Turn 4 -->
+      <div class="turn-segment">
+        <span class="turn-label">Tour 4</span>
+        <div class="sub-events">
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+        </div>
+      </div>
+
+      <!-- Turn 5 -->
+      <div class="turn-segment">
+        <span class="turn-label">Tour 5</span>
+        <div class="sub-events">
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="chain-group chain-group--self">
+            <div class="sub-event"></div>
+            <div class="sub-event"></div>
+          </div>
+          <div class="sub-event"></div>
+        </div>
+      </div>
+
+      <!-- Turn 6 -->
+      <div class="turn-segment">
+        <span class="turn-label">Tour 6</span>
+        <div class="sub-events">
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+          <div class="sub-event"></div>
+        </div>
+      </div>
+
+      <!-- Turn 7 (not computed) -->
+      <div class="turn-segment not-computed" title="Calcul en cours…">
+        <span class="turn-label">Tour 7</span>
+        <div class="sub-events">
+          <div class="sub-event not-computed"></div>
+          <div class="sub-event not-computed"></div>
+          <div class="sub-event not-computed"></div>
+          <div class="sub-event not-computed"></div>
+        </div>
+      </div>
+
+      <!-- Turn 8 (not computed) -->
+      <div class="turn-segment not-computed" title="Calcul en cours…">
+        <span class="turn-label">Tour 8</span>
+        <div class="sub-events">
+          <div class="sub-event not-computed"></div>
+          <div class="sub-event not-computed"></div>
+        </div>
+      </div>
+
+      <!-- Playhead — positioned ~46% (current turn 3 mid-segment) -->
+      <div class="playhead" style="left: 46%;"></div>
+
+      <!-- Skeleton track for LOADING state (overlays the same area) -->
+      <div class="timeline-bar-skel" style="position: absolute; inset: 0; background: var(--surface-bg-deep);">
+        <div class="skel-timeline-track">
+          <div class="skel-turn-block skel-rect"></div>
+          <div class="skel-turn-block skel-rect"></div>
+          <div class="skel-turn-block skel-rect"></div>
+          <div class="skel-turn-block skel-rect"></div>
+          <div class="skel-turn-block skel-rect"></div>
+          <div class="skel-turn-block skel-rect"></div>
+          <div class="skel-turn-block skel-rect"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TIMELINE STEPPER (mobile/landscape replacement)
+       ============================================================
+       Activated under ≤ 760px AND in is-narrow preview.
+       Provides 44×44 tactile targets + opens turn picker sheet. -->
+  <div class="timeline-stepper" id="timelineStepper" aria-label="Navigation tour par tour">
+    <button class="stepper-nav-btn" id="stepperPrev"
+            aria-label="Tour précédent" title="Tour précédent">
+      <span class="material-icons-round">chevron_left</span>
+    </button>
+    <button class="stepper-pill" id="stepperPill"
+            aria-label="Choisir un tour" aria-haspopup="dialog">
+      <span class="stepper-pill-main">
+        <span id="stepperLabel">Tour 3</span>
+        <span class="stepper-pill-total">/ 11</span>
+      </span>
+      <span class="dot-progress" aria-hidden="true">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot is-active"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </span>
+      <span class="stepper-pill-chevron"><span class="material-icons-round">expand_more</span></span>
+    </button>
+    <button class="stepper-nav-btn" id="stepperNext"
+            aria-label="Tour suivant" title="Tour suivant">
+      <span class="material-icons-round">chevron_right</span>
+    </button>
+  </div>
+
+  <!-- Sub-events row : seek fin INTRA tour courant -->
+  <div class="stepper-subevents" id="stepperSubevents" aria-label="Évènements du tour courant">
+    <div class="sub-event"></div>
+    <div class="sub-event"></div>
+    <div class="sub-event current"></div>
+    <div class="sub-event"></div>
+    <div class="chain-group chain-group--self">
+      <div class="sub-event"></div>
+      <div class="sub-event"></div>
+      <div class="sub-event"></div>
+    </div>
+    <div class="sub-event"></div>
+  </div>
+
+  <!-- ============================================================
+       TRANSPORT BAR — 3 zones
+       ============================================================ -->
+  <footer class="transport-bar">
+
+    <!-- LEFT : context -->
+    <div class="transport-context">
+      <div class="context-turn-pill" aria-label="Tour courant">
+        <span class="context-turn-pill-number">3</span>
+        <span class="context-turn-pill-label">/ 11 tours</span>
+      </div>
+      <span class="context-position" aria-label="Position">
+        <span class="current">42</span> / 87 évts
+      </span>
+      <span class="context-phase" title="Phase courante">
+        <span class="material-icons-round">bolt</span>
+        Main 1 · P1
+      </span>
+      <span class="context-event-label" title="Évènement courant">
+        Activation : Snake-Eye Ash
+      </span>
+    </div>
+
+    <!-- CENTER : transport principal -->
+    <div class="transport-controls" role="group" aria-label="Contrôles de lecture">
+      <button class="transport-btn" aria-label="Aller au début" title="Aller au début (Home)">
+        <span class="material-icons-round">skip_previous</span>
+      </button>
+      <button class="transport-btn" aria-label="Évènement précédent" title="Évènement précédent (←)">
+        <span class="material-icons-round">arrow_left</span>
+      </button>
+      <button class="transport-btn transport-btn--play is-paused" id="playBtn" aria-label="Lecture / pause" title="Lecture / pause (Espace)">
+        <span class="material-icons-round">play_arrow</span>
+      </button>
+      <button class="transport-btn" aria-label="Évènement suivant" title="Évènement suivant (→)">
+        <span class="material-icons-round">arrow_right</span>
+      </button>
+      <button class="transport-btn" aria-label="Aller à la fin" title="Aller à la fin (End)">
+        <span class="material-icons-round">skip_next</span>
+      </button>
+    </div>
+
+    <!-- RIGHT : options -->
+    <div class="transport-options" role="group" aria-label="Options de visionnage">
+      <!-- Zoom timeline (desktop only — masqué en mobile car la bande est remplacée par le stepper) -->
+      <div class="timeline-zoom-control" role="radiogroup" aria-label="Niveau de zoom timeline">
+        <span class="timeline-zoom-hint">ZOOM</span>
+        <button class="timeline-zoom-btn active" data-zoom="1" onclick="setTimelineZoom(1)"
+                role="radio" aria-checked="true" aria-label="Zoom 1x" title="Zoom 1× (molette ↓)">1×</button>
+        <button class="timeline-zoom-btn" data-zoom="2" onclick="setTimelineZoom(2)"
+                role="radio" aria-checked="false" aria-label="Zoom 2x" title="Zoom 2× (molette ↑)">2×</button>
+        <button class="timeline-zoom-btn" data-zoom="3" onclick="setTimelineZoom(3)"
+                role="radio" aria-checked="false" aria-label="Zoom 3x" title="Zoom 3× (molette ↑↑)">3×</button>
+      </div>
+      <button class="transport-toggle active" aria-label="Animations activées" title="Animations (A)">
+        <span class="material-icons-round">animation</span>
+        <span class="label-short">Anim.</span>
+      </button>
+      <button class="transport-toggle active" aria-label="Décisions visibles" title="Décisions (M)">
+        <span class="material-icons-round">message</span>
+        <span class="label-short">Décis.</span>
+      </button>
+      <button class="transport-perspective" aria-label="Changer de perspective" title="Perspective (V)">
+        <div class="transport-perspective-avatar transport-perspective-avatar--p1">AX</div>
+        <span class="transport-perspective-label">AxelDuel</span>
+        <span class="material-icons-round transport-perspective-swap-icon">swap_horiz</span>
+      </button>
+      <button class="transport-fork" aria-label="Forker à ce point" title="Forker (F)">
+        <span class="material-icons-round">fork_right</span>
+        <span class="label-fork">Forker</span>
+      </button>
+      <button class="transport-icon-ghost" onclick="toggleCheatSheet()" aria-label="Raccourcis clavier" title="Raccourcis clavier (?)">
+        <span class="material-icons-round">keyboard</span>
+      </button>
+      <button class="transport-more-btn has-non-default" onclick="openSheet('optionsSheet')" aria-label="Plus d'options">
+        <span class="material-icons-round">more_horiz</span>
+      </button>
+    </div>
+
+  </footer>
+
+</div>
+
+<!-- ============================================================
+     CHEAT SHEET MODAL
+     ============================================================ -->
+<div class="cheat-sheet-backdrop" id="cheatSheet" role="dialog" aria-label="Raccourcis clavier">
+  <div class="cheat-sheet">
+    <header class="cheat-sheet-header">
+      <h2 class="cheat-sheet-title">
+        <span class="material-icons-round">keyboard</span>
+        Raccourcis clavier
+      </h2>
+      <button class="cheat-sheet-close" onclick="toggleCheatSheet()" aria-label="Fermer">
+        <span class="material-icons-round">close</span>
+      </button>
+    </header>
+    <div class="cheat-sheet-body">
+
+      <section class="cheat-section">
+        <h3 class="cheat-section-title">Lecture</h3>
+        <div class="cheat-list">
+          <div class="cheat-item">
+            <span class="cheat-item-label">Lecture / pause</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">Espace</kbd></div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Évènement précédent / suivant</span>
+            <div class="cheat-item-keys">
+              <kbd class="cheat-key">←</kbd>
+              <kbd class="cheat-key">→</kbd>
+            </div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Aller au début / à la fin</span>
+            <div class="cheat-item-keys">
+              <kbd class="cheat-key">Home</kbd>
+              <kbd class="cheat-key">End</kbd>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cheat-section">
+        <h3 class="cheat-section-title">Visionnage</h3>
+        <div class="cheat-list">
+          <div class="cheat-item">
+            <span class="cheat-item-label">Changer de perspective</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">V</kbd></div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Animations on / off</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">A</kbd></div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Mode décisions / résultats</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">M</kbd></div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Panneau de debug</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">D</kbd></div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Niveau de log (normal / debug)</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">G</kbd></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cheat-section">
+        <h3 class="cheat-section-title">Actions</h3>
+        <div class="cheat-list">
+          <div class="cheat-item">
+            <span class="cheat-item-label">Forker à ce point</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">F</kbd></div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Copier le lien à ce moment</span>
+            <div class="cheat-item-keys">
+              <kbd class="cheat-key">Ctrl</kbd>
+              <span class="cheat-key-plus">+</span>
+              <kbd class="cheat-key">L</kbd>
+            </div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Afficher cette aide</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">?</kbd></div>
+          </div>
+          <div class="cheat-item">
+            <span class="cheat-item-label">Fermer / quitter overlays</span>
+            <div class="cheat-item-keys"><kbd class="cheat-key">Esc</kbd></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast (bookmark copied) -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="material-icons-round">check_circle</span>
+  <span>Lien du moment copié ✓</span>
+</div>
+
+<!-- ============================================================
+     ORIENTATION LOCK OVERLAY — reused from PvP duel-page
+     ============================================================ -->
+<div class="orientation-overlay" role="alertdialog" aria-modal="true" aria-label="Tourne ton appareil pour visionner">
+  <div class="orientation-content">
+    <svg class="rotate-icon" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+      <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.38zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+    </svg>
+    <p>Tourne ton appareil pour visionner le replay</p>
+  </div>
+</div>
+
+<!-- ============================================================
+     BOTTOM SHEET — OPTIONS (mobile landscape "⋯ More")
+     ============================================================ -->
+<div class="bottom-sheet-backdrop" id="optionsSheet" role="dialog" aria-label="Options de visionnage" onclick="if(event.target===this)closeSheet('optionsSheet')">
+  <div class="bottom-sheet">
+    <div class="bottom-sheet-handle" aria-hidden="true"></div>
+    <header class="bottom-sheet-header">
+      <h2 class="bottom-sheet-title">
+        <span class="material-icons-round">tune</span>
+        Options
+      </h2>
+      <button class="bottom-sheet-close" onclick="closeSheet('optionsSheet')" aria-label="Fermer">
+        <span class="material-icons-round">close</span>
+      </button>
+    </header>
+    <div class="bottom-sheet-body">
+
+      <button class="bs-option" onclick="this.querySelector('.bs-option-state').classList.toggle('bs-option-state--on')">
+        <div class="bs-option-icon"><span class="material-icons-round">animation</span></div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Animations</span>
+          <span class="bs-option-meta">Effets visuels pendant la lecture</span>
+        </div>
+        <span class="bs-option-state bs-option-state--on">Activé</span>
+      </button>
+
+      <button class="bs-option" onclick="this.querySelector('.bs-option-state').classList.toggle('bs-option-state--on')">
+        <div class="bs-option-icon"><span class="material-icons-round">message</span></div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Décisions</span>
+          <span class="bs-option-meta">Afficher les prompts du duel</span>
+        </div>
+        <span class="bs-option-state bs-option-state--on">Activé</span>
+      </button>
+
+      <button class="bs-option">
+        <div class="bs-option-icon">
+          <div class="transport-perspective-avatar transport-perspective-avatar--p1" style="width:28px;height:28px;font-size:0.7rem;">AX</div>
+        </div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Perspective</span>
+          <span class="bs-option-meta">AxelDuel — toucher pour basculer</span>
+        </div>
+        <span class="bs-option-chevron"><span class="material-icons-round">swap_horiz</span></span>
+      </button>
+
+      <div class="bs-divider"></div>
+
+      <button class="bs-option" onclick="closeSheet('optionsSheet');showToast();">
+        <div class="bs-option-icon"><span class="material-icons-round">link</span></div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Copier le lien à ce moment</span>
+          <span class="bs-option-meta">Tour 3 · évènement 42</span>
+        </div>
+        <span class="bs-option-chevron"><span class="material-icons-round">content_copy</span></span>
+      </button>
+
+      <button class="bs-option" onclick="closeSheet('optionsSheet');toggleCheatSheet();">
+        <div class="bs-option-icon"><span class="material-icons-round">keyboard</span></div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Raccourcis clavier</span>
+          <span class="bs-option-meta">Pour clavier physique Bluetooth</span>
+        </div>
+        <span class="bs-option-chevron"><span class="material-icons-round">chevron_right</span></span>
+      </button>
+
+      <div class="bs-divider"></div>
+
+      <button class="bs-option bs-option--fork">
+        <div class="bs-option-icon"><span class="material-icons-round">fork_right</span></div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Forker à ce point</span>
+          <span class="bs-option-meta">Mieux sur un écran plus grand</span>
+        </div>
+        <span class="bs-option-chevron"><span class="material-icons-round">chevron_right</span></span>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     BOTTOM SHEET — MATCH DETAILS (topbar "ⓘ Détails")
+     ============================================================ -->
+<div class="bottom-sheet-backdrop" id="detailsSheet" role="dialog" aria-label="Détails du duel" onclick="if(event.target===this)closeSheet('detailsSheet')">
+  <div class="bottom-sheet">
+    <div class="bottom-sheet-handle" aria-hidden="true"></div>
+    <header class="bottom-sheet-header">
+      <h2 class="bottom-sheet-title">
+        <span class="material-icons-round">info</span>
+        Détails du duel
+      </h2>
+      <button class="bottom-sheet-close" onclick="closeSheet('detailsSheet')" aria-label="Fermer">
+        <span class="material-icons-round">close</span>
+      </button>
+    </header>
+    <div class="bottom-sheet-body">
+
+      <div class="bs-option" style="cursor: default;">
+        <div class="bs-option-icon">
+          <div class="transport-perspective-avatar transport-perspective-avatar--p1" style="width:28px;height:28px;font-size:0.7rem;">AX</div>
+        </div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">AxelDuel</span>
+          <span class="bs-option-meta">Snake-Eye Fiendsmith</span>
+        </div>
+        <span class="bs-option-state bs-option-state--on">Victoire</span>
+      </div>
+
+      <div class="bs-option" style="cursor: default;">
+        <div class="bs-option-icon">
+          <div class="transport-perspective-avatar transport-perspective-avatar--p2" style="width:28px;height:28px;font-size:0.7rem;">YM</div>
+        </div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">YubelMaster</span>
+          <span class="bs-option-meta">Yubel</span>
+        </div>
+        <span class="bs-option-state">Défaite</span>
+      </div>
+
+      <div class="bs-divider"></div>
+
+      <div class="bs-option" style="cursor: default;">
+        <div class="bs-option-icon"><span class="material-icons-round">schedule</span></div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Durée</span>
+          <span class="bs-option-meta">14 min 32 sec · 11 tours · 87 évènements</span>
+        </div>
+      </div>
+
+      <div class="bs-option" style="cursor: default;">
+        <div class="bs-option-icon"><span class="material-icons-round">event</span></div>
+        <div class="bs-option-text">
+          <span class="bs-option-label">Date</span>
+          <span class="bs-option-meta">11 mai 2026 · 21:42</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     BOTTOM SHEET — TURN PREVIEW (tap-and-hold timeline replacement)
+     ============================================================ -->
+<div class="bottom-sheet-backdrop" id="previewSheet" role="dialog" aria-label="État au tour" onclick="if(event.target===this)closeSheet('previewSheet')">
+  <div class="bottom-sheet">
+    <div class="bottom-sheet-handle" aria-hidden="true"></div>
+    <header class="bottom-sheet-header">
+      <h2 class="bottom-sheet-title">
+        <span class="material-icons-round">preview</span>
+        État au tour 3
+      </h2>
+      <button class="bottom-sheet-close" onclick="closeSheet('previewSheet')" aria-label="Fermer">
+        <span class="material-icons-round">close</span>
+      </button>
+    </header>
+    <div class="bottom-sheet-body">
+      <div class="bs-preview-board" aria-hidden="true">
+        <div class="mini-hand">
+          <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+          <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+        </div>
+        <div class="mini-field-row">
+          <div class="mini-zone"></div>
+          <div class="mini-zone has-card"></div>
+          <div class="mini-zone"></div>
+          <div class="mini-zone has-card"></div>
+          <div class="mini-zone"></div>
+          <div class="mini-zone"></div>
+          <div class="mini-zone"></div>
+        </div>
+        <div class="mini-field-row">
+          <div class="mini-zone"></div>
+          <div class="mini-zone has-card"></div>
+          <div class="mini-zone has-card"></div>
+          <div class="mini-zone has-card"></div>
+          <div class="mini-zone"></div>
+          <div class="mini-zone"></div>
+          <div class="mini-zone"></div>
+        </div>
+        <div class="mini-hand">
+          <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+          <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+          <div class="mini-hand-card"></div>
+        </div>
+      </div>
+      <div class="bs-preview-info">
+        <span class="label">Tour 3 · 42 / 87</span>
+        <span class="lp">
+          <span class="self">5 400</span>
+          <span class="sep">/</span>
+          <span class="opp">7 800</span>
+        </span>
+      </div>
+      <button class="end-overlay-btn end-overlay-btn--primary" style="justify-content:center;" onclick="closeSheet('previewSheet')">
+        <span class="material-icons-round">play_arrow</span>
+        Sauter à ce moment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     BOTTOM SHEET — TURN PICKER (mobile primary navigation)
+     ============================================================
+     Ouvert via tap sur .stepper-pill. Grille 3 colonnes avec
+     mini-board preview, n° de tour, joueur, count events.
+     Tour courant : ring + dot doré. Not-computed : stripes + ⏳. -->
+<div class="bottom-sheet-backdrop" id="turnPickerSheet" role="dialog"
+     aria-label="Choisir un tour"
+     onclick="if(event.target===this)closeSheet('turnPickerSheet')">
+  <div class="bottom-sheet">
+    <div class="bottom-sheet-handle" aria-hidden="true"></div>
+    <header class="bottom-sheet-header">
+      <h2 class="bottom-sheet-title">
+        <span class="material-icons-round">view_list</span>
+        Aller au tour
+      </h2>
+      <button class="bottom-sheet-close" onclick="closeSheet('turnPickerSheet')" aria-label="Fermer">
+        <span class="material-icons-round">close</span>
+      </button>
+    </header>
+    <div class="bottom-sheet-body">
+
+      <div class="turn-picker-section">Préparation</div>
+      <div class="turn-picker-grid">
+        <!-- T0 Setup -->
+        <button class="turn-picker-card" data-turn="0" onclick="jumpToTurn(0)">
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">Setup</span>
+            <span class="turn-picker-player turn-picker-player--p1" title="Mains de départ" aria-hidden="true">—</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true">
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+          </div>
+          <div class="turn-picker-footer">
+            <span>Setup</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">bolt</span>2
+            </span>
+          </div>
+        </button>
+      </div>
+
+      <div class="turn-picker-section">Tours du duel</div>
+      <div class="turn-picker-grid">
+        <!-- T1 -->
+        <button class="turn-picker-card" data-turn="1" onclick="jumpToTurn(1)">
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T1</span>
+            <span class="turn-picker-player turn-picker-player--p1" title="AxelDuel">AX</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true">
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+            </div>
+          </div>
+          <div class="turn-picker-footer">
+            <span>0:42</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">bolt</span>6
+            </span>
+          </div>
+        </button>
+
+        <!-- T2 -->
+        <button class="turn-picker-card" data-turn="2" onclick="jumpToTurn(2)">
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T2</span>
+            <span class="turn-picker-player turn-picker-player--p2" title="YubelMaster">YM</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true">
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+          </div>
+          <div class="turn-picker-footer">
+            <span>0:58</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">bolt</span>5
+            </span>
+          </div>
+        </button>
+
+        <!-- T3 — CURRENT -->
+        <button class="turn-picker-card is-current" data-turn="3" onclick="jumpToTurn(3)" aria-current="true">
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T3</span>
+            <span class="turn-picker-player turn-picker-player--p1" title="AxelDuel">AX</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true">
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+          </div>
+          <div class="turn-picker-footer">
+            <span>2:14</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">bolt</span>9
+            </span>
+          </div>
+        </button>
+
+        <!-- T4 -->
+        <button class="turn-picker-card" data-turn="4" onclick="jumpToTurn(4)">
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T4</span>
+            <span class="turn-picker-player turn-picker-player--p2" title="YubelMaster">YM</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true">
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+          </div>
+          <div class="turn-picker-footer">
+            <span>3:21</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">bolt</span>7
+            </span>
+          </div>
+        </button>
+
+        <!-- T5 -->
+        <button class="turn-picker-card" data-turn="5" onclick="jumpToTurn(5)">
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T5</span>
+            <span class="turn-picker-player turn-picker-player--p1" title="AxelDuel">AX</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true">
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+            </div>
+          </div>
+          <div class="turn-picker-footer">
+            <span>4:55</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">bolt</span>5
+            </span>
+          </div>
+        </button>
+
+        <!-- T6 -->
+        <button class="turn-picker-card" data-turn="6" onclick="jumpToTurn(6)">
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T6</span>
+            <span class="turn-picker-player turn-picker-player--p2" title="YubelMaster">YM</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true">
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-field-row">
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone has-card"></div>
+              <div class="mini-zone has-card"></div><div class="mini-zone"></div>
+              <div class="mini-zone"></div>
+            </div>
+            <div class="mini-hand">
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+              <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+            </div>
+          </div>
+          <div class="turn-picker-footer">
+            <span>6:12</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">bolt</span>3
+            </span>
+          </div>
+        </button>
+
+        <!-- T7 — not computed -->
+        <button class="turn-picker-card not-computed" data-turn="7" aria-disabled="true" disabled>
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T7</span>
+            <span class="turn-picker-player turn-picker-player--p1">AX</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true"></div>
+          <div class="turn-picker-footer">
+            <span>Calcul…</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">hourglass_top</span>
+            </span>
+          </div>
+        </button>
+
+        <!-- T8 — not computed -->
+        <button class="turn-picker-card not-computed" data-turn="8" aria-disabled="true" disabled>
+          <div class="turn-picker-header">
+            <span class="turn-picker-num">T8</span>
+            <span class="turn-picker-player turn-picker-player--p2">YM</span>
+          </div>
+          <div class="turn-picker-mini-board" aria-hidden="true"></div>
+          <div class="turn-picker-footer">
+            <span>Calcul…</span>
+            <span class="turn-picker-events">
+              <span class="material-icons-round">hourglass_top</span>
+            </span>
+          </div>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Hover popover — mini-board frame preview. Lives at body level so it can
+     escape .timeline-bar's overflow:hidden. JS positions via transform. -->
+<div class="hover-popover" id="hoverPopover" role="tooltip">
+  <div class="hover-popover-board" aria-hidden="true">
+    <div class="mini-hand">
+      <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+      <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+    </div>
+    <div class="mini-field-row">
+      <div class="mini-zone"></div>
+      <div class="mini-zone has-card"></div>
+      <div class="mini-zone"></div>
+      <div class="mini-zone has-card"></div>
+      <div class="mini-zone"></div>
+      <div class="mini-zone"></div>
+      <div class="mini-zone"></div>
+    </div>
+    <div class="mini-field-row">
+      <div class="mini-zone"></div>
+      <div class="mini-zone has-card"></div>
+      <div class="mini-zone has-card"></div>
+      <div class="mini-zone has-card"></div>
+      <div class="mini-zone"></div>
+      <div class="mini-zone"></div>
+      <div class="mini-zone"></div>
+    </div>
+    <div class="mini-hand">
+      <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+      <div class="mini-hand-card"></div><div class="mini-hand-card"></div>
+      <div class="mini-hand-card"></div>
+    </div>
+  </div>
+  <div class="hover-popover-info">
+    <span class="hover-popover-label">Tour 3</span>
+    <span class="hover-popover-lp">
+      <span class="self">5 400</span>
+      <span class="sep">/</span>
+      <span class="opp">7 800</span>
+    </span>
+  </div>
+</div>
+
+<script>
+  // State switcher — swap a single state class on the screen wrapper.
+  // CSS in the STATE-SWITCHER VARIANTS block does the rest.
+  const STATE_CLASSES = ['is-state-viewing', 'is-state-loading', 'is-state-at-end'];
+  const STATE_MAP = {
+    viewing: 'is-state-viewing',
+    loading: 'is-state-loading',
+    atEnd: 'is-state-at-end',
+  };
+  function setState(state) {
+    const screen = document.getElementById('screen');
+    STATE_CLASSES.forEach(c => screen.classList.remove(c));
+    screen.classList.add(STATE_MAP[state]);
+    document.querySelectorAll('.state-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.state === state);
+    });
+  }
+
+  function toggleCheatSheet() {
+    const el = document.getElementById('cheatSheet');
+    el.classList.toggle('is-open');
+  }
+
+  /* setDevice — width-driven preview toggle.
+     Clamps body to the chosen width AND applies `.is-narrow` on #screen
+     when the simulated width is ≤ 760px so all CSS rules behind
+     @media(max-width: 760px) fire even though the real viewport is wider. */
+  const NARROW_BREAKPOINT = 760;
+  function setDevice(value) {
+    document.documentElement.setAttribute('data-device', value);
+    const screen = document.getElementById('screen');
+    if (!screen) return;
+    const w = parseInt(value, 10);
+    const narrow = Number.isFinite(w) && w <= NARROW_BREAKPOINT;
+    screen.classList.toggle('is-narrow', narrow);
+    // Sync the device <select> + mobile-btn toolbar
+    const select = document.querySelector('.device-select');
+    if (select && select.value !== value) select.value = value;
+    document.querySelectorAll('.mobile-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mobile === value);
+    });
+  }
+
+  /* Real-viewport sync — when the user resizes the browser past the
+     narrow breakpoint, mirror the state automatically (no toggle needed).
+     The MQ already fires CSS rules; this just keeps the JS-side
+     `.is-narrow` class consistent so JS conditions (`isNarrow()`) work too. */
+  function syncNarrowFromViewport() {
+    if (document.documentElement.getAttribute('data-device') !== 'auto') return;
+    const screen = document.getElementById('screen');
+    if (!screen) return;
+    screen.classList.toggle('is-narrow', window.matchMedia(`(max-width: ${NARROW_BREAKPOINT}px)`).matches);
+  }
+  window.addEventListener('resize', syncNarrowFromViewport);
+  window.addEventListener('load', syncNarrowFromViewport);
+
+  // Position the popover (position: fixed) above a target segment.
+  // Clamp to viewport so it never overflows on narrow screens.
+  function positionPopoverAt(target) {
+    const pop = document.getElementById('hoverPopover');
+    const segRect = target.getBoundingClientRect();
+    // Measure popover (visibility:hidden has no rect — temporarily visible-but-transparent)
+    const prevOpacity = pop.style.opacity;
+    pop.style.opacity = '0';
+    pop.style.visibility = 'visible';
+    const popRect = pop.getBoundingClientRect();
+    const segCenterX = segRect.left + segRect.width / 2;
+    let x = segCenterX - popRect.width / 2;
+    const margin = 8;
+    x = Math.max(margin, Math.min(window.innerWidth - popRect.width - margin, x));
+    const y = segRect.top - popRect.height - 12;
+    pop.style.transform = `translate(${x}px, ${Math.max(margin, y)}px)`;
+    pop.style.opacity = prevOpacity;
+  }
+
+  function toggleHoverPreview() {
+    const pop = document.getElementById('hoverPopover');
+    const btn = document.getElementById('hoverPreviewBtn');
+    const willShow = !pop.classList.contains('is-visible');
+    if (willShow) {
+      // Pin above the current turn segment (Tour 3)
+      const current = document.querySelector('.turn-segment.current');
+      if (current) {
+        positionPopoverAt(current);
+        const labelEl = pop.querySelector('.hover-popover-label');
+        const t = current.querySelector('.turn-label')?.textContent?.trim();
+        if (labelEl && t) labelEl.textContent = t;
+        pop.classList.remove('hover-popover--not-computed');
+      }
+      pop.classList.add('is-visible');
+      btn.classList.add('active');
+    } else {
+      pop.classList.remove('is-visible');
+      btn.classList.remove('active');
+    }
+  }
+
+  // Real hover : show popover above the hovered turn segment
+  document.querySelectorAll('.turn-segment').forEach(seg => {
+    seg.addEventListener('mouseenter', () => {
+      const pop = document.getElementById('hoverPopover');
+      // Update content first (label + not-computed variant)
+      const turnLabel = seg.querySelector('.turn-label')?.textContent?.trim();
+      const labelEl = pop.querySelector('.hover-popover-label');
+      if (labelEl && turnLabel) labelEl.textContent = turnLabel;
+      pop.classList.toggle('hover-popover--not-computed', seg.classList.contains('not-computed'));
+      // Position + show
+      positionPopoverAt(seg);
+      pop.classList.add('is-visible');
+    });
+    seg.addEventListener('mouseleave', () => {
+      const btn = document.getElementById('hoverPreviewBtn');
+      // If the toolbar toggle pinned the popover, keep it
+      if (btn.classList.contains('active')) return;
+      document.getElementById('hoverPopover').classList.remove('is-visible');
+    });
+  });
+
+  function onCopyLink() {
+    const btn = document.getElementById('copyLinkBtn');
+    btn.classList.add('success-flash');
+    setTimeout(() => btn.classList.remove('success-flash'), 1800);
+    showToast();
+  }
+
+  function showToast() {
+    const t = document.getElementById('toast');
+    t.classList.add('is-visible');
+    clearTimeout(window._toastTimeout);
+    window._toastTimeout = setTimeout(() => t.classList.remove('is-visible'), 2000);
+  }
+
+  // Bottom sheets
+  function openSheet(id) {
+    document.getElementById(id).classList.add('is-open');
+  }
+  function closeSheet(id) {
+    document.getElementById(id).classList.remove('is-open');
+  }
+
+  /* setMobile alias — preserved for any inline-onclick legacy in this mockup.
+     Delegates to setDevice now that we're width-driven. */
+  function setMobile(mode) {
+    if (mode === 'off') setDevice('auto');
+    else if (mode === 'portrait' || mode === '414') setDevice('414');
+    else if (mode === 'landscape') setDevice('768');
+  }
+
+  // Tap-and-hold on timeline (mobile pattern, falls back to long-click on desktop preview)
+  let holdTimer = null;
+  document.querySelectorAll('.turn-segment').forEach(seg => {
+    seg.addEventListener('touchstart', e => {
+      holdTimer = setTimeout(() => {
+        openSheet('previewSheet');
+        // Update preview-sheet label
+        const t = seg.querySelector('.turn-label')?.textContent?.trim();
+        const titleEl = document.querySelector('#previewSheet .bottom-sheet-title');
+        if (titleEl && t) titleEl.innerHTML = '<span class="material-icons-round">preview</span> État · ' + t;
+      }, 500);
+    });
+    seg.addEventListener('touchend', () => clearTimeout(holdTimer));
+    seg.addEventListener('touchmove', () => clearTimeout(holdTimer));
+  });
+
+  // Keyboard sandbox (mockup-only)
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) { e.preventDefault(); toggleCheatSheet(); }
+    if (e.key === 'Escape') {
+      document.getElementById('cheatSheet').classList.remove('is-open');
+      document.querySelectorAll('.bottom-sheet-backdrop').forEach(el => el.classList.remove('is-open'));
+    }
+  });
+
+  /* ============================================================
+     STEPPER — mobile timeline navigation
+     ============================================================
+     Mockup state : 8 entrées (Setup + T1..T7 + T8 not-computed).
+     Tour courant = 3. Bornes : 0 → 6 (T7/T8 not-computed désactivés). */
+  const TURN_LABELS = ['Setup', 'Tour 1', 'Tour 2', 'Tour 3', 'Tour 4', 'Tour 5', 'Tour 6', 'Tour 7', 'Tour 8'];
+  const NOT_COMPUTED_FROM = 7; // T7 et au-delà = not-computed
+  let currentTurn = 3;
+
+  function updateStepperUI() {
+    const label = document.getElementById('stepperLabel');
+    const prev = document.getElementById('stepperPrev');
+    const next = document.getElementById('stepperNext');
+    if (!label) return;
+    label.textContent = TURN_LABELS[currentTurn];
+    prev.disabled = currentTurn <= 0;
+    next.disabled = currentTurn >= NOT_COMPUTED_FROM - 1;
+    // Update dot-progress (7 dots visibles, on mappe sur les tours computed)
+    const dots = document.querySelectorAll('#stepperPill .dot-progress .dot');
+    dots.forEach((d, i) => d.classList.toggle('is-active', i === currentTurn));
+    // Update current card in picker
+    document.querySelectorAll('.turn-picker-card').forEach(c => {
+      const t = parseInt(c.dataset.turn, 10);
+      c.classList.toggle('is-current', t === currentTurn);
+      if (t === currentTurn) c.setAttribute('aria-current', 'true');
+      else c.removeAttribute('aria-current');
+    });
+    // Mirror onto desktop timeline (.turn-segment.current) for parité visuelle
+    document.querySelectorAll('.turn-segment').forEach((seg, i) => {
+      seg.classList.toggle('current', i === currentTurn);
+    });
+  }
+
+  function jumpToTurn(t) {
+    if (t < 0 || t >= NOT_COMPUTED_FROM) return;
+    currentTurn = t;
+    updateStepperUI();
+    closeSheet('turnPickerSheet');
+    // In real impl : seek to first event of that turn
+  }
+
+  document.getElementById('stepperPrev')?.addEventListener('click', () => jumpToTurn(currentTurn - 1));
+  document.getElementById('stepperNext')?.addEventListener('click', () => jumpToTurn(currentTurn + 1));
+  document.getElementById('stepperPill')?.addEventListener('click', () => {
+    openSheet('turnPickerSheet');
+    // Auto-scroll picker to current card after sheet open animation
+    setTimeout(() => {
+      const current = document.querySelector('.turn-picker-card.is-current');
+      current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 250);
+  });
+
+  /* ============================================================
+     SWIPE BOARD — gesture mobile next/prev turn
+     ============================================================
+     Threshold : 60px horizontal, < 80px vertical (sinon = scroll vertical).
+     Hint banner s'affiche 3s puis disparaît. Re-affiché à chaque
+     ouverture du viewer dans le mockup pour démo. */
+  const SWIPE_THRESHOLD_X = 60;
+  const SWIPE_MAX_Y = 80;
+  let touchStartX = 0, touchStartY = 0, touchStartT = 0;
+
+  const swipeArea = document.getElementById('boardSwipeArea');
+  if (swipeArea) {
+    swipeArea.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartT = Date.now();
+    }, { passive: true });
+
+    swipeArea.addEventListener('touchend', e => {
+      if (e.changedTouches.length !== 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+      const dt = Date.now() - touchStartT;
+      if (Math.abs(dx) < SWIPE_THRESHOLD_X || dy > SWIPE_MAX_Y || dt > 600) return;
+      const dir = dx > 0 ? 'right' : 'left'; // swipe-right = previous (RTL feel arrière)
+      flashSwipe(dir);
+      if (dir === 'right') jumpToTurn(currentTurn - 1);
+      else jumpToTurn(currentTurn + 1);
+      hideSwipeHint();
+    }, { passive: true });
+  }
+
+  function flashSwipe(dir) {
+    const el = document.getElementById('swipeFlash' + (dir === 'right' ? 'Right' : 'Left'));
+    el?.classList.add('is-active');
+    setTimeout(() => el?.classList.remove('is-active'), 250);
+  }
+
+  function showSwipeHint() {
+    const hint = document.getElementById('swipeHint');
+    if (!hint) return;
+    hint.classList.add('is-visible');
+    setTimeout(hideSwipeHint, 3000);
+  }
+  function hideSwipeHint() {
+    document.getElementById('swipeHint')?.classList.remove('is-visible');
+  }
+
+  /* isNarrow — single source of truth for "we're in compact mode".
+     True when #screen has .is-narrow (set by setDevice or syncNarrowFromViewport)
+     OR the real viewport is below the breakpoint. */
+  function isNarrow() {
+    return document.getElementById('screen')?.classList.contains('is-narrow')
+        || window.matchMedia(`(max-width: ${NARROW_BREAKPOINT}px)`).matches;
+  }
+
+  function maybeShowHint() {
+    if (isNarrow()) showSwipeHint();
+  }
+  window.addEventListener('load', maybeShowHint);
+
+  /* Re-show hint when toggling preview width (wrap setDevice). */
+  const origSetDevice = setDevice;
+  setDevice = function(value) {
+    origSetDevice(value);
+    maybeShowHint();
+  };
+
+  /* ============================================================
+     TIMELINE ZOOM — desktop wheel + mini-control (3 levels)
+     ============================================================
+     Matches the Angular impl in timeline-bar.component.ts :
+     `zoomLevel: signal<1 | 2 | 3>(1)` + cursor-anchored scroll preservation
+     during the CSS transition. The mockup version is simpler — no
+     transition-end watcher, just toggle classes. */
+  let timelineZoom = 1;
+  function setTimelineZoom(level) {
+    if (level === timelineZoom) return;
+    timelineZoom = Math.max(1, Math.min(3, level));
+    const track = document.getElementById('timelineTrack');
+    if (!track) return;
+    track.classList.remove('zoom-l2', 'zoom-l3');
+    if (timelineZoom === 2) track.classList.add('zoom-l2');
+    if (timelineZoom === 3) track.classList.add('zoom-l3');
+    document.querySelectorAll('.timeline-zoom-btn').forEach(b => {
+      const active = parseInt(b.dataset.zoom, 10) === timelineZoom;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-checked', active ? 'true' : 'false');
+    });
+  }
+
+  /* Wheel zoom on the .timeline-bar — desktop only, ignored on touch.
+     Real impl uses cursor-anchored scroll preservation via rAF loop;
+     here we keep it simple (zoom only, no anchor) since the mockup is
+     a visual prototype. */
+  document.querySelector('.timeline-bar')?.addEventListener('wheel', e => {
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    e.preventDefault();
+    if (e.deltaY < 0) setTimelineZoom(timelineZoom + 1);
+    else if (e.deltaY > 0) setTimelineZoom(timelineZoom - 1);
+  }, { passive: false });
+
+  // Init stepper state on load
+  updateStepperUI();
+</script>
+
+</body>
+</html>
