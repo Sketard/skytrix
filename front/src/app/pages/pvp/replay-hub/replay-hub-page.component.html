@@ -174,13 +174,6 @@
         minBufferPx="240"
         maxBufferPx="480"
         (scrolledIndexChange)="onScrolledIndexChange($event, viewport)">
-      <!-- Inline skeleton at the bottom of the list while loadNextPage is
-           in-flight — Q6-3. Rendered OUTSIDE *cdkVirtualFor so it doesn't
-           need a fixed itemSize ; sticks below the rendered items via
-           position: sticky in SCSS. -->
-      @if (store.fetchingMore()) {
-        <app-replay-card-skeleton [count]="2" class="replay-list-skeleton--inline"></app-replay-card-skeleton>
-      }
       <a *cdkVirtualFor="let replay of store.filteredReplays(); trackBy: trackByReplayId"
          class="replay-card surface-card surface-card--interactive"
          [class.surface-card--accent-gold]="resultMeta(replay).variant === 'gold'"
@@ -254,5 +247,14 @@
         </div>
       </a>
     </cdk-virtual-scroll-viewport>
+
+    <!-- Inline skeleton at the bottom of the list while loadNextPage is
+         in-flight — Q6-3. Placed OUTSIDE the virtual-scroll viewport
+         (cdk-virtual-scroll-viewport hides non-`*cdkVirtualFor` children),
+         as a flex sibling. Doesn't scroll with the viewport but appears in
+         the same visual column right under the last rendered card. -->
+    @if (store.fetchingMore()) {
+      <app-replay-card-skeleton [count]="2" class="replay-list-skeleton--inline"></app-replay-card-skeleton>
+    }
   }
 </div>
