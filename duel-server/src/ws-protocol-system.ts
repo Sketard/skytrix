@@ -141,6 +141,19 @@ export interface SessionTokenMsg {
   token: string;
 }
 
+/** Server → client mount discriminant, emitted exactly once per WS attachment
+ *  right after `SESSION_TOKEN`. Lets the client decide between mounting the
+ *  pre-duel dice arena (`PRE_DUEL`) or a board skeleton (`DUELING`) on a
+ *  mid-duel refresh, without sniffing the n-th message or waiting on a
+ *  timeout. `ENDED` covers the preservation-period reconnect (the duel result
+ *  is delivered just after via `storedDuelResult`). Not re-emitted on
+ *  rematch — the client keeps its initial mountContext for the whole
+ *  page lifecycle. */
+export interface SessionPhaseMsg {
+  type: 'SESSION_PHASE';
+  phase: 'PRE_DUEL' | 'DUELING' | 'ENDED';
+}
+
 export interface OpponentDisconnectedMsg {
   type: 'OPPONENT_DISCONNECTED';
   gracePeriodSec: number;

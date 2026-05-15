@@ -194,7 +194,8 @@
     "opponent": {
       "disconnected": "Opponent disconnected",
       "waitingReconnect": "Waiting for reconnection...",
-      "leave": "Leave"
+      "leave": "Leave",
+      "label": "Opponent"
     },
     "tabConflict": {
       "title": "Duel active in another tab",
@@ -228,9 +229,6 @@
       "youFirst": "You go first",
       "youSecond": "You go second",
       "boardLoading": "Preparing the board…"
-    },
-    "opponent": {
-      "label": "Opponent"
     },
     "result": {
       "victory": "VICTORY",

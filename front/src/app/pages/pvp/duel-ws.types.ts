@@ -41,7 +41,7 @@ import type {
   SelectFirstPlayerMsg, FirstPlayerResultMsg, DuelStartingMsg, DeckPrefetchMsg,
   RematchInvitationMsg, RematchStartingMsg, RematchCancelledMsg,
   WorkerErrorMsg, StateSyncMsg, ChainStateMsg,
-  SessionTokenMsg, OpponentDisconnectedMsg, OpponentReconnectedMsg,
+  SessionTokenMsg, SessionPhaseMsg, OpponentDisconnectedMsg, OpponentReconnectedMsg,
   InactivityWarningMsg, WaitingResponseMsg,
   SurrenderMsg, RematchRequestMsg, RequestStateSyncMsg,
   ActivityPingMsg, AnimationsDoneMsg, CancelPromptSequenceMsg,
@@ -115,7 +115,7 @@ export type ServerMessage =
   | AnnounceAttribMsg
   | AnnounceCardMsg
   | AnnounceNumberMsg
-  // System messages (18)
+  // System messages (19)
   | DuelEndMsg
   | TimerStateMsg
   | DiceRollPromptMsg
@@ -131,6 +131,7 @@ export type ServerMessage =
   | StateSyncMsg
   | ChainStateMsg
   | SessionTokenMsg
+  | SessionPhaseMsg
   | OpponentDisconnectedMsg
   | OpponentReconnectedMsg
   | InactivityWarningMsg

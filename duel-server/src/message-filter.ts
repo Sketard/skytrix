@@ -187,6 +187,7 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
     case 'REMATCH_CANCELLED':
     case 'WORKER_ERROR':
     case 'SESSION_TOKEN':
+    case 'SESSION_PHASE':
     case 'OPPONENT_DISCONNECTED':
     case 'OPPONENT_RECONNECTED':
     case 'WAITING_RESPONSE':

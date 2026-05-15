@@ -523,10 +523,18 @@
        Without `duel-loading` in this list, the duel-loading screen
        would briefly steal the layer between `final` and `idle` and
        flash "PRÉPARATION DU DUEL…". -->
-  @if (roomState() === 'creating-duel' || roomState() === 'connecting' || roomState() === 'duel-loading' || roomState() === 'active') {
+  @if (showDiceArena()) {
     <app-pvp-dice-arena
       [preparing]="roomState() === 'creating-duel' || roomState() === 'connecting'"
       [holdFinal]="roomState() !== 'active'" />
+  }
+
+  <!-- Mid-duel refresh resync OR slow-handshake fallback: show a board
+       skeleton fidel to <app-pvp-board-container> until BOARD_STATE lands.
+       Convention: project_session_phase_resync_skeleton. Gating logic +
+       200ms anti-flicker live in `showBoardSkeleton()`. -->
+  @if (showBoardSkeleton()) {
+    <app-pvp-board-skeleton />
   }
 
   <!-- Story 3.1 — Surrender Confirmation Dialog Template -->

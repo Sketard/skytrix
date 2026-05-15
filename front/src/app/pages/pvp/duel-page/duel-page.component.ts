@@ -60,6 +60,7 @@ import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.component';
 import { PvpDiceArenaComponent } from './pvp-dice-arena/pvp-dice-arena.component';
+import { PvpBoardSkeletonComponent } from './pvp-board-skeleton/pvp-board-skeleton.component';
 import { SystemOverlayComponent } from '../../../components/system-overlay/system-overlay.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { WaitingRoomSkeletonComponent } from '../../../shared/skel';
@@ -91,6 +92,7 @@ import { environment } from '../../../../environments/environment';
     PvpChainOverlayComponent,
     PvpDuelOverlaysComponent,
     PvpDiceArenaComponent,
+    PvpBoardSkeletonComponent,
     SystemOverlayComponent,
     OrientationLockComponent,
     AvatarComponent, WaitingRoomSkeletonComponent,
@@ -154,6 +156,36 @@ export class DuelPageComponent implements OnInit {
   private static readonly MAX_RETRIES = 3;
   private readonly retryCount = signal(0);
   readonly canRetry = computed(() => this.retryCount() < DuelPageComponent.MAX_RETRIES && this.wsService.canRetry());
+
+  // Anti-flicker gate for the resync skeleton — flips to true 200ms after mount
+  // unless `sessionPhase` has already resolved (PRE_DUEL on fresh start lands
+  // before that, so the timer flip is a no-op). Without the delay, a fresh
+  // start would flash the skeleton during the WS handshake RTT before the
+  // server sends SESSION_PHASE: PRE_DUEL. Modern pattern (see
+  // [[modern-ux-patterns]]: anti-flicker 200ms).
+  private static readonly SKELETON_ANTI_FLICKER_MS = 200;
+  private readonly _skeletonAllowed = signal(false);
+
+  /** Mount the dice arena when: server explicitly says PRE_DUEL OR we're
+   *  in the `creating-duel` room state (no WS yet, fresh start kickoff). */
+  readonly showDiceArena = computed(() => {
+    const rs = this.roomState();
+    if (rs !== 'creating-duel' && rs !== 'connecting' && rs !== 'duel-loading' && rs !== 'active') return false;
+    return this.wsService.sessionPhase() === 'PRE_DUEL' || rs === 'creating-duel';
+  });
+
+  /** Mount the board skeleton when: server says DUELING (mid-duel resync)
+   *  during the connect → duel-loading window, OR sessionPhase is still
+   *  unknown after the 200ms anti-flicker window has elapsed (fallback —
+   *  catches RTTs that exceed the typical fresh-start handshake). */
+  readonly showBoardSkeleton = computed(() => {
+    const rs = this.roomState();
+    if (rs !== 'connecting' && rs !== 'duel-loading') return false;
+    const phase = this.wsService.sessionPhase();
+    if (phase === 'DUELING') return true;
+    if (phase === null && this._skeletonAllowed()) return true;
+    return false;
+  });
 
   // Story 2.3 — Board ready when first BOARD_STATE arrives. EMPTY_DUEL_STATE
   // seeds lp=8000 before the worker has spawned, so gating on lp would flip true
@@ -382,6 +414,15 @@ export class DuelPageComponent implements OnInit {
 
 
   constructor() {
+    // Anti-flicker: allow the resync skeleton after 200ms if sessionPhase
+    // hasn't resolved yet. Cleared on destroy to avoid a late flip when the
+    // user navigates away during the WS handshake.
+    const skeletonTimer = setTimeout(
+      () => this._skeletonAllowed.set(true),
+      DuelPageComponent.SKELETON_ANTI_FLICKER_MS,
+    );
+    this.destroyRef.onDestroy(() => clearTimeout(skeletonTimer));
+
     // --- Initialize extracted services ---
     this.roomService.init({ wsService: this.wsService, tabGuard: this.tabGuard });
     this.cardMenu.setOnClose(() => this.playerHandRow?.selectedIndex.set(null));

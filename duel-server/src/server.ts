@@ -42,6 +42,7 @@ import {
 } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
 import { buildPreDuelSnapshot } from './pre-duel-snapshot.js';
+import { derivePhase } from './session-phase.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
@@ -980,6 +981,13 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
   // Send SESSION_TOKEN to client
   sendToPlayer(session, playerIndex, { type: 'SESSION_TOKEN', token: newReconnectToken });
+
+  // Mount-discriminant: tells the client whether to mount the dice arena
+  // (PRE_DUEL), the board skeleton (DUELING), or the preservation-period
+  // end-screen (ENDED). Emitted exactly once per WS attachment, right after
+  // SESSION_TOKEN, so the discrimination is deterministic (no message-sniff
+  // or timeout). Helper is pure — see session-phase.ts.
+  sendToPlayer(session, playerIndex, { type: 'SESSION_PHASE', phase: derivePhase(session) });
 
   // Mark as alive for heartbeat
   (ws as AliveWebSocket).isAlive = true;

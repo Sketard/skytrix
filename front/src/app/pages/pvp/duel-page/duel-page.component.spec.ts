@@ -114,6 +114,7 @@ class StubWsService {
   readonly waitingForOpponent = signal(false);
   readonly firstPlayerResult = signal<{ goFirst: boolean } | null>(null);
   readonly firstPlayerResponseSent = signal(false);
+  readonly sessionPhase = signal<'PRE_DUEL' | 'DUELING' | 'ENDED' | null>(null);
   readonly canRetry = signal(true);
   readonly totalAutoRetries = signal(0);
   readonly justReconnected = signal(false);

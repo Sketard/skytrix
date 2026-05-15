@@ -66,6 +66,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   readonly waitingForOpponent = computed(() => this._activeConnection().waitingForOpponent());
   readonly firstPlayerResult = computed(() => this._activeConnection().firstPlayerResult());
   readonly firstPlayerResponseSent = computed(() => this._activeConnection().firstPlayerResponseSent());
+  readonly sessionPhase = computed(() => this._activeConnection().sessionPhase());
 
   readonly canRetry = computed(() => this._activeConnection().canRetry());
   readonly totalAutoRetries = computed(() => this._activeConnection().totalAutoRetries());

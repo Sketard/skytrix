@@ -288,7 +288,120 @@
 }
 
 // =============================================================================
-// COMPOSITE — Dice arena skeleton (pre-duel arena, before DICE_ROLL prompt)
+// COMPOSITE — Duel board skeleton (mid-duel refresh resync placeholder)
+// Mirrors `<app-pvp-board-container>` grid (274:215 ratio, 3 rows × 7 cols
+// of 59fr/5×86fr/59fr) so the swap to the real board on first BOARD_STATE
+// arrival happens with zero layout shift. Surfaced when `sessionPhase ===
+// 'DUELING'` on a refresh, before the first BOARD_STATE lands.
+// =============================================================================
+.board-skel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+
+  // Opponent hand strip (top, half off-canvas) + player hand strip (bottom,
+  // 35% off-canvas) — mirrors `.hand-opponent` / `.hand-player` placement.
+  .board-skel__hand {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--pvp-hand-card-height, 96px);
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 8px;
+    pointer-events: none;
+
+    .skel-hand-card {
+      @extend %skel-block;
+      height: 100%;
+      aspect-ratio: 59 / 86;
+      border-radius: var(--pvp-radius-sm, 4px);
+    }
+
+    &--opponent {
+      top: calc(-1 * var(--pvp-hand-card-height, 96px) * 0.5);
+    }
+
+    &--player {
+      bottom: calc(-1 * var(--pvp-hand-card-height, 96px) * 0.35);
+    }
+  }
+
+  .board-skel__board {
+    position: relative;
+    height: 90%;
+    aspect-ratio: 274 / 215;
+    max-width: 100%;
+    min-height: 200px;
+    margin: auto;
+    display: grid;
+    grid-template-rows: 2fr 1fr 2fr;
+  }
+
+  // Shared row grid: same 7-column template as `.field-section` in
+  // pvp-board-container.component.scss.
+  .board-skel__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 59fr repeat(5, 86fr) 59fr;
+    gap: 2px;
+    padding: 2px;
+    min-height: 0;
+  }
+
+  // Top field (opponent): MZ on bottom of the row (away from edge),
+  // ST on top — mirrors `.opponent-field` grid-template-areas.
+  .board-skel__row--opponent {
+    grid-template-areas:
+      'deck    st5 st4 st3 st2 st1 extra'
+      'gy      mz5 mz4 mz3 mz2 mz1 field';
+    grid-template-rows: 1fr 1fr;
+  }
+
+  // Bottom field (player): MZ on top, ST on bottom — mirrors `.player-field`.
+  .board-skel__row--player {
+    grid-template-areas:
+      'field   mz1 mz2 mz3 mz4 mz5 gy'
+      'extra   st1 st2 st3 st4 st5 deck';
+    grid-template-rows: 1fr 1fr;
+  }
+
+  // Central strip: banished + EMZ slots (Extra Monster Zones).
+  .board-skel__row--central {
+    grid-template-columns: 59fr repeat(5, 86fr) 59fr;
+    align-items: center;
+  }
+
+  // Square zones (MZ/ST/EMZ) — match `.zone` aspect-ratio: 1.
+  .skel-zone {
+    @extend %skel-block;
+    aspect-ratio: 1;
+    height: 100%;
+    justify-self: center;
+    border-radius: var(--pvp-radius-md, 8px);
+  }
+
+  // EMZ positions (col 3 and col 5 of central strip).
+  .skel-zone--emz-left  { grid-column: 3; }
+  .skel-zone--emz-right { grid-column: 5; }
+
+  // Portrait piles (GY, Extra, Deck, Field, Banished) — match `.zone-pile`
+  // aspect-ratio 59/86.
+  .skel-pile {
+    @extend %skel-block;
+    aspect-ratio: 59 / 86;
+    width: 100%;
+    height: auto;
+    border-radius: var(--pvp-radius-md, 8px);
+  }
+
+  // Banished slots (central strip cols 1 and 7).
+  .skel-pile--banished-opponent { grid-column: 1; }
+  .skel-pile--banished-player   { grid-column: 7; }
+}
+
 // Mirrors _mockups/mockup-1-holo-arena.html `.dice-arena-skel` (ll. 1540-1576).
 // Geometry uses the same clamp() cqw scale as the live `.dice-screen-arena`
 // so the skeleton aligns when swapped for the real arena.

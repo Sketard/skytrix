@@ -84,6 +84,10 @@ export class DuelConnection {
   private _waitingForOpponent = signal(false);
   private _firstPlayerResult = signal<{ goFirst: boolean } | null>(null);
   private _firstPlayerResponseSent = signal(false);
+  /** Mount discriminant. `null` until the first SESSION_PHASE message lands
+   *  (always second message after SESSION_TOKEN). Frozen after the initial
+   *  set — the discriminant is a mount-time decision, not a reactive flag. */
+  private _sessionPhase = signal<'PRE_DUEL' | 'DUELING' | 'ENDED' | null>(null);
   private _boardActive = false;
 
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
@@ -108,6 +112,7 @@ export class DuelConnection {
   readonly waitingForOpponent = this._waitingForOpponent.asReadonly();
   readonly firstPlayerResult = this._firstPlayerResult.asReadonly();
   readonly firstPlayerResponseSent = this._firstPlayerResponseSent.asReadonly();
+  readonly sessionPhase = this._sessionPhase.asReadonly();
 
   // --- Reconnect state ---
   private _retryCount = signal(0);
@@ -769,6 +774,13 @@ export class DuelConnection {
         if (this._autoReconnect) {
           try { localStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
         }
+        break;
+
+      case 'SESSION_PHASE':
+        // Mount-discriminant from the server (PRE_DUEL | DUELING | ENDED).
+        // Frozen after first set — the UI bases its initial mount on this
+        // value once and does not re-react if the server were to re-emit.
+        if (this._sessionPhase() === null) this._sessionPhase.set(message.phase);
         break;
 
       case 'MSG_CHAINING':

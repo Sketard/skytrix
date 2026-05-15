@@ -194,7 +194,8 @@
     "opponent": {
       "disconnected": "Adversaire déconnecté",
       "waitingReconnect": "En attente de reconnexion...",
-      "leave": "Quitter"
+      "leave": "Quitter",
+      "label": "Adversaire"
     },
     "tabConflict": {
       "title": "Duel actif dans un autre onglet",
@@ -228,9 +229,6 @@
       "youFirst": "Tu joues en premier",
       "youSecond": "Tu joues en second",
       "boardLoading": "Préparation du plateau…"
-    },
-    "opponent": {
-      "label": "Adversaire"
     },
     "result": {
       "victory": "VICTOIRE",
