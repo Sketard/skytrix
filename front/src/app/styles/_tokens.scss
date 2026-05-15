@@ -222,6 +222,10 @@
   --danger-flat:  #b71c1c;
   --warning-flat: #ff9800;
 
+  // --- Thumbnail placeholder gradient (deck-thumb, future card-thumb skeletons)
+  // Dark violet — surface visible before <img> loads.
+  --surface-thumb-gradient: linear-gradient(135deg, #2a2640, #1a1830);
+
   // --- Gradients DS — shared composites consumed by .screen-bg utility
   // and any card/dialog/skeleton that wants the holo-arena mood. Single
   // source so dialog skins stay in lockstep.

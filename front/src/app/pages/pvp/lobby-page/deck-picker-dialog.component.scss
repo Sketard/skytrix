@@ -564,10 +564,7 @@
   width: 100%;
   aspect-ratio: 59 / 86;
   border-radius: 8px;
-  // Local-only dark violet gradient: deck-thumb placeholder before <img> loads.
-  // Off-DS intentional (single use, no systemic value); promote to token if a
-  // second thumb-style surface appears.
-  background: linear-gradient(135deg, #2a2640, #1a1830);
+  background: var(--surface-thumb-gradient);
   overflow: hidden;
   position: relative;
   box-shadow: var(--elevation-2);
