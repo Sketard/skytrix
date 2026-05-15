@@ -89,7 +89,7 @@
 }
 
 .hub-stat-value {
-  font: var(--weight-bold) 1.4rem / 1 'Rajdhani', sans-serif;
+  font: var(--weight-bold) var(--text-xl) / var(--line-tight) var(--font-display);
   letter-spacing: 0.02em;
   color: var(--text-primary);
 }
@@ -98,7 +98,7 @@
 .hub-stat-value--muted  { color: var(--text-secondary); }
 
 .hub-stat-label {
-  font: var(--weight-semibold) var(--text-xs) / 1 'Inter', sans-serif;
+  font: var(--weight-semibold) var(--text-xs) / 1 var(--font-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -262,7 +262,7 @@
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
   color: var(--text-inverse);
-  font: var(--weight-bold) var(--text-xs) / 1 'Inter', sans-serif;
+  font: var(--weight-bold) var(--text-xs) / 1 var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   box-shadow:
@@ -299,14 +299,14 @@
 }
 
 .replay-card__vs-prefix {
-  font: var(--weight-semibold) var(--text-xs) 'Inter', sans-serif;
+  font: var(--weight-semibold) var(--text-xs) var(--font-body);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .replay-card__opponent {
-  font: var(--weight-bold) 1.05rem / 1.1 'Rajdhani', sans-serif;
+  font: var(--weight-bold) var(--text-md) / var(--line-tight) var(--font-display);
   letter-spacing: 0.02em;
   color: var(--text-primary);
   white-space: nowrap;
@@ -319,7 +319,7 @@
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
   margin-top: var(--space-1);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
@@ -347,7 +347,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   white-space: nowrap;
   flex-shrink: 0;

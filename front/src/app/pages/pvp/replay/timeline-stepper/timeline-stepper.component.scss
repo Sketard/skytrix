@@ -68,7 +68,7 @@
 }
 
 .timeline-stepper__pill-num {
-  font: var(--weight-black) var(--text-md) / 1 'Rajdhani', sans-serif;
+  font: var(--weight-black) var(--text-md) / var(--line-tight) var(--font-display);
   letter-spacing: 0.04em;
   color: var(--gold-50);
 }
@@ -101,8 +101,8 @@
 
 .timeline-stepper__chevron {
   color: var(--gold);
-  font-size: 14px;
-  line-height: 1;
+  font-size: 14px; // icon glyph dimension, geometry composant
+  line-height: var(--line-tight);
 }
 
 .timeline-stepper__sub-events {

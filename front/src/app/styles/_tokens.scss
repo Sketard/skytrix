@@ -77,6 +77,11 @@
   // === project_design_system_strategy.md + project_responsive_strategy.md.
   // =========================================================================
 
+  // --- Font families (skytrix typo trinity) ---
+  --font-display: 'Rajdhani', sans-serif;       // Headings, CTAs, badges, LP counters
+  --font-body:    'Inter', sans-serif;          // Body, labels, meta, paragraphs
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace; // Codes, timestamps
+
   // --- Typo fluide (clamp min, preferred, max) ---
   --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
   --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);

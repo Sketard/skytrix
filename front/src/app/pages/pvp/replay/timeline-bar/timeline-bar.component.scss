@@ -101,7 +101,7 @@
 }
 
 .timeline-bar__turn-label {
-  font: var(--weight-bold) var(--text-xs) / 1 'Rajdhani', sans-serif;
+  font: var(--weight-bold) var(--text-xs) / var(--line-tight) var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -231,7 +231,7 @@
 }
 
 .timeline-bar__popover-label {
-  font: var(--weight-semibold) var(--text-xs) / 1.2 'Inter', sans-serif;
+  font: var(--weight-semibold) var(--text-xs) / var(--line-tight) var(--font-body);
   color: var(--gold-50);
   max-width: 240px;
   text-align: center;

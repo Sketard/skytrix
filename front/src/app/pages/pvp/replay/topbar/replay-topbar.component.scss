@@ -31,7 +31,7 @@
 }
 
 .replay-topbar__chip-name {
-  font: var(--weight-bold) var(--text-sm) / 1.1 'Inter', sans-serif;
+  font: var(--weight-bold) var(--text-sm) / var(--line-tight) var(--font-body);
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;

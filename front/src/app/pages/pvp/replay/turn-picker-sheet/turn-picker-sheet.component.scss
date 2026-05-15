@@ -76,7 +76,7 @@
 }
 
 .turn-picker__num {
-  font: var(--weight-black) var(--text-sm) / 1 'Rajdhani', sans-serif;
+  font: var(--weight-black) var(--text-sm) / var(--line-tight) var(--font-display);
   letter-spacing: 0.04em;
   color: var(--gold-50);
 }
