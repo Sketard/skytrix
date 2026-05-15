@@ -545,7 +545,8 @@
     "loadingRooms": "Loading rooms",
     "loadingDecks": "Loading decks",
     "loadingReplays": "Loading replays",
-    "loadingWaitingRoom": "Loading waiting room"
+    "loadingWaitingRoom": "Loading waiting room",
+    "loadingDuelBoard": "Loading duel board"
   },
   "solver": {
     "pageTitle": "Solver",
@@ -709,6 +710,7 @@
       "card": {
         "vsPrefix": "vs",
         "vsDeckPrefix": "vs",
+        "opponentUnknown": "Unknown opponent",
         "open": "Open",
         "delete": "Delete",
         "deleteConfirm": "Delete this replay permanently?",

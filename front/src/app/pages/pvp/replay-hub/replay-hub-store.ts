@@ -184,9 +184,15 @@ export class ReplayHubStore {
     });
   }
 
-  /** Threshold check used by the virtual-scroll `(scrolledIndexChange)` host. */
+  /** Threshold check used by the virtual-scroll `(scrolledIndexChange)` host.
+   *
+   *  `renderedEndIndex` is the last index visible in the viewport — measured
+   *  against `filteredReplays()` (what the `*cdkVirtualFor` actually renders),
+   *  NOT `replays()`. Comparing to `replays().length` was a Q4 bug: under any
+   *  active filter the rendered list is shorter, so the threshold was never
+   *  reached and infinite scroll silently stalled. */
   shouldLoadMore(renderedEndIndex: number): boolean {
-    return renderedEndIndex >= this.replays().length - NEXT_PAGE_TRIGGER_OFFSET
+    return renderedEndIndex >= this.filteredReplays().length - NEXT_PAGE_TRIGGER_OFFSET
       && this.hasMore()
       && !this.fetchingMore()
       && !this.loading();

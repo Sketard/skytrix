@@ -190,17 +190,20 @@
         <div class="replay-card__info">
           <div class="replay-card__title">
             <span class="replay-card__vs-prefix">{{ 'replay.hub.card.vsPrefix' | translate }}</span>
-            <span class="replay-card__opponent">{{ opponentName(replay) }}</span>
+            <span class="replay-card__opponent">{{ opponentName(replay) || ('replay.hub.card.opponentUnknown' | translate) }}</span>
           </div>
           <div class="replay-card__meta">
-            <span class="replay-card__deck">
-              <mat-icon>style</mat-icon>
-              {{ myDeckName(replay) }}
-            </span>
-            <span class="replay-card__vs-deck">
-              <mat-icon>swap_horiz</mat-icon>
-              {{ 'replay.hub.card.vsDeckPrefix' | translate }} {{ opponentDeckName(replay) }}
-            </span>
+            @if (myDeckName(replay); as deck) {
+              <span class="replay-card__deck">
+                <mat-icon>style</mat-icon>
+                {{ deck }}
+              </span>
+            }
+            @if (opponentDeckName(replay); as deck) {
+              <span class="replay-card__vs-deck">
+                {{ 'replay.hub.card.vsDeckPrefix' | translate }} {{ deck }}
+              </span>
+            }
           </div>
         </div>
         <span class="pill pill--md"

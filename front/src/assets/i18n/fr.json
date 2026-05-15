@@ -545,7 +545,8 @@
     "loadingRooms": "Chargement des rooms",
     "loadingDecks": "Chargement des decks",
     "loadingReplays": "Chargement des replays",
-    "loadingWaitingRoom": "Chargement de la salle d'attente"
+    "loadingWaitingRoom": "Chargement de la salle d'attente",
+    "loadingDuelBoard": "Chargement du plateau de duel"
   },
   "solver": {
     "pageTitle": "Solveur",
@@ -709,6 +710,7 @@
       "card": {
         "vsPrefix": "vs",
         "vsDeckPrefix": "vs",
+        "opponentUnknown": "Adversaire inconnu",
         "open": "Ouvrir",
         "delete": "Supprimer",
         "deleteConfirm": "Voulez-vous vraiment supprimer définitivement ce replay ?",
