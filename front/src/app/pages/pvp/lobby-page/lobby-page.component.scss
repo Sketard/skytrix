@@ -39,12 +39,12 @@
   font-weight: var(--weight-bold);
   letter-spacing: 0.1em;
   background: var(--alpha-badge-bg);
-  color: #fff;
+  color: var(--text-primary);
   padding: 3px 8px;
   border-radius: 4px;
   line-height: 1;
-  -webkit-text-fill-color: #fff;
-  box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4);
+  -webkit-text-fill-color: var(--text-primary);
+  box-shadow: 0 2px 8px var(--alpha-badge-shadow);
 }
 
 // ── CTA row (Create + Sandbox) ──────────────────────────────────────────────
@@ -231,8 +231,8 @@
   height: 16px;
   border-radius: 50%;
   background: var(--gold);
-  color: #1a1208;
-  border: 2px solid #181828;
+  color: var(--text-inverse);
+  border: 2px solid var(--surface-base);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 
   mat-icon {
@@ -264,13 +264,13 @@
               opacity var(--transition-fast) var(--ease-inout);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 82, 82, 0.15);
-    border-color: rgba(255, 82, 82, 0.5);
-    color: #ff5252;
+    background: var(--danger-soft);
+    border-color: var(--danger-soft-40);
+    color: var(--danger-strong);
   }
 
   &:focus-visible {
-    outline: 2px solid rgba(255, 82, 82, 0.6);
+    outline: 2px solid var(--danger-soft-40);
     outline-offset: 2px;
   }
 

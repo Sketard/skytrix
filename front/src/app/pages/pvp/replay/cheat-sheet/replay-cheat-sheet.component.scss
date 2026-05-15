@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 5, 10, 0.5); // backdrop scrim — composite value, no equivalent token
+  background: var(--scrim);
   backdrop-filter: blur(4px);
   z-index: 2100;
   padding: var(--space-4);
@@ -75,10 +75,7 @@
   gap: var(--space-1);
 }
 
-@keyframes ds-cheat-sheet-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+// Keyframe `ds-cheat-sheet-fade` consolidée dans `_motion.scss` (DS Wave 1 §2.2).
 
 @media (max-width: 480px) {
   :host {

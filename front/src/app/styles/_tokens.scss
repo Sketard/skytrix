@@ -193,6 +193,14 @@
   --warning-soft:  rgba(255, 193, 7, 0.12);
   --danger-strong: #ff5252;
   --danger-soft:   rgba(255, 82, 82, 0.15);
+  --danger-light:  #ff8a80;          // Soft danger — invalid states (vs destructive)
+  --danger-soft-40: rgba(255, 82, 82, 0.40);
+
+  // --- Scrim / backdrop — shared by all fullscreen overlays (modals, sheets) ---
+  --scrim: rgba(5, 5, 10, 0.5);
+
+  // --- Alpha-badge shadow (paired with --alpha-badge-bg #e67e22) ---
+  --alpha-badge-shadow: rgba(230, 126, 34, 0.4);
 
   // --- Surfaces — DS extended (gold-on-dark holo-arena theme) ---
   --surface-bg:        #0a0a14;

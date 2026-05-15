@@ -125,6 +125,18 @@
   to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
 }
 
+// Cheat-sheet backdrop fade-in (Replay Viewer modal)
+@keyframes ds-cheat-sheet-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+// End-overlay slide-in from below (Replay Viewer outcome panel)
+@keyframes ds-end-overlay-slide {
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 // =============================================================================
 // Utility classes — animations + transitions
 // =============================================================================
