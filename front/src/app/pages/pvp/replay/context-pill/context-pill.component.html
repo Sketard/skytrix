@@ -3,7 +3,10 @@
   <span class="text-eyebrow context-pill__position">{{ position() }}</span>
 }
 @if (hasPhase()) {
-  <span class="pill pill--cyan pill--xs context-pill__phase">{{ phase() }}</span>
+  <span class="pill pill--neutral pill--xs context-pill__phase">
+    <span class="context-pill__phase-bolt" aria-hidden="true">⚡</span>
+    {{ phase() }}
+  </span>
 }
 @if (hasEvent()) {
   <span class="text-eyebrow context-pill__event">{{ eventLabel() }}</span>

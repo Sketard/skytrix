@@ -64,40 +64,42 @@
     </section>
   }
 
-  <!-- Search -->
-  <label class="search-bar">
-    <mat-icon class="search-bar__icon">search</mat-icon>
-    <input
-      type="text"
-      class="search-bar__input"
-      [placeholder]="'replay.hub.search.placeholder' | translate"
-      [value]="store.searchQuery()"
-      (input)="onSearchInput($event)"
-      [attr.aria-label]="'replay.hub.search.placeholder' | translate" />
-    @if (hasSearchActive()) {
-      <button
-        type="button"
-        class="icon-btn icon-btn--sm"
-        [attr.aria-label]="'common.clear' | translate"
-        (click)="clearSearch()">
-        <mat-icon>close</mat-icon>
-      </button>
-    }
-  </label>
+  <!-- Mockup §hub-filters — search and chips on the same row on desktop,
+       stacked on mobile via the cascade ≤760px. -->
+  <div class="hub-filters">
+    <label class="search-bar">
+      <mat-icon class="search-bar__icon">search</mat-icon>
+      <input
+        type="text"
+        class="search-bar__input"
+        [placeholder]="'replay.hub.search.placeholder' | translate"
+        [value]="store.searchQuery()"
+        (input)="onSearchInput($event)"
+        [attr.aria-label]="'replay.hub.search.placeholder' | translate" />
+      @if (hasSearchActive()) {
+        <button
+          type="button"
+          class="icon-btn icon-btn--sm"
+          [attr.aria-label]="'common.clear' | translate"
+          (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </label>
 
-  <!-- Filters -->
-  <div class="chip-row" role="group" [attr.aria-label]="'replay.hub.filter.all' | translate">
-    @for (f of filterModes; track f.id) {
-      <button type="button"
-              class="chip"
-              [class.chip--active]="store.activeFilter() === f.id"
-              [disabled]="f.needsDeck && !store.hasDecks()"
-              [attr.aria-pressed]="store.activeFilter() === f.id"
-              (click)="setActiveFilter(f.id)">
-        @if (f.icon) { <mat-icon class="chip__icon">{{ f.icon }}</mat-icon> }
-        <span>{{ 'replay.hub.filter.' + f.id | translate }}</span>
-      </button>
-    }
+    <div class="chip-row" role="group" [attr.aria-label]="'replay.hub.filter.all' | translate">
+      @for (f of filterModes; track f.id) {
+        <button type="button"
+                class="chip"
+                [class.chip--active]="store.activeFilter() === f.id"
+                [disabled]="f.needsDeck && !store.hasDecks()"
+                [attr.aria-pressed]="store.activeFilter() === f.id"
+                (click)="setActiveFilter(f.id)">
+          @if (f.icon) { <mat-icon class="chip__icon">{{ f.icon }}</mat-icon> }
+          <span>{{ 'replay.hub.filter.' + f.id | translate }}</span>
+        </button>
+      }
+    </div>
   </div>
 
   <!-- List header -->
@@ -144,7 +146,7 @@
     </div>
   } @else if (showEmptyState()) {
     <div class="empty-state empty-state--rich">
-      <mat-icon class="empty-state__icon">history</mat-icon>
+      <mat-icon class="empty-state__icon">movie_filter</mat-icon>
       <p class="empty-state__title">{{ 'replay.hub.empty.title' | translate }}</p>
       <p class="empty-state__desc">{{ 'replay.hub.empty.desc' | translate }}</p>
       <div class="empty-state__actions">
@@ -220,6 +222,13 @@
           </span>
         </div>
         <div class="replay-card__actions">
+          <!-- Mockup §replay-open-cta — gold pill that slides in on hover.
+               Decorative only (the whole card is a routerLink, so we don't
+               wire a click here — `pointer-events: none` in SCSS). -->
+          <span class="replay-card__open-cta" aria-hidden="true">
+            <span>{{ 'replay.hub.card.open' | translate }}</span>
+            <mat-icon>arrow_forward</mat-icon>
+          </span>
           <button type="button"
                   class="icon-btn icon-btn--md icon-btn--danger icon-btn--ghost-hover-only"
                   [attr.aria-label]="'replay.hub.card.delete' | translate"

@@ -154,6 +154,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly optionsOpen    = signal(false);
   readonly detailsOpen    = signal(false);
   readonly copyJustSucceeded = signal(false);
+  /** Swipe feedback (D6 mockup — board-area swipe-flash gold edge + hint banner).
+   *  `swipeFlash` carries the active direction for ~250ms, `swipeHintVisible`
+   *  is true at mount on narrow viewports then fades after 3s or first swipe. */
+  readonly swipeFlash = signal<'left' | 'right' | null>(null);
+  readonly swipeHintVisible = signal(false);
+  private swipeFlashTimer: ReturnType<typeof setTimeout> | null = null;
+  private swipeHintTimer: ReturnType<typeof setTimeout> | null = null;
   /** Zoom state lifted from `TimelineBarComponent` (D21). Persisted via localStorage. */
   readonly zoomLevel = signal<ZoomLevel>(this.restoreZoomLevel());
   /** True when the viewport is `<= NARROW_BREAKPOINT_PX` — toggled by a
@@ -311,6 +318,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
    *  missing. Mapping done via D19 `deriveOutcome`. */
   readonly endOverlayState = computed<{
     outcome: ReplayOutcome; selfLp: number; oppLp: number; selfName: string; oppName: string;
+    turnCount: number; durationSec: number | null;
   } | null>(() => {
     if (!this.atEnd()) return null;
     const meta = this.replayConnection.metadata() as ReplayMetadataMsg | null;
@@ -325,6 +333,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       oppLp:  lastState.boardState.players[side === 0 ? 1 : 0]?.lp ?? 0,
       selfName: meta.playerUsernames[side] ?? '',
       oppName:  meta.playerUsernames[side === 0 ? 1 : 0] ?? '',
+      turnCount: meta.turnCount,
+      durationSec: meta.durationSec ?? null,
     };
   });
 
@@ -554,6 +564,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.narrowMql = window.matchMedia(`(max-width: ${ReplayPageComponent.NARROW_BREAKPOINT_PX - 1}px)`);
     this.narrowMqlHandler = (e: MediaQueryListEvent) => this.isNarrow.set(e.matches);
     this.narrowMql.addEventListener('change', this.narrowMqlHandler);
+
+    // D6 swipe-hint — show the "Glisse pour changer de tour" banner on narrow
+    // viewports for 3s at mount. The flash gold edge + auto-hide on first
+    // swipe live in `triggerSwipeFlash()`.
+    if (this.isNarrow()) {
+      this.swipeHintVisible.set(true);
+      this.swipeHintTimer = setTimeout(() => this.hideSwipeHint(), 3000);
+    }
   }
 
   ngOnDestroy(): void {
@@ -561,6 +579,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       this.narrowMql.removeEventListener('change', this.narrowMqlHandler);
     }
     if (this.copyFlashTimer !== null) clearTimeout(this.copyFlashTimer);
+    if (this.swipeFlashTimer !== null) clearTimeout(this.swipeFlashTimer);
+    if (this.swipeHintTimer !== null) clearTimeout(this.swipeHintTimer);
     this.transport.destroy();
     this.abortAndClean();
     this.orchestrator.destroy();
@@ -637,6 +657,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   onBackToHub(): void        { this.router.navigate(['/pvp/history']); }
   onEndOverlayReplay(): void { this.onSkipStart(); }
   onEndOverlayLibrary(): void { this.onBackToHub(); }
+  /** V-A7 mockup restore — the end-overlay exposes a Fork CTA matching the
+   *  mockup §end-overlay. Reuses the existing `onFork()` keyboard handler
+   *  (keeps single source of truth for the fork flow). */
+  onEndOverlayFork(): void { this.onFork(); }
   /** Soft-dismiss the end overlay (Esc/← from inside the component). We pause
    *  the timer and step back one event so the overlay disappears and the user
    *  can scrub freely. */
@@ -664,8 +688,31 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.onClosePicker();
   }
 
-  onSwipeLeft(): void  { this.onSeekToTurn(this.currentTurnIndex() + 1); }
-  onSwipeRight(): void { this.onSeekToTurn(this.currentTurnIndex() - 1); }
+  onSwipeLeft(): void {
+    this.triggerSwipeFlash('left');
+    this.onSeekToTurn(this.currentTurnIndex() + 1);
+  }
+  onSwipeRight(): void {
+    this.triggerSwipeFlash('right');
+    this.onSeekToTurn(this.currentTurnIndex() - 1);
+  }
+
+  /** 250ms gold edge flash + hides the swipe-hint banner if still visible
+   *  (the user has clearly understood the gesture). */
+  private triggerSwipeFlash(dir: 'left' | 'right'): void {
+    this.swipeFlash.set(dir);
+    if (this.swipeFlashTimer) clearTimeout(this.swipeFlashTimer);
+    this.swipeFlashTimer = setTimeout(() => this.swipeFlash.set(null), 250);
+    if (this.swipeHintVisible()) this.hideSwipeHint();
+  }
+
+  private hideSwipeHint(): void {
+    this.swipeHintVisible.set(false);
+    if (this.swipeHintTimer) {
+      clearTimeout(this.swipeHintTimer);
+      this.swipeHintTimer = null;
+    }
+  }
 
   /** D20 — copy a shareable seekTo URL for the current event index. Falls
    *  back to `execCommand('copy')` when the Clipboard API is unavailable

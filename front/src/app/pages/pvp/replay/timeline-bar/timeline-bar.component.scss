@@ -83,6 +83,9 @@
   &.timeline-bar__turn--current {
     background: var(--gold-soft-12);
     border-bottom: 2px solid var(--gold);
+    // Mockup §current-turn-glow — emphasize the active turn with a soft glow
+    // under the gold bottom border. The master had this; the rework dropped it.
+    box-shadow: 0 2px 8px var(--gold-soft-50);
   }
 
   &.timeline-bar__turn--not-computed {

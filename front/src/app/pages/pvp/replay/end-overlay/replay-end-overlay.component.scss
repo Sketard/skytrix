@@ -28,6 +28,13 @@
   gap: var(--space-1);
 }
 
+// Meta line under the outcome pill — mockup §end-overlay-meta ("Tour 11 · 14:32")
+.replay-end-overlay__meta {
+  margin: 0;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
 .replay-end-overlay__score {
   display: flex;
   align-items: center;

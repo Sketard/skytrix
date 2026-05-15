@@ -4,8 +4,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import type { ReplayOutcome } from '../replay-outcome.util';
 
 // End-of-replay slide-in panel. Receives the pre-derived outcome (see
-// `deriveOutcome` in `replay-outcome.util.ts` — D19) and shows two CTAs:
-// "Rejouer" (primary gold shimmer) + "Bibliothèque" (ghost). Fork removed (D18).
+// `deriveOutcome` in `replay-outcome.util.ts` — D19) and shows three CTAs
+// per mockup §end-overlay: "Rejouer" (primary gold shimmer) + "Forker à ce
+// point" (secondary cyan) + "Bibliothèque" (ghost). A meta line under the
+// result pill exposes `Tour N · MM:SS` (mockup §end-overlay-meta).
 //
 // Layout-only SCSS — visuals come from DS Wave 1 utility classes (`.surface-card`,
 // `.pill--celebrated`, `.btn--cta-shimmer`, `.text-mono`, `.text-eyebrow`).
@@ -33,10 +35,31 @@ export class ReplayEndOverlayComponent {
   readonly oppLp    = input.required<number>();
   readonly selfName = input.required<string>();
   readonly oppName  = input.required<string>();
+  readonly turnCount = input<number | null>(null);
+  readonly durationSec = input<number | null>(null);
 
   readonly replay    = output<void>();
+  readonly fork      = output<void>();
   readonly library   = output<void>();
   readonly dismissed = output<void>();
+
+  /** Mockup §end-overlay-meta — composed string `Tour N · MM:SS`. Either
+   *  segment is dropped when null so legacy replays render the available
+   *  metadata only. */
+  protected readonly metaLine = computed<string | null>(() => {
+    const turn = this.turnCount();
+    const dur = this.durationSec();
+    const parts: string[] = [];
+    if (turn != null && turn > 0) {
+      parts.push(this.translate.instant('replay.timeline.turn', { n: turn }));
+    }
+    if (dur != null && dur > 0) {
+      const m = Math.floor(dur / 60);
+      const s = String(dur % 60).padStart(2, '0');
+      parts.push(`${m}:${s}`);
+    }
+    return parts.length > 0 ? parts.join(' · ') : null;
+  });
 
   private readonly translate = inject(TranslateService);
 

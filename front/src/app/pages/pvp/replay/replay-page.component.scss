@@ -97,6 +97,48 @@
       inset: 0;
       pointer-events: none;
     }
+
+    // V-C6 swipe feedback (mockup §swipe-flash / §swipe-hint).
+    // Gold gradient edge briefly fades in (250ms) when a swipe is detected;
+    // hint banner at the bottom appears 3s on narrow viewport mount.
+    .swipe-flash {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 150ms var(--ease-out);
+      z-index: 4;
+
+      &--left  { left: 0;  background: linear-gradient(90deg,  var(--gold-soft-25), transparent); }
+      &--right { right: 0; background: linear-gradient(-90deg, var(--gold-soft-25), transparent); }
+      &.is-active { opacity: 1; }
+    }
+
+    .swipe-hint {
+      position: absolute;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      background: rgba(10, 10, 20, 0.85);
+      border: 1px solid var(--gold-soft-25);
+      font: 500 var(--text-xs) 'Inter';
+      color: var(--text-muted);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition-normal) var(--ease-out);
+      z-index: 5;
+      white-space: nowrap;
+
+      &.is-visible { opacity: 1; }
+      &__icon { color: var(--gold); font-size: 14px; }
+    }
   }
 
   app-timeline-bar,

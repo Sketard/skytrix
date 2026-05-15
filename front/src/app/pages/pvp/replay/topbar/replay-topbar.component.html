@@ -20,10 +20,10 @@
         </div>
         @if (selfResultTag(); as tag) {
           <span
-            class="pill pill--xs"
+            class="pill pill--xs replay-topbar__result-pill"
             [class.pill--gold]="tag === 'win'"
             [class.pill--neutral]="tag === 'loss'">
-            {{ ('replay.viewer.endOverlay.' + (tag === 'win' ? 'victory' : 'defeat')) | translate }}
+            {{ ('replay.viewer.topbar.resultShort.' + tag) | translate }}
           </span>
         }
       </div>
@@ -31,10 +31,10 @@
       <div class="replay-topbar__chip">
         @if (oppResultTag(); as tag) {
           <span
-            class="pill pill--xs"
+            class="pill pill--xs replay-topbar__result-pill"
             [class.pill--gold]="tag === 'win'"
             [class.pill--neutral]="tag === 'loss'">
-            {{ ('replay.viewer.endOverlay.' + (tag === 'win' ? 'victory' : 'defeat')) | translate }}
+            {{ ('replay.viewer.topbar.resultShort.' + tag) | translate }}
           </span>
         }
         <div class="replay-topbar__chip-meta">

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
-import type { TurnMeta } from '../../replay-ws.types';
+import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
+import type { Player } from '../../duel-ws.types';
 import type { TimelineSegment } from '../timeline-bar/timeline-bar.component';
 
 // Mobile-only stepper that replaces the desktop timeline-bar under `.is-narrow`
@@ -32,6 +33,11 @@ export class TimelineStepperComponent {
   readonly currentEventIndex = input.required<number>();
   readonly computedUpToIndex = input.required<number>();
   readonly subEvents = input<readonly TimelineSegment[]>([]);
+  /** V-C10 — chain-group self/opp coloration (matches desktop timeline-bar).
+   *  Optional inputs: when not provided, sub-event chains render without
+   *  the self/opp tint. */
+  readonly boardStates = input<readonly PreComputedState[]>([]);
+  readonly ownPlayerIndex = input<Player>(0);
 
   readonly prevTurn = output<void>();
   readonly nextTurn = output<void>();
@@ -85,5 +91,16 @@ export class TimelineStepperComponent {
   protected onSubEventClick(seg: TimelineSegment): void {
     const idx = seg.type === 'single' ? seg.idx : seg.indices[0];
     this.seekSubEvent.emit(idx);
+  }
+
+  /** Mirrors `TimelineBarComponent.chainSegmentIsSelf`. Looks up the
+   *  `boardState.turnPlayer` at the chain's first event — if it matches our
+   *  perspective, the segment is "self" (blue). Otherwise "opp" (amber).
+   *  Returns null for non-chain segments (single events stay neutral). */
+  protected chainSegmentTone(seg: TimelineSegment): 'self' | 'opp' | null {
+    if (seg.type !== 'chain') return null;
+    const state = this.boardStates()[seg.indices[0]];
+    if (!state) return null;
+    return state.boardState.turnPlayer === this.ownPlayerIndex() ? 'self' : 'opp';
   }
 }

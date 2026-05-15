@@ -680,7 +680,7 @@
         "all": "All",
         "wins": "Wins",
         "losses": "Losses",
-        "myDeck": "Main deck",
+        "myDeck": "My deck",
         "last7days": "Last 7 days"
       },
       "list": {
@@ -694,8 +694,8 @@
       },
       "empty": {
         "title": "No replays yet",
-        "desc": "Play a duel online or in sandbox — your matches will be saved here.",
-        "ctaPvp": "Play PvP"
+        "desc": "Play a duel online or in sandbox — your matches will be saved here to replay, fork, and improve.",
+        "ctaPvp": "Play a duel"
       },
       "noResults": {
         "title": "No results",
@@ -753,6 +753,7 @@
         "draw": "Draw",
         "vs": "vs",
         "replay": "Replay",
+        "fork": "Fork at this point",
         "library": "Library",
         "dismissHint": "Esc or ← to resume playback"
       },
@@ -802,6 +803,13 @@
       "zoom": {
         "label": "Zoom",
         "level": "Zoom {{n}}×"
+      },
+      "topbar": {
+        "resultShort": {
+          "win": "W",
+          "loss": "L"
+        },
+        "date": "Date"
       },
       "picker": {
         "title": "Go to turn",

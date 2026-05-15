@@ -38,7 +38,10 @@ describe('ContextPillComponent', () => {
     fixture.detectChanges();
     expect(el.querySelector('.context-pill__turn')).not.toBeNull();
     expect(el.querySelector('.context-pill__position')?.textContent?.trim()).toBe('P1');
-    expect(el.querySelector('.context-pill__phase')?.textContent?.trim()).toBe('Main 1');
+    // Phase pill now includes a gold bolt prefix (mockup §context-phase) —
+    // the visible label still ends with "Main 1".
+    expect(el.querySelector('.context-pill__phase')?.textContent?.trim()).toContain('Main 1');
+    expect(el.querySelector('.context-pill__phase-bolt')).not.toBeNull();
     expect(el.querySelector('.context-pill__event')?.textContent?.trim()).toBe('Activation : Ash Blossom');
   });
 
@@ -47,6 +50,8 @@ describe('ContextPillComponent', () => {
     fixture.componentRef.setInput('phase', 'Main 1');
     fixture.detectChanges();
     expect(el.querySelector('.context-pill__turn')?.classList.contains('pill--gold')).toBe(true);
-    expect(el.querySelector('.context-pill__phase')?.classList.contains('pill--cyan')).toBe(true);
+    // V-B6 — phase pill consumes `pill--neutral` (not cyan) so it no longer
+    // clashes with the chain-owner palette; gold bolt sits as a child prefix.
+    expect(el.querySelector('.context-pill__phase')?.classList.contains('pill--neutral')).toBe(true);
   });
 });

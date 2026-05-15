@@ -152,8 +152,66 @@
 .replay-card__avatar  { grid-area: avatar; }
 .replay-card__info    { grid-area: info; min-width: 0; }
 .replay-card__times   { grid-area: meta; }
-.replay-card__actions { grid-area: actions; }
+.replay-card__actions { grid-area: actions; display: flex; align-items: center; gap: 8px; }
 .replay-card .pill    { grid-area: pill; align-self: center; }
+
+// Mockup §hub-filters — search-bar et chips alignés sur la même ligne au
+// desktop (search prend tout l'espace flexible, chips droite), stack vertical
+// sur mobile.
+.hub-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  @include r.respond-above(r.$bp-tablet) {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .search-bar { flex: 1 1 auto; min-width: 0; }
+  .chip-row   { flex: 0 0 auto; }
+}
+
+// Mockup §replay-open-cta — gold pill that slides in from the right at hover.
+// Decorative (the parent `<a [routerLink]>` handles navigation), so it's
+// `aria-hidden` + `pointer-events: none` and hidden on mobile (cascade ≤760).
+.replay-card__open-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse);
+  font: var(--weight-bold) var(--text-xs) / 1 'Inter', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow:
+    0 4px 12px var(--gold-soft-25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: opacity var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+  opacity: 0;
+  transform: translateX(8px);
+  pointer-events: none;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.replay-card:hover .replay-card__open-cta,
+.replay-card:focus-within .replay-card__open-cta {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (max-width: 760px) {
+  .replay-card__open-cta { display: none; }
+}
 
 .replay-card__title {
   display: flex;

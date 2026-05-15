@@ -4,9 +4,8 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { ReplayHubPageComponent } from './replay-hub-page.component';
 import { ReplayHubStore } from './replay-hub-store';
 import { AuthService } from '../../../services/auth.service';
@@ -42,19 +41,17 @@ describe('ReplayHubPageComponent', () => {
   let component: ReplayHubPageComponent;
   let http: HttpTestingController;
   let router: Router;
-  let dialog: jasmine.SpyObj<MatDialog>;
   let deckSubject: BehaviorSubject<Array<{ name: string }>>;
 
   beforeEach(async () => {
     deckSubject = new BehaviorSubject<Array<{ name: string }>>([{ name: 'MyDeck' }]);
-    dialog = jasmine.createSpyObj('MatDialog', ['open']);
 
     const authStub = {
       user: () => ({ id: ME_ID, pseudo: 'Me', role: 'USER' } as unknown as UserDTO),
     };
 
     await TestBed.configureTestingModule({
-      imports: [ReplayHubPageComponent, MatDialogModule, TranslateModule.forRoot()],
+      imports: [ReplayHubPageComponent, TranslateModule.forRoot()],
       providers: [
         provideRouter([]),
         provideHttpClient(),
@@ -63,7 +60,6 @@ describe('ReplayHubPageComponent', () => {
         { provide: AuthService, useValue: authStub },
         { provide: DeckBuildService, useValue: { decks$: deckSubject.asObservable() } },
         { provide: NotificationService, useValue: jasmine.createSpyObj('Notify', ['error']) },
-        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
 
@@ -105,40 +101,37 @@ describe('ReplayHubPageComponent', () => {
 
   // ───────────────────────────────────────────────────────────────────────────
 
-  it('opens the confirm dialog on delete + calls store.deleteReplay() when confirmed', fakeAsync(() => {
-    const dialogRef = { afterClosed: () => of(true) };
-    dialog.open.and.returnValue(dialogRef as ReturnType<MatDialog['open']>);
-    const r = makeReplay('xyz');
-    initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
-
-    component.deleteReplay(r, new Event('click'));
-    flush(); // resolves dialog.afterClosed() — store.deleteReplay() begins.
-
-    expect(dialog.open).toHaveBeenCalled();
-    // Optimistic removal kicked in.
-    expect(component['store'].replays().map(rp => rp.id)).not.toContain('xyz');
-    // Backend DELETE call fires.
-    http.expectOne({ url: '/api/replays/xyz', method: 'DELETE' }).flush(null);
-    flush(); // resolves firstValueFrom + the .then(fetchStats) microtask.
-    // Stats refresh follows.
-    http.expectOne('/api/replays/stats').flush({
-      total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0,
-    });
-  }));
-
-  it('does NOT call the backend when delete is cancelled', fakeAsync(() => {
-    const dialogRef = { afterClosed: () => of(false) };
-    dialog.open.and.returnValue(dialogRef as ReturnType<MatDialog['open']>);
+  it('deletes immediately on click — no confirm dialog (mockup §replay-action-btn--danger tap & gone)', fakeAsync(() => {
     const r = makeReplay('xyz');
     initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
 
     component.deleteReplay(r, new Event('click'));
     flush();
 
-    expect(dialog.open).toHaveBeenCalled();
+    // Optimistic removal — card disappears immediately from filteredReplays.
+    expect(component['store'].replays().map(rp => rp.id)).not.toContain('xyz');
+    // Backend DELETE fires without user confirmation.
+    http.expectOne({ url: '/api/replays/xyz', method: 'DELETE' }).flush(null);
+    flush();
+    // Stats refresh follows.
+    http.expectOne('/api/replays/stats').flush({
+      total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0,
+    });
+  }));
+
+  it('rolls back the optimistic removal when the backend returns an error', fakeAsync(() => {
+    const r = makeReplay('xyz');
+    initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
+
+    component.deleteReplay(r, new Event('click'));
+    flush();
+    expect(component['store'].replays().map(rp => rp.id)).not.toContain('xyz');
+    // Server rejects — store should re-insert the replay (cf. ReplayHubStore.deleteReplay).
+    http.expectOne({ url: '/api/replays/xyz', method: 'DELETE' }).flush(
+      { message: 'forbidden' }, { status: 403, statusText: 'Forbidden' },
+    );
+    flush();
     expect(component['store'].replays().map(rp => rp.id)).toContain('xyz');
-    // No DELETE HTTP call.
-    http.expectNone({ url: '/api/replays/xyz', method: 'DELETE' });
   }));
 
   // ───────────────────────────────────────────────────────────────────────────

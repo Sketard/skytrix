@@ -17,6 +17,20 @@
   max-width: 30ch;
 }
 
+// Mockup §context-phase — neutral pill with a gold bolt prefix (instead of
+// the previous cyan pill which clashed with the chain-owner palette).
+.context-pill__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.context-pill__phase-bolt {
+  color: var(--gold);
+  font-size: 0.85em;
+  line-height: 1;
+}
+
 // ≤ 920px → drop phase chip + event label (D13 step 1)
 @media (max-width: 920px) {
   .context-pill__phase,

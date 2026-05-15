@@ -7,6 +7,9 @@
       [class.pill--cyan]="pillVariant() === 'cyan'">
       {{ outcomeI18n() | translate }}
     </span>
+    @if (metaLine(); as meta) {
+      <p class="text-eyebrow replay-end-overlay__meta">{{ meta }}</p>
+    }
   </header>
 
   <div class="replay-end-overlay__score">
@@ -35,6 +38,12 @@
       class="btn btn--primary btn--lg btn--cta btn--cta-shimmer"
       (click)="replay.emit()">
       {{ 'replay.viewer.endOverlay.replay' | translate }}
+    </button>
+    <button
+      type="button"
+      class="btn btn--secondary btn--lg btn--cta replay-end-overlay__fork"
+      (click)="fork.emit()">
+      {{ 'replay.viewer.endOverlay.fork' | translate }}
     </button>
     <button
       type="button"

@@ -680,7 +680,7 @@
         "all": "Tous",
         "wins": "Victoires",
         "losses": "Défaites",
-        "myDeck": "Deck principal",
+        "myDeck": "Mon deck",
         "last7days": "7 derniers jours"
       },
       "list": {
@@ -694,8 +694,8 @@
       },
       "empty": {
         "title": "Aucun replay pour le moment",
-        "desc": "Joue un duel en ligne ou en bac à sable — tes parties seront automatiquement enregistrées ici.",
-        "ctaPvp": "Jouer en PvP"
+        "desc": "Joue un duel en ligne ou en bac à sable — tes parties seront automatiquement enregistrées ici pour les rejouer, les forker, et progresser.",
+        "ctaPvp": "Jouer un duel"
       },
       "noResults": {
         "title": "Aucun résultat",
@@ -753,6 +753,7 @@
         "draw": "Égalité",
         "vs": "vs",
         "replay": "Rejouer",
+        "fork": "Forker à ce point",
         "library": "Bibliothèque",
         "dismissHint": "Esc ou ← pour reprendre la lecture"
       },
@@ -802,6 +803,13 @@
       "zoom": {
         "label": "Zoom",
         "level": "Zoom {{n}}×"
+      },
+      "topbar": {
+        "resultShort": {
+          "win": "V",
+          "loss": "D"
+        },
+        "date": "Date"
       },
       "picker": {
         "title": "Aller au tour",

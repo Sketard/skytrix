@@ -13,6 +13,7 @@ describe('ReplayEndOverlayComponent', () => {
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', {
       replay: {
+        timeline: { turn: 'Turn {{n}}' },
         viewer: {
           endOverlay: {
             victory: 'Victory',
@@ -20,6 +21,7 @@ describe('ReplayEndOverlayComponent', () => {
             draw: 'Draw',
             vs: 'vs',
             replay: 'Replay',
+            fork: 'Fork at this point',
             library: 'Library',
             dismissHint: 'Esc or ← to resume',
           },
@@ -31,22 +33,55 @@ describe('ReplayEndOverlayComponent', () => {
     el = fixture.nativeElement;
   });
 
-  function bind(outcome: 'victory' | 'defeat' | 'draw', selfLp = 8000, oppLp = 0) {
+  function bind(
+    outcome: 'victory' | 'defeat' | 'draw',
+    selfLp = 8000,
+    oppLp = 0,
+    turnCount: number | null = null,
+    durationSec: number | null = null,
+  ) {
     fixture.componentRef.setInput('outcome', outcome);
     fixture.componentRef.setInput('selfLp', selfLp);
     fixture.componentRef.setInput('oppLp', oppLp);
     fixture.componentRef.setInput('selfName', 'Me');
     fixture.componentRef.setInput('oppName', 'Opp');
+    fixture.componentRef.setInput('turnCount', turnCount);
+    fixture.componentRef.setInput('durationSec', durationSec);
     fixture.detectChanges();
   }
 
-  it('renders exactly 2 CTAs — replay + library — never fork (D18)', () => {
+  it('renders 3 CTAs — replay + fork + library (mockup §end-overlay)', () => {
     bind('victory');
     const buttons = el.querySelectorAll('button');
-    expect(buttons.length).toBe(2);
+    expect(buttons.length).toBe(3);
     expect(buttons[0].textContent?.trim()).toBe('Replay');
-    expect(buttons[1].textContent?.trim()).toBe('Library');
-    expect(el.textContent?.toLowerCase()).not.toContain('fork');
+    expect(buttons[1].textContent?.trim()).toBe('Fork at this point');
+    expect(buttons[2].textContent?.trim()).toBe('Library');
+  });
+
+  it('emits fork() when the fork CTA is clicked', () => {
+    bind('victory');
+    const forkSpy = spyOn(fixture.componentInstance.fork, 'emit');
+    const buttons = el.querySelectorAll('button');
+    (buttons[1] as HTMLButtonElement).click();
+    expect(forkSpy).toHaveBeenCalled();
+  });
+
+  it('renders the meta line `Tour N · MM:SS` when turnCount + durationSec provided', () => {
+    bind('victory', 8000, 0, 11, 14 * 60 + 32);
+    const meta = el.querySelector('.replay-end-overlay__meta');
+    expect(meta?.textContent?.trim()).toBe('Turn 11 · 14:32');
+  });
+
+  it('omits the meta line entirely when turnCount AND durationSec are null', () => {
+    bind('victory'); // defaults turnCount=null, durationSec=null
+    expect(el.querySelector('.replay-end-overlay__meta')).toBeNull();
+  });
+
+  it('renders only the available meta segment when one is missing', () => {
+    bind('defeat', 0, 8000, 7, null);
+    const meta = el.querySelector('.replay-end-overlay__meta');
+    expect(meta?.textContent?.trim()).toBe('Turn 7');
   });
 
   it('applies pill--gold for victory', () => {
@@ -90,8 +125,9 @@ describe('ReplayEndOverlayComponent', () => {
     bind('victory');
     const replaySpy = spyOn(fixture.componentInstance.replay, 'emit');
     const librarySpy = spyOn(fixture.componentInstance.library, 'emit');
-    (el.querySelectorAll('button')[0] as HTMLButtonElement).click();
-    (el.querySelectorAll('button')[1] as HTMLButtonElement).click();
+    const buttons = el.querySelectorAll('button');
+    (buttons[0] as HTMLButtonElement).click(); // Replay
+    (buttons[2] as HTMLButtonElement).click(); // Library (Fork is buttons[1])
     expect(replaySpy).toHaveBeenCalledOnceWith();
     expect(librarySpy).toHaveBeenCalledOnceWith();
   });

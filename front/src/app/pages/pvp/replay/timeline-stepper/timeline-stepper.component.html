@@ -41,6 +41,8 @@
       <button
         type="button"
         class="timeline-stepper__sub-event"
+        [class.chain-group--self]="chainSegmentTone(seg) === 'self'"
+        [class.chain-group--opp]="chainSegmentTone(seg) === 'opp'"
         [attr.aria-label]="('replay.viewer.stepper.subEventAria' | translate) + ' ' + ($index + 1)"
         (click)="onSubEventClick(seg)">
       </button>

@@ -20,6 +20,21 @@
          [appBoardSwipeNavigatorDisabled]="swipeDisabled()"
          (swipeLeft)="onSwipeLeft()"
          (swipeRight)="onSwipeRight()">
+      <!-- V-C6 swipe feedback (mockup §swipe-flash / §swipe-hint). Edge flash
+           fires 250ms after each swipe; hint banner is mounted 3s on narrow
+           viewports then auto-hides on first swipe. -->
+      <div class="swipe-flash swipe-flash--left"
+           [class.is-active]="swipeFlash() === 'left'"
+           aria-hidden="true"></div>
+      <div class="swipe-flash swipe-flash--right"
+           [class.is-active]="swipeFlash() === 'right'"
+           aria-hidden="true"></div>
+      <div class="swipe-hint"
+           [class.is-visible]="swipeHintVisible()"
+           aria-hidden="true">
+        <span class="swipe-hint__icon">↔</span>
+        <span>{{ 'replay.viewer.swipeHint' | translate }}</span>
+      </div>
       <!-- Opponent Hand (top, omniscient — all cards visible) -->
       <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
                          side="opponent"
@@ -102,7 +117,10 @@
           [oppLp]="eo.oppLp"
           [selfName]="eo.selfName"
           [oppName]="eo.oppName"
+          [turnCount]="eo.turnCount"
+          [durationSec]="eo.durationSec"
           (replay)="onEndOverlayReplay()"
+          (fork)="onEndOverlayFork()"
           (library)="onEndOverlayLibrary()"
           (dismissed)="onEndOverlayDismissed()" />
       }
@@ -127,6 +145,8 @@
       [currentEventIndex]="transport.currentIndex()"
       [computedUpToIndex]="computedUpTo()"
       [subEvents]="currentTurnSubEvents()"
+      [boardStates]="boardStates()"
+      [ownPlayerIndex]="perspectiveIndex()"
       (prevTurn)="onSwipeRight()"
       (nextTurn)="onSwipeLeft()"
       (openPicker)="onOpenPicker()"
