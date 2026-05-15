@@ -393,6 +393,7 @@ export class DuelPageComponent implements OnInit {
       hasPendingChainEntry: () => this.wsService.hasPendingChainEntry(),
       chainEntryAnimating: this.chainManager.chainEntryAnimating,
       chainPromptGateActive: this.chainManager.chainPromptGateActive,
+      preActivationBufferActive: () => this.animationService.isPreActivationBufferActive(),
       ownPlayerIndex: this.ownPlayerIndex,
       waitingForOpponent: this.wsService.waitingForOpponent,
       firstPlayerResult: this.wsService.firstPlayerResult,

@@ -148,7 +148,16 @@ export class DrawSequenceManager {
   // --- Draw event processing ---
 
   processDrawEvent(msg: DrawMsg): number | 'async' {
-    if (!this.ctx.isBoardActive()) return 0;
+    // Defense in depth: AnimationOrchestratorService.`_handleEntry` parks
+    // BOARD_CHANGING events (incl. MSG_DRAW) in `_preActivationBuffer`
+    // while !boardActive, so reaching this branch indicates a bypass —
+    // log it and still return 0 so the queue doesn't hang. The legacy
+    // silent return is what made the "cartes déjà en main" symptom so
+    // hard to diagnose; the log surfaces a future regression.
+    if (!this.ctx.isBoardActive()) {
+      this.logger.warn('processDrawEvent fired with !isBoardActive — pre-activation buffer bypassed?');
+      return 0;
+    }
     if (this.ctx.reducedMotion()) return 0;
     const relPlayer = this.ctx.relativePlayer(msg.player);
     const isInitialDraw = !this._initialDrawDone[relPlayer];

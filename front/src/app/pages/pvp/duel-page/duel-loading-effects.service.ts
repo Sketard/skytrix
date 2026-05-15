@@ -5,6 +5,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { DuelCardArtService } from './duel-card-art.service';
+import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { preloadCardImages } from '../pvp-card.utils';
 import type { RoomState } from './room-state-machine.service';
 
@@ -28,6 +29,7 @@ export class DuelLoadingEffectsService {
   private readonly wsService = inject(DuelWebSocketService);
   private readonly roomService = inject(RoomStateMachineService);
   private readonly artService = inject(DuelCardArtService);
+  private readonly orchestrator = inject(AnimationOrchestratorService);
   private readonly http = inject(HttpClient);
   private readonly notify = inject(NotificationService);
 
@@ -85,13 +87,22 @@ export class DuelLoadingEffectsService {
       }
     });
 
-    // Story 2.4 — Transition 'duel-loading' -> 'active' when loading ready
+    // Story 2.4 — Transition 'duel-loading' -> 'active' when loading ready.
+    // Order matters:
+    //  1. setBoardActive(true) — gates downstream animation handlers.
+    //  2. roomState=active — dismisses the dice arena (holdFinal flips false).
+    //  3. drainPreActivationBuffer() — waits BOARD_BREATHE_MS, then replays
+    //     the initial-draw + opening-board events queued during duel-loading.
+    //     Without this drain, those events were silently skipped by the
+    //     per-event `!isBoardActive` guard in draw-sequence-manager (the
+    //     "cartes déjà en main" symptom).
     effect(() => {
       const ready = config.duelLoadingReady();
       if (ready && config.roomState() === 'duel-loading') {
         untracked(() => {
-          config.roomState.set('active');
           this.wsService.setBoardActive(true);
+          config.roomState.set('active');
+          this.orchestrator.drainPreActivationBuffer();
         });
       }
     });

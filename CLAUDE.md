@@ -253,6 +253,35 @@ early locks commit in `finally`. Pre-locks run AFTER `syncAfterBoardState()`
 — safe because `syncAfterBoardState` only calls `syncPileCounts()` when
 the queue has events, never `syncRendered()`.
 
+### Pre-activation Buffer (initial draw breathe beat)
+
+Between `BOARD_STATE` landing (roomState transitions `connecting →
+duel-loading`) and the dice arena dismissing (`duel-loading → active`),
+`boardActive=false`. `AnimationOrchestratorService._handleEntry` parks
+incoming `BOARD_CHANGING_EVENT_TYPES` events in
+`_preActivationBuffer` instead of running them — the legacy
+`!isBoardActive` guard in `draw-sequence-manager.processDrawEvent`
+returned 0 silently, causing the initial 5-card draw to never animate
+("cartes déjà en main" symptom, 2026-05-15).
+
+`DuelLoadingEffectsService.duel-loading → active` effect orders:
+1. `setBoardActive(true)` — gates downstream handlers.
+2. `roomState.set('active')` — dismisses the dice arena.
+3. `orchestrator.drainPreActivationBuffer()` — schedules
+   `prependToQueue(buffer)` + `processAnimationQueue()` after a
+   `ctx.scaledDuration(BOARD_BREATHE_MS, BOARD_BREATHE_MIN_MS)` beat
+   (500ms base, floors at 200ms under slow-playback).
+
+Step 1 MUST precede step 3 — the drain re-enters `_handleEntry`, which
+re-checks `isBoardActive()`; if it ran before the flip, events would be
+re-parked instantly.
+
+`clearTimersAndPolling` clears the buffer + the `_preActivationDrainScheduled`
+flag so a hard reset (rematch, switch, destroy) does not carry stale
+draws into the next duel. The `processDrawEvent` legacy guard is
+retained as defense-in-depth with a `logger.warn` — reaching it now
+indicates a bypass of the buffer, not the expected silent-skip.
+
 ### Pre-lock Handle Ownership
 
 1. **`travelToHand(src, relPlayer, cardImage, options, targetIndex?,
@@ -344,7 +373,16 @@ pulse → effect animations → next link resolve.
 `syncAfterBoardState` (animation-data-source.ts) decides how to sync
 rendered state when a `BOARD_STATE` arrives:
 
-1. **`!boardActive`** → `commitAll()` — hard reset (init, disconnect).
+1. **`!boardActive`** → `syncPileCounts()` — bootstrap path. The very
+   first BOARD_STATE arrives AFTER `MSG_DRAW × 5` (the server runs
+   `start_duel` before the first prompt), so its zone arrays already
+   contain the starting hand. A full `commitAll()` here would copy those
+   cards into the rendered state, then the buffered MSG_DRAWs would
+   animate ON TOP of cards already visible (regression observed
+   2026-05-15). `syncPileCounts()` keeps DECK/EXTRA visible so the
+   "cards travel from deck to hand" animation has a source; the buffered
+   MSG_DRAWs commit HAND through their normal lockZone/commit cycle when
+   `drainPreActivationBuffer()` fires.
 2. **`chainPhase === 'idle' && queueLength === 0`** → `syncRendered()` —
    full sync, safe because no animations are queued.
 3. **`chainPhase !== 'resolving'`** (idle/building with queue) →

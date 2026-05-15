@@ -9,6 +9,7 @@ import {
   LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD,
   REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
   POLL_DROP_REGRESSION_WATCHDOG_MS,
+  BOARD_BREATHE_MS, BOARD_BREATHE_MIN_MS,
   POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS, TARGET_PILE_FLOAT_STAGGER_MS, TARGET_PILE_FLOAT_FADE_OUT_MS,
   CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
   CHAIN_BANNER_PAUSE_MS, CHAIN_BANNER_DEFERRED_BUDGET_MS,
@@ -163,6 +164,22 @@ export class AnimationOrchestratorService {
   private _isReplayingBuffer = false;
   /** Active await-signal effect (cleaned up on destroy/resetForSwitch). */
   private _awaitSignalEffect: EffectRef | null = null;
+
+  /**
+   * Pre-activation buffer: BOARD_CHANGING events that arrived while
+   * `boardActive=false` (i.e. between BOARD_STATE and the dice arena
+   * dismissing). Drained back into the head of the queue by
+   * `drainPreActivationBuffer()` after a BOARD_BREATHE_MS beat, so the
+   * initial 5-card draw plays its full animation instead of being avalé
+   * silently by `processDrawEvent`'s legacy `!isBoardActive` guard.
+   *
+   * FIFO. Filled by `_handleEntry` (single divert point). Drained by the
+   * `DuelLoadingEffectsService` `duel-loading → active` effect.
+   */
+  private readonly _preActivationBuffer: GameEvent[] = [];
+  /** Set while drainPreActivationBuffer's setTimeout is pending. Prevents
+   *  double-drain if setBoardActive(true) fires twice within the beat. */
+  private _preActivationDrainScheduled = false;
 
   /**
    * Commit mode for the queue loop. Every commit decision is a single switch.
@@ -368,6 +385,76 @@ export class AnimationOrchestratorService {
   }
 
   // ---------------------------------------------------------------------------
+  // Pre-activation buffer (initial draw breathe beat)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Read-only access to the pre-activation buffer length — for tests +
+   * diagnostics. Production code MUST NOT depend on this value (the
+   * orchestrator owns the buffer's lifecycle end-to-end).
+   */
+  get preActivationBufferLength(): number {
+    return this._preActivationBuffer.length;
+  }
+
+  /**
+   * True while initial-draw events are still parked OR the breathe-delay
+   * drain timer is pending. Consumed by `PromptDerivationService` to gate
+   * `SELECT_IDLECMD` / `SELECT_BATTLECMD` from flashing during the
+   * dice→board transition: without this gate the first prompt would
+   * appear, vanish under `isAnimating()` once the drain fires, then
+   * re-appear, producing a visible flicker.
+   *
+   * NOT a signal — read at compute-time by `visiblePrompt`. The trigger
+   * for re-evaluation comes from the queue/animating signals the same
+   * computed already reads.
+   */
+  isPreActivationBufferActive(): boolean {
+    return this._preActivationDrainScheduled || this._preActivationBuffer.length > 0;
+  }
+
+  /**
+   * Test seam: pushes an event into the pre-activation buffer directly,
+   * bypassing the `_handleEntry` queue-loop divert. Production code
+   * routes events through `_handleEntry` only — spec callers use this
+   * to set up fixtures without driving the whole queue.
+   */
+  bufferPreActivationForTesting(event: GameEvent): void {
+    this._preActivationBuffer.push(event);
+  }
+
+  /**
+   * Called by `DuelLoadingEffectsService` after `setBoardActive(true)` —
+   * waits `BOARD_BREATHE_MS` (scaled by speedMultiplier), then prepends
+   * the buffered events back into the animation queue and re-kicks the
+   * processor. Idempotent: a second call while the timer is pending is
+   * a no-op, and an empty buffer resolves immediately.
+   *
+   * `BOARD_CHANGING` events that arrive while `boardActive=false` are
+   * parked by `_handleEntry` instead of running. The drain re-injects
+   * them through the normal queue path so locks, commits, and chain
+   * gating behave identically to the live case — only the timing shifts.
+   */
+  drainPreActivationBuffer(): void {
+    if (this._preActivationDrainScheduled) return;
+    if (this._preActivationBuffer.length === 0) return;
+    this._preActivationDrainScheduled = true;
+    const delay = this.ctx.scaledDuration(BOARD_BREATHE_MS, BOARD_BREATHE_MIN_MS);
+    this.trace('preActivationDrain:schedule', { bufferLen: this._preActivationBuffer.length, delay });
+    const t = setTimeout(() => {
+      this._preActivationDrainScheduled = false;
+      // Splice out a snapshot so concurrent buffering during the drain
+      // (defensive — shouldn't happen in practice) doesn't double-process.
+      const drained = this._preActivationBuffer.splice(0);
+      if (drained.length === 0) return;
+      this.trace('preActivationDrain:fire', { count: drained.length });
+      this.dataSource.prependToQueue(drained);
+      this.processAnimationQueue();
+    }, delay);
+    this.animationTimeouts.push(t);
+  }
+
+  // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
 
@@ -380,6 +467,12 @@ export class AnimationOrchestratorService {
     this._awaitSignalEffect?.destroy();
     this._awaitSignalEffect = null;
     this._isProcessing = false;
+    // Drop any parked initial-draw events — a hard reset (destroy /
+    // resetForSwitch) means the next duel starts fresh, replaying its own
+    // BOARD_STATE + MSG_DRAW sequence. Carrying stale buffered events
+    // would mean the rematch board flashes the previous duel's draws.
+    this._preActivationBuffer.length = 0;
+    this._preActivationDrainScheduled = false;
   }
 
   destroy(): void {
@@ -659,6 +752,31 @@ export class AnimationOrchestratorService {
    * inline block — only the call site moved.
    */
   private async _handleEntry(event: GameEvent): Promise<'continue' | 'return'> {
+    // Pre-activation buffer divert: between BOARD_STATE landing and the
+    // dice arena dismissing (roomState 'duel-loading' → 'active'), the
+    // initial-draw + opening-board events would otherwise be silently
+    // skipped by per-event `!isBoardActive` guards (draw-sequence-manager
+    // legacy behavior). Park them in `_preActivationBuffer` instead;
+    // `drainPreActivationBuffer()` re-injects them after `BOARD_BREATHE_MS`
+    // when `DuelLoadingEffectsService` flips boardActive=true.
+    //
+    // Limited to `BOARD_CHANGING_EVENT_TYPES` (MSG_MOVE, MSG_DRAW, …).
+    // Non-board-changing messages (TIMER_STATE, MSG_HINT) keep their
+    // existing path — they're either dropped naturally or rendered to
+    // text-only UI that doesn't need the breathe beat.
+    //
+    // The `_isReplayingBuffer` guard prevents re-buffering during a
+    // late-arriving chain replay (defensive — the replay path triggers
+    // only mid-DUELING so boardActive is true, but the cost of the check
+    // is one boolean read).
+    if (!this.ctx.isBoardActive()
+        && !this._isReplayingBuffer
+        && BOARD_CHANGING_EVENT_TYPES.has(event.type)) {
+      this._preActivationBuffer.push(event);
+      this.trace('preActivationDrain:park', { type: event.type, bufferLen: this._preActivationBuffer.length });
+      return 'continue';
+    }
+
     const result = this.processEvent(event);
     const resultLabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}ms`;
     this.trace('processEvent', { type: event.type, result: resultLabel });

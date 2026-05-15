@@ -27,6 +27,16 @@ export const QUEUE_COLLAPSE_KEEP = 3;
 /** Safety timeout (ms) for replayBuffer batch-end resolution. */
 export const REPLAY_BUFFER_SAFETY_TIMEOUT_MS = 10_000;
 
+/** Beat between board activation (`setBoardActive(true)` after the dice arena
+ *  dismisses) and the drain of pre-activation buffered events. Lets the eye
+ *  find the freshly revealed board zones before the first card animation —
+ *  without this beat the initial 5-card MSG_DRAW fires the same frame the
+ *  arena fades, so the cards appear to be in hand "instantly". 500ms matches
+ *  the TCG-digital convention (Master Duel, Duel Links). Scaled by
+ *  `ctx.scaledDuration` so slow-playback proportionally stretches the beat. */
+export const BOARD_BREATHE_MS = 500;
+export const BOARD_BREATHE_MIN_MS = 200;
+
 /**
  * Stagger delay (ms) between events inside a `group` queue directive during
  * buffer replay. Small offset gives consecutive ghosts a visible lead-in

@@ -43,23 +43,29 @@ describe('syncAfterBoardState', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Tier 1: !boardActive → commitAll (hard reset)
+  // Tier 1: !boardActive → syncPileCounts (bootstrap, pre-activation buffer
+  //         path — initial MSG_DRAW ×5 parked in orchestrator, must not be
+  //         pre-committed by BOARD_STATE or the draw animations play on top
+  //         of cards already visible. See CLAUDE.md §syncAfterBoardState).
   // ---------------------------------------------------------------------------
 
-  it('tier 1 (!boardActive): commitAll only — no syncRendered/syncPileCounts', () => {
+  it('tier 1 (!boardActive): syncPileCounts only — no commitAll/syncRendered', () => {
     syncAfterBoardState(mockRbs as unknown as RenderedBoardStateService,
       'idle', 0, stubBoardState, false);
-    expect(mockRbs.commitAll).toHaveBeenCalledTimes(1);
+    expect(mockRbs.syncPileCounts).toHaveBeenCalledTimes(1);
+    expect(mockRbs.commitAll).not.toHaveBeenCalled();
     expect(mockRbs.syncRendered).not.toHaveBeenCalled();
-    expect(mockRbs.syncPileCounts).not.toHaveBeenCalled();
   });
 
-  it('tier 1 priority: !boardActive overrides idle+queueLen=0 (which would normally syncRendered)', () => {
-    // Even with the conditions for tier 2, !boardActive forces tier 1.
+  it('tier 1 priority: !boardActive overrides idle+queueLen=0 (would normally syncRendered)', () => {
+    // Even with the conditions for tier 2, !boardActive forces tier 1 —
+    // the zone arrays in BOARD_STATE already reflect post-draw state and
+    // must not propagate to rendered until MSG_DRAW animations commit them.
     syncAfterBoardState(mockRbs as unknown as RenderedBoardStateService,
       'idle', 0, stubBoardState, false);
-    expect(mockRbs.commitAll).toHaveBeenCalledTimes(1);
+    expect(mockRbs.syncPileCounts).toHaveBeenCalledTimes(1);
     expect(mockRbs.syncRendered).not.toHaveBeenCalled();
+    expect(mockRbs.commitAll).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------------------

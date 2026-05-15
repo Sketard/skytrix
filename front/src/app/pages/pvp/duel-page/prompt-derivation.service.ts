@@ -26,6 +26,12 @@ interface PromptDerivationConfig {
   hasPendingChainEntry: () => boolean;
   chainEntryAnimating: Signal<boolean>;
   chainPromptGateActive: Signal<boolean>;
+  /** True between BOARD_STATE landing and the pre-activation buffer drain
+   *  completing (initial 5-card MSG_DRAW × 2 still pending or animating).
+   *  Gates SELECT_IDLECMD from flashing on top of the dice arena dismiss
+   *  and again after the draw animation. See CLAUDE.md
+   *  §"Pre-activation Buffer". */
+  preActivationBufferActive: () => boolean;
   ownPlayerIndex: Signal<number>;
   waitingForOpponent: Signal<boolean>;
   firstPlayerResult: Signal<FirstPlayerResult | null>;
@@ -75,7 +81,8 @@ export class PromptDerivationService {
     const prompt = c.pendingPrompt();
     const queuePending = c.queueLength() > 0;
     const chainPromptGate = c.chainPromptGateActive();
-    const blocked = animating || chainEntryAnim || queuePending || chainPromptGate;
+    const preActivation = c.preActivationBufferActive();
+    const blocked = animating || chainEntryAnim || queuePending || chainPromptGate || preActivation;
     if (!blocked) return prompt;
     if (c.chainPhase() === 'building' && c.hasPendingChainEntry()
       && !animating && !queuePending) {

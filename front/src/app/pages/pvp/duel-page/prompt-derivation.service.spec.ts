@@ -22,6 +22,7 @@ interface Harness {
   hasPendingChainEntry: WritableSignal<boolean>;
   chainEntryAnimating: WritableSignal<boolean>;
   chainPromptGateActive: WritableSignal<boolean>;
+  preActivationBufferActive: WritableSignal<boolean>;
   ownPlayerIndex: WritableSignal<number>;
   waitingForOpponent: WritableSignal<boolean>;
   firstPlayerResult: WritableSignal<{ goFirst: boolean } | null>;
@@ -38,6 +39,7 @@ function makeHarness(): Harness {
   const hasPendingChainEntry = signal(false);
   const chainEntryAnimating = signal(false);
   const chainPromptGateActive = signal(false);
+  const preActivationBufferActive = signal(false);
   const ownPlayerIndex = signal(0);
   const waitingForOpponent = signal(false);
   const firstPlayerResult = signal<{ goFirst: boolean } | null>(null);
@@ -56,6 +58,7 @@ function makeHarness(): Harness {
     hasPendingChainEntry: () => hasPendingChainEntry(),
     chainEntryAnimating,
     chainPromptGateActive,
+    preActivationBufferActive: () => preActivationBufferActive(),
     ownPlayerIndex,
     waitingForOpponent,
     firstPlayerResult,
@@ -67,6 +70,7 @@ function makeHarness(): Harness {
   return {
     service, pendingPrompt, isAnimating, queueLength, chainPhase,
     hasPendingChainEntry, chainEntryAnimating, chainPromptGateActive,
+    preActivationBufferActive,
     ownPlayerIndex, waitingForOpponent, firstPlayerResult, diceResult, diceInProgress,
     ocgPlayerIndex,
   };
@@ -143,6 +147,36 @@ describe('PromptDerivationService', () => {
       h.pendingPrompt.set(idleCmd());
       h.chainPromptGateActive.set(true);
       expect(h.service.visiblePrompt()).toBeNull();
+    });
+
+    it('returns null when preActivationBufferActive=true (initial-draw breathe window)', () => {
+      // SELECT_IDLECMD arrives right after BOARD_STATE during pre-DUELING.
+      // The orchestrator has parked MSG_DRAW × 5 in `_preActivationBuffer`
+      // and `isPreActivationBufferActive()` is true. Without this gate the
+      // prompt would render on top of the dice arena dismiss, then hide
+      // under isAnimating during the draw, then re-appear — visible flicker.
+      const h = makeHarness();
+      h.pendingPrompt.set(idleCmd());
+      h.preActivationBufferActive.set(true);
+      expect(h.service.visiblePrompt()).toBeNull();
+    });
+
+    it('prompt becomes visible once preActivationBufferActive flips false + queue empties', () => {
+      // Drain cycle: buffer empties → queueLength temporarily > 0 → isAnimating → 0.
+      // Final state: all three predicates false → prompt visible.
+      const h = makeHarness();
+      const p = idleCmd();
+      h.pendingPrompt.set(p);
+      h.preActivationBufferActive.set(true);
+      h.queueLength.set(5);
+      h.isAnimating.set(true);
+      expect(h.service.visiblePrompt()).toBeNull();
+
+      // Drain finished, animations finished.
+      h.preActivationBufferActive.set(false);
+      h.queueLength.set(0);
+      h.isAnimating.set(false);
+      expect(h.service.visiblePrompt()).toBe(p);
     });
 
     it('lets cost prompts through during chain building when only chainEntryAnimating blocks', () => {

@@ -65,7 +65,16 @@ export function syncAfterBoardState(
 ): void {
   rbs.updateLogical(boardState);
   if (!boardActive) {
-    rbs.commitAll();
+    // Pre-activation: the orchestrator parks the initial MSG_DRAW × 5 in
+    // `_preActivationBuffer` while `boardActive=false`. A full `commitAll()`
+    // here would copy the server's post-draw zones (HAND already populated)
+    // straight into the rendered state, so when the buffer drains the
+    // animation plays ON TOP of cards already visible in hand. Use
+    // `syncPileCounts()` instead: it brings DECK/EXTRA counts + global
+    // metadata up to date (so the deck pile is visible to "draw from")
+    // without touching the zone arrays. The buffered MSG_DRAWs commit
+    // HAND via their normal lockZone/commit cycle after the drain.
+    rbs.syncPileCounts();
   } else if (chainPhase === 'idle' && queueLength === 0) {
     rbs.syncRendered();
   } else if (chainPhase !== 'resolving') {

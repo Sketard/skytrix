@@ -157,6 +157,8 @@ class StubAnimationOrchestrator {
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
   destroy = jasmine.createSpy('destroy');
   onStateSync = jasmine.createSpy('onStateSync');
+  isPreActivationBufferActive = jasmine.createSpy('isPreActivationBufferActive').and.returnValue(false);
+  drainPreActivationBuffer = jasmine.createSpy('drainPreActivationBuffer');
 }
 
 /** Stub for SoloDuelOrchestratorService. */
