@@ -1,6 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { buildPreDuelSnapshot } from './pre-duel-snapshot.js';
-import type { ActiveDuelSession } from './types.js';
+import type { ActiveDuelSession, FirstPlayerState, DiceRoll } from './types.js';
+import type { Player } from './ws-protocol.js';
+
+/** Build a FirstPlayerState fixture with auto-derived `resolvedWinner`
+ *  (winner = higher sum, null on tie). Pass `winnerOverride` to model the
+ *  tie-ceiling case where the coordinator picks a random winner despite
+ *  matching sums. */
+function makeFirstPlayerState(
+  r0: DiceRoll | null,
+  r1: DiceRoll | null,
+  round = 0,
+  winnerOverride?: Player | null,
+): FirstPlayerState {
+  let resolvedWinner: Player | null = null;
+  if (winnerOverride !== undefined) resolvedWinner = winnerOverride;
+  else if (r0 && r1) {
+    const s0 = r0[0] + r0[1];
+    const s1 = r1[0] + r1[1];
+    resolvedWinner = s0 === s1 ? null : s0 > s1 ? 0 : 1;
+  }
+  return { rolls: [r0, r1], timers: [], round, resolvedWinner };
+}
 
 function makeSession(overrides: Partial<ActiveDuelSession> = {}): ActiveDuelSession {
   return {
@@ -63,7 +84,7 @@ describe('buildPreDuelSnapshot', () => {
     // once both rolls are in — the live `resolveDiceRound` checks the same).
     const s = makeSession({
       phase: 'ROLLING_DICE',
-      firstPlayerState: { rolls: [[3, 4], null], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([3, 4], null),
     });
     expect(buildPreDuelSnapshot(s, 0)).toEqual([]);
   });
@@ -71,7 +92,7 @@ describe('buildPreDuelSnapshot', () => {
   it('returns DICE_RESULT during DICE_RESOLVED — suspense window between roll and CHOOSE_FIRST_PLAYER', () => {
     const s = makeSession({
       phase: 'DICE_RESOLVED',
-      firstPlayerState: { rolls: [[6, 6], [3, 4]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([6, 6], [3, 4]),
     });
     const out = buildPreDuelSnapshot(s, 0);
     expect(out).toHaveLength(1);
@@ -81,26 +102,38 @@ describe('buildPreDuelSnapshot', () => {
   it('returns DICE_RESULT during CHOOSE_FIRST_PLAYER — SELECT_FIRST_PLAYER itself replayed by resendPendingPrompt', () => {
     const s = makeSession({
       phase: 'CHOOSE_FIRST_PLAYER',
-      firstPlayerState: { rolls: [[2, 3], [5, 6]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([2, 3], [5, 6]),
     });
     const out = buildPreDuelSnapshot(s, 1);
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ type: 'DICE_RESULT', winner: 1 });
   });
 
-  it('winner is derived from sums (tie returns null)', () => {
+  it('winner echoes the coordinator decision (natural tie pre-ceiling → null)', () => {
     const s = makeSession({
       phase: 'DICE_RESOLVED',
-      firstPlayerState: { rolls: [[3, 4], [4, 3]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([3, 4], [4, 3]),
     });
     const out = buildPreDuelSnapshot(s, 0);
     expect(out[0]).toMatchObject({ winner: null });
   });
 
+  it('winner echoes the coordinator decision (tie-ceiling random pick → consistent with broadcast)', () => {
+    // At MAX_ROUNDS - 1 the coordinator forces a winner even when sums match
+    // — DICE_RESULT was broadcast with the random pick, and a refreshing
+    // client must see the same `winner` value, not null re-derived from sums.
+    const s = makeSession({
+      phase: 'DICE_RESOLVED',
+      firstPlayerState: makeFirstPlayerState([3, 4], [4, 3], 9, 1),
+    });
+    const out = buildPreDuelSnapshot(s, 0);
+    expect(out[0]).toMatchObject({ type: 'DICE_RESULT', sum0: 7, sum1: 7, winner: 1 });
+  });
+
   it('returns DICE_RESULT + DECK_PREFETCH + FIRST_PLAYER_RESULT during FIRST_PLAYER_RESOLVED', () => {
     const s = makeSession({
       phase: 'FIRST_PLAYER_RESOLVED',
-      firstPlayerState: { rolls: [[6, 6], [1, 1]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([6, 6], [1, 1]),
       chosenFirstPlayer: 0,
     });
     const out = buildPreDuelSnapshot(s, 0);
@@ -113,7 +146,7 @@ describe('buildPreDuelSnapshot', () => {
   it('FIRST_PLAYER_RESOLVED — recipient on the OTHER side gets goFirst=false and their own cardCodes', () => {
     const s = makeSession({
       phase: 'FIRST_PLAYER_RESOLVED',
-      firstPlayerState: { rolls: [[6, 6], [1, 1]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([6, 6], [1, 1]),
       chosenFirstPlayer: 0,
     });
     const out = buildPreDuelSnapshot(s, 1);
@@ -126,7 +159,7 @@ describe('buildPreDuelSnapshot', () => {
     // DICE_RESULT.winner still reports 0 (the roll-winner, who got to pick).
     const s = makeSession({
       phase: 'FIRST_PLAYER_RESOLVED',
-      firstPlayerState: { rolls: [[6, 6], [1, 1]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([6, 6], [1, 1]),
       chosenFirstPlayer: 1,
     });
     const out = buildPreDuelSnapshot(s, 0);
@@ -139,7 +172,7 @@ describe('buildPreDuelSnapshot', () => {
     // before flipping phase) but guard against partial state mid-cleanup.
     const s = makeSession({
       phase: 'FIRST_PLAYER_RESOLVED',
-      firstPlayerState: { rolls: [[6, 6], [1, 1]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState([6, 6], [1, 1]),
       chosenFirstPlayer: null,
     });
     const out = buildPreDuelSnapshot(s, 0);
@@ -155,7 +188,7 @@ describe('buildPreDuelSnapshot', () => {
   it('DICE_RESOLVED with missing rolls — defensive: no DICE_RESULT emitted', () => {
     const s = makeSession({
       phase: 'DICE_RESOLVED',
-      firstPlayerState: { rolls: [null, [3, 4]], timers: [], round: 0 },
+      firstPlayerState: makeFirstPlayerState(null, [3, 4]),
     });
     expect(buildPreDuelSnapshot(s, 0)).toEqual([]);
   });

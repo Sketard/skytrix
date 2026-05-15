@@ -109,7 +109,7 @@ export function disposeFirstPlayer(session: ActiveDuelSession): void {
 export function startFirstPlayerPhase(session: ActiveDuelSession, round = 0): void {
   const cfg = getCfg();
   session.phase = 'ROLLING_DICE';
-  session.firstPlayerState = { rolls: [null, null], timers: [], round };
+  session.firstPlayerState = { rolls: [null, null], timers: [], round, resolvedWinner: null };
   session.awaitingResponse = [true, true];
 
   const prompt0: ServerMessage = { type: 'DICE_ROLL', player: 0 };
@@ -142,6 +142,7 @@ function resolveDiceRound(session: ActiveDuelSession): void {
   const sum0 = diceSum(r0);
   const sum1 = diceSum(r1);
   const winner = decideWinner(sum0, sum1, round);
+  session.firstPlayerState.resolvedWinner = winner;
 
   broadcastDiceResult(session, r0, r1, sum0, sum1, winner);
 

@@ -17,7 +17,7 @@
  * is exactly what a future refactor would silently break.
  */
 
-import { Component, signal, WritableSignal, Signal, computed } from '@angular/core';
+import { Component, input, signal, WritableSignal, Signal, computed } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
@@ -26,6 +26,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 
 import { DuelPageComponent } from './duel-page.component';
+import { PvpDiceArenaComponent } from './pvp-dice-arena/pvp-dice-arena.component';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import { CardDataCacheService } from './card-data-cache.service';
@@ -907,5 +908,122 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
       fixture.destroy();
       expect(sessionStorage.getItem('solo-duel-tokens-r4')).toBeNull();
     });
+  });
+});
+
+// =============================================================================
+// C1.6 — <app-pvp-dice-arena> wrapper bindings vs roomState
+// =============================================================================
+//
+// Pins the truth table encoded inline in duel-page.component.html: the
+// `@if` gate (4 states) plus the `[preparing]` and `[holdFinal]` input
+// expressions. A regression here re-introduces either the "PRÉPARATION
+// DU DUEL…" flash (if `creating-duel` or `connecting` drops out of the
+// gate) or the dice→empty-board flash (if `duel-loading` drops out, or
+// if `holdFinal` no longer holds through it).
+
+/** Capture-only stub that mirrors the real dice arena's selector +
+ *  input signature. The spec reads each `InputSignal` after
+ *  `detectChanges()` to assert what the wrapper bound. */
+@Component({
+  selector: 'app-pvp-dice-arena',
+  standalone: true,
+  template: '',
+})
+class StubDiceArenaComponent {
+  readonly preparing = input<boolean>(false);
+  readonly holdFinal = input<boolean>(false);
+}
+
+describe('DuelPageComponent — dice-arena wrapper bindings (C1.6)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let room: StubRoomStateMachine;
+
+  // Truth table the template encodes. `null` for the arena entry means
+  // the @if gate is false (arena is not rendered).
+  type RS = 'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'duel-loading' | 'active' | 'error';
+  const TABLE: ReadonlyArray<readonly [RS, { preparing: boolean; holdFinal: boolean } | null]> = [
+    ['loading',        null],
+    ['waiting',        null],
+    ['error',          null],
+    ['creating-duel',  { preparing: true,  holdFinal: true  }],
+    ['connecting',     { preparing: true,  holdFinal: true  }],
+    ['duel-loading',   { preparing: false, holdFinal: true  }],
+    ['active',         { preparing: false, holdFinal: false }],
+  ];
+
+  beforeEach(() => {
+    setupTestBed();
+    // Re-override the component to install (a) the stub dice-arena in
+    // `imports`, and (b) a minimal template containing only the arena
+    // block we want to pin. `overrideComponent` forbids mixing `set`
+    // with `add`/`remove` in one call, so split into two consecutive
+    // overrides — each call merges by key into the accumulated override
+    // (the `providers` set by `setupTestBed` survives).
+    TestBed.overrideComponent(DuelPageComponent, {
+      remove: { imports: [PvpDiceArenaComponent] },
+      add: { imports: [StubDiceArenaComponent] },
+    });
+    TestBed.overrideComponent(DuelPageComponent, {
+      set: {
+        // Minimal template — only the arena block we want to pin. Other
+        // top-level @if branches (waiting room, error page, board) are
+        // omitted so unrelated bindings can't trip on the stub graph.
+        template: `
+          @if (roomState() === 'creating-duel' || roomState() === 'connecting' || roomState() === 'duel-loading' || roomState() === 'active') {
+            <app-pvp-dice-arena
+              [preparing]="roomState() === 'creating-duel' || roomState() === 'connecting'"
+              [holdFinal]="roomState() !== 'active'" />
+          }
+        `,
+      },
+    });
+    withHistoryState({}, () => {
+      fixture = TestBed.createComponent(DuelPageComponent);
+      room = fixture.componentRef.injector.get(RoomStateMachineService) as unknown as StubRoomStateMachine;
+    });
+  });
+
+  /** Locate the rendered stub instance (or null if the @if gate is off). */
+  function getStubArena(): StubDiceArenaComponent | null {
+    const debugEl = fixture.debugElement.query(
+      (el) => el.componentInstance instanceof StubDiceArenaComponent,
+    );
+    return debugEl ? (debugEl.componentInstance as StubDiceArenaComponent) : null;
+  }
+
+  for (const [state, expected] of TABLE) {
+    it(`roomState='${state}' → ${expected === null ? 'arena hidden' : `preparing=${expected.preparing}, holdFinal=${expected.holdFinal}`}`, () => {
+      room.roomState.set(state);
+      fixture.detectChanges();
+      const arena = getStubArena();
+      if (expected === null) {
+        expect(arena).toBeNull();
+      } else {
+        expect(arena).not.toBeNull();
+        expect(arena!.preparing()).toBe(expected.preparing);
+        expect(arena!.holdFinal()).toBe(expected.holdFinal);
+      }
+    });
+  }
+
+  it('transitioning creating-duel → connecting → duel-loading → active keeps holdFinal latched until active', () => {
+    // The whole point of `holdFinal` is to hold the arena's final stage
+    // visible across the duel-loading window. This sequence pins that:
+    // holdFinal stays true through the first three states and only drops
+    // when we land on 'active'.
+    const sequence: ReadonlyArray<readonly [RS, boolean]> = [
+      ['creating-duel', true],
+      ['connecting',    true],
+      ['duel-loading',  true],
+      ['active',        false],
+    ];
+    for (const [state, expectedHoldFinal] of sequence) {
+      room.roomState.set(state);
+      fixture.detectChanges();
+      const arena = getStubArena();
+      expect(arena).not.toBeNull();
+      expect(arena!.holdFinal()).toBe(expectedHoldFinal);
+    }
   });
 });

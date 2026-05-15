@@ -24,7 +24,7 @@
  */
 import type { ActiveDuelSession } from './types.js';
 import { diceSum, extractCardCodesForPlayer } from './types.js';
-import type { ServerMessage, Player } from './ws-protocol.js';
+import type { ServerMessage } from './ws-protocol.js';
 
 export function buildPreDuelSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): ServerMessage[] {
   switch (session.phase) {
@@ -66,10 +66,12 @@ function buildDiceResult(session: ActiveDuelSession): ServerMessage | null {
   if (r0 === null || r1 === null) return null;
   const sum0 = diceSum(r0);
   const sum1 = diceSum(r1);
-  // Winner is derived from sums — the "who got to pick" question. On
-  // FIRST_PLAYER_RESOLVED the actual first player can differ from the roll
-  // winner (the winner may pick `goFirst=false`), but DICE_RESULT only
-  // reports the roll outcome.
-  const winner: Player | null = sum0 === sum1 ? null : sum0 > sum1 ? 0 : 1;
+  // Winner is the value the coordinator already broadcast — read it from
+  // session state instead of re-deriving from sums, so a tie-ceiling random
+  // pick (decideWinner at round === MAX_ROUNDS - 1) stays consistent with
+  // what the live clients saw. On FIRST_PLAYER_RESOLVED the actual first
+  // player can still differ (the roll winner may pick `goFirst=false`),
+  // but DICE_RESULT only reports the roll outcome.
+  const winner = session.firstPlayerState.resolvedWinner;
   return { type: 'DICE_RESULT', dice0: [r0[0], r0[1]], dice1: [r1[0], r1[1]], sum0, sum1, winner };
 }

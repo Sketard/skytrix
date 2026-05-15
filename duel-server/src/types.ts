@@ -199,7 +199,8 @@ export interface ReplayMetadata {
   date: string;
   scriptsHash: string;
   ocgcoreVersion: string;
-  durationSec: number;
+  /** Null on legacy replays persisted before the field was added. */
+  durationSec: number | null;
 }
 
 export interface WorkerReplayPayload {
@@ -284,11 +285,19 @@ export type SessionPhase =
 /** Per-session state owned by `first-player-coordinator`. `rolls` is the
  *  pair of 2D6 rolls for each player (null until that player has confirmed
  *  readiness); `timers` collects every setTimeout so cleanup can clear them
- *  in one sweep; `round` increments on ties for diagnostics. */
+ *  in one sweep; `round` increments on ties for diagnostics.
+ *
+ *  `resolvedWinner` is set by `decideWinner` once both rolls are in — null
+ *  on a tie (pre-ceiling) and an explicit 0 or 1 once the round has a
+ *  winner. Pre-duel STATE_SYNC consumes this instead of re-deriving from
+ *  sums, so a tie-ceiling random pick stays consistent with what was
+ *  broadcast in the original DICE_RESULT (sums alone can't disambiguate
+ *  the ceiling case: see `decideWinner` in first-player-coordinator.ts). */
 export interface FirstPlayerState {
   rolls: [DiceRoll | null, DiceRoll | null];
   timers: ReturnType<typeof setTimeout>[];
   round: number;
+  resolvedWinner: Player | null;
 }
 
 /** A single 2D6 roll: two values in [1..6]. */
