@@ -50,7 +50,13 @@ export class ReplayHubStore {
 
   private readonly currentOffset = signal(0);
   private readonly totalElements = signal<number | null>(null);
-  private readonly fetchingMore = signal(false);
+  private readonly _fetchingMore = signal(false);
+
+  /** Public read-only view of the "loading more" flag — drives the inline
+   *  skeleton at the bottom of the virtual-scroll viewport (Q6-3). The
+   *  internal `_fetchingMore` stays private so writes go through
+   *  `loadNextPage()` exclusively. */
+  readonly fetchingMore = this._fetchingMore.asReadonly();
 
   // Default deck name (first in user's deck list, refreshed when decks$ fires).
   // Used by the "myDeck" filter — falls back to '' when the user has no decks.
@@ -171,7 +177,7 @@ export class ReplayHubStore {
 
   loadNextPage(): void {
     if (this.fetchingMore() || !this.hasMore() || this.loading()) return;
-    this.fetchingMore.set(true);
+    this._fetchingMore.set(true);
     // `currentOffset` is the *page index* to request next (0-based, see
     // fetchSnapshot). The back's `offset` query param is mapped to
     // `PageRequest.of(page, size)` — Spring page semantics. Sending a row
@@ -184,11 +190,11 @@ export class ReplayHubStore {
         this.currentOffset.set(pageIndex + 1);
         // Refresh totalElements in case rows landed mid-scroll.
         this.totalElements.set(page.size);
-        this.fetchingMore.set(false);
+        this._fetchingMore.set(false);
       },
       error: err => {
         this.notify.error(err);
-        this.fetchingMore.set(false);
+        this._fetchingMore.set(false);
       },
     });
   }

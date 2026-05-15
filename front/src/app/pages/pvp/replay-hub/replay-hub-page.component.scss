@@ -107,6 +107,17 @@
 // =============================================================================
 // Replay list viewport — virtual-scroll with explicit height (cf. spec audit)
 // =============================================================================
+// Inline skeleton (Q6-3) — sits below the virtual-for items inside the
+// viewport. Same DOM scope as the cards so it scrolls with them; no global
+// page loader during loadNextPage().
+.replay-list-skeleton--inline {
+  display: block;
+  margin-top: 4px;
+  padding-right: 4px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
 .replay-list-viewport {
   display: block;
   // Flex-driven height — the host is 100dvh, sibling sections take their

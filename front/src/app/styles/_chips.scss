@@ -32,7 +32,18 @@
 }
 
 .chip__icon {
+  // Same vertical-centering pin as `.pill__icon` and `.icon-btn` mat-icon :
+  // mat-icon ships with `width/height/line-height: 24px`, and a 14px
+  // font-size alone leaves the glyph floating inside the 24px box. Pin
+  // all three dims so `align-items: center` of the parent lands the
+  // icon on the same baseline as the chip text.
   font-size: 14px !important; // !important: override mat-icon default
+  width: 14px !important;
+  height: 14px !important;
+  line-height: 14px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 // --- Active state -----------------------------------------------------------

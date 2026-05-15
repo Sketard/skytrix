@@ -106,7 +106,7 @@ export class ReplayHubPageComponent implements OnInit {
     return this.mySide(r) === 0 ? 1 : 0;
   }
   opponentName(r: ReplayDTO): string {
-    return r.metadata.playerUsernames[this.opponentSide(r)] ?? '';
+    return this.realPseudo(r.metadata.playerUsernames[this.opponentSide(r)]);
   }
   myDeckName(r: ReplayDTO): string {
     return this.realDeckName(r.metadata.deckNames[this.mySide(r)]);
@@ -122,6 +122,18 @@ export class ReplayHubPageComponent implements OnInit {
   private realDeckName(raw: string | undefined | null): string {
     if (!raw) return '';
     return raw.trim().toLowerCase() === 'deck' ? '' : raw;
+  }
+  /** The duel-server falls back to `parsed.player.id` when `username` is
+   *  absent (server.ts:475). For legacy or pre-auth-cleanup replays the id
+   *  was literally `'1'` / `'2'` — the hub would then render `vs 1` plus a
+   *  cropped avatar badge `1`. We treat purely-numeric pseudos (or empty)
+   *  as "missing" so the template falls back to the i18n key
+   *  `replay.hub.card.opponentUnknown`. */
+  private realPseudo(raw: string | undefined | null): string {
+    if (!raw) return '';
+    const trimmed = raw.trim();
+    if (trimmed === '' || /^\d+$/.test(trimmed)) return '';
+    return trimmed;
   }
   resultMeta(r: ReplayDTO): ResultMeta {
     return RESULT_META[r.metadata.result];
