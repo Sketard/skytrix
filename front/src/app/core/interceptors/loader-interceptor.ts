@@ -10,10 +10,18 @@ export function loaderInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn
   const isSilent = (req: HttpRequest<unknown>): boolean => {
     return req.url.includes('documents')
       || req.url.includes('client-logs')
-      || (req.method === 'GET' && /\/api\/rooms\/?$/.test(req.url))
       || (req.method === 'GET' && req.url.includes('/parameters/status'))
       || (req.method === 'GET' && req.url.includes('/api/cards/code/'))
-      || (req.method === 'GET' && req.url.includes('/api/cards/names'));
+      || (req.method === 'GET' && req.url.includes('/api/cards/names'))
+      // Skeleton-driven pages (PvP lobby/waiting/duel/replay-hub/replay-viewer)
+      // own their own inline loading states (room-card skeleton, board
+      // skeleton, replay-card skeleton, etc.). The global full-screen
+      // loader would block the UI on every request and defeat the purpose
+      // of the skeleton pattern.
+      || /\/api\/rooms(?:\b|\/)/.test(req.url)            // lobby + waiting + duel transitions
+      || /\/api\/replays(?:\b|\/)/.test(req.url)          // replay hub + viewer
+      || /\/api\/decks\/[^/?]+$/.test(req.url)            // pre-duel deck fetch (handled by duel-loading-effects)
+      || /\/api\/admin\/rooms(?:\b|\/)/.test(req.url);    // admin force-close also silent (used from lobby)
   };
 
   const removeRequest = (req: HttpRequest<unknown>) => {
