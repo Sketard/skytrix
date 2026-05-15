@@ -49,15 +49,10 @@
   // Surface tokens
   --surface-base: #121212;           // Main background
   --surface-card: #1E1E1E;           // Card surfaces, form field backgrounds
-  --surface-card-hover: #252525;     // Card hover state
-  --surface-elevated: #1E293B;       // Elevated panels, hover states in overlays
+  --surface-elevated: #1E293B;       // Elevated panels (Simulator pile-overlay, control-bar)
   --surface-nav: #161616;            // Sidebar / toolbar
 
-  // Accent tokens
-  --accent-primary: #C9A84C;         // Gold accent (Millennium theme)
-  --accent-primary-dim: #C9A84C33;   // Accent at 20% for subtle backgrounds
-
-  // Text tokens
+  // Text tokens (single source of truth — used 80+/51+ times across the app)
   --text-primary: #EAEAEA;           // Primary text
   --text-secondary: #9E9E9E;         // Secondary text (metadata)
 
@@ -65,7 +60,6 @@
   --border-subtle: rgba(255, 255, 255, 0.3); // Subtle borders/indicators on dark surfaces
 
   // Semantic tokens
-  --danger: #CF6679;                 // Destructive actions (Material dark error)
   --alpha-badge-bg: #e67e22;         // Alpha/beta feature badge background
 
   // Material component overrides
@@ -256,6 +250,18 @@
   --touch-target-min:     44px;
   --touch-target-primary: 48px;
 
+  // =========================================================================
+  // === Legacy aliases (Wave 1.5, 2026-05-15)
+  // === Mapped to DS canonical tokens. Kept for migration grace period —
+  // === bulk-replace + delete in Wave 2.
+  // === All values identical: aliases incur zero visual change.
+  // =========================================================================
+  --accent-primary:      var(--gold);             // 31 usages
+  --accent-primary-dim:  var(--gold-soft-20);     // 8 usages
+  --surface-card-hover:  var(--surface-hover);    // 3 usages
+  --danger:              var(--danger-strong);    // 5 usages (#CF6679 -> #ff5252,
+                                                  // unifie sur la palette DS Wave 1)
+
   // --- Border widths — use tokens when intent matters (focus = medium,
   // emphasized = thick). `1px solid` literal stays acceptable for default
   // borders since the value is universally legible.
@@ -281,6 +287,9 @@
 
   // =========================================================================
   // === PvP Tokens ===
+  // === --pvp-radius-* échelle 2/4/8/12 (DIFFÉRENTE de --radius-* DS 6/10/14/18).
+  // === 30+ usages dans duel-page/prompts/skel. À fusionner en Wave 3 quand
+  // === le duel in-game sera refondu — décision design requise sur l'échelle.
   // =========================================================================
 
   // --- Border Radius ---
@@ -306,18 +315,19 @@
   --pvp-min-touch-target-primary: 48px;
 
   // --- Colors ---
-  --pvp-accent: #C9A84C;
+  // Aliases to DS canonical tokens (Wave 1.5, 2026-05-15) — bulk-replace in Wave 3.
+  --pvp-accent:      var(--gold);                  // = #C9A84C (13 usages)
   --pvp-highlight-selectable: rgba(0, 200, 255, 0.4);
   --pvp-highlight-selected: rgba(255, 215, 0, 0.6);
-  --pvp-lp-own: #4CAF50;
+  --pvp-lp-own:      var(--success);               // = #4CAF50 (2 usages)
   --pvp-lp-opponent: #90CAF9;
-  --pvp-lp-danger: #F44336;
-  --pvp-disabled-opacity: 0.4;
+  --pvp-lp-danger:   #F44336;                      // Material Red, distinct de --danger-strong #FF5252
+  --pvp-disabled-opacity: var(--opacity-disabled); // = 0.4
 
   // --- Timer colors ---
-  --pvp-timer-green: #4CAF50;
-  --pvp-timer-yellow: #FFC107;
-  --pvp-timer-red: #F44336;
+  --pvp-timer-green:  var(--success);              // = #4CAF50
+  --pvp-timer-yellow: var(--warning);              // = #FFC107
+  --pvp-timer-red:    #F44336;                     // Material Red, cohérent avec --pvp-lp-danger
 
   // --- Typography ---
   --pvp-lp-font-size: clamp(1rem, 4dvh, 1.5rem);
