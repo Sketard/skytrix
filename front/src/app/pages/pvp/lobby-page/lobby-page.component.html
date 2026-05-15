@@ -99,7 +99,7 @@
     <div class="empty-state empty-state--error">
       <mat-icon class="empty-state__icon">wifi_off</mat-icon>
       <p class="empty-state__title">{{ 'lobby.emptyError' | translate }}</p>
-      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="store.fetchSnapshot()">
+      <button type="button" class="btn btn--secondary" (click)="store.fetchSnapshot()">
         <mat-icon>refresh</mat-icon>
         {{ 'common.retry' | translate }}
       </button>
@@ -122,7 +122,7 @@
       <mat-icon class="empty-state__icon">search_off</mat-icon>
       <p class="empty-state__title">{{ 'lobby.noResultsTitle' | translate }}</p>
       <p class="empty-state__desc">{{ 'lobby.noResultsSubtitle' | translate }}</p>
-      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="clearSearch()">
+      <button type="button" class="btn btn--secondary" (click)="clearSearch()">
         <mat-icon>backspace</mat-icon>
         {{ 'lobby.clearSearch' | translate }}
       </button>
@@ -152,7 +152,7 @@
             <span class="room-time">{{ room.createdAt | relativeTime }}</span>
           </div>
           <div class="room-status">
-            <span class="pulse-dot pulse-dot--sm" aria-hidden="true"></span>
+            <span class="pulse-dot" aria-hidden="true"></span>
             <span class="room-status-text">{{ 'lobby.waitingOpponent' | translate }}</span>
           </div>
         </div>

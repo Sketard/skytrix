@@ -247,7 +247,7 @@ describe('client-message-router', () => {
       configureClientMessageRouter(makeConfig(spy));
       // ROLLING_DICE-phase session with a valid first-player state set up.
       const s = makeSession(spy, { phase: 'ROLLING_DICE' });
-      s.firstPlayerState = { rolls: [null, null], timers: [], round: 0 };
+      s.firstPlayerState = { rolls: [null, null], timers: [], round: 0, resolvedWinner: null };
       s.awaitingResponse[0] = true;
 
       handleClientMessage(s, 0, {

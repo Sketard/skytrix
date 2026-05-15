@@ -198,10 +198,17 @@
   }
 
   <!-- Story 2.4 — Duel Loading Screen — covered by <app-pvp-dice-arena>
-       in its `final` stage (held until `roomState === 'active'`), so no
-       separate "PRÉPARATION DU DUEL…" screen is needed here. The
-       `loadingTimeout` 15s safety still fires via duel-loading-effects;
-       it just doesn't render an intermediate screen anymore. -->
+       in its `final` stage, held until `roomState === 'active'`. The arena
+       acts as the user-facing wait state for BOARD_STATE.
+
+       NOTE: the legacy `loadingTimeout` 15s watchdog + "Retour au lobby" CTA
+       were removed alongside the standalone loading screen (the dice arena
+       now occupies the screen continuously). If the worker never emits
+       BOARD_STATE, the `<app-system-overlay>` for `connection-lost` will
+       eventually catch the user — there is intentionally no dedicated
+       15s "loading stuck" overlay. Revisit only if QA reports a real-world
+       gap between "worker spawned but BOARD_STATE never arrives" and
+       "WS disconnect → connection-lost". -->
 
   <!-- Duel UI (only when active/connecting) -->
   @if (roomState() === 'active' || roomState() === 'connecting') {

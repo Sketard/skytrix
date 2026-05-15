@@ -238,14 +238,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return zoneId ? `${zoneId}-${relPlayer}` : null;
   });
 
-  readonly positionLabel = computed<string | null>(() => {
-    const state = this.currentState();
-    if (!state) return null;
-    const bs = state.boardState;
-    if (bs.turnCount === 0) return this.translate.instant('replay.timeline.setup');
-    return `${this.translate.instant('replay.timeline.turn', { n: bs.turnCount })} · ${this.phaseService.phaseDisplayName(bs.phase)} · P${bs.turnPlayer + 1} · ${state.label}`;
-  });
-
   /** Perspective-adjusted turnPlayer for displayedTurnPlayer (0=me, 1=opponent). */
   readonly replayDisplayedTurnPlayer = computed<Player | null>(() => {
     const tp = this.currentState()?.boardState?.turnPlayer;
@@ -275,9 +267,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return meta.playerUsernames[1] === userPseudo ? 1 : 0;
   });
 
-  /** Composed pieces of the transport-bar context zone (D9). Split from the
-   *  legacy `positionLabel` string so each piece can be hidden independently
-   *  (D13 cascade). */
+  /** Composed pieces of the transport-bar context zone (D9). Split into four
+   *  pieces so each can be hidden independently (D13 cascade). */
   readonly turnLabelText = computed<string>(() => {
     const state = this.currentState();
     if (!state) return '';
@@ -351,18 +342,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     const turn = this.turns()[this.currentTurnIndex()];
     if (!turn) return [];
     return buildSubEventSegments(turn, this.boardStates());
-  });
-
-  readonly progressText = computed(() => {
-    const last = this.replayConnection.lastReceivedTurn();
-    const meta = this.replayConnection.metadata();
-    if (meta && last >= 0) {
-      return this.translate.instant('replay.viewer.loadingProgress', {
-        current: last,
-        total: meta.turnCount,
-      });
-    }
-    return this.translate.instant('replay.viewer.loading');
   });
 
   readonly playerHand = computed<CardOnField[]>(() =>

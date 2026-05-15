@@ -84,6 +84,21 @@
   white-space: nowrap;
 }
 
+// Toggles (animations, decisions) without `--active` look identical to a
+// regular icon-btn otherwise. Master rendered a line-through on the icon as
+// the "off" affordance — restored here so the user can tell at a glance.
+.transport-bar__toggle:not(.icon-btn--active) {
+  opacity: 0.6;
+
+  mat-icon,
+  // emoji/text fallback (the template uses raw glyphs inside the button)
+  & {
+    text-decoration: line-through;
+    text-decoration-color: var(--gold-soft-40);
+    text-decoration-thickness: 1.5px;
+  }
+}
+
 // `⋯` More button gets a small gold dot indicator when any non-default
 // option is active (animations off, decision-mode, etc. — page-driven).
 .transport-bar__more {
@@ -132,5 +147,13 @@
 
   .transport-bar__more {
     display: inline-flex;
+  }
+
+  // WCAG touch target — the step buttons stay visible on mobile so their hit
+  // area must reach 44px even though they're rendered as `.icon-btn--md` (34px)
+  // on desktop. Master had `@include r.touch-target-min` wrapping these.
+  .transport-bar__step {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
