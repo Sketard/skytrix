@@ -30,7 +30,7 @@
   flex: 1;
   min-height: 0; // critical for nested flex children to shrink
   gap: var(--space-6);
-  max-width: 980px;
+  max-width: var(--container-wide);
   margin: 0 auto;
   width: 100%;
 }

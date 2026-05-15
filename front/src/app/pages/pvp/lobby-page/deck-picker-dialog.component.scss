@@ -562,7 +562,7 @@
 
 .deck-thumb {
   width: 100%;
-  aspect-ratio: 59 / 86;
+  aspect-ratio: var(--ratio-card-ygo);
   border-radius: var(--radius-md);
   background: var(--surface-thumb-gradient);
   overflow: hidden;

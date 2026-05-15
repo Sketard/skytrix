@@ -256,6 +256,29 @@
   --touch-target-min:     44px;
   --touch-target-primary: 48px;
 
+  // --- Border widths — use tokens when intent matters (focus = medium,
+  // emphasized = thick). `1px solid` literal stays acceptable for default
+  // borders since the value is universally legible.
+  --border-width-thin:    1px;
+  --border-width-medium:  2px;
+  --border-width-thick:   4px;
+
+  // --- Opacity scale (interaction states) ---
+  --opacity-disabled: 0.4;
+  --opacity-muted:    0.6;
+  --opacity-hover:    0.8;
+
+  // --- Aspect ratios (YGO card geometry + standards) ---
+  --ratio-card-ygo: 59 / 86;   // Yu-Gi-Oh! card face ratio
+  --ratio-square:   1 / 1;
+  --ratio-video:    16 / 9;
+
+  // --- Container widths (page layout max-widths) ---
+  --container-narrow: 580px;   // Lobby, single-column reading
+  --container-medium: 780px;   // Forms, dialogs
+  --container-wide:   980px;   // Hub, list views
+  --container-full:   1280px;  // Editor-style wide layouts
+
   // =========================================================================
   // === PvP Tokens ===
   // =========================================================================

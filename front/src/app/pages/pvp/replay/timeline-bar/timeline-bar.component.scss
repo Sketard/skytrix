@@ -131,7 +131,7 @@
   flex: 0 0 auto;
   border-radius: 50%;
   background: var(--text-secondary);
-  opacity: 0.4;
+  opacity: var(--opacity-disabled);
   cursor: pointer;
   transition: all var(--transition-fast) var(--ease-out);
 
