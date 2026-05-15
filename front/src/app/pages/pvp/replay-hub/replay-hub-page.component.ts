@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
@@ -48,6 +48,7 @@ const REPLAY_CARD_ITEM_SIZE_PX = 104;
     MatTooltipModule,
     ScrollingModule,
     TranslateModule,
+    RouterLink,
     AvatarComponent,
     ReplayCardSkeletonComponent,
   ],
@@ -155,7 +156,16 @@ export class ReplayHubPageComponent implements OnInit {
     this.store.clearFilters();
   }
 
-  openReplay(replay: ReplayDTO): void {
+  /**
+   * Keyboard-only entry point — the replay-card is an `<a [routerLink]>` so
+   * Enter and click are handled natively by the browser/router (preserves
+   * middle-click open-in-new-tab + Ctrl/Cmd+Click). Space is hijacked here to
+   * match the master `mat-row` activation model and prevent the default page
+   * scroll. Programmatic callers (tests, future imperative seek) still get a
+   * navigate path.
+   */
+  openReplay(event: Event | null, replay: ReplayDTO): void {
+    if (event && 'preventDefault' in event) event.preventDefault();
     this.router.navigate(['/pvp/replay', replay.id]);
   }
 

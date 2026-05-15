@@ -1,5 +1,6 @@
 @use 'responsive' as r;
 @use 'z-layers' as z;
+@use 'a11y' as a11y;
 
 // =============================================================================
 // Timeline-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
@@ -51,6 +52,14 @@
 
   &.timeline-bar__track--zoom-l3 {
     width: 300%;
+  }
+
+  // The global _a11y.scss reduced-motion rule forces `transition-duration:
+  // 0.01ms !important` on every element — but for the zoom-driven `width`
+  // animation we want to drop the easing entirely so the track snaps. The
+  // mixin only emits the @media query; we keep the rest local.
+  @include a11y.respect-reduced-motion {
+    transition: none;
   }
 }
 

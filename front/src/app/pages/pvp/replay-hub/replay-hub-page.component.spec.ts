@@ -90,13 +90,16 @@ describe('ReplayHubPageComponent', () => {
 
   // ───────────────────────────────────────────────────────────────────────────
 
-  it('navigates to /pvp/replay/:id when a replay-card is clicked', () => {
+  it('navigates to /pvp/replay/:id on Space activation (Enter/click handled natively by routerLink)', () => {
     const navSpy = spyOn(router, 'navigate');
     const r = makeReplay('abc');
     initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
 
-    component.openReplay(r);
+    const spaceEvent = new KeyboardEvent('keydown', { key: ' ' });
+    const preventSpy = spyOn(spaceEvent, 'preventDefault');
+    component.openReplay(spaceEvent, r);
 
+    expect(preventSpy).toHaveBeenCalled(); // avoid the default page scroll
     expect(navSpy).toHaveBeenCalledWith(['/pvp/replay', 'abc']);
   });
 

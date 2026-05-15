@@ -180,8 +180,8 @@
          [class.surface-card--accent-warning]="resultMeta(replay).variant === 'warning'"
          [class.surface-card--accent-danger]="resultMeta(replay).variant === 'danger'"
          [attr.aria-label]="('replay.hub.card.open' | translate) + ' — ' + opponentName(replay)"
-         (click)="openReplay(replay)"
-         (keydown.enter)="openReplay(replay)">
+         [routerLink]="['/pvp/replay', replay.id]"
+         (keydown.space)="openReplay($event, replay)">
         <div class="replay-card__avatar">
           <app-avatar [pseudo]="opponentName(replay)" size="md"></app-avatar>
         </div>
