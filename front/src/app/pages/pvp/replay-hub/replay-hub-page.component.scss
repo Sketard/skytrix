@@ -29,7 +29,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0; // critical for nested flex children to shrink
-  gap: 22px;
+  gap: var(--space-6);
   max-width: 980px;
   margin: 0 auto;
   width: 100%;
@@ -44,7 +44,7 @@
 .hub-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-3);
 
   @media (min-width: 720px) {
     grid-template-columns: repeat(4, 1fr);
@@ -54,8 +54,8 @@
 .hub-stat-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: var(--space-3);
+  padding: var(--space-4);
   min-width: 0;
 }
 
@@ -126,7 +126,7 @@
   flex: 1;
   min-height: 0;
   overscroll-behavior: contain;
-  padding-right: 4px;
+  padding-right: var(--space-1);
   // Fade bottom hint of scrollability.
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
   mask-image:         linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
@@ -145,9 +145,9 @@
   grid-template-columns: auto 1fr auto auto auto;
   grid-template-areas: 'avatar info pill meta actions';
   align-items: center;
-  gap: 14px;
-  padding: 12px 16px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
   text-decoration: none;
   color: inherit;
 
@@ -160,15 +160,15 @@
     grid-template-areas:
       'avatar info pill   actions'
       'avatar meta meta   meta';
-    gap: 4px 10px;
-    padding: 10px 12px;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-3);
     align-items: center;
 
     .replay-card__avatar app-avatar { transform: scale(0.85); transform-origin: left center; }
     .replay-card__times {
       flex-direction: row;
       flex-wrap: wrap;
-      gap: 6px 10px;
+      gap: var(--space-1) var(--space-3);
       justify-content: flex-end;
     }
     // Decks meta on mobile : single line, ellipsis if too long.
@@ -208,7 +208,7 @@
 .replay-card__avatar  { grid-area: avatar; }
 .replay-card__info    { grid-area: info; min-width: 0; }
 .replay-card__times   { grid-area: meta; }
-.replay-card__actions { grid-area: actions; display: flex; align-items: center; gap: 8px; }
+.replay-card__actions { grid-area: actions; display: flex; align-items: center; gap: var(--space-2); }
 .replay-card .pill    { grid-area: pill; align-self: center; }
 
 // Mockup §hub-filters — search-bar et chips alignés sur la même ligne au
@@ -218,12 +218,12 @@
 .hub-filters {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 
   @include r.respond-above(r.$bp-tablet) {
     flex-direction: row;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-4);
   }
 
   .search-bar { flex: 1 1 auto; min-width: 0; }
@@ -243,7 +243,7 @@
       scrollbar-width: none; // Firefox
       -webkit-mask-image: linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
       mask-image:         linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
-      padding-right: 8px;
+      padding-right: var(--space-2);
 
       &::-webkit-scrollbar { display: none; }
       .chip { flex: 0 0 auto; }
@@ -257,8 +257,8 @@
 .replay-card__open-cta {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
   color: var(--text-inverse);
@@ -294,7 +294,7 @@
 .replay-card__title {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -317,8 +317,8 @@
 .replay-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
-  margin-top: 4px;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-1);
   font-size: 0.75rem;
   color: var(--text-muted);
 }
@@ -327,7 +327,7 @@
 .replay-card__vs-deck {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -355,7 +355,7 @@
   @media (max-width: 640px) {
     align-items: flex-start;
     flex-direction: row;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: wrap;
   }
 }
@@ -386,8 +386,8 @@
 .empty-state__actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 
   @media (min-width: 480px) {
     flex-direction: row;

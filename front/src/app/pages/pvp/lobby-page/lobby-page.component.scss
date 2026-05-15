@@ -22,7 +22,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: var(--space-6);
   max-width: 580px;
   margin: 0 auto;
 }
@@ -40,8 +40,8 @@
   letter-spacing: 0.1em;
   background: var(--alpha-badge-bg);
   color: var(--text-primary);
-  padding: 3px 8px;
-  border-radius: 4px;
+  padding: 3px var(--space-2);
+  border-radius: var(--space-1);
   line-height: 1;
   -webkit-text-fill-color: var(--text-primary);
   box-shadow: 0 2px 8px var(--alpha-badge-shadow);
@@ -51,7 +51,7 @@
 .cta-row {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: var(--space-3);
 
   @media (min-width: 480px) {
     grid-template-columns: 1.4fr 1fr;
@@ -62,11 +62,11 @@
 // Lobby CTA-specific overrides (taille Rajdhani 1rem + min-height 58px + border-radius 14px)
 // retained as a tactical override since the lobby CTAs are physically larger than the DS .btn--lg.
 .btn.btn--lg {
-  min-height: 58px !important;
-  padding: 0 24px !important;
+  min-height: 56px !important; // CTA hauteur premium, alignée échelle (14×4)
+  padding: 0 var(--space-6) !important;
   font: var(--weight-bold) 1rem / 1 'Rajdhani', sans-serif !important;
-  border-radius: 14px !important;
-  gap: 10px;
+  border-radius: var(--radius-lg) !important;
+  gap: var(--space-3);
 
   mat-icon {
     font-size: 22px !important;
@@ -138,9 +138,9 @@
     'avatar info trash'
     'join   join join';
   align-items: center;
-  gap: 10px 12px;
-  margin-bottom: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--gradient-card-ds);
   border: 1px solid var(--border-subtle);
@@ -160,8 +160,8 @@
   @media (min-width: 480px) {
     grid-template-columns: auto 1fr auto auto;
     grid-template-areas: 'avatar info trash join';
-    gap: 14px;
-    padding: 14px 16px;
+    gap: var(--space-4);
+    padding: var(--space-4);
   }
 
   &::before {
@@ -252,7 +252,7 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: transparent;
   color: var(--text-muted);
@@ -304,14 +304,14 @@
 .room-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
 .room-info-top {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -339,7 +339,7 @@
 .room-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 0.82rem;
   color: var(--success); // applies to .pulse-dot child via currentColor
 }
@@ -351,12 +351,12 @@
 
 // ── Join button ────────────────────────────────────────────────────────────
 .room-join-btn {
-  min-height: 44px !important;
-  padding: 0 16px !important;
+  min-height: var(--touch-target-min) !important;
+  padding: 0 var(--space-4) !important;
   font: var(--weight-bold) 0.82rem / 1 'Rajdhani', sans-serif !important;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-radius: 8px !important;
+  border-radius: var(--radius-md) !important;
   background: var(--gold-soft-12) !important;
   color: var(--gold) !important;
   border: 1px solid var(--gold-soft-40) !important;
@@ -390,7 +390,7 @@
 .room-join-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 // ── Empty/error/no-results states use the shared `.empty-state` utility
@@ -398,7 +398,7 @@
 
 @media (orientation: landscape) and (max-height: 500px) {
   :host {
-    padding: 12px;
+    padding: var(--space-3);
     max-width: 100%;
   }
 
