@@ -428,8 +428,10 @@
     "updating": "Mise à jour en cours...",
     "syncing": {
       "cards": "Récupération des cartes…",
-      "banlist": "Vérification de la banlist…",
-      "duelData": "Synchronisation des fichiers serveur…"
+      "banlist": "Mise à jour de la banlist…",
+      "duelData": "Synchronisation des fichiers serveur…",
+      "images": "Téléchargement des images…",
+      "tcgImages": "Téléchargement des images traduites…"
     },
     "rules": "Règles",
     "updateBanlist": "Mettre à jour la banlist",

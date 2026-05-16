@@ -68,6 +68,7 @@
 
           @if (isTracked(job.key)) {
             <div class="progress">
+              <span class="progress-label">{{ syncLabelKey(job.key) | translate }}</span>
               @if (getTotal(job.key) > 1) {
                 <div class="progress-bar">
                   <div class="progress-bar-fill" [style.width.%]="getProgress(job.key)"></div>
@@ -79,9 +80,6 @@
               } @else {
                 <div class="progress-bar progress-bar--indeterminate">
                   <div class="progress-bar-fill"></div>
-                </div>
-                <div class="progress-meta">
-                  <span>{{ indeterminateLabelKey(job.key) | translate }}</span>
                 </div>
               }
             </div>

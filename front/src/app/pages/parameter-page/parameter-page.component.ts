@@ -216,15 +216,18 @@ export class ParameterPageComponent implements OnDestroy {
     return Math.round(((state.processed + state.failed) / state.total) * 100);
   }
 
-  // Indeterminate label per job key. Falls back to `duelData` wording for
-  // any unknown key — the generic "syncing server files" phrasing is
-  // domain-appropriate when we don't know exactly what's happening.
-  indeterminateLabelKey(key: string): string {
+  // Descriptive sync label per job key — used both above the determinate
+  // progress bar (images, tcgImages) and as the indeterminate progress
+  // label (cards, banlist, duelData). Falls back to `duelData` wording
+  // for unknown keys.
+  syncLabelKey(key: string): string {
     switch (key) {
-      case 'cards':    return 'settings.syncing.cards';
-      case 'banlist':  return 'settings.syncing.banlist';
-      case 'duelData': return 'settings.syncing.duelData';
-      default:         return 'settings.syncing.duelData';
+      case 'cards':     return 'settings.syncing.cards';
+      case 'banlist':   return 'settings.syncing.banlist';
+      case 'duelData':  return 'settings.syncing.duelData';
+      case 'images':    return 'settings.syncing.images';
+      case 'tcgImages': return 'settings.syncing.tcgImages';
+      default:          return 'settings.syncing.duelData';
     }
   }
 

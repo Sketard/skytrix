@@ -428,8 +428,10 @@
     "updating": "Updating...",
     "syncing": {
       "cards": "Fetching cards…",
-      "banlist": "Checking the banlist…",
-      "duelData": "Syncing server files…"
+      "banlist": "Updating the banlist…",
+      "duelData": "Syncing server files…",
+      "images": "Downloading card images…",
+      "tcgImages": "Downloading translated images…"
     },
     "rules": "Rules",
     "updateBanlist": "Update banlist",
