@@ -151,9 +151,10 @@
   // Visual gap between the timeline strip and the transport dock — matches
   // mockup §timeline-bar / §transport-bar separation. Lets the surface-bg
   // breathe between the two so they read as distinct controls rather than
-  // a single fused bar.
+  // a single fused bar. Pairs with the `border-top` removal on
+  // `.transport-bar` (otherwise a hairline gold border would bridge the gap).
   app-transport-bar {
-    margin-top: var(--space-2);
+    margin-top: var(--space-3);
   }
 }
 

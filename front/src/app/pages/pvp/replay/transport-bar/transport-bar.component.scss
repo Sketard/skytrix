@@ -23,7 +23,10 @@
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
   background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
-  border-top: 1px solid var(--gold-soft-12);
+  // No `border-top` — `<app-transport-bar>` sits below a 12px margin-top
+  // gap from the timeline strip (see replay-page.component.scss). A gold
+  // hairline here would bridge that gap and merge the two surfaces back
+  // into one continuous bar.
   min-height: 64px;
 }
 
