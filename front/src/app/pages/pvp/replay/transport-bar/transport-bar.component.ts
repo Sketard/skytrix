@@ -31,10 +31,6 @@ import { TimelineZoomControlComponent, type ZoomLevel } from '../timeline-zoom-c
 export class TransportBarComponent {
   // === Context inputs (left zone) ============================================
   readonly turnLabel = input<string>('');     // e.g. "Tour 3 / 11 tours"
-  /** Per-player tag ("P1"). Renamed from `positionLabel` in the F3 refactor to
-   *  avoid colliding with the legacy free-form `positionLabel` string that the
-   *  page passes today — F4 will wire the new structured fields. */
-  readonly playerPositionLabel = input<string | null>(null);
   readonly phaseLabel = input<string | null>(null);    // e.g. "Main 1"
   readonly eventLabel = input<string | null>(null);    // e.g. "Activation : Snake-Eye Ash"
 
@@ -47,7 +43,6 @@ export class TransportBarComponent {
   readonly animationsEnabled = input(false);
   readonly promptMode = input<'result' | 'decision'>('result');
   readonly perspectiveIndex = input(0);
-  readonly perspectiveName = input<string>('');
   readonly zoomLevel = input<ZoomLevel>(1);
   readonly hasNonDefaultOption = input<boolean>(false); // mobile ⋯ dot indicator
 

@@ -956,15 +956,6 @@ describe('ReplayPageComponent — F4 wiring', () => {
     transport.currentIndex.set(3);  expect(component.currentTurnIndex()).toBe(2); // turn 2
   });
 
-  // ── perspectiveName ───────────────────────────────────────────────────────
-  it('perspectiveName picks the right pseudo from metadata', () => {
-    conn.metadata.set({ playerUsernames: ['AxelTest', 'OppName'] } as unknown);
-    component.perspectiveIndex.set(0);
-    expect(component.perspectiveName()).toBe('AxelTest');
-    component.perspectiveIndex.set(1);
-    expect(component.perspectiveName()).toBe('OppName');
-  });
-
   // ── mySide ────────────────────────────────────────────────────────────────
   it('mySide returns 1 when auth pseudo matches the second player', () => {
     conn.metadata.set({ playerUsernames: ['Other', 'AxelTest'] } as unknown);

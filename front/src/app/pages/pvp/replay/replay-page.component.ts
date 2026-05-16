@@ -305,12 +305,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return this.translate.instant('replay.timeline.turn', { n: bs.turnCount }) + (total > 0 ? ` / ${total}` : '');
   });
 
-  readonly playerPositionLabel = computed<string | null>(() => {
-    const tp = this.currentState()?.boardState?.turnPlayer;
-    if (tp == null) return null;
-    return `P${tp + 1}`;
-  });
-
   readonly phaseLabel = computed<string | null>(() => {
     const phase = this.currentState()?.boardState?.phase;
     if (!phase) return null;
@@ -318,13 +312,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   });
 
   readonly eventLabel = computed<string | null>(() => this.currentState()?.label ?? null);
-
-  /** Display name of the currently-perspective-active player (shown on the
-   *  perspective swap button). */
-  readonly perspectiveName = computed<string>(() => {
-    const meta = this.replayConnection.metadata() as ReplayMetadataMsg | null;
-    return meta?.playerUsernames?.[this.perspectiveIndex()] ?? '';
-  });
 
   /** Drives the gold dot indicator on the mobile `⋯ More` button — true when
    *  any visionnage option is set to a non-default value. */

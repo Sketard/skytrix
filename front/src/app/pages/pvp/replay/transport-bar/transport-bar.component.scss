@@ -83,15 +83,6 @@
   }
 }
 
-.transport-bar__perspective-name {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  max-width: 80px; // cap the username so very long pseudos can't push the cluster off-screen
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 // Toggles (animations, decisions) without `--active` look identical to a
 // regular icon-btn otherwise. Drop opacity to ~0.6 as the "off" affordance.
 .transport-bar__toggle:not(.icon-btn--active) {
@@ -121,12 +112,11 @@
 // Cascade hide (D13)
 // =============================================================================
 
-// ≤ 920px → hide fork label + perspective name (cramped, icons remain).
+// ≤ 920px → hide fork label (cramped, icons remain).
 // Component-local breakpoint between `$bp-tablet` (768) and `$bp-desktop` (1024)
 // — labels start to push the play button off-center beyond this width.
 @media (max-width: 920px) {
-  .transport-bar__fork-label,
-  .transport-bar__perspective-name {
+  .transport-bar__fork-label {
     display: none;
   }
 }
@@ -148,12 +138,5 @@
 
   .transport-bar__more {
     display: inline-flex;
-  }
-
-  // WCAG touch target — the step buttons stay visible on mobile so their hit
-  // area must reach 44px even though they're rendered as `.icon-btn--md` (34px)
-  // on desktop.
-  .transport-bar__step {
-    @include r.touch-target-min;
   }
 }

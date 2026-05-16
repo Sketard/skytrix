@@ -26,14 +26,12 @@ describe('TransportBarComponent — F3 refonte 3 zones', () => {
     promptMode: 'result' | 'decision';
     perspectiveIndex: number;
     turnLabel: string;
-    playerPositionLabel: string;
     phaseLabel: string;
     eventLabel: string;
     zoomLevel: 1 | 2 | 3;
     hasNonDefaultOption: boolean;
   }> = {}) {
     fixture.componentRef.setInput('turnLabel', overrides.turnLabel ?? 'Tour 3 / 11');
-    fixture.componentRef.setInput('playerPositionLabel', overrides.playerPositionLabel ?? 'P1');
     fixture.componentRef.setInput('phaseLabel', overrides.phaseLabel ?? 'Main 1');
     fixture.componentRef.setInput('eventLabel', overrides.eventLabel ?? null);
     fixture.componentRef.setInput('isPlaying', overrides.isPlaying ?? false);
@@ -54,13 +52,13 @@ describe('TransportBarComponent — F3 refonte 3 zones', () => {
     expect(el.querySelector('.transport-bar__options')).not.toBeNull();
   });
 
-  it('renders the <app-context-pill> with all 4 sub-fields wired', () => {
-    bind({ turnLabel: 'Tour 5', playerPositionLabel: 'P2', phaseLabel: 'Main 2', eventLabel: 'Effect: Ash' });
+  it('renders the <app-context-pill> with the 3 sub-fields wired', () => {
+    bind({ turnLabel: 'Tour 5', phaseLabel: 'Main 2', eventLabel: 'Effect: Ash' });
     const pill = el.querySelector('app-context-pill');
     expect(pill).not.toBeNull();
-    // Sub-elements rendered by context-pill use its own class names — verify the pill at least renders the turnLabel.
+    // The player-position label was removed — same info already lives on the
+    // perspective swap button, no point duplicating it next to the turn pill.
     expect(pill?.textContent).toContain('Tour 5');
-    expect(pill?.textContent).toContain('P2');
     expect(pill?.textContent).toContain('Main 2');
     expect(pill?.textContent).toContain('Effect: Ash');
   });

@@ -33,18 +33,11 @@
   line-height: 1;
 }
 
-// ≤ 920px → drop phase chip + event label (D13 step 1).
+// ≤ 920px → drop phase chip + event label.
 // Component-local breakpoint between `$bp-tablet` (768) and `$bp-desktop` (1024).
 @media (max-width: 920px) {
   .context-pill__phase,
   .context-pill__event {
-    display: none;
-  }
-}
-
-// ≤ 480px ($bp-mobile) → drop position too (D13 step 2). Turn pill always remains.
-@include r.respond-below(r.$bp-mobile) {
-  .context-pill__position {
     display: none;
   }
 }

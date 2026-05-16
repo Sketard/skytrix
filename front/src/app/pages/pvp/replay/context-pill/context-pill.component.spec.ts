@@ -25,19 +25,18 @@ describe('ContextPillComponent', () => {
   it('omits optional sub-elements when their inputs are null', () => {
     fixture.componentRef.setInput('turnLabel', 'T0 · Setup');
     fixture.detectChanges();
-    expect(el.querySelector('.context-pill__position')).toBeNull();
     expect(el.querySelector('.context-pill__phase')).toBeNull();
     expect(el.querySelector('.context-pill__event')).toBeNull();
   });
 
-  it('renders all 4 zones when every input is provided', () => {
+  it('renders the 3 zones when every input is provided', () => {
+    // The player-position chip was dropped (info duplicates the perspective
+    // swap button in the transport-bar — see 2026-05-16 review pass).
     fixture.componentRef.setInput('turnLabel', 'Tour 5 / 11');
-    fixture.componentRef.setInput('position', 'P1');
     fixture.componentRef.setInput('phase', 'Main 1');
     fixture.componentRef.setInput('eventLabel', 'Activation : Ash Blossom');
     fixture.detectChanges();
     expect(el.querySelector('.context-pill__turn')).not.toBeNull();
-    expect(el.querySelector('.context-pill__position')?.textContent?.trim()).toBe('P1');
     // Phase pill now includes a gold bolt prefix (mockup §context-phase) —
     // the visible label still ends with "Main 1".
     expect(el.querySelector('.context-pill__phase')?.textContent?.trim()).toContain('Main 1');
