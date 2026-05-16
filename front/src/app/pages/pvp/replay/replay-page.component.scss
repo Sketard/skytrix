@@ -119,14 +119,14 @@
     .swipe-hint {
       position: absolute;
       left: 50%;
-      bottom: 12px;
+      bottom: var(--space-3);
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
+      gap: var(--space-2);
+      padding: var(--space-1) var(--space-3);
       border-radius: var(--radius-pill);
-      background: rgba(10, 10, 20, 0.85);
+      background: var(--surface-overlay-strong, rgba(10, 10, 20, 0.85));
       border: 1px solid var(--gold-soft-25);
       font: var(--weight-medium) var(--text-xs) var(--font-body);
       color: var(--text-muted);

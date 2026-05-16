@@ -5,7 +5,7 @@
     class="btn btn--ghost btn--sm btn--icon-leading replay-topbar__back"
     [attr.aria-label]="'replay.hub.back' | translate"
     (click)="back.emit()">
-    <span aria-hidden="true">←</span>
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
     <span class="replay-topbar__back-label">{{ 'replay.hub.back' | translate }}</span>
   </button>
 
@@ -50,7 +50,7 @@
   <div class="replay-topbar__right">
     @if (durationLabel(); as dur) {
       <span class="pill pill--neutral pill--xs replay-topbar__meta">
-        <span aria-hidden="true">⧗</span>
+        <mat-icon aria-hidden="true" class="replay-topbar__meta-icon">schedule</mat-icon>
         <span class="text-mono">{{ dur }}</span>
       </span>
     }
@@ -60,14 +60,14 @@
       [class.btn--success-flash]="copyJustSucceeded()"
       [attr.aria-label]="'replay.viewer.bottomSheet.options.copyLink' | translate"
       (click)="copyLink.emit()">
-      🔗
+      <mat-icon>link</mat-icon>
     </button>
     <button
       type="button"
       class="btn btn--ghost btn--sm replay-topbar__details-btn"
       [attr.aria-label]="'replay.viewer.bottomSheet.details.title' | translate"
       (click)="openDetails.emit()">
-      ⓘ
+      <mat-icon>info</mat-icon>
     </button>
   </div>
 </header>

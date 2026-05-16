@@ -149,12 +149,6 @@
       <mat-icon class="empty-state__icon">movie_filter</mat-icon>
       <p class="empty-state__title">{{ 'replay.hub.empty.title' | translate }}</p>
       <p class="empty-state__desc">{{ 'replay.hub.empty.desc' | translate }}</p>
-      <div class="empty-state__actions">
-        <button type="button" class="btn btn--primary btn--lg btn--cta btn--cta-shimmer" (click)="goToLobby()">
-          <mat-icon>sports_esports</mat-icon>
-          {{ 'replay.hub.empty.ctaPvp' | translate }}
-        </button>
-      </div>
     </div>
   } @else if (showNoResultsState()) {
     <div class="empty-state">

@@ -1,10 +1,12 @@
+@use '../../../../styles/responsive' as r;
+
 // Layout only — visuals all come from DS utility classes.
 // Positioning + slide-in animation defined here because they're component-scoped
 // (the panel slides in from below, parent decides when to mount).
 :host {
   position: absolute;
   left: 50%;
-  bottom: 32px;
+  bottom: var(--space-7);
   transform: translateX(-50%);
   z-index: 100;
   display: block;
@@ -75,7 +77,7 @@
 
 // Keyframe `ds-end-overlay-slide` consolidée dans `_motion.scss` (DS Wave 1 §2.2).
 
-@media (max-width: 480px) {
+@include r.respond-below(r.$bp-mobile) {
   .replay-end-overlay__actions {
     flex-direction: column;
     width: 100%;

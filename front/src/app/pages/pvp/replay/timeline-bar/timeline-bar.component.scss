@@ -19,7 +19,7 @@
 }
 
 // Caché sous .is-narrow (D1) — `<app-timeline-stepper>` prend le relais.
-@media (max-width: 760px) {
+@include r.respond-below(r.$bp-replay-narrow) {
   :host { display: none; }
 }
 :host-context(.is-narrow) { display: none; }
@@ -115,6 +115,9 @@
 
 .timeline-bar__sub-events {
   display: flex;
+  // 3px is a deliberate sub-pixel gap: 8px-diameter bullets need to keep visual
+  // separation tight enough that a 5-event chain reads as one cluster. Bumping
+  // this to `var(--space-1)` (4px) breaks the chain-group cluster perception.
   gap: 3px;
   justify-content: center;
   align-items: center;
@@ -159,7 +162,8 @@
 }
 
 // chain-group--self / --opp come from `_chain-owner-palette.scss` (Viewer F0).
-// We only add the base `.chain-group` layout here.
+// We only add the base `.chain-group` layout here. Sub-pixel gap/padding kept
+// to preserve the chain-cluster visual density (see .timeline-bar__sub-events).
 .chain-group {
   display: flex;
   gap: 3px;
@@ -235,6 +239,15 @@
   color: var(--gold-50);
   max-width: 240px;
   text-align: center;
+}
+
+// Mockup parity: not-computed popover shows "Calcul en cours…" italicized in
+// muted gold, fed by the existing `replay.viewer.picker.notComputed` key.
+.timeline-bar__popover-not-computed {
+  font: var(--weight-semibold) var(--text-xs) / var(--line-tight) var(--font-body);
+  color: var(--gold-soft-50);
+  font-style: italic;
+  opacity: 0.85;
 }
 
 .timeline-bar__popover-lp {

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { AvatarComponent } from '../../../../shared/avatar/avatar.component';
 import type { ReplayMetadataMsg } from '../../duel-ws.types';
@@ -22,7 +23,7 @@ import { deriveOutcome, type ReplayOutcome } from '../replay-outcome.util';
   selector: 'app-replay-topbar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, AvatarComponent],
+  imports: [TranslateModule, MatIconModule, AvatarComponent],
   templateUrl: './replay-topbar.component.html',
   styleUrl: './replay-topbar.component.scss',
   host: { role: 'banner' },

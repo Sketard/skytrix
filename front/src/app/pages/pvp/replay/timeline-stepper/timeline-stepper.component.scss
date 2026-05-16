@@ -1,18 +1,20 @@
+@use '../../../../styles/responsive' as r;
+
 // Layout-only — icon-btn / typography come from DS Wave 1.
 // The pill is a viewer-specific composite (gold-soft glow + dot progress +
 // chevron), kept scoped because no DS utility composes these all.
 :host {
   display: none;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
   border-top: 1px solid var(--gold-soft-25);
 }
 
 // Visible only on narrow viewports (D1 — width-driven) or when the page host
 // flag `.is-narrow` is set (preview tools, manual narrow toggle).
-@media (max-width: 760px) {
+@include r.respond-below(r.$bp-replay-narrow) {
   :host { display: flex; }
 }
 :host-context(.is-narrow) { display: flex; }
@@ -24,6 +26,8 @@
 }
 
 .timeline-stepper__nav {
+  // WCAG touch target.
+  @include r.touch-target-min;
   flex: 0 0 44px;
   height: 44px;
 
@@ -40,7 +44,7 @@
   justify-content: center;
   gap: var(--space-2);
   min-height: 44px;
-  padding: 6px 14px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--gold-soft-08);
   border: 1px solid var(--gold-soft-25);
@@ -63,7 +67,7 @@
 .timeline-stepper__pill-main {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -79,9 +83,9 @@
 
 .timeline-stepper__dots {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
-  margin-left: 4px;
+  margin-left: var(--space-1);
 }
 
 .timeline-stepper__dot {
@@ -101,21 +105,25 @@
 
 .timeline-stepper__chevron {
   color: var(--gold);
-  font-size: 14px; // icon glyph dimension, geometry composant
+  // !important: override mat-icon's default 24px host bind — keep the 14px
+  // chevron compact next to the turn label.
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
   line-height: var(--line-tight);
 }
 
 .timeline-stepper__sub-events {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   overflow-x: auto;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 .timeline-stepper__sub-event {
   flex: 0 0 24px;
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--gold-soft-25);
   border: none;
   cursor: pointer;
@@ -130,8 +138,8 @@
   }
 }
 
-// Hide dot progress under 480px (D13 cramped).
-@media (max-width: 480px) {
+// Hide dot progress under 480px (D13 cramped) — matches mockup §timeline-stepper.
+@include r.respond-below(r.$bp-mobile) {
   .timeline-stepper__dots {
     display: none;
   }

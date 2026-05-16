@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatDialogRef } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { BottomSheetHandleComponent } from '../../../../shared/bottom-sheet-handle/bottom-sheet-handle.component';
 
@@ -21,7 +22,7 @@ import { BottomSheetHandleComponent } from '../../../../shared/bottom-sheet-hand
   selector: 'app-replay-bottom-sheet',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, BottomSheetHandleComponent, A11yModule],
+  imports: [TranslateModule, MatIconModule, BottomSheetHandleComponent, A11yModule],
   templateUrl: './replay-bottom-sheet.component.html',
   styleUrl: './replay-bottom-sheet.component.scss',
   host: {

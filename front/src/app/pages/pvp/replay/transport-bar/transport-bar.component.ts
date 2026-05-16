@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { ContextPillComponent } from '../context-pill/context-pill.component';
 import { TimelineZoomControlComponent, type ZoomLevel } from '../timeline-zoom-control/timeline-zoom-control.component';
@@ -25,7 +26,7 @@ import { TimelineZoomControlComponent, type ZoomLevel } from '../timeline-zoom-c
   styleUrl: './transport-bar.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, ContextPillComponent, TimelineZoomControlComponent],
+  imports: [TranslateModule, MatIconModule, ContextPillComponent, TimelineZoomControlComponent],
 })
 export class TransportBarComponent {
   // === Context inputs (left zone) ============================================
@@ -64,7 +65,7 @@ export class TransportBarComponent {
   readonly openCheatSheet = output<void>();
   readonly openMoreOptions = output<void>();
 
-  protected readonly playIcon = computed(() => (this.isPlaying() ? '⏸' : '▶'));
+  protected readonly playIcon = computed(() => (this.isPlaying() ? 'pause' : 'play_arrow'));
   protected readonly playAriaKey = computed(() => (this.isPlaying() ? 'replay.transport.pause' : 'replay.transport.play'));
   protected readonly animationsAriaKey = computed(() =>
     this.animationsEnabled() ? 'replay.transport.disableAnimations' : 'replay.transport.enableAnimations',

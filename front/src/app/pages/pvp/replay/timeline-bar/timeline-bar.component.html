@@ -80,6 +80,9 @@
       <div class="timeline-bar__popover-text">
         <span class="text-eyebrow">{{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}
         · {{ 'replay.timeline.events' | translate: { count: turnInfo.eventCount } }}</span>
+        <span class="timeline-bar__popover-not-computed">
+          {{ 'replay.viewer.picker.notComputed' | translate }}
+        </span>
         @if (hoveredLabel(); as label) {
           <span class="timeline-bar__popover-label">{{ label }}</span>
         }

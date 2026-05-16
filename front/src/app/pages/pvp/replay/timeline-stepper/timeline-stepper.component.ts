@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
 import type { Player } from '../../duel-ws.types';
@@ -23,7 +24,7 @@ import type { TimelineSegment } from '../timeline-bar/timeline-bar.component';
   selector: 'app-timeline-stepper',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule],
+  imports: [TranslateModule, MatIconModule],
   templateUrl: './timeline-stepper.component.html',
   styleUrl: './timeline-stepper.component.scss',
 })

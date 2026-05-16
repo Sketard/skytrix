@@ -693,8 +693,7 @@
       },
       "empty": {
         "title": "No replays yet",
-        "desc": "Play a duel online or in sandbox — your matches will be saved here to replay, fork, and improve.",
-        "ctaPvp": "Play a duel"
+        "desc": "Play a duel online or in sandbox — your matches will be saved here to replay, fork, and improve."
       },
       "noResults": {
         "title": "No results",

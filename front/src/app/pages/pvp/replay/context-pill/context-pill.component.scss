@@ -1,3 +1,5 @@
+@use '../../../../styles/responsive' as r;
+
 // Layout only — visuals come from DS Wave 1 utility classes (.pill / .text-eyebrow).
 // Cascade-hide rules (D13) — applied through the host class so this works the
 // same when context-pill is dropped into the desktop transport-bar OR the
@@ -22,7 +24,7 @@
 .context-pill__phase {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .context-pill__phase-bolt {
@@ -31,7 +33,8 @@
   line-height: 1;
 }
 
-// ≤ 920px → drop phase chip + event label (D13 step 1)
+// ≤ 920px → drop phase chip + event label (D13 step 1).
+// Component-local breakpoint between `$bp-tablet` (768) and `$bp-desktop` (1024).
 @media (max-width: 920px) {
   .context-pill__phase,
   .context-pill__event {
@@ -39,8 +42,8 @@
   }
 }
 
-// ≤ 480px → drop position too (D13 step 2). Turn pill always remains.
-@media (max-width: 480px) {
+// ≤ 480px ($bp-mobile) → drop position too (D13 step 2). Turn pill always remains.
+@include r.respond-below(r.$bp-mobile) {
   .context-pill__position {
     display: none;
   }

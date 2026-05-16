@@ -1,3 +1,5 @@
+@use '../../../../styles/responsive' as r;
+
 // =============================================================================
 // Transport-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
 //
@@ -78,25 +80,16 @@
 .transport-bar__perspective-name {
   font-size: var(--text-xs);
   color: var(--text-muted);
-  max-width: 80px;
+  max-width: 80px; // cap the username so very long pseudos can't push the cluster off-screen
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 // Toggles (animations, decisions) without `--active` look identical to a
-// regular icon-btn otherwise. Master rendered a line-through on the icon as
-// the "off" affordance — restored here so the user can tell at a glance.
+// regular icon-btn otherwise. Drop opacity to ~0.6 as the "off" affordance.
 .transport-bar__toggle:not(.icon-btn--active) {
-  opacity: 0.6;
-
-  mat-icon,
-  // emoji/text fallback (the template uses raw glyphs inside the button)
-  & {
-    text-decoration: line-through;
-    text-decoration-color: var(--gold-soft-40);
-    text-decoration-thickness: 1.5px;
-  }
+  opacity: 0.55;
 }
 
 // `⋯` More button gets a small gold dot indicator when any non-default
@@ -122,7 +115,9 @@
 // Cascade hide (D13)
 // =============================================================================
 
-// ≤ 920px → hide fork label + perspective name (cramped, icons remain)
+// ≤ 920px → hide fork label + perspective name (cramped, icons remain).
+// Component-local breakpoint between `$bp-tablet` (768) and `$bp-desktop` (1024)
+// — labels start to push the play button off-center beyond this width.
 @media (max-width: 920px) {
   .transport-bar__fork-label,
   .transport-bar__perspective-name {
@@ -130,9 +125,9 @@
   }
 }
 
-// ≤ 480px → collapse toggles + fork + perspective into ⋯ More.
+// ≤ 480px ($bp-mobile) → collapse toggles + fork + perspective into ⋯ More.
 // Play stays prominent; step buttons stay (transport is the primary action).
-@media (max-width: 480px) {
+@include r.respond-below(r.$bp-mobile) {
   .transport-bar {
     grid-template-columns: 1fr auto auto;
     padding: var(--space-2);
@@ -151,9 +146,8 @@
 
   // WCAG touch target — the step buttons stay visible on mobile so their hit
   // area must reach 44px even though they're rendered as `.icon-btn--md` (34px)
-  // on desktop. Master had `@include r.touch-target-min` wrapping these.
+  // on desktop.
   .transport-bar__step {
-    min-width: 44px;
-    min-height: 44px;
+    @include r.touch-target-min;
   }
 }

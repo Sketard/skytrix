@@ -1,3 +1,5 @@
+@use '../../../../styles/responsive' as r;
+
 // Layout-only — visuals come from DS utility classes (.surface-card,
 // .text-gold-gradient, .section-header__title, .icon-btn, .text-code--inline).
 :host {
@@ -77,7 +79,8 @@
 
 // Keyframe `ds-cheat-sheet-fade` consolidée dans `_motion.scss` (DS Wave 1 §2.2).
 
-@media (max-width: 480px) {
+// ≤ 480px ($bp-mobile) → become a bottom-sheet (matches mockup §cheat-sheet).
+@include r.respond-below(r.$bp-mobile) {
   :host {
     align-items: flex-end;
     padding: 0;

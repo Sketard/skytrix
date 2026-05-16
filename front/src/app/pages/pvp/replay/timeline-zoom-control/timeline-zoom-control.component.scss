@@ -22,6 +22,9 @@ button.pill {
   }
 }
 
+// Same component-local 920px breakpoint as transport-bar's cascade — the zoom
+// cluster + perspective + fork+labels can't all fit under that width, and the
+// zoom-control is a power-user-only feature so it's the first to go.
 @media (max-width: 920px) {
   :host {
     display: none;

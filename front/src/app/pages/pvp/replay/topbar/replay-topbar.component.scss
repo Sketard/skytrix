@@ -1,3 +1,5 @@
+@use '../../../../styles/responsive' as r;
+
 // Layout-only. All visuals come from DS Wave 1 (`.page-header--compact`,
 // `.btn--ghost`, `.icon-btn`, `.pill--*`, `.text-eyebrow`, `.text-mono`).
 :host {
@@ -27,7 +29,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .replay-topbar__chip-name {
@@ -57,8 +59,18 @@
   justify-self: end;
 }
 
+// Material Icons inside `.pill--xs` need their 24px host bind tamed —
+// same pattern as `_buttons.scss` icon size overrides.
+.replay-topbar__meta-icon {
+  // !important: override mat-icon's default 24px host bind.
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  color: var(--text-muted);
+}
+
 // D14 — narrow viewport hide cascade
-@media (max-width: 480px) {
+@include r.respond-below(r.$bp-mobile) {
   .replay-topbar__back-label,
   .replay-topbar__chip-deck,
   .replay-topbar__meta {
@@ -71,7 +83,7 @@
   }
 }
 
-@media (min-width: 481px) {
+@include r.respond-above(r.$bp-mobile) {
   // Details button is for mobile only — desktop has full summary already.
   .replay-topbar__details-btn {
     display: none;

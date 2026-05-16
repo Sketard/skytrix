@@ -7,3 +7,13 @@
 :host {
   display: block;
 }
+
+// Tame the `<mat-icon>` inside the close button (default host bind is 24px;
+// the partial expects an 18px glyph centered in the 32x32 box).
+.bottom-sheet-close mat-icon {
+  // !important: override mat-icon's default 24px host bind.
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  line-height: 18px !important;
+}

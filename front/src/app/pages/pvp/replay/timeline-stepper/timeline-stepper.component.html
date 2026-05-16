@@ -5,7 +5,7 @@
     [attr.aria-label]="'replay.viewer.stepper.prevTurn' | translate"
     [disabled]="!canStepPrev()"
     (click)="onPrev()">
-    ◀
+    <mat-icon>chevron_left</mat-icon>
   </button>
 
   <button
@@ -22,7 +22,7 @@
         <span class="timeline-stepper__dot" [class.is-active]="active"></span>
       }
     </span>
-    <span aria-hidden="true" class="timeline-stepper__chevron">▾</span>
+    <mat-icon aria-hidden="true" class="timeline-stepper__chevron">expand_more</mat-icon>
   </button>
 
   <button
@@ -31,7 +31,7 @@
     [attr.aria-label]="'replay.viewer.stepper.nextTurn' | translate"
     [disabled]="!canStepNext()"
     (click)="onNext()">
-    ▶
+    <mat-icon>chevron_right</mat-icon>
   </button>
 </div>
 
