@@ -42,15 +42,15 @@
   <app-skel variant="rect" width="200px" height="32px" />
 </div>
 
-<!-- Progress indicator (DS Wave 1 §2.6 pulse-dot integrated) -->
-<div class="replay-loading-skeleton__progress">
-  @if (hasProgress()) {
+<!-- Progress indicator (DS Wave 1 §2.6 pulse-dot integrated).
+     Only rendered once `total` is known (REPLAY_METADATA arrived) so the
+     wireframe alone carries the "loading" signal in the early window —
+     avoids the redundant "Loading replay…" pill stacking visually on top
+     of the skeleton shimmer it duplicates. -->
+@if (hasProgress()) {
+  <div class="replay-loading-skeleton__progress">
     <span class="pill pill--gold pill--md pill--live">
       {{ 'replay.viewer.loadingProgressDetailed' | translate: progressParams() }}
     </span>
-  } @else {
-    <span class="pill pill--gold pill--md pill--live">
-      {{ 'replay.viewer.loading' | translate }}
-    </span>
-  }
-</div>
+  </div>
+}

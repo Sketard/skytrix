@@ -26,12 +26,11 @@ describe('ReplayLoadingSkeletonComponent', () => {
     el = fixture.nativeElement;
   });
 
-  it('renders the generic loading pill when total is unknown', () => {
+  it('omits the loading pill when total is unknown (skeleton carries the signal)', () => {
+    // No metadata yet → no pill. The wireframe shimmer alone communicates
+    // "loading" — avoids the redundant pill stacking on the skeleton.
     fixture.detectChanges();
-    const pill = el.querySelector('.pill--live');
-    expect(pill?.textContent?.trim()).toBe('Loading replay…');
-    expect(pill?.classList.contains('pill--gold')).toBe(true);
-    expect(pill?.classList.contains('pill--live')).toBe(true);
+    expect(el.querySelector('.pill--live')).toBeNull();
   });
 
   it('renders the detailed progress pill when current and total are set', () => {
@@ -40,13 +39,17 @@ describe('ReplayLoadingSkeletonComponent', () => {
     fixture.detectChanges();
     const pill = el.querySelector('.pill--live');
     expect(pill?.textContent?.trim()).toBe('Loaded 6 / 11 turns');
+    expect(pill?.classList.contains('pill--gold')).toBe(true);
+    expect(pill?.classList.contains('pill--live')).toBe(true);
   });
 
-  it('falls back to generic pill when total is set but current is 0', () => {
+  it('omits the pill when total is set but current is still 0', () => {
+    // `hasProgress` requires total!=null AND current>0 — pre-first-state
+    // window keeps the pill hidden so the wireframe alone shows loading.
     fixture.componentRef.setInput('current', 0);
     fixture.componentRef.setInput('total', 11);
     fixture.detectChanges();
-    expect(el.querySelector('.pill--live')?.textContent?.trim()).toBe('Loading replay…');
+    expect(el.querySelector('.pill--live')).toBeNull();
   });
 
   it('exposes status semantics for screen readers', () => {
