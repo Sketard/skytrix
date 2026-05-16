@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatTooltip } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { Subscription, interval } from 'rxjs';
+import { Subscription, timer } from 'rxjs';
 import { TaskState } from '../../core/model/sync-status';
 
 type JobKey = 'cards' | 'images' | 'tcgImages' | 'banlist' | 'duelData';
@@ -138,7 +138,11 @@ export class ParameterPageComponent implements OnDestroy {
 
   private startPolling(): void {
     if (this.pollSub) return;
-    this.pollSub = interval(2000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.pollStatus());
+    // `timer(0, 2000)` fires immediately then every 2s — `interval(2000)`
+    // would wait the full 2s before the first emit, leaving the UI stuck in
+    // "Updating..." with no progress bar during the gap between PUT response
+    // and the first poll. This shaves that 2s blind window.
+    this.pollSub = timer(0, 2000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.pollStatus());
   }
 
   private stopPolling(): void {
