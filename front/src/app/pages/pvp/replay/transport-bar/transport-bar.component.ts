@@ -11,9 +11,9 @@ import { TimelineZoomControlComponent, type ZoomLevel } from '../timeline-zoom-c
 //   [ options  — zoom-control · toggles · perspective · fork · cheatSheet · ⋯ More ]
 //
 // All visuals come from DS Wave 1 (`.icon-btn`, `.icon-btn--lg.--round`, `.pill`,
-// `.btn`, `.btn--ghost`, `.btn--cta-shimmer`). Material dependencies removed —
-// the previous `MatIconButton`/`MatIcon`/`MatProgressSpinner`/`MatTooltip` are
-// gone. Hover tooltips are kept via plain `title` attributes (browser-native).
+// `.btn`, `.btn--ghost`). Material dependencies removed — the previous
+// `MatIconButton`/`MatIcon`/`MatProgressSpinner`/`MatTooltip` are gone. Hover
+// tooltips are kept via plain `title` attributes (browser-native).
 //
 // Cascade hide (D13):
 //   ≤ 920px → label-short on toggles + fork label drop, .context-event-label

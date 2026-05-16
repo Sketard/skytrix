@@ -4,10 +4,11 @@
 // Transport-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
 //
 // Layout-only SCSS. All visual styling comes from DS Wave 1 utility classes
-// (`.icon-btn`, `.btn--ghost`, `.btn--cta-shimmer`, `.pill`). The play button
-// gets a custom 52px gold gradient override — documented as the single
-// composite exception that DS Wave 1 doesn't provide (`.btn--primary.--round`
-// isn't a defined composition).
+// (`.icon-btn`, `.btn--ghost`, `.pill`). The play button gets a custom 52px
+// gold gradient override — documented as the single composite exception that
+// DS Wave 1 doesn't provide (`.btn--primary.--round` isn't a defined composition).
+// The infinite shimmer was removed on 2026-05-16 — the transport bar is always
+// on-screen, so a 4s loop animation was too noisy in peripheral vision.
 // =============================================================================
 
 :host {

@@ -73,7 +73,9 @@ describe('TransportBarComponent — F3 refonte 3 zones', () => {
     expect(play).not.toBeNull();
     expect(play?.classList.contains('icon-btn--lg')).toBe(true);
     expect(play?.classList.contains('icon-btn--round')).toBe(true);
-    expect(play?.classList.contains('btn--cta-shimmer')).toBe(true);
+    // No `btn--cta-shimmer` here — the infinite gold sweep was distracting on
+    // the always-visible transport bar, see fix(replay) 2026-05-16.
+    expect(play?.classList.contains('btn--cta-shimmer')).toBe(false);
   });
 
   it('renders <app-timeline-zoom-control> inside the options zone (D7)', () => {

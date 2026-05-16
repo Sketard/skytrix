@@ -253,7 +253,25 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return (tp === 0 ? 1 : 0) as Player;
   });
 
-  readonly loading = computed(() => this.boardStates().length === 0 && !this.replayConnection.error());
+  /**
+   * The skeleton stays visible while:
+   *  - no precomputed states are available yet, OR
+   *  - the first state has arrived BUT the adapter hasn't jumped to it yet
+   *    (rendered hand still empty by structural check, audit L16 pattern).
+   *
+   * Without the second clause the skeleton flips off as soon as the first
+   * REPLAY_BOARD_STATES chunk lands, exposing a half-rendered board (cards
+   * stacked in the bottom-left corner because the hand-row hasn't received
+   * its data yet). Gating on the adapter's rendered state ensures the
+   * board is paint-ready before we swap the skeleton for the duel UI.
+   *
+   * Hidden when an error is shown — the error toast/banner replaces both.
+   */
+  readonly loading = computed(() => {
+    if (this.replayConnection.error()) return false;
+    if (this.boardStates().length === 0) return true;
+    return this.adapter.boardStateView.renderedState().players[0].zones.length === 0;
+  });
 
   /** Index of the current turn inside `turns()` — used by stepper + picker. */
   readonly currentTurnIndex = computed<number>(() => {
