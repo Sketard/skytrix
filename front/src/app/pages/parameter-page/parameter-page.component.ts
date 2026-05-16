@@ -212,6 +212,18 @@ export class ParameterPageComponent implements OnDestroy {
     return Math.round(((state.processed + state.failed) / state.total) * 100);
   }
 
+  // Indeterminate label per job key. Falls back to `duelData` wording for
+  // any unknown key — the generic "syncing server files" phrasing is
+  // domain-appropriate when we don't know exactly what's happening.
+  indeterminateLabelKey(key: string): string {
+    switch (key) {
+      case 'cards':    return 'settings.syncing.cards';
+      case 'banlist':  return 'settings.syncing.banlist';
+      case 'duelData': return 'settings.syncing.duelData';
+      default:         return 'settings.syncing.duelData';
+    }
+  }
+
   getProgressLabel(key: string): string {
     const state = this.taskStates()[key];
     if (!state || state.total === 0) return '';

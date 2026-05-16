@@ -426,7 +426,11 @@
     "updateDuelData": "Update duel data",
     "updateDuelDataDesc": "Download cards.cdb and Lua scripts from ProjectIgnis",
     "updating": "Updating...",
-    "syncingServerFiles": "Syncing server files…",
+    "syncing": {
+      "cards": "Fetching cards…",
+      "banlist": "Checking the banlist…",
+      "duelData": "Syncing server files…"
+    },
     "rules": "Rules",
     "updateBanlist": "Update banlist",
     "updateBanlistDesc": "Sync banned/limited card lists",
