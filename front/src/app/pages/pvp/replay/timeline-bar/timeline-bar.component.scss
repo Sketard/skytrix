@@ -27,16 +27,38 @@
 .timeline-bar {
   position: relative;
   padding: 0;
-  overflow-x: scroll;
+  overflow-x: auto;
   overflow-y: hidden;
+  // Fixed height so the inner `.timeline-bar__track { height: 100% }` actually
+  // resolves — without this the percentage collapses to 0 and the track stays
+  // at its `min-height: 56px`, leaving an unintentional gap below.
+  height: 56px;
   background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
   border-top: 1px solid var(--gold-soft-12);
+
+  // Mockup §timeline-bar — a thin custom scrollbar so the native one doesn't
+  // add ~15px of dead space below the track, which would leave the current
+  // turn `::after` underline floating in the middle of the container
+  // instead of hugging the transport dock.
+  scrollbar-color: var(--gold-soft-25) transparent;
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar { height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--gold-soft-25); border-radius: var(--radius-sm); }
+  &::-webkit-scrollbar-thumb:hover { background: var(--gold-soft-40); }
 }
 
 .timeline-bar__track {
   display: flex;
   position: relative;
-  height: 56px;
+  // Fill the full height of `.timeline-bar` so the current-turn `::after`
+  // gold underline (`bottom: 0` of `.timeline-bar__turn` → effectively
+  // bottom of the track) sits flush against the gap with the transport
+  // dock. With a fixed 56px the track was shorter than its container and
+  // the underline floated mid-air.
+  min-height: 56px;
+  height: 100%;
   cursor: grab;
   min-width: 100%;
   width: 100%;
