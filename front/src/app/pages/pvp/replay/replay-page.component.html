@@ -144,13 +144,9 @@
       [currentTurnIndex]="currentTurnIndex()"
       [currentEventIndex]="transport.currentIndex()"
       [computedUpToIndex]="computedUpTo()"
-      [subEvents]="currentTurnSubEvents()"
-      [boardStates]="boardStates()"
-      [ownPlayerIndex]="perspectiveIndex()"
       (prevTurn)="onSwipeRight()"
       (nextTurn)="onSwipeLeft()"
-      (openPicker)="onOpenPicker()"
-      (seekSubEvent)="onSeek($event)" />
+      (openPicker)="onOpenPicker()" />
 
     <!-- Transport Bar (F3 — 3 zones, structured context) -->
     <app-transport-bar [isPlaying]="isPlaying()"

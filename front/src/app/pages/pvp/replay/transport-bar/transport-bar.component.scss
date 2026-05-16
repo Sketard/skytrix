@@ -92,10 +92,130 @@
   }
 }
 
-// Toggles (animations, decisions) without `--active` look identical to a
-// regular icon-btn otherwise. Drop opacity to ~0.6 as the "off" affordance.
-.transport-bar__toggle:not(.icon-btn--active) {
-  opacity: 0.55;
+// =============================================================================
+// Toggles (animations, decisions) — mockup §transport-toggle parity.
+// Labeled buttons (icon + short text) with surface-overlay background and
+// gold-soft accents when active. Not `.icon-btn` because the mockup uses a
+// rectangular pill, not an icon-only circle.
+// =============================================================================
+.transport-bar__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  min-height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: var(--weight-semibold) var(--text-xs) / 1 var(--font-body);
+  transition: all var(--transition-fast) var(--ease-out);
+
+  mat-icon {
+    // !important: override mat-icon's default 24px host bind.
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    color: inherit;
+  }
+
+  &:hover {
+    color: var(--text-secondary);
+    border-color: var(--border-medium);
+  }
+
+  &.is-active {
+    color: var(--gold);
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-08);
+
+    mat-icon { color: var(--gold); }
+  }
+}
+
+// =============================================================================
+// Perspective pill — mockup §transport-perspective parity.
+// Rounded pill with mini-avatar (P1 gold / P2 cyan-blue) + swap icon.
+// =============================================================================
+.transport-bar__perspective {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  min-height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast) var(--ease-out);
+
+  &:hover { border-color: var(--gold-soft-40); }
+
+  mat-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    color: var(--text-muted);
+  }
+}
+
+.transport-bar__perspective-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--weight-bold) 0.7rem / 1 var(--font-display);
+  color: var(--text-inverse);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+
+  &--p1 { background: linear-gradient(135deg, var(--gold-50), var(--gold-700)); }
+  &--p2 { background: linear-gradient(135deg, var(--cyan-300), var(--cyan-500)); }
+}
+
+// =============================================================================
+// Fork button — mockup §transport-fork parity. Cyan secondary CTA marking
+// the alternate-history action visually distinct from the gold playback
+// controls.
+// =============================================================================
+.transport-bar__fork {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  min-height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--cyan-soft-15);
+  border: 1px solid var(--cyan-soft-40);
+  color: var(--cyan-300);
+  cursor: pointer;
+  font: var(--weight-bold) var(--text-xs) / 1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: all var(--transition-fast) var(--ease-out);
+
+  mat-icon {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    color: inherit;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--cyan-soft-25);
+    border-color: var(--cyan-500);
+    box-shadow: 0 4px 16px var(--cyan-soft-25);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 // `⋯` More button gets a small gold dot indicator when any non-default

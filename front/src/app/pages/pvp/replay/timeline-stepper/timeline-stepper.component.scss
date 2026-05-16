@@ -114,31 +114,6 @@
   line-height: var(--line-tight);
 }
 
-.timeline-stepper__sub-events {
-  display: flex;
-  gap: var(--space-1);
-  overflow-x: auto;
-  padding: var(--space-1) 0;
-}
-
-.timeline-stepper__sub-event {
-  flex: 0 0 24px;
-  height: 8px;
-  border-radius: var(--radius-sm);
-  background: var(--gold-soft-25);
-  border: none;
-  cursor: pointer;
-  transition: background var(--transition-fast) var(--ease-out);
-
-  &:hover {
-    background: var(--gold-soft-40);
-  }
-
-  &:active {
-    background: var(--gold);
-  }
-}
-
 // Hide dot progress under 480px (D13 cramped) — matches mockup §timeline-stepper.
 @include r.respond-below(r.$bp-pvp-narrow) {
   .timeline-stepper__dots {

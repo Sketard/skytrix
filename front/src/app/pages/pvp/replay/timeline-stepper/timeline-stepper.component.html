@@ -34,18 +34,3 @@
     <mat-icon>chevron_right</mat-icon>
   </button>
 </div>
-
-@if (subEvents().length > 0) {
-  <div class="timeline-stepper__sub-events" role="group" [attr.aria-label]="'replay.viewer.stepper.openPicker' | translate">
-    @for (seg of subEvents(); track $index) {
-      <button
-        type="button"
-        class="timeline-stepper__sub-event"
-        [class.chain-group--self]="chainSegmentTone(seg) === 'self'"
-        [class.chain-group--opp]="chainSegmentTone(seg) === 'opp'"
-        [attr.aria-label]="('replay.viewer.stepper.subEventAria' | translate) + ' ' + ($index + 1)"
-        (click)="onSubEventClick(seg)">
-      </button>
-    }
-  </div>
-}

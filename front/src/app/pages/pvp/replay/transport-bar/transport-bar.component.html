@@ -61,40 +61,47 @@
 
     <button
       type="button"
-      class="icon-btn icon-btn--md transport-bar__toggle"
-      [class.icon-btn--active]="animationsEnabled()"
+      class="transport-bar__toggle"
+      [class.is-active]="animationsEnabled()"
       [attr.aria-label]="animationsAriaKey() | translate"
       [title]="animationsAriaKey() | translate"
       (click)="toggleAnimations.emit()">
-      <mat-icon>animation</mat-icon>
+      <mat-icon aria-hidden="true">animation</mat-icon>
+      <span class="transport-bar__toggle-label">{{ 'replay.transport.animShort' | translate }}</span>
     </button>
     <button
       type="button"
-      class="icon-btn icon-btn--md transport-bar__toggle"
-      [class.icon-btn--active]="promptMode() === 'decision'"
+      class="transport-bar__toggle"
+      [class.is-active]="promptMode() === 'decision'"
       [attr.aria-label]="promptAriaKey() | translate"
       [title]="promptAriaKey() | translate"
       (click)="togglePromptMode.emit()">
-      <mat-icon>message</mat-icon>
+      <mat-icon aria-hidden="true">message</mat-icon>
+      <span class="transport-bar__toggle-label">{{ 'replay.transport.decisionsShort' | translate }}</span>
     </button>
     <button
       type="button"
-      class="btn btn--ghost btn--sm btn--icon-leading transport-bar__perspective"
+      class="transport-bar__perspective"
       [attr.aria-label]="perspectiveAriaKey() | translate"
       [title]="perspectiveAriaKey() | translate"
       (click)="togglePerspective.emit()">
-      <span aria-hidden="true">P{{ perspectiveIndex() + 1 }}</span>
+      <span class="transport-bar__perspective-avatar"
+            [class.transport-bar__perspective-avatar--p1]="perspectiveIndex() === 0"
+            [class.transport-bar__perspective-avatar--p2]="perspectiveIndex() === 1"
+            aria-hidden="true">
+        P{{ perspectiveIndex() + 1 }}
+      </span>
       <mat-icon aria-hidden="true">swap_horiz</mat-icon>
     </button>
     <button
       type="button"
-      class="btn btn--ghost btn--sm btn--icon-leading transport-bar__fork"
+      class="transport-bar__fork"
       [attr.aria-label]="'replay.transport.fork' | translate"
       [title]="'replay.transport.fork' | translate"
       [disabled]="forking()"
       (click)="fork.emit()">
       <mat-icon aria-hidden="true">fork_right</mat-icon>
-      <span class="transport-bar__fork-label">{{ 'replay.transport.fork' | translate }}</span>
+      <span class="transport-bar__fork-label">{{ 'replay.transport.forkShort' | translate }}</span>
     </button>
     <button
       type="button"

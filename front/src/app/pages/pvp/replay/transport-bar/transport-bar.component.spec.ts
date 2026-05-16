@@ -104,16 +104,16 @@ describe('TransportBarComponent — F3 refonte 3 zones', () => {
     expect(play.disabled).toBe(false);
   });
 
-  it('marks the animations toggle .icon-btn--active when enabled', () => {
+  it('marks the animations toggle .is-active when enabled', () => {
     bind({ animationsEnabled: true });
     const toggles = el.querySelectorAll('.transport-bar__toggle');
-    expect(toggles[0].classList.contains('icon-btn--active')).toBe(true);
+    expect(toggles[0].classList.contains('is-active')).toBe(true);
   });
 
-  it('marks the prompt-mode toggle .icon-btn--active when in decision mode', () => {
+  it('marks the prompt-mode toggle .is-active when in decision mode', () => {
     bind({ promptMode: 'decision' });
     const toggles = el.querySelectorAll('.transport-bar__toggle');
-    expect(toggles[1].classList.contains('icon-btn--active')).toBe(true);
+    expect(toggles[1].classList.contains('is-active')).toBe(true);
   });
 
   it('shows the dot indicator on ⋯ More when hasNonDefaultOption=true', () => {

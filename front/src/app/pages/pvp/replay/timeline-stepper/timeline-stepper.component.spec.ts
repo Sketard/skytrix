@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateFakeLoader, TranslateLoader, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { TimelineStepperComponent } from './timeline-stepper.component';
 import type { TurnMeta } from '../../replay-ws.types';
-import type { TimelineSegment } from '../timeline-bar/timeline-bar.component';
 
 const stubMeta = (n: number, startIndex: number, endIndex: number, evt = endIndex - startIndex + 1): TurnMeta => ({
   turnNumber: n, startIndex, endIndex, p1LP: 8000, p2LP: 8000, eventCount: evt,
@@ -28,14 +27,12 @@ describe('TimelineStepperComponent', () => {
     turns: TurnMeta[],
     current: number,
     upTo: number,
-    subs: TimelineSegment[] = [],
     currentEventIndex: number = turns[current]?.startIndex ?? 0,
   ) {
     fixture.componentRef.setInput('turns', turns);
     fixture.componentRef.setInput('currentTurnIndex', current);
     fixture.componentRef.setInput('currentEventIndex', currentEventIndex);
     fixture.componentRef.setInput('computedUpToIndex', upTo);
-    fixture.componentRef.setInput('subEvents', subs);
     fixture.detectChanges();
   }
 
@@ -47,7 +44,7 @@ describe('TimelineStepperComponent', () => {
     expect(el.querySelector('.timeline-stepper__pill-num')?.textContent?.trim()).toBe('T0');
   });
 
-  it('disables ◀ on the first turn and ▶ on the last computed turn', () => {
+  it('disables prev on the first turn and next on the last computed turn', () => {
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5), stubMeta(2, 6, 8)], 0, 8);
     const navs = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav');
     expect(navs[0].disabled).toBe(true);
@@ -59,7 +56,7 @@ describe('TimelineStepperComponent', () => {
     expect(navs2[1].disabled).toBe(true);
   });
 
-  it('disables ▶ when the next turn is not yet computed', () => {
+  it('disables next when the next turn is not yet computed', () => {
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5), stubMeta(2, 6, 8)], 1, 4); // upTo=4 < turn2.start=6
     const navs = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav');
     expect(navs[1].disabled).toBe(true);
@@ -81,37 +78,29 @@ describe('TimelineStepperComponent', () => {
     expect(pickerSpy).toHaveBeenCalled();
   });
 
-  it('renders nothing in the sub-events row when subEvents is empty', () => {
+  it('no longer renders a standalone sub-events row (merged into the pill dot-progress)', () => {
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5)], 0, 5);
     expect(el.querySelector('.timeline-stepper__sub-events')).toBeNull();
-  });
-
-  it('emits seekSubEvent with the segment index when a sub-bullet is clicked', () => {
-    const subs: TimelineSegment[] = [{ type: 'single', idx: 0 }, { type: 'chain', indices: [1, 2] }];
-    bind([stubMeta(0, 0, 2)], 0, 2, subs);
-    const seekSpy = spyOn(fixture.componentInstance.seekSubEvent, 'emit');
-    const bullets = el.querySelectorAll('.timeline-stepper__sub-event');
-    (bullets[1] as HTMLButtonElement).click();
-    expect(seekSpy).toHaveBeenCalledOnceWith(1); // first index of chain segment
+    expect(el.querySelector('.timeline-stepper__sub-event')).toBeNull();
   });
 
   it('R3 — dots fill progressively as currentEventIndex advances inside the turn', () => {
     // Turn 1 covers events 3..9 (eventCount = 7). Start of turn ⇒ no dot lit.
-    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, [], 3);
+    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, 3);
     const dotsAtStart = el.querySelectorAll('.timeline-stepper__dot');
     expect(Array.from(dotsAtStart).map(d => d.classList.contains('is-active'))).toEqual(
       [false, false, false, false, false, false, false],
     );
 
     // Mid-turn: 4 events in (offset 4 / 7 ≈ 0.57) ⇒ first ~4 dots lit.
-    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, [], 7);
+    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, 7);
     const dotsMid = el.querySelectorAll('.timeline-stepper__dot');
     const litMid = Array.from(dotsMid).map(d => d.classList.contains('is-active'));
     expect(litMid[0]).toBe(true);
     expect(litMid[6]).toBe(false);
 
     // End of turn: progress = 1 ⇒ all 7 dots lit.
-    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, [], 10);
+    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 9, 7)], 1, 9, 10);
     const dotsEnd = el.querySelectorAll('.timeline-stepper__dot');
     expect(Array.from(dotsEnd).every(d => d.classList.contains('is-active'))).toBe(true);
   });

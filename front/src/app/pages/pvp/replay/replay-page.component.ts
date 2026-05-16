@@ -12,7 +12,6 @@ import { ReplayTransportService } from './replay-transport.service';
 import { TimelineBarComponent, type ZoomLevel } from './timeline-bar/timeline-bar.component';
 import { TransportBarComponent } from './transport-bar/transport-bar.component';
 import { TimelineStepperComponent } from './timeline-stepper/timeline-stepper.component';
-import { buildSubEventSegments, type TimelineSegment } from './timeline-bar/timeline-bar.component';
 import { TurnPickerSheetComponent } from './turn-picker-sheet/turn-picker-sheet.component';
 import { ReplayTopbarComponent } from './topbar/replay-topbar.component';
 import { ReplayLoadingSkeletonComponent } from './loading-skeleton/replay-loading-skeleton.component';
@@ -351,15 +350,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.pickerOpen() || this.optionsOpen() || this.detailsOpen()
     || this.cheatSheetOpen() || this.endOverlayState() != null,
   );
-
-  /** Sub-event bullets of the CURRENT turn, fed to `<app-timeline-stepper>`
-   *  on narrow viewports. Shares `buildSubEventSegments` with the desktop
-   *  timeline-bar so hidden-label policy stays in one place. */
-  readonly currentTurnSubEvents = computed<readonly TimelineSegment[]>(() => {
-    const turn = this.turns()[this.currentTurnIndex()];
-    if (!turn) return [];
-    return buildSubEventSegments(turn, this.boardStates());
-  });
 
   readonly playerHand = computed<CardOnField[]>(() =>
     this.getHandCards(this.activeDuelState(), 0)

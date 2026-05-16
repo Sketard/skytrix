@@ -99,3 +99,12 @@
     display: none;
   }
 }
+
+// Mobile landscape — give the board every vertical pixel we can. The topbar
+// adds ~60px of chrome on top of the 56px timeline + 64px transport dock,
+// which crushes the 16:9 board frame at ~375px viewport height (typical
+// phone landscape minus URL bar). Restoring it via Esc or by rotating
+// the phone back to portrait.
+@media (orientation: landscape) and (max-height: 500px) {
+  .page-header { display: none; }
+}

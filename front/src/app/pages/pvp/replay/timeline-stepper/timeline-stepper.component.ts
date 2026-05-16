@@ -1,19 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
-import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
-import type { Player } from '../../duel-ws.types';
-import type { TimelineSegment } from '../timeline-bar/timeline-bar.component';
+import type { TurnMeta } from '../../replay-ws.types';
 
 // Mobile-only stepper that replaces the desktop timeline-bar under `.is-narrow`
 // (D3 / D5 / spec §F2). Layout:
 //
 //   [◀]  [ T3 / 11 tours ▼ + dots ]  [▶]
-//   --- sub-event row of the current turn ---
 //
 // The center pill opens the turn picker (output `openPicker`). The chevrons
-// bind to `prevTurn` / `nextTurn`. The sub-event row emits `seekSubEvent` with
-// the event index when a sub-bullet is tapped.
+// bind to `prevTurn` / `nextTurn`. The integrated 7-dot progress already
+// communicates position-in-turn — the previous standalone sub-events row
+// was visually redundant with the pill dots AND ate ~28px of vertical real
+// estate on already-cramped mobile portrait / landscape. Removed 2026-05-16.
+// Sub-event-level navigation stays available via the turn picker bottom-sheet.
 //
 // All visuals come from DS Wave 1 (`.icon-btn`, `.pill--gold`, `.text-eyebrow`)
 // + component-scoped accents for the dot-progress (7 dots cached under 480px).
@@ -33,17 +33,10 @@ export class TimelineStepperComponent {
   readonly currentTurnIndex = input.required<number>();
   readonly currentEventIndex = input.required<number>();
   readonly computedUpToIndex = input.required<number>();
-  readonly subEvents = input<readonly TimelineSegment[]>([]);
-  /** V-C10 — chain-group self/opp coloration (matches desktop timeline-bar).
-   *  Optional inputs: when not provided, sub-event chains render without
-   *  the self/opp tint. */
-  readonly boardStates = input<readonly PreComputedState[]>([]);
-  readonly ownPlayerIndex = input<Player>(0);
 
   readonly prevTurn = output<void>();
   readonly nextTurn = output<void>();
   readonly openPicker = output<void>();
-  readonly seekSubEvent = output<number>();
 
   protected readonly currentTurn = computed<TurnMeta | null>(() => this.turns()[this.currentTurnIndex()] ?? null);
 
@@ -88,20 +81,5 @@ export class TimelineStepperComponent {
   }
   protected onPickerOpen(): void {
     this.openPicker.emit();
-  }
-  protected onSubEventClick(seg: TimelineSegment): void {
-    const idx = seg.type === 'single' ? seg.idx : seg.indices[0];
-    this.seekSubEvent.emit(idx);
-  }
-
-  /** Mirrors `TimelineBarComponent.chainSegmentIsSelf`. Looks up the
-   *  `boardState.turnPlayer` at the chain's first event — if it matches our
-   *  perspective, the segment is "self" (blue). Otherwise "opp" (amber).
-   *  Returns null for non-chain segments (single events stay neutral). */
-  protected chainSegmentTone(seg: TimelineSegment): 'self' | 'opp' | null {
-    if (seg.type !== 'chain') return null;
-    const state = this.boardStates()[seg.indices[0]];
-    if (!state) return null;
-    return state.boardState.turnPlayer === this.ownPlayerIndex() ? 'self' : 'opp';
   }
 }
