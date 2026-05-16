@@ -23,6 +23,7 @@ import { BoardSwipeNavigatorDirective } from './board-swipe-navigator.directive'
 import { deriveOutcome, type ReplayOutcome } from './replay-outcome.util';
 import type { ReplayMetadataMsg } from '../duel-ws-replay.types';
 import { AuthService } from '../../../services/auth.service';
+import { LoaderService } from '../../../services/loader.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { OrientationLockComponent } from '../../../shared/orientation-lock/orientation-lock.component';
 import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
@@ -104,6 +105,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly notify = inject(NotificationService);
   private readonly authService = inject(AuthService);
+  private readonly loaderService = inject(LoaderService);
   private readonly translate = inject(TranslateService);
   private readonly cardDataCache = inject(CardDataCacheService);
   private readonly cardInspection = inject(CardInspectionService);
@@ -451,6 +453,22 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       computedUpTo: this.computedUpTo,
       animationsEnabled: this.animationsEnabled,
       promptMode: this.promptMode,
+    });
+
+    // Hide the global full-screen spinner while our own skeleton owns the
+    // loading state — universal-hydration-strategy memory note (Axel 2026-05-16):
+    // skeleton-driven pages must not stack with the legacy app-loader overlay.
+    // We track BOTH signals so any HTTP that flips `isLoading=true` during the
+    // skeleton window (e.g. token refresh, deck cache warmup) gets stomped back
+    // to false. Once `loading()` flips to false (board paint-ready), the global
+    // loader can fire again naturally for any late HTTP request.
+    effect(() => {
+      const skeletonOn = this.loading();
+      const loaderOn = this.loaderService.isLoading();
+      if (skeletonOn && loaderOn) {
+        // `untracked` keeps the .set call from re-firing this effect itself.
+        untracked(() => this.loaderService.isLoading.set(false));
+      }
     });
 
     effect(() => {
