@@ -141,6 +141,7 @@
     "PROXIES_GENERATED": "Proxies generated",
     "NO_MISSING_IMAGES": "No missing images",
     "IMAGE_SYNC_DONE": "Done: {{success}} successful, {{failed}} failed",
+    "SYNC_DONE": "Sync complete",
     "CARDS_UPDATED": "Cards updated successfully",
     "BANLIST_UPDATED": "Banlist updated successfully",
     "CONNECTION_RESTORED": "Connection restored",
@@ -410,6 +411,7 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Sync game data (cards, images, banlist, duel server). Long-running tasks can be paused.",
     "database": "Database",
     "updateCards": "Update cards",
     "updateCardsDesc": "Sync from YGOProDeck",
@@ -424,10 +426,17 @@
     "updateDuelData": "Update duel data",
     "updateDuelDataDesc": "Download cards.cdb and Lua scripts from ProjectIgnis",
     "updating": "Updating...",
+    "syncingServerFiles": "Syncing server files…",
     "rules": "Rules",
     "updateBanlist": "Update banlist",
     "updateBanlistDesc": "Sync banned/limited card lists",
-    "neverSynced": "Never synced"
+    "neverSynced": "Never synced",
+    "status": {
+      "idle": "Idle",
+      "running": "Running",
+      "paused": "Paused",
+      "error": "Error"
+    }
   },
   "deckBuilder": {
     "namePlaceholder": "Deck name...",

@@ -141,6 +141,7 @@
     "PROXIES_GENERATED": "Proxies générés",
     "NO_MISSING_IMAGES": "Aucune image manquante",
     "IMAGE_SYNC_DONE": "Terminé : {{success}} réussis, {{failed}} échoués",
+    "SYNC_DONE": "Synchronisation terminée",
     "CARDS_UPDATED": "Cartes mises à jour avec succès",
     "BANLIST_UPDATED": "Banlist mises à jour avec succès",
     "CONNECTION_RESTORED": "Connexion rétablie",
@@ -410,6 +411,7 @@
   },
   "settings": {
     "title": "Paramètres",
+    "subtitle": "Synchronise les données du jeu (cartes, images, banlist, serveur de duel). Les tâches longues peuvent être mises en pause.",
     "database": "Base de données",
     "updateCards": "Mettre à jour les cartes",
     "updateCardsDesc": "Synchronise depuis YGOProDeck",
@@ -424,10 +426,17 @@
     "updateDuelData": "Mettre à jour les données de duel",
     "updateDuelDataDesc": "Télécharge cards.cdb et scripts Lua depuis ProjectIgnis",
     "updating": "Mise à jour en cours...",
+    "syncingServerFiles": "Synchronisation des fichiers serveur…",
     "rules": "Règles",
     "updateBanlist": "Mettre à jour la banlist",
     "updateBanlistDesc": "Synchronise les listes de cartes interdites/limitées",
-    "neverSynced": "Jamais synchronisé"
+    "neverSynced": "Jamais synchronisé",
+    "status": {
+      "idle": "Inactif",
+      "running": "En cours",
+      "paused": "En pause",
+      "error": "Erreur"
+    }
   },
   "deckBuilder": {
     "namePlaceholder": "Nom du deck...",

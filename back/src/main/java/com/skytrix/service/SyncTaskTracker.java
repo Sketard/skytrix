@@ -69,9 +69,11 @@ public class SyncTaskTracker {
     private final Map<String, TaskState> tasks = new ConcurrentHashMap<>();
 
     public SyncTaskTracker() {
+        tasks.put("cards", new TaskState());
         tasks.put("images", new TaskState());
         tasks.put("tcgImages", new TaskState());
         tasks.put("duelData", new TaskState());
+        tasks.put("banlist", new TaskState());
     }
 
     public TaskState get(String taskName) {

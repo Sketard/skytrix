@@ -32,7 +32,17 @@ public class ParameterController {
 	@PutMapping("/update/cards")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void fetchCards() {
-		yugiproApiService.fetchAll();
+		var task = syncTaskTracker.get("cards");
+		processAsynchronously(() -> {
+			task.start(1);
+			try {
+				yugiproApiService.fetchAll();
+				task.incrementProcessed();
+				task.complete();
+			} catch (Exception e) {
+				task.fail(e.getMessage());
+			}
+		});
 	}
 
 	@PutMapping("/update/images")
@@ -44,7 +54,17 @@ public class ParameterController {
 	@PutMapping("/update/ban-list")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void fetcBanList() {
-		yugiproApiService.fetchAllBanList();
+		var task = syncTaskTracker.get("banlist");
+		processAsynchronously(() -> {
+			task.start(1);
+			try {
+				yugiproApiService.fetchAllBanList();
+				task.incrementProcessed();
+				task.complete();
+			} catch (Exception e) {
+				task.fail(e.getMessage());
+			}
+		});
 	}
 
 	@PutMapping("/update/images/tcg")
