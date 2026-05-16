@@ -1,8 +1,43 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Component, input } from '@angular/core';
 import { TranslateFakeLoader, TranslateLoader, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { TimelineBarComponent, type ZoomLevel } from './timeline-bar.component';
+import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/pvp-board-container.component';
 import { EMPTY_DUEL_STATE } from '../../types';
 import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
+
+// Stub the real board-container — it pulls a full PvP DI cascade
+// (CardTravelEngine, DuelContext, …) we don't need for timeline-bar specs.
+// We re-declare the inputs the template binds against so strict template
+// checking compiles, but render nothing.
+@Component({
+  selector: 'app-pvp-board-container',
+  standalone: true,
+  template: '',
+})
+class StubBoardContainerComponent {
+  readonly preview = input<boolean>(false);
+  readonly readOnly = input<boolean>(false);
+  readonly duelState = input<unknown>(null);
+  readonly ownPlayerIndex = input<number>(0);
+  readonly highlightedZones = input<ReadonlySet<string>>(new Set());
+  readonly revealedZoneKeys = input<ReadonlySet<string>>(new Set());
+  readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
+  readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
+  readonly swapGraveDeckKeys = input<ReadonlySet<string>>(new Set());
+  readonly activeChainLinks = input<unknown[]>([]);
+  readonly chosenZone = input<string | null>(null);
+  readonly actionablePrompt = input<unknown>(null);
+  readonly animatingZone = input<unknown>(null);
+  readonly animatingLp = input<unknown>(null);
+  readonly timerState = input<unknown>(null);
+  readonly opponentDisconnected = input<boolean>(false);
+  readonly displayedPhase = input<unknown>(null);
+  readonly displayedTurnPlayer = input<unknown>(null);
+  readonly displayedTurnCount = input<unknown>(null);
+  readonly counterPulseKey = input<string | null>(null);
+  readonly chainPhase = input<string>('idle');
+}
 
 const stubMeta = (n: number, startIndex: number, eventCount: number): TurnMeta => ({
   turnNumber: n,
@@ -30,7 +65,12 @@ describe('TimelineBarComponent — D21 zoomLevel input + emits', () => {
         TimelineBarComponent,
         TranslateModule.forRoot({ loader: { provide: TranslateLoader, useClass: TranslateFakeLoader } }),
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(TimelineBarComponent, {
+        remove: { imports: [PvpBoardContainerComponent] },
+        add:    { imports: [StubBoardContainerComponent] },
+      })
+      .compileComponents();
     TestBed.inject(TranslateService).use('en');
     fixture = TestBed.createComponent(TimelineBarComponent);
     component = fixture.componentInstance;

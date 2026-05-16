@@ -225,6 +225,26 @@
   }
 }
 
+// Scaled live board preview — same as master before the F3 refactor.
+// `<app-pvp-board-container>` lays out at its native 800×600 dimensions; the
+// scale(0.25) brings that to a 200×150 popover that still uses the real zone
+// layout instead of a stylized mini-thumbnail.
+.timeline-bar__popover-board {
+  width: 200px;
+  height: 150px;
+  overflow: hidden;
+  pointer-events: none;
+
+  app-pvp-board-container {
+    display: block;
+    transform: scale(0.25);
+    transform-origin: top left;
+    width: 800px;
+    height: 600px;
+    pointer-events: none;
+  }
+}
+
 .timeline-bar__popover-info,
 .timeline-bar__popover-text {
   display: flex;

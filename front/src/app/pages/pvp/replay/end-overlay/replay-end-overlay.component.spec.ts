@@ -20,10 +20,7 @@ describe('ReplayEndOverlayComponent', () => {
             defeat: 'Defeat',
             draw: 'Draw',
             vs: 'vs',
-            replay: 'Replay',
-            fork: 'Fork at this point',
-            library: 'Library',
-            dismissHint: 'Esc or ← to resume',
+            replay: 'Restart',
           },
         },
       },
@@ -50,21 +47,11 @@ describe('ReplayEndOverlayComponent', () => {
     fixture.detectChanges();
   }
 
-  it('renders 3 CTAs — replay + fork + library (mockup §end-overlay)', () => {
+  it('renders a single Restart CTA (Fork + Library reachable elsewhere)', () => {
     bind('victory');
     const buttons = el.querySelectorAll('button');
-    expect(buttons.length).toBe(3);
-    expect(buttons[0].textContent?.trim()).toBe('Replay');
-    expect(buttons[1].textContent?.trim()).toBe('Fork at this point');
-    expect(buttons[2].textContent?.trim()).toBe('Library');
-  });
-
-  it('emits fork() when the fork CTA is clicked', () => {
-    bind('victory');
-    const forkSpy = spyOn(fixture.componentInstance.fork, 'emit');
-    const buttons = el.querySelectorAll('button');
-    (buttons[1] as HTMLButtonElement).click();
-    expect(forkSpy).toHaveBeenCalled();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].textContent?.trim()).toBe('Restart');
   });
 
   it('renders the meta line `Tour N · MM:SS` when turnCount + durationSec provided', () => {
@@ -121,15 +108,12 @@ describe('ReplayEndOverlayComponent', () => {
     expect(el.querySelector('.text-gold-gradient')).toBeNull();
   });
 
-  it('emits replay() and library() on the respective buttons', () => {
+  it('emits replay() on the Restart button click', () => {
     bind('victory');
     const replaySpy = spyOn(fixture.componentInstance.replay, 'emit');
-    const librarySpy = spyOn(fixture.componentInstance.library, 'emit');
-    const buttons = el.querySelectorAll('button');
-    (buttons[0] as HTMLButtonElement).click(); // Replay
-    (buttons[2] as HTMLButtonElement).click(); // Library (Fork is buttons[1])
+    const button = el.querySelector('button') as HTMLButtonElement;
+    button.click();
     expect(replaySpy).toHaveBeenCalledOnceWith();
-    expect(librarySpy).toHaveBeenCalledOnceWith();
   });
 
   it('emits dismissed() on Escape', () => {

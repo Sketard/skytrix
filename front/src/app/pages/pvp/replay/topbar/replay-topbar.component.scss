@@ -1,9 +1,19 @@
 @use '../../../../styles/responsive' as r;
+@use '../../../../styles/z-layers' as z;
 
 // Layout-only. All visuals come from DS Wave 1 (`.page-header--compact`,
 // `.btn--ghost`, `.icon-btn`, `.pill--*`, `.text-eyebrow`, `.text-mono`).
 :host {
   display: contents;
+}
+
+// Stack the sticky topbar above the opponent hand row. Without this the
+// hand-opponent (z = z-pvp-hand = 50) escapes its parent `.board-area`
+// via `position: absolute; top: calc(...);` and slips over the sticky
+// header during scroll/animation. We pick z-pvp-zone-browser (65) — still
+// below the chain overlay (950) and prompt sheet (80), but above hand.
+.page-header {
+  z-index: z.$z-pvp-zone-browser;
 }
 
 .replay-topbar__back-label {

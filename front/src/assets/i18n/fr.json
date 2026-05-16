@@ -766,10 +766,7 @@
         "defeat": "Défaite",
         "draw": "Égalité",
         "vs": "vs",
-        "replay": "Rejouer",
-        "fork": "Forker à ce point",
-        "library": "Bibliothèque",
-        "dismissHint": "Esc ou ← pour reprendre la lecture"
+        "replay": "Recommencer"
       },
       "cheatSheet": {
         "title": "Raccourcis clavier",

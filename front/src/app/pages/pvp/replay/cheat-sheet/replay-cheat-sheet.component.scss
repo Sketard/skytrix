@@ -69,6 +69,16 @@
   &:last-child {
     border-bottom: none;
   }
+
+  // Label cell — the first <span> is the action description ("Toggle
+  // perspective" etc). Without an explicit font declaration it inherited
+  // from the host (no font set) and read as a different family than the
+  // rest of the viewer text. Pin it to DS body tokens so it lines up with
+  // the bottom-sheet labels and topbar pseudos.
+  > span {
+    font: var(--weight-medium) var(--text-sm) / var(--line-snug) var(--font-body);
+    color: var(--text-secondary);
+  }
 }
 
 .replay-cheat-sheet__keys {

@@ -89,15 +89,38 @@
       </div>
     }
   } @else {
-    <!-- Hover popover (desktop) and turn picker (mobile) share a single
-         lightweight component. The component reads `[variant]` to render a
-         richer `hover` layout (SZONE row + LP/turn/phase footer + pile
-         counts) — matching master's scaled board preview — without the DI
-         cascade a real `<app-pvp-board-container>` would pull in. -->
-    <app-mini-board-thumbnail
-      variant="hover"
-      [state]="hoveredState()"
-      [perspectiveIndex]="ownPlayerIndex()" />
+    <!-- Hover popover renders the actual board container in `[preview]` mode.
+         `[preview]=true` skips zone-resolver registration so this preview
+         instance doesn't fight with the live board for zone hit-targets;
+         `[readOnly]=true` disables all interactions. Only one popover is
+         mounted at a time (the hover state machine guarantees this), so the
+         DI cost of the real board container is acceptable here — gives the
+         user the same field layout as the active board, not a stylized
+         mini-thumbnail. -->
+    <div class="timeline-bar__popover-board">
+      <app-pvp-board-container
+        [preview]="true"
+        [readOnly]="true"
+        [duelState]="hoveredState()"
+        [ownPlayerIndex]="ownPlayerIndex()"
+        [highlightedZones]="emptyZoneSet"
+        [revealedZoneKeys]="emptyStringSet"
+        [targetedZoneKeys]="emptyStringSet"
+        [preTargetZoneKeys]="emptyStringSet"
+        [swapGraveDeckKeys]="emptyStringSet"
+        [activeChainLinks]="emptyChainLinks"
+        [chosenZone]="null"
+        [actionablePrompt]="null"
+        [animatingZone]="null"
+        [animatingLp]="null"
+        [timerState]="null"
+        [opponentDisconnected]="false"
+        [displayedPhase]="null"
+        [displayedTurnPlayer]="null"
+        [displayedTurnCount]="null"
+        [counterPulseKey]="null"
+        [chainPhase]="'idle'" />
+    </div>
     @if (hoveredTurnInfo(); as turnInfo) {
       <div class="timeline-bar__popover-info">
         <span class="text-eyebrow">{{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}</span>

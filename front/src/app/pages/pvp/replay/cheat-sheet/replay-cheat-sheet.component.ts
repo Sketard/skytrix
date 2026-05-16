@@ -37,6 +37,7 @@ interface CheatSection {
     tabindex: '-1',
     cdkTrapFocus: '',
     cdkTrapFocusAutoCapture: '',
+    '(click)': 'onBackdropClick($event)',
   },
 })
 export class ReplayCheatSheetComponent {
@@ -44,6 +45,14 @@ export class ReplayCheatSheetComponent {
 
   // Resolved via i18nAttr so the host binding doesn't need the pipe (forbidden).
   protected readonly ariaLabel = i18nAttr('replay.viewer.cheatSheet.title');
+
+  /** Click on the scrim (anywhere outside the panel) closes — the panel itself
+   *  stops propagation in the template so only true backdrop clicks bubble. */
+  protected onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.close.emit();
+    }
+  }
 
   protected readonly sections: CheatSection[] = [
     {

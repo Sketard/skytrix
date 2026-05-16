@@ -71,10 +71,6 @@
   justify-content: center;
 }
 
-.replay-end-overlay__dismiss {
-  color: var(--text-disabled);
-}
-
 // Keyframe `ds-end-overlay-slide` consolidée dans `_motion.scss` (DS Wave 1 §2.2).
 
 @include r.respond-below(r.$bp-mobile) {

@@ -679,11 +679,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   onBackToHub(): void        { this.router.navigate(['/pvp/history']); }
   onEndOverlayReplay(): void { this.onSkipStart(); }
-  onEndOverlayLibrary(): void { this.onBackToHub(); }
-  /** V-A7 mockup restore — the end-overlay exposes a Fork CTA matching the
-   *  mockup §end-overlay. Reuses the existing `onFork()` keyboard handler
-   *  (keeps single source of truth for the fork flow). */
-  onEndOverlayFork(): void { this.onFork(); }
   /** Soft-dismiss the end overlay (Esc/← from inside the component). We pause
    *  the timer and step back one event so the overlay disappears and the user
    *  can scrub freely. */

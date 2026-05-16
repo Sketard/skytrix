@@ -766,10 +766,7 @@
         "defeat": "Defeat",
         "draw": "Draw",
         "vs": "vs",
-        "replay": "Replay",
-        "fork": "Fork at this point",
-        "library": "Library",
-        "dismissHint": "Esc or ← to resume playback"
+        "replay": "Restart"
       },
       "cheatSheet": {
         "title": "Keyboard shortcuts",

@@ -35,25 +35,9 @@
   <div class="replay-end-overlay__actions">
     <button
       type="button"
-      class="btn btn--primary btn--lg btn--cta btn--cta-shimmer"
+      class="btn btn--primary btn--lg btn--cta"
       (click)="replay.emit()">
       {{ 'replay.viewer.endOverlay.replay' | translate }}
     </button>
-    <button
-      type="button"
-      class="btn btn--secondary btn--lg btn--cta replay-end-overlay__fork"
-      (click)="fork.emit()">
-      {{ 'replay.viewer.endOverlay.fork' | translate }}
-    </button>
-    <button
-      type="button"
-      class="btn btn--ghost btn--lg btn--cta"
-      (click)="library.emit()">
-      {{ 'replay.viewer.endOverlay.library' | translate }}
-    </button>
   </div>
-
-  <p class="text-eyebrow replay-end-overlay__dismiss">
-    {{ 'replay.viewer.endOverlay.dismissHint' | translate }}
-  </p>
 </div>

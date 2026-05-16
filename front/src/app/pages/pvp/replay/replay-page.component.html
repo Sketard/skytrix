@@ -109,7 +109,9 @@
                               [confirmedCards]="adapter.activeConfirmedCards()"
                               (longPressInspect)="onCardInspectRequest($event)" />
 
-      <!-- F4 — End overlay slides in when atEnd() (D18: 2 CTAs, no Fork) -->
+      <!-- F4 — End overlay slides in when atEnd(). Single Restart CTA;
+           Fork & Library options stay reachable from the transport-bar
+           options sheet + topbar back button. -->
       @if (endOverlayState(); as eo) {
         <app-replay-end-overlay
           [outcome]="eo.outcome"
@@ -120,8 +122,6 @@
           [turnCount]="eo.turnCount"
           [durationSec]="eo.durationSec"
           (replay)="onEndOverlayReplay()"
-          (fork)="onEndOverlayFork()"
-          (library)="onEndOverlayLibrary()"
           (dismissed)="onEndOverlayDismissed()" />
       }
     </div>

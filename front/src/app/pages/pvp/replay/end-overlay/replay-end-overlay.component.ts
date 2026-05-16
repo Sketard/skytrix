@@ -4,10 +4,11 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import type { ReplayOutcome } from '../replay-outcome.util';
 
 // End-of-replay slide-in panel. Receives the pre-derived outcome (see
-// `deriveOutcome` in `replay-outcome.util.ts` — D19) and shows three CTAs
-// per mockup §end-overlay: "Rejouer" (primary gold shimmer) + "Forker à ce
-// point" (secondary cyan) + "Bibliothèque" (ghost). A meta line under the
-// result pill exposes `Tour N · MM:SS` (mockup §end-overlay-meta).
+// `deriveOutcome` in `replay-outcome.util.ts` — D19) and exposes a single
+// primary CTA "Restart" (review pass 2026-05-16). The Fork / Library
+// shortcuts were removed — Fork stays available from the transport-bar
+// options sheet, Library from the topbar Back button. A meta line under
+// the result pill exposes `Tour N · MM:SS` (mockup §end-overlay-meta).
 //
 // Layout-only SCSS — visuals come from DS Wave 1 utility classes (`.surface-card`,
 // `.pill--celebrated`, `.btn--cta-shimmer`, `.text-mono`, `.text-eyebrow`).
@@ -39,8 +40,6 @@ export class ReplayEndOverlayComponent {
   readonly durationSec = input<number | null>(null);
 
   readonly replay    = output<void>();
-  readonly fork      = output<void>();
-  readonly library   = output<void>();
   readonly dismissed = output<void>();
 
   /** Mockup §end-overlay-meta — composed string `Tour N · MM:SS`. Either

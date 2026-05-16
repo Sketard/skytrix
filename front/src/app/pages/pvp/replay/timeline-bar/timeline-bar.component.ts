@@ -3,11 +3,12 @@ import {
 } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { MiniBoardThumbnailComponent } from '../mini-board-thumbnail/mini-board-thumbnail.component';
+import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/pvp-board-container.component';
+import { EMPTY_ZONE_SET, EMPTY_STRING_SET } from '../../types';
 import type { TurnMeta } from '../../replay-ws.types';
 import type { PreComputedState } from '../../replay-ws.types';
 import type { Player } from '../../duel-ws.types';
-import type { DuelState } from '../../types';
+import type { DuelState, ChainLinkState } from '../../types';
 import { EMPTY_DUEL_STATE } from '../../types';
 import { TIMELINE_BAR_TRANSITION_FALLBACK_MS } from '../../duel-page/animation-constants';
 
@@ -54,7 +55,7 @@ export function buildSubEventSegments(turn: TurnMeta, states: readonly PreComput
   styleUrl: './timeline-bar.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, MiniBoardThumbnailComponent],
+  imports: [TranslateModule, PvpBoardContainerComponent],
 })
 export class TimelineBarComponent implements OnDestroy {
   // Inputs
@@ -74,6 +75,13 @@ export class TimelineBarComponent implements OnDestroy {
   readonly seekTo = output<number>();
   readonly scrubbing = output<number>();
   readonly zoomLevelChange = output<ZoomLevel>();
+
+  // Frozen sentinels for the inert `<app-pvp-board-container [preview]>` inputs
+  // — same module-scoped EMPTY_* references used elsewhere on the page so
+  // OnPush change-detection never sees a new reference here.
+  readonly emptyZoneSet    = EMPTY_ZONE_SET;
+  readonly emptyStringSet  = EMPTY_STRING_SET;
+  readonly emptyChainLinks: ChainLinkState[] = [];
 
   // Hover preview state
   readonly hoveredIndex = signal<number | null>(null);
