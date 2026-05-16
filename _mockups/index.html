@@ -83,7 +83,40 @@
   <h1>Skytrix — Mockups haute fidélité</h1>
   <p>Mockups standalone (HTML+CSS pur) qui définissent le langage visuel <strong>Holographic Arena</strong> appliqué à différents écrans. Cliquer pour ouvrir, comparer, valider.</p>
 
-  <h2 style="font-size: 0.95rem; font-weight: 700; color: #c0c0c0; margin: 24px 0 12px; letter-spacing: 0.05em; text-transform: uppercase;">PvP Lobby — Variantes (livrées 2026-05-13)</h2>
+  <h2 style="font-size: 0.95rem; font-weight: 700; color: #c0c0c0; margin: 24px 0 12px; letter-spacing: 0.05em; text-transform: uppercase;">Refresh DS — écrans simples (✅ shipped 2026-05-16)</h2>
+  <div class="nav-grid">
+    <a href="./mockup-login-card-flow.html" class="nav-card" style="border-color: rgba(76, 175, 80, 0.4);">
+      <span class="nav-card-tag" style="background: rgba(76, 175, 80, 0.15); color: #4caf50;">✅ Shipped — Login B2 Constellation</span>
+      <div class="nav-card-title">Login — Card Flow (à la Master Duel)</div>
+      <div class="nav-card-desc"><strong>Variante B2 portée en Angular</strong> (commit <code>0fd8da96</code>). Background card constellation : 9 cartes en perspective dont 2-5 face recto tirées aléatoirement au mount parmi 25 passcodes iconiques (dragons, dieux égyptiens, mascottes). Logos officiels cyan/violet conservés avec gold drop-shadow halo. Form glassmorphism, mode-tabs slide, inputs DS, CTA shimmer. Aucun <code>mat-form-field</code>. Toggle B1/B3 + bouton Reshuffle = mockup-only (non porté). Assets : <code>card_back.jpg</code> + route <code>/api/documents/small/code/{passcode}</code>.</div>
+    </a>
+    <a href="./mockup-navbar.html" class="nav-card" style="border-color: rgba(76, 175, 80, 0.4);">
+      <span class="nav-card-tag" style="background: rgba(76, 175, 80, 0.15); color: #4caf50;">✅ Shipped — Navbar Direction B</span>
+      <div class="nav-card-title">Navbar — Refresh identité skytrix</div>
+      <div class="nav-card-desc"><strong>Portée en Angular</strong> (commit <code>9665569b</code>). Sidebar desktop 260↔56px : rail gold à droite + gradient gold-soft-06 + halo doré logo + logo-icon en collapsed mode. Lien actif : barre verticale gold + dot droite. Alpha ribbon gradient gold-700→gold-900. Mobile top bar : border-bottom gold-soft-20 + mini halo derrière logo-text. Drawer mobile : gold accent line en bas du header. Lang switcher en dropdown (haut/droite selon collapsed). Bouton logout natif <code>.btn .btn--ghost .btn--sm .btn--full</code>. Plus aucun <code>mat-icon-button</code> / <code>mat-flat-button</code>.</div>
+    </a>
+    <a href="./mockup-parameters.html" class="nav-card" style="border-color: rgba(76, 175, 80, 0.4);">
+      <span class="nav-card-tag" style="background: rgba(76, 175, 80, 0.15); color: #4caf50;">✅ Shipped — Paramètres Control Panel</span>
+      <div class="nav-card-title">Paramètres — Control Panel</div>
+      <div class="nav-card-desc"><strong>Portée en Angular</strong> (7 commits <code>80372412</code>→<code>5645b5c4</code>). Back : <code>SyncTaskTracker</code> étendu à <code>cards</code> + <code>banlist</code> (async tracking via <code>processAsynchronously</code>). Front : <code>.screen-bg</code> 4 layers, <code>.page-header__icon settings_suggest</code>, <code>.section-header__title</code> DS avec accent-bar gold, status pill <code>.pill --*</code> + <code>--live</code>, progress bar gold (déterminée ou indéterminée selon job), label sync au-dessus de la barre (5 labels par job), <code>"Dernière sync :"</code> prefix, erreur inline rouge, loader global supprimé via <code>effect()</code>, <code>timer(0, 2000)</code> pour polling immédiat. Layout aligné PvP Arena/Replay (<code>:host</code> isolation + flex gap + <code>--container-medium</code>).</div>
+    </a>
+    <a href="./mockup-login-vault-door.html" class="nav-card">
+      <span class="nav-card-tag" style="background: rgba(155, 155, 155, 0.15); color: #aaa;">Archive — Login Variante A non retenue</span>
+      <div class="nav-card-title">Login — Vault Door</div>
+      <div class="nav-card-desc">Variante alternative DS-conforme : cône de lumière doré + halo + particules. Non retenue vs B2 (préférence Axel). Conservée comme référence si refonte d'un autre écran "splash premium" plus tard.</div>
+    </a>
+  </div>
+
+  <h2 style="font-size: 0.95rem; font-weight: 700; color: #c0c0c0; margin: 36px 0 12px; letter-spacing: 0.05em; text-transform: uppercase;">Duel In-Game — Wave 3 (en cours 2026-05-15)</h2>
+  <div class="nav-grid">
+    <a href="./mockup-duel-in-game.html" class="nav-card" style="border-color: rgba(201, 168, 76, 0.5);">
+      <span class="nav-card-tag" style="background: rgba(255, 193, 7, 0.15); color: #ffc107;">WIP — Wave 3 in progress</span>
+      <div class="nav-card-title">Duel In-Game (Arena Pro)</div>
+      <div class="nav-card-desc">Refonte visuelle du terrain de duel. 3 variantes sol (Marble Pro / Holo Grid / Velvet Theatre) + 4 états gameplay (idle / target / battle / turn change) + 4 overlays (chain resolving / prompt / victory / defeat). Doctrine "data &gt; décor", radius doctrine étendue (--radius-2xs/xs), particules ambient toggle, reduced-motion. Référentiel pour la Wave 3 du DS.</div>
+    </a>
+  </div>
+
+  <h2 style="font-size: 0.95rem; font-weight: 700; color: #c0c0c0; margin: 36px 0 12px; letter-spacing: 0.05em; text-transform: uppercase;">PvP Lobby — Variantes (livrées 2026-05-13)</h2>
   <div class="nav-grid">
     <a href="./mockup-1-holo-arena.html" class="nav-card">
       <span class="nav-card-tag">Lobby V1 — Shipped</span>

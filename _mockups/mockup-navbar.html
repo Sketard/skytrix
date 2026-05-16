@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Mockup Navbar — Direction B (Refresh identité skytrix)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+/* ============================================================
+   DS TOKENS — autonomous mirror of front/src/app/styles/_tokens.scss
+   ============================================================ */
+:root {
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body:    'Inter', sans-serif;
+
+  --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
+  --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
+  --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+  --line-tight: 1.1;
+  --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700; --weight-black: 800;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-7: 32px; --space-8: 40px; --space-9: 48px;
+
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+  --radius-pill: 999px;
+
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.30);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.40);
+
+  --gold-50: #ffe9a8;
+  --gold-100: #d4b25a;
+  --gold: #C9A84C;
+  --gold-700: #a8862e;
+  --gold-900: #8a6a20;
+  --gold-soft-06: rgba(201, 168, 76, 0.06);
+  --gold-soft-08: rgba(201, 168, 76, 0.08);
+  --gold-soft-12: rgba(201, 168, 76, 0.12);
+  --gold-soft-20: rgba(201, 168, 76, 0.20);
+  --gold-soft-25: rgba(201, 168, 76, 0.25);
+  --gold-soft-35: rgba(201, 168, 76, 0.35);
+  --gold-soft-40: rgba(201, 168, 76, 0.40);
+
+  --surface-bg: #0a0a14;
+  --surface-bg-deep: #0f0f1c;
+  --surface-card: rgba(30, 30, 46, 0.85);
+  --surface-card-low: rgba(22, 22, 36, 0.85);
+  --surface-card-solid: #1E1E1E;
+  --surface-nav: #161616;
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --border-soft: rgba(255, 255, 255, 0.10);
+  --border-medium: rgba(255, 255, 255, 0.18);
+  --text-primary: #eaeaea;
+  --text-secondary: #c0c0c0;
+  --text-muted: #9e9e9e;
+  --text-inverse: #1a1208;
+
+  --alpha-badge-bg: #e67e22;  /* legacy orange — could be replaced by gold-700 */
+
+  --transition-fast: 150ms;
+  --transition-normal: 250ms;
+  --ease-out: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --touch-target-min: 44px;
+
+  --gradient-arena-radial: radial-gradient(ellipse at top, #1a1a2e 0%, var(--surface-bg-deep) 65%, var(--surface-bg) 100%);
+  --gradient-arena-grid:
+    linear-gradient(to right, var(--gold-soft-08) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gold-soft-08) 1px, transparent 1px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  position: relative;
+}
+
+/* Page background (subtle DS grid) — for context only */
+.screen-bg {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  overflow: hidden;
+  background: var(--gradient-arena-radial);
+}
+.screen-bg-grid {
+  position: absolute;
+  inset: -10% -10% -20% -10%;
+  background-image: var(--gradient-arena-grid);
+  background-size: 48px 48px;
+  transform: perspective(900px) rotateX(60deg) translateY(-5%);
+  transform-origin: 50% 30%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
+  mask-image:         linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
+  opacity: 0.35;
+}
+
+/* ============================================================
+   NAVBAR — Direction B (Refresh identité skytrix)
+   Sidebar verticale 260/56px, header drawer mobile 48px.
+   ============================================================ */
+
+/* --- Desktop sidebar -------------------------------------- */
+.navbar-sidebar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  height: 100vh;
+  background: var(--surface-nav);
+  color: var(--text-primary);
+  /* Gold rail right edge — replaces invisible border */
+  border-right: 1px solid var(--gold-soft-12);
+  transition: width var(--transition-normal) var(--ease-out),
+              border-color var(--transition-normal) var(--ease-out);
+  flex-shrink: 0;
+  /* Subtle ambient gradient — only visible at top, fades down */
+  background-image: linear-gradient(180deg, var(--gold-soft-06) 0%, transparent 200px);
+}
+.navbar-sidebar.is-collapsed {
+  width: 56px;
+  border-right-color: var(--gold-soft-20);
+}
+
+.navbar-inner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.navbar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6) var(--space-4);
+  min-height: 0;
+}
+.is-collapsed .navbar-content {
+  padding: var(--space-6) var(--space-2);
+  align-items: center;
+}
+
+/* --- Logo bloc --- */
+.navbar-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-7);
+  /* Subtle gold halo around brand assets — ties cool-tone logo to warm DS */
+  filter: drop-shadow(0 0 18px var(--gold-soft-25));
+}
+.navbar-logo {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.is-collapsed .navbar-logo {
+  width: 40px;
+}
+.is-collapsed .navbar-logo-wrap {
+  margin-bottom: var(--space-5);
+}
+
+/* --- Nav links --- */
+.nav-link {
+  position: relative;
+  text-decoration: none;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-1);
+  white-space: nowrap;
+  transition: background-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
+}
+.nav-link .material-icons-round {
+  margin-right: var(--space-3);
+  flex-shrink: 0;
+  font-size: 20px;
+}
+.nav-link:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+.nav-link.is-active {
+  background-color: var(--gold-soft-12);
+  color: var(--gold-50);
+}
+/* Inset left bar + right gold dot for the active link */
+.nav-link.is-active::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 8px; bottom: 8px;
+  width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold-soft-40);
+}
+.nav-link.is-active::after {
+  content: '';
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold);
+}
+.is-collapsed .nav-link {
+  justify-content: center;
+  padding: var(--space-3);
+}
+.is-collapsed .nav-link .material-icons-round { margin-right: 0; }
+.is-collapsed .nav-link .nav-label { display: none; }
+.is-collapsed .nav-link.is-active::after { display: none; } /* no room for dot */
+.is-collapsed .nav-link.is-active::before { left: -2px; }
+
+/* --- Alpha ribbon (gold-700 over orange original — more DS) --- */
+.nav-link.has-ribbon {
+  overflow: clip;
+}
+.alpha-ribbon {
+  position: absolute;
+  top: 6px;
+  right: -26px;
+  width: 80px;
+  background: linear-gradient(135deg, var(--gold-700), var(--gold-900));
+  color: var(--gold-50);
+  font: var(--weight-bold) 0.5rem / 1 'Inter', sans-serif;
+  letter-spacing: 0.08em;
+  padding: 4px 0;
+  text-align: center;
+  transform: rotate(45deg);
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.is-collapsed .alpha-ribbon {
+  top: 4px; right: -22px;
+  font-size: 0.45rem;
+  padding: 1px 22px;
+}
+
+.spacer { flex: 1; }
+
+/* --- Lang switcher dropdown --- */
+.lang-switcher {
+  position: relative;
+  margin-bottom: var(--space-3);
+}
+.lang-trigger {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  height: 38px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.lang-trigger:hover {
+  border-color: var(--gold-soft-40);
+  color: var(--gold);
+  background: var(--gold-soft-08);
+}
+.lang-trigger .flag {
+  width: 18px; height: 18px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.lang-trigger .label {
+  flex: 1;
+  text-align: left;
+}
+.lang-trigger .chevron {
+  font-size: 18px !important;
+  transition: transform var(--transition-fast) var(--ease-out);
+}
+.lang-switcher.is-open .chevron { transform: rotate(180deg); }
+.is-collapsed .lang-trigger {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+.is-collapsed .lang-trigger .label,
+.is-collapsed .lang-trigger .chevron { display: none; }
+
+.lang-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--surface-card-solid);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-3);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out),
+              visibility 0s var(--transition-fast);
+  z-index: 10;
+}
+.lang-switcher.is-open .lang-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out),
+              visibility 0s 0s;
+}
+.is-collapsed .lang-menu {
+  /* In collapsed mode, anchor menu to the right of the trigger */
+  left: calc(100% + var(--space-2));
+  right: auto;
+  bottom: auto;
+  top: 0;
+  width: 160px;
+}
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: var(--weight-medium) var(--text-sm) / 1 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
+  text-align: left;
+}
+.lang-option:hover {
+  background: var(--gold-soft-08);
+  color: var(--gold);
+}
+.lang-option.is-current {
+  background: var(--gold-soft-12);
+  color: var(--gold-50);
+}
+.lang-option .flag {
+  width: 18px; height: 18px;
+  border-radius: 2px;
+}
+.lang-option .check {
+  margin-left: auto;
+  font-size: 16px !important;
+  color: var(--gold);
+}
+
+/* Flag mockup (we use country emoji-like blocks since SVGs are project-side) */
+.flag--fr {
+  background: linear-gradient(to right, #0055A4 0%, #0055A4 33%, #FFFFFF 33%, #FFFFFF 66%, #EF4135 66%, #EF4135 100%);
+}
+.flag--en {
+  background:
+    linear-gradient(to bottom, transparent 30%, #FFFFFF 30%, #FFFFFF 40%, transparent 40%, transparent 60%, #FFFFFF 60%, #FFFFFF 70%, transparent 70%),
+    linear-gradient(to right, transparent 30%, #FFFFFF 30%, #FFFFFF 40%, transparent 40%, transparent 60%, #FFFFFF 60%, #FFFFFF 70%, transparent 70%),
+    #012169;
+}
+
+/* --- User section --- */
+.user-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.user-pseudo {
+  font-weight: var(--weight-bold);
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 0 var(--space-2);
+}
+.is-collapsed .user-pseudo,
+.is-collapsed .lang-switcher,
+.is-collapsed .user-logout .label { display: none; }
+.is-collapsed .user-logout {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* DS .btn --ghost --sm --full */
+.btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.btn--sm { padding: 6px 12px;  font-size: var(--text-xs); min-height: 32px; }
+.btn--full { width: 100%; }
+.btn--ghost {
+  background: transparent;
+  border-color: var(--border-soft);
+  color: var(--text-secondary);
+}
+.btn--ghost:hover {
+  color: var(--gold);
+  border-color: var(--gold-soft-40);
+  background: var(--gold-soft-08);
+}
+.btn--ghost .material-icons-round { font-size: 16px; }
+
+/* --- Collapse toggle (chevron button overlapping right edge) --- */
+.collapse-toggle {
+  position: absolute;
+  right: -16px;
+  top: var(--space-6);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid var(--gold-soft-25);
+  background: var(--surface-card-solid);
+  color: var(--text-secondary);
+  padding: 0;
+  z-index: 2;
+  box-shadow: var(--elevation-1);
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.collapse-toggle:hover {
+  background: var(--surface-hover);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: var(--elevation-2);
+}
+.collapse-toggle .material-icons-round { font-size: 18px; }
+
+/* ============================================================
+   MOBILE TOP BAR + DRAWER (visible only in mobile preview)
+   ============================================================ */
+.mobile-preview { display: none; }
+
+.mobile-top-bar {
+  position: relative;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  background: var(--surface-nav);
+  color: var(--text-primary);
+  box-shadow: var(--elevation-2);
+  padding: 0 var(--space-2);
+  /* Gold accent line bottom — anchors brand on mobile */
+  border-bottom: 1px solid var(--gold-soft-20);
+  z-index: 5;
+}
+.mobile-top-bar::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 60%; max-width: 200px; height: 40px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse, var(--gold-soft-12), transparent 70%);
+  pointer-events: none;
+}
+
+.hamburger-btn {
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast) var(--ease-out);
+  z-index: 1;
+}
+.hamburger-btn:hover {
+  color: var(--gold);
+  background: var(--gold-soft-08);
+}
+.hamburger-btn .material-icons-round { font-size: 24px; }
+
+.mobile-title {
+  flex: 1;
+  display: block;
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-right: 44px;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 12px var(--gold-soft-25));
+}
+
+/* Drawer backdrop */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-normal) var(--ease-out),
+              visibility 0s var(--transition-normal);
+}
+.drawer-backdrop.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--transition-normal) var(--ease-out),
+              visibility 0s 0s;
+}
+
+/* Drawer */
+.mobile-drawer {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 280px;
+  z-index: 21;
+  background: var(--surface-nav);
+  color: var(--text-primary);
+  visibility: hidden;
+  transform: translateX(-100%);
+  transition: transform var(--transition-normal) var(--ease-out),
+              visibility 0s var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  background-image: linear-gradient(180deg, var(--gold-soft-06) 0%, transparent 200px);
+  border-right: 1px solid var(--gold-soft-12);
+}
+.mobile-drawer.is-open {
+  visibility: visible;
+  transform: translateX(0);
+  transition: transform var(--transition-normal) var(--ease-out),
+              visibility 0s 0s;
+}
+
+.drawer-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  height: 56px;
+}
+.drawer-header::after {
+  /* Gold accent line at the bottom of header — mirror `.form-card::before` from login */
+  content: '';
+  position: absolute;
+  bottom: 0; left: 10%;
+  width: 80%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-soft-40), transparent);
+}
+.drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  filter: drop-shadow(0 0 12px var(--gold-soft-25));
+}
+.drawer-logo { height: 32px; width: auto; }
+.drawer-text { height: 20px; width: auto; }
+
+.drawer-close-btn {
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.drawer-close-btn:hover {
+  color: var(--gold);
+  background: var(--gold-soft-08);
+}
+
+.drawer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  min-height: 0;
+  overflow-y: auto;
+}
+.mobile-nav-link {
+  min-height: var(--touch-target-min);
+  width: 100%;
+}
+
+/* ============================================================
+   MAIN AREA — placeholder content to give navbar context
+   ============================================================ */
+.main {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  padding: var(--space-9) var(--space-7);
+}
+.main-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-3);
+}
+.main-desc {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   TOOLBAR — mockup state switcher
+   ============================================================ */
+.toolbar {
+  position: fixed;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(10, 10, 20, 0.92);
+  border: 1px solid var(--gold-soft-25);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  backdrop-filter: blur(12px);
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: calc(100vw - var(--space-5));
+  justify-content: center;
+}
+.toolbar-label {
+  padding: 4px 6px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.toolbar-btn {
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.toolbar-btn:hover { border-color: var(--gold); color: var(--gold); }
+.toolbar-btn.is-on {
+  background: linear-gradient(135deg, var(--gold-100), var(--gold-700));
+  color: var(--text-inverse);
+  border-color: var(--gold);
+  box-shadow: 0 2px 12px var(--gold-soft-40);
+}
+.toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-soft);
+  margin: 0 var(--space-1);
+}
+
+/* ============================================================
+   MOBILE VIEW SWITCH
+   ============================================================ */
+body[data-view="mobile"] .navbar-sidebar,
+body[data-view="mobile"] .collapse-toggle { display: none; }
+body[data-view="mobile"] .mobile-preview { display: flex; flex-direction: column; width: 100%; }
+body[data-view="mobile"] { flex-direction: column; }
+body[data-view="mobile"] .main { padding-top: var(--space-6); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body data-view="desktop">
+
+<div class="screen-bg" aria-hidden="true">
+  <div class="screen-bg-grid"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DESKTOP SIDEBAR                                                -->
+<!-- ============================================================ -->
+<nav class="navbar-sidebar" id="sidebar" aria-label="Navigation principale">
+  <div class="navbar-inner">
+    <div class="navbar-content">
+      <!-- Logo : full when expanded, icon-only when collapsed -->
+      <div class="navbar-logo-wrap">
+        <img class="navbar-logo navbar-logo--full" src="../front/src/assets/images/logo-full.png" alt="skytrix">
+        <img class="navbar-logo navbar-logo--icon" src="../front/src/assets/images/logo-icon.png" alt="" style="display:none;">
+      </div>
+
+      <a class="nav-link is-active" href="#">
+        <span class="material-icons-round">folder</span>
+        <span class="nav-label">Construction de deck</span>
+      </a>
+      <a class="nav-link" href="#">
+        <span class="material-icons-round">search</span>
+        <span class="nav-label">Recherche de cartes</span>
+      </a>
+      <a class="nav-link has-ribbon" href="#">
+        <span class="material-icons-round">gamepad</span>
+        <span class="nav-label">Arène PvP</span>
+        <span class="alpha-ribbon">ALPHA</span>
+      </a>
+      <a class="nav-link" href="#">
+        <span class="material-icons-round">play_circle</span>
+        <span class="nav-label">Replay PvP</span>
+      </a>
+      <a class="nav-link" href="#">
+        <span class="material-icons-round">settings_suggest</span>
+        <span class="nav-label">Paramètres</span>
+      </a>
+
+      <div class="spacer"></div>
+
+      <!-- Lang switcher dropdown -->
+      <div class="lang-switcher" id="lang-switcher">
+        <button class="lang-trigger" type="button" id="lang-trigger" aria-haspopup="true" aria-expanded="false">
+          <span class="flag flag--fr"></span>
+          <span class="label">Français</span>
+          <span class="material-icons-round chevron">expand_more</span>
+        </button>
+        <div class="lang-menu" role="menu">
+          <button class="lang-option is-current" type="button" data-lang="fr">
+            <span class="flag flag--fr"></span>
+            <span>Français</span>
+            <span class="material-icons-round check">check</span>
+          </button>
+          <button class="lang-option" type="button" data-lang="en">
+            <span class="flag flag--en"></span>
+            <span>English</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- User section -->
+      <div class="user-section">
+        <span class="user-pseudo">Axel</span>
+        <button class="btn btn--ghost btn--sm btn--full user-logout" type="button">
+          <span class="material-icons-round">logout</span>
+          <span class="label">Se déconnecter</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <button class="collapse-toggle" type="button" id="collapse-toggle"
+          aria-label="Réduire la navigation" aria-expanded="true">
+    <span class="material-icons-round" id="collapse-icon">chevron_left</span>
+  </button>
+</nav>
+
+<!-- ============================================================ -->
+<!-- MOBILE TOP BAR + DRAWER (visible only in mobile preview)        -->
+<!-- ============================================================ -->
+<div class="mobile-preview">
+  <header class="mobile-top-bar">
+    <button class="hamburger-btn" type="button" id="hamburger" aria-label="Ouvrir la navigation" aria-expanded="false">
+      <span class="material-icons-round">menu</span>
+    </button>
+    <img class="mobile-title" src="../front/src/assets/images/logo-text.png" alt="skytrix">
+  </header>
+</div>
+
+<div class="drawer-backdrop" id="backdrop" aria-hidden="true"></div>
+
+<nav class="mobile-drawer" id="drawer" aria-label="Menu de navigation" aria-modal="true">
+  <div class="drawer-header">
+    <div class="drawer-brand">
+      <img class="drawer-logo" src="../front/src/assets/images/logo-icon.png" alt="">
+      <img class="drawer-text" src="../front/src/assets/images/logo-text.png" alt="skytrix">
+    </div>
+    <button class="drawer-close-btn" type="button" id="drawer-close" aria-label="Fermer la navigation">
+      <span class="material-icons-round">close</span>
+    </button>
+  </div>
+  <div class="drawer-content">
+    <a class="nav-link mobile-nav-link is-active" href="#">
+      <span class="material-icons-round">folder</span>
+      <span class="nav-label">Construction de deck</span>
+    </a>
+    <a class="nav-link mobile-nav-link" href="#">
+      <span class="material-icons-round">search</span>
+      <span class="nav-label">Recherche de cartes</span>
+    </a>
+    <a class="nav-link mobile-nav-link has-ribbon" href="#">
+      <span class="material-icons-round">gamepad</span>
+      <span class="nav-label">Arène PvP</span>
+      <span class="alpha-ribbon">ALPHA</span>
+    </a>
+    <a class="nav-link mobile-nav-link" href="#">
+      <span class="material-icons-round">play_circle</span>
+      <span class="nav-label">Replay PvP</span>
+    </a>
+    <a class="nav-link mobile-nav-link" href="#">
+      <span class="material-icons-round">settings_suggest</span>
+      <span class="nav-label">Paramètres</span>
+    </a>
+
+    <div class="spacer"></div>
+
+    <div class="lang-switcher" id="lang-switcher-mobile">
+      <button class="lang-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+        <span class="flag flag--fr"></span>
+        <span class="label">Français</span>
+        <span class="material-icons-round chevron">expand_more</span>
+      </button>
+      <div class="lang-menu" role="menu">
+        <button class="lang-option is-current" type="button" data-lang="fr">
+          <span class="flag flag--fr"></span>
+          <span>Français</span>
+          <span class="material-icons-round check">check</span>
+        </button>
+        <button class="lang-option" type="button" data-lang="en">
+          <span class="flag flag--en"></span>
+          <span>English</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="user-section">
+      <span class="user-pseudo">Axel</span>
+      <button class="btn btn--ghost btn--sm btn--full user-logout" type="button">
+        <span class="material-icons-round">logout</span>
+        <span class="label">Se déconnecter</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================ -->
+<!-- MAIN PLACEHOLDER                                               -->
+<!-- ============================================================ -->
+<main class="main">
+  <h1 class="main-title">CONTENU DE PAGE</h1>
+  <p class="main-desc">Zone fictive pour donner le contexte de la navbar. La sidebar à gauche prend 260px (ou 56px en collapsed). Le bouton chevron en bordure droite toggle.</p>
+  <p class="main-desc" style="margin-top: var(--space-4);">Bascule la vue Desktop / Mobile / Mobile drawer ouvert via la toolbar en bas.</p>
+</main>
+
+<!-- ============================================================ -->
+<!-- TOOLBAR                                                        -->
+<!-- ============================================================ -->
+<div class="toolbar">
+  <span class="toolbar-label">Vue</span>
+  <button class="toolbar-btn is-on" data-action="view-desktop">Desktop</button>
+  <button class="toolbar-btn" data-action="view-desktop-collapsed">Desktop collapsed</button>
+  <button class="toolbar-btn" data-action="view-mobile">Mobile</button>
+  <span class="toolbar-sep"></span>
+  <button class="toolbar-btn" data-action="open-drawer">Ouvrir drawer</button>
+</div>
+
+<script>
+const sidebar       = document.getElementById('sidebar');
+const collapseBtn   = document.getElementById('collapse-toggle');
+const collapseIcon  = document.getElementById('collapse-icon');
+const hamburger     = document.getElementById('hamburger');
+const drawer        = document.getElementById('drawer');
+const backdrop      = document.getElementById('backdrop');
+const drawerClose   = document.getElementById('drawer-close');
+const logoFull      = document.querySelector('.navbar-logo--full');
+const logoIcon      = document.querySelector('.navbar-logo--icon');
+
+function setCollapsed(collapsed) {
+  sidebar.classList.toggle('is-collapsed', collapsed);
+  collapseIcon.textContent = collapsed ? 'chevron_right' : 'chevron_left';
+  collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  collapseBtn.setAttribute('aria-label', collapsed ? 'Développer la navigation' : 'Réduire la navigation');
+  logoFull.style.display = collapsed ? 'none' : 'block';
+  logoIcon.style.display = collapsed ? 'block' : 'none';
+}
+collapseBtn.addEventListener('click', () => {
+  setCollapsed(!sidebar.classList.contains('is-collapsed'));
+});
+
+function openDrawer() {
+  drawer.classList.add('is-open');
+  backdrop.classList.add('is-visible');
+  hamburger.setAttribute('aria-expanded', 'true');
+}
+function closeDrawer() {
+  drawer.classList.remove('is-open');
+  backdrop.classList.remove('is-visible');
+  hamburger.setAttribute('aria-expanded', 'false');
+}
+hamburger.addEventListener('click', openDrawer);
+backdrop.addEventListener('click', closeDrawer);
+drawerClose.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+/* Lang switcher dropdowns */
+document.querySelectorAll('.lang-switcher').forEach(switcher => {
+  const trigger = switcher.querySelector('.lang-trigger');
+  const options = switcher.querySelectorAll('.lang-option');
+  trigger.addEventListener('click', e => {
+    e.stopPropagation();
+    const isOpen = switcher.classList.toggle('is-open');
+    trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  options.forEach(opt => {
+    opt.addEventListener('click', () => {
+      switcher.querySelectorAll('.lang-option').forEach(o => o.classList.remove('is-current'));
+      opt.classList.add('is-current');
+      const flag = opt.querySelector('.flag').className;
+      const label = opt.querySelector('span:not(.flag):not(.check)').textContent;
+      trigger.querySelector('.flag').className = flag;
+      trigger.querySelector('.label').textContent = label;
+      /* Remove and re-append check */
+      switcher.querySelectorAll('.lang-option .check').forEach(c => c.remove());
+      const check = document.createElement('span');
+      check.className = 'material-icons-round check';
+      check.textContent = 'check';
+      opt.appendChild(check);
+      switcher.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+    });
+  });
+});
+document.addEventListener('click', () => {
+  document.querySelectorAll('.lang-switcher.is-open').forEach(s => {
+    s.classList.remove('is-open');
+    s.querySelector('.lang-trigger').setAttribute('aria-expanded', 'false');
+  });
+});
+
+/* Toolbar */
+document.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.toolbar-btn').forEach(b => b.classList.remove('is-on'));
+    btn.classList.add('is-on');
+    const a = btn.dataset.action;
+    if (a === 'view-desktop') {
+      document.body.dataset.view = 'desktop';
+      setCollapsed(false);
+      closeDrawer();
+    } else if (a === 'view-desktop-collapsed') {
+      document.body.dataset.view = 'desktop';
+      setCollapsed(true);
+      closeDrawer();
+    } else if (a === 'view-mobile') {
+      document.body.dataset.view = 'mobile';
+      closeDrawer();
+    } else if (a === 'open-drawer') {
+      document.body.dataset.view = 'mobile';
+      openDrawer();
+    }
+  });
+});
+</script>
+</body>
+</html>
