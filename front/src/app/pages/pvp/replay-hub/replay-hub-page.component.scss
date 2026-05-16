@@ -114,11 +114,15 @@
 // after the last real card. Sits in the scroll context so it appears
 // right after the last visible replay-card (not at the bottom of empty
 // viewport). Same visual weight as a card so the user reads it as
-// "next card loading".
+// "next card loading". Inherit the same `margin-bottom` as
+// `.replay-card` so two consecutive sentinels are visually spaced like
+// two real cards (the skeleton component's `:host { gap: 12px }` only
+// applies between its own internal placeholders, not across instances).
 .replay-list-skeleton--inline {
   display: block;
   pointer-events: none;
   opacity: 0.85;
+  margin-bottom: var(--space-3);
 }
 
 .replay-list-viewport {
