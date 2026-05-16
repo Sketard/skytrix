@@ -1,38 +1,51 @@
-@use 'responsive' as *;
+@use 'responsive' as r;
 
 // =============================================================================
-// Parameter page — Control Panel sobre
-// Source: _mockups/mockup-parameters.html (review-aligned 2026-05-16).
+// Parameter page — Control Panel
+// Source: _mockups/mockup-parameters.html.
+// Layout convention aligned on PvP Arena (lobby) + PvP Replay (hub) — same
+// :host padding/isolation/min-height + container flex-gap pattern. Container
+// width = `--container-medium` (780px) since Settings is a form-style panel.
 //
-// DS consumed globally:
-//   - .screen-bg / .screen-bg-grid / .screen-bg-glow--gold / .screen-bg-glow--cyan
+// DS consumed:
+//   - .screen-bg + .screen-bg-grid + .screen-bg-glow--gold + .screen-bg-glow--cyan
 //     (_holo-arena.scss) — same 4-layer composition as lobby + replay-hub.
-//   - .page-header.page-header--bordered / .page-header__icon/__title-group/__title/__subtitle
-//     (_page-header.scss).
+//   - .page-header / .page-header__icon/__title-group/__text/__title/__subtitle
+//     (_page-header.scss) — sans `--bordered` (convention skytrix).
 //   - .section-header / .section-header__title-group / .section-header__title
 //     (_section-header.scss) — accent-bar gold gauche intégrée.
 //   - .text-gold-gradient (_typography.scss) on the title.
 //   - .pill .pill--neutral/--cyan/--warning/--danger / .pill--live (_pills.scss).
 //   - .btn .btn--primary/--ghost .btn--md (_buttons.scss) + .btn--icon-only local.
-// Local-only patterns: .parameters-page, .section, .section-header__icon
-//   (icon next to the DS title), .card-ds, .job, .progress, .progress-bar,
-//   .btn-spinner, .btn--icon-only.
+// Local-only: .parameters-container, .section, .section-header__icon,
+//   .card-ds, .job, .progress, .progress-bar, .btn-spinner, .btn--icon-only.
 // =============================================================================
 
 :host {
   display: block;
-  min-height: 100%;
-}
-
-.parameters-page {
   position: relative;
-  z-index: 1;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: var(--space-fluid-lg) var(--space-fluid-md) var(--space-9);
+  isolation: isolate;
+  padding: var(--space-fluid-md, 16px);
+  min-height: 100dvh;
+
+  @include r.respond-above(r.$bp-tablet) {
+    padding: var(--space-fluid-lg, 24px);
+  }
 }
 
-// Subtitle override — page-header__subtitle ships as Inter bold xs uppercase
+.parameters-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--container-medium);
+  margin: 0 auto;
+}
+
+// Match the fluid h1 size used by lobby + replay-hub for inter-page consistency.
+.page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
+
+// Subtitle override — `.page-header__subtitle` ships as Inter bold xs uppercase
 // letter-spaced (eyebrow look). Settings uses descriptive copy instead.
 :host ::ng-deep .page-header__subtitle {
   font: var(--weight-medium) var(--text-sm) / var(--line-normal) 'Inter', sans-serif;
@@ -42,20 +55,14 @@
   max-width: 520px;
 }
 
-.page-header.page-header--bordered {
-  margin-bottom: var(--space-8);
-}
-
 // =============================================================================
 // Section — consumes the global `.section-header__*` from _section-header.scss.
-// Only the icon next to the DS title is local.
+// Spacing between sections is owned by `.parameters-container` (flex gap).
 // =============================================================================
 .section {
-  margin-bottom: var(--space-7);
-}
-
-.section-header {
-  margin-bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .section-header__icon {
@@ -250,12 +257,11 @@
 }
 
 // =============================================================================
-// Responsive
+// Responsive — `:host` padding already shrinks via `--space-fluid-md`. Below
+// mobile we collapse the job grid to a single column so the action buttons
+// don't compress the title row.
 // =============================================================================
-@include respond-below($bp-mobile) {
-  .parameters-page {
-    padding: var(--space-5) var(--space-4) var(--space-9);
-  }
+@include r.respond-below(r.$bp-mobile) {
   .job {
     grid-template-columns: 1fr;
   }
