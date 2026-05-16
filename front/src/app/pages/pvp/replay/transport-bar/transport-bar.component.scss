@@ -130,9 +130,9 @@
   }
 }
 
-// ≤ 480px ($bp-mobile) → collapse toggles + fork + perspective into ⋯ More.
+// ≤ 480px ($bp-pvp-narrow) → collapse toggles + fork + perspective into ⋯ More.
 // Play stays prominent; step buttons stay (transport is the primary action).
-@include r.respond-below(r.$bp-mobile) {
+@include r.respond-below(r.$bp-pvp-narrow) {
   .transport-bar {
     grid-template-columns: 1fr auto auto;
     padding: var(--space-2);

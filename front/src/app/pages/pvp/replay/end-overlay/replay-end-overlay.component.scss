@@ -73,7 +73,7 @@
 
 // Keyframe `ds-end-overlay-slide` consolidée dans `_motion.scss` (DS Wave 1 §2.2).
 
-@include r.respond-below(r.$bp-mobile) {
+@include r.respond-below(r.$bp-pvp-narrow) {
   .replay-end-overlay__actions {
     flex-direction: column;
     width: 100%;

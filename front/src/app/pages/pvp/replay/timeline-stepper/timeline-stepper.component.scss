@@ -140,7 +140,7 @@
 }
 
 // Hide dot progress under 480px (D13 cramped) — matches mockup §timeline-stepper.
-@include r.respond-below(r.$bp-mobile) {
+@include r.respond-below(r.$bp-pvp-narrow) {
   .timeline-stepper__dots {
     display: none;
   }

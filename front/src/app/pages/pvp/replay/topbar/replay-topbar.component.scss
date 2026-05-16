@@ -80,7 +80,7 @@
 }
 
 // D14 — narrow viewport hide cascade
-@include r.respond-below(r.$bp-mobile) {
+@include r.respond-below(r.$bp-pvp-narrow) {
   .replay-topbar__back-label,
   .replay-topbar__chip-deck,
   .replay-topbar__meta {
@@ -93,7 +93,7 @@
   }
 }
 
-@include r.respond-above(r.$bp-mobile) {
+@include r.respond-above(r.$bp-pvp-narrow) {
   // Details button is for mobile only — desktop has full summary already.
   .replay-topbar__details-btn {
     display: none;

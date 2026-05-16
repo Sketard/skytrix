@@ -22,7 +22,7 @@
 
 // On mobile the close X must reach the 44x44 WCAG touch target. The partial's
 // default 32x32 size stays on desktop where the cursor is precise.
-@include r.respond-below(r.$bp-mobile) {
+@include r.respond-below(r.$bp-pvp-narrow) {
   .bottom-sheet-close {
     @include r.touch-target-min;
   }

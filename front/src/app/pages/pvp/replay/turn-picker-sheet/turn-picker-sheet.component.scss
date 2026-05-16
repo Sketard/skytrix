@@ -90,7 +90,7 @@
   gap: var(--space-1);
 }
 
-@include r.respond-below(r.$bp-mobile) {
+@include r.respond-below(r.$bp-pvp-narrow) {
   .turn-picker__grid {
     grid-template-columns: repeat(2, 1fr);
   }

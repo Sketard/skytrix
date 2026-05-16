@@ -89,8 +89,8 @@
 
 // Keyframe `ds-cheat-sheet-fade` consolidée dans `_motion.scss` (DS Wave 1 §2.2).
 
-// ≤ 480px ($bp-mobile) → become a bottom-sheet (matches mockup §cheat-sheet).
-@include r.respond-below(r.$bp-mobile) {
+// ≤ 480px ($bp-pvp-narrow) → become a bottom-sheet (matches mockup §cheat-sheet).
+@include r.respond-below(r.$bp-pvp-narrow) {
   :host {
     align-items: flex-end;
     padding: 0;
