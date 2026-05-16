@@ -114,7 +114,7 @@
     </div>
     <button type="button"
             class="btn btn--ghost btn--sm"
-            [attr.aria-label]="'replay.hub.sort.newest' | translate"
+            [attr.aria-label]="sortLabelKey() | translate"
             [matMenuTriggerFor]="sortMenu">
       <mat-icon>sort</mat-icon>
       <span>{{ sortLabelKey() | translate }}</span>

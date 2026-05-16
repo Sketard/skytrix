@@ -14,7 +14,6 @@
           [class.turn-picker__card--not-computed]="!entry.isComputed"
           [disabled]="!entry.isComputed"
           [attr.aria-current]="entry.isCurrent ? 'true' : null"
-          [attr.aria-disabled]="!entry.isComputed ? 'true' : null"
           (click)="onCardClick(entry)">
           <header class="turn-picker__card-header">
             <span class="turn-picker__num">T{{ entry.meta.turnNumber }}</span>
@@ -54,7 +53,6 @@
           [class.turn-picker__card--not-computed]="!entry.isComputed"
           [disabled]="!entry.isComputed"
           [attr.aria-current]="entry.isCurrent ? 'true' : null"
-          [attr.aria-disabled]="!entry.isComputed ? 'true' : null"
           (click)="onCardClick(entry)">
           <header class="turn-picker__card-header">
             <span class="turn-picker__num">T{{ entry.meta.turnNumber }}</span>

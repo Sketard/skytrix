@@ -62,6 +62,11 @@
   font-size: 20px;
   line-height: 1;
   border: none;
+  // Smooth the disable→enable handoff (atEnd flips when scrubbing back).
+  transition: opacity var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out),
+              filter   var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
 
   &:hover:not(:disabled) {
     filter: brightness(1.08);

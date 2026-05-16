@@ -1,3 +1,5 @@
+@use '../../../../styles/responsive' as r;
+
 // Component-scoped layout — visuals all come from `_bottom-sheet.scss`
 // (Viewer F0 partial: `.bottom-sheet`, `.bottom-sheet-header`,
 // `.bottom-sheet-title`, `.bottom-sheet-close`, `.bottom-sheet-body`).
@@ -16,4 +18,12 @@
   width: 18px !important;
   height: 18px !important;
   line-height: 18px !important;
+}
+
+// On mobile the close X must reach the 44x44 WCAG touch target. The partial's
+// default 32x32 size stays on desktop where the cursor is precise.
+@include r.respond-below(r.$bp-mobile) {
+  .bottom-sheet-close {
+    @include r.touch-target-min;
+  }
 }

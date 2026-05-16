@@ -137,7 +137,7 @@
       white-space: nowrap;
 
       &.is-visible { opacity: 1; }
-      &__icon { color: var(--gold); font-size: 14px; }
+      &__icon { color: var(--gold); font-size: 14px; line-height: 1; }
     }
   }
 

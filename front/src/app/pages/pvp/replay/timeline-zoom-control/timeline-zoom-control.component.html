@@ -4,10 +4,10 @@
 @for (lvl of levels; track lvl) {
   <button
     type="button"
+    role="radio"
     class="pill pill--xs"
     [class.pill--gold]="lvl === level()"
     [class.pill--neutral]="lvl !== level()"
-    [attr.role]="'radio'"
     [attr.aria-checked]="lvl === level() ? 'true' : 'false'"
     [attr.aria-label]="'replay.viewer.zoom.level' | translate: { n: lvl }"
     (click)="onSelect(lvl)">

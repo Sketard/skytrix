@@ -64,11 +64,13 @@ describe('TurnPickerSheetComponent', () => {
     expect(cards[1].getAttribute('aria-current')).toBe('true');
   });
 
-  it('disables + aria-disables turns whose startIndex is past computedUpToIndex', () => {
+  it('disables turns whose startIndex is past computedUpToIndex', () => {
+    // The native `disabled` attribute on a <button> already conveys
+    // a11y state — `aria-disabled` would be redundant (and contradictory:
+    // the WAI-ARIA spec forbids `aria-disabled` on a `disabled` button).
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5), stubMeta(2, 6, 8)], 0, 4); // upTo=4 → turn 2 (start=6) not computed
     const cards = el.querySelectorAll('.turn-picker__card');
     expect((cards[2] as HTMLButtonElement).disabled).toBe(true);
-    expect(cards[2].getAttribute('aria-disabled')).toBe('true');
     expect(cards[2].classList.contains('turn-picker__card--not-computed')).toBe(true);
   });
 

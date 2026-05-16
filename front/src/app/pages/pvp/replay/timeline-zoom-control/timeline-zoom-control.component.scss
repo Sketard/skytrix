@@ -5,6 +5,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  // Drag-on-timeline doesn't accidentally text-select the zoom labels.
+  user-select: none;
 }
 
 .timeline-zoom-control__hint {
@@ -15,10 +17,16 @@
 button.pill {
   cursor: pointer;
   border: 1px solid transparent;
+  transition: transform var(--transition-fast) var(--ease-out);
 
   &.pill--gold {
     // Active level — extra ring to distinguish from hover state.
     box-shadow: 0 0 0 1px var(--gold-soft-40);
+  }
+
+  // Tactile press feedback — same pattern as `.timeline-stepper__pill`.
+  &:active {
+    transform: scale(0.96);
   }
 }
 
