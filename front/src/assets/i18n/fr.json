@@ -404,7 +404,9 @@
     "signIn": "Se connecter",
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "back": "Retour",
-    "createButton": "Créer le compte"
+    "createButton": "Créer le compte",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe"
   },
   "settings": {
     "title": "Paramètres",

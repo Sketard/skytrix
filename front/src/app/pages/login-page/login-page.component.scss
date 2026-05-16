@@ -1,143 +1,375 @@
 @use 'responsive' as *;
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+// =============================================================================
+// Login page — Card Flow B2 Constellation
+// Source: _mockups/mockup-login-card-flow.html variant B2.
+// Decisions: project_login_parameters_refresh_2026_05_16 (validated 2026-05-16).
+//
+// Vocabulary:
+//   - `.screen-bg-constellation*` — login-specific background (Master Duel
+//     style card constellation). NOT DS — concept unique to login.
+//   - `.login-logo`, `.login-logo__icon/__text` — local layout for brand
+//     assets (cool-tone logo + gold drop-shadow to tie into warm ambient).
+//   - `.form-card`, `.form-stage`, `.form-panel` — glassmorphism card +
+//     LR/RL slide between LOGIN ↔ CREATE_ACCOUNT.
+//   - `.mode-tabs`, `.mode-tab` — pill-style toggle on top of the card.
+//   - `.field`, `.field-input`, `.field-label`, `.field-suffix`,
+//     `.field-error` — DS custom inputs (NO mat-form-field).
+//   - `.btn .btn--primary .btn--lg .btn--cta .btn--cta-shimmer .btn--full`
+//     comes from `_buttons.scss` (DS), consumed via global class composition.
+// =============================================================================
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-.loginPage {
+:host {
+  display: block;
   min-height: 100%;
+}
+
+// =============================================================================
+// BACKGROUND — Card constellation
+// 9 cards positioned by hand at varied depths (parallax + opacity gradient).
+// Slot index drives placement; `is-face-up` state from the component.
+// =============================================================================
+.screen-bg-constellation {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--surface-bg);
+  perspective: 1200px;
+
+  &__cards {
+    position: absolute;
+    inset: 0;
+  }
+
+  &__overlay {
+    // Dark vignette + central gold glow so cards never compete with form.
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 50%,
+        transparent 0%,
+        rgba(10, 10, 20, 0.45) 60%,
+        rgba(10, 10, 20, 0.92) 100%),
+      radial-gradient(circle at 50% 50%,
+        var(--gold-soft-20) 0%,
+        transparent 55%);
+  }
+}
+
+.constellation-card {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-3);
+  will-change: transform;
+
+  // Face-up cards get a subtle gold rim — reads as "revealed" without
+  // competing with the form. Inset 1px gold-soft-25 line.
+  &.is-face-up {
+    box-shadow:
+      var(--elevation-3),
+      inset 0 0 0 1px var(--gold-soft-25);
+  }
+
+  // 9 hand-tuned slot placements (depth, rotation, opacity, blur).
+  &:nth-child(1) { width:  88px; height: 128px; top:  8%; left:  6%; transform: rotateZ(-12deg) translateZ(-200px); opacity: 0.35; filter: blur(2px); animation: drift-a 22s ease-in-out infinite; }
+  &:nth-child(2) { width: 132px; height: 192px; top: 14%; left: 78%; transform: rotateZ( 18deg) translateZ(-50px);  opacity: 0.55;                animation: drift-b 18s ease-in-out infinite; }
+  &:nth-child(3) { width:  72px; height: 105px; top: 38%; left: 12%; transform: rotateZ( -8deg) translateZ(-300px); opacity: 0.28; filter: blur(3px); animation: drift-c 26s ease-in-out infinite; }
+  &:nth-child(4) { width: 156px; height: 226px; top: 56%; left: 84%; transform: rotateZ( 22deg) translateZ(50px);   opacity: 0.65;                animation: drift-d 24s ease-in-out infinite; }
+  &:nth-child(5) { width:  96px; height: 140px; top: 72%; left:  4%; transform: rotateZ(-18deg) translateZ(-100px); opacity: 0.50; filter: blur(1px); animation: drift-e 20s ease-in-out infinite; }
+  &:nth-child(6) { width:  64px; height:  92px; top: 22%; left: 42%; transform: rotateZ(  6deg) translateZ(-400px); opacity: 0.22; filter: blur(4px); animation: drift-f 28s ease-in-out infinite; }
+  &:nth-child(7) { width: 104px; height: 152px; top: 62%; left: 32%; transform: rotateZ(-14deg) translateZ(-150px); opacity: 0.42; filter: blur(2px); animation: drift-g 21s ease-in-out infinite; }
+  &:nth-child(8) { width:  80px; height: 116px; top:  4%; left: 50%; transform: rotateZ( 14deg) translateZ(-250px); opacity: 0.30; filter: blur(2px); animation: drift-h 23s ease-in-out infinite; }
+  &:nth-child(9) { width: 120px; height: 174px; top: 78%; left: 58%; transform: rotateZ(-20deg) translateZ(0);      opacity: 0.58;                animation: drift-i 19s ease-in-out infinite; }
+}
+
+@keyframes drift-a { 0%,100% { transform: rotateZ(-12deg) translate(0,0)     translateZ(-200px); } 50% { transform: rotateZ(-10deg) translate(20px, -16px) translateZ(-200px); } }
+@keyframes drift-b { 0%,100% { transform: rotateZ( 18deg) translate(0,0)     translateZ(-50px);  } 50% { transform: rotateZ( 20deg) translate(-24px, 12px) translateZ(-50px);  } }
+@keyframes drift-c { 0%,100% { transform: rotateZ( -8deg) translate(0,0)     translateZ(-300px); } 50% { transform: rotateZ( -6deg) translate(14px,  18px) translateZ(-300px); } }
+@keyframes drift-d { 0%,100% { transform: rotateZ( 22deg) translate(0,0)     translateZ(50px);   } 50% { transform: rotateZ( 24deg) translate(-18px,-22px) translateZ(50px);   } }
+@keyframes drift-e { 0%,100% { transform: rotateZ(-18deg) translate(0,0)     translateZ(-100px); } 50% { transform: rotateZ(-16deg) translate(22px,-14px)  translateZ(-100px); } }
+@keyframes drift-f { 0%,100% { transform: rotateZ(  6deg) translate(0,0)     translateZ(-400px); } 50% { transform: rotateZ(  8deg) translate(10px, 10px)  translateZ(-400px); } }
+@keyframes drift-g { 0%,100% { transform: rotateZ(-14deg) translate(0,0)     translateZ(-150px); } 50% { transform: rotateZ(-12deg) translate(-16px, 20px) translateZ(-150px); } }
+@keyframes drift-h { 0%,100% { transform: rotateZ( 14deg) translate(0,0)     translateZ(-250px); } 50% { transform: rotateZ( 16deg) translate( 24px, 14px) translateZ(-250px); } }
+@keyframes drift-i { 0%,100% { transform: rotateZ(-20deg) translate(0,0)     translateZ(0);      } 50% { transform: rotateZ(-22deg) translate(-12px,-18px) translateZ(0);      } }
+
+// =============================================================================
+// PAGE LAYOUT
+// =============================================================================
+.login-page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding: 1rem;
-  position: relative;
+  justify-content: center;
+  padding: var(--space-fluid-lg) var(--space-fluid-md);
+}
 
+// =============================================================================
+// LOGO — official brand assets + gold drop-shadow ambient anchor
+// =============================================================================
+.login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--space-7);
+  animation: login-logo-float 4s ease-in-out infinite;
+}
+
+.login-logo__icon {
+  width: clamp(160px, 22vw, 220px);
+  height: auto;
+  display: block;
+  // Gold halo around cool-tone emblem — ties brand to DS palette.
+  filter:
+    drop-shadow(0 0 28px var(--gold-soft-40))
+    drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+}
+
+.login-logo__text {
+  width: clamp(160px, 18vw, 220px);
+  height: auto;
+  display: block;
+  margin-top: var(--space-3);
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
+}
+
+@keyframes login-logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+// =============================================================================
+// FORM CARD — glassmorphism + gold border accent
+// =============================================================================
+.form-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--gradient-card-ds);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    var(--elevation-4),
+    0 0 0 1px var(--gold-soft-12) inset,
+    0 0 40px var(--gold-soft-20);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  padding: var(--space-8) var(--space-7);
+  position: relative;
+  overflow: hidden;
+  animation: form-card-rise 600ms var(--ease-out) both;
+
+  // Gold accent line at the top — pattern from _holo-modal.scss.
   &::before {
     content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at center top, rgba(0, 212, 255, 0.03) 0%, transparent 50%);
-    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%);
+    opacity: 0.7;
   }
-  animation: fadeIn 400ms ease;
+}
 
-  h2 {
-    margin-top: 0;
-    margin-bottom: 0;
+@keyframes form-card-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// =============================================================================
+// MODE TABS — LOGIN ↔ CREATE_ACCOUNT toggle
+// =============================================================================
+.mode-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.30);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1);
+  margin-bottom: var(--space-7);
+  position: relative;
+
+  // Sliding gold pill behind the active tab. Position is driven by
+  // `data-mode` attribute on the parent (`login` | `create_account`).
+  &::after {
+    content: '';
+    position: absolute;
+    top: var(--space-1);
+    bottom: var(--space-1);
+    left: var(--space-1);
+    width: calc(50% - var(--space-1));
+    background: linear-gradient(135deg, var(--gold-100), var(--gold-700));
+    border-radius: var(--radius-pill);
+    box-shadow: 0 2px 12px var(--gold-soft-40);
+    transition: transform var(--transition-normal) var(--ease-out);
   }
 
-  &-logo {
-    display: flex;
-    flex-direction: column;
+  &[data-mode="create_account"]::after { transform: translateX(100%); }
+}
+
+.mode-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.05em;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: color var(--transition-normal) var(--ease-out);
+
+  &.is-active { color: var(--text-inverse); }
+}
+
+// =============================================================================
+// FORM PANEL — slide animation between LOGIN ↔ CREATE_ACCOUNT
+// Component uses `@switch (mode())` which destroys/recreates the form,
+// so we animate the enter transition via card-rise reuse on the panel.
+// =============================================================================
+.form-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.form-panel {
+  width: 100%;
+  animation: form-panel-enter var(--transition-slow) var(--ease-out) both;
+}
+
+@keyframes form-panel-enter {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+// =============================================================================
+// FIELD — DS custom input (NOT mat-form-field)
+// Floating label pattern, gold focus ring + glow.
+// =============================================================================
+.field {
+  position: relative;
+  margin-bottom: var(--space-5);
+}
+
+.field-input {
+  width: 100%;
+  height: 56px;
+  padding: 22px var(--space-4) 8px;
+  background: rgba(10, 10, 20, 0.6);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  outline: none;
+  transition: border-color var(--transition-normal) var(--ease-out),
+              box-shadow var(--transition-normal) var(--ease-out),
+              background var(--transition-normal) var(--ease-out);
+
+  &:hover { border-color: var(--border-medium); }
+
+  &:focus {
+    border-color: var(--gold);
+    background: rgba(10, 10, 20, 0.85);
+    box-shadow:
+      0 0 0 3px var(--gold-soft-25),
+      0 0 20px var(--gold-soft-20);
+  }
+
+  &::placeholder { color: transparent; }
+}
+
+.field-label {
+  position: absolute;
+  top: 50%;
+  left: var(--space-4);
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  pointer-events: none;
+  transition: all var(--transition-normal) var(--ease-out);
+
+  .field-input:focus + &,
+  .field-input:not(:placeholder-shown) + & {
+    top: 14px;
+    font-size: var(--text-xs);
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: var(--weight-semibold);
+  }
+}
+
+.field-suffix {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--gold);
+    background: var(--gold-soft-08);
+  }
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 2rem;
-
-    @include respond-below($bp-mobile) {
-      margin-bottom: 1.25rem;
-    }
-
-    &-icon {
-      width: 140px;
-      animation: float 3s ease-in-out infinite;
-
-      @include respond-below($bp-mobile) {
-        width: 125px;
-      }
-    }
-
-    &-text {
-      max-width: 200px;
-      margin-top: 0.75rem;
-
-      @include respond-below($bp-mobile) {
-        max-width: 175px;
-      }
-    }
-  }
-
-  &-form {
-    width: 100%;
-    text-align: center;
-    padding: 1rem;
-
-    @include respond-above($bp-mobile) {
-      padding: 1.5rem;
-    }
-
-    @include respond-above($bp-tablet) {
-      max-width: 400px;
-      padding: 2rem;
-    }
-
-    &-inputs {
-      margin: 1rem 0 1.5rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-
-      &-error {
-        margin-bottom: 0;
-        color: var(--danger);
-      }
-
-      &-field {
-        margin-top: 1rem;
-        width: 100%;
-
-        mat-icon[matSuffix] {
-          @include touch-target-min;
-          margin: -10px 0;
-          padding: 10px;
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-      }
-    }
-
-    &-buttons {
-      display: flex;
-      flex-direction: column-reverse;
-      gap: 0.5rem;
-      align-items: stretch;
-
-      @include respond-above($bp-mobile) {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      button,
-      a {
-        @include touch-target-min;
-      }
-
-      a {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.7;
-        font-size: 0.875rem;
-      }
-    }
+    justify-content: center;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .loginPage {
-    animation: none;
+.field-error {
+  display: block;
+  margin-top: var(--space-2);
+  padding-left: var(--space-2);
+  color: var(--danger-light);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.02em;
+}
 
-    &-logo-icon {
-      animation: none;
-    }
+// =============================================================================
+// RESPONSIVE
+// =============================================================================
+@include respond-below($bp-mobile) {
+  .form-card {
+    padding: var(--space-7) var(--space-5);
+  }
+  .login-logo {
+    margin-bottom: var(--space-6);
   }
 }
+
+@media (max-height: 720px) {
+  .login-logo { margin-bottom: var(--space-5); }
+  .form-card  { padding: var(--space-6) var(--space-6); }
+  .field      { margin-bottom: var(--space-4); }
+}
+
+// Reduced motion is handled globally in `_a11y.scss` (animation-duration:
+// 0.01ms everywhere). We don't need a local override here.

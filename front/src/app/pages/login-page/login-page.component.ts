@@ -17,10 +17,7 @@ import { LoginDTO } from '../../core/model/account/login-dto';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { CURRENT_USER_KEY } from '../../core/utilities/auth.constants';
 import { NotificationService } from '../../core/services/notification.service';
-import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
-import { MatInput, MatLabel } from '@angular/material/input';
-import { MatButton } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CreateUserDTO } from '../../core/model/account/create-user-dto';
 import { OwnedCardService } from '../../services/owned-card.service';
@@ -35,18 +32,29 @@ enum AnimationDirection {
   RL = 'RL',
 }
 
+interface ConstellationSlot {
+  url: string;
+  faceUp: boolean;
+}
+
+// Iconic Yu-Gi-Oh passcodes — visually striking staples, all verified
+// present in back/images/small/. Curated for the login constellation:
+// dragons, Egyptian gods, signature mascots from each anime era.
+const ICONIC_POOL: readonly number[] = [
+  46986414, 89631139, 33396948, 74677422, 33854624,
+  44508094, 62318994, 70903634, 72989439, 84327329,
+  78371393, 98502113, 21844576, 87796900, 53183600,
+  18036057, 60461804, 76812113, 40640057, 10389142,
+  35261759, 53129443, 41462083, 86988864, 90809975,
+];
+
+const CONSTELLATION_SLOT_COUNT = 9;
+const CARD_BACK_URL = '/assets/images/card_back.jpg';
+const cardUrl = (passcode: number): string => `/api/documents/small/code/${passcode}`;
+
 @Component({
   selector: 'app-login-page',
-  imports: [
-    ReactiveFormsModule,
-    MatFormField,
-    MatIcon,
-    MatInput,
-    MatLabel,
-    MatSuffix,
-    MatButton,
-    TranslatePipe,
-  ],
+  imports: [ReactiveFormsModule, MatIcon, TranslatePipe],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
   standalone: true,
@@ -63,6 +71,10 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   // ANIMATION
   public directions = AnimationDirection;
   public direction = signal<AnimationDirection>(this.directions.LR);
+
+  // CARD CONSTELLATION — random draw at component construction.
+  // 2 to 5 of 9 slots face-up with iconic cards, rest face-down.
+  public readonly constellationSlots = signal<ConstellationSlot[]>(this.buildConstellation());
 
   private readonly unsubscribe$ = new Subject<void>();
 
@@ -149,4 +161,29 @@ export class LoginPageComponent implements OnInit, OnDestroy {
     const confirmPassword = group.get('confirmPassword')?.value;
     return password === confirmPassword ? null : { passwordMismatch: true };
   };
+
+  // Fisher-Yates partial shuffle: pick N distinct items from a readonly array.
+  private pickRandom<T>(arr: readonly T[], n: number): T[] {
+    const copy = [...arr];
+    for (let i = 0; i < n; i++) {
+      const j = i + Math.floor(Math.random() * (copy.length - i));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy.slice(0, n);
+  }
+
+  // Build 9 slots: random 2-5 face-up (random iconic passcodes), rest face-down.
+  private buildConstellation(): ConstellationSlot[] {
+    const faceUpCount = 2 + Math.floor(Math.random() * 4); // 2..5 inclusive
+    const slotIndices = Array.from({ length: CONSTELLATION_SLOT_COUNT }, (_, i) => i);
+    const faceUpSlots = new Set(this.pickRandom(slotIndices, faceUpCount));
+    const drawnCards = this.pickRandom(ICONIC_POOL, faceUpCount);
+    let cursor = 0;
+    return slotIndices.map((i) => {
+      if (faceUpSlots.has(i)) {
+        return { url: cardUrl(drawnCards[cursor++]), faceUp: true };
+      }
+      return { url: CARD_BACK_URL, faceUp: false };
+    });
+  }
 }

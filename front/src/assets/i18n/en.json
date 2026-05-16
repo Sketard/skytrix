@@ -404,7 +404,9 @@
     "signIn": "Sign in",
     "passwordMismatch": "Passwords do not match.",
     "back": "Back",
-    "createButton": "Create account"
+    "createButton": "Create account",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "settings": {
     "title": "Settings",
