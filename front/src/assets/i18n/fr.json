@@ -468,6 +468,10 @@
       "pvpArena": "Arène PvP",
       "replayPvp": "Replay PVP",
       "settings": "Paramètres"
+    },
+    "lang": {
+      "fr": "Français",
+      "en": "English"
     }
   },
   "search": {

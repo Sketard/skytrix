@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener,
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { MatButton, MatIconButton } from '@angular/material/button';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -25,9 +24,20 @@ class Tab {
   }
 }
 
+interface LangOption {
+  code: 'fr' | 'en';
+  labelKey: string; // i18n key for the lang name in its own language
+  flagAsset: string;
+}
+
+const LANG_OPTIONS: readonly LangOption[] = [
+  { code: 'fr', labelKey: 'nav.lang.fr', flagAsset: 'assets/images/icons/flag-fr.svg' },
+  { code: 'en', labelKey: 'nav.lang.en', flagAsset: 'assets/images/icons/flag-en.svg' },
+];
+
 @Component({
   selector: 'navbar',
-  imports: [MatIconModule, RouterLinkActive, RouterLink, MatButton, MatIconButton, A11yModule, MatTooltip, TranslatePipe],
+  imports: [MatIconModule, RouterLinkActive, RouterLink, A11yModule, MatTooltip, TranslatePipe],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.scss',
   standalone: true,
@@ -40,7 +50,12 @@ export class NavbarComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
 
-  readonly currentLang = signal(this.translate.currentLang || 'fr');
+  readonly langOptions = LANG_OPTIONS;
+  readonly currentLang = signal<'fr' | 'en'>(this.normalizeLang(this.translate.currentLang));
+  readonly currentLangOption = computed(() =>
+    this.langOptions.find(o => o.code === this.currentLang()) ?? this.langOptions[0]
+  );
+  readonly langOpen = signal(false);
 
   private readonly allTabs: Tab[] = [
     new Tab('nav.tab.deckBuilder', 'folder', '/decks'),
@@ -67,6 +82,7 @@ export class NavbarComponent {
       .subscribe(() => {
         this.skipDrawerTransition.set(true);
         this.navbarCollapse.closeDrawer();
+        this.langOpen.set(false);
         setTimeout(() => this.skipDrawerTransition.set(false), 0);
       });
     this.destroyRef.onDestroy(() => sub.unsubscribe());
@@ -74,6 +90,8 @@ export class NavbarComponent {
 
   toggle(): void {
     this.navbarCollapse.toggle();
+    // Collapsing the sidebar should close any open dropdown.
+    if (this.collapsed()) this.langOpen.set(false);
   }
 
   openDrawer(): void {
@@ -82,10 +100,27 @@ export class NavbarComponent {
 
   closeDrawer(): void {
     this.navbarCollapse.closeDrawer();
+    this.langOpen.set(false);
+  }
+
+  toggleLang(): void {
+    this.langOpen.update(v => !v);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.langOpen()) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('.lang-switcher')) return;
+    this.langOpen.set(false);
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.langOpen()) {
+      this.langOpen.set(false);
+      return;
+    }
     if (this.drawerOpen()) {
       this.navbarCollapse.closeDrawer();
     }
@@ -95,9 +130,14 @@ export class NavbarComponent {
     this.authService.logout();
   }
 
-  setLanguage(lang: string): void {
+  setLanguage(lang: 'fr' | 'en'): void {
     this.translate.use(lang);
     this.currentLang.set(lang);
+    this.langOpen.set(false);
     localStorage.setItem('lang', lang);
+  }
+
+  private normalizeLang(raw: string | undefined): 'fr' | 'en' {
+    return raw === 'en' ? 'en' : 'fr';
   }
 }

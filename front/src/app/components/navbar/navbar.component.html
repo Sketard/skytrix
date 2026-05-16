@@ -1,15 +1,28 @@
 <!-- Desktop sidebar mode -->
 @if (!isMobile()) {
-  <nav class="navbar-sidebar" [class.collapsed]="collapsed()" role="navigation" [attr.aria-label]="'a11y.mainNavigation' | translate">
+  <nav class="navbar-sidebar"
+       [class.is-collapsed]="collapsed()"
+       role="navigation"
+       [attr.aria-label]="'a11y.mainNavigation' | translate">
     <div class="navbar-inner">
       <div class="navbar-content">
-        @if (!collapsed()) {
-          <img class="logo" src="/assets/images/logo-full.png" alt="logo" />
-        }
+        <!-- Logo bloc — gold halo via drop-shadow. Full when expanded,
+             icon-only when collapsed (replaces the previous blank state). -->
+        <div class="navbar-logo-wrap">
+          @if (!collapsed()) {
+            <img class="navbar-logo" src="/assets/images/logo-full.png" alt="skytrix" />
+          } @else {
+            <img class="navbar-logo navbar-logo--icon" src="/assets/images/logo-icon.png" alt="skytrix" />
+          }
+        </div>
         @for (tab of tabs(); track tab.path) {
-          <a [routerLink]="tab.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link"
+          <a [routerLink]="tab.path"
+             routerLinkActive="is-active"
+             [routerLinkActiveOptions]="{ exact: true }"
+             class="nav-link"
              [class.has-ribbon]="tab.path === '/pvp'"
-             [matTooltip]="tab.name | translate" [matTooltipDisabled]="!collapsed()">
+             [matTooltip]="tab.name | translate"
+             [matTooltipDisabled]="!collapsed()">
             <mat-icon [fontIcon]="tab.icon"></mat-icon>
             @if (!collapsed()) {
               <span class="nav-label">{{ tab.name | translate }}</span>
@@ -20,28 +33,66 @@
           </a>
         }
         <div class="spacer"></div>
-        @if (!collapsed()) {
-          <div class="lang-switcher">
-            <button mat-icon-button (click)="setLanguage('fr')" [class.active]="currentLang() === 'fr'" aria-label="Français">
-              <img src="assets/images/icons/flag-fr.svg" alt="FR" width="20" height="20">
-            </button>
-            <button mat-icon-button (click)="setLanguage('en')" [class.active]="currentLang() === 'en'" aria-label="English">
-              <img src="assets/images/icons/flag-en.svg" alt="EN" width="20" height="20">
-            </button>
-          </div>
-          <div class="user-section">
+
+        <!-- Lang switcher dropdown — opens upward (anchor `bottom: 100%`) -->
+        <div class="lang-switcher" [class.is-open]="langOpen()">
+          <button class="lang-trigger"
+                  type="button"
+                  (click)="toggleLang()"
+                  [attr.aria-haspopup]="'true'"
+                  [attr.aria-expanded]="langOpen()"
+                  [matTooltip]="(currentLangOption().labelKey | translate)"
+                  [matTooltipDisabled]="!collapsed()">
+            <img class="flag" [src]="currentLangOption().flagAsset" [alt]="currentLangOption().code.toUpperCase()" width="18" height="18">
+            @if (!collapsed()) {
+              <span class="label">{{ currentLangOption().labelKey | translate }}</span>
+              <mat-icon class="chevron" fontIcon="expand_more"></mat-icon>
+            }
+          </button>
+          @if (langOpen()) {
+            <div class="lang-menu" role="menu">
+              @for (opt of langOptions; track opt.code) {
+                <button class="lang-option"
+                        [class.is-current]="opt.code === currentLang()"
+                        type="button"
+                        role="menuitemradio"
+                        [attr.aria-checked]="opt.code === currentLang()"
+                        (click)="setLanguage(opt.code)">
+                  <img class="flag" [src]="opt.flagAsset" [alt]="opt.code.toUpperCase()" width="18" height="18">
+                  <span>{{ opt.labelKey | translate }}</span>
+                  @if (opt.code === currentLang()) {
+                    <mat-icon class="check" fontIcon="check"></mat-icon>
+                  }
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="user-section">
+          @if (!collapsed()) {
             <span class="user-pseudo">{{ user()?.pseudo }}</span>
-            <button mat-flat-button (click)="logout()">{{ 'nav.logout' | translate }}</button>
-          </div>
-        }
+          }
+          <button class="btn btn--ghost btn--sm btn--full user-logout"
+                  type="button"
+                  (click)="logout()"
+                  [matTooltip]="'nav.logout' | translate"
+                  [matTooltipDisabled]="!collapsed()">
+            <mat-icon fontIcon="logout"></mat-icon>
+            @if (!collapsed()) {
+              <span>{{ 'nav.logout' | translate }}</span>
+            }
+          </button>
+        </div>
       </div>
     </div>
 
     <button class="collapse-toggle"
+            type="button"
             (click)="toggle()"
-            [attr.aria-label]="collapsed() ? ('nav.expand' | translate) : ('nav.collapse' | translate)"
+            [attr.aria-label]="(collapsed() ? 'nav.expand' : 'nav.collapse') | translate"
             [attr.aria-expanded]="!collapsed()">
-      <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+      <mat-icon [fontIcon]="collapsed() ? 'chevron_right' : 'chevron_left'"></mat-icon>
     </button>
   </nav>
 }
@@ -50,12 +101,12 @@
 @if (isMobile()) {
   @if (!shouldHideTopBar()) {
     <header class="mobile-top-bar" [attr.aria-label]="'a11y.appHeader' | translate">
-      <button mat-icon-button
-              class="hamburger-btn"
+      <button class="hamburger-btn"
+              type="button"
               (click)="openDrawer()"
               [attr.aria-label]="'a11y.openNav' | translate"
               [attr.aria-expanded]="drawerOpen()">
-        <mat-icon>menu</mat-icon>
+        <mat-icon fontIcon="menu"></mat-icon>
       </button>
       <img class="mobile-title" src="/assets/images/logo-text.png" alt="skytrix" />
     </header>
@@ -63,14 +114,14 @@
 
   <!-- Backdrop -->
   <div class="drawer-backdrop"
-       [class.visible]="drawerOpen()"
+       [class.is-visible]="drawerOpen()"
        [class.no-animate]="skipDrawerTransition()"
        (click)="closeDrawer()"
        aria-hidden="true"></div>
 
   <!-- Drawer -->
   <nav class="mobile-drawer"
-       [class.open]="drawerOpen()"
+       [class.is-open]="drawerOpen()"
        [class.no-animate]="skipDrawerTransition()"
        role="dialog"
        [attr.aria-label]="'a11y.navMenu' | translate"
@@ -82,16 +133,19 @@
         <img class="drawer-logo" src="/assets/images/logo-icon.png" alt="" />
         <img class="drawer-text" src="/assets/images/logo-text.png" alt="skytrix" />
       </div>
-      <button mat-icon-button
-              class="drawer-close-btn"
+      <button class="drawer-close-btn"
+              type="button"
               (click)="closeDrawer()"
               [attr.aria-label]="'a11y.closeNav' | translate">
-        <mat-icon>close</mat-icon>
+        <mat-icon fontIcon="close"></mat-icon>
       </button>
     </div>
     <div class="drawer-content">
       @for (tab of tabs(); track tab.path) {
-        <a [routerLink]="tab.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link mobile-nav-link"
+        <a [routerLink]="tab.path"
+           routerLinkActive="is-active"
+           [routerLinkActiveOptions]="{ exact: true }"
+           class="nav-link mobile-nav-link"
            [class.has-ribbon]="tab.path === '/pvp'">
           <mat-icon [fontIcon]="tab.icon"></mat-icon>
           <span class="nav-label">{{ tab.name | translate }}</span>
@@ -101,17 +155,44 @@
         </a>
       }
       <div class="spacer"></div>
-      <div class="lang-switcher">
-        <button mat-icon-button (click)="setLanguage('fr')" [class.active]="currentLang() === 'fr'" aria-label="Français">
-          <img src="assets/images/icons/flag-fr.svg" alt="FR" width="20" height="20">
+
+      <!-- Lang switcher dropdown (mobile drawer) -->
+      <div class="lang-switcher" [class.is-open]="langOpen()">
+        <button class="lang-trigger"
+                type="button"
+                (click)="toggleLang()"
+                [attr.aria-haspopup]="'true'"
+                [attr.aria-expanded]="langOpen()">
+          <img class="flag" [src]="currentLangOption().flagAsset" [alt]="currentLangOption().code.toUpperCase()" width="18" height="18">
+          <span class="label">{{ currentLangOption().labelKey | translate }}</span>
+          <mat-icon class="chevron" fontIcon="expand_more"></mat-icon>
         </button>
-        <button mat-icon-button (click)="setLanguage('en')" [class.active]="currentLang() === 'en'" aria-label="English">
-          <img src="assets/images/icons/flag-en.svg" alt="EN" width="20" height="20">
-        </button>
+        @if (langOpen()) {
+          <div class="lang-menu" role="menu">
+            @for (opt of langOptions; track opt.code) {
+              <button class="lang-option"
+                      [class.is-current]="opt.code === currentLang()"
+                      type="button"
+                      role="menuitemradio"
+                      [attr.aria-checked]="opt.code === currentLang()"
+                      (click)="setLanguage(opt.code)">
+                <img class="flag" [src]="opt.flagAsset" [alt]="opt.code.toUpperCase()" width="18" height="18">
+                <span>{{ opt.labelKey | translate }}</span>
+                @if (opt.code === currentLang()) {
+                  <mat-icon class="check" fontIcon="check"></mat-icon>
+                }
+              </button>
+            }
+          </div>
+        }
       </div>
+
       <div class="user-section">
         <span class="user-pseudo">{{ user()?.pseudo }}</span>
-        <button mat-flat-button (click)="logout()">{{ 'nav.logout' | translate }}</button>
+        <button class="btn btn--ghost btn--sm btn--full user-logout" type="button" (click)="logout()">
+          <mat-icon fontIcon="logout"></mat-icon>
+          <span>{{ 'nav.logout' | translate }}</span>
+        </button>
       </div>
     </div>
   </nav>

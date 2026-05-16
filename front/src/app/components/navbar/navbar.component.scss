@@ -1,49 +1,61 @@
 @use 'responsive' as *;
 @use 'z-layers' as z;
 
-// =============================================
-// Desktop sidebar styles
-// =============================================
+// =============================================================================
+// Navbar — Direction B (Refresh identité skytrix)
+// Source: _mockups/mockup-navbar.html.
+// Decisions: project_login_parameters_refresh_2026_05_16 (validated 2026-05-16).
+//
+// Structure preserved (sidebar 260↔56 desktop, top bar + drawer mobile).
+// Adds gold rail, halo logo drop-shadow, active-link gold bar + dot, gold
+// accent line in drawer header, mobile top bar gold accent + halo.
+// =============================================================================
 
+// =============================================================================
+// Desktop sidebar
+// =============================================================================
 .navbar-sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 260px;
   height: 100vh;
   background: var(--surface-nav);
+  background-image: linear-gradient(180deg, var(--gold-soft-06) 0%, transparent 200px);
   color: var(--text-primary);
-  position: relative;
-  transition: width 200ms ease;
+  border-right: 1px solid var(--gold-soft-12);
+  transition: width var(--transition-normal) var(--ease-out),
+              border-color var(--transition-normal) var(--ease-out);
 
-  &.collapsed {
+  &.is-collapsed {
     width: 56px;
+    border-right-color: var(--gold-soft-20);
 
-    .navbar-content {
-      padding: 1.5rem 0.25rem;
-      align-items: center;
-    }
+    .navbar-content { padding: var(--space-6) var(--space-2); align-items: center; }
+    .nav-link { justify-content: center; padding: var(--space-3); }
+    .nav-link .nav-label { display: none; }
+    .nav-link mat-icon { margin-right: 0; }
 
-    .nav-link {
+    // Active rail stays, dot has no room — hide it in collapsed mode.
+    .nav-link.is-active::before { left: -2px; }
+    .nav-link.is-active::after  { display: none; }
+
+    .navbar-logo-wrap { margin-bottom: var(--space-5); }
+    .navbar-logo--icon { width: 40px; }
+
+    .alpha-ribbon { top: 4px; right: -22px; font-size: 0.45rem; padding: 1px 22px; }
+
+    .lang-switcher .label,
+    .lang-switcher .chevron { display: none; }
+    .lang-trigger { width: 40px; padding: 0; justify-content: center; }
+    .lang-menu { left: calc(100% + var(--space-2)); right: auto; bottom: auto; top: 0; width: 160px; }
+
+    .user-pseudo { display: none; }
+    .user-logout {
+      width: 40px;
+      padding: 0;
       justify-content: center;
-      padding: 0.6em;
-      border-left: none;
-      border-radius: 8px;
-
-      mat-icon {
-        margin-right: 0;
-      }
-
-      &.active {
-        background: var(--accent-primary-dim);
-        border-left-color: transparent;
-      }
-    }
-
-    .alpha-ribbon {
-      top: 4px;
-      right: -22px;
-      font-size: 0.45rem;
-      padding: 1px 22px;
+      span { display: none; }
     }
   }
 }
@@ -60,48 +72,92 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 1rem;
+  padding: var(--space-6) var(--space-4);
   min-height: 0;
 }
 
-.logo {
-  width: 100%;
-  margin-bottom: 2em;
+// =============================================================================
+// Logo bloc — gold halo via drop-shadow ties cool-tone asset to warm DS
+// =============================================================================
+.navbar-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-7);
+  filter: drop-shadow(0 0 18px var(--gold-soft-25));
 }
 
+.navbar-logo {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+// =============================================================================
+// Nav links
+// =============================================================================
 .nav-link {
+  position: relative;
   text-decoration: none !important;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  font-weight: 600;
-  padding: 0.75em 0.5em;
-  border-radius: 0 10px 10px 0;
-  margin-top: 0.25rem;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-1);
   white-space: nowrap;
-  border-left: 3px solid transparent;
-  transition: background-color 150ms ease;
+  transition: background-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
 
   mat-icon {
-    margin-right: 0.5em;
+    margin-right: var(--space-3);
+    flex-shrink: 0;
   }
 
   &:hover {
-    background-color: var(--surface-card);
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
   }
 
-  &.active {
-    background-color: var(--accent-primary-dim);
-    border-left-color: var(--accent-primary);
+  &.is-active {
+    background-color: var(--gold-soft-12);
+    color: var(--gold-50);
+  }
+
+  // Gold rail (left) + dot (right) for the active link.
+  &.is-active::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: var(--radius-pill);
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold-soft-40);
+  }
+  &.is-active::after {
+    content: '';
+    position: absolute;
+    right: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold);
   }
 }
 
 .nav-label {
-  transition: opacity 200ms ease;
+  transition: opacity var(--transition-normal) var(--ease-out);
 }
 
-// --- Alpha ribbon badge ---
-
+// =============================================================================
+// Alpha ribbon (gold-700 → gold-900 gradient, replaces orange #e67e22)
+// =============================================================================
 .nav-link.has-ribbon {
   position: relative;
   overflow: clip;
@@ -112,57 +168,180 @@
   top: 6px;
   right: -26px;
   width: 80px;
-  background: var(--alpha-badge-bg);
-  color: #fff;
+  background: linear-gradient(135deg, var(--gold-700), var(--gold-900));
+  color: var(--gold-50);
   font-size: 0.5rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
   padding: 4px 0;
   text-align: center;
   transform: rotate(45deg);
   line-height: 1;
   pointer-events: auto;
   z-index: 1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--elevation-1);
 }
 
-.spacer {
-  flex: 1;
-}
+.spacer { flex: 1; }
 
+// =============================================================================
+// Lang switcher dropdown — opens upward (anchor `bottom: 100%`)
+// =============================================================================
 .lang-switcher {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  padding: 0.5rem 0;
+  position: relative;
+  margin-bottom: var(--space-3);
+}
 
-  button {
-    opacity: 0.4;
-    transition: opacity 0.2s;
+.lang-trigger {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  height: 38px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
 
-    &.active {
-      opacity: 1;
-    }
+  &:hover {
+    border-color: var(--gold-soft-40);
+    color: var(--gold);
+    background: var(--gold-soft-08);
+  }
+
+  .flag {
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+
+  .label {
+    flex: 1;
+    text-align: left;
+  }
+
+  .chevron {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    transition: transform var(--transition-fast) var(--ease-out);
   }
 }
 
+.lang-switcher.is-open .chevron { transform: rotate(180deg); }
+
+.lang-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-3);
+  overflow: hidden;
+  z-index: 10;
+  animation: lang-menu-in var(--transition-fast) var(--ease-out) both;
+}
+
+@keyframes lang-menu-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--gold-soft-08);
+    color: var(--gold);
+  }
+
+  &.is-current {
+    background: var(--gold-soft-12);
+    color: var(--gold-50);
+  }
+
+  .flag {
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+
+  .check {
+    margin-left: auto;
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    color: var(--gold);
+  }
+}
+
+// =============================================================================
+// User section
+// =============================================================================
 .user-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding-top: 0.5rem;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
 }
 
 .user-pseudo {
-  font-weight: bold;
+  font-weight: var(--weight-bold);
   font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 0 var(--space-2);
 }
 
+// `.user-logout` consumes the global `.btn .btn--ghost .btn--sm .btn--full`
+// composition. Local override only for the icon shrink in collapsed mode
+// (handled in `.is-collapsed .user-logout` above).
+.user-logout {
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// =============================================================================
+// Collapse toggle (chevron button on the right edge)
+// =============================================================================
 .collapse-toggle {
   position: absolute;
   right: -16px;
-  top: 1.5rem;
+  top: var(--space-6);
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -170,23 +349,34 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--gold-soft-25);
   background: var(--surface-card);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   padding: 0;
   z-index: z.$z-ui-button;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  transition: background-color 150ms ease;
+  box-shadow: var(--elevation-1);
+  transition: background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
 
   &:hover {
-    background: var(--surface-card-hover);
+    background: var(--surface-hover);
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: var(--elevation-2);
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
   }
 }
 
-// =============================================
-// Mobile top bar + drawer styles
-// =============================================
-
+// =============================================================================
+// Mobile top bar
+// =============================================================================
 .mobile-top-bar {
   position: fixed;
   top: 0;
@@ -198,12 +388,51 @@
   align-items: center;
   background: var(--surface-nav);
   color: var(--text-primary);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  padding: 0 0.5rem;
+  box-shadow: var(--elevation-2);
+  padding: 0 var(--space-2);
+  // Gold accent line at the bottom — anchors brand on mobile.
+  border-bottom: 1px solid var(--gold-soft-20);
+
+  // Mini gold radial halo behind the centered logo — very subtle.
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 60%;
+    max-width: 200px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse, var(--gold-soft-12), transparent 70%);
+    pointer-events: none;
+  }
 }
 
 .hamburger-btn {
   @include touch-target-min;
+  position: relative;
+  z-index: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--gold);
+    background: var(--gold-soft-08);
+  }
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
 }
 
 .mobile-title {
@@ -213,23 +442,31 @@
   width: auto;
   object-fit: contain;
   margin-right: 44px; // Balance hamburger button width for centering
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 12px var(--gold-soft-25));
 }
 
+// =============================================================================
+// Drawer backdrop
+// =============================================================================
 .drawer-backdrop {
   position: fixed;
   inset: 0;
   z-index: z.$z-drawer-backdrop;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 200ms ease, visibility 0s 200ms;
+  transition: opacity var(--transition-normal) var(--ease-out),
+              visibility 0s var(--transition-normal);
 
-  &.visible {
+  &.is-visible {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity 200ms ease, visibility 0s 0s;
+    transition: opacity var(--transition-normal) var(--ease-out),
+                visibility 0s 0s;
   }
 
   &.no-animate {
@@ -237,6 +474,9 @@
   }
 }
 
+// =============================================================================
+// Mobile drawer
+// =============================================================================
 .mobile-drawer {
   position: fixed;
   top: 0;
@@ -245,17 +485,21 @@
   width: 280px;
   z-index: z.$z-drawer;
   background: var(--surface-nav);
+  background-image: linear-gradient(180deg, var(--gold-soft-06) 0%, transparent 200px);
   color: var(--text-primary);
+  border-right: 1px solid var(--gold-soft-12);
   visibility: hidden;
   transform: translateX(-100%);
-  transition: transform 200ms ease, visibility 0s 200ms;
+  transition: transform var(--transition-normal) var(--ease-out),
+              visibility 0s var(--transition-normal);
   display: flex;
   flex-direction: column;
 
-  &.open {
+  &.is-open {
     visibility: visible;
     transform: translateX(0);
-    transition: transform 200ms ease, visibility 0s 0s;
+    transition: transform var(--transition-normal) var(--ease-out),
+                visibility 0s 0s;
   }
 
   &.no-animate {
@@ -264,39 +508,65 @@
 }
 
 .drawer-header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  height: 48px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: var(--space-2) var(--space-3);
+  height: 56px;
+
+  // Gold accent line at bottom — mirrors `.form-card::before` from login.
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-soft-40), transparent);
+  }
 }
 
 .drawer-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
+  filter: drop-shadow(0 0 12px var(--gold-soft-25));
 }
 
-.drawer-logo {
-  height: 32px;
-  width: auto;
-}
-
-.drawer-text {
-  height: 20px;
-  width: auto;
-}
+.drawer-logo { height: 32px; width: auto; }
+.drawer-text { height: 20px; width: auto; }
 
 .drawer-close-btn {
   @include touch-target-min;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--gold);
+    background: var(--gold-soft-08);
+  }
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
 }
 
 .drawer-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: var(--space-4);
   min-height: 0;
   overflow-y: auto;
 }
@@ -304,49 +574,6 @@
 .mobile-nav-link {
   @include touch-target-min;
   width: 100%;
-  border-left: 3px solid transparent;
-  transition: background-color 150ms ease;
-
-  &:hover {
-    background-color: var(--surface-card);
-  }
-
-  &.active {
-    background-color: var(--accent-primary-dim);
-    border-left-color: var(--accent-primary);
-  }
 }
 
-// =============================================
-// prefers-reduced-motion
-// =============================================
-
-@media (prefers-reduced-motion: reduce) {
-  .navbar-sidebar {
-    transition: none;
-  }
-
-  .collapse-toggle {
-    transition: none;
-  }
-
-  .mobile-drawer {
-    transition: none;
-  }
-
-  .drawer-backdrop {
-    transition: none;
-  }
-
-  .nav-link {
-    transition: none;
-  }
-
-  .nav-label {
-    transition: none;
-  }
-
-  .mobile-nav-link {
-    transition: none;
-  }
-}
+// Reduced motion is handled globally in `_a11y.scss` — no local override.
