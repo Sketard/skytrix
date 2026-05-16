@@ -411,7 +411,7 @@
   },
   "settings": {
     "title": "Paramètres",
-    "subtitle": "Synchronise les données du jeu (cartes, images, banlist, serveur de duel). Les tâches longues peuvent être mises en pause.",
+    "subtitle": "Synchronisation des données du jeu",
     "database": "Base de données",
     "updateCards": "Mettre à jour les cartes",
     "updateCardsDesc": "Synchronise depuis YGOProDeck",
@@ -431,6 +431,10 @@
     "updateBanlist": "Mettre à jour la banlist",
     "updateBanlistDesc": "Synchronise les listes de cartes interdites/limitées",
     "neverSynced": "Jamais synchronisé",
+    "lastSync": {
+      "label": "Dernière sync : {{value}}",
+      "never": "jamais"
+    },
     "status": {
       "idle": "Inactif",
       "running": "En cours",

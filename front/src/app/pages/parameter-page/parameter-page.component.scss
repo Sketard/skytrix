@@ -45,15 +45,9 @@
 // Match the fluid h1 size used by lobby + replay-hub for inter-page consistency.
 .page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
 
-// Subtitle override — `.page-header__subtitle` ships as Inter bold xs uppercase
-// letter-spaced (eyebrow look). Settings uses descriptive copy instead.
-:host ::ng-deep .page-header__subtitle {
-  font: var(--weight-medium) var(--text-sm) / var(--line-normal) 'Inter', sans-serif;
-  letter-spacing: normal;
-  text-transform: none;
-  color: var(--text-muted);
-  max-width: 520px;
-}
+// `.page-header__subtitle` from `_page-header.scss` (Inter bold xs UPPERCASE
+// letter-spaced 0.15em — eyebrow look). No local override : we keep the DS
+// canonical typography, identical to lobby + replay-hub.
 
 // =============================================================================
 // Section — consumes the global `.section-header__*` from _section-header.scss.

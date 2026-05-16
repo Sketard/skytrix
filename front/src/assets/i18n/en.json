@@ -411,7 +411,7 @@
   },
   "settings": {
     "title": "Settings",
-    "subtitle": "Sync game data (cards, images, banlist, duel server). Long-running tasks can be paused.",
+    "subtitle": "Sync game data",
     "database": "Database",
     "updateCards": "Update cards",
     "updateCardsDesc": "Sync from YGOProDeck",
@@ -431,6 +431,10 @@
     "updateBanlist": "Update banlist",
     "updateBanlistDesc": "Sync banned/limited card lists",
     "neverSynced": "Never synced",
+    "lastSync": {
+      "label": "Last sync: {{value}}",
+      "never": "never"
+    },
     "status": {
       "idle": "Idle",
       "running": "Running",

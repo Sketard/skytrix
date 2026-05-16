@@ -242,7 +242,11 @@ export class ParameterPageComponent implements OnDestroy {
 
   lastSync(key: string): string {
     const raw = localStorage.getItem(`sync_${key}_lastDate`);
-    if (!raw) return this.translate.instant('settings.neverSynced');
+    const value = raw ? this.formatRelative(raw) : this.translate.instant('settings.lastSync.never');
+    return this.translate.instant('settings.lastSync.label', { value });
+  }
+
+  private formatRelative(raw: string): string {
     const date = new Date(raw);
     const diff = Date.now() - date.getTime();
     const rtf = new Intl.RelativeTimeFormat(this.translate.currentLang, { numeric: 'auto' });
