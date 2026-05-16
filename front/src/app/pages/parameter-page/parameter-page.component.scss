@@ -2,27 +2,26 @@
 
 // =============================================================================
 // Parameter page — Control Panel sobre
-// Source: _mockups/mockup-parameters.html.
-// Decisions: project_login_parameters_refresh_2026_05_16 (validated 2026-05-16).
+// Source: _mockups/mockup-parameters.html (review-aligned 2026-05-16).
 //
 // DS consumed globally:
-//   - .screen-bg / .screen-bg-grid (_holo-arena.scss, opacity overridden local)
-//   - .page-header.page-header--bordered / .page-header__* (_page-header.scss)
-//   - .text-gold-gradient / .text-eyebrow (_typography.scss)
-//   - .pill .pill--neutral/--cyan/--warning/--danger / .pill--live (_pills.scss)
-//   - .btn .btn--primary/--ghost .btn--md (_buttons.scss) + .btn--icon-only local
-// Local-only patterns: .parameters-page, .section, .section-icon, .card-ds,
-//   .job, .progress, .progress-bar, .btn-spinner, .btn--icon-only.
+//   - .screen-bg / .screen-bg-grid / .screen-bg-glow--gold / .screen-bg-glow--cyan
+//     (_holo-arena.scss) — same 4-layer composition as lobby + replay-hub.
+//   - .page-header.page-header--bordered / .page-header__icon/__title-group/__title/__subtitle
+//     (_page-header.scss).
+//   - .section-header / .section-header__title-group / .section-header__title
+//     (_section-header.scss) — accent-bar gold gauche intégrée.
+//   - .text-gold-gradient (_typography.scss) on the title.
+//   - .pill .pill--neutral/--cyan/--warning/--danger / .pill--live (_pills.scss).
+//   - .btn .btn--primary/--ghost .btn--md (_buttons.scss) + .btn--icon-only local.
+// Local-only patterns: .parameters-page, .section, .section-header__icon
+//   (icon next to the DS title), .card-ds, .job, .progress, .progress-bar,
+//   .btn-spinner, .btn--icon-only.
 // =============================================================================
 
 :host {
   display: block;
   min-height: 100%;
-}
-
-// Settings page wants a more discreet grid than login / lobby.
-:host ::ng-deep .screen-bg-grid {
-  opacity: 0.35;
 }
 
 .parameters-page {
@@ -48,35 +47,24 @@
 }
 
 // =============================================================================
-// Section
+// Section — consumes the global `.section-header__*` from _section-header.scss.
+// Only the icon next to the DS title is local.
 // =============================================================================
 .section {
   margin-bottom: var(--space-7);
 }
 
 .section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
   margin-bottom: var(--space-3);
-  padding-left: var(--space-1);
 }
 
-.section-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--gold-soft-12);
+.section-header__icon {
   color: var(--gold);
-
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-  }
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px var(--gold-soft-40));
 }
 
 // =============================================================================

@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, OnDestroy, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ParameterService } from '../../services/parameter.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { LoaderService } from '../../services/loader.service';
 import { MatIconModule } from '@angular/material/icon';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -81,6 +82,21 @@ export class ParameterPageComponent implements OnDestroy {
   private readonly notify = inject(NotificationService);
   private readonly translate = inject(TranslateService);
   private readonly supportService = inject(ParameterService);
+  private readonly loaderService = inject(LoaderService);
+
+  constructor() {
+    // Suppress the legacy global full-screen loader while we are on the
+    // parameters page. Our own status pills + progress bars already
+    // communicate the loading state per-job — universal-hydration-strategy.
+    // Pattern mirrors replay-page.component.ts:447-457 (Axel 2026-05-16).
+    effect(() => {
+      const anyJobActive = Object.values(this.loading()).some(v => v);
+      const globalLoaderOn = this.loaderService.isLoading();
+      if (anyJobActive && globalLoaderOn) {
+        untracked(() => this.loaderService.isLoading.set(false));
+      }
+    });
+  }
 
   ngOnDestroy(): void {
     this.stopPolling();
