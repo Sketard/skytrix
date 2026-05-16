@@ -70,8 +70,11 @@
 
 </div>
 
-<!-- Hover preview popover — outside .timeline-bar to avoid overflow-y clipping -->
-<div class="timeline-bar__popover surface-card surface-card--flat"
+<!-- Hover preview popover — outside .timeline-bar to avoid overflow-y clipping.
+     Custom chrome (not `.surface-card`) so we can mirror the mockup
+     §hover-popover style — gold border, gold-12 glow, downward arrow
+     pointing at the timeline. -->
+<div class="timeline-bar__popover"
      [class.timeline-bar__popover--visible]="previewVisible() && isDesktop()"
      [class.timeline-bar__popover--not-computed]="hoveredBeyondComputed()"
      [style.left.px]="hoverX()">
@@ -123,12 +126,14 @@
     </div>
     @if (hoveredTurnInfo(); as turnInfo) {
       <div class="timeline-bar__popover-info">
-        <span class="text-eyebrow">{{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}</span>
-        <span class="text-mono timeline-bar__popover-lp">
-          <span class="timeline-bar__popover-lp-self">{{ turnInfo.p1LP }}</span>
-          <span class="timeline-bar__popover-lp-sep">/</span>
-          <span class="timeline-bar__popover-lp-opp">{{ turnInfo.p2LP }}</span>
-        </span>
+        <div class="timeline-bar__popover-info-row">
+          <span class="text-eyebrow">{{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}</span>
+          <span class="text-mono timeline-bar__popover-lp">
+            <span class="timeline-bar__popover-lp-self">{{ turnInfo.p1LP }}</span>
+            <span class="timeline-bar__popover-lp-sep">/</span>
+            <span class="timeline-bar__popover-lp-opp">{{ turnInfo.p2LP }}</span>
+          </span>
+        </div>
         @if (hoveredLabel(); as label) {
           <span class="timeline-bar__popover-label">{{ label }}</span>
         }

@@ -199,8 +199,9 @@
   }
 }
 
-// Hover preview popover — fixed position so it escapes overflow:hidden on
-// the timeline-bar. `.surface-card` background comes from DS Wave 1.
+// Hover preview popover — mockup §hover-popover parity.
+// Custom chrome (NOT `.surface-card`) to match the gold-bordered card with
+// gold-12 glow, blur backdrop, and a downward arrow pointing at the timeline.
 .timeline-bar__popover {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -211,9 +212,28 @@
   display: none;
   flex-direction: column;
   gap: var(--space-1);
+  background: var(--surface-card);
+  border: 1px solid var(--gold-soft-25);
+  border-radius: var(--radius-md);
+  box-shadow:
+    var(--elevation-3),
+    0 0 32px var(--gold-soft-12);
+  backdrop-filter: blur(12px);
 
   &.timeline-bar__popover--visible {
     display: flex;
+  }
+
+  // Downward arrow at the bottom of the popover, pointing at the timeline
+  // bullet under it (mockup §hover-popover::after).
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--gold-soft-25);
   }
 
   &.timeline-bar__popover--not-computed {
@@ -225,19 +245,35 @@
   }
 }
 
-// Scaled live board preview — same as master before the F3 refactor.
-// `<app-pvp-board-container>` lays out at its native 800×600 dimensions; the
-// scale(0.25) brings that to a 200×150 popover that still uses the real zone
-// layout instead of a stylized mini-thumbnail.
+// Scaled live board preview. The container renders at its native 800×600
+// dimensions; `scale(0.32)` brings that to ~260×167 — matches mockup's
+// 260px-wide §hover-popover-board while keeping the real zone layout.
 .timeline-bar__popover-board {
-  width: 200px;
-  height: 150px;
+  width: 260px;
+  height: 167px;
   overflow: hidden;
   pointer-events: none;
+  border-radius: var(--radius-sm);
+  position: relative;
+  background:
+    radial-gradient(ellipse at center, var(--gold-soft-04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
+  border: 1px solid var(--gold-soft-25);
+  box-shadow: inset 0 0 0 1px var(--gold-soft-08);
+
+  // Mockup §hover-popover-board::before — inner dashed frame.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    pointer-events: none;
+    border: 1px dashed var(--gold-soft-12);
+    border-radius: var(--radius-sm);
+  }
 
   app-pvp-board-container {
     display: block;
-    transform: scale(0.25);
+    transform: scale(0.32);
     transform-origin: top left;
     width: 800px;
     height: 600px;
@@ -245,20 +281,44 @@
   }
 }
 
-.timeline-bar__popover-info,
+// Footer info — mockup §hover-popover-info.
+//   Row 1: gold "TURN N" label on the left, mono LP score on the right.
+//   Row 2: optional event label, full width.
+.timeline-bar__popover-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1) 0;
+  min-width: 260px;
+}
+
+.timeline-bar__popover-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+
+  > .text-eyebrow {
+    font: var(--weight-bold) var(--text-xs) / 1.1 var(--font-display);
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+}
+
+.timeline-bar__popover-label {
+  font: var(--weight-semibold) var(--text-xs) / var(--line-tight) var(--font-body);
+  color: var(--text-secondary);
+  max-width: 240px;
+}
+
+// Not-computed text block (no board preview).
 .timeline-bar__popover-text {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
-}
-
-.timeline-bar__popover-label {
-  font: var(--weight-semibold) var(--text-xs) / var(--line-tight) var(--font-body);
-  color: var(--gold-50);
-  max-width: 240px;
-  text-align: center;
 }
 
 // Mockup parity: not-computed popover shows "Calcul en cours…" italicized in
@@ -274,7 +334,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 .timeline-bar__popover-lp-self { color: var(--gold-50); }

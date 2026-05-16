@@ -31,6 +31,12 @@
   display: flex;
   align-items: center;
   min-width: 0;
+
+  // Let the inner `<app-context-pill>` (display: flex) actually fill the
+  // grid-assigned `1fr` cell. Without `width: 100%` the inner row stays at
+  // its intrinsic width and the event label hits ellipsis far too early
+  // (lots of empty space between the truncated event and the play button).
+  > app-context-pill { width: 100%; }
 }
 
 .transport-bar__controls {

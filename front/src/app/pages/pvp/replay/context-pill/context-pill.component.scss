@@ -6,17 +6,28 @@
 // mobile stepper. Both consume the same MQ surface (`.is-narrow` from the page
 // host + native `@media (max-width: ...)`).
 :host {
-  display: inline-flex;
+  // `flex` (not `inline-flex`) so the row stretches across the grid cell
+  // assigned by the transport-bar `1fr auto 1fr` template — gives the event
+  // label real room before ellipsis kicks in.
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  // Cap how wide the right side of the row (the long event label) can grow
+  // before it pushes the play button off-center.
+  max-width: 100%;
 }
 
 .context-pill__event {
+  // Take whatever room is left in the cell after the turn pill + phase chip.
+  // `min-width: 0` lets it actually shrink below its intrinsic width so the
+  // ellipsis only kicks in when the row genuinely runs out of space — instead
+  // of triggering at the previous arbitrary 30ch cap.
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 30ch;
 }
 
 // Mockup §context-phase — neutral pill with a gold bolt prefix (instead of
