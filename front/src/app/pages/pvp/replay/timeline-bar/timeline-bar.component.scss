@@ -75,17 +75,30 @@
   box-shadow: inset -1px 0 0 var(--border-subtle);
   transition: background var(--transition-fast) var(--ease-out);
   cursor: pointer;
+  position: relative; // anchor for the gold underline `::after`
 
   &:hover {
     background: var(--gold-soft-06);
   }
 
+  // Mockup §turn-segment.current — vertical gold-soft gradient + 2px gold
+  // underline with a soft glow. Same chrome as the master before the F3
+  // refactor; combined with the gold-50 label below it actually reads as
+  // "this is the active turn" (the previous flat box-shadow looked too
+  // subtle next to the playhead).
   &.timeline-bar__turn--current {
-    background: var(--gold-soft-12);
-    border-bottom: 2px solid var(--gold);
-    // Mockup §current-turn-glow — emphasize the active turn with a soft glow
-    // under the gold bottom border. The master had this; the rework dropped it.
-    box-shadow: 0 2px 8px var(--gold-soft-50);
+    background: linear-gradient(180deg, var(--gold-soft-12), transparent 70%);
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      bottom: 0;
+      height: 2px;
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold-soft-50);
+    }
   }
 
   &.timeline-bar__turn--not-computed {
@@ -104,13 +117,21 @@
   font: var(--weight-bold) var(--text-xs) / var(--line-tight) var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
   padding: 4px 6px 0;
   flex: 0 0 auto;
+  transition: color var(--transition-fast) var(--ease-out);
+}
+
+// Mockup §.turn-segment.current .turn-label — the active turn label gets
+// the bright gold tint so the eye snaps to the current position even before
+// noticing the underline + playhead.
+.timeline-bar__turn--current .timeline-bar__turn-label {
+  color: var(--gold-50);
 }
 
 .timeline-bar__sub-events {
