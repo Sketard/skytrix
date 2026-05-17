@@ -1,0 +1,28 @@
+<div class="player-card"
+     [class.player-card--player]="side() === 'player'"
+     [class.player-card--opponent]="side() === 'opponent'"
+     [class.player-card--active]="isActiveTurn()"
+     role="region"
+     [attr.aria-label]="(side() === 'player' ? 'duel.a11y.playerCard' : 'duel.a11y.opponentCard') | translate">
+  <app-avatar class="player-card__avatar"
+              [pseudo]="displayPseudo()"
+              size="md"
+              [ariaLabel]="displayPseudo()" />
+
+  <div class="player-card__body">
+    <div class="player-card__header">
+      <span class="player-card__pseudo" [title]="displayPseudo()">{{ displayPseudo() }}</span>
+      @if (side() === 'player') {
+        <app-pvp-timer-badge class="player-card__timer"
+                             [variant]="timerVariant()"
+                             [timerState]="timerState()"
+                             [turnPlayer]="turnPlayer()"
+                             [actor]="actor()" />
+      }
+    </div>
+    <app-pvp-lp-badge class="player-card__lp"
+                      [side]="side()"
+                      [lp]="lp()"
+                      [animatingLp]="animatingLp()" />
+  </div>
+</div>

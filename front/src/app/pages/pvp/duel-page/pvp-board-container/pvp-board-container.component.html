@@ -77,10 +77,28 @@
   <span class="duel-particles__dot"></span>
 </div>
 
+<!-- Unified player cards — ancrées hors-board dans le vide latéral (Wave 3
+     follow-up). Opp = top-right, player = bottom-left. Active glow drives
+     peripheral awareness of whose turn it is. -->
+<app-pvp-player-card side="opponent"
+                     [pseudo]="opponentPseudo()"
+                     [lp]="opponentLp()"
+                     [animatingLp]="opponentLpAnim()"
+                     [timerState]="timerState()"
+                     [turnPlayer]="absoluteTurnPlayer()"
+                     [actor]="actor()"
+                     [opponentDisconnected]="effectiveOpponentDisconnected()" />
+<app-pvp-player-card side="player"
+                     [pseudo]="playerPseudo()"
+                     [lp]="playerLp()"
+                     [animatingLp]="playerLpAnim()"
+                     [timerState]="timerState()"
+                     [turnPlayer]="absoluteTurnPlayer()"
+                     [actor]="actor()" />
+
 <div class="board-wrapper">
   <!-- Opponent Field (rotateX applied) -->
   <section class="field-section opponent-field">
-    <app-pvp-lp-badge [lp]="opponentLp()" side="opponent" [animatingLp]="opponentLpAnim()" />
 
     @for (zone of opponentZones(); track zone.zoneId) {
       <div class="zone"
@@ -439,20 +457,7 @@
       </div>
     }
 
-    <app-pvp-lp-badge [lp]="playerLp()" side="player" [animatingLp]="playerLpAnim()" />
   </section>
-
-  <!-- Wave 3 board-enrichment timers — absolute, anchored to .board-wrapper.
-       Player = bottom-left (readable). Opp = top-right (brouillage 2C). -->
-  <app-pvp-timer-badge variant="player"
-                       [timerState]="timerState()"
-                       [turnPlayer]="absoluteTurnPlayer()"
-                       [actor]="actor()" />
-  <app-pvp-timer-badge variant="opp"
-                       [timerState]="timerState()"
-                       [turnPlayer]="absoluteTurnPlayer()"
-                       [actor]="actor()"
-                       [opponentDisconnected]="effectiveOpponentDisconnected()" />
 </div>
 </div>
 

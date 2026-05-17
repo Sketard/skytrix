@@ -17,6 +17,39 @@
     radial-gradient(circle at top, var(--gold-soft-12), transparent 70%),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent);
   flex-shrink: 0;
+
+  // Mobile portrait — bottom-sheet has limited vertical room, the header
+  // must yield space for the actual deck list. Shrink the title, hide the
+  // descriptive subtitle, compact the search.
+  @media (max-width: 767px) {
+    padding: var(--space-2) var(--space-3);
+
+    .picker-title {
+      font-size: var(--text-md);
+      gap: var(--space-2);
+    }
+
+    .picker-title-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .picker-subtitle {
+      display: none;
+    }
+
+    .picker-search {
+      margin-top: var(--space-2);
+      padding: var(--space-1) var(--space-2);
+    }
+
+    .picker-search-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
 }
 
 .picker-title {
@@ -690,32 +723,46 @@
 }
 
 // ── Footer (actions) ────────────────────────────────────────────────────────
-// Layout follows the mockup: column-reverse on mobile (primary at bottom for
-// thumb-reach), row right-aligned on desktop. `.btn-secondary` / `.btn-primary`
-// children are styled by the shared `holo-modal-panel` utility.
+// Row layout on both mobile and desktop — column-reverse used to be the
+// mockup intent but the resulting 160px footer ate too much of the
+// bottom-sheet height. Cancel left + Confirm right reads naturally and
+// preserves thumb-reach (Confirm stays on the right where the thumb sits
+// for right-handed users — the dominant mobile demographic).
 .picker-actions {
   display: flex !important;
-  flex-direction: column-reverse;
-  gap: var(--space-3);
-  padding: clamp(12px, 3vw, 14px) clamp(14px, 4vw, 20px) clamp(14px, 4vw, 20px) !important;
-  padding-bottom: max(clamp(14px, 4vw, 20px), env(safe-area-inset-bottom, 14px)) !important;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) !important;
+  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom, var(--space-2))) !important;
   border-top: 1px solid var(--border-subtle);
   background: linear-gradient(to top, rgba(20, 20, 31, 0.95), transparent);
 
   @media (min-width: 768px) {
-    flex-direction: row;
-    justify-content: flex-end;
-    padding-bottom: clamp(14px, 4vw, 20px) !important;
+    gap: var(--space-3);
+    padding: clamp(12px, 3vw, 14px) clamp(14px, 4vw, 20px) clamp(14px, 4vw, 20px) !important;
   }
 
-  // Stretch buttons full-width on mobile (column layout), shrink to content
-  // on desktop (row layout).
+  // Mobile: compact buttons, Confirm takes the remaining room so the CTA
+  // stays visually dominant. Desktop: both shrink to their content.
   .btn-secondary,
   .btn-primary {
-    width: 100%;
+    min-height: 40px !important;
 
     @media (min-width: 768px) {
-      width: auto;
+      min-height: 44px !important;
     }
+  }
+
+  .btn-primary {
+    flex: 1;
+
+    @media (min-width: 768px) {
+      flex: 0 0 auto;
+    }
+  }
+
+  .btn-secondary {
+    flex: 0 0 auto;
   }
 }

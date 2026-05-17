@@ -1,0 +1,217 @@
+@use '../../../../styles/responsive' as r;
+
+// Positioning is owned by the parent `.board-host` / `.duel-board-host`:
+// the host is plugged as a child of `.board-host` (sibling of `.board-wrapper`)
+// and uses `position: absolute` to anchor itself in the lateral void.
+
+:host {
+  position: absolute;
+  z-index: 72;
+  pointer-events: none;
+  // children re-enable pointer-events on their interactive bits if needed
+}
+
+:host(.host--player) {
+  bottom: var(--space-4);
+  left: var(--space-4);
+}
+
+:host(.host--opponent) {
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 240px;
+  max-width: 320px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--gradient-dialog-surface);
+  border: 1px solid var(--gold-soft-30);
+  border-radius: var(--radius-md);
+  box-shadow:
+    var(--elevation-2),
+    0 0 0 1px var(--gold-soft-12),
+    inset 0 1px 0 var(--gold-soft-15);
+  pointer-events: auto;
+  transition:
+    border-color var(--transition-normal) var(--ease-out),
+    box-shadow var(--transition-normal) var(--ease-out),
+    opacity var(--transition-normal) var(--ease-out);
+}
+
+// Active turn — golden glow + halo. The card "lights up" so the player knows
+// at a glance whose turn it is, even in peripheral vision.
+.player-card--active {
+  border-color: var(--gold);
+  box-shadow:
+    var(--elevation-3),
+    0 0 0 1px var(--gold-soft-30),
+    0 0 24px var(--gold-soft-30),
+    inset 0 1px 0 var(--gold-soft-30);
+}
+
+// Inactive opponent card stays a bit dimmer than the player card — subtle
+// hierarchy. The active glow overrides this.
+.player-card--opponent:not(.player-card--active) {
+  opacity: 0.92;
+  filter: saturate(0.92);
+}
+
+.player-card__avatar {
+  flex-shrink: 0;
+}
+
+.player-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0; // allow truncation
+  flex: 1;
+}
+
+// Header row — pseudo on the left, timer on the right (player side only).
+.player-card__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+
+  .player-card__pseudo {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .player-card__timer {
+    flex-shrink: 0;
+  }
+}
+
+.player-card__pseudo {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--gold-50);
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--transition-normal) var(--ease-out),
+              text-shadow var(--transition-normal) var(--ease-out);
+}
+
+.player-card--active .player-card__pseudo {
+  color: var(--gold);
+  text-shadow: 0 0 12px var(--gold-soft-50), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+
+// The inner timer + LP children inherit their existing styles, but the parent
+// host scoping pushes them to flow naturally in the metrics row.
+// Override their `position: absolute` so they participate in the flex flow.
+:host ::ng-deep app-pvp-timer-badge .timer {
+  // The legacy timer badge used absolute positioning anchored to the board;
+  // inside the player card it flows inline as a pure typographic element.
+  // `position: relative` is critical here: the timer's `::before` / `::after`
+  // (opp brouillage scrim + hatching) anchor to the nearest positioned
+  // ancestor. Without this, they'd escape to the player-card host and cover
+  // the whole card instead of just the opp timer.
+  position: relative;
+  bottom: auto;
+  left: auto;
+  top: auto;
+  right: auto;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  gap: 2px;
+}
+
+// Lock the timer value width so the LP doesn't shift when the digit count
+// changes (e.g. 4:50 → 4:09). `tabular-nums` makes digits monospaced even
+// in a proportional font.
+:host ::ng-deep app-pvp-timer-badge .timer__value {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  min-width: 4ch; // covers `m:ss` / `--:--` worst case
+  text-align: right;
+  display: inline-block;
+}
+
+:host ::ng-deep app-pvp-timer-badge .timer__icon {
+  font-size: var(--text-md);
+  width: var(--text-md);
+  height: var(--text-md);
+  opacity: 0.85;
+}
+
+// Bar fill stays thin and discrete — visual cue of remaining time.
+:host ::ng-deep app-pvp-timer-badge .timer__bar {
+  height: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:host ::ng-deep app-pvp-lp-badge {
+  position: static !important;
+}
+
+// Strip the badge chrome — inside the player card the LP is a pure
+// typographic element, not a standalone floating badge anymore.
+:host ::ng-deep app-pvp-lp-badge .lp-badge {
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:host ::ng-deep app-pvp-lp-badge .lp-value {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-black);
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 8px rgba(0, 0, 0, 0.45),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+// =============================================================================
+// Responsive — when the viewport doesn't leave lateral void around the board
+// (aspect-ratio ≤ 4/3 in portrait/square, OR width ≤ 1200px in landscape),
+// scale the card down in place. `transform-origin` anchors the shrink to the
+// closest viewport corner so it pulls the card away from the board rather
+// than toward the center.
+// =============================================================================
+@media (max-aspect-ratio: 4/3), (max-width: 1200px) {
+  :host(.host--player) {
+    transform: scale(0.7);
+    transform-origin: bottom left;
+    bottom: var(--space-2);
+    left: var(--space-2);
+  }
+
+  :host(.host--opponent) {
+    transform: scale(0.7);
+    transform-origin: top right;
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-card {
+    transition: none;
+  }
+}

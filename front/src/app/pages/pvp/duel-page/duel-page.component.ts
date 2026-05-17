@@ -149,6 +149,19 @@ export class DuelPageComponent implements OnInit {
   readonly isCreator = this.roomService.isCreator;
   readonly isJoiner = this.roomService.isJoiner;
 
+  // Pseudos resolved for the player HUD — `ownPlayerIndex` is absolute
+  // (0 = creator = player1, 1 = joiner = player2), so the mapping is direct.
+  readonly playerPseudo = computed(() => {
+    const r = this.room();
+    if (!r) return '';
+    return this.ownPlayerIndex() === 0 ? r.player1.pseudo : (r.player2?.pseudo ?? '');
+  });
+  readonly opponentPseudo = computed(() => {
+    const r = this.room();
+    if (!r) return '';
+    return this.ownPlayerIndex() === 0 ? (r.player2?.pseudo ?? '') : r.player1.pseudo;
+  });
+
   readonly connectionStatus = this.wsService.connectionStatus;
   readonly isLost = computed(() => this.connectionStatus() === 'lost');
   readonly isReconnecting = computed(() => this.connectionStatus() === 'reconnecting');

@@ -70,6 +70,8 @@
                                [duelState]="activeDuelState()"
                                [actor]="actor()"
                                [ownPlayerIndex]="perspectiveIndex()"
+                               [playerPseudo]="selfPseudo()"
+                               [opponentPseudo]="oppPseudo()"
                                [displayedPhase]="currentState()?.boardState?.phase ?? null"
                                [displayedTurnPlayer]="replayDisplayedTurnPlayer()"
                                [displayedTurnCount]="currentState()?.boardState?.turnCount ?? null"

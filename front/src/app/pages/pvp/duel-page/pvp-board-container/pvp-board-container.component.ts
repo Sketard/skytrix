@@ -5,8 +5,8 @@ import { isFaceUp, isDefense } from '../../pvp-card.utils';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupPileActions, isActivateAction } from '../idle-action-codes';
 import { EQUIP_HOVER_COLOR, EQUIP_HOVER_SHADOW } from '../equip-line.constants';
-import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
-import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.component';
+import { LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
+import { PvpPlayerCardComponent } from '../pvp-player-card/pvp-player-card.component';
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
 import { CardTravelEngine } from '../card-travel-engine.service';
 import { formatStat, getAttributeName, getRaceName, totalCounters } from '../../pvp-alteration.utils';
@@ -37,13 +37,41 @@ interface ZoneRenderData {
   gridArea: string;
 }
 
+/** Dev hub mock — clone a card with every alteration indicator pinned on at
+ *  once so the DS rendering surface (ATK/DEF colour, level badge, negated
+ *  overlay, counter pill, attribute/race icons) can be visually inspected. */
+function applyMockAlterations(card: CardOnField): CardOnField {
+  const baseAtk = card.baseAtk ?? card.currentAtk ?? 1800;
+  const baseDef = card.baseDef ?? card.currentDef ?? 1200;
+  const baseLevel = card.baseLevel ?? card.currentLevel ?? 4;
+  // Force a different attribute/race than the base — flip between LIGHT(1) /
+  // DARK(2) and Warrior(16) / Spellcaster(32) so the diff trigger always fires.
+  const baseAttribute = card.baseAttribute ?? card.currentAttribute;
+  const baseRace = card.baseRace ?? card.currentRace;
+  return {
+    ...card,
+    baseAtk,
+    currentAtk: baseAtk + 500,
+    baseDef,
+    currentDef: Math.max(0, baseDef - 400),
+    baseLevel,
+    currentLevel: baseLevel + 2,
+    baseAttribute,
+    currentAttribute: baseAttribute === 1 ? 2 : 1,
+    baseRace,
+    currentRace: baseRace === 16 ? 32 : 16,
+    isEffectNegated: true,
+    counters: { ...(card.counters ?? {}), '0x1': 3 },
+  };
+}
+
 @Component({
   selector: 'app-pvp-board-container',
   templateUrl: './pvp-board-container.component.html',
   styleUrl: './pvp-board-container.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe, DuelDevHubComponent],
+  imports: [PvpPlayerCardComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe, DuelDevHubComponent],
 })
 export class PvpBoardContainerComponent implements AfterViewInit {
   /** Dev-only hub gate. Tree-shaken from production builds via Angular's `isDevMode()`. */
@@ -137,6 +165,8 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly chosenZone = input<string | null>(null);
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
   readonly opponentDisconnected = input(false);
+  readonly playerPseudo = input<string>('');
+  readonly opponentPseudo = input<string>('');
   readonly animatingZone = input<{ zoneId: string; animationType: 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
   readonly animatingLp = input<LpAnimData | null>(null);
   readonly activeChainLinks = input<ChainLinkState[]>([]);
@@ -237,7 +267,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly phase = computed(() => this.displayedPhase() ?? this.duelState().phase);
   readonly turnPlayer = computed(() => this.displayedTurnPlayer() ?? this.duelState().turnPlayer);
   readonly turnCount = computed(() => this.displayedTurnCount() ?? this.duelState().turnCount);
-  // Absolute turn player for PvpTimerBadgeComponent (timerState.player is absolute from server)
+  // Absolute turn player for the player-card inner timer (timerState.player is absolute from server)
   readonly absoluteTurnPlayer = computed((): Player => {
     const relativeTurn = this.duelState().turnPlayer;
     const own = this.ownPlayerIndex();
@@ -429,12 +459,23 @@ export class PvpBoardContainerComponent implements AfterViewInit {
       zoneMap.set(zone.zoneId, zone);
     }
 
+    // Dev hub mock: tag the FIRST face-up monster of the local player with
+    // every alteration indicator at once so the DS rendering can be inspected
+    // without a live duel. Reads forcedAlterations() inside a computed scope.
+    const mockSlot = playerIndex === 0 && this.devState.forcedAlterations() === true
+      ? this.findFirstFaceUpMonsterZone(player.zones)
+      : null;
+
     return FIELD_ZONE_IDS.map(zoneId => {
       const zone = zoneMap.get(zoneId);
       const cards = zone?.cards ?? [];
       const isPile = zoneId === 'GY' || zoneId === 'BANISHED' || zoneId === 'EXTRA';
       // Pile zones: top of pile = last element (highest OCGCore sequence)
-      const card = cards.length > 0 ? (isPile ? cards[cards.length - 1] : cards[0]) : null;
+      let card = cards.length > 0 ? (isPile ? cards[cards.length - 1] : cards[0]) : null;
+
+      if (card && zoneId === mockSlot) {
+        card = applyMockAlterations(card);
+      }
 
       let renderMode: ZoneRenderMode = 'terrain';
       if (zoneId === 'DECK') renderMode = 'deck';
@@ -449,6 +490,18 @@ export class PvpBoardContainerComponent implements AfterViewInit {
         gridArea: ZONE_GRID_AREA[zoneId] ?? zoneId.toLowerCase(),
       };
     });
+  }
+
+  private findFirstFaceUpMonsterZone(zones: readonly BoardZone[]): ZoneId | null {
+    // Restrict mock target to main monster zones (M1-M5) — EMZ would also be a
+    // stat zone but isn't iterated through buildFieldZones, so the enrich
+    // wouldn't reach it.
+    for (const z of zones) {
+      if (!PvpBoardContainerComponent.MONSTER_ZONES.has(z.zoneId)) continue;
+      const c = z.cards[0];
+      if (c && isFaceUp(c.position)) return z.zoneId;
+    }
+    return null;
   }
 
   /**

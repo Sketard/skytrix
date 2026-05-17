@@ -41,11 +41,15 @@
 // `display:flex` by default (with center alignment via the global position
 // strategy). On mobile we override `align-items` to anchor the pane to the
 // bottom edge (bottom-sheet) and stretch it to full width.
+// Desktop = bottom-sheet → centered modal ONLY when both axes have room.
+// Landscape phones (e.g. 844x390) are wide enough by `width` alone but short
+// in `height`; a 620x88vh centered modal in 390px tall would push header +
+// footer past the viewport edges. Treat them as bottom-sheets too.
 .cdk-global-overlay-wrapper:has(.holo-modal-panel) {
   align-items: flex-end !important;
   justify-content: stretch !important;
 
-  @media (min-width: 768px) {
+  @media (min-width: 768px) and (min-height: 500px) {
     align-items: center !important;
     justify-content: center !important;
   }
@@ -65,7 +69,7 @@
   transform: none !important;
   flex-direction: column !important;
 
-  @media (min-width: 768px) {
+  @media (min-width: 768px) and (min-height: 500px) {
     width: min(620px, 92vw) !important;
     max-width: min(620px, 92vw) !important;
     height: auto !important;
