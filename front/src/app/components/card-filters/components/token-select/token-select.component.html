@@ -1,16 +1,18 @@
 <div class="token-select" [class.token-select--open]="isOpen()">
   <button
+    #trigger
     type="button"
     class="token-select__trigger"
     [attr.aria-haspopup]="'listbox'"
     [attr.aria-expanded]="isOpen()"
     [attr.aria-label]="inputLabel() | translate"
-    (click)="toggle()">
+    (click)="toggle()"
+    (keydown)="onTriggerKeydown($event)">
     @if (selectedOptions().length === 0) {
       <span class="token-select__placeholder">{{ placeholder() | translate }}</span>
     } @else {
       <div class="token-select__chips">
-        @for (opt of selectedOptions(); track opt.id) {
+        @for (opt of visibleChips(); track opt.id) {
           <span class="token-select__chip">
             @if (opt.icon) {
               <img class="token-select__chip-icon" [src]="opt.icon" alt="" />
@@ -25,6 +27,9 @@
             </button>
           </span>
         }
+        @if (overflowCount() > 0) {
+          <span class="token-select__overflow">+{{ overflowCount() }}</span>
+        }
       </div>
     }
     <mat-icon class="token-select__caret">expand_more</mat-icon>
@@ -32,12 +37,24 @@
 
   @if (isOpen()) {
     <div class="token-select__panel" role="listbox" [attr.aria-multiselectable]="true">
+      <div class="token-select__search">
+        <mat-icon class="token-select__search-icon">search</mat-icon>
+        <input
+          #searchInput
+          type="text"
+          class="token-select__search-input"
+          [formControl]="searchControl"
+          [placeholder]="searchPlaceholder() | translate"
+          (keydown)="onSearchKeydown($event)" />
+      </div>
+
       <div class="token-select__options">
-        @for (opt of displayedOptions(); track opt.id) {
+        @for (opt of filteredOptions(); track opt.id; let i = $index) {
           <div
             class="token-select__option"
             role="option"
             [class.token-select__option--selected]="isSelected(opt)"
+            [class.token-select__option--focused]="focusedIndex() === i"
             [attr.aria-selected]="isSelected(opt)"
             (click)="toggleSelection(opt)">
             <span class="token-select__option-check">
@@ -50,6 +67,25 @@
             }
             <span class="token-select__option-label">{{ opt.name | translate }}</span>
           </div>
+        }
+        @if (filteredOptions().length === 0) {
+          <div class="token-select__empty">
+            {{ 'cardFilters.tokenSelect.noResults' | translate }}
+          </div>
+        }
+      </div>
+
+      <div class="token-select__footer">
+        <span class="token-select__footer-count">
+          {{ 'cardFilters.tokenSelect.selectedCount' | translate:{ count: selectedOptions().length } }}
+        </span>
+        @if (selectedOptions().length > 0) {
+          <button
+            type="button"
+            class="token-select__footer-clear"
+            (click)="clearAll()">
+            {{ 'cardFilters.tokenSelect.clearAll' | translate }}
+          </button>
         }
       </div>
     </div>

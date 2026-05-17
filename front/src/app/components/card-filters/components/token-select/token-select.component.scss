@@ -129,6 +129,17 @@
   }
 }
 
+.token-select__overflow {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  background: var(--gold-soft-20);
+  border-radius: var(--radius-pill);
+  color: var(--gold-50);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
 .token-select__caret {
   flex-shrink: 0;
   color: var(--text-secondary);
@@ -155,10 +166,51 @@
   flex-direction: column;
 }
 
+.token-select__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--gold-soft-15);
+}
+
+.token-select__search-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+.token-select__search-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  outline: none;
+
+  &::placeholder {
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+}
+
 .token-select__options {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-1);
+}
+
+.token-select__empty {
+  padding: var(--space-3) var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-style: italic;
+  text-align: center;
 }
 
 .token-select__option {
@@ -184,6 +236,11 @@
   &:hover {
     background: var(--gold-soft-18);
   }
+}
+
+.token-select__option--focused {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
 }
 
 .token-select__option-check {
@@ -228,4 +285,38 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.token-select__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--gold-soft-15);
+  background: var(--surface-base);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.token-select__footer-clear {
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--gold-50);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--gold-soft-12);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 1px;
+  }
 }
