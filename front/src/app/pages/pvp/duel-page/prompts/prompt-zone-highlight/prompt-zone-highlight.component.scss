@@ -13,28 +13,33 @@
   z-index: z.$z-pvp-floating-instruction;
   pointer-events: none;
   // Angular @fadeInOut animation handles enter/leave transitions
-
 }
 
 .instruction-text {
   display: inline-block;
-  padding: 12px 24px;
-  font-weight: 700;
-  font-size: 1rem;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
   color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-strong);
   backdrop-filter: blur(2px);
-  border-radius: var(--pvp-radius-lg);
+  border-radius: var(--radius-md);
   text-align: center;
   max-width: 80vw;
   white-space: normal;
+}
 
+@supports not (backdrop-filter: blur()) {
+  .instruction-text {
+    background: var(--overlay-strong);
+  }
 }
 
 @include r.respond-below(r.$bp-pvp-tiny) {
   .instruction-text {
     max-width: 90vw;
-    padding: 8px 16px;
-    font-size: 0.875rem;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
   }
 }

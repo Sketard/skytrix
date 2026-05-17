@@ -7,7 +7,7 @@
 
 .buttons {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   flex: 1;
 }
 
@@ -23,7 +23,7 @@
   }
 
   &--selected {
-    border-color: var(--pvp-accent, #c9a84c);
+    border-color: var(--gold);
     box-shadow: var(--pvp-selection-glow);
   }
 }

@@ -7,17 +7,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--text-secondary, #9e9e9e);
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
 }
 
 .action-label {
-  color: var(--pvp-accent, #c9a84c);
+  color: var(--gold);
+  text-transform: uppercase;
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
 }
 
 .action-card-name {
-  color: var(--text-primary, #eaeaea);
+  color: var(--text-primary);
 }
