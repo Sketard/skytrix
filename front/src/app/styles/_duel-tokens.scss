@@ -1,0 +1,71 @@
+// =============================================================================
+// Duel theme tokens — scopés à `.board-host[data-theme="X"]`
+//
+// Sprint 0 (2026-05-17) — squelette. Les valeurs réelles seront copiées
+// depuis `_mockups/mockup-duel-themes.html` lors du Sprint 2 Board (cf.
+// `_bmad-output/planning-artifacts/duel-board-enrichment-spec-2026-05-17.md`).
+//
+// Convention naming :
+//   --duel-* = plateau de duel (3 thèmes scopés)
+//   --pvp-*  = reste du module PvP (prompts, dialogs, hand) — `_tokens.scss`
+//
+// Ces tokens ne polluent pas le DS global : ils sont scopés à
+// `.board-host[data-theme="X"]` et ne fuient pas hors du plateau.
+// =============================================================================
+
+.board-host[data-theme="classic"] {
+  --duel-bg-base:             initial; // TODO Sprint 2 Board
+  --duel-bg-radial:           initial; // TODO Sprint 2 Board
+  --duel-bg-overlay:          initial; // TODO Sprint 2 Board
+  --duel-vignette:            initial; // TODO Sprint 2 Board
+  --duel-mat-pattern:         initial; // TODO Sprint 2 Board
+  --duel-mat-pattern-opacity: initial; // TODO Sprint 2 Board
+  --duel-mat-blend:           initial; // TODO Sprint 2 Board
+  --duel-accent-primary:      var(--gold);
+  --duel-accent-soft:         var(--gold-soft-30);
+  --duel-zone-border:         initial; // TODO Sprint 2 Board
+  --duel-zone-bg:             initial; // TODO Sprint 2 Board
+  --duel-zone-hover-glow:     initial; // TODO Sprint 2 Board
+  --duel-emz-bg:              initial; // TODO Sprint 2 Board
+  --duel-emz-border:          initial; // TODO Sprint 2 Board
+  --duel-emz-glow:            initial; // TODO Sprint 2 Board
+  --duel-pile-tint:           initial; // TODO Sprint 2 Board
+}
+
+.board-host[data-theme="cosmic"] {
+  --duel-bg-base:             initial; // TODO Sprint 2 Board
+  --duel-bg-radial:           initial; // TODO Sprint 2 Board
+  --duel-bg-overlay:          initial; // TODO Sprint 2 Board
+  --duel-vignette:            initial; // TODO Sprint 2 Board
+  --duel-mat-pattern:         initial; // TODO Sprint 2 Board
+  --duel-mat-pattern-opacity: initial; // TODO Sprint 2 Board
+  --duel-mat-blend:           initial; // TODO Sprint 2 Board
+  --duel-accent-primary:      initial; // TODO Sprint 2 Board
+  --duel-accent-soft:         initial; // TODO Sprint 2 Board
+  --duel-zone-border:         initial; // TODO Sprint 2 Board
+  --duel-zone-bg:             initial; // TODO Sprint 2 Board
+  --duel-zone-hover-glow:     initial; // TODO Sprint 2 Board
+  --duel-emz-bg:              initial; // TODO Sprint 2 Board
+  --duel-emz-border:          initial; // TODO Sprint 2 Board
+  --duel-emz-glow:            initial; // TODO Sprint 2 Board
+  --duel-pile-tint:           initial; // TODO Sprint 2 Board
+}
+
+.board-host[data-theme="forest"] {
+  --duel-bg-base:             initial; // TODO Sprint 2 Board
+  --duel-bg-radial:           initial; // TODO Sprint 2 Board
+  --duel-bg-overlay:          initial; // TODO Sprint 2 Board
+  --duel-vignette:            initial; // TODO Sprint 2 Board
+  --duel-mat-pattern:         initial; // TODO Sprint 2 Board
+  --duel-mat-pattern-opacity: initial; // TODO Sprint 2 Board
+  --duel-mat-blend:           initial; // TODO Sprint 2 Board
+  --duel-accent-primary:      initial; // TODO Sprint 2 Board
+  --duel-accent-soft:         initial; // TODO Sprint 2 Board
+  --duel-zone-border:         initial; // TODO Sprint 2 Board
+  --duel-zone-bg:             initial; // TODO Sprint 2 Board
+  --duel-zone-hover-glow:     initial; // TODO Sprint 2 Board
+  --duel-emz-bg:              initial; // TODO Sprint 2 Board
+  --duel-emz-border:          initial; // TODO Sprint 2 Board
+  --duel-emz-glow:            initial; // TODO Sprint 2 Board
+  --duel-pile-tint:           initial; // TODO Sprint 2 Board
+}

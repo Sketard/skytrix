@@ -1,0 +1,127 @@
+// DEV ONLY — to be removed before final ship.
+// Floating top-right panel, ~320px wide, collapsable. Tokens DS uniquement.
+
+:host {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 9999;
+  font-family: var(--font-body);
+  pointer-events: none; // Children re-enable; lets clicks pass when hub hidden.
+}
+
+.dev-hub {
+  pointer-events: auto;
+  width: 320px;
+  max-height: calc(100vh - var(--space-7));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card-ds);
+  border: var(--border-width-medium) solid var(--danger-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-3);
+  color: var(--text-primary);
+  overflow: hidden;
+  font-size: var(--text-sm);
+}
+
+.dev-hub--collapsed {
+  width: auto;
+}
+
+.dev-hub__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: linear-gradient(90deg, var(--danger-strong), var(--warning-flat));
+  color: var(--text-inverse);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+}
+
+.dev-hub__title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+}
+
+.dev-hub__header-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.dev-hub__icon-btn {
+  appearance: none;
+  background: transparent;
+  border: var(--border-width-thin) solid transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--surface-overlay);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.dev-hub__tabs {
+  display: flex;
+  border-bottom: var(--border-width-thin) solid var(--border-soft);
+  background: var(--surface-card-low);
+}
+
+.dev-hub__tab {
+  flex: 1 1 0;
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: color var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out);
+  border-bottom: 2px solid transparent;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: -2px;
+  }
+}
+
+.dev-hub__tab--active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+.dev-hub__body {
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.dev-hub__empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: var(--text-xs);
+}

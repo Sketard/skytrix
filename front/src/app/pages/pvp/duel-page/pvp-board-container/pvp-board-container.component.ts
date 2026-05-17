@@ -1,4 +1,4 @@
-import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, input, output, signal } from '@angular/core';
+import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, input, isDevMode, output, signal } from '@angular/core';
 import { ChainLinkState, DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense } from '../../pvp-card.utils';
@@ -13,6 +13,7 @@ import { formatStat, getAttributeName, getRaceName, totalCounters } from '../../
 import { locationToZoneId, locationToZoneKey } from '../../pvp-zone.utils';
 import { NgTemplateOutlet } from '@angular/common';
 import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
+import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -40,9 +41,12 @@ interface ZoneRenderData {
   styleUrl: './pvp-board-container.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe],
+  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe, DuelDevHubComponent],
 })
 export class PvpBoardContainerComponent implements AfterViewInit {
+  /** Dev-only hub gate. Tree-shaken from production builds via Angular's `isDevMode()`. */
+  protected readonly devMode = isDevMode();
+
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
   private readonly cardTravelEngine = inject(CardTravelEngine);

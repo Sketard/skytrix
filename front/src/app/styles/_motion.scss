@@ -137,6 +137,57 @@
   to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
+// --- Result overlay (Wave 3 duel end-flow consolidation) ------------------
+// Consumed by duel-page-overlays. Source d'origine : keyframes locales dans
+// duel-page-overlays.scss (à supprimer lors du sprint end-flow).
+@keyframes ds-result-overlay-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ds-result-title-slam {
+  from { opacity: 0; transform: scale(2); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ds-result-reason-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-result-btn-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-rematch-invited-pulse {
+  0%, 100% { box-shadow: 0 0 8px  var(--success-soft-40); }
+  50%      { box-shadow: 0 0 16px var(--success-soft-70); }
+}
+
+// --- Duel theme ambient animations (Wave 3 board enrichment) --------------
+// Valeurs bit-exactes depuis _mockups/mockup-duel-themes.html.
+@keyframes ds-duel-theme-classic-shimmer {
+  0%, 100% { opacity: 0.5; transform: scale(0.98); }
+  50%      { opacity: 1;   transform: scale(1.02); }
+}
+
+@keyframes ds-duel-theme-cosmic-nebula {
+  0%, 100% { transform: translate(0, 0)    rotate(0deg)  scale(1); }
+  33%      { transform: translate(2%, -1%) rotate(2deg)  scale(1.05); }
+  66%      { transform: translate(-1%, 2%) rotate(-1deg) scale(0.95); }
+}
+
+@keyframes ds-duel-theme-cosmic-twinkle {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
+@keyframes ds-duel-theme-forest-breeze {
+  0%, 100% { transform: translateX(-2%); opacity: 0.6; }
+  50%      { transform: translateX(2%);  opacity: 1; }
+}
+
 // =============================================================================
 // Utility classes — animations + transitions
 // =============================================================================

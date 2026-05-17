@@ -1,0 +1,48 @@
+@if (visible()) {
+  <aside class="dev-hub" [class.dev-hub--collapsed]="collapsed()" role="complementary" aria-label="Duel dev hub">
+    <header class="dev-hub__header">
+      <span class="dev-hub__title">🔧 DEV HUB · remove before prod</span>
+      <div class="dev-hub__header-actions">
+        <button type="button" class="dev-hub__icon-btn" (click)="resetAll()" title="Reset all forced state" aria-label="Reset all forced state">↺</button>
+        <button type="button" class="dev-hub__icon-btn" (click)="toggleCollapsed()" [attr.aria-expanded]="!collapsed()" [title]="collapsed() ? 'Expand' : 'Collapse'">
+          {{ collapsed() ? '▢' : '▭' }}
+        </button>
+        <button type="button" class="dev-hub__icon-btn" (click)="close()" title="Close (Ctrl+Shift+D)" aria-label="Close">×</button>
+      </div>
+    </header>
+
+    @if (!collapsed()) {
+      <nav class="dev-hub__tabs" role="tablist" aria-label="Dev hub sections">
+        <button type="button" role="tab"
+                class="dev-hub__tab"
+                [class.dev-hub__tab--active]="activeTab() === 'board'"
+                [attr.aria-selected]="activeTab() === 'board'"
+                (click)="setTab('board')">Board</button>
+        <button type="button" role="tab"
+                class="dev-hub__tab"
+                [class.dev-hub__tab--active]="activeTab() === 'prompts'"
+                [attr.aria-selected]="activeTab() === 'prompts'"
+                (click)="setTab('prompts')">Prompts</button>
+        <button type="button" role="tab"
+                class="dev-hub__tab"
+                [class.dev-hub__tab--active]="activeTab() === 'end-flow'"
+                [attr.aria-selected]="activeTab() === 'end-flow'"
+                (click)="setTab('end-flow')">End-flow</button>
+      </nav>
+
+      <section class="dev-hub__body" role="tabpanel">
+        @switch (activeTab()) {
+          @case ('board') {
+            <p class="dev-hub__empty">Board controls land here (Sprint Board).</p>
+          }
+          @case ('prompts') {
+            <p class="dev-hub__empty">Prompt controls land here (Sprint Prompts).</p>
+          }
+          @case ('end-flow') {
+            <p class="dev-hub__empty">End-flow controls land here (Sprint End-flow).</p>
+          }
+        }
+      </section>
+    }
+  </aside>
+}
