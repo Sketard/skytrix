@@ -14,6 +14,7 @@ import { locationToZoneId, locationToZoneKey } from '../../pvp-zone.utils';
 import { NgTemplateOutlet } from '@angular/common';
 import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
+import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 import { DuelThemeService } from '../duel-theme.service';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
@@ -50,6 +51,22 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   /** Active duel theme — drives `.board-host[data-theme]` cascade. Wave 3 Sprint 2. */
   protected readonly theme = inject(DuelThemeService).currentTheme;
+
+  /** Dev hub state — `forcedReadOnly` and `forcedOpponentDisconnected` overrides
+   *  read here. Production-safe via `_signal()` no-op setters. */
+  private readonly devState = inject(DuelDevStateService);
+
+  /** Effective readOnly (input merged with `forcedReadOnly` dev override). */
+  readonly effectiveReadOnly = computed(() => {
+    const real = this.readOnly;
+    return this.devState.override(this.devState.forcedReadOnly, real);
+  });
+
+  /** Effective opponentDisconnected (input merged with `forcedOpponentDisconnected`). */
+  readonly effectiveOpponentDisconnected = computed(() => {
+    const real = this.opponentDisconnected;
+    return this.devState.override(this.devState.forcedOpponentDisconnected, real);
+  });
 
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
@@ -142,7 +159,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly opponentZones = computed(() => this.buildFieldZones(1));
 
   readonly actionableCards = computed((): ActionableCardsMap => {
-    if (this.readOnly()) return new Map();
+    if (this.effectiveReadOnly()) return new Map();
     const prompt = this.actionablePrompt();
     if (!prompt) return new Map();
     return prompt.type === 'SELECT_IDLECMD'
@@ -151,7 +168,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   });
 
   readonly activateZoneIds = computed((): Set<ZoneId> => {
-    if (this.readOnly()) return new Set();
+    if (this.effectiveReadOnly()) return new Set();
     const map = this.actionableCards();
     const prompt = this.actionablePrompt();
     if (map.size === 0 || !prompt) return new Set();
@@ -168,7 +185,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   });
 
   readonly nonActivateZoneIds = computed((): Set<ZoneId> => {
-    if (this.readOnly()) return new Set();
+    if (this.effectiveReadOnly()) return new Set();
     const map = this.actionableCards();
     const prompt = this.actionablePrompt();
     if (map.size === 0 || !prompt) return new Set();
@@ -298,7 +315,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   }
 
   isHighlighted(zoneKey: string): boolean {
-    if (this.readOnly() && !this.chosenZone()) return false;
+    if (this.effectiveReadOnly() && !this.chosenZone()) return false;
     return this.highlightedZones().has(zoneKey);
   }
 
@@ -316,7 +333,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   });
 
   onHighlightedZoneClick(zoneKey: string): void {
-    if (this.readOnly()) return;
+    if (this.effectiveReadOnly()) return;
     if (this.isHighlighted(zoneKey)) {
       this.zoneSelected.emit(zoneKey);
     }
@@ -324,7 +341,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   onZonePillClick(event: MouseEvent, zoneId: ZoneId, playerIndex: number): void {
     this.zonePillRequest.emit({ zoneId, playerIndex });
-    if (this.readOnly()) return;
+    if (this.effectiveReadOnly()) return;
     // If player's own pile has actionable cards, also open the action menu
     if (playerIndex === 0) {
       const actions = this.getActionsForZone(zoneId);
@@ -342,7 +359,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     if (zone.card?.cardCode) {
       this.cardInspectRequest.emit({ cardCode: zone.card.cardCode, liveCard: zone.card });
     }
-    if (this.readOnly()) return;
+    if (this.effectiveReadOnly()) return;
     const actions = this.getActionsForZone(zone.zoneId);
     if (actions.length > 0) {
       this.menuRequest.emit({
@@ -480,7 +497,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     if (card.cardCode) {
       this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
     }
-    if (this.readOnly()) return;
+    if (this.effectiveReadOnly()) return;
     const actions = this.getActionsForZone(zoneId);
     if (actions.length > 0) {
       this.menuRequest.emit({ zoneId, element: event.currentTarget as HTMLElement, actions });
@@ -494,7 +511,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   }
 
   onPhaseAction(event: { action: number; index: number | null }): void {
-    if (this.readOnly()) return;
+    if (this.effectiveReadOnly()) return;
     this.actionResponse.emit(event);
   }
 

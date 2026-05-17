@@ -1,3 +1,4 @@
+<!-- Category A — Thème de plateau -->
 <section class="dev-hub-category">
   <h4 class="dev-hub-category__title">Thème du plateau</h4>
   <div class="dev-hub-category__radios" role="radiogroup" aria-label="Thème du plateau">
@@ -11,5 +12,84 @@
         {{ t }}
       </button>
     }
+  </div>
+</section>
+
+<!-- Category B — Acteur courant -->
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">
+    Acteur
+    @if (devState.forcedActor() != null) {
+      <button type="button" class="dev-hub-clear" (click)="setActor(null)" title="Reset (utiliser le calcul réel)">×</button>
+    }
+  </h4>
+  <div class="dev-hub-category__radios dev-hub-category__radios--pair" role="radiogroup" aria-label="Acteur courant">
+    <button type="button"
+            class="dev-hub-radio"
+            [class.dev-hub-radio--active]="devState.forcedActor() === 'me'"
+            [attr.aria-checked]="devState.forcedActor() === 'me'"
+            role="radio"
+            (click)="setActor('me')">
+      Moi
+    </button>
+    <button type="button"
+            class="dev-hub-radio"
+            [class.dev-hub-radio--active]="devState.forcedActor() === 'opp'"
+            [attr.aria-checked]="devState.forcedActor() === 'opp'"
+            role="radio"
+            (click)="setActor('opp')">
+      Adversaire
+    </button>
+  </div>
+</section>
+
+<!-- Category C — Urgence timer player -->
+<section class="dev-hub-category" [class.dev-hub-category--disabled]="timerDisabled()">
+  <h4 class="dev-hub-category__title">
+    Timer player
+    @if (devState.forcedTimerMs() != null) {
+      <button type="button" class="dev-hub-clear" (click)="setUrgency(null)" title="Reset (utiliser le timer réel)">×</button>
+    }
+  </h4>
+  <div class="dev-hub-category__radios" role="radiogroup" aria-label="Urgence timer player">
+    @for (p of urgencyPresets; track p.key) {
+      <button type="button"
+              class="dev-hub-radio"
+              [class.dev-hub-radio--active]="activeUrgency() === p.key"
+              [attr.aria-checked]="activeUrgency() === p.key"
+              [disabled]="timerDisabled() ? '' : null"
+              role="radio"
+              (click)="setUrgency(p.key)">
+        {{ p.label }}
+      </button>
+    }
+  </div>
+  @if (timerDisabled()) {
+    <p class="dev-hub-category__hint">Désactivé (acteur forcé sur Adversaire)</p>
+  }
+</section>
+
+<!-- Category D — Mock states -->
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">Mock states</h4>
+  <div class="dev-hub-toggle-list">
+    <button type="button"
+            class="dev-hub-toggle"
+            [class.dev-hub-toggle--on]="devState.forcedOpponentDisconnected() === true"
+            (click)="toggleOpponentDisconnected()">
+      <span class="dev-hub-toggle__box" aria-hidden="true">
+        {{ devState.forcedOpponentDisconnected() === true ? '✓' : '' }}
+      </span>
+      Opponent disconnected
+    </button>
+    <button type="button"
+            class="dev-hub-toggle"
+            [class.dev-hub-toggle--on]="devState.forcedReadOnly() === true"
+            (click)="toggleReadOnly()">
+      <span class="dev-hub-toggle__box" aria-hidden="true">
+        {{ devState.forcedReadOnly() === true ? '✓' : '' }}
+      </span>
+      Replay mode (read-only)
+    </button>
   </div>
 </section>

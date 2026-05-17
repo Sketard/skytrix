@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { Player, TimerStateMsg } from '../../duel-ws.types';
 import { MatIcon } from '@angular/material/icon';
+import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 
 type TimerVariant = 'player' | 'opp';
 type TimerUrgency = 'normal' | 'soon' | 'urgent';
@@ -27,10 +28,23 @@ export class PvpTimerBadgeComponent {
   /** Current actor — drives dimming when this side is inactive. */
   readonly actor = input<'me' | 'opp'>('me');
 
+  /** Dev override — only honoured on the player variant (opp is brouillé anyway). */
+  private readonly devState = inject(DuelDevStateService);
+
+  /** Effective remainingMs after applying the dev-only `forcedTimerMs` override
+   *  on the player variant. Production-safe: the forced signal is a `_signal()`
+   *  whose setters are no-op in prod, so `forced()` always reads null and
+   *  `override()` short-circuits to the real timerState. */
+  readonly effectiveRemainingMs = computed<number | null>(() => {
+    const forced = this.variant() === 'player' ? this.devState.forcedTimerMs() : null;
+    if (forced != null) return forced;
+    return this.timerState()?.remainingMs ?? null;
+  });
+
   readonly remainingSec = computed(() => {
-    const state = this.timerState();
-    if (!state) return null;
-    return Math.max(0, Math.floor(state.remainingMs / 1000));
+    const ms = this.effectiveRemainingMs();
+    if (ms == null) return null;
+    return Math.max(0, Math.floor(ms / 1000));
   });
 
   readonly timeFormatted = computed(() => {
@@ -51,9 +65,9 @@ export class PvpTimerBadgeComponent {
 
   /** Bar-fill width 0..100 (% of TOTAL_TURN_MS). Bound as CSS custom property `--p`. */
   readonly progressPercent = computed(() => {
-    const state = this.timerState();
-    if (!state) return 100;
-    return Math.max(0, Math.min(100, (state.remainingMs / TOTAL_TURN_MS) * 100));
+    const ms = this.effectiveRemainingMs();
+    if (ms == null) return 100;
+    return Math.max(0, Math.min(100, (ms / TOTAL_TURN_MS) * 100));
   });
 
   /** True when this badge represents the active turn player. */

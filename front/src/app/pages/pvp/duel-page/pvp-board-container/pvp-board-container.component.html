@@ -164,7 +164,7 @@
         }
         @if (isHighlighted(zone.zoneId + '-1')) {
           <button class="zone-highlight-badge zone-highlight-badge--opponent"
-                  [class.zone-highlight-badge--readonly]="readOnly()"
+                  [class.zone-highlight-badge--readonly]="effectiveReadOnly()"
                   (click)="onHighlightedZoneClick(zone.zoneId + '-1')"
                   [attr.aria-label]="'Zone ' + zone.zoneId"
                   type="button">
@@ -260,7 +260,7 @@
         }
         @if (isHighlighted(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))) {
           <button class="zone-highlight-badge"
-                  [class.zone-highlight-badge--readonly]="readOnly()"
+                  [class.zone-highlight-badge--readonly]="effectiveReadOnly()"
                   (click)="onHighlightedZoneClick(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
                   [attr.aria-label]="'Zone ' + emz.zoneId"
                   type="button">
@@ -278,7 +278,7 @@
                            [turnCount]="turnCount()"
                            [isOwnTurn]="turnPlayer() === 0"
                            [actor]="actor()"
-                           [actionablePrompt]="readOnly() ? null : actionablePrompt()"
+                           [actionablePrompt]="effectiveReadOnly() ? null : actionablePrompt()"
                            (phaseAction)="onPhaseAction($event)" />
     </div>
 
@@ -309,7 +309,7 @@
       </div>
       @if (isHighlighted('BANISHED-0')) {
         <button class="zone-highlight-badge"
-                [class.zone-highlight-badge--readonly]="readOnly()"
+                [class.zone-highlight-badge--readonly]="effectiveReadOnly()"
                 (click)="onHighlightedZoneClick('BANISHED-0')"
                 aria-label="Banished zone"
                 type="button">
@@ -419,7 +419,7 @@
         }
         @if (isHighlighted(zone.zoneId + '-0')) {
           <button class="zone-highlight-badge"
-                  [class.zone-highlight-badge--readonly]="readOnly()"
+                  [class.zone-highlight-badge--readonly]="effectiveReadOnly()"
                   (click)="onHighlightedZoneClick(zone.zoneId + '-0')"
                   [attr.aria-label]="'Zone ' + zone.zoneId"
                   type="button">
@@ -442,7 +442,7 @@
                        [timerState]="timerState()"
                        [turnPlayer]="absoluteTurnPlayer()"
                        [actor]="actor()"
-                       [opponentDisconnected]="opponentDisconnected()" />
+                       [opponentDisconnected]="effectiveOpponentDisconnected()" />
 </div>
 </div>
 
