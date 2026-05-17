@@ -132,11 +132,17 @@ public class RoomLobbyEventService {
         for (var entry : emitters.entrySet()) {
             try {
                 action.apply(entry.getValue());
-            } catch (IOException | IllegalStateException e) {
-                emitters.remove(entry.getKey());
-                try { entry.getValue().completeWithError(e); } catch (Exception ignored) {}
+            } catch (IOException e) {
+                evictEmitter(entry.getKey(), entry.getValue(), e);
+            } catch (IllegalStateException e) {
+                evictEmitter(entry.getKey(), entry.getValue(), e);
             }
         }
+    }
+
+    private void evictEmitter(String key, SseEmitter emitter, Throwable cause) {
+        emitters.remove(key);
+        try { emitter.completeWithError(cause); } catch (Exception ignored) {}
     }
 
     int subscriberCount() {
