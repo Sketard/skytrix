@@ -9,33 +9,33 @@
   align-items: center;
   flex-shrink: 0;
   background: none;
-  border: 2px solid transparent;
-  border-radius: var(--pvp-radius-md);
+  border: var(--border-width-medium) solid transparent;
+  border-radius: var(--radius-sm);
   padding: 0;
   cursor: pointer;
   transition:
-    transform var(--pvp-animation-duration) ease-out,
-    box-shadow var(--pvp-animation-duration) ease-out,
-    border-color var(--pvp-animation-duration) ease-out;
+    transform var(--transition-fast) var(--ease-out),
+    box-shadow var(--transition-fast) var(--ease-out),
+    border-color var(--transition-fast) var(--ease-out);
 
   &:hover:not(:disabled) {
     transform: scale(1.05);
   }
 
   &--selected {
-    border-color: var(--pvp-accent, #c9a84c);
+    border-color: var(--gold);
     box-shadow: var(--pvp-selection-glow);
     transform: scale(1.05);
   }
 
   &:disabled {
-    opacity: var(--pvp-disabled-opacity, 0.4);
+    opacity: var(--opacity-disabled);
     cursor: default;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--pvp-accent, #c9a84c);
-    outline-offset: 2px;
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
   }
 }
 
@@ -44,9 +44,9 @@
   width: auto;
   max-width: 100%;
   height: clamp(5rem, 20dvh, 9rem);
-  aspect-ratio: 59 / 86;
+  aspect-ratio: var(--ratio-card-ygo);
   object-fit: cover;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
 }
 
 @mixin card-img-short {

@@ -2,56 +2,57 @@
 // Each prompt component includes `.btn { &--primary { @include prompt-btn-primary; } }`
 // via @use. This duplication is intentional — Angular's ViewEncapsulation requires
 // each component to emit its own styles. The mixin keeps the source-of-truth here.
+
 @mixin prompt-btn {
   min-height: 36px;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   border: none;
-  border-radius: var(--pvp-radius-lg);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
-  transition: background var(--pvp-animation-duration) ease-out;
+  transition: background var(--transition-fast) var(--ease-out);
 
   @media (pointer: coarse) {
-    min-height: var(--pvp-min-touch-target-primary, 48px);
-    padding: 0 24px;
-    font-size: 0.9375rem;
+    min-height: var(--touch-target-primary);
+    padding: 0 var(--space-6);
+    font-size: var(--text-md);
   }
 
   @media (max-height: 500px) {
     min-height: 32px;
-    padding: 0 12px;
-    font-size: 0.75rem;
+    padding: 0 var(--space-3);
+    font-size: var(--text-xs);
   }
 
   &:disabled {
-    opacity: var(--pvp-disabled-opacity, 0.4);
+    opacity: var(--opacity-disabled);
     cursor: default;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--pvp-accent, #c9a84c);
-    outline-offset: 2px;
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
   }
 }
 
 @mixin prompt-btn-primary {
   @include prompt-btn;
-  background: var(--pvp-accent, #c9a84c);
-  color: var(--surface-base);
+  background: var(--gold);
+  color: var(--text-inverse);
 
   &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--pvp-accent, #c9a84c) 85%, white);
+    background: color-mix(in srgb, var(--gold) 85%, white);
   }
 }
 
 @mixin prompt-btn-secondary {
   @include prompt-btn;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary, #eaeaea);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.18);
+    background: var(--surface-hover);
   }
 }
 
@@ -60,7 +61,7 @@
 // Keyframe `ds-chosen-pulse` is declared globally in `_motion.scss`
 // (DS Wave 1 §2.2) — accessible from any component's view encapsulation.
 @mixin replay-chosen-pulse {
-  animation: ds-chosen-pulse 800ms ease-out 1 forwards;
+  animation: ds-chosen-pulse 800ms var(--ease-out) 1 forwards;
   opacity: 1;
 }
 

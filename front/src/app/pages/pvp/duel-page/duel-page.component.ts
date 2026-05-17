@@ -280,7 +280,8 @@ export class DuelPageComponent implements OnInit {
   readonly pilePrompt = this.cardMenu.pilePrompt;
   readonly menuDisplayActions = this.cardMenu.menuDisplayActions;
 
-  readonly effectivePrompt = computed(() => this.pilePrompt() ?? this.visiblePrompt());
+  // Logic merge (pile prompt wins over the visible prompt drained by anim queue).
+  private readonly mergedPrompt = computed(() => this.pilePrompt() ?? this.visiblePrompt());
 
   readonly pileResponseHandler = (data: unknown) =>
     this.cardMenu.pileResponse(data, (pt, payload) => this.wsService.sendResponse(pt, payload));
@@ -303,6 +304,12 @@ export class DuelPageComponent implements OnInit {
    *  with the dev hub `forcedPhase` override. Prod-safe via `_signal()` no-op. */
   readonly effectiveDisplayedPhase = computed(() =>
     this.devState.override(this.devState.forcedPhase, () => this.phaseService.displayedPhase())
+  );
+
+  /** Effective prompt — merges the real `mergedPrompt` (pile or visible) with
+   *  the dev hub `forcedPrompt` override. Prod-safe via `_signal()` no-op. */
+  readonly effectivePrompt = computed(() =>
+    this.devState.override(this.devState.forcedPrompt, () => this.mergedPrompt())
   );
 
   // Server-driven: true when opponent has a pending prompt

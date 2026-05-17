@@ -1,0 +1,97 @@
+// DEV ONLY — to be removed before final ship.
+// Styles dupliqués depuis duel-dev-hub-end-flow-tab.scss (outil jetable §8.5).
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dev-hub-category {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dev-hub-category__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dev-hub-category__hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.dev-hub-fixture-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dev-hub-radio {
+  appearance: none;
+  background: var(--surface-overlay);
+  border: var(--border-width-thin) solid var(--border-soft);
+  color: var(--text-secondary);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+  letter-spacing: 0.02em;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  &--full { text-transform: none; }
+
+  &--active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-soft-10);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.dev-hub-clear {
+  appearance: none;
+  background: transparent;
+  border: var(--border-width-thin) solid var(--border-soft);
+  color: var(--text-secondary);
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: var(--danger-strong);
+    border-color: var(--danger-strong);
+  }
+}

@@ -1,0 +1,21 @@
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">
+    Prompt variant
+    @if (devState.forcedPrompt() != null) {
+      <button type="button" class="dev-hub-clear" (click)="hideAll()" title="Hide (use real prompt)">×</button>
+    }
+  </h4>
+  <div class="dev-hub-fixture-list">
+    @for (f of fixtures; track f.key) {
+      <button type="button"
+              class="dev-hub-radio dev-hub-radio--full"
+              [class.dev-hub-radio--active]="activeKey() === f.key"
+              (click)="setPrompt(f.value)">
+        {{ f.label }}
+      </button>
+    }
+  </div>
+  <p class="dev-hub-category__hint">
+    Sprint 1 — 4 variants live. Remaining 9 + shell states arrive as their refresh ships.
+  </p>
+</section>
