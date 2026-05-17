@@ -1,35 +1,85 @@
 @if (searchService()) {
   <div class="cardFilters">
-    <div class="cardFilters-filter">
-      <app-multiselect-autocomplete-filter
+
+    <!-- 1. Type — token-select (17 options, no icons) -->
+    <div class="cardFilters__group">
+      <label class="cardFilters__label">{{ 'cardFilters.cardType' | translate }}</label>
+      <app-token-select
         [form]="localForm.controls.types"
+        [options$]="types$"
         [inputLabel]="'cardFilters.cardType'"
-        [options$]="types | stringArrayToShortResourceArray : 'card_type.' | toObservable">
-      </app-multiselect-autocomplete-filter>
+        [searchService]="searchService()">
+      </app-token-select>
     </div>
-    <div class="cardFilters-row">
-      <div class="cardFilters-filter">
-        <app-between-filter
-          [minForm]="localForm.controls.minAtk"
-          [maxForm]="localForm.controls.maxAtk"
-          [inputLabel]="'ATK'">
-        </app-between-filter>
-      </div>
-      <div class="cardFilters-filter">
-        <app-between-filter
-          [minForm]="localForm.controls.minDef"
-          [maxForm]="localForm.controls.maxDef"
-          [inputLabel]="'DEF'">
-        </app-between-filter>
-      </div>
+
+    <!-- 2. Archétype — text input -->
+    <div class="cardFilters__group">
+      <label class="cardFilters__label">{{ 'cardFilters.archetype' | translate }}</label>
+      <input
+        type="text"
+        class="cardFilters__text-input"
+        [formControl]="localForm.controls.archetype"
+        [placeholder]="'cardFilters.archetypePlaceholder' | translate" />
     </div>
-    <div class="cardFilters-filter">
+
+    <!-- 3. Attribut — attr-row (toggle-icon-filter) -->
+    <div class="cardFilters__group">
       <app-toggle-icon-filter
-        [form]="localForm.controls.attribute" [toggleIcons]="toggleIcons"
+        [form]="localForm.controls.attribute"
+        [toggleIcons]="toggleIcons"
         [inputLabel]="'cardFilters.attribute'">
       </app-toggle-icon-filter>
     </div>
-    <div class="cardFilters-filter">
+
+    <!-- 4. ATK — range -->
+    <div class="cardFilters__group">
+      <app-between-filter
+        [minForm]="localForm.controls.minAtk"
+        [maxForm]="localForm.controls.maxAtk"
+        [inputLabel]="'ATK'">
+      </app-between-filter>
+    </div>
+
+    <!-- 5. DEF — range -->
+    <div class="cardFilters__group">
+      <app-between-filter
+        [minForm]="localForm.controls.minDef"
+        [maxForm]="localForm.controls.maxDef"
+        [inputLabel]="'DEF'">
+      </app-between-filter>
+    </div>
+
+    <!-- 6. Race — token-select (32 options with race icons) -->
+    <div class="cardFilters__group">
+      <label class="cardFilters__label">{{ 'cardFilters.race' | translate }}</label>
+      <app-token-select
+        [form]="localForm.controls.races"
+        [options$]="races$"
+        [inputLabel]="'cardFilters.race'"
+        [searchService]="searchService()">
+      </app-token-select>
+    </div>
+
+    <!-- 7. Scale Pendulum — range -->
+    <div class="cardFilters__group">
+      <app-between-filter
+        [minForm]="localForm.controls.minScale"
+        [maxForm]="localForm.controls.maxScale"
+        [inputLabel]="('cardFilters.scale' | translate)">
+      </app-between-filter>
+    </div>
+
+    <!-- 8. Link rating — range -->
+    <div class="cardFilters__group">
+      <app-between-filter
+        [minForm]="localForm.controls.minLinkval"
+        [maxForm]="localForm.controls.maxLinkval"
+        [inputLabel]="('cardFilters.linkval' | translate)">
+      </app-between-filter>
+    </div>
+
+    <!-- 9. Extension — card-set search -->
+    <div class="cardFilters__group">
       <app-card-set-search-filter [form]="localForm.controls.cardSetFilter">
       </app-card-set-search-filter>
     </div>
