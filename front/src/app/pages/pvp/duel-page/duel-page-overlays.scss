@@ -52,7 +52,7 @@
     width: 4rem;
     height: 4rem;
     filter: brightness(0) invert(0.9);
-    animation: rps-scale-in 200ms ease-out both;
+    animation: rps-scale-in 200ms var(--ease-out) both;
   }
 
   &__label {
@@ -70,7 +70,7 @@
     font-size: 1.4rem;
     font-weight: 700;
     margin: 0;
-    animation: rps-fade-in 300ms ease-out 500ms both;
+    animation: rps-fade-in var(--transition-normal) var(--ease-out) 500ms both;
 
     &--win {
       color: #4caf50;
@@ -226,7 +226,7 @@
 .btn.btn--primary.is-invited {
   background: var(--pvp-rematch-invited-gradient);
   border-color: var(--success);
-  animation: ds-rematch-invited-pulse 1.5s ease-in-out infinite;
+  animation: ds-rematch-invited-pulse 1.5s var(--ease-inout) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

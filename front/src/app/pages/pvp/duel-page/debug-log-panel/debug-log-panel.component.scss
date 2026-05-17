@@ -12,7 +12,7 @@
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
-  transition: transform 200ms ease;
+  transition: transform var(--transition-fast) var(--ease-out);
 
   &--open {
     transform: translateX(0);
@@ -72,7 +72,7 @@
     &--p2 { border-left: 3px solid #ef5350; padding-left: 6px; }
 
     &--active {
-      background: rgba(201, 168, 76, 0.1);
+      background: var(--gold-soft-10);
 
       &:not(.debug-panel__entry--p1):not(.debug-panel__entry--p2) {
         border-left: 3px solid var(--pvp-accent, #C9A84C);

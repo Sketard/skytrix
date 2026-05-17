@@ -63,7 +63,7 @@
   .timer__value { color: var(--pvp-timer-red); }
   .timer__bar-fill {
     background: var(--pvp-timer-red);
-    animation: ds-pulse-dot 800ms ease-in-out infinite;
+    animation: ds-pulse-dot 800ms var(--ease-inout) infinite;
   }
 }
 

@@ -45,13 +45,13 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 
   @media (prefers-reduced-motion: no-preference) {
-    transition: top 600ms ease-out,
-                left 600ms ease-out,
-                width 600ms ease-out,
-                height 600ms ease-out,
-                transform 600ms ease-out,
-                opacity 600ms ease-out,
-                filter 600ms ease-out;
+    transition: top var(--transition-theme) var(--ease-out),
+                left var(--transition-theme) var(--ease-out),
+                width var(--transition-theme) var(--ease-out),
+                height var(--transition-theme) var(--ease-out),
+                transform var(--transition-theme) var(--ease-out),
+                opacity var(--transition-theme) var(--ease-out),
+                filter var(--transition-theme) var(--ease-out);
   }
 }
 
@@ -112,7 +112,7 @@
 
 .chain-card--entering {
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-entry-pulse var(--chain-entry-duration, 600ms) ease-in-out both;
+    animation: chain-entry-pulse var(--chain-entry-duration, var(--transition-theme)) var(--ease-inout) both;
   }
 }
 
@@ -128,13 +128,14 @@
   box-shadow: 0 0 20px var(--pvp-chain-glow-resolving);
 
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-resolve-glow var(--chain-resolve-pulse, 600ms) ease-in-out;
+    animation: chain-resolve-glow var(--chain-resolve-pulse, var(--transition-theme)) var(--ease-inout);
   }
 
+  // Aligned on DS canonical gold (#C9A84C) — was #FFD700 pure yellow drift.
   .chain-badge {
     text-shadow:
-      0 0 12px rgba(255, 215, 0, 0.8),
-      0 0 24px rgba(255, 215, 0, 0.5);
+      0 0 12px var(--gold-soft-80),
+      0 0 24px var(--gold-soft-50);
   }
 }
 
@@ -162,7 +163,7 @@
   opacity: 1;
 
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-resolve-exit var(--chain-resolve-exit, 600ms) ease-in forwards;
+    animation: chain-resolve-exit var(--chain-resolve-exit, var(--transition-theme)) var(--ease-in) forwards;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -203,12 +204,12 @@
   filter: grayscale(1);
 
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-negated-shake var(--chain-resolve-pulse, 600ms) ease-in-out;
+    animation: chain-negated-shake var(--chain-resolve-pulse, var(--transition-theme)) var(--ease-inout);
   }
 
   .chain-badge {
     text-shadow:
-      0 0 8px rgba(160, 160, 160, 0.6),
+      0 0 8px var(--pvp-chain-glow-negated),
       2px 4px 6px rgba(0, 0, 0, 0.7);
     -webkit-text-stroke: 2px rgba(160, 160, 160, 0.8);
   }
@@ -226,7 +227,7 @@
   opacity: 1;
 
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-negated-exit var(--chain-resolve-exit, 600ms) ease-in forwards;
+    animation: chain-negated-exit var(--chain-resolve-exit, var(--transition-theme)) var(--ease-in) forwards;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -238,7 +239,7 @@
   font-size: calc(45dvh * 0.20);
   right: -2%;
   text-shadow:
-    0 0 8px rgba(160, 160, 160, 0.6),
+    0 0 8px var(--pvp-chain-glow-negated),
     2px 4px 6px rgba(0, 0, 0, 0.7);
   -webkit-text-stroke: 2px rgba(160, 160, 160, 0.8);
 }
@@ -269,7 +270,7 @@
   opacity: 0.8;
 
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-overflow-exit var(--chain-overflow-duration, 600ms) ease-out forwards;
+    animation: chain-overflow-exit var(--chain-overflow-duration, var(--transition-theme)) var(--ease-out) forwards;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -291,11 +292,11 @@
   font-style: italic;
   line-height: 1;
   z-index: 10;
-  -webkit-text-stroke: 2px #4a90d9;
+  -webkit-text-stroke: 2px var(--pvp-chain-badge-bg);
   paint-order: stroke fill;
   text-shadow:
-    0 0 8px rgba(74, 144, 217, 0.8),
-    0 0 16px rgba(74, 144, 217, 0.5),
+    0 0 8px var(--pvp-chain-badge-glow-strong),
+    0 0 16px var(--pvp-chain-badge-glow-soft),
     2px 4px 6px rgba(0, 0, 0, 0.7);
 }
 

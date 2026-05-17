@@ -79,7 +79,7 @@ app-pvp-board-container {
   flex: 1;
   min-height: 0;
   z-index: z.$z-pvp-board;
-  transition: opacity 200ms ease;
+  transition: opacity var(--transition-fast) var(--ease-out);
 
   &.switching {
     opacity: 0.3;
@@ -115,7 +115,7 @@ app-pvp-board-container {
   gap: 6px;
   padding-right: max(8px, env(safe-area-inset-right, 8px));
   padding-bottom: 8px;
-  transition: opacity 200ms ease;
+  transition: opacity var(--transition-fast) var(--ease-out);
 
   &--dimmed {
     opacity: 0.6;

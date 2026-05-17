@@ -9,25 +9,69 @@
   position: absolute;
   bottom: 8dvh;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(24px) scale(0.96);
   z-index: z.$z-pvp-prompt-sheet;
-  width: var(--pvp-prompt-dialog-width, 50dvw);
+  width: var(--pvp-prompt-dialog-width);
   background: var(--pvp-prompt-dialog-bg);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  border: var(--pvp-prompt-frame-border);
+  border-radius: var(--pvp-prompt-dialog-radius);
+  box-shadow: var(--pvp-prompt-frame-shadow);
   overscroll-behavior: contain;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
+  transition:
+    opacity var(--transition-dialog) var(--ease-expo),
+    transform var(--transition-dialog) var(--ease-expo),
+    visibility 0s linear var(--transition-dialog);
+
+  // Radial halo behind the dialog — signature glow tying the prompt to the
+  // gold palette. `::before` is non-interactive (pointer-events none) so it
+  // never intercepts clicks above the board.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    z-index: -1;
+    background: radial-gradient(
+      ellipse at center,
+      var(--pvp-prompt-halo-color) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-theme) var(--ease-expo) 100ms;
+  }
 
   &--visible {
     pointer-events: auto;
     opacity: 1;
     visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
+    transition:
+      opacity var(--transition-dialog) var(--ease-expo),
+      transform var(--transition-dialog) var(--ease-expo),
+      visibility 0s;
+
+    &::before { opacity: 1; }
   }
 
   &--collapsed {
     overflow: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt-dialog {
+    transition: opacity var(--transition-normal) var(--ease-out),
+                visibility 0s linear var(--transition-normal);
+    transform: translateX(-50%);
+
+    &--visible {
+      transform: translateX(-50%);
+      transition: opacity var(--transition-normal) var(--ease-out),
+                  visibility 0s;
+    }
   }
 }
 
@@ -117,7 +161,7 @@
 
   .passive-content--waiting & {
     color: var(--text-secondary);
-    animation: passive-pulse 1.5s ease-in-out infinite;
+    animation: passive-pulse 1.5s var(--ease-inout) infinite;
   }
 
   .passive-content--result & {
