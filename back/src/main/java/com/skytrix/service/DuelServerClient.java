@@ -51,26 +51,17 @@ public class DuelServerClient {
                 .build();
     }
 
-    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2) {
-        return createDuel(player1Id, deck1, player2Id, deck2, false);
-    }
-
-    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean soloMode) {
-        return createDuel(player1Id, deck1, player2Id, deck2, soloMode, false);
-    }
-
-    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean soloMode, boolean skipShuffle) {
-        return createDuel(player1Id, deck1, player2Id, deck2, soloMode, skipShuffle, null);
-    }
-
-    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean soloMode, boolean skipShuffle, Integer turnTimeSecs) {
+    public DuelCreationResponse createDuel(
+            String player1Id, String player1Username, String deck1Name, DuelDeckDTO deck1,
+            String player2Id, String player2Username, String deck2Name, DuelDeckDTO deck2,
+            boolean soloMode, boolean skipShuffle, Integer turnTimeSecs) {
         return restClient.post()
                 .uri("/api/duels")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-Internal-Key", internalKey)
                 .body(new CreateDuelRequest(
-                        new DuelPlayer(player1Id, deck1),
-                        new DuelPlayer(player2Id, deck2),
+                        new DuelPlayer(player1Id, player1Username, deck1Name, deck1),
+                        new DuelPlayer(player2Id, player2Username, deck2Name, deck2),
                         soloMode,
                         skipShuffle,
                         turnTimeSecs
@@ -178,7 +169,12 @@ public class DuelServerClient {
     }
 
     private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2, boolean soloMode, boolean skipShuffle, Integer turnTimeSecs) {}
-    private record DuelPlayer(String id, DuelDeckDTO deck) {}
+    // `username` + `deckName` consommés par duel-server `server.ts` pour
+    // alimenter `session.playerUsernames` + `session.deckNames` → propagés à
+    // la metadata du replay persisté. Champs optionnels côté contrat
+    // (fallback `?? id` / `?? 'Deck'`), mais Spring DOIT toujours les fournir
+    // — leur absence trahit un bug de wiring côté RoomService.
+    private record DuelPlayer(String id, String username, String deckName, DuelDeckDTO deck) {}
     private record ActiveDuelsResponse(List<String> duelIds) {}
     private record ValidatePasscodesRequest(List<Integer> passcodes) {}
     private record ValidatePasscodesResponse(List<Integer> missing) {}

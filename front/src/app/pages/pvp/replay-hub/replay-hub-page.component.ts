@@ -129,34 +129,25 @@ export class ReplayHubPageComponent implements OnInit {
     return this.mySide(r) === 0 ? 1 : 0;
   }
   opponentName(r: ReplayDTO): string {
-    return this.realPseudo(r.metadata.playerUsernames[this.opponentSide(r)]);
+    return r.metadata.playerUsernames[this.opponentSide(r)] ?? '';
   }
   myDeckName(r: ReplayDTO): string {
-    return this.realDeckName(r.metadata.deckNames[this.mySide(r)]);
+    return r.metadata.deckNames[this.mySide(r)] ?? '';
   }
   opponentDeckName(r: ReplayDTO): string {
-    return this.realDeckName(r.metadata.deckNames[this.opponentSide(r)]);
+    return r.metadata.deckNames[this.opponentSide(r)] ?? '';
   }
-  /** The duel-server falls back to the literal string `'Deck'` when a player
-   *  has no named deck (see duel-server/src/server.ts:476). The hub-card
-   *  doesn't want to render that placeholder — it would just clutter the
-   *  meta line. Treat 'Deck' (case-insensitive) as "missing" and let the
-   *  template's `@if` skip the row. */
-  private realDeckName(raw: string | undefined | null): string {
-    if (!raw) return '';
-    return raw.trim().toLowerCase() === 'deck' ? '' : raw;
-  }
-  /** The duel-server falls back to `parsed.player.id` when `username` is
-   *  absent (server.ts:475). For legacy or pre-auth-cleanup replays the id
-   *  was literally `'1'` / `'2'` — the hub would then render `vs 1` plus a
-   *  cropped avatar badge `1`. We treat purely-numeric pseudos (or empty)
-   *  as "missing" so the template falls back to the i18n key
-   *  `replay.hub.card.opponentUnknown`. */
-  private realPseudo(raw: string | undefined | null): string {
-    if (!raw) return '';
-    const trimmed = raw.trim();
-    if (trimmed === '' || /^\d+$/.test(trimmed)) return '';
-    return trimmed;
+  /** Une seule string `myDeck · vs oppDeck` (ou variantes partielles) pour
+   *  rendre les decks dans un unique `<span>` — élimine les gaps flex parasites
+   *  entre 2 spans séparés (Axel 2026-05-17). Retourne `''` si aucun deck. */
+  deckMatchupText(r: ReplayDTO): string {
+    const mine = this.myDeckName(r);
+    const opp = this.opponentDeckName(r);
+    const vsPrefix = this.translate.instant('replay.hub.card.vsDeckPrefix');
+    if (mine && opp) return `${mine} ${vsPrefix} ${opp}`;
+    if (mine) return mine;
+    if (opp) return `${vsPrefix} ${opp}`;
+    return '';
   }
   resultMeta(r: ReplayDTO): ResultMeta {
     return RESULT_META[r.metadata.result];

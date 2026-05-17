@@ -196,15 +196,10 @@
                 <span class="replay-card__opponent">{{ opponentName(replay) || ('replay.hub.card.opponentUnknown' | translate) }}</span>
               </div>
               <div class="replay-card__meta">
-                @if (myDeckName(replay); as deck) {
+                @if (deckMatchupText(replay); as txt) {
                   <span class="replay-card__deck">
                     <mat-icon>style</mat-icon>
-                    {{ deck }}
-                  </span>
-                }
-                @if (opponentDeckName(replay); as deck) {
-                  <span class="replay-card__vs-deck">
-                    {{ 'replay.hub.card.vsDeckPrefix' | translate }} {{ deck }}
+                    {{ txt }}
                   </span>
                 }
               </div>

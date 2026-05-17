@@ -162,6 +162,13 @@ public class RoomService {
         var deck2 = extractDeck(deck2Cards);
         validatePasscodesOrThrow(deck1, deck1Cards, deck2, deck2Cards);
 
+        // Noms propagés au duel-server pour alimenter la metadata du replay
+        // persisté (sinon : fallbacks "1"/"Deck" → noms inutiles dans le hub).
+        var deck1Name = deckRepository.findById(room.getPlayer1DecklistId())
+                .map(d -> d.getName()).orElse(null);
+        var deck2Name = deckRepository.findById(room.getPlayer2DecklistId())
+                .map(d -> d.getName()).orElse(null);
+
         room.setStatus(RoomStatus.CREATING_DUEL);
         roomRepository.save(room);
 
@@ -169,9 +176,16 @@ public class RoomService {
             // soloMode=false: duel-server handles RPS at app layer before starting OCGCore
             var response = duelServerClient.createDuel(
                     room.getPlayer1().getId().toString(),
+                    room.getPlayer1().getPseudo(),
+                    deck1Name,
                     deck1,
                     room.getPlayer2().getId().toString(),
-                    deck2
+                    room.getPlayer2().getPseudo(),
+                    deck2Name,
+                    deck2,
+                    false,
+                    false,
+                    null
             );
 
             validateDuelResponse(response);
@@ -262,10 +276,25 @@ public class RoomService {
             var secondDeck = extractDeck(p2First ? deckCards1 : deckCards2);
             validatePasscodesOrThrow(firstDeck, p2First ? deckCards2 : deckCards1,
                     secondDeck, p2First ? deckCards1 : deckCards2);
+
+            // Noms propagés au duel-server (cf. startDuel) — en solo, même
+            // pseudo des deux côtés mais 2 deckNames distincts.
+            var deck1Name = deckRepository.findById(dto.getDecklistId1())
+                    .map(d -> d.getName()).orElse(null);
+            var deck2Name = deckRepository.findById(dto.getDecklistId2())
+                    .map(d -> d.getName()).orElse(null);
+            var firstDeckName = p2First ? deck2Name : deck1Name;
+            var secondDeckName = p2First ? deck1Name : deck2Name;
+            var pseudo = user.getPseudo();
+
             var response = duelServerClient.createDuel(
                     user.getId().toString(),
+                    pseudo,
+                    firstDeckName,
                     firstDeck,
                     user.getId().toString(),
+                    pseudo,
+                    secondDeckName,
                     secondDeck,
                     true,
                     dto.isSkipShuffle(),

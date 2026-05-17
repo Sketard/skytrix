@@ -612,6 +612,13 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
     session.players[0].playerIndex = 0;
     session.players[1].playerIndex = 1;
     sessionManager.remapReconnectTokensAfterSwap(session);
+    // Swap usernames + deckNames pour rester aligné avec players[] : tout au
+    // long du duel (live + replay persisté) `playerUsernames[i]` doit décrire
+    // OCGCore player `i`, et `replay-persist` lit `session.players[i].playerId`
+    // → toute désynchro ici décale les pseudos/decks par rapport aux IDs
+    // persistés côté Spring (bug "vs admin au lieu de vs admin2", 2026-05-17).
+    session.playerUsernames = [session.playerUsernames[1], session.playerUsernames[0]];
+    session.deckNames = [session.deckNames[1], session.deckNames[0]];
   }
 
   // Tell each player their OCGCore index (after potential swap). Each side

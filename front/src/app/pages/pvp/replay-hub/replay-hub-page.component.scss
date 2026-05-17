@@ -230,10 +230,9 @@
 .replay-card__actions { grid-area: actions; display: flex; align-items: center; gap: var(--space-2); }
 .replay-card .pill    { grid-area: pill; align-self: center; }
 
-// Mockup §hub-filters — search-bar et chips alignés sur la même ligne au
-// desktop (search prend tout l'espace flexible, chips droite), stack vertical
-// sur mobile. Sur mobile, la chip-row passe en scroll horizontal pour rester
-// sur une seule ligne sans wrapper (Q5-3).
+// Stack vertical à tous les breakpoints (search en haut, chips en dessous —
+// Axel 2026-05-17 : préfère plus d'espace de respiration entre les deux
+// contrôles plutôt que la composition `search | chips` côte-à-côte).
 //
 // Le fallback mobile (flex-wrap: nowrap + overflow-x: auto + fade-right) est
 // fourni par `_chips.scss @container chip-row (max-width: 480px)` — on déclare
@@ -242,12 +241,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-
-  @include r.respond-above(r.$bp-tablet) {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-4);
-  }
 
   .search-bar { flex: 1 1 auto; min-width: 0; }
   .chip-row {
@@ -322,8 +315,10 @@
   color: var(--text-muted);
 }
 
-.replay-card__deck,
-.replay-card__vs-deck {
+// Un seul span depuis 2026-05-17 (Axel) — `deckMatchupText()` concatène
+// "myDeck · vs oppDeck" pour éviter les gaps flex parasites entre 2 spans.
+// `.replay-card__vs-deck` retiré (n'est plus rendu).
+.replay-card__deck {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
