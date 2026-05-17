@@ -5,19 +5,19 @@
 .numeric-container {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .label {
-  font-size: 0.875rem;
-  color: var(--text-secondary, #9e9e9e);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .input-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex: 1;
   justify-content: center;
 }
@@ -26,75 +26,77 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: var(--pvp-min-touch-target-primary, 48px);
-  height: var(--pvp-min-touch-target-primary, 48px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary, #eaeaea);
-  font-size: 1.5rem;
+  width: var(--touch-target-primary);
+  height: var(--touch-target-primary);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font-size: var(--text-lg);
   cursor: pointer;
-  transition: background var(--pvp-animation-duration) ease-out;
+  transition: background var(--transition-fast) var(--ease-out);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--surface-hover);
   }
 
   &:disabled {
-    opacity: var(--pvp-disabled-opacity, 0.4);
+    opacity: var(--opacity-disabled);
     cursor: default;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--pvp-accent, #c9a84c);
-    outline-offset: 2px;
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
   }
 }
 
 .stepper-value {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
   min-width: 48px;
   text-align: center;
-  color: var(--pvp-accent, #c9a84c);
+  color: var(--gold);
 }
 
 .option-btn {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-width: var(--pvp-min-touch-target-primary, 48px);
-  height: var(--pvp-min-touch-target-primary, 48px);
-  padding: 0 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--pvp-radius-lg, 8px);
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary, #eaeaea);
-  font-size: 1.25rem;
-  font-weight: 700;
+  min-width: var(--touch-target-primary);
+  height: var(--touch-target-primary);
+  padding: 0 var(--space-5);
+  border: var(--border-width-thin) solid var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
   cursor: pointer;
-  transition: background var(--pvp-animation-duration, 150ms) ease-out,
-              border-color var(--pvp-animation-duration, 150ms) ease-out;
+  transition: background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: var(--pvp-accent, #c9a84c);
+    background: var(--surface-hover);
+    border-color: var(--gold);
   }
 
   &--selected {
-    background: var(--pvp-accent, #c9a84c);
-    color: #000;
-    border-color: var(--pvp-accent, #c9a84c);
+    background: var(--gold);
+    color: var(--text-inverse);
+    border-color: var(--gold);
   }
 
   &:disabled {
-    opacity: var(--pvp-disabled-opacity, 0.4);
+    opacity: var(--opacity-disabled);
     cursor: default;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--pvp-accent, #c9a84c);
-    outline-offset: 2px;
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
   }
 }
 
@@ -104,21 +106,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
 }
 
 .multi-counter__status {
-  font-size: 0.8125rem;
-  color: var(--text-secondary, #9e9e9e);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
 }
 
 .multi-counter__strip {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 4px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
 }
 
 .multi-counter__card {
@@ -126,17 +128,19 @@
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .multi-counter__img {
   @include card.card-img;
 }
 
+// Secondary stepper — 28×28 sous touch-target-min volontairement (contexte
+// secondaire d'incrément/décrément, validé spec §3.2).
 .mini-stepper {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 
   &__btn {
     display: flex;
@@ -144,42 +148,44 @@
     align-items: center;
     width: 28px;
     height: 28px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary, #eaeaea);
-    font-size: 1rem;
+    border: var(--border-width-thin) solid var(--border-medium);
+    border-radius: var(--radius-pill);
+    background: var(--surface-overlay);
+    color: var(--text-primary);
+    font-size: var(--text-md);
     cursor: pointer;
-    transition: background var(--pvp-animation-duration) ease-out;
+    transition: background var(--transition-fast) var(--ease-out);
 
     &:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.15);
+      background: var(--surface-hover);
     }
 
     &:disabled {
-      opacity: var(--pvp-disabled-opacity, 0.4);
+      opacity: var(--opacity-disabled);
       cursor: default;
     }
 
     &:focus-visible {
-      outline: 2px solid var(--pvp-accent, #c9a84c);
-      outline-offset: 2px;
+      outline: var(--focus-ring-width) solid var(--focus-ring-color);
+      outline-offset: var(--focus-ring-offset);
     }
   }
 
   &__value {
-    font-size: 1rem;
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
     min-width: 24px;
     text-align: center;
-    color: var(--pvp-accent, #c9a84c);
+    color: var(--gold);
   }
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  padding-top: 8px;
+  padding-top: var(--space-2);
 }
 
 .btn {
@@ -192,25 +198,26 @@
   .stepper-btn {
     width: clamp(36px, 10vw, 48px);
     height: clamp(36px, 10vw, 48px);
-    font-size: 1.125rem;
+    font-size: var(--text-md);
   }
 
   .stepper-value {
-    font-size: 1.125rem;
+    font-size: var(--text-md);
     min-width: 32px;
   }
 
   .option-btn {
     min-width: clamp(36px, 10vw, 48px);
     height: clamp(36px, 10vw, 48px);
-    padding: 0 12px;
-    font-size: 1rem;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
   }
 }
 
 :host(.read-only) {
   pointer-events: none;
 }
+
 @media (max-height: 500px) {
   .multi-counter__img {
     @include card.card-img-short;

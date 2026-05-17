@@ -4,8 +4,8 @@
 .position-grid {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  padding: 8px 0;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
 }
 
 .position-card {
@@ -13,36 +13,38 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  border: 2px solid transparent;
-  border-radius: var(--pvp-radius-lg);
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: var(--border-width-medium) solid transparent;
+  border-radius: var(--radius-md);
   background: transparent;
   cursor: pointer;
-  transition: border-color var(--pvp-animation-duration) ease-out,
-              background var(--pvp-animation-duration) ease-out;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-hover);
   }
 
   &--selected {
-    border-color: var(--pvp-accent, #c9a84c) !important;
-    background: var(--accent-primary-dim, rgba(201, 168, 76, 0.15)) !important;
+    border-color: var(--gold) !important;
+    background: var(--gold-soft-15) !important;
+    box-shadow: 0 0 8px var(--gold-soft-50);
   }
 
   &:focus-visible {
-    outline: 2px solid var(--pvp-accent, #c9a84c);
-    outline-offset: 2px;
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
   }
 
   &:disabled {
-    opacity: var(--pvp-disabled-opacity, 0.4);
+    opacity: var(--opacity-disabled);
     cursor: default;
   }
 
   &__slot {
-    // Fixed height container so all cards align labels at the bottom
+    // Fixed height container so all cards align labels at the bottom.
+    // Geometry locale (composant unique) — exception doctrine OK.
     width: 105px;
     height: 105px;
     display: flex;
@@ -55,7 +57,7 @@
     height: 105px;
     position: relative;
     overflow: hidden;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
   }
 
   &--rotated &__frame {
@@ -79,22 +81,23 @@
   }
 
   &__label {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    color: var(--text-secondary, #b0b0b0);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   &--selected &__label {
-    color: var(--pvp-accent, #c9a84c);
+    color: var(--gold);
   }
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  padding-top: 8px;
+  padding-top: var(--space-2);
 }
 
 .btn {
@@ -114,11 +117,11 @@
 
 @include r.respond-below(r.$bp-pvp-narrow) {
   .position-grid {
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .position-card {
-    padding: 4px;
+    padding: var(--space-1);
 
     &__slot {
       width: clamp(60px, 22vw, 105px);
@@ -141,7 +144,7 @@
     }
 
     &__label {
-      font-size: 0.6rem;
+      font-size: var(--text-xs);
     }
   }
 }
