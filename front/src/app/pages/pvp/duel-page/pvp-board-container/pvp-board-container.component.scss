@@ -22,7 +22,10 @@
   min-height: 200px;
   margin: auto;
   display: grid;
-  grid-template-rows: 2fr 1fr 2fr;
+  // minmax(0, ...) caps each track at its fr share — otherwise the central
+  // strip's intrinsic height (driven by .zone--banished aspect-ratio) would
+  // expand the 1fr slot past H/5, breaking EMZ/MZ alignment.
+  grid-template-rows: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 2fr);
   z-index: z.$z-pvp-board;
 }
 
@@ -60,9 +63,16 @@
 }
 
 // === Central Strip (grid participant — same height as one zone row) ===
+// `minmax(0, 1fr)` is load-bearing: a bare `1fr` resolves to `minmax(auto, 1fr)`,
+// which lets the row grow past the H/5 slot to accommodate a child's intrinsic
+// height (.zone--banished uses `aspect-ratio: 59/86` on a wide column; on mobile
+// landscape that intrinsic height exceeds the H/5 slot, ballooning the row and
+// dragging EMZ — which has `aspect-ratio: 1` — to a larger square than MZ/ST).
+// minmax(0, 1fr) caps the track at exactly its fr share, restoring parity.
 .central-strip {
   display: grid;
   grid-template-columns: 59fr repeat(5, 86fr) 59fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 2px;
   padding: 0 2px;
   align-items: center;
