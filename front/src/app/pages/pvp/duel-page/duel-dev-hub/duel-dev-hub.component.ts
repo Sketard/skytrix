@@ -29,7 +29,9 @@ type DevHubTab = 'board' | 'prompts' | 'end-flow';
 export class DuelDevHubComponent {
   protected readonly devState = inject(DuelDevStateService);
 
-  protected readonly visible = signal(false);
+  /** Visibility lives on the service so the duel mini-toolbar button can
+   *  toggle it from outside the component (Ctrl+Shift+D still works too). */
+  protected readonly visible = this.devState.hubVisible;
   protected readonly collapsed = signal(false);
   protected readonly activeTab = signal<DevHubTab>('board');
 
@@ -48,7 +50,7 @@ export class DuelDevHubComponent {
       return;
     }
     event.preventDefault();
-    this.visible.update(v => !v);
+    this.devState.toggleHub();
   }
 
   protected setTab(tab: DevHubTab): void {
@@ -60,7 +62,7 @@ export class DuelDevHubComponent {
   }
 
   protected close(): void {
-    this.visible.set(false);
+    this.devState.hubVisible.set(false);
   }
 
   protected resetAll(): void {

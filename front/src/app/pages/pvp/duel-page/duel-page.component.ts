@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, isDevMode, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -293,7 +293,10 @@ export class DuelPageComponent implements OnInit {
   // 'me' = own turn OR active prompt requires my input (responding to opp chain).
   // 'opp' = waiting on opponent (their turn AND no prompt for me).
   // Dev override lives in DuelDevStateService.forcedActor (no-op in prod via _signal()).
-  private readonly devState = inject(DuelDevStateService);
+  // `protected` because the mini-toolbar template reads `devState.hubVisible`
+  // to wire its "Dev hub" button (DEV ONLY, gated by `devMode` below).
+  protected readonly devState = inject(DuelDevStateService);
+  protected readonly devMode = isDevMode();
   readonly actor = computed<'me' | 'opp'>(() =>
     this.devState.override(this.devState.forcedActor, () =>
       this.hasActivePrompt() || this.isOwnTurn() ? 'me' : 'opp'

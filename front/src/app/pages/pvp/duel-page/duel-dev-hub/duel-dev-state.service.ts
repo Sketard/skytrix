@@ -18,6 +18,17 @@ export type DevRematchState =
 
 @Injectable({ providedIn: 'root' })
 export class DuelDevStateService {
+  /** Hub visibility — shared between the hub component (closes itself via
+   *  the × button and Ctrl+Shift+D) and external triggers like the duel
+   *  mini-toolbar button. NOT gated by `_signal()` because it's a UI toggle,
+   *  not a data-flow override. In prod the hub component is gated by
+   *  `isDevMode()` upstream so this signal is unreachable anyway. */
+  readonly hubVisible = signal(false);
+
+  toggleHub(): void {
+    this.hubVisible.update(v => !v);
+  }
+
   // ─── Onglet Board (board enrichment spec) ────────────────────
   readonly forcedActor = this._signal<'me' | 'opp' | null>(null);
   readonly forcedTimerMs = this._signal<number | null>(null);

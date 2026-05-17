@@ -371,6 +371,16 @@
               <span class="mini-toolbar__label">{{ 'duel.misc.debug' | translate }}</span>
             </button>
           }
+          @if (devMode) {
+            <button class="mini-toolbar__item"
+                    type="button"
+                    [attr.aria-label]="'a11y.toggleDevHub' | translate"
+                    [attr.aria-expanded]="devState.hubVisible()"
+                    (click)="devState.toggleHub()">
+              <mat-icon class="mini-toolbar__icon">construction</mat-icon>
+              <span class="mini-toolbar__label">{{ 'duel.misc.devHub' | translate }}</span>
+            </button>
+          }
         </div>
       </div>
 
