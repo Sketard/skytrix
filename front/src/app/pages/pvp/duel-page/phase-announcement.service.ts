@@ -14,20 +14,21 @@ export interface PhaseAnnouncement {
 const PHASE_ANNOUNCE_DURATION = 2000;
 
 /**
- * Phases that ARE worth announcing visually + vocally:
- *  - MAIN1     : first phase of a new turn (turn-swap signal)
- *  - BATTLE_START : entry into Battle Phase (big tactical signal)
- *  - MAIN2     : back from BP (re-summon opportunities)
- *  - END       : explicit turn end
+ * Phases worth announcing visually + vocally — the 6 canonical turn phases:
+ *  - DRAW         : turn start, draw the card
+ *  - STANDBY      : standby phase (timing window for some effects)
+ *  - MAIN1        : first Main Phase
+ *  - BATTLE_START : entry into Battle Phase
+ *  - MAIN2        : second Main Phase (back from BP)
+ *  - END          : End Phase / turn end
  *
- * Phases silently skipped: DRAW, STANDBY, BATTLE_STEP, DAMAGE, DAMAGE_CALC,
- * BATTLE. They stay visible in the phase-pill central indicator but no
- * overlay/vocal announce — cuts the cognitive noise on the active player.
- *
- * Source: duel-board-enrichment-spec §7.2.b (Sally 2026-05-17).
+ * Silently skipped: BATTLE_STEP, DAMAGE, DAMAGE_CALC, BATTLE. These are
+ * combat sub-phases that fire many times during a single Battle Phase —
+ * announcing each would saturate the player with noise. They remain
+ * visible in the phase-pill central indicator.
  */
 const MAJOR_PHASES: ReadonlySet<Phase> = new Set([
-  'MAIN1', 'BATTLE_START', 'MAIN2', 'END',
+  'DRAW', 'STANDBY', 'MAIN1', 'BATTLE_START', 'MAIN2', 'END',
 ]);
 
 @Injectable()
