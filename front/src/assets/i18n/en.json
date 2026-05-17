@@ -524,7 +524,26 @@
     "attribute": "Attribute",
     "min": "Min.",
     "max": "Max.",
-    "cardSet": "Card set"
+    "cardSet": "Card set",
+    "race": "Race",
+    "archetype": "Archetype",
+    "archetypePlaceholder": "Tearlaments, Branded…",
+    "scale": "Pendulum scale",
+    "linkval": "Link rating",
+    "atk": "ATK",
+    "def": "DEF",
+    "clear": "Clear",
+    "clearAll": "Clear all",
+    "activeFilters": "Active filters",
+    "resultsCount": "{{count}} results",
+    "tokenSelect": {
+      "placeholder": "Select…",
+      "searchPlaceholder": "Filter…",
+      "noResults": "No results",
+      "selectedCount": "{{count}} selected",
+      "clearAll": "Clear all",
+      "removeLabel": "Remove this option"
+    }
   },
   "cardInspector": {
     "owned": "Owned"

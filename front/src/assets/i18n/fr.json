@@ -524,7 +524,26 @@
     "attribute": "Attribut",
     "min": "Min.",
     "max": "Max.",
-    "cardSet": "Extension"
+    "cardSet": "Extension",
+    "race": "Race",
+    "archetype": "Archétype",
+    "archetypePlaceholder": "Tearlaments, Branded…",
+    "scale": "Scale Pendulum",
+    "linkval": "Lien (rating)",
+    "atk": "ATK",
+    "def": "DEF",
+    "clear": "Effacer",
+    "clearAll": "Tout effacer",
+    "activeFilters": "Filtres actifs",
+    "resultsCount": "{{count}} résultats",
+    "tokenSelect": {
+      "placeholder": "Sélectionner…",
+      "searchPlaceholder": "Filtrer…",
+      "noResults": "Aucun résultat",
+      "selectedCount": "{{count}} sélectionnés",
+      "clearAll": "Tout effacer",
+      "removeLabel": "Retirer cette option"
+    }
   },
   "cardInspector": {
     "owned": "Possédées"
