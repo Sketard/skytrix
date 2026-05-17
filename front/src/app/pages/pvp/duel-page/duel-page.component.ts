@@ -3,10 +3,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, filter, map, Observable, of, switchMap, take, timeout } from 'rxjs';
-import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
+import { MatDialog, MatDialogClose } from '@angular/material/dialog';
 import { NotificationService } from '../../../core/services/notification.service';
 import { OrientationLockComponent } from '../../../shared/orientation-lock/orientation-lock.component';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
@@ -87,8 +86,8 @@ import { environment } from '../../../../environments/environment';
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptDialogComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
-    MatButton, MatIcon, MatProgressSpinner,
-    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
+    MatIcon, MatProgressSpinner,
+    MatDialogClose,
     DebugLogPanelComponent,
     PvpChainOverlayComponent,
     PvpDuelOverlaysComponent,
@@ -349,12 +348,24 @@ export class DuelPageComponent implements OnInit {
     return { outcome, reason, cause };
   });
 
-  // Story 3.4 — Rematch UI state
+  // Wave 3 end-flow dev override — `forcedResultOutcome` short-circuits the real
+  // computation. Prod-safe via `_signal()` no-op setters; the template reads
+  // `effectiveResultOutcome()` so the dev hub can preview all 6 variants live.
+  readonly effectiveResultOutcome = computed(() =>
+    this.devState.override(this.devState.forcedResultOutcome, () => this.resultOutcome())
+  );
+
+  // Story 3.4 — Rematch UI state. `effectiveRematchState` honours the dev hub
+  // override (Cat J), prod-safe per `_signal()` factory.
+  readonly effectiveRematchState = computed(() =>
+    this.devState.override(this.devState.forcedRematchState, () => this.wsService.rematchState())
+  );
+
   readonly rematchButtonLabel = computed(() => {
     if (this.isSoloMode()) {
       return this.wsService.rematchStarting() ? 'Starting...' : 'Rematch';
     }
-    switch (this.wsService.rematchState()) {
+    switch (this.effectiveRematchState()) {
       case 'idle': return 'Rematch';
       case 'requested': return 'Waiting for opponent...';
       case 'invited': return 'Accept Rematch';
@@ -365,7 +376,7 @@ export class DuelPageComponent implements OnInit {
 
   readonly rematchDisabled = computed(() => {
     if (this.isSoloMode()) return this.wsService.rematchStarting();
-    const state = this.wsService.rematchState();
+    const state = this.effectiveRematchState();
     return state === 'requested' || state === 'opponent-left' || state === 'expired';
   });
 
@@ -660,17 +671,6 @@ export class DuelPageComponent implements OnInit {
     this.router.navigate(['/pvp']);
   }
 
-  backToDeck(): void {
-    this.endRoomIfNeeded();
-    try { localStorage.removeItem('duel-reconnect-token'); } catch {}
-    const deckId = this.room()?.decklistId ?? this.roomService.decklistId;
-    if (deckId) {
-      this.router.navigate(['/decks', deckId]);
-    } else {
-      this.router.navigate(['/decks']);
-    }
-  }
-
   onRematchClick(): void {
     this.wsService.sendRematchRequest();
   }
@@ -864,7 +864,9 @@ export class DuelPageComponent implements OnInit {
       ariaLabel: 'Surrender confirmation',
       width: '320px',
       panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger'],
-      autoFocus: false,
+      // Wave 3: Cancel button autofocus (anti-mistap). The Surrender button
+      // is first in DOM (tab order) but Cancel is the visual/anti-action default.
+      autoFocus: '.btn--primary',
       disableClose: false,
     });
     return dialogRef.afterClosed().pipe(

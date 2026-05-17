@@ -235,7 +235,6 @@
       "victory": "VICTOIRE",
       "defeat": "DÉFAITE",
       "draw": "ÉGALITÉ",
-      "backToDeck": "Retour au deck",
       "startingNew": "Nouveau duel en cours..."
     },
     "surrender": {

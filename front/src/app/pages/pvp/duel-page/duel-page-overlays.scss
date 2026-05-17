@@ -106,135 +106,135 @@
   }
 }
 
-// === Duel Result Overlay (Story 3.4) ===
-.result-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: z.$z-pvp-result-overlay;
-  animation: result-overlay-enter 200ms ease both;
+// === Surrender Dialog (Wave 3 refresh) ============================================
+// Material container is kept for focus-trap/backdrop/escape; the template is custom.
+// `panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger']` is wired in
+// duel-page.component.ts:confirmSurrender().
+::ng-deep .pvp-dialog-panel--danger .mat-mdc-dialog-container {
+  --mdc-dialog-container-color: transparent;
+  padding: 0;
+  box-shadow: var(--elevation-3);
+}
 
-  // Outcome-based radial tint
-  &--victory { background: radial-gradient(ellipse at center, rgba(0, 35, 12, 0.5) 0%, rgba(0, 0, 0, 0.72) 65%), rgba(0, 0, 0, 0.7); }
-  &--defeat  { background: radial-gradient(ellipse at center, rgba(50, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.72) 65%), rgba(0, 0, 0, 0.7); }
-
-  // Cause overrides — neutral blue-grey for disconnect, amber for timeout/inactivity
-  &--cause-disconnect { background: rgba(8, 18, 38, 0.82); }
-  &--cause-timeout    { background: rgba(30, 18, 4, 0.82); }
-
-  &__content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    text-align: center;
-  }
+.surrender-dialog {
+  padding: var(--space-5);
+  background: var(--pvp-surrender-frame-gradient);
+  border: var(--border-width-thin) solid var(--gold-soft-30);
+  border-radius: var(--radius-md);
+  min-width: 320px;
+  max-width: 400px;
 
   &__title {
-    font-size: 3rem;
-    font-weight: 800;
-    letter-spacing: 0.15em;
-    margin: 0;
-    animation: result-title-slam 350ms cubic-bezier(0.2, 1.4, 0.4, 1) 100ms both;
-
-    .result-overlay--victory & { color: #4caf50; }
-    .result-overlay--defeat &  { color: #f44336; }
-    .result-overlay--draw &    { color: #ffeb3b; }
-
-    // Disconnect outcomes — neutral white, no celebratory color
-    .result-overlay--cause-disconnect & { color: #e0e0e0; }
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    color: var(--gold);
+    margin: 0 0 var(--space-3);
+    text-align: center;
+    letter-spacing: 0.05em;
   }
 
-  &__reason {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin: 0;
-    animation: result-reason-rise 200ms ease 350ms both;
+  &__desc {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin: 0 0 var(--space-5);
+    line-height: var(--line-normal);
+    text-align: center;
   }
 
   &__actions {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-top: 24px;
-
-    > *:nth-child(1) { animation: result-btn-fade 200ms ease 500ms both; }
-    > *:nth-child(2) { animation: result-btn-fade 200ms ease 580ms both; }
-    > *:nth-child(3) { animation: result-btn-fade 200ms ease 660ms both; }
-  }
-
-  &__rematch {
-    background: var(--pvp-accent, #c9a84c);
-    color: #000;
-    min-height: 48px;
-    min-width: 180px;
-    font-weight: 600;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-
-    &--invited {
-      box-shadow: 0 0 8px var(--pvp-accent, #c9a84c);
-    }
-
-    &:disabled {
-      opacity: var(--pvp-disabled-opacity, 0.6);
-      pointer-events: none;
-    }
-  }
-
-  &__leave {
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    color: rgba(255, 255, 255, 0.8);
-    min-height: 44px;
-    min-width: 180px;
-  }
-
-  &__deck-link {
-    color: rgba(255, 255, 255, 0.5);
-    text-decoration: underline;
-    font-size: 0.875rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    min-height: 44px;
+    gap: var(--space-3);
+    justify-content: flex-end;
   }
 }
 
-@keyframes result-overlay-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
+// === Duel Result Overlay (Wave 3 refresh) =========================================
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--overlay-strong);
+  backdrop-filter: blur(4px);
+  z-index: z.$z-pvp-result-overlay;
+  animation: ds-result-overlay-enter var(--transition-normal) var(--ease-out) both;
+
+  // Outcome-based radial tints — DS tokens, no hardcode.
+  &--victory {
+    background:
+      radial-gradient(ellipse at center, var(--pvp-result-victory-tint) 0%, transparent 60%),
+      var(--overlay-strong);
+  }
+  &--defeat {
+    background:
+      radial-gradient(ellipse at center, var(--pvp-result-defeat-tint) 0%, transparent 60%),
+      var(--overlay-strong);
+  }
+  &--draw {
+    background:
+      radial-gradient(ellipse at center, var(--pvp-result-draw-tint) 0%, transparent 60%),
+      var(--overlay-strong);
+  }
+
+  // Cause overrides — neutralise the radial tint (info dominante).
+  &--cause-disconnect { background: var(--pvp-result-disconnect-tint); }
+  &--cause-timeout    { background: var(--pvp-result-timeout-tint); }
+
+  &__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    font-weight: var(--weight-black);
+    letter-spacing: 0.15em;
+    margin: 0;
+    text-transform: uppercase;
+    animation: ds-result-title-slam var(--transition-slow) var(--ease-bounce) 100ms both;
+
+    .result-overlay--victory & { color: var(--success); }
+    .result-overlay--defeat &  { color: var(--danger-strong); }
+    .result-overlay--draw &    { color: var(--warning); }
+
+    // Disconnect / timeout — neutral text, no celebratory colour.
+    .result-overlay--cause-disconnect & { color: var(--text-primary); }
+  }
+
+  &__reason {
+    font-size: var(--text-md);
+    color: var(--text-secondary);
+    margin: 0;
+    text-align: center;
+    max-width: 600px;
+    animation: ds-result-reason-rise var(--transition-normal) var(--ease-out) 350ms both;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+
+    > *:nth-child(1) { animation: ds-result-btn-fade var(--transition-normal) var(--ease-out) 500ms both; }
+    > *:nth-child(2) { animation: ds-result-btn-fade var(--transition-normal) var(--ease-out) 580ms both; }
+  }
 }
 
-@keyframes result-title-slam {
-  from { opacity: 0; transform: scale(2); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@keyframes result-reason-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes result-btn-fade {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+// Rematch invited — surcharge légère du partial .btn--primary.
+.btn.btn--primary.is-invited {
+  background: var(--pvp-rematch-invited-gradient);
+  border-color: var(--success);
+  animation: ds-rematch-invited-pulse 1.5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .result-overlay {
     animation: none;
-
-    &__title   { animation: none; }
-    &__reason  { animation: none; }
-    &__actions > * { animation: none; }
+    &__title, &__reason, &__actions > * { animation: none; }
   }
+  .btn.btn--primary.is-invited { animation: none; }
 }
 
 // === Narrow viewport adjustments ===
@@ -256,8 +256,7 @@
     font-size: clamp(1.8rem, 8vw, 3rem);
   }
 
-  .result-overlay__rematch,
-  .result-overlay__leave {
-    min-width: clamp(140px, 50vw, 180px);
+  .result-overlay__actions .btn {
+    min-width: clamp(140px, 40vw, 180px);
   }
 }

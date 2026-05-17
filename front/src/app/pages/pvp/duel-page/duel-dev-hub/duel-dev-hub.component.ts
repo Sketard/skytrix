@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { DuelDevStateService } from './duel-dev-state.service';
 import { DuelDevHubBoardTabComponent } from './duel-dev-hub-board-tab.component';
+import { DuelDevHubEndFlowTabComponent } from './duel-dev-hub-end-flow-tab.component';
 
 type DevHubTab = 'board' | 'prompts' | 'end-flow';
 
@@ -22,7 +23,7 @@ type DevHubTab = 'board' | 'prompts' | 'end-flow';
   styleUrl: './duel-dev-hub.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DuelDevHubBoardTabComponent],
+  imports: [DuelDevHubBoardTabComponent, DuelDevHubEndFlowTabComponent],
 })
 export class DuelDevHubComponent {
   protected readonly devState = inject(DuelDevStateService);

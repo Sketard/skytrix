@@ -454,8 +454,8 @@
       </app-system-overlay>
     }
 
-    <!-- Story 3.4 — Duel Result Overlay -->
-    @if (resultOutcome(); as result) {
+    <!-- Story 3.4 — Duel Result Overlay (Wave 3 refresh) -->
+    @if (effectiveResultOutcome(); as result) {
       <div class="result-overlay"
            [class.result-overlay--victory]="result.outcome === 'victory'"
            [class.result-overlay--defeat]="result.outcome === 'defeat'"
@@ -463,33 +463,26 @@
            [class.result-overlay--cause-disconnect]="result.cause === 'disconnect' || result.cause === 'draw_both_disconnect'"
            [class.result-overlay--cause-timeout]="result.cause === 'timeout' || result.cause === 'inactivity'"
            role="status" aria-live="assertive">
-        <div class="result-overlay__content">
-          <h1 class="result-overlay__title">
-            @switch (result.outcome) {
-              @case ('victory') { {{ 'duel.result.victory' | translate }} }
-              @case ('defeat') { {{ 'duel.result.defeat' | translate }} }
-              @case ('draw') { {{ 'duel.result.draw' | translate }} }
-            }
-          </h1>
-          <p class="result-overlay__reason">{{ result.reason }}</p>
+        <h1 class="result-overlay__title">
+          @switch (result.outcome) {
+            @case ('victory') { {{ 'duel.result.victory' | translate }} }
+            @case ('defeat')  { {{ 'duel.result.defeat'  | translate }} }
+            @case ('draw')    { {{ 'duel.result.draw'    | translate }} }
+          }
+        </h1>
+        <p class="result-overlay__reason">{{ result.reason }}</p>
 
-          <div class="result-overlay__actions">
-            <button class="result-overlay__rematch"
-                    [class.result-overlay__rematch--invited]="wsService.rematchState() === 'invited'"
-                    [disabled]="rematchDisabled()"
-                    (click)="onRematchClick()">
-              {{ rematchButtonLabel() }}
-            </button>
-            <button mat-stroked-button
-                    class="result-overlay__leave"
-                    (click)="backToLobby()">
-              {{ 'duel.leaveRoom' | translate }}
-            </button>
-            <button class="result-overlay__deck-link"
-                    (click)="backToDeck()">
-              {{ 'duel.result.backToDeck' | translate }}
-            </button>
-          </div>
+        <div class="result-overlay__actions">
+          <!-- Leave first (DOM tab order) + autofocused — anti-mistap. -->
+          <button class="btn btn--ghost btn--lg" type="button" autofocus (click)="backToLobby()">
+            {{ 'duel.leaveRoom' | translate }}
+          </button>
+          <button class="btn btn--primary btn--lg" type="button"
+                  [class.is-invited]="effectiveRematchState() === 'invited'"
+                  [disabled]="rematchDisabled()"
+                  (click)="onRematchClick()">
+            {{ rematchButtonLabel() }}
+          </button>
         </div>
       </div>
     }
@@ -538,13 +531,26 @@
     <app-pvp-board-skeleton />
   }
 
-  <!-- Story 3.1 — Surrender Confirmation Dialog Template -->
+  <!-- Story 3.1 — Surrender Confirmation Dialog Template (Wave 3 refresh) -->
   <ng-template #surrenderDialog>
-    <h2 mat-dialog-title>{{ 'duel.surrender.title' | translate }}</h2>
-    <mat-dialog-content>{{ 'duel.surrender.warning' | translate }}</mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-stroked-button [mat-dialog-close]="false">{{ 'common.cancel' | translate }}</button>
-      <button mat-flat-button [mat-dialog-close]="true">{{ 'duel.surrender.confirm' | translate }}</button>
-    </mat-dialog-actions>
+    <div class="surrender-dialog" role="alertdialog"
+         aria-labelledby="surrender-title"
+         aria-describedby="surrender-desc">
+      <h2 id="surrender-title" class="surrender-dialog__title">
+        {{ 'duel.surrender.title' | translate }}
+      </h2>
+      <p id="surrender-desc" class="surrender-dialog__desc">
+        {{ 'duel.surrender.warning' | translate }}
+      </p>
+      <div class="surrender-dialog__actions">
+        <!-- Surrender first in DOM (tab order); Cancel autofocused (anti-mistap). -->
+        <button class="btn btn--danger btn--md" type="button" [mat-dialog-close]="true">
+          {{ 'duel.surrender.confirm' | translate }}
+        </button>
+        <button class="btn btn--primary btn--md" type="button" autofocus [mat-dialog-close]="false">
+          {{ 'common.cancel' | translate }}
+        </button>
+      </div>
+    </div>
   </ng-template>
 </div>

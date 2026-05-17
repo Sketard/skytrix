@@ -235,7 +235,6 @@
       "victory": "VICTORY",
       "defeat": "DEFEAT",
       "draw": "DRAW",
-      "backToDeck": "Back to Deck",
       "startingNew": "Starting new duel..."
     },
     "surrender": {

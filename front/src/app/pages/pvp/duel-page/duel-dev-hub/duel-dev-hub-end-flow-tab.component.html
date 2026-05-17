@@ -1,0 +1,43 @@
+<!-- Category I — Result overlay fixtures -->
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">
+    Result overlay
+    @if (devState.forcedResultOutcome() != null) {
+      <button type="button" class="dev-hub-clear" (click)="clearResult()" title="Hide overlay">×</button>
+    }
+  </h4>
+  <div class="dev-hub-fixture-list">
+    @for (f of fixtures; track f.key) {
+      <button type="button"
+              class="dev-hub-radio dev-hub-radio--full"
+              [class.dev-hub-radio--active]="activeFixtureKey() === f.key"
+              (click)="setResult(f.key)">
+        {{ f.label }}
+      </button>
+    }
+  </div>
+</section>
+
+<!-- Category J — Rematch state -->
+<section class="dev-hub-category" [class.dev-hub-category--disabled]="devState.forcedResultOutcome() == null">
+  <h4 class="dev-hub-category__title">
+    Rematch state
+    @if (devState.forcedRematchState() != null) {
+      <button type="button" class="dev-hub-clear" (click)="setRematchState(null)" title="Reset">×</button>
+    }
+  </h4>
+  <div class="dev-hub-fixture-list">
+    @for (state of rematchStates; track state) {
+      <button type="button"
+              class="dev-hub-radio dev-hub-radio--full"
+              [class.dev-hub-radio--active]="devState.forcedRematchState() === state"
+              [disabled]="devState.forcedResultOutcome() == null ? '' : null"
+              (click)="setRematchState(state)">
+        {{ state }}
+      </button>
+    }
+  </div>
+  @if (devState.forcedResultOutcome() == null) {
+    <p class="dev-hub-category__hint">Active a result fixture first</p>
+  }
+</section>
