@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal, untracked } from '@angular/core';
-import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { TranslateService } from '@ngx-translate/core';
 import { Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg } from '../../duel-ws.types';
 import { BATTLE_ACTION, IDLE_ACTION } from '../idle-action-codes';
@@ -33,7 +32,6 @@ const PHASE_ABBR: Record<Phase, string> = {
 export class PvpPhaseBadgeComponent {
   private readonly el = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly translate = inject(TranslateService);
 
   readonly phase = input.required<Phase>();
@@ -104,7 +102,9 @@ export class PvpPhaseBadgeComponent {
   selectTransition(transition: PhaseTransition): void {
     this.phaseAction.emit({ action: transition.actionCode, index: null });
     this.closeMenu();
-    this.liveAnnouncer.announce(`Phase: ${transition.label}`);
+    // Wave 3 §7.2.d : announce delegated to PhaseAnnouncementService. The
+    // service fires on the WS-driven phase change (which is the source of
+    // truth) instead of double-announcing on click.
   }
 
   onMenuKeydown(event: KeyboardEvent): void {

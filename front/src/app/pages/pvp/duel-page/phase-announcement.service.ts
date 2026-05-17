@@ -11,20 +11,24 @@ export interface PhaseAnnouncement {
   turnCount: number;
 }
 
-const PHASE_DISPLAY: Record<string, string> = {
-  DRAW: 'Draw Phase',
-  STANDBY: 'Standby Phase',
-  MAIN1: 'Main Phase 1',
-  BATTLE_START: 'Battle Phase',
-  BATTLE_STEP: 'Battle Step',
-  DAMAGE: 'Damage Step',
-  DAMAGE_CALC: 'Damage Calculation',
-  BATTLE: 'Battle',
-  MAIN2: 'Main Phase 2',
-  END: 'End Phase',
-};
-
 const PHASE_ANNOUNCE_DURATION = 2000;
+
+/**
+ * Phases that ARE worth announcing visually + vocally:
+ *  - MAIN1     : first phase of a new turn (turn-swap signal)
+ *  - BATTLE_START : entry into Battle Phase (big tactical signal)
+ *  - MAIN2     : back from BP (re-summon opportunities)
+ *  - END       : explicit turn end
+ *
+ * Phases silently skipped: DRAW, STANDBY, BATTLE_STEP, DAMAGE, DAMAGE_CALC,
+ * BATTLE. They stay visible in the phase-pill central indicator but no
+ * overlay/vocal announce — cuts the cognitive noise on the active player.
+ *
+ * Source: duel-board-enrichment-spec §7.2.b (Sally 2026-05-17).
+ */
+const MAJOR_PHASES: ReadonlySet<Phase> = new Set([
+  'MAIN1', 'BATTLE_START', 'MAIN2', 'END',
+]);
 
 @Injectable()
 export class PhaseAnnouncementService implements OnDestroy {
@@ -46,11 +50,17 @@ export class PhaseAnnouncementService implements OnDestroy {
     this.translate = translate;
   }
 
+  /** i18n phase label (FR/EN). Falls back to the raw phase token if no key. */
   phaseDisplayName(phase: string): string {
-    return PHASE_DISPLAY[phase] ?? phase;
+    const key = `duel.phase.full.${phase}`;
+    const translated = this.translate.instant(key);
+    // ngx-translate returns the key itself when no translation exists.
+    return translated === key ? phase : translated;
   }
 
   show(label: string, isOpponent: boolean, phase: Phase, turnPlayer: Player, turnCount: number): void {
+    // Filter major phases only — silent skip otherwise (cf MAJOR_PHASES doc).
+    if (!MAJOR_PHASES.has(phase)) return;
     this.queue.push({ label, isOpponent, phase, turnPlayer, turnCount });
     if (!this.timer) {
       this.drain();

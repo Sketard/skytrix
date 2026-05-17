@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
+import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 
 export interface LpAnimData {
   player: number;
@@ -26,7 +27,13 @@ export class PvpLpBadgeComponent {
   readonly flashType = signal<'damage' | 'recover' | null>(null);
   private rafId: number | null = null;
 
+  /** Dev hub override — `forcedLowLp = true` forces the player badge into
+   *  danger state regardless of the actual LP value. Production-safe: the
+   *  forced signal is no-op in prod (cf `DuelDevStateService._signal`). */
+  private readonly devState = inject(DuelDevStateService);
+
   readonly isDanger = computed(() => {
+    if (this.side() === 'player' && this.devState.forcedLowLp() === true) return true;
     const displayed = this._displayedLp();
     const value = displayed ?? this.lp();
     return value <= 2000;

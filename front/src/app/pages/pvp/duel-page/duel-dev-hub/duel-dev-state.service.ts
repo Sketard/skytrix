@@ -4,6 +4,7 @@
 // duel-end-flow-spec-2026-05-17 §8.
 
 import { Injectable, isDevMode, signal, Signal, WritableSignal } from '@angular/core';
+import { Phase } from '../../duel-ws.types';
 import { Prompt } from '../../types';
 
 export type DevResultOutcome = {
@@ -24,6 +25,10 @@ export class DuelDevStateService {
   readonly forcedOpponentDisconnected = this._signal<boolean | null>(null);
   readonly forcedLowLp = this._signal<boolean | null>(null);
   readonly forcedReadOnly = this._signal<boolean | null>(null);
+  /** Wave 3 Sprint 3 extension — Cat E force phase. Overrides displayedPhase
+   *  passed to the phase-pill. The Board tab also triggers a phase announcement
+   *  manually when set. */
+  readonly forcedPhase = this._signal<Phase | null>(null);
 
   // ─── Onglet Prompts (prompts refresh spec §9) ────────────────
   readonly forcedPrompt = this._signal<Prompt | null>(null);
@@ -43,6 +48,7 @@ export class DuelDevStateService {
     this.forcedOpponentDisconnected.set(null);
     this.forcedLowLp.set(null);
     this.forcedReadOnly.set(null);
+    this.forcedPhase.set(null);
     this.forcedPrompt.set(null);
     this.forcedResultOutcome.set(null);
     this.forcedRematchState.set(null);

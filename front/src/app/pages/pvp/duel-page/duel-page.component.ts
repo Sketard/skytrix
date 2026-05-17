@@ -299,6 +299,12 @@ export class DuelPageComponent implements OnInit {
     )
   );
 
+  /** Effective displayed phase — merges the phase-announcement service signal
+   *  with the dev hub `forcedPhase` override. Prod-safe via `_signal()` no-op. */
+  readonly effectiveDisplayedPhase = computed(() =>
+    this.devState.override(this.devState.forcedPhase, () => this.phaseService.displayedPhase())
+  );
+
   // Server-driven: true when opponent has a pending prompt
   readonly waitingForOpponent = this.wsService.waitingForOpponent;
 

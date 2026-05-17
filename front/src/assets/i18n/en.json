@@ -290,7 +290,19 @@
       "turn": "Turn {{n}}",
       "battlePhase": "Battle Phase",
       "endTurn": "End Turn",
-      "mainPhase2": "Main Phase 2"
+      "mainPhase2": "Main Phase 2",
+      "full": {
+        "DRAW": "Draw Phase",
+        "STANDBY": "Standby Phase",
+        "MAIN1": "Main Phase 1",
+        "BATTLE_START": "Battle Phase",
+        "BATTLE_STEP": "Battle Step",
+        "DAMAGE": "Damage Step",
+        "DAMAGE_CALC": "Damage Calculation",
+        "BATTLE": "Battle",
+        "MAIN2": "Main Phase 2",
+        "END": "End Phase"
+      }
     },
     "prompt": {
       "revealedCards": "Revealed cards",

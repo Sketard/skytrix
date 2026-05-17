@@ -290,7 +290,19 @@
       "turn": "Tour {{n}}",
       "battlePhase": "Phase de combat",
       "endTurn": "Fin du tour",
-      "mainPhase2": "Main Phase 2"
+      "mainPhase2": "Main Phase 2",
+      "full": {
+        "DRAW": "Phase de pioche",
+        "STANDBY": "Phase de standby",
+        "MAIN1": "Main Phase 1",
+        "BATTLE_START": "Phase de combat",
+        "BATTLE_STEP": "Étape de combat",
+        "DAMAGE": "Étape de dégâts",
+        "DAMAGE_CALC": "Calcul des dégâts",
+        "BATTLE": "Combat",
+        "MAIN2": "Main Phase 2",
+        "END": "Fin de tour"
+      }
     },
     "prompt": {
       "revealedCards": "Cartes révélées",

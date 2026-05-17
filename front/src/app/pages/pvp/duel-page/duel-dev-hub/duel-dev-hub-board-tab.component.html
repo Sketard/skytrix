@@ -91,5 +91,36 @@
       </span>
       Replay mode (read-only)
     </button>
+    <button type="button"
+            class="dev-hub-toggle"
+            [class.dev-hub-toggle--on]="devState.forcedLowLp() === true"
+            (click)="toggleLowLp()">
+      <span class="dev-hub-toggle__box" aria-hidden="true">
+        {{ devState.forcedLowLp() === true ? '✓' : '' }}
+      </span>
+      LP &lt; 1000 (danger)
+    </button>
+  </div>
+</section>
+
+<!-- Category E — Force phase -->
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">
+    Phase
+    @if (devState.forcedPhase() != null) {
+      <button type="button" class="dev-hub-clear" (click)="clearPhase()" title="Reset (utiliser la phase réelle)">×</button>
+    }
+  </h4>
+  <div class="dev-hub-category__radios dev-hub-category__radios--six" role="radiogroup" aria-label="Force phase">
+    @for (p of phasePresets; track p.key) {
+      <button type="button"
+              class="dev-hub-radio"
+              [class.dev-hub-radio--active]="devState.forcedPhase() === p.key"
+              [attr.aria-checked]="devState.forcedPhase() === p.key"
+              role="radio"
+              (click)="setPhase(p.key)">
+        {{ p.label }}
+      </button>
+    }
   </div>
 </section>

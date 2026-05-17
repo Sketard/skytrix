@@ -252,7 +252,7 @@
                                [animatingLp]="animatingLpPlayer()"
                                [activeChainLinks]="wsService.activeChainLinks()"
                                [chainPhase]="wsService.chainPhase()"
-                               [displayedPhase]="phaseService.displayedPhase()"
+                               [displayedPhase]="effectiveDisplayedPhase()"
                                [displayedTurnPlayer]="phaseService.displayedTurnPlayer()"
                                [displayedTurnCount]="phaseService.displayedTurnCount()"
                                (zoneSelected)="onZoneSelected($event)"

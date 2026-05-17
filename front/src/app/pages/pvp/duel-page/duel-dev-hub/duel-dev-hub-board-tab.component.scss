@@ -44,6 +44,10 @@
   &--pair {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  &--six {
+    grid-template-columns: repeat(6, 1fr);
+  }
 }
 
 .dev-hub-radio {
