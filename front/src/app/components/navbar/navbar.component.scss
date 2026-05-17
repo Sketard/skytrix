@@ -202,7 +202,7 @@
   border: 1px solid var(--border-soft);
   background: transparent;
   color: var(--text-secondary);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   border-radius: var(--radius-md);
@@ -269,7 +269,7 @@
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   cursor: pointer;
@@ -454,7 +454,7 @@
   position: fixed;
   inset: 0;
   z-index: z.$z-drawer-backdrop;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--scrim);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
