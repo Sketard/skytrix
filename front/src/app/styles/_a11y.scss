@@ -37,10 +37,9 @@
 // lets users opt in even when their OS doesn't expose the preference (Windows
 // without high-contrast mode, etc.).
 //
-// NOTE — the `@include respect-reduced-motion` mixin below only listens to the
-// media query, not the body class. Components that read it for richer fallbacks
-// (e.g. opacity:1 instead of 0.01ms) won't honour the manual override yet —
-// good enough for the global fade/transition kill which covers 95% of cases.
+// The `@include respect-reduced-motion` mixin below covers BOTH paths too
+// (media query + body class), so component-level custom fallbacks honour the
+// user toggle just like the global 0.01ms kill.
 @mixin reduced-motion-rules {
   *,
   *::before,
@@ -68,8 +67,18 @@ body.reduced-motion-forced {
 // --- Mixin escape-hatch -----------------------------------------------------
 // Rare cas où un composant veut un fallback custom au reduced-motion (ex.
 // passer une animation à `opacity: 1` direct plutôt qu'au 0.01ms global).
+// Couvre les 2 chemins :
+//   - `@media (prefers-reduced-motion: reduce)` — OS-level preference
+//   - `:host-context(body.reduced-motion-forced)` — manual user toggle via
+//     the Preferences page (`ReducedMotionService`). `:host-context()`
+//     pierces Angular ViewEncapsulation so the body class reaches the
+//     scoped selectors emitted by `[_ngcontent-*]`.
 @mixin respect-reduced-motion {
   @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+
+  :host-context(body.reduced-motion-forced) & {
     @content;
   }
 }

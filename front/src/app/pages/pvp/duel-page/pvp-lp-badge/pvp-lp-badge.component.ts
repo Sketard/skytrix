@@ -28,15 +28,21 @@ export class PvpLpBadgeComponent {
   private rafId: number | null = null;
 
   /** Dev hub override — `forcedLowLp = true` forces the player badge into
-   *  danger state regardless of the actual LP value. Production-safe: the
-   *  forced signal is no-op in prod (cf `DuelDevStateService._signal`). */
+   *  danger state regardless of the actual LP value. Production-safe via the
+   *  canonical `override()` helper (the forced signal is no-op in prod
+   *  through `DuelDevStateService._signal`). */
   private readonly devState = inject(DuelDevStateService);
 
   readonly isDanger = computed(() => {
-    if (this.side() === 'player' && this.devState.forcedLowLp() === true) return true;
-    const displayed = this._displayedLp();
-    const value = displayed ?? this.lp();
-    return value <= 2000;
+    // Opp side never honours the dev override — pass through the real value.
+    if (this.side() !== 'player') {
+      const value = this._displayedLp() ?? this.lp();
+      return value <= 2000;
+    }
+    return this.devState.override(this.devState.forcedLowLp, () => {
+      const value = this._displayedLp() ?? this.lp();
+      return value <= 2000;
+    });
   });
 
   readonly formattedLp = computed(() => {

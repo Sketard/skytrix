@@ -39,10 +39,16 @@ export class DuelDevHubComponent {
 
   @HostListener('document:keydown', ['$event'])
   protected onKeydown(event: KeyboardEvent): void {
-    if (event.ctrlKey && event.shiftKey && (event.key === 'D' || event.key === 'd')) {
-      event.preventDefault();
-      this.visible.update(v => !v);
+    if (!(event.ctrlKey && event.shiftKey && (event.key === 'D' || event.key === 'd'))) return;
+    // Don't steal the shortcut while the user is typing in a form field
+    // (Ctrl+Shift+D is the browser default for "bookmark all tabs" — we
+    // override only when no form focus is active).
+    const target = event.target as HTMLElement | null;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return;
     }
+    event.preventDefault();
+    this.visible.update(v => !v);
   }
 
   protected setTab(tab: DevHubTab): void {

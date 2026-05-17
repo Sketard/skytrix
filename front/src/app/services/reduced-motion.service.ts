@@ -16,12 +16,20 @@ export class ReducedMotionService {
   readonly forced = signal<boolean>(this.loadFromStorage());
 
   constructor() {
-    effect(() => {
-      const on = this.forced();
-      const body = typeof document !== 'undefined' ? document.body : null;
-      if (!body) return;
-      body.classList.toggle(BODY_CLASS, on);
-    });
+    // Apply the body class SYNCHRONOUSLY in the constructor — the `effect()`
+    // below tracks subsequent changes, but it won't fire until after Angular
+    // bootstrap. Without this sync apply, a user with `forced=true` would
+    // briefly see animations play on the first paint before the effect
+    // catches up.
+    this.applyClass(this.forced());
+
+    effect(() => this.applyClass(this.forced()));
+  }
+
+  private applyClass(on: boolean): void {
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (!body) return;
+    body.classList.toggle(BODY_CLASS, on);
   }
 
   set(value: boolean): void {
