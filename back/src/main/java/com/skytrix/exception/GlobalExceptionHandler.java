@@ -2,6 +2,7 @@ package com.skytrix.exception;
 
 import java.util.Map;
 
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.server.ResponseStatusException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +57,20 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException ex) {
 		log.warn("[400] Validation failed: {}", ex.getMessage());
 		return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid request");
+	}
+
+	/**
+	 * Client disconnected mid-response (SSE keep-alive ping, broadcast flush,
+	 * or any async write after the socket was abandoned). The response is
+	 * already committed, so we can't write a body — and trying to do so on
+	 * a text/event-stream response triggers a secondary
+	 * HttpMessageNotWritableException in the resolver. Log at DEBUG and
+	 * return no body.
+	 */
+	@ExceptionHandler({ AsyncRequestNotUsableException.class, ClientAbortException.class })
+	public ResponseEntity<Void> handleClientAbort(Exception ex) {
+		log.debug("Client disconnected mid-response: {}", ex.getMessage());
+		return ResponseEntity.noContent().build();
 	}
 
 	@ExceptionHandler(Exception.class)
