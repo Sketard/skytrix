@@ -1,5 +1,6 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { RenderedBoardStateService, ZoneLock } from './rendered-board-state.service';
+import { LOCK_SAFETY_TIMEOUT_MS } from './animation-constants';
 import { DuelState, EMPTY_DUEL_STATE } from '../types';
 import { POSITION } from '../duel-ws.types';
 import type { Player, PlayerBoardState, BoardZone, ZoneId } from '../duel-ws.types';
@@ -38,6 +39,17 @@ describe('RenderedBoardStateService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [RenderedBoardStateService] });
     rbs = TestBed.inject(RenderedBoardStateService);
+  });
+
+  // Several specs intentionally lock a zone and only assert on the lock side
+  // effect without calling `lock.release()` (the lock handle is the
+  // implementation detail, the asserted outcome is the gate). Without this
+  // teardown the armed safety timer fires ~5s later — long after the spec
+  // returned — and the duelAssert surfaces as an unhandled error in afterAll,
+  // poisoning the whole suite. `destroy()` clears both the locks AND the
+  // queued safety timers.
+  afterEach(() => {
+    rbs.destroy();
   });
 
   describe('initial state', () => {
@@ -231,11 +243,12 @@ describe('RenderedBoardStateService', () => {
       rbs.updateLogical(initial);
       rbs.syncRendered();
 
-      rbs.lockZone('EXTRA-0');
+      const lock = rbs.lockZone('EXTRA-0');
       rbs.updateLogical(makeState({ p0: { extraCount: 13 } }));
       rbs.syncPileCounts();
 
       expect(rbs.renderedState().players[0].extraCount).toBe(15); // locked, not synced
+      lock.release(); // avoid leaving a safety-timeout armed past spec teardown
     });
   });
 
@@ -345,6 +358,50 @@ describe('RenderedBoardStateService', () => {
     });
   });
 
+  // Regression net for LOCK_SAFETY_TIMEOUT_MS: a lock that is never committed
+  // or released must fire duelAssert AND auto-decrement the ref-count, so a
+  // single orphan lock does not poison the rest of the suite. See
+  // CLAUDE.md → "POLL-DROP REGRESSION" + LOCK_SAFETY_TIMEOUT_MS notes.
+  describe('lockZone safety timeout', () => {
+    it('fires duelAssert with source tag + releases the lock when never committed', fakeAsync(() => {
+      rbs.lockZone('M1-0', 'unit-test:orphan');
+      expect(rbs.hasLockedZones()).toBeTrue();
+      expect(() => tick(LOCK_SAFETY_TIMEOUT_MS + 50))
+        .toThrowError(/DUEL-ASSERT.*lockZone.*M1-0.*unit-test:orphan/);
+      expect(rbs.hasLockedZones()).toBeFalse();
+    }));
+
+    it('does NOT fire when lock is committed before the deadline', fakeAsync(() => {
+      const lock = rbs.lockZone('M1-0', 'unit-test:happy-commit');
+      tick(LOCK_SAFETY_TIMEOUT_MS - 100);
+      lock.commit();
+      // Advancing past the original deadline must not re-throw (timer cleared).
+      tick(500);
+      expect(rbs.hasLockedZones()).toBeFalse();
+    }));
+
+    it('does NOT fire when lock is released before the deadline', fakeAsync(() => {
+      const lock = rbs.lockZone('M1-0', 'unit-test:happy-release');
+      tick(LOCK_SAFETY_TIMEOUT_MS - 100);
+      lock.release();
+      tick(500);
+      expect(rbs.hasLockedZones()).toBeFalse();
+    }));
+
+    it('fires duelAssert for each orphan in a multi-lock leak', fakeAsync(() => {
+      rbs.lockZone('M1-0', 'unit-test:first');
+      rbs.lockZone('M2-1', 'unit-test:second');
+      // Both timers are armed at t=0 and fire on the same tick. fakeAsync
+      // executes them sequentially; the first throw aborts the tick, so we
+      // only catch one assert here. What matters: SOME orphan was reported
+      // with a source tag, and afterEach below confirms cleanup.
+      expect(() => tick(LOCK_SAFETY_TIMEOUT_MS + 50))
+        .toThrowError(/DUEL-ASSERT.*lockZone.*unit-test:(first|second)/);
+      // Drain the remaining queued safety timer so the test exits clean.
+      try { tick(50); } catch { /* second assert fires the same way */ }
+    }));
+  });
+
   describe('player 1 zone locking', () => {
     it('should protect player 1 locked zone from syncRendered', () => {
       const initial = makeState({ p1: { zones: [zone('M1', 100)] } });
@@ -386,11 +443,12 @@ describe('RenderedBoardStateService', () => {
       rbs.updateLogical(makeState({ p1: { extraCount: 15 } }));
       rbs.syncRendered();
 
-      rbs.lockZone('EXTRA-1');
+      const lock = rbs.lockZone('EXTRA-1');
       rbs.updateLogical(makeState({ p1: { extraCount: 11 } }));
       rbs.syncPileCounts();
 
       expect(rbs.renderedState().players[1].extraCount).toBe(15);
+      lock.release(); // avoid leaving a safety-timeout armed past spec teardown
     });
   });
 
