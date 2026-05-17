@@ -801,8 +801,17 @@
       "bottomSheet": {
         "options": {
           "title": "Options",
+          "mobileLabel": "Details",
+          "perspective": "Perspective",
           "copyLink": "Copy link to this moment",
-          "forkHint": "Better on a larger screen"
+          "forkHint": "Better on a larger screen",
+          "metaAnimations": "Visual effects during playback",
+          "metaDecisions": "Show duel prompts",
+          "metaPerspective": "{{name}} — tap to swap",
+          "metaCopyLink": "Turn {{turn}} · event {{event}}",
+          "metaCheatSheet": "For Bluetooth physical keyboard",
+          "stateOn": "On",
+          "stateOff": "Off"
         },
         "details": {
           "title": "Duel details",
@@ -812,7 +821,10 @@
           "duration": "Duration",
           "date": "Date",
           "events": "Events",
-          "summary": "{{duration}} · {{turns}} turns · {{events}} events"
+          "summary": "{{duration}} · {{turns}} turns · {{events}} events",
+          "victory": "Victory",
+          "defeat": "Defeat",
+          "draw": "Draw"
         }
       },
       "stepper": {
@@ -855,9 +867,11 @@
       "enableAnimations": "Enable animations",
       "disableAnimations": "Disable animations",
       "animShort": "Anim.",
+      "animations": "Animations",
       "showDecisions": "Enable decisions",
       "skipDecisions": "Disable decisions",
       "decisionsShort": "Decisions",
+      "decisions": "Decisions",
       "viewAsPlayer1": "Switch to P1 view",
       "viewAsPlayer2": "Switch to P2 view"
     },

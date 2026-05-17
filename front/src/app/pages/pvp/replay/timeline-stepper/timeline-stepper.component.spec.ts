@@ -36,12 +36,15 @@ describe('TimelineStepperComponent', () => {
     fixture.detectChanges();
   }
 
-  it('renders T{N} for non-setup turns and T0 for the setup turn', () => {
+  it('renders an affordance-only pill (icon + dots + chevron, no T-num/total redundant with transport context-pill)', () => {
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5), stubMeta(2, 6, 8)], 1, 8);
-    expect(el.querySelector('.timeline-stepper__pill-num')?.textContent?.trim()).toBe('T1');
-
-    bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5)], 0, 5);
-    expect(el.querySelector('.timeline-stepper__pill-num')?.textContent?.trim()).toBe('T0');
+    // The pill is a "tap to open picker" button — no more T-num/total text.
+    expect(el.querySelector('.timeline-stepper__pill-num')).toBeNull();
+    expect(el.querySelector('.timeline-stepper__pill-total')).toBeNull();
+    expect(el.querySelector('.timeline-stepper__pill-main')).toBeNull();
+    // Picker glyph + chevron are still wired as affordance.
+    expect(el.querySelector('.timeline-stepper__pill-icon')).not.toBeNull();
+    expect(el.querySelector('.timeline-stepper__chevron')).not.toBeNull();
   });
 
   it('disables prev on the first turn and next on the last computed turn', () => {

@@ -6,13 +6,15 @@ import type { TurnMeta } from '../../replay-ws.types';
 // Mobile-only stepper that replaces the desktop timeline-bar under `.is-narrow`
 // (D3 / D5 / spec §F2). Layout:
 //
-//   [◀]  [ T3 / 11 tours ▼ + dots ]  [▶]
+//   [◀]  [ grid_view  •••••••  ▼ ]  [▶]
 //
 // The center pill opens the turn picker (output `openPicker`). The chevrons
-// bind to `prevTurn` / `nextTurn`. The integrated 7-dot progress already
-// communicates position-in-turn — the previous standalone sub-events row
-// was visually redundant with the pill dots AND ate ~28px of vertical real
-// estate on already-cramped mobile portrait / landscape. Removed 2026-05-16.
+// bind to `prevTurn` / `nextTurn`. The integrated 7-dot progress communicates
+// position-in-turn — the previous standalone sub-events row was visually
+// redundant with the pill dots (dropped 2026-05-16). The T-number/total text
+// was also dropped from the pill (Axel 2026-05-16) — the transport-bar
+// context-pill already announces the turn directly below, so the stepper pill
+// is now an affordance-only button (icon + dots + chevron) for picker opening.
 // Sub-event-level navigation stays available via the turn picker bottom-sheet.
 //
 // All visuals come from DS Wave 1 (`.icon-btn`, `.pill--gold`, `.text-eyebrow`)
@@ -40,20 +42,12 @@ export class TimelineStepperComponent {
 
   protected readonly currentTurn = computed<TurnMeta | null>(() => this.turns()[this.currentTurnIndex()] ?? null);
 
-  protected readonly totalTurns = computed(() => this.turns().length);
-
   protected readonly canStepPrev = computed(() => this.currentTurnIndex() > 0);
   protected readonly canStepNext = computed(() => {
     const next = this.currentTurnIndex() + 1;
     const t = this.turns()[next];
     if (!t) return false;
     return t.startIndex <= this.computedUpToIndex();
-  });
-
-  protected readonly turnLabel = computed(() => {
-    const t = this.currentTurn();
-    if (!t) return '';
-    return t.turnNumber === 0 ? 'T0' : `T${t.turnNumber}`;
   });
 
   // 7-dot progress bar — fills left-to-right as the user advances inside the

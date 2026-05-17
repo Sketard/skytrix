@@ -8,15 +8,17 @@
     <mat-icon>chevron_left</mat-icon>
   </button>
 
+  <!-- Picker affordance — pill is a "tap to open turn picker" button. The turn
+       label (`T3 / 11`) lives in the transport-bar context-pill directly below,
+       so repeating it here was redundant (Axel 2026-05-16). The dot-progress
+       gives an at-a-glance position-in-turn visualisation that the transport
+       pill doesn't cover; the chevron is the discoverability hint. -->
   <button
     type="button"
     class="timeline-stepper__pill"
     [attr.aria-label]="'replay.viewer.stepper.openPicker' | translate"
     (click)="onPickerOpen()">
-    <span class="timeline-stepper__pill-main">
-      <span class="timeline-stepper__pill-num">{{ turnLabel() }}</span>
-      <span class="text-eyebrow timeline-stepper__pill-total">/ {{ totalTurns() }}</span>
-    </span>
+    <mat-icon aria-hidden="true" class="timeline-stepper__pill-icon">grid_view</mat-icon>
     <span class="timeline-stepper__dots" aria-hidden="true">
       @for (active of dotState(); track $index) {
         <span class="timeline-stepper__dot" [class.is-active]="active"></span>

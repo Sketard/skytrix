@@ -113,11 +113,17 @@
   }
 }
 
-// Hover variant — desktop timeline popover. 1 instance, info-rich layout:
-// adds an SZONE row per side and a footer with LP / phase / turn / pile
-// counts. The grid template grows to 6 field-area rows + a footer auto row.
+// Hover variant — info-rich layout: adds an SZONE row per side and a footer
+// with LP / phase / turn / pile counts. The grid template grows to 6 field-area
+// rows + a footer auto row.
+//
+// Width is fluid (`100%`) so the variant works both inside a 3-col mobile grid
+// (turn-picker cards) and inside a wider container. Consumers that need a
+// fixed width wrap the component in a sized parent. The aspect-ratio is
+// dropped: the 6-row layout doesn't fit a 16:9 box without crushing the spells.
 .mini-board--hover {
-  width: 320px;
+  width: 100%;
+  aspect-ratio: auto;
   grid-template-rows: auto auto 1fr 1fr auto auto auto;
   gap: 3px;
   padding: 8px 10px 6px;

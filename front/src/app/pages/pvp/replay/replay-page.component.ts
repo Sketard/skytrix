@@ -3,7 +3,9 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 
 import { ReplayConnectionService } from './replay-connection.service';
 import { ReplayForkService } from './replay-fork.service';
@@ -18,6 +20,7 @@ import { ReplayLoadingSkeletonComponent } from './loading-skeleton/replay-loadin
 import { ReplayEndOverlayComponent } from './end-overlay/replay-end-overlay.component';
 import { ReplayCheatSheetComponent } from './cheat-sheet/replay-cheat-sheet.component';
 import { ReplayBottomSheetComponent } from './bottom-sheet/replay-bottom-sheet.component';
+import { SubEventPickerSheetComponent } from './sub-event-picker-sheet/sub-event-picker-sheet.component';
 import { BoardSwipeNavigatorDirective } from './board-swipe-navigator.directive';
 import { deriveOutcome, type ReplayOutcome } from './replay-outcome.util';
 import type { ReplayMetadataMsg } from '../duel-ws-replay.types';
@@ -25,6 +28,7 @@ import { AuthService } from '../../../services/auth.service';
 import { LoaderService } from '../../../services/loader.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { OrientationLockComponent } from '../../../shared/orientation-lock/orientation-lock.component';
+import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import type { DuelState } from '../types';
@@ -89,9 +93,11 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     OrientationLockComponent,
     ReplayTopbarComponent, ReplayLoadingSkeletonComponent,
     ReplayEndOverlayComponent, ReplayCheatSheetComponent, ReplayBottomSheetComponent,
-    TimelineStepperComponent, TurnPickerSheetComponent,
+    TimelineStepperComponent, TurnPickerSheetComponent, SubEventPickerSheetComponent,
     BoardSwipeNavigatorDirective,
     NgTemplateOutlet,
+    MatIconModule,
+    AvatarComponent,
     TranslateModule,
   ],
   host: {
@@ -105,6 +111,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private readonly notify = inject(NotificationService);
   private readonly authService = inject(AuthService);
   private readonly loaderService = inject(LoaderService);
+  private readonly navbarCollapse = inject(NavbarCollapseService);
   private readonly translate = inject(TranslateService);
   private readonly cardDataCache = inject(CardDataCacheService);
   private readonly cardInspection = inject(CardInspectionService);
@@ -154,6 +161,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly pickerOpen     = signal(false);
   readonly optionsOpen    = signal(false);
   readonly detailsOpen    = signal(false);
+  /** Sub-event picker (level-2 drill-down from the turn picker). Null when
+   *  closed; the turn index when open. Opening it closes the turn picker;
+   *  closing it via X/backdrop/Esc re-opens the turn picker so the user can
+   *  pick another turn. */
+  readonly subPickerTurnIndex = signal<number | null>(null);
   readonly copyJustSucceeded = signal(false);
   /** Swipe feedback (D6 mockup — board-area swipe-flash gold edge + hint banner).
    *  `swipeFlash` carries the active direction for ~250ms, `swipeHintVisible`
@@ -320,6 +332,53 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     || this.perspectiveIndex() !== 0,
   );
 
+  /** Self pseudo (perspective-aware) — used by the options sheet "perspective"
+   *  row meta and the details sheet self chip. */
+  readonly selfPseudo = computed<string>(() =>
+    this.replayConnection.metadata()?.playerUsernames[this.mySide()] ?? '',
+  );
+  readonly oppPseudo = computed<string>(() =>
+    this.replayConnection.metadata()?.playerUsernames[this.mySide() === 0 ? 1 : 0] ?? '',
+  );
+  readonly selfDeckName = computed<string>(() =>
+    this.replayConnection.metadata()?.deckNames[this.mySide()] ?? '',
+  );
+  readonly oppDeckName = computed<string>(() =>
+    this.replayConnection.metadata()?.deckNames[this.mySide() === 0 ? 1 : 0] ?? '',
+  );
+
+  /** Full-length duration label for the details sheet — `12 min 32 sec` form
+   *  vs. the topbar's compact `m:ss`. Returns null if no `durationSec` was
+   *  shipped (legacy replays). */
+  readonly durationFullLabel = computed<string | null>(() => {
+    const sec = this.replayConnection.metadata()?.durationSec;
+    if (!sec || sec <= 0) return null;
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m > 0 ? `${m} min ${s} sec` : `${s} sec`;
+  });
+
+  /** Current turn number (1-based, for human display) and event index — used by
+   *  the options sheet "copy link" row meta. */
+  readonly currentTurnNumber = computed<number>(() => {
+    const ts = this.turns();
+    const ti = this.currentTurnIndex();
+    return ts[ti]?.turnNumber ?? 0;
+  });
+
+  /** Outcome (victory/defeat/draw) — duplicated from end-overlay so the details
+   *  sheet can show a state pill on each player chip regardless of `atEnd()`. */
+  readonly currentOutcome = computed<ReplayOutcome>(() =>
+    deriveOutcome(this.replayConnection.metadata()?.result ?? null, this.mySide()),
+  );
+
+  /** Player usernames in absolute order (P1=0, P2=1) — passed to the turn picker
+   *  so each card chip can derive its initial without coupling to metadata. */
+  readonly pickerPlayerUsernames = computed<readonly [string, string]>(() => {
+    const names = this.replayConnection.metadata()?.playerUsernames;
+    return names ? [names[0] ?? '', names[1] ?? ''] : ['', ''];
+  });
+
   /** End-overlay view model — null while the replay isn't over OR metadata is
    *  missing. Mapping done via D19 `deriveOutcome`. */
   readonly endOverlayState = computed<{
@@ -348,7 +407,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
    *  consuming touches). */
   readonly swipeDisabled = computed<boolean>(() =>
     this.pickerOpen() || this.optionsOpen() || this.detailsOpen()
-    || this.cheatSheetOpen() || this.endOverlayState() != null,
+    || this.cheatSheetOpen() || this.subPickerTurnIndex() != null
+    || this.endOverlayState() != null,
   );
 
   readonly playerHand = computed<CardOnField[]>(() =>
@@ -548,6 +608,18 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Reclaim the full viewport for the viewer (same pattern as duel-page).
+    // Mobile landscape was scrolling because the global skytrix navbar (~48px)
+    // stacked on top of the viewer's 100dvh container, pushing the transport-
+    // bar past the bottom edge. `setFullscreenViewer(true)` additionally
+    // disables the global `mobile-mode` class on `<app-root>`, which was
+    // adding `padding-top: 48px` to `.dark-theme-content` for the legacy
+    // mobile-header — the viewer owns the entire dvh so it must not be
+    // offset. Hidden for the duration of the viewer; the topbar back-button
+    // + browser back gesture remain reachable.
+    this.navbarCollapse.setNavbarHidden(true);
+    this.navbarCollapse.setFullscreenViewer(true);
+
     const replayId = this.route.snapshot.paramMap.get('replayId');
     if (replayId) {
       this.duelLogger.setTraceId(replayId);
@@ -588,6 +660,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Restore the global skytrix navbar + mobile-mode chrome — pairs with the
+    // `setNavbarHidden(true)` + `setFullscreenViewer(true)` calls in ngOnInit.
+    this.navbarCollapse.setNavbarHidden(false);
+    this.navbarCollapse.setFullscreenViewer(false);
+
     if (this.narrowMql && this.narrowMqlHandler) {
       this.narrowMql.removeEventListener('change', this.narrowMqlHandler);
     }
@@ -667,6 +744,39 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   onOpenPicker(): void       { this.pickerOpen.set(true); }
   onClosePicker(): void      { this.pickerOpen.set(false); }
 
+  /** User tapped a turn card in the picker — drill down into level 2 (the
+   *  sub-event picker for that turn) instead of seeking directly. The turn
+   *  picker closes; the sub-event picker opens. Closing the sub-event picker
+   *  via X/backdrop re-opens the turn picker so the user can pick another. */
+  onPickerCardTap(turnIndex: number): void {
+    this.subPickerTurnIndex.set(turnIndex);
+    this.pickerOpen.set(false);
+  }
+
+  /** User tapped a sub-event card in the level-2 picker — this is the actual
+   *  seek. Close both sheets in one shot. */
+  onSubPickerCardTap(eventIndex: number): void {
+    this.subPickerTurnIndex.set(null);
+    this.pickerOpen.set(false);
+    this.onSeek(eventIndex);
+  }
+
+  /** Sub-event picker X / backdrop / Esc — close level 2 only and re-open the
+   *  turn picker so the user can pick a different turn. */
+  onCloseSubPicker(): void {
+    this.subPickerTurnIndex.set(null);
+    this.pickerOpen.set(true);
+  }
+
+  /** View-model for the level-2 sub-event picker — null when closed. */
+  readonly subPickerVm = computed<{ turn: TurnMeta; turnNumber: number } | null>(() => {
+    const idx = this.subPickerTurnIndex();
+    if (idx == null) return null;
+    const turn = this.turns()[idx];
+    if (!turn) return null;
+    return { turn, turnNumber: turn.turnNumber };
+  });
+
   onBackToHub(): void        { this.router.navigate(['/pvp/history']); }
   onEndOverlayReplay(): void { this.onSkipStart(); }
   /** Soft-dismiss the end overlay (Esc/← from inside the component). We pause
@@ -689,11 +799,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     if (turn.startIndex > this.computedUpTo()) return;
     this.abortAndClean();
     this.transport.seekToTurn(turnIndex, turns);
-  }
-
-  onSeekToTurnAndClose(turnIndex: number): void {
-    this.onSeekToTurn(turnIndex);
-    this.onClosePicker();
   }
 
   onSwipeLeft(): void {
@@ -754,12 +859,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
 
     // Esc closes any open overlay/sheet first — drops the duel keyboard map
-    // when the user is interacting with a modal.
+    // when the user is interacting with a modal. Nested-pop order: sub-event
+    // picker (level 2) > turn picker (level 1). Closing level 2 re-opens
+    // level 1 (via onCloseSubPicker), so a second Esc closes the turn picker.
     if (event.key === 'Escape') {
-      if (this.cheatSheetOpen()) { this.onCloseCheatSheet(); return; }
-      if (this.pickerOpen())     { this.onClosePicker(); return; }
-      if (this.optionsOpen())    { this.onCloseOptions(); return; }
-      if (this.detailsOpen())    { this.onCloseDetails(); return; }
+      if (this.cheatSheetOpen())            { this.onCloseCheatSheet(); return; }
+      if (this.subPickerTurnIndex() != null) { this.onCloseSubPicker(); return; }
+      if (this.pickerOpen())                { this.onClosePicker(); return; }
+      if (this.optionsOpen())               { this.onCloseOptions(); return; }
+      if (this.detailsOpen())               { this.onCloseDetails(); return; }
     }
 
     switch (event.key) {

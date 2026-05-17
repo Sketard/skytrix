@@ -1,0 +1,49 @@
+<div class="sub-event-picker__grid">
+  @for (entry of entries(); track entry.eventIndex) {
+    <button
+      type="button"
+      #subEventCard
+      [attr.data-event-index]="entry.eventIndex"
+      class="sub-event-picker__card surface-card surface-card--interactive"
+      [class.sub-event-picker__card--current]="entry.isCurrent"
+      [class.sub-event-picker__card--not-computed]="!entry.isComputed"
+      [disabled]="!entry.isComputed"
+      [attr.aria-current]="entry.isCurrent ? 'true' : null"
+      (click)="onCardClick(entry)">
+      <header class="sub-event-picker__card-header">
+        <span class="sub-event-picker__num">E{{ entry.eventOrdinal + 1 }}</span>
+      </header>
+      <div class="sub-event-picker__preview" aria-hidden="true">
+        <app-pvp-board-container
+          [preview]="true"
+          [readOnly]="true"
+          [duelState]="entry.state.boardState"
+          [ownPlayerIndex]="perspectiveIndex()"
+          [highlightedZones]="emptyZoneSet"
+          [revealedZoneKeys]="emptyStringSet"
+          [targetedZoneKeys]="emptyStringSet"
+          [preTargetZoneKeys]="emptyStringSet"
+          [swapGraveDeckKeys]="emptyStringSet"
+          [activeChainLinks]="emptyChainLinks"
+          [chosenZone]="null"
+          [actionablePrompt]="null"
+          [animatingZone]="null"
+          [animatingLp]="null"
+          [timerState]="null"
+          [opponentDisconnected]="false"
+          [displayedPhase]="null"
+          [displayedTurnPlayer]="null"
+          [displayedTurnCount]="null"
+          [counterPulseKey]="null"
+          [chainPhase]="'idle'" />
+      </div>
+      <footer class="sub-event-picker__card-footer">
+        @if (entry.state.label) {
+          <span class="sub-event-picker__label">{{ entry.state.label }}</span>
+        } @else {
+          <span class="sub-event-picker__label">&middot;</span>
+        }
+      </footer>
+    </button>
+  }
+</div>

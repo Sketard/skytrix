@@ -1,7 +1,9 @@
 @use '../../../../styles/responsive' as r;
 
-// Layout-only — visuals come from DS Wave 1 (.surface-card, .surface-card--interactive,
-// .section-header__title, .text-eyebrow) + `_mini-board.scss` (Viewer F0 partial).
+// Turn picker — mockup-fidèle (mockup §turn-picker ll. 861-968).
+// Visuals derived from DS tokens (`--gold*`, `--cyan*`, `--surface-overlay`).
+// Mini-board comes from `_mini-board.scss` partial (Viewer F0); rest is local.
+
 :host {
   display: flex;
   flex-direction: column;
@@ -12,8 +14,28 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin-top: var(--space-3);
+
+  &:first-child {
+    margin-top: 0;
+  }
 }
 
+// Gold eyebrow label — replaces the prior `section-header__title--no-bar`
+// usage (too generic) with a mockup-specific style. No accent-bar (the cards
+// underneath are the focal point); just a gold uppercase eyebrow.
+.turn-picker__section-title {
+  font: var(--weight-bold) var(--text-xs) / 1 var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0;
+  padding: 0 var(--space-1);
+}
+
+// 3-column grid — keep 3 cols even at narrow viewports (matches mockup).
+// The mini-board scales down naturally inside each card so 3 columns at 360px
+// width still give a usable thumbnail.
 .turn-picker__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -24,19 +46,40 @@
 .turn-picker__card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 6px;
   padding: var(--space-2);
   text-align: left;
   min-height: 44px;
   cursor: pointer;
   position: relative;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
 
-  // is-current — gold ring (uses .surface-card--accent-gold tokens? no, custom
-  // accent because the picker has its own emphasis pattern. Composed from tokens.)
-  &.turn-picker__card--current {
+  // Let the browser skip layout + paint for cards off the viewport. The
+  // intrinsic-size hint matches the typical card height (header + preview +
+  // footer ≈ 130px) so the scroll thumb stays stable as cards stream in.
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 130px;
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-08);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  &--current {
     border-color: var(--gold);
     background: var(--gold-soft-12);
-    box-shadow: 0 0 0 1px var(--gold-soft-40), 0 0 16px var(--gold-soft-25);
+    box-shadow:
+      0 0 0 1px var(--gold-soft-40),
+      0 0 16px var(--gold-soft-25);
 
     &::before {
       content: '';
@@ -52,7 +95,7 @@
     }
   }
 
-  &.turn-picker__card--not-computed {
+  &--not-computed {
     pointer-events: none;
     opacity: 0.55;
     background:
@@ -78,9 +121,75 @@
 }
 
 .turn-picker__num {
-  font: var(--weight-black) var(--text-sm) / var(--line-tight) var(--font-display);
+  font: var(--weight-black) var(--text-sm) / 1 var(--font-display);
   letter-spacing: 0.04em;
   color: var(--gold-50);
+}
+
+// Player chip — 18×18 circle with the turn player's initial. P1 = gold, P2 =
+// cyan (mockup parity). The `--` Setup variant inherits the gold-soft-12
+// background since no specific player is active.
+.turn-picker__player {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--weight-bold) 0.55rem / 1 var(--font-display);
+  color: var(--text-inverse);
+  flex-shrink: 0;
+  // Default (Setup): muted neutral; overridden by --p1/--p2 modifiers.
+  background: var(--surface-overlay);
+  color: var(--text-muted);
+  box-shadow: inset 0 0 0 1px var(--border-soft);
+
+  &--p1 {
+    background: linear-gradient(135deg, var(--gold-50), var(--gold-700));
+    color: var(--text-inverse);
+    box-shadow: inset 0 0 0 1px var(--gold-soft-40);
+  }
+
+  &--p2 {
+    background: linear-gradient(135deg, var(--cyan-300), var(--cyan-500));
+    color: var(--text-inverse);
+    box-shadow: inset 0 0 0 1px var(--cyan-soft-40);
+  }
+}
+
+// Preview wrapper — scales a real `<app-pvp-board-container>` (rendered at
+// its native 800×600 dimensions) down to fit the card width.
+//
+// Container queries (`container-type: inline-size`) give us a layout
+// containment block: the browser knows the board overflows and skips the
+// 800×600 layout reservation that would otherwise push the grid temporarily
+// before the transform applies (the "FOUC + giant preview" symptom reported
+// 2026-05-17). `100cqw` resolves to the wrapper's own inline-size, so
+// `scale(calc(100cqw / 800))` always fits the board to the card width — no
+// matter the viewport (3-cols mobile, 2-cols tablet, larger desktop).
+.turn-picker__preview {
+  container-type: inline-size;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: var(--radius-sm);
+  background:
+    radial-gradient(ellipse at center, var(--gold-soft-04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
+  border: 1px solid var(--gold-soft-25);
+  position: relative;
+
+  app-pvp-board-container {
+    display: block;
+    width: 800px;
+    height: 600px;
+    // `100cqw / 800` is dimensionless when `100cqw` is a px length, so the
+    // scale factor is always exactly the ratio "wrapper-width / 800px".
+    transform: scale(calc(100cqw / 800));
+    transform-origin: top left;
+    pointer-events: none;
+  }
 }
 
 .turn-picker__card-footer {
@@ -88,10 +197,35 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
+  font: var(--weight-semibold) var(--text-xs) / 1 var(--font-body);
+  color: var(--text-muted);
 }
 
+.turn-picker__events {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+
+  mat-icon {
+    // !important: override mat-icon's default 24px host bind to fit the footer.
+    font-size: 12px !important;
+    width: 12px !important;
+    height: 12px !important;
+  }
+}
+
+.turn-picker__card--current .turn-picker__events {
+  color: var(--gold-50);
+}
+
+// Narrow viewport: tighten the gap and trim padding so 3 cols stay readable.
 @include r.respond-below(r.$bp-pvp-narrow) {
   .turn-picker__grid {
-    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+
+  .turn-picker__card {
+    padding: 6px;
+    gap: 4px;
   }
 }

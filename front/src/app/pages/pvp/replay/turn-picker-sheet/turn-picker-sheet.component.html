@@ -1,6 +1,6 @@
 @if (setupEntries().length > 0) {
   <section class="turn-picker__section">
-    <h3 class="section-header__title section-header__title--no-bar">
+    <h3 class="turn-picker__section-title">
       {{ 'replay.viewer.picker.section.setup' | translate }}
     </h3>
     <div class="turn-picker__grid">
@@ -16,19 +16,47 @@
           [attr.aria-current]="entry.isCurrent ? 'true' : null"
           (click)="onCardClick(entry)">
           <header class="turn-picker__card-header">
-            <span class="turn-picker__num">T{{ entry.meta.turnNumber }}</span>
+            <span class="turn-picker__num">Setup</span>
+            <span
+              class="turn-picker__player"
+              [class.turn-picker__player--p1]="entry.turnPlayer === 0"
+              [class.turn-picker__player--p2]="entry.turnPlayer === 1"
+              aria-hidden="true">{{ entry.playerInitial }}</span>
           </header>
           @if (entry.state) {
-            <app-mini-board-thumbnail
-              variant="picker"
-              [state]="entry.state.boardState"
-              [perspectiveIndex]="perspectiveIndex()" />
+            <div class="turn-picker__preview" aria-hidden="true">
+              <app-pvp-board-container
+                [preview]="true"
+                [readOnly]="true"
+                [duelState]="entry.state.boardState"
+                [ownPlayerIndex]="perspectiveIndex()"
+                [highlightedZones]="emptyZoneSet"
+                [revealedZoneKeys]="emptyStringSet"
+                [targetedZoneKeys]="emptyStringSet"
+                [preTargetZoneKeys]="emptyStringSet"
+                [swapGraveDeckKeys]="emptyStringSet"
+                [activeChainLinks]="emptyChainLinks"
+                [chosenZone]="null"
+                [actionablePrompt]="null"
+                [animatingZone]="null"
+                [animatingLp]="null"
+                [timerState]="null"
+                [opponentDisconnected]="false"
+                [displayedPhase]="null"
+                [displayedTurnPlayer]="null"
+                [displayedTurnCount]="null"
+                [counterPulseKey]="null"
+                [chainPhase]="'idle'" />
+            </div>
           }
-          <footer class="turn-picker__card-footer text-eyebrow">
+          <footer class="turn-picker__card-footer">
             @if (!entry.isComputed) {
               <span>{{ 'replay.viewer.picker.notComputed' | translate }}</span>
             } @else {
-              <span>{{ entry.meta.eventCount }} evt</span>
+              <span class="turn-picker__events">
+                <mat-icon aria-hidden="true">bolt</mat-icon>
+                <span>{{ entry.meta.eventCount }}</span>
+              </span>
             }
           </footer>
         </button>
@@ -39,7 +67,7 @@
 
 @if (turnEntries().length > 0) {
   <section class="turn-picker__section">
-    <h3 class="section-header__title section-header__title--no-bar">
+    <h3 class="turn-picker__section-title">
       {{ 'replay.viewer.picker.section.turns' | translate }}
     </h3>
     <div class="turn-picker__grid">
@@ -56,18 +84,46 @@
           (click)="onCardClick(entry)">
           <header class="turn-picker__card-header">
             <span class="turn-picker__num">T{{ entry.meta.turnNumber }}</span>
+            <span
+              class="turn-picker__player"
+              [class.turn-picker__player--p1]="entry.turnPlayer === 0"
+              [class.turn-picker__player--p2]="entry.turnPlayer === 1"
+              aria-hidden="true">{{ entry.playerInitial }}</span>
           </header>
           @if (entry.state) {
-            <app-mini-board-thumbnail
-              variant="picker"
-              [state]="entry.state.boardState"
-              [perspectiveIndex]="perspectiveIndex()" />
+            <div class="turn-picker__preview" aria-hidden="true">
+              <app-pvp-board-container
+                [preview]="true"
+                [readOnly]="true"
+                [duelState]="entry.state.boardState"
+                [ownPlayerIndex]="perspectiveIndex()"
+                [highlightedZones]="emptyZoneSet"
+                [revealedZoneKeys]="emptyStringSet"
+                [targetedZoneKeys]="emptyStringSet"
+                [preTargetZoneKeys]="emptyStringSet"
+                [swapGraveDeckKeys]="emptyStringSet"
+                [activeChainLinks]="emptyChainLinks"
+                [chosenZone]="null"
+                [actionablePrompt]="null"
+                [animatingZone]="null"
+                [animatingLp]="null"
+                [timerState]="null"
+                [opponentDisconnected]="false"
+                [displayedPhase]="null"
+                [displayedTurnPlayer]="null"
+                [displayedTurnCount]="null"
+                [counterPulseKey]="null"
+                [chainPhase]="'idle'" />
+            </div>
           }
-          <footer class="turn-picker__card-footer text-eyebrow">
+          <footer class="turn-picker__card-footer">
             @if (!entry.isComputed) {
               <span>{{ 'replay.viewer.picker.notComputed' | translate }}</span>
             } @else {
-              <span>{{ entry.meta.eventCount }} evt</span>
+              <span class="turn-picker__events">
+                <mat-icon aria-hidden="true">bolt</mat-icon>
+                <span>{{ entry.meta.eventCount }}</span>
+              </span>
             }
           </footer>
         </button>

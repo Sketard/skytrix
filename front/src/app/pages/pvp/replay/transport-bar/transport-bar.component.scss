@@ -50,6 +50,42 @@
   justify-self: center;
 }
 
+// Step buttons (skip-start / step-back / step-forward / skip-end) — mockup
+// §transport-btn parity. The DS `.icon-btn` ghost default (transparent rest,
+// muted hover) is too discreet for the primary playback action row, so we
+// override locally on `.transport-bar__step` to give the buttons a framed
+// pill look with a gold hover lift. `icon-btn--lg` consumers elsewhere keep
+// their ghost default (see icon-btn--lg consumers audit 2026-05-17 — only
+// the transport-bar + timeline-stepper consume `--lg`, both want this look).
+.transport-bar__step {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    color: var(--gold);
+    background: var(--gold-soft-08);
+    border-color: var(--gold-soft-40);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.96);
+  }
+
+  &:disabled {
+    // The DS opacity is 0.4; mockup §transport-btn:disabled drops to 0.3
+    // for a more deliberate "no action available" cue.
+    opacity: 0.3;
+    transform: none;
+  }
+}
+
 .transport-bar__options {
   display: flex;
   align-items: center;
@@ -238,34 +274,71 @@
 }
 
 // =============================================================================
-// Cascade hide (D13)
+// Cascade hide (D13 — mockup ll. 1025-1610 parity)
 // =============================================================================
+// Progressive collapse — too many right-side buttons crowd the play centroid
+// long before phones-narrow (480px). Mockup keeps ⋯ More visible from ≤ 760px
+// onward so the user can still reach the hidden options.
+//
+// 1024+  : full row visible (no rule).
+// ≤ 920  : drop fork label + the cheat-sheet icon (rarely needed on touch).
+// ≤ 760  : drop animations + decisions + perspective + fork → all behind ⋯ More.
+// ≤ 480  : tighten padding/grid further (no extra buttons hidden — already gone).
 
-// ≤ 920px → hide fork label (cramped, icons remain).
-// Component-local breakpoint between `$bp-tablet` (768) and `$bp-desktop` (1024)
-// — labels start to push the play button off-center beyond this width.
+// ≤ 920px → hide fork label + cheat icon (cramped, but fork pill stays).
 @media (max-width: 920px) {
   .transport-bar__fork-label {
     display: none;
   }
+  .transport-bar__cheat {
+    display: none;
+  }
 }
 
-// ≤ 480px ($bp-pvp-narrow) → collapse toggles + fork + perspective into ⋯ More.
-// Play stays prominent; step buttons stay (transport is the primary action).
-@include r.respond-below(r.$bp-pvp-narrow) {
+// ≤ 760px (mockup §responsive) → collapse toggles + fork + perspective into
+// ⋯ More. Play stays prominent; step buttons stay (transport is primary
+// action). The mobile-only ⋯ More button surfaces — keyboard shortcuts
+// + perspective + animations + decisions + fork all accessible from there.
+//
+// Grid switches to `auto 1fr auto` (mockup parity) so the controls cell takes
+// the leftover horizontal space and `justify-content: center` actually centers
+// the play button against the bar's vertical axis. Using `1fr auto auto` here
+// (initial regression) pushed the controls right against the ⋯ More button
+// instead of centering them — Axel 2026-05-16.
+@media (max-width: 760px) {
   .transport-bar {
-    grid-template-columns: 1fr auto auto;
-    padding: var(--space-2);
+    grid-template-columns: auto 1fr auto;
+    column-gap: var(--space-2);
+    padding: var(--space-3);
   }
 
   .transport-bar__toggle,
   .transport-bar__perspective,
-  .transport-bar__fork,
-  .transport-bar__cheat {
+  .transport-bar__fork {
     display: none;
   }
 
   .transport-bar__more {
     display: inline-flex;
+  }
+}
+
+// ≤ 480px ($bp-pvp-narrow) → tighten further for phone-narrow.
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .transport-bar {
+    padding: var(--space-2);
+  }
+}
+
+// Mobile landscape (≤ 500px tall) — every vertical pixel matters. Shrink the
+// transport bar to its bare minimum: pad collapses to a hairline, min-height
+// drops to the play button's 52px so the bar is exactly as tall as its tallest
+// control. Same trigger as the topbar's `display: none` rule, so the chrome
+// budget the viewer recovers is consistent (Axel 2026-05-17 "tout doit rentrer
+// parfaitement").
+@media (orientation: landscape) and (max-height: 500px) {
+  .transport-bar {
+    padding: var(--space-1) var(--space-2);
+    min-height: 52px;
   }
 }

@@ -1,0 +1,152 @@
+@use '../../../../styles/responsive' as r;
+
+// Sub-event picker — drill-down level 2 (mockup §sub-event drill-down 2026-05-17).
+// Same visual language as `<app-turn-picker-sheet>` but the cards represent
+// individual sub-events (one per board state inside the chosen turn) instead
+// of whole turns. Mini-board variant `hover` is fluid-width (`width: 100%`)
+// so 3 cards rendered side-by-side fit a phone viewport.
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sub-event-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.sub-event-picker__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2);
+  text-align: left;
+  min-height: 44px;
+  cursor: pointer;
+  position: relative;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
+
+  // Let the browser skip layout + paint for cards off the viewport. Same
+  // pattern as `.turn-picker__card` — preserves perf when a turn has
+  // 30+ sub-events.
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 130px;
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-08);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  &--current {
+    border-color: var(--gold);
+    background: var(--gold-soft-12);
+    box-shadow:
+      0 0 0 1px var(--gold-soft-40),
+      0 0 16px var(--gold-soft-25);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: var(--space-1);
+      right: var(--space-1);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold);
+      z-index: 2;
+    }
+  }
+
+  &--not-computed {
+    pointer-events: none;
+    opacity: 0.55;
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        var(--gold-soft-04) 0px,
+        var(--gold-soft-04) 6px,
+        var(--surface-bg-deep) 6px,
+        var(--surface-bg-deep) 12px
+      );
+  }
+}
+
+.sub-event-picker__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.sub-event-picker__num {
+  font: var(--weight-black) var(--text-sm) / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--gold-50);
+}
+
+// Preview wrapper — same container-query scaling trick as
+// `.turn-picker__preview` (see that file for the FOUC rationale).
+// `100cqw / 800` gives the scale factor that fits the board to the card
+// width regardless of viewport.
+.sub-event-picker__preview {
+  container-type: inline-size;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: var(--radius-sm);
+  background:
+    radial-gradient(ellipse at center, var(--gold-soft-04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
+  border: 1px solid var(--gold-soft-25);
+  position: relative;
+
+  app-pvp-board-container {
+    display: block;
+    width: 800px;
+    height: 600px;
+    transform: scale(calc(100cqw / 800));
+    transform-origin: top left;
+    pointer-events: none;
+  }
+}
+
+.sub-event-picker__card-footer {
+  display: flex;
+  align-items: center;
+  font: var(--weight-semibold) var(--text-xs) / 1.2 var(--font-body);
+  color: var(--text-muted);
+  min-height: 1em;
+}
+
+.sub-event-picker__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+// Narrow viewport: tighten gaps + paddings (same pattern as turn-picker).
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .sub-event-picker__grid {
+    gap: var(--space-2);
+  }
+
+  .sub-event-picker__card {
+    padding: 6px;
+    gap: 4px;
+  }
+}

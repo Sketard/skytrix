@@ -14,6 +14,19 @@
     (copyLink)="onCopyLink()"
     (openDetails)="onOpenDetails()" />
 
+  <!-- Mobile landscape — the topbar is hidden to free vertical pixels for
+       the board (see topbar.scss landscape rule). Without an explicit back
+       affordance the user would be stuck (Axel 2026-05-17). This FAB only
+       shows when the topbar is suppressed; everywhere else the topbar's own
+       back button is the canonical exit. -->
+  <button
+    type="button"
+    class="replay-page__back-fab"
+    [attr.aria-label]="'replay.hub.back' | translate"
+    (click)="onBackToHub()">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  </button>
+
   <div class="replay-viewer" (keydown)="onKeydown($event)" tabindex="0">
     <div class="board-area"
          appBoardSwipeNavigator
@@ -208,7 +221,8 @@
             [computedUpToIndex]="computedUpTo()"
             [boardStates]="boardStates()"
             [perspectiveIndex]="perspectiveIndex()"
-            (jumpToTurn)="onSeekToTurnAndClose($event)"
+            [playerUsernames]="pickerPlayerUsernames()"
+            (jumpToTurn)="onPickerCardTap($event)"
             (closed)="onClosePicker()" />
         </app-replay-bottom-sheet>
       </div>
@@ -221,24 +235,92 @@
           [title]="'replay.viewer.bottomSheet.options.title' | translate"
           icon="tune"
           (close)="onCloseOptions()">
-          <button type="button" class="btn btn--ghost btn--full" (click)="onToggleAnimations(); onCloseOptions()">
-            {{ (animationsEnabled() ? 'replay.transport.disableAnimations' : 'replay.transport.enableAnimations') | translate }}
+
+          <!-- Visionnage group: animations / decisions / perspective -->
+          <button type="button" class="bs-option" (click)="onToggleAnimations()">
+            <span class="bs-option-icon">
+              <mat-icon aria-hidden="true">animation</mat-icon>
+            </span>
+            <span class="bs-option-text">
+              <span class="bs-option-label">{{ 'replay.transport.animations' | translate }}</span>
+              <span class="bs-option-meta">{{ 'replay.viewer.bottomSheet.options.metaAnimations' | translate }}</span>
+            </span>
+            <span class="bs-option-state" [class.bs-option-state--on]="animationsEnabled()">
+              {{ (animationsEnabled() ? 'replay.viewer.bottomSheet.options.stateOn' : 'replay.viewer.bottomSheet.options.stateOff') | translate }}
+            </span>
           </button>
-          <button type="button" class="btn btn--ghost btn--full" (click)="onTogglePromptMode(); onCloseOptions()">
-            {{ (promptMode() === 'decision' ? 'replay.transport.skipDecisions' : 'replay.transport.showDecisions') | translate }}
+
+          <button type="button" class="bs-option" (click)="onTogglePromptMode()">
+            <span class="bs-option-icon">
+              <mat-icon aria-hidden="true">message</mat-icon>
+            </span>
+            <span class="bs-option-text">
+              <span class="bs-option-label">{{ 'replay.transport.decisions' | translate }}</span>
+              <span class="bs-option-meta">{{ 'replay.viewer.bottomSheet.options.metaDecisions' | translate }}</span>
+            </span>
+            <span class="bs-option-state" [class.bs-option-state--on]="promptMode() === 'decision'">
+              {{ (promptMode() === 'decision' ? 'replay.viewer.bottomSheet.options.stateOn' : 'replay.viewer.bottomSheet.options.stateOff') | translate }}
+            </span>
           </button>
-          <button type="button" class="btn btn--ghost btn--full" (click)="onTogglePerspective(); onCloseOptions()">
-            {{ (perspectiveIndex() === 0 ? 'replay.transport.viewAsPlayer2' : 'replay.transport.viewAsPlayer1') | translate }}
+
+          <button type="button" class="bs-option" (click)="onTogglePerspective()">
+            <span class="bs-option-icon bs-option-icon--avatar">
+              <app-avatar [pseudo]="selfPseudo()" size="sm" />
+            </span>
+            <span class="bs-option-text">
+              <span class="bs-option-label">{{ 'replay.viewer.bottomSheet.options.perspective' | translate }}</span>
+              <span class="bs-option-meta">{{ 'replay.viewer.bottomSheet.options.metaPerspective' | translate: { name: selfPseudo() } }}</span>
+            </span>
+            <span class="bs-option-chevron">
+              <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+            </span>
           </button>
-          <button type="button" class="btn btn--ghost btn--full" (click)="onCopyLink(); onCloseOptions()">
-            {{ 'replay.viewer.bottomSheet.options.copyLink' | translate }}
+
+          <div class="bs-divider"></div>
+
+          <!-- Actions group: copy link + cheat sheet -->
+          <button type="button" class="bs-option" (click)="onCopyLink(); onCloseOptions()">
+            <span class="bs-option-icon">
+              <mat-icon aria-hidden="true">link</mat-icon>
+            </span>
+            <span class="bs-option-text">
+              <span class="bs-option-label">{{ 'replay.viewer.bottomSheet.options.copyLink' | translate }}</span>
+              <span class="bs-option-meta">{{ 'replay.viewer.bottomSheet.options.metaCopyLink' | translate: { turn: currentTurnNumber(), event: currentIndex() } }}</span>
+            </span>
+            <span class="bs-option-chevron">
+              <mat-icon aria-hidden="true">content_copy</mat-icon>
+            </span>
           </button>
-          <button type="button" class="btn btn--ghost btn--full" (click)="onOpenCheatSheet(); onCloseOptions()">
-            {{ 'replay.viewer.cheatSheet.title' | translate }}
+
+          <button type="button" class="bs-option" (click)="onCloseOptions(); onOpenCheatSheet()">
+            <span class="bs-option-icon">
+              <mat-icon aria-hidden="true">keyboard</mat-icon>
+            </span>
+            <span class="bs-option-text">
+              <span class="bs-option-label">{{ 'replay.viewer.cheatSheet.title' | translate }}</span>
+              <span class="bs-option-meta">{{ 'replay.viewer.bottomSheet.options.metaCheatSheet' | translate }}</span>
+            </span>
+            <span class="bs-option-chevron">
+              <mat-icon aria-hidden="true">chevron_right</mat-icon>
+            </span>
           </button>
-          <button type="button" class="btn btn--ghost btn--full" (click)="onFork(); onCloseOptions()" [disabled]="fork.forking()">
-            {{ 'replay.transport.fork' | translate }}
-            <span class="text-eyebrow replay-page__sheet-hint">{{ 'replay.viewer.bottomSheet.options.forkHint' | translate }}</span>
+
+          <div class="bs-divider"></div>
+
+          <!-- Fork — visually distinct (cyan icon chip) -->
+          <button type="button" class="bs-option bs-option--fork"
+                  (click)="onFork(); onCloseOptions()"
+                  [disabled]="fork.forking()">
+            <span class="bs-option-icon">
+              <mat-icon aria-hidden="true">fork_right</mat-icon>
+            </span>
+            <span class="bs-option-text">
+              <span class="bs-option-label">{{ 'replay.transport.fork' | translate }}</span>
+              <span class="bs-option-meta">{{ 'replay.viewer.bottomSheet.options.forkHint' | translate }}</span>
+            </span>
+            <span class="bs-option-chevron">
+              <mat-icon aria-hidden="true">chevron_right</mat-icon>
+            </span>
           </button>
         </app-replay-bottom-sheet>
       </div>
@@ -255,18 +337,94 @@
         </app-replay-bottom-sheet>
       </div>
     }
+
+    <!-- Level-2 drill-down — sub-events of the chosen turn. Closing this
+         sheet re-opens the turn picker (onCloseSubPicker handler) so the user
+         can pick another turn without re-tapping the stepper-pill. Tap on a
+         sub-event card seeks + closes both sheets. -->
+    @if (subPickerVm(); as svm) {
+      <div class="replay-page__sheet-backdrop bottom-sheet-backdrop is-open" (click)="onCloseSubPicker()">
+        <app-replay-bottom-sheet
+          (click)="$event.stopPropagation()"
+          [title]="(svm.turnNumber === 0
+            ? ('replay.viewer.picker.section.setup' | translate)
+            : ('replay.timeline.turn' | translate: { n: svm.turnNumber }))"
+          icon="grid_view"
+          (close)="onCloseSubPicker()">
+          <app-sub-event-picker-sheet
+            [turn]="svm.turn"
+            [boardStates]="boardStates()"
+            [computedUpToIndex]="computedUpTo()"
+            [currentEventIndex]="currentIndex()"
+            [perspectiveIndex]="perspectiveIndex()"
+            (jumpToEvent)="onSubPickerCardTap($event)"
+            (closed)="onCloseSubPicker()" />
+        </app-replay-bottom-sheet>
+      </div>
+    }
   </div>
 }
 
-<!-- Details sheet content — kept in a template so the markup stays readable.
+<!-- Details sheet content — bs-option rows with avatars + decks + outcome.
      Reads metadata directly (loading state already gated by parent @if). -->
 <ng-template #detailsContent>
   @if (replayConnection.metadata(); as meta) {
-    <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.opponentLabel' | translate }}: {{ meta.playerUsernames[mySide() === 0 ? 1 : 0] }}</p>
-    <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.deckLabel' | translate }}: {{ meta.deckNames[mySide() === 0 ? 1 : 0] }}</p>
-    <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.turns' | translate }}: {{ meta.turnCount }}</p>
-    @if (meta.durationSec; as d) {
-      <p class="text-eyebrow">{{ 'replay.viewer.bottomSheet.details.duration' | translate }}: {{ d }}s</p>
+    <!-- Self row -->
+    <div class="bs-option" [attr.aria-disabled]="true">
+      <span class="bs-option-icon bs-option-icon--avatar">
+        <app-avatar [pseudo]="selfPseudo()" size="sm" />
+      </span>
+      <span class="bs-option-text">
+        <span class="bs-option-label">{{ selfPseudo() }}</span>
+        <span class="bs-option-meta">{{ selfDeckName() }}</span>
+      </span>
+      @if (currentOutcome() !== 'draw') {
+        <span class="bs-option-state" [class.bs-option-state--on]="currentOutcome() === 'victory'">
+          {{ (currentOutcome() === 'victory' ? 'replay.viewer.bottomSheet.details.victory' : 'replay.viewer.bottomSheet.details.defeat') | translate }}
+        </span>
+      }
+    </div>
+
+    <!-- Opponent row -->
+    <div class="bs-option" [attr.aria-disabled]="true">
+      <span class="bs-option-icon bs-option-icon--avatar">
+        <app-avatar [pseudo]="oppPseudo()" size="sm" />
+      </span>
+      <span class="bs-option-text">
+        <span class="bs-option-label">{{ oppPseudo() }}</span>
+        <span class="bs-option-meta">{{ oppDeckName() }}</span>
+      </span>
+      @if (currentOutcome() !== 'draw') {
+        <span class="bs-option-state" [class.bs-option-state--on]="currentOutcome() === 'defeat'">
+          {{ (currentOutcome() === 'defeat' ? 'replay.viewer.bottomSheet.details.victory' : 'replay.viewer.bottomSheet.details.defeat') | translate }}
+        </span>
+      }
+    </div>
+
+    <div class="bs-divider"></div>
+
+    <!-- Duration row (only when shipped) -->
+    @if (durationFullLabel(); as dur) {
+      <div class="bs-option" [attr.aria-disabled]="true">
+        <span class="bs-option-icon">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+        </span>
+        <span class="bs-option-text">
+          <span class="bs-option-label">{{ 'replay.viewer.bottomSheet.details.duration' | translate }}</span>
+          <span class="bs-option-meta">{{ 'replay.viewer.bottomSheet.details.summary' | translate: { duration: dur, turns: meta.turnCount, events: totalEvents() } }}</span>
+        </span>
+      </div>
+    } @else {
+      <!-- Legacy replays without durationSec — still show turn count + events. -->
+      <div class="bs-option" [attr.aria-disabled]="true">
+        <span class="bs-option-icon">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+        </span>
+        <span class="bs-option-text">
+          <span class="bs-option-label">{{ 'replay.viewer.bottomSheet.details.turns' | translate }}</span>
+          <span class="bs-option-meta">{{ meta.turnCount }} · {{ totalEvents() }} {{ 'replay.viewer.bottomSheet.details.events' | translate }}</span>
+        </span>
+      </div>
     }
   }
 </ng-template>

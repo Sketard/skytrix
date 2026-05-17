@@ -62,12 +62,16 @@
       (click)="copyLink.emit()">
       <mat-icon>link</mat-icon>
     </button>
+    <!-- Mobile-only pill (mockup §replay-mobile-details-btn parity). Compact
+         icon + label so the action is discoverable on a phone where the
+         summary chips are hidden. Hidden ≥ 480px (CSS in component scss). -->
     <button
       type="button"
-      class="btn btn--ghost btn--sm replay-topbar__details-btn"
+      class="replay-topbar__details-btn"
       [attr.aria-label]="'replay.viewer.bottomSheet.details.title' | translate"
       (click)="openDetails.emit()">
-      <mat-icon>info</mat-icon>
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>{{ 'replay.viewer.bottomSheet.options.mobileLabel' | translate }}</span>
     </button>
   </div>
 </header>

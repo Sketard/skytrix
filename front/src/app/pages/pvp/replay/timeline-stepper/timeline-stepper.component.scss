@@ -31,10 +31,35 @@
   flex: 0 0 44px;
   height: 44px;
 
+  // Mockup §stepper-nav-btn parity — framed pill with gold hover lift. Same
+  // override pattern as `.transport-bar__step` (see transport-bar SCSS for the
+  // rationale: `icon-btn--lg` ghost default is too discreet for primary
+  // navigation actions in the replay viewer).
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    color: var(--gold);
+    background: var(--gold-soft-08);
+    border-color: var(--gold-soft-40);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.94);
+  }
+
   &:disabled {
     opacity: 0.3;
     cursor: not-allowed;
     pointer-events: none;
+    transform: none;
   }
 }
 
@@ -65,21 +90,16 @@
   }
 }
 
-.timeline-stepper__pill-main {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.timeline-stepper__pill-num {
-  font: var(--weight-black) var(--text-md) / var(--line-tight) var(--font-display);
-  letter-spacing: 0.04em;
-  color: var(--gold-50);
-}
-
-.timeline-stepper__pill-total {
-  letter-spacing: 0.06em;
+// Picker glyph — replaces the redundant T-num/total text. The transport-bar
+// context-pill directly below already announces the turn, so this is just a
+// "tap to open picker" hint.
+.timeline-stepper__pill-icon {
+  color: var(--gold);
+  // !important: override mat-icon's default 24px host bind.
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0;
 }
 
 .timeline-stepper__dots {
@@ -118,5 +138,14 @@
 @include r.respond-below(r.$bp-pvp-narrow) {
   .timeline-stepper__dots {
     display: none;
+  }
+}
+
+// Mobile landscape (≤ 500px tall) — same vertical-pixel constraint as the
+// transport bar. Drop the top/bottom padding to a hairline and the nav button
+// minimum to the WCAG floor so the row is exactly 44px tall.
+@media (orientation: landscape) and (max-height: 500px) {
+  :host {
+    padding: var(--space-1) var(--space-2);
   }
 }

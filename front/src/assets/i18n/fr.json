@@ -801,8 +801,17 @@
       "bottomSheet": {
         "options": {
           "title": "Options",
+          "mobileLabel": "Détails",
+          "perspective": "Perspective",
           "copyLink": "Copier le lien à ce moment",
-          "forkHint": "Mieux sur un écran plus grand"
+          "forkHint": "Mieux sur un écran plus grand",
+          "metaAnimations": "Effets visuels pendant la lecture",
+          "metaDecisions": "Afficher les prompts du duel",
+          "metaPerspective": "{{name}} — toucher pour basculer",
+          "metaCopyLink": "Tour {{turn}} · évènement {{event}}",
+          "metaCheatSheet": "Pour clavier physique Bluetooth",
+          "stateOn": "Activé",
+          "stateOff": "Désactivé"
         },
         "details": {
           "title": "Détails du duel",
@@ -812,7 +821,10 @@
           "duration": "Durée",
           "date": "Date",
           "events": "Évènements",
-          "summary": "{{duration}} · {{turns}} tours · {{events}} évènements"
+          "summary": "{{duration}} · {{turns}} tours · {{events}} évènements",
+          "victory": "Victoire",
+          "defeat": "Défaite",
+          "draw": "Égalité"
         }
       },
       "stepper": {
@@ -855,9 +867,11 @@
       "enableAnimations": "Activer les animations",
       "disableAnimations": "Désactiver les animations",
       "animShort": "Anim.",
+      "animations": "Animations",
       "showDecisions": "Activer les décisions",
       "skipDecisions": "Désactiver les décisions",
       "decisionsShort": "Décis.",
+      "decisions": "Décisions",
       "viewAsPlayer1": "Passer sur la vue P1",
       "viewAsPlayer2": "Passer sur la vue P2"
     },

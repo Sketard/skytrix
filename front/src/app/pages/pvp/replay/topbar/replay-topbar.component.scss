@@ -93,6 +93,37 @@
   }
 }
 
+// Mobile-only pill — compact icon + label that mirrors the mockup
+// `.replay-mobile-details-btn`. Hidden ≥ 480px since desktop already shows
+// the full summary chips inline. Compact size + radius-pill so it doesn't
+// fight for visual weight with the back button + copy-link icon-btn.
+.replay-topbar__details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: var(--weight-semibold) 0.65rem / 1 var(--font-body);
+  transition: border-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
+
+  mat-icon {
+    // !important: override mat-icon's default 24px host bind.
+    font-size: 14px !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  &:hover {
+    color: var(--text-secondary);
+    border-color: var(--border-medium);
+  }
+}
+
 @include r.respond-above(r.$bp-pvp-narrow) {
   // Details button is for mobile only — desktop has full summary already.
   .replay-topbar__details-btn {
