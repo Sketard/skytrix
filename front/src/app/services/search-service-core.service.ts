@@ -18,6 +18,7 @@ import { CardDetail } from '../core/model/card-detail';
 import { TypedForm } from '../core/model/commons/typed-form';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { CardAttribute } from '../core/enums/card-attribute';
+import { CardRace } from '../core/enums/card-race.enum';
 import { CardType } from '../core/enums/card-type.enum';
 import { HttpClient } from '@angular/common/http';
 import { CardDisplayType } from '../core/enums/card-display-type';
@@ -86,10 +87,13 @@ export abstract class SearchServiceCore implements OnDestroy {
     this.filterForm.controls.maxDef.reset(null, { emitEvent: false });
     this.filterForm.controls.attribute.reset(null, { emitEvent: false });
     this.filterForm.controls.archetype.reset('', { emitEvent: false });
-    this.filterForm.controls.scale.reset(null, { emitEvent: false });
-    this.filterForm.controls.linkval.reset(null, { emitEvent: false });
+    this.filterForm.controls.minScale.reset(null, { emitEvent: false });
+    this.filterForm.controls.maxScale.reset(null, { emitEvent: false });
+    this.filterForm.controls.minLinkval.reset(null, { emitEvent: false });
+    this.filterForm.controls.maxLinkval.reset(null, { emitEvent: false });
     this.filterForm.controls.cardSetFilter.reset({ cardSetName: '', cardSetCode: '', cardRarityCode: '' }, { emitEvent: false });
     clearFormArray(this.filterForm.controls.types, false);
+    clearFormArray(this.filterForm.controls.races, false);
     this.filterForm.updateValueAndValidity();
     this.filtersCleared$.next();
   }
@@ -167,9 +171,12 @@ export abstract class SearchServiceCore implements OnDestroy {
       name: new FormControl<string>(''),
       attribute: new FormControl<CardAttribute | null>(null),
       archetype: new FormControl<string>(''),
-      scale: new FormControl<number | null>(null),
-      linkval: new FormControl<number | null>(null),
+      minScale: new FormControl<number | null>(null),
+      maxScale: new FormControl<number | null>(null),
+      minLinkval: new FormControl<number | null>(null),
+      maxLinkval: new FormControl<number | null>(null),
       types: new FormArray<FormControl<CardType>>([]),
+      races: new FormArray<FormControl<CardRace>>([]),
       favorite: new FormControl<boolean>(false, { nonNullable: true }),
       cardSetFilter: new FormGroup<TypedForm<CardSetFilterDTO>>({
         cardSetName: new FormControl<string>(''),

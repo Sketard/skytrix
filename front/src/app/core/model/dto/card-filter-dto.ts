@@ -1,4 +1,5 @@
 import { CardAttribute } from '../../enums/card-attribute';
+import { CardRace } from '../../enums/card-race.enum';
 import { CardType } from '../../enums/card-type.enum';
 
 export class CardFilterDTO {
@@ -9,9 +10,12 @@ export class CardFilterDTO {
   name: string | null;
   attribute: CardAttribute | null;
   archetype: string | null;
-  scale: number | null;
-  linkval: number | null;
+  minScale: number | null;
+  maxScale: number | null;
+  minLinkval: number | null;
+  maxLinkval: number | null;
   types: Array<CardType>;
+  races: Array<CardRace>;
   cardSetFilter: CardSetFilterDTO;
   favorite: boolean;
 
@@ -23,9 +27,12 @@ export class CardFilterDTO {
     this.name = null;
     this.attribute = null;
     this.archetype = null;
-    this.scale = null;
-    this.linkval = null;
+    this.minScale = null;
+    this.maxScale = null;
+    this.minLinkval = null;
+    this.maxLinkval = null;
     this.types = [];
+    this.races = [];
     this.cardSetFilter = new CardSetFilterDTO();
     this.favorite = false;
   }
