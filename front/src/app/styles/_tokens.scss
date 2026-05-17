@@ -132,6 +132,7 @@
   --transition-fast:   150ms;
   --transition-normal: 250ms;
   --transition-slow:   400ms;
+  --transition-theme:  600ms;  // Cross-fade duel theme tokens (Wave 3 Sprint 2)
 
   // --- Easings ---
   --ease-out:    cubic-bezier(0.25, 0.8, 0.25, 1);

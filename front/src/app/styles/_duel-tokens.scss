@@ -1,71 +1,222 @@
 // =============================================================================
-// Duel theme tokens — scopés à `.board-host[data-theme="X"]`
+// Duel theme tokens + base host rules
 //
-// Sprint 0 (2026-05-17) — squelette. Les valeurs réelles seront copiées
-// depuis `_mockups/mockup-duel-themes.html` lors du Sprint 2 Board (cf.
-// `_bmad-output/planning-artifacts/duel-board-enrichment-spec-2026-05-17.md`).
+// Wave 3 Sprint 2 (2026-05-17) — Classic / Cosmic / Forest, valeurs portées
+// depuis `_mockups/mockup-duel-themes.html`.
 //
 // Convention naming :
 //   --duel-* = plateau de duel (3 thèmes scopés)
 //   --pvp-*  = reste du module PvP (prompts, dialogs, hand) — `_tokens.scss`
 //
-// Ces tokens ne polluent pas le DS global : ils sont scopés à
-// `.board-host[data-theme="X"]` et ne fuient pas hors du plateau.
+// Tokens scopés à `.board-host[data-theme="X"]` → ne polluent pas le DS global.
+// Idle ambient animations (shimmer/nebula/breeze) sont scopées sur
+// `.board-wrapper::before/::after`, le composant Angular bouge dessus mais
+// ses descendants (cartes, floats) ne reçoivent aucun transform parent —
+// vérifié spec board §3.4.
 // =============================================================================
 
+// =============================================================================
+// .board-host — surface racine, transitions de thème, vignette + grain layer.
+// Le composant Angular monte ce wrapper autour de `<app-pvp-board-container>`.
+// =============================================================================
+.board-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  // Forwards the original `:host { display: flex; center; }` so .board-wrapper
+  // (which keeps its `aspect-ratio` + `margin: auto`) lands centred.
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  isolation: isolate;
+  background:
+    var(--duel-bg-overlay, transparent),
+    var(--duel-bg-radial, transparent),
+    var(--duel-bg-base, var(--pvp-bg-dark-navy));
+  transition: background var(--transition-theme) var(--ease-out);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 30%,
+      var(--duel-vignette, rgba(0, 0, 0, 0.4)) 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+    transition: background var(--transition-theme) var(--ease-out);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--duel-mat-pattern, none);
+    pointer-events: none;
+    z-index: 2;
+    opacity: var(--duel-mat-pattern-opacity, 0);
+    mix-blend-mode: var(--duel-mat-blend, overlay);
+    transition: opacity var(--transition-theme) var(--ease-out);
+  }
+}
+
+// =============================================================================
+// THEME 1 — Classic (gold/obsidienne enrichi)
+// =============================================================================
 .board-host[data-theme="classic"] {
-  --duel-bg-base:             initial; // TODO Sprint 2 Board
-  --duel-bg-radial:           initial; // TODO Sprint 2 Board
-  --duel-bg-overlay:          initial; // TODO Sprint 2 Board
-  --duel-vignette:            initial; // TODO Sprint 2 Board
-  --duel-mat-pattern:         initial; // TODO Sprint 2 Board
-  --duel-mat-pattern-opacity: initial; // TODO Sprint 2 Board
-  --duel-mat-blend:           initial; // TODO Sprint 2 Board
-  --duel-accent-primary:      var(--gold);
-  --duel-accent-soft:         var(--gold-soft-30);
-  --duel-zone-border:         initial; // TODO Sprint 2 Board
-  --duel-zone-bg:             initial; // TODO Sprint 2 Board
-  --duel-zone-hover-glow:     initial; // TODO Sprint 2 Board
-  --duel-emz-bg:              initial; // TODO Sprint 2 Board
-  --duel-emz-border:          initial; // TODO Sprint 2 Board
-  --duel-emz-glow:            initial; // TODO Sprint 2 Board
-  --duel-pile-tint:           initial; // TODO Sprint 2 Board
+  --duel-bg-base: var(--pvp-bg-dark-navy);
+  --duel-bg-radial:
+    radial-gradient(ellipse at 50% 50%, var(--gold-soft-10) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 100%, var(--gold-soft-06) 0%, transparent 50%);
+  --duel-bg-overlay: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.25) 100%);
+  --duel-vignette: rgba(0, 0, 0, 0.55);
+
+  --duel-mat-pattern:
+    repeating-linear-gradient(0deg, var(--gold-soft-04) 0 1px, transparent 1px 60px),
+    repeating-linear-gradient(90deg, var(--gold-soft-04) 0 1px, transparent 1px 60px);
+  --duel-mat-pattern-opacity: 0.7;
+  --duel-mat-blend: overlay;
+
+  --duel-accent-primary: var(--gold);
+  --duel-accent-soft: var(--gold-soft-15);
+  --duel-zone-border: var(--gold-soft-18);
+  --duel-zone-bg: rgba(0, 0, 0, 0.20);
+  --duel-zone-hover-glow: var(--gold-soft-35);
+  --duel-emz-bg: var(--gold-soft-08);
+  --duel-emz-border: var(--gold-soft-35);
+  --duel-emz-glow: var(--gold-soft-25);
+  --duel-pile-tint: var(--gold-soft-10);
+
+  .board-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: -10%;
+    background: radial-gradient(ellipse at center, var(--gold-soft-10) 0%, transparent 50%);
+    pointer-events: none;
+    animation: ds-duel-theme-classic-shimmer 8s ease-in-out infinite;
+    z-index: 0;
+  }
 }
 
+// =============================================================================
+// THEME 2 — Cosmic (violet/nébula + étoiles scintillantes)
+// =============================================================================
 .board-host[data-theme="cosmic"] {
-  --duel-bg-base:             initial; // TODO Sprint 2 Board
-  --duel-bg-radial:           initial; // TODO Sprint 2 Board
-  --duel-bg-overlay:          initial; // TODO Sprint 2 Board
-  --duel-vignette:            initial; // TODO Sprint 2 Board
-  --duel-mat-pattern:         initial; // TODO Sprint 2 Board
-  --duel-mat-pattern-opacity: initial; // TODO Sprint 2 Board
-  --duel-mat-blend:           initial; // TODO Sprint 2 Board
-  --duel-accent-primary:      initial; // TODO Sprint 2 Board
-  --duel-accent-soft:         initial; // TODO Sprint 2 Board
-  --duel-zone-border:         initial; // TODO Sprint 2 Board
-  --duel-zone-bg:             initial; // TODO Sprint 2 Board
-  --duel-zone-hover-glow:     initial; // TODO Sprint 2 Board
-  --duel-emz-bg:              initial; // TODO Sprint 2 Board
-  --duel-emz-border:          initial; // TODO Sprint 2 Board
-  --duel-emz-glow:            initial; // TODO Sprint 2 Board
-  --duel-pile-tint:           initial; // TODO Sprint 2 Board
+  --duel-bg-base: #0a0518;
+  --duel-bg-radial:
+    radial-gradient(ellipse at 25% 30%, rgba(139, 92, 246, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 70%, rgba(236, 72, 153, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+  --duel-bg-overlay: linear-gradient(180deg, transparent 0%, rgba(10, 5, 24, 0.45) 100%);
+  --duel-vignette: rgba(5, 0, 15, 0.70);
+
+  --duel-mat-pattern:
+    radial-gradient(2px 2px at 20% 30%, rgba(255, 255, 255, 0.8), transparent 50%),
+    radial-gradient(1.5px 1.5px at 60% 20%, rgba(180, 130, 255, 0.7), transparent 50%),
+    radial-gradient(1px 1px at 30% 70%, rgba(255, 255, 255, 0.6), transparent 50%),
+    radial-gradient(2px 2px at 80% 50%, rgba(220, 180, 255, 0.5), transparent 50%),
+    radial-gradient(1px 1px at 90% 80%, rgba(255, 255, 255, 0.7), transparent 50%),
+    radial-gradient(1.5px 1.5px at 10% 60%, rgba(180, 130, 255, 0.6), transparent 50%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 255, 255, 0.5), transparent 50%),
+    radial-gradient(1.5px 1.5px at 70% 85%, rgba(220, 180, 255, 0.6), transparent 50%);
+  --duel-mat-pattern-opacity: 0.85;
+  --duel-mat-blend: screen;
+
+  --duel-accent-primary: #c4b5fd;
+  --duel-accent-soft: rgba(196, 181, 253, 0.18);
+  --duel-zone-border: rgba(196, 181, 253, 0.22);
+  --duel-zone-bg: rgba(20, 12, 45, 0.40);
+  --duel-zone-hover-glow: rgba(196, 181, 253, 0.40);
+  --duel-emz-bg: rgba(139, 92, 246, 0.14);
+  --duel-emz-border: rgba(196, 181, 253, 0.50);
+  --duel-emz-glow: rgba(196, 181, 253, 0.35);
+  --duel-pile-tint: rgba(139, 92, 246, 0.12);
+
+  // Star twinkle layered onto the mat pattern.
+  &::after {
+    animation: ds-duel-theme-cosmic-twinkle 4s ease-in-out infinite;
+  }
+
+  // Nébula ondulante en arrière-plan du board.
+  .board-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -15%;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(168, 85, 247, 0.25) 0%, transparent 45%),
+      radial-gradient(ellipse at 70% 60%, rgba(236, 72, 153, 0.20) 0%, transparent 50%);
+    pointer-events: none;
+    filter: blur(40px);
+    animation: ds-duel-theme-cosmic-nebula 15s ease-in-out infinite;
+    z-index: 0;
+  }
 }
 
+// =============================================================================
+// THEME 3 — Forest (vert/doré ancien + brise lumineuse)
+// =============================================================================
 .board-host[data-theme="forest"] {
-  --duel-bg-base:             initial; // TODO Sprint 2 Board
-  --duel-bg-radial:           initial; // TODO Sprint 2 Board
-  --duel-bg-overlay:          initial; // TODO Sprint 2 Board
-  --duel-vignette:            initial; // TODO Sprint 2 Board
-  --duel-mat-pattern:         initial; // TODO Sprint 2 Board
-  --duel-mat-pattern-opacity: initial; // TODO Sprint 2 Board
-  --duel-mat-blend:           initial; // TODO Sprint 2 Board
-  --duel-accent-primary:      initial; // TODO Sprint 2 Board
-  --duel-accent-soft:         initial; // TODO Sprint 2 Board
-  --duel-zone-border:         initial; // TODO Sprint 2 Board
-  --duel-zone-bg:             initial; // TODO Sprint 2 Board
-  --duel-zone-hover-glow:     initial; // TODO Sprint 2 Board
-  --duel-emz-bg:              initial; // TODO Sprint 2 Board
-  --duel-emz-border:          initial; // TODO Sprint 2 Board
-  --duel-emz-glow:            initial; // TODO Sprint 2 Board
-  --duel-pile-tint:           initial; // TODO Sprint 2 Board
+  --duel-bg-base: #0a1a10;
+  --duel-bg-radial:
+    radial-gradient(ellipse at 50% 60%, rgba(34, 197, 94, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 30% 20%, rgba(180, 145, 70, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 90%, rgba(34, 197, 94, 0.12) 0%, transparent 60%);
+  --duel-bg-overlay: linear-gradient(180deg, rgba(10, 26, 16, 0.25) 0%, rgba(5, 18, 10, 0.50) 100%);
+  --duel-vignette: rgba(0, 10, 5, 0.70);
+
+  --duel-mat-pattern:
+    radial-gradient(circle at 50% 50%, rgba(120, 200, 130, 0.06) 1px, transparent 1.5px),
+    repeating-radial-gradient(circle at 50% 50%,
+      rgba(180, 145, 70, 0.05) 0,
+      rgba(180, 145, 70, 0.05) 1px,
+      transparent 1px,
+      transparent 80px);
+  --duel-mat-pattern-opacity: 0.6;
+  --duel-mat-blend: soft-light;
+
+  --duel-accent-primary: #d4a854;
+  --duel-accent-soft: rgba(212, 168, 84, 0.15);
+  --duel-zone-border: rgba(180, 145, 70, 0.25);
+  --duel-zone-bg: rgba(10, 30, 18, 0.45);
+  --duel-zone-hover-glow: rgba(212, 168, 84, 0.35);
+  --duel-emz-bg: rgba(34, 197, 94, 0.10);
+  --duel-emz-border: rgba(180, 145, 70, 0.45);
+  --duel-emz-glow: rgba(212, 168, 84, 0.30);
+  --duel-pile-tint: rgba(180, 145, 70, 0.10);
+
+  // Brise lumineuse qui passe sur le plateau.
+  .board-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -5%;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(180, 230, 150, 0.10) 0%, transparent 35%),
+      radial-gradient(ellipse at 80% 60%, rgba(212, 168, 84, 0.12) 0%, transparent 40%);
+    pointer-events: none;
+    filter: blur(30px);
+    animation: ds-duel-theme-forest-breeze 12s ease-in-out infinite;
+    z-index: 0;
+  }
+}
+
+// =============================================================================
+// Reduced motion — kill ambient theme animations (a11y/_a11y.scss prends
+// le reste). Les particules pollen "Forest" sont en option et seront ajoutées
+// en Sprint 3 polish.
+// =============================================================================
+@media (prefers-reduced-motion: reduce) {
+  .board-host {
+    &[data-theme="classic"] .board-wrapper::after,
+    &[data-theme="cosmic"] .board-wrapper::before,
+    &[data-theme="forest"] .board-wrapper::before {
+      animation: none;
+    }
+
+    &[data-theme="cosmic"]::after {
+      animation: none;
+    }
+  }
 }

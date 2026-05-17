@@ -14,6 +14,7 @@ import { locationToZoneId, locationToZoneKey } from '../../pvp-zone.utils';
 import { NgTemplateOutlet } from '@angular/common';
 import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
+import { DuelThemeService } from '../duel-theme.service';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -46,6 +47,9 @@ interface ZoneRenderData {
 export class PvpBoardContainerComponent implements AfterViewInit {
   /** Dev-only hub gate. Tree-shaken from production builds via Angular's `isDevMode()`. */
   protected readonly devMode = isDevMode();
+
+  /** Active duel theme — drives `.board-host[data-theme]` cascade. Wave 3 Sprint 2. */
+  protected readonly theme = inject(DuelThemeService).currentTheme;
 
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);

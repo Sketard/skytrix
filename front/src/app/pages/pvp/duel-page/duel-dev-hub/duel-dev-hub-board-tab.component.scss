@@ -1,0 +1,55 @@
+// DEV ONLY — to be removed before final ship.
+
+.dev-hub-category {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dev-hub-category__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.dev-hub-category__radios {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+}
+
+.dev-hub-radio {
+  appearance: none;
+  background: var(--surface-overlay);
+  border: var(--border-width-thin) solid var(--border-soft);
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  &--active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-soft-10);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}

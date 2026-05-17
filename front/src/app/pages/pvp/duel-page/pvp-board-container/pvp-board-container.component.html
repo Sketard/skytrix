@@ -66,6 +66,7 @@
   }
 </ng-template>
 
+<div class="board-host" [attr.data-theme]="theme()">
 <div class="board-wrapper">
   <!-- Opponent Field (rotateX applied) -->
   <section class="field-section opponent-field">
@@ -442,6 +443,7 @@
                        [turnPlayer]="absoluteTurnPlayer()"
                        [actor]="actor()"
                        [opponentDisconnected]="opponentDisconnected()" />
+</div>
 </div>
 
 @if (devMode) { <app-duel-dev-hub /> }

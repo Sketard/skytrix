@@ -1,0 +1,15 @@
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">Thème du plateau</h4>
+  <div class="dev-hub-category__radios" role="radiogroup" aria-label="Thème du plateau">
+    @for (t of themes; track t) {
+      <button type="button"
+              class="dev-hub-radio"
+              [class.dev-hub-radio--active]="themeService.currentTheme() === t"
+              [attr.aria-checked]="themeService.currentTheme() === t"
+              role="radio"
+              (click)="setTheme(t)">
+        {{ t }}
+      </button>
+    }
+  </div>
+</section>

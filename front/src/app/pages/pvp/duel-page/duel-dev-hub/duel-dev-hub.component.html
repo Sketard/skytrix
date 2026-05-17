@@ -33,7 +33,7 @@
       <section class="dev-hub__body" role="tabpanel">
         @switch (activeTab()) {
           @case ('board') {
-            <p class="dev-hub__empty">Board controls land here (Sprint Board).</p>
+            <app-duel-dev-hub-board-tab />
           }
           @case ('prompts') {
             <p class="dev-hub__empty">Prompt controls land here (Sprint Prompts).</p>
