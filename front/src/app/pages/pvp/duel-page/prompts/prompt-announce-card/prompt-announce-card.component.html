@@ -8,7 +8,7 @@
          autocomplete="off" />
 </div>
 
-<div class="card-strip__inner" role="listbox">
+<div class="card-strip__inner scrollbar-visible" role="listbox">
   @if (isSearching()) {
     <div class="empty-state">{{ 'duel.prompt.searching' | translate }}</div>
   } @else if (results().length === 0) {

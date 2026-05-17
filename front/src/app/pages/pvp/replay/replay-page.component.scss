@@ -108,8 +108,8 @@
       width: 80px;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 150ms var(--ease-out);
-      z-index: 4;
+      transition: opacity var(--transition-fast) var(--ease-out);
+      z-index: z.$z-pvp-replay-swipe-flash;
 
       &--left  { left: 0;  background: linear-gradient(90deg,  var(--gold-soft-25), transparent); }
       &--right { right: 0; background: linear-gradient(-90deg, var(--gold-soft-25), transparent); }
@@ -126,14 +126,14 @@
       gap: var(--space-2);
       padding: var(--space-1) var(--space-3);
       border-radius: var(--radius-pill);
-      background: var(--surface-overlay-strong, rgba(10, 10, 20, 0.85));
+      background: var(--scrim-strong);
       border: 1px solid var(--gold-soft-25);
       font: var(--weight-medium) var(--text-xs) var(--font-body);
       color: var(--text-muted);
       pointer-events: none;
       opacity: 0;
       transition: opacity var(--transition-normal) var(--ease-out);
-      z-index: 5;
+      z-index: z.$z-pvp-replay-swipe-hint;
       white-space: nowrap;
 
       &.is-visible { opacity: 1; }
@@ -170,7 +170,7 @@
 // (`_bottom-sheet.scss`); this rule is purely a position-stacking guard so
 // the sheet always overlays the playing board / transport bar.
 .replay-page__sheet-backdrop {
-  z-index: 2000;
+  z-index: z.$z-pvp-replay-sheet-backdrop;
 }
 
 // Floating back-to-hub FAB — only visible in mobile landscape (≤ 500px tall)

@@ -69,8 +69,12 @@ describe('TransportBarComponent — F3 refonte 3 zones', () => {
     expect(buttons.length).toBe(5); // skipStart + stepBack + play + stepForward + skipEnd
     const play = el.querySelector('.transport-bar__play');
     expect(play).not.toBeNull();
-    expect(play?.classList.contains('icon-btn--lg')).toBe(true);
+    // Composition DS depuis 2026-05-17 : `.icon-btn--xl` (52px) + `--round`
+    // (border-radius 50%) + `--primary` (gold gradient + shadow). Le composite
+    // gold custom inline a été remonté dans `_icon-button.scss`.
+    expect(play?.classList.contains('icon-btn--xl')).toBe(true);
     expect(play?.classList.contains('icon-btn--round')).toBe(true);
+    expect(play?.classList.contains('icon-btn--primary')).toBe(true);
     // No `btn--cta-shimmer` here — the infinite gold sweep was distracting on
     // the always-visible transport bar, see fix(replay) 2026-05-16.
     expect(play?.classList.contains('btn--cta-shimmer')).toBe(false);

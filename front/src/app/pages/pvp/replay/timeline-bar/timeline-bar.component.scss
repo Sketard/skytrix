@@ -1,6 +1,7 @@
 @use 'responsive' as r;
 @use 'z-layers' as z;
 @use 'a11y' as a11y;
+@use 'surface-floating' as sf;
 
 // =============================================================================
 // Timeline-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
@@ -36,17 +37,9 @@
   background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
   border-top: 1px solid var(--gold-soft-12);
 
-  // Mockup §timeline-bar — a thin custom scrollbar so the native one doesn't
-  // add ~15px of dead space below the track, which would leave the current
-  // turn `::after` underline floating in the middle of the container
-  // instead of hugging the transport dock.
-  scrollbar-color: var(--gold-soft-25) transparent;
-  scrollbar-width: thin;
-
-  &::-webkit-scrollbar { height: 6px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: var(--gold-soft-25); border-radius: var(--radius-sm); }
-  &::-webkit-scrollbar-thumb:hover { background: var(--gold-soft-40); }
+  // Scrollbar visible (mockup attend la barre au repos pour signaler "plus à
+  // droite"). Composition DS dans le template : `.scrollbar-visible` sur le
+  // host wrapper — voir `_scrollbar.scss` pour la justification UX.
 }
 
 .timeline-bar__track {
@@ -243,9 +236,9 @@
 }
 
 // Hover preview popover — mockup §hover-popover parity.
-// Custom chrome (NOT `.surface-card`) to match the gold-bordered card with
-// gold-12 glow, blur backdrop, and a downward arrow pointing at the timeline.
+// Chrome (gold border, glow, blur) consommé via `floating-surface` (DS).
 .timeline-bar__popover {
+  @include sf.floating-surface;
   position: absolute;
   bottom: calc(100% + 8px);
   transform: translateX(-50%);
@@ -255,13 +248,6 @@
   display: none;
   flex-direction: column;
   gap: var(--space-1);
-  background: var(--surface-card);
-  border: 1px solid var(--gold-soft-25);
-  border-radius: var(--radius-md);
-  box-shadow:
-    var(--elevation-3),
-    0 0 32px var(--gold-soft-12);
-  backdrop-filter: blur(12px);
 
   &.timeline-bar__popover--visible {
     display: flex;

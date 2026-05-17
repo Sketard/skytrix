@@ -1,4 +1,4 @@
-<div class="card-strip">
+<div class="card-strip scrollbar-visible">
   @for (card of cards; track $index) {
     <button class="card-slot"
             [class.card-slot--assigned]="getRank($index) !== null"

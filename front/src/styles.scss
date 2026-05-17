@@ -19,6 +19,7 @@
 
 // 1. Foundations
 @use 'app/styles/tokens';
+@use 'app/styles/duel-tokens';   // Scoped to `.board-host[data-theme="X"]` (Wave 3)
 @use 'app/styles/a11y';
 @use 'app/styles/motion';
 @use 'app/styles/typography';
@@ -44,6 +45,7 @@
 @use 'app/styles/cheat-sheet-block';     // Viewer follow-up — keyboard shortcut block
 @use 'app/styles/chain-owner-palette';   // Viewer F0
 @use 'app/styles/mini-board';            // Viewer F0
+@use 'app/styles/surface-floating';      // Viewer follow-up — floating panels (popover, modal)
 @use 'app/styles/holo-modal';
 
 // 5. Legacy (read-only, do not extend)

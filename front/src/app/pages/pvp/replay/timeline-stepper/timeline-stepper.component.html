@@ -1,7 +1,7 @@
 <div class="timeline-stepper__row">
   <button
     type="button"
-    class="icon-btn icon-btn--lg timeline-stepper__nav"
+    class="icon-btn icon-btn--lg icon-btn--framed timeline-stepper__nav"
     [attr.aria-label]="'replay.viewer.stepper.prevTurn' | translate"
     [disabled]="!canStepPrev()"
     (click)="onPrev()">
@@ -29,7 +29,7 @@
 
   <button
     type="button"
-    class="icon-btn icon-btn--lg timeline-stepper__nav"
+    class="icon-btn icon-btn--lg icon-btn--framed timeline-stepper__nav"
     [attr.aria-label]="'replay.viewer.stepper.nextTurn' | translate"
     [disabled]="!canStepNext()"
     (click)="onNext()">

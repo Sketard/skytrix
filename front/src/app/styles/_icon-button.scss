@@ -90,6 +90,22 @@
   }
 }
 
+// XL — réservé aux CTAs hero (lecture/play). Consommateurs actuels :
+// `<app-transport-bar>` play button. Si tu ajoutes un consumer, vérifie que
+// la zone tactile reste alignée avec les autres CTAs primary visibles.
+.icon-btn--xl {
+  width: 52px;
+  height: 52px;
+
+  .material-icons-round,
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+  }
+}
+
 // --- Variants ---------------------------------------------------------------
 .icon-btn--danger:hover:not(:disabled) {
   color: var(--danger-strong);
@@ -104,6 +120,61 @@
 
   .material-icons-round,
   mat-icon { color: var(--gold); }
+}
+
+// Framed — variant cadré (overlay bg + border-soft) qui prend un hover gold
+// "lift" léger. Plus dense que le ghost default — pour les actions PRIMAIRES
+// répétées dans un dock (transport-bar step buttons, timeline-stepper nav).
+// Consumers (audit 2026-05-17) :
+//   - `<app-transport-bar>` 4 step buttons (skip-start / -end, step-back / -fwd)
+//   - `<app-timeline-stepper>` nav buttons (prev / next turn)
+//   - Wave 3 (duel in-game dock — pattern récurrent dans mockups)
+// `:disabled` n'override pas le `opacity: 0.4` du `.icon-btn` parent — chaque
+// consumer peut tighten à 0.3 localement s'il le faut (transport-bar parity).
+.icon-btn--framed {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    color: var(--gold);
+    background: var(--gold-soft-08);
+    border-color: var(--gold-soft-40);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.96);
+  }
+}
+
+// Primary — gold gradient hero variant. Source des tokens : strictement
+// alignée sur `.btn--primary` (`_buttons.scss:55`) pour la cohérence visuelle
+// du palette gold (gold-100 / gold / gold-700, shadow gold-soft-40/50).
+// Ne combine PAS avec `mat-icon-button` (cf. note dans `_buttons.scss:50`).
+.icon-btn--primary {
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse);
+  border: none;
+  box-shadow:
+    0 4px 16px var(--gold-soft-40),
+    inset 0 1px 0 var(--gold-soft-30);
+
+  .material-icons-round,
+  mat-icon { color: var(--text-inverse); }
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.08);
+    background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+    box-shadow:
+      0 8px 24px var(--gold-soft-50),
+      inset 0 1px 0 var(--gold-soft-30);
+  }
 }
 
 .icon-btn--round {

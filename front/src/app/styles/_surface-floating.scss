@@ -1,0 +1,50 @@
+// =============================================================================
+// Surface Floating — carte/panel flottant gold-bordered "arena holo"
+// =============================================================================
+//
+// Pattern : panel posé au-dessus d'un fond saturé (board, screen-bg) qui doit
+// se détacher visuellement via :
+//   - background sombre (surface-card ou gradient card-ds → bg-deep)
+//   - border 1px gold-soft-25
+//   - elevation Material + glow gold-soft-12 paramétrable
+//   - backdrop-filter blur (12px par défaut, désactivable pour les modales
+//     dont le scrim porte déjà un blur)
+//
+// Consumers identifiés (audit 2026-05-17) :
+//   - `<app-timeline-bar>` popover hover                → @include floating-surface
+//   - `<app-replay-cheat-sheet>` panel                  → @include floating-surface(...)
+//   - Wave 3 (duel in-game / timer-phase / themes)      → 30+ candidats dans mockups
+//
+// Usage :
+//   .ma-popover { @include floating-surface; }
+//   .ma-modale  { @include floating-surface($radius: var(--radius-xl), $glow: 80px, $elevation: var(--elevation-4), $blur: 0); }
+//   .raccourci  { @extend %floating-surface-default; }    // alternative shorthand
+//   <div class="surface-floating">...</div>               // classe utility
+//
+// Naming : `floating` (pas `popover` / `modal` / `card`) — neutre sémantiquement
+// pour couvrir popover, panel, tooltip, sheet header, banner, etc.
+// =============================================================================
+
+@mixin floating-surface(
+  $radius: var(--radius-md),
+  $glow: 32px,
+  $elevation: var(--elevation-3),
+  $blur: 12px,
+  $background: var(--surface-card)
+) {
+  background: $background;
+  border: 1px solid var(--gold-soft-25);
+  border-radius: $radius;
+  box-shadow: $elevation, 0 0 #{$glow} var(--gold-soft-12);
+
+  @if $blur != 0 {
+    backdrop-filter: blur(#{$blur});
+    -webkit-backdrop-filter: blur(#{$blur});
+  }
+}
+
+// Classe utility — paramètres par défaut (popover / hint flottant).
+// Pour customiser le glow/elevation/radius, utiliser le mixin avec args.
+.surface-floating {
+  @include floating-surface;
+}

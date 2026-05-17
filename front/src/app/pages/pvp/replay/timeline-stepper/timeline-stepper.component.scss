@@ -25,31 +25,16 @@
   gap: var(--space-2);
 }
 
+// Composition DS dans le template :
+//   `.icon-btn .icon-btn--lg .icon-btn--framed .timeline-stepper__nav`
+// → bg overlay + border-soft + hover gold lift consommés depuis le DS
+// (`.icon-btn--framed`). Ce sélecteur ne porte plus que la flex sizing 44px
+// (`icon-btn--lg` est 44×44 par défaut mais flex-shrink le réduirait sans le
+// `flex: 0 0 44px` explicite) + l'override `:disabled` opacity 0.3.
 .timeline-stepper__nav {
-  // WCAG touch target.
   @include r.touch-target-min;
   flex: 0 0 44px;
   height: 44px;
-
-  // Mockup §stepper-nav-btn parity — framed pill with gold hover lift. Same
-  // override pattern as `.transport-bar__step` (see transport-bar SCSS for the
-  // rationale: `icon-btn--lg` ghost default is too discreet for primary
-  // navigation actions in the replay viewer).
-  background: var(--surface-overlay);
-  border: 1px solid var(--border-soft);
-  color: var(--text-secondary);
-  transition: color var(--transition-fast) var(--ease-out),
-              background var(--transition-fast) var(--ease-out),
-              border-color var(--transition-fast) var(--ease-out),
-              transform var(--transition-fast) var(--ease-out);
-
-  &:hover:not(:disabled),
-  &:focus-visible:not(:disabled) {
-    color: var(--gold);
-    background: var(--gold-soft-08);
-    border-color: var(--gold-soft-40);
-    transform: translateY(-1px);
-  }
 
   &:active:not(:disabled) {
     transform: translateY(0) scale(0.94);

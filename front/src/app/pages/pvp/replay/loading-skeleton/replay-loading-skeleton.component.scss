@@ -1,3 +1,5 @@
+@use 'z-layers' as z;
+
 // Layout only — every visible block comes from <app-skel> primitives + DS
 // utility classes (`.surface-card`, `.pill`). No colours / no animations
 // defined here; the shimmer + pulse-dot are inherited from skel.scss + _pills.scss.
@@ -66,5 +68,5 @@
   left: 50%;
   bottom: var(--space-5);
   transform: translateX(-50%);
-  z-index: 10;
+  z-index: z.$z-pvp-replay-skeleton-progress;
 }

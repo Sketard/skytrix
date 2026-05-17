@@ -108,3 +108,34 @@
 
 // --- Opt-in : sémantique, équivalent à `*` mais auto-documente l'intention ---
 .ghost-scroll                     { @include ghost-scroll; }
+
+// =============================================================================
+// Scrollbar — Visible (opt-in)
+// =============================================================================
+//
+// Override du `ghost-scroll` global pour les conteneurs où l'utilisateur DOIT
+// percevoir au repos qu'il y a du contenu hors écran — typiquement les strips
+// de prompts PvP (où ne pas voir une cible légale = perdre tempo), les listes
+// d'options clippées (chain prompt), les explorers de pile (GY/Banished).
+//
+// Différence vs `ghost-scroll` : démarre à `--gold-soft-25` (visible) au lieu
+// de `--gold-soft-08` (quasi invisible). Hover/active héritent du `*` global
+// (40 / 50). Pas de border-radius — convention DS (cf. `ghost-scroll` mixin).
+//
+// Consumers (audit 2026-05-17) :
+//   - `<app-timeline-bar>` strip horizontal (signal "il y a plus à droite")
+//   - prompts PvP card-grid / sort-card / announce-card
+//   - prompt-option-list (chain prompt à 8+ options)
+//   - pvp-zone-browser-overlay (GY/Banished pile explorer)
+//   - xyz-material-peek (popover compacte)
+//   - solver-config card-grid (handtraps horizontaux)
+//
+// Pourquoi pas un mask-right gradient ? Le mask suggère "il y a plus" mais
+// masque aussi le contenu, gênant pour la lecture rapide d'une cible. La
+// scrollbar visible donne l'info sans toucher au contenu.
+// =============================================================================
+.scrollbar-visible {
+  scrollbar-color: var(--gold-soft-25) transparent;
+
+  &::-webkit-scrollbar-thumb { background: var(--gold-soft-25); }
+}

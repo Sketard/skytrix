@@ -14,7 +14,7 @@
 @if (displayEntries.length === 0) {
   <div class="empty-state">{{ 'duel.prompt.noValidTargets' | translate }}</div>
 } @else {
-<div class="card-strip__inner">
+<div class="card-strip__inner scrollbar-visible">
   <div class="card-strip">
     @for (group of zoneGroups; track group.groupKey) {
       <div class="zone-group">

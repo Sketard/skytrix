@@ -13,7 +13,7 @@
       <div cdkDropList
            [cdkDropListData]="peekState()?.zoneId"
            [cdkDropListEnterPredicate]="noDrop"
-           class="material-list">
+           class="material-list scrollbar-visible">
         @for (material of materials(); track material.instanceId) {
           <div class="material-row"
                cdkDrag

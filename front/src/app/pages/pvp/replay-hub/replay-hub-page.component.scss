@@ -234,6 +234,10 @@
 // desktop (search prend tout l'espace flexible, chips droite), stack vertical
 // sur mobile. Sur mobile, la chip-row passe en scroll horizontal pour rester
 // sur une seule ligne sans wrapper (Q5-3).
+//
+// Le fallback mobile (flex-wrap: nowrap + overflow-x: auto + fade-right) est
+// fourni par `_chips.scss @container chip-row (max-width: 480px)` — on déclare
+// donc `.chip-row` comme container et le DS prend le relais sous 480px.
 .hub-filters {
   display: flex;
   flex-direction: column;
@@ -246,52 +250,28 @@
   }
 
   .search-bar { flex: 1 1 auto; min-width: 0; }
-  .chip-row   { flex: 0 0 auto; }
-
-  // Q5-3 mobile chips scroll: keep filters on one line + horizontal scroll.
-  // `overflow-x: auto` + `flex-wrap: nowrap` is the standard chip-strip
-  // pattern (Material 3, iOS pill-row). Fade right edge to hint scroll.
-  @include r.respond-below(r.$bp-pvp-narrow) {
-    .chip-row {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      overflow-y: hidden;
-      // Prevent the chip-row from forcing its parent to grow horizontally.
-      // It scrolls inside its allocated width.
-      max-width: 100%;
-      scrollbar-width: none; // Firefox
-      -webkit-mask-image: linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
-      mask-image:         linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
-      padding-right: var(--space-2);
-
-      &::-webkit-scrollbar { display: none; }
-      .chip { flex: 0 0 auto; }
-    }
+  .chip-row {
+    flex: 0 0 auto;
+    max-width: 100%;
+    container-type: inline-size;
+    container-name: chip-row;
   }
 }
 
 // Mockup §replay-open-cta — gold pill that slides in from the right at hover.
-// Decorative (the parent `<a [routerLink]>` handles navigation), so it's
-// `aria-hidden` + `pointer-events: none` and hidden on mobile (cascade ≤760).
+// Decorative (le parent `<a [routerLink]>` handle la navigation) → `aria-hidden`
+// + `pointer-events: none` + caché sur mobile (cascade ≤760).
+//
+// Composition DS dans le template : `.btn .btn--primary .btn--sm .btn--cta`.
+// Ce sélecteur ne porte plus que (a) l'animation slide-in au hover du card
+// parent, (b) l'icône mat-icon à 16px, (c) le `pointer-events: none`. Le
+// gradient gold + shadow + uppercase viennent désormais 100% de `_buttons.scss`.
 .replay-card__open-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
-  color: var(--text-inverse);
-  font: var(--weight-bold) var(--text-xs) / 1 var(--font-body);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  box-shadow:
-    0 4px 12px var(--gold-soft-25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transition: opacity var(--transition-fast) var(--ease-out),
-              transform var(--transition-fast) var(--ease-out);
+  pointer-events: none;
   opacity: 0;
   transform: translateX(8px);
-  pointer-events: none;
+  transition: opacity var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
 
   mat-icon {
     font-size: 16px;

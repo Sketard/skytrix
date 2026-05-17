@@ -12,7 +12,7 @@
   <div class="transport-bar__controls" role="group" [attr.aria-label]="'replay.viewer.cheatSheet.section.playback' | translate">
     <button
       type="button"
-      class="icon-btn icon-btn--lg transport-bar__step"
+      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
       [attr.aria-label]="'replay.transport.skipStart' | translate"
       [title]="'replay.transport.skipStart' | translate"
       (click)="skipStart.emit()">
@@ -20,7 +20,7 @@
     </button>
     <button
       type="button"
-      class="icon-btn icon-btn--lg transport-bar__step"
+      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
       [attr.aria-label]="'replay.transport.stepBack' | translate"
       [title]="'replay.transport.stepBack' | translate"
       (click)="stepBack.emit()">
@@ -28,7 +28,7 @@
     </button>
     <button
       type="button"
-      class="icon-btn icon-btn--lg icon-btn--round transport-bar__play"
+      class="icon-btn icon-btn--xl icon-btn--round icon-btn--primary transport-bar__play"
       [attr.aria-label]="playAriaKey() | translate"
       [title]="playAriaKey() | translate"
       [disabled]="atEnd() && !isPlaying()"
@@ -37,7 +37,7 @@
     </button>
     <button
       type="button"
-      class="icon-btn icon-btn--lg transport-bar__step"
+      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
       [attr.aria-label]="'replay.transport.stepForward' | translate"
       [title]="'replay.transport.stepForward' | translate"
       (click)="stepForward.emit()">
@@ -45,7 +45,7 @@
     </button>
     <button
       type="button"
-      class="icon-btn icon-btn--lg transport-bar__step"
+      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
       [attr.aria-label]="'replay.transport.skipEnd' | translate"
       [title]="'replay.transport.skipEnd' | translate"
       (click)="skipEnd.emit()">
@@ -95,7 +95,7 @@
     </button>
     <button
       type="button"
-      class="transport-bar__fork"
+      class="btn btn--secondary btn--sm btn--cta transport-bar__fork"
       [attr.aria-label]="'replay.transport.fork' | translate"
       [title]="'replay.transport.fork' | translate"
       [disabled]="forking()"

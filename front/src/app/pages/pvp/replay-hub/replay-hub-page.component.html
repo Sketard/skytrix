@@ -230,8 +230,11 @@
             <div class="replay-card__actions">
               <!-- Mockup §replay-open-cta — gold pill that slides in on hover.
                    Decorative only (the whole card is a routerLink, so we don't
-                   wire a click here — `pointer-events: none` in SCSS). -->
-              <span class="replay-card__open-cta" aria-hidden="true">
+                   wire a click here — `pointer-events: none` in SCSS).
+                   Composition DS: `.btn .btn--primary .btn--sm .btn--cta` pour le
+                   gradient gold + shadow + uppercase ; `.replay-card__open-cta`
+                   ne porte plus que l'animation slide-in au hover du card. -->
+              <span class="btn btn--primary btn--sm btn--cta replay-card__open-cta" aria-hidden="true">
                 <span>{{ 'replay.hub.card.open' | translate }}</span>
                 <mat-icon>arrow_forward</mat-icon>
               </span>

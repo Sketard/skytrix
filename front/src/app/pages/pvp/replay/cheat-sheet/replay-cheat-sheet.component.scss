@@ -1,4 +1,6 @@
 @use '../../../../styles/responsive' as r;
+@use 'z-layers' as z;
+@use 'surface-floating' as sf;
 
 // Cheat-sheet modal — mockup-fidèle (mockup §cheat-sheet ll. 1345-1437).
 // Visuals delegated to `_cheat-sheet-block.scss` (`.cheat-section*`, `.cheat-item*`,
@@ -16,21 +18,25 @@
   justify-content: center;
   background: var(--scrim);
   backdrop-filter: blur(6px);
-  z-index: 2100;
+  z-index: z.$z-pvp-replay-cheat-sheet;
   padding: var(--space-4);
   animation: ds-cheat-sheet-fade var(--transition-fast) var(--ease-out) both;
 }
 
 .replay-cheat-sheet__panel {
+  // Modal-class floating surface : pas de blur ici (le :host porte déjà
+  // backdrop-filter: blur(6px) sur le scrim), glow 80px ample, elevation-4.
+  // Background = gradient gold-tinted (override du default `--surface-card`).
+  @include sf.floating-surface(
+    $radius: var(--radius-xl),
+    $glow: 80px,
+    $elevation: var(--elevation-4),
+    $blur: 0,
+    $background: linear-gradient(180deg, var(--surface-card-ds), var(--surface-bg-deep))
+  );
   width: 100%;
   max-width: 540px;
   max-height: 85dvh;
-  // Composite panel surface — gold-tinted gradient with gold-soft border + glow.
-  // Mockup parity (ll. 1358-1366) — same pattern as the bottom-sheet partial.
-  background: linear-gradient(180deg, var(--surface-card-ds), var(--surface-bg-deep));
-  border: 1px solid var(--gold-soft-25);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--elevation-4), 0 0 80px var(--gold-soft-12);
   overflow: hidden;
   display: flex;
   flex-direction: column;

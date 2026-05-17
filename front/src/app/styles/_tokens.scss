@@ -138,6 +138,7 @@
   --ease-inout:  cubic-bezier(0.4, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-in:     cubic-bezier(0.5, 0, 0.85, 0.35);
+  --ease-bounce: cubic-bezier(0.2, 1.4, 0.4, 1);
 
   // --- Gold (Millennium accent — DS extended palette) ---
   --gold-50:   #ffe9a8;
@@ -184,10 +185,15 @@
   --cyan-soft-45: rgba(74, 144, 217, 0.45);
   --cyan-soft-50: rgba(74, 144, 217, 0.50);
   --cyan-soft-60: rgba(74, 144, 217, 0.60);
+  // Alias palette-scoped (Wave 3 — board timer opp brouillé 2C).
+  --cyan-500-soft-25: rgba(74, 144, 217, 0.25);
 
   // --- Semantic — extended palette ---
-  --success:       #4caf50;
-  --success-soft:  rgba(76, 175, 80, 0.15);
+  --success:        #4caf50;
+  --success-light:  #66bb6a;         // Lighter success — gradient endpoints (rematch invited)
+  --success-soft:   rgba(76, 175, 80, 0.15);
+  --success-soft-40: rgba(76, 175, 80, 0.40);
+  --success-soft-70: rgba(76, 175, 80, 0.70);
   --warning:       #ffc107;
   --warning-soft:  rgba(255, 193, 7, 0.12);
   --danger-strong: #ff5252;
@@ -208,6 +214,24 @@
   --surface-card-low:  rgba(22, 22, 36, 0.85);
   --surface-overlay:   rgba(255, 255, 255, 0.04);
   --surface-hover:     rgba(255, 255, 255, 0.06);
+
+  // Scrims — opaques sombres alignés sur `--surface-bg-deep` (#0f0f1c).
+  // Famille séparée de `--surface-overlay*` (qui éclaire en rgba blanc) :
+  // `--scrim-*` assombrit pour rendre lisibles des hints/pills/modales
+  // posés au-dessus d'un fond saturé (board, gradients arena, screen-bg).
+  //   - soft   (0.45) : gradients de bord (cards, screen-bg fade)
+  //   - medium (0.60) : pills sur fond clair (login orbits)
+  //   - strong (0.85) : hints flottants (replay swipe-hint, login menu open)
+  //   - deep   (0.92) : overlays modaux saturés (login fullscreen scrim)
+  --scrim-soft:   rgba(10, 10, 20, 0.45);
+  --scrim-medium: rgba(10, 10, 20, 0.60);
+  --scrim-strong: rgba(10, 10, 20, 0.85);
+  --scrim-deep:   rgba(10, 10, 20, 0.92);
+
+  // Overlay strong — saturated dark navy used by prompt dialogs + duel
+  // surrender frame + result overlay tints (Wave 3 duel refresh).
+  --overlay-strong: rgba(15, 23, 42, 0.92);
+
   --border-soft:       rgba(255, 255, 255, 0.10);
   --border-medium:     rgba(255, 255, 255, 0.18);
 
@@ -321,8 +345,27 @@
   --pvp-highlight-selected: rgba(255, 215, 0, 0.6);
   --pvp-lp-own:      var(--success);               // = #4CAF50 (2 usages)
   --pvp-lp-opponent: #90CAF9;
+  --pvp-lp-opponent-soft-35: rgba(144, 202, 249, 0.35);  // Brouillage timer opp (board, Wave 3)
   --pvp-lp-danger:   #F44336;                      // Material Red, distinct de --danger-strong #FF5252
   --pvp-disabled-opacity: var(--opacity-disabled); // = 0.4
+
+  // --- Surfaces (Wave 3 duel refresh) ---
+  --pvp-bg-dark-navy: #1a1a2e;        // Vintage navy — surrender frame, end-flow base
+
+  // --- Result overlay tints (Wave 3 end-flow) ---
+  --pvp-result-victory-tint:    rgba(76, 175, 80, 0.18);
+  --pvp-result-defeat-tint:     rgba(244, 67, 54, 0.18);
+  --pvp-result-draw-tint:       rgba(255, 193, 7, 0.18);
+  --pvp-result-disconnect-tint: rgba(8, 18, 38, 0.82);
+  --pvp-result-timeout-tint:    rgba(30, 18, 4, 0.82);
+
+  // --- Gradients composites (Wave 3 — end-flow + surrender) ---
+  --pvp-rematch-invited-gradient: linear-gradient(
+    135deg, var(--success), var(--success-light)
+  );
+  --pvp-surrender-frame-gradient: linear-gradient(
+    180deg, var(--overlay-strong), var(--pvp-bg-dark-navy)
+  );
 
   // --- Timer colors ---
   --pvp-timer-green:  var(--success);              // = #4CAF50
@@ -346,7 +389,7 @@
   @media (max-height: 500px) {
     --pvp-prompt-dialog-width: 70dvw;
   }
-  --pvp-prompt-dialog-bg: rgba(15, 23, 42, 0.92);
+  --pvp-prompt-dialog-bg: var(--overlay-strong);
   --pvp-prompt-dialog-radius: 0.75rem;
 
   // --- Prompt Interaction ---

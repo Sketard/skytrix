@@ -49,4 +49,14 @@ $z-pvp-blocked-tab-overlay: 95;
 $z-pvp-timeline-popover: 1000;
 $z-pvp-orientation-lock: 9000;
 
+// Replay viewer overlays (cf. `_bmad-output/...mockup-replay-viewer`)
+// Stack from low (board-level) to high (modal-level) so a new overlay can
+// be inserted in the right slot without renumbering.
+$z-pvp-replay-swipe-flash:        4;    // edge fade when swipe-nav detects a gesture
+$z-pvp-replay-swipe-hint:         5;    // pill hint above the flash
+$z-pvp-replay-skeleton-progress: 10;    // progress pill inside the loading skeleton
+$z-pvp-replay-end-overlay:      100;    // end-of-replay panel (above board + transport, under sheets)
+$z-pvp-replay-sheet-backdrop:  2000;    // bottom-sheet backdrop wrapping the whole board
+$z-pvp-replay-cheat-sheet:     2100;    // fullscreen cheat-sheet modal (above sheets)
+
 $z-loader: 100000000;

@@ -26,7 +26,7 @@
         {{ 'duel.zoneBrowser.cardCount' | translate:{count: cards().length} }}
       </div>
     } @else {
-      <div class="zone-browser__grid">
+      <div class="zone-browser__grid scrollbar-visible">
         @for (card of cards(); track $index) {
           <button class="zone-browser__card"
                   type="button"

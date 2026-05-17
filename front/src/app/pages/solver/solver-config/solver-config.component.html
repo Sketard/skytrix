@@ -15,7 +15,7 @@
         }
       </div>
 
-      <div class="card-grid">
+      <div class="card-grid scrollbar-visible">
         @for (card of deduplicatedCards(); track card.cardId) {
           <button class="card-thumb"
             [class.selected]="selectedCount(card.cardId) > 0"

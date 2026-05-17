@@ -4,9 +4,9 @@
 // Transport-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
 //
 // Layout-only SCSS. All visual styling comes from DS Wave 1 utility classes
-// (`.icon-btn`, `.btn--ghost`, `.pill`). The play button gets a custom 52px
-// gold gradient override — documented as the single composite exception that
-// DS Wave 1 doesn't provide (`.btn--primary.--round` isn't a defined composition).
+// (`.icon-btn`, `.btn--ghost`, `.pill`). Le play button compose désormais
+// `.icon-btn .icon-btn--xl .icon-btn--round .icon-btn--primary` (modifiers
+// ajoutés au DS le 2026-05-17 pour absorber le composite "primary hero CTA").
 // The infinite shimmer was removed on 2026-05-16 — the transport bar is always
 // on-screen, so a 4s loop animation was too noisy in peripheral vision.
 // =============================================================================
@@ -51,39 +51,15 @@
 }
 
 // Step buttons (skip-start / step-back / step-forward / skip-end) — mockup
-// §transport-btn parity. The DS `.icon-btn` ghost default (transparent rest,
-// muted hover) is too discreet for the primary playback action row, so we
-// override locally on `.transport-bar__step` to give the buttons a framed
-// pill look with a gold hover lift. `icon-btn--lg` consumers elsewhere keep
-// their ghost default (see icon-btn--lg consumers audit 2026-05-17 — only
-// the transport-bar + timeline-stepper consume `--lg`, both want this look).
-.transport-bar__step {
-  background: var(--surface-overlay);
-  border: 1px solid var(--border-soft);
-  color: var(--text-secondary);
-  transition: color var(--transition-fast) var(--ease-out),
-              background var(--transition-fast) var(--ease-out),
-              border-color var(--transition-fast) var(--ease-out),
-              transform var(--transition-fast) var(--ease-out);
-
-  &:hover:not(:disabled),
-  &:focus-visible:not(:disabled) {
-    color: var(--gold);
-    background: var(--gold-soft-08);
-    border-color: var(--gold-soft-40);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0) scale(0.96);
-  }
-
-  &:disabled {
-    // The DS opacity is 0.4; mockup §transport-btn:disabled drops to 0.3
-    // for a more deliberate "no action available" cue.
-    opacity: 0.3;
-    transform: none;
-  }
+// §transport-btn parity. Composition DS dans le template :
+//   `.icon-btn .icon-btn--lg .icon-btn--framed .transport-bar__step`
+// → bg overlay + border-soft + hover gold lift (translateY -1px) viennent
+// de `.icon-btn--framed` (`_icon-button.scss`).
+// Ce sélecteur ne porte plus que l'override `:disabled` opacity 0.3 (le DS
+// est à 0.4 ; mockup §transport-btn:disabled veut un cue plus net).
+.transport-bar__step:disabled {
+  opacity: 0.3;
+  transform: none;
 }
 
 .transport-bar__options {
@@ -94,37 +70,20 @@
   flex-wrap: nowrap;
 }
 
-// Play button — DS Wave 1 doesn't define `.btn--primary.--round` so the gold
-// gradient + 52px size is a composite custom rule, documented at file head.
-// Consumes the same tokens as `.btn--primary` (gold-100 / gold / gold-700).
+// Play button — composition DS dans le template :
+//   `.icon-btn .icon-btn--xl .icon-btn--round .icon-btn--primary`
+// → 52px + gradient gold + shadow + hover brightness viennent du DS.
+// Ce sélecteur ne porte plus que le hover-lift (translateY) qui est spécifique
+// au transport-bar (les autres .icon-btn--primary potentiels ne lifteront pas
+// forcément). `:disabled` est géré par `.icon-btn` (opacity 0.4 + pointer-events).
 .transport-bar__play {
-  width: 52px;
-  height: 52px;
-  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
-  color: var(--text-inverse);
-  box-shadow:
-    0 4px 16px var(--gold-soft-40),
-    inset 0 1px 0 var(--gold-soft-30);
-  font-size: 20px;
-  line-height: 1;
-  border: none;
-  // Smooth the disable→enable handoff (atEnd flips when scrubbing back).
   transition: opacity var(--transition-fast) var(--ease-out),
               transform var(--transition-fast) var(--ease-out),
               filter   var(--transition-fast) var(--ease-out),
               box-shadow var(--transition-fast) var(--ease-out);
 
   &:hover:not(:disabled) {
-    filter: brightness(1.08);
     transform: translateY(-1px);
-    box-shadow:
-      0 8px 24px var(--gold-soft-50),
-      inset 0 1px 0 var(--gold-soft-30);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 }
 
@@ -133,6 +92,10 @@
 // Labeled buttons (icon + short text) with surface-overlay background and
 // gold-soft accents when active. Not `.icon-btn` because the mockup uses a
 // rectangular pill, not an icon-only circle.
+//
+// Pattern "action-pill" candidat à promotion DS si Wave 3 (duel in-game)
+// reproduit le motif (mockups indiquent c'est probable). Aujourd'hui (2026-05-17)
+// 1 seul consumer dans toute la codebase → on garde local, doctrine 3+ usages.
 // =============================================================================
 .transport-bar__toggle {
   display: flex;
@@ -213,44 +176,25 @@
   &--p2 { background: linear-gradient(135deg, var(--cyan-300), var(--cyan-500)); }
 }
 
-// =============================================================================
-// Fork button — mockup §transport-fork parity. Cyan secondary CTA marking
-// the alternate-history action visually distinct from the gold playback
-// controls.
-// =============================================================================
+// Fork button — mockup §transport-fork parity. Composition DS dans le template :
+//   `.btn .btn--secondary .btn--sm .btn--cta .transport-bar__fork`
+// → cyan accent + uppercase + 32px min-height + disabled state viennent du DS.
+// Ce sélecteur ne porte plus que (a) le hero-lift hover (translateY + cyan
+// glow) qui est spécifique à fork (les autres `.btn--secondary` ne liftent
+// pas), (b) le border hover qui passe à `--cyan-500` (plus net que le
+// `--cyan-soft-50` du DS pour le contraste sur fond bg-deep), (c) l'icône
+// 18px (DS default `mat-icon` n'a pas de pin size dans `.btn`).
 .transport-bar__fork {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  min-height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--cyan-soft-15);
-  border: 1px solid var(--cyan-soft-40);
-  color: var(--cyan-300);
-  cursor: pointer;
-  font: var(--weight-bold) var(--text-xs) / 1 var(--font-body);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  transition: all var(--transition-fast) var(--ease-out);
-
   mat-icon {
     font-size: 18px !important;
     width: 18px !important;
     height: 18px !important;
-    color: inherit;
   }
 
   &:hover:not(:disabled) {
-    background: var(--cyan-soft-25);
     border-color: var(--cyan-500);
     box-shadow: 0 4px 16px var(--cyan-soft-25);
     transform: translateY(-1px);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 }
 
