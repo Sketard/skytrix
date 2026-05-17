@@ -1,7 +1,8 @@
-<div class="replay-cheat-sheet__panel surface-card surface-card--flat">
+<div class="replay-cheat-sheet__panel">
   <header class="replay-cheat-sheet__header">
-    <h2 class="text-gold-gradient replay-cheat-sheet__title">
-      {{ 'replay.viewer.cheatSheet.title' | translate }}
+    <h2 class="replay-cheat-sheet__title text-gold-gradient">
+      <mat-icon aria-hidden="true" class="replay-cheat-sheet__title-icon">keyboard</mat-icon>
+      <span>{{ 'replay.viewer.cheatSheet.title' | translate }}</span>
     </h2>
     <button
       type="button"
@@ -14,17 +15,17 @@
 
   <div class="replay-cheat-sheet__body">
     @for (section of sections; track section.titleKey) {
-      <section class="replay-cheat-sheet__section">
-        <h3 class="section-header__title section-header__title--no-bar">
+      <section class="cheat-section">
+        <h3 class="cheat-section-title">
           {{ section.titleKey | translate }}
         </h3>
-        <div class="replay-cheat-sheet__list">
+        <div class="cheat-list">
           @for (item of section.items; track item.labelKey) {
-            <div class="replay-cheat-sheet__item">
-              <span>{{ item.labelKey | translate }}</span>
-              <div class="replay-cheat-sheet__keys">
-                @for (k of item.keys; track $index; let last = $last) {
-                  <kbd class="text-code text-code--inline">{{ k }}</kbd>
+            <div class="cheat-item">
+              <span class="cheat-item-label">{{ item.labelKey | translate }}</span>
+              <div class="cheat-item-keys">
+                @for (k of item.keys; track $index) {
+                  <kbd class="cheat-key">{{ k }}</kbd>
                 }
               </div>
             </div>

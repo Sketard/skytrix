@@ -1,7 +1,13 @@
 @use '../../../../styles/responsive' as r;
 
-// Layout-only — visuals come from DS utility classes (.surface-card,
-// .text-gold-gradient, .section-header__title, .icon-btn, .text-code--inline).
+// Cheat-sheet modal — mockup-fidèle (mockup §cheat-sheet ll. 1345-1437).
+// Visuals delegated to `_cheat-sheet-block.scss` (`.cheat-section*`, `.cheat-item*`,
+// `.cheat-key`) and `.text-gold-gradient` (DS Wave 1). This file owns:
+//   - The full-screen scrim backdrop (animated fade-in).
+//   - The panel surface (gold-tinted gradient, gold-soft border, elevation-4).
+//   - The header bar with subtle gold-tinted gradient under the title.
+//   - The narrow-viewport collapse to bottom-sheet.
+
 :host {
   position: fixed;
   inset: 0;
@@ -9,7 +15,7 @@
   align-items: center;
   justify-content: center;
   background: var(--scrim);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
   z-index: 2100;
   padding: var(--space-4);
   animation: ds-cheat-sheet-fade var(--transition-fast) var(--ease-out) both;
@@ -17,13 +23,17 @@
 
 .replay-cheat-sheet__panel {
   width: 100%;
-  max-width: 480px;
+  max-width: 540px;
   max-height: 85dvh;
-  overflow-y: auto;
+  // Composite panel surface — gold-tinted gradient with gold-soft border + glow.
+  // Mockup parity (ll. 1358-1366) — same pattern as the bottom-sheet partial.
+  background: linear-gradient(180deg, var(--surface-card-ds), var(--surface-bg-deep));
+  border: 1px solid var(--gold-soft-25);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-4), 0 0 80px var(--gold-soft-12);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-5) var(--space-5);
 }
 
 .replay-cheat-sheet__header {
@@ -31,60 +41,41 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  // Subtle gold-tinted gradient under the title — mockup parity.
+  background: linear-gradient(180deg, var(--gold-soft-06), transparent);
+  flex-shrink: 0;
 }
 
 .replay-cheat-sheet__title {
-  font: var(--weight-bold) var(--text-lg) / var(--line-tight) var(--font-display);
-  letter-spacing: 0.06em;
+  font: var(--weight-bold) var(--text-lg) / 1 var(--font-display);
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
 }
 
+// Title icon — must escape the gold gradient text-fill (which clips the icon
+// glyph to "transparent"). Force its color back to gold + drop-shadow glow.
+.replay-cheat-sheet__title-icon {
+  // !important: override the parent `.text-gold-gradient` background-clip
+  // (which makes the icon glyph transparent). Color the icon explicitly.
+  color: var(--gold) !important;
+  -webkit-text-fill-color: var(--gold) !important;
+  filter: drop-shadow(0 0 8px var(--gold-soft-40));
+  // !important: override mat-icon's default 24px host bind to fit the title row.
+  font-size: 22px !important;
+  width: 22px !important;
+  height: 22px !important;
+  flex-shrink: 0;
+}
+
 .replay-cheat-sheet__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.replay-cheat-sheet__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.replay-cheat-sheet__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.replay-cheat-sheet__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border-subtle);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  // Label cell — the first <span> is the action description ("Toggle
-  // perspective" etc). Without an explicit font declaration it inherited
-  // from the host (no font set) and read as a different family than the
-  // rest of the viewer text. Pin it to DS body tokens so it lines up with
-  // the bottom-sheet labels and topbar pseudos.
-  > span {
-    font: var(--weight-medium) var(--text-sm) / var(--line-snug) var(--font-body);
-    color: var(--text-secondary);
-  }
-}
-
-.replay-cheat-sheet__keys {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  overflow-y: auto;
 }
 
 // Keyframe `ds-cheat-sheet-fade` consolidée dans `_motion.scss` (DS Wave 1 §2.2).
@@ -100,5 +91,14 @@
     max-width: 100%;
     max-height: 90dvh;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+  }
+
+  .replay-cheat-sheet__header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .replay-cheat-sheet__title {
+    font-size: var(--text-md);
   }
 }
