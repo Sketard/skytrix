@@ -1,10 +1,35 @@
 <!DOCTYPE html>
+<!--
+  ============================================================================
+  ✅ SHIPPED — Replay Viewer Holographic Arena
+  ============================================================================
+  Status      : SHIPPED to Angular on branch `design-system`
+  Initial port: 2026-05-14 (F0→F5(auto), 6 commits 506d024a→56f95cde)
+  Polish jour 1: 2026-05-16 (13 commits 965dee6d→5855e6e7)
+  Polish jour 2: 2026-05-17 (16 commits C1→C16) — audit Axel
+  Final ref   : see [[replay-viewer-rework-2026-05-14]] + [[replay-polish-2026-05-16]]
+
+  This file is the visual referent that drove the implementation. The Angular
+  port now matches mockup parity on every documented decision (D1→D22 from
+  the initial spec + D-2026-05-17.1→.4 from the audit). Kept at repo root for
+  traceability and as a DS Wave 1 reference for any future replay enhancement.
+
+  Notable deviations the implem took from this mockup (intentional):
+    - Hover popover (desktop timeline) uses real `<app-pvp-board-container>`,
+      not the `mini-board` thumbnail style. Same applies to picker cards
+      since 2026-05-17 (audit C9).
+    - Stepper pill = affordance-only (icon `grid_view` + dots + chevron). The
+      `T1 / 11 tours` label in this mockup was redundant with the transport
+      context-pill below; dropped in audit C5.
+    - Sub-event drill-down level 2 — added in audit C8, not in this mockup.
+  ============================================================================
+-->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="dark">
-<title>Mockup — Replay Viewer (Holographic Arena)</title>
+<title>✅ SHIPPED — Mockup Replay Viewer (Holographic Arena)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <style>
