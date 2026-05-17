@@ -52,6 +52,13 @@
   @media (min-width: 720px) {
     grid-template-columns: repeat(4, 1fr);
   }
+
+  // Mobile landscape (≤ 500px tall) — the stats strip alone is ~160px which
+  // pushes the replay list mostly off-screen. Hide it; the count badge on the
+  // list header still surfaces the totals at a glance (Axel 2026-05-17).
+  @media (orientation: landscape) and (max-height: 500px) {
+    display: none;
+  }
 }
 
 .hub-stat-card {

@@ -28,6 +28,15 @@ export class NavbarCollapseService {
   private readonly _immersiveMode = signal(false);
   readonly immersiveMode = this._immersiveMode.asReadonly();
 
+  /** Fullscreen-viewer mode — set by pages that own the entire viewport
+   *  (replay viewer, duel page in future). Distinct from `immersiveMode` +
+   *  `isLandscape` (which is the orientation-dependent "hide top chrome"
+   *  computation). When true, the global `.dark-theme-content` should NOT
+   *  reserve the mobile-header padding because the page already owns 100dvh
+   *  via its own `:host { height: 100dvh }` rule. */
+  private readonly _fullscreenViewer = signal(false);
+  readonly fullscreenViewer = this._fullscreenViewer.asReadonly();
+
   readonly isLandscape = toSignal(
     this.breakpointObserver
       .observe(['(orientation: landscape)'])
@@ -66,6 +75,10 @@ export class NavbarCollapseService {
 
   setImmersiveMode(value: boolean): void {
     this._immersiveMode.set(value);
+  }
+
+  setFullscreenViewer(value: boolean): void {
+    this._fullscreenViewer.set(value);
   }
 
   setNavbarHidden(value: boolean): void {

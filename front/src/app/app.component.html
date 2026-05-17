@@ -1,4 +1,4 @@
-<div class="app mat-app-background dark-theme no-transition" [class.mobile-mode]="isMobile() && !shouldHideTopBar()">
+<div class="app mat-app-background dark-theme no-transition" [class.mobile-mode]="isMobile() && !shouldHideTopBar() && !fullscreenViewer()">
   <app-loader></app-loader>
   @if (connectedUser() && !navbarHidden()) {
     <navbar></navbar>
