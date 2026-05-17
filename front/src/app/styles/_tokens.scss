@@ -456,14 +456,19 @@
   // --- Game Event Animations (Story 4.2) ---
   --pvp-activate-highlight: var(--gold-soft-80);
 
-  // --- Alteration Indicators (Story 8.2) ---
-  --pvp-alteration-badge-font-size: clamp(0.45rem, 1.5dvh, 0.8rem);
-  --pvp-alteration-badge-icon-size: clamp(0.45rem, 1.5dvh, 0.8rem);
-  --pvp-alteration-boost: #4caf50;
-  --pvp-alteration-debuff: #f44336;
-  --pvp-alteration-badge-bg: rgba(0, 0, 0, 0.8);
-  --pvp-alteration-negated-opacity: 0.55;
-  --pvp-alteration-equip-lift: -4px;
+  // --- Alteration Indicators (Story 8.2 — refresh DS 2026-05-17) ---
+  // Sémantique : `gain` (cyan DS) = ATK boost, level +N, attribut/race
+  //              `loss` (rouge DS doux) = ATK reduce, level -N
+  // Fond chip = scrim-deep (cohérent avec phase pills Wave 3).
+  // Bordure = gold-soft-30 (anneau gold subtil unifié).
+  --pvp-alteration-gain:        var(--cyan-300);
+  --pvp-alteration-loss:        var(--danger-light);
+  --pvp-alteration-chip-bg:     var(--scrim-deep);
+  --pvp-alteration-chip-border: var(--gold-soft-30);
+  --pvp-alteration-text-size:   var(--text-sm);
+  --pvp-alteration-icon-md:     var(--text-xl);
+  --pvp-alteration-negated-opacity: 0.78;
+  --pvp-alteration-equip-lift:  -4px;
 
   // --- Lobby ---
   --pvp-lobby-card-bg: var(--surface-card);
@@ -505,8 +510,8 @@
 // === PvP: High Contrast ===
 @media (prefers-contrast: more) {
   :root {
-    --pvp-alteration-badge-bg: rgba(0, 0, 0, 0.95);
-    --pvp-alteration-negated-opacity: 0.75;
+    --pvp-alteration-chip-bg: var(--surface-bg-deep);
+    --pvp-alteration-negated-opacity: 0.92;
   }
 }
 

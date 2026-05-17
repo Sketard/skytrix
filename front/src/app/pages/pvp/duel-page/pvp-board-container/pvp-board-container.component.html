@@ -36,6 +36,7 @@
     </div>
   }
   @if (card.isEffectNegated) {
+    <div class="negated-veil" aria-hidden="true"></div>
     <svg class="negated-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
       <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
       <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
@@ -47,11 +48,12 @@
   }
   @if (card.currentRace != null && card.baseRace != null && card.currentRace !== card.baseRace) {
     <img [src]="'assets/images/races/' + getRaceName(card.currentRace) + '.webp'"
-         class="alteration-icon alteration-icon--race" alt="" aria-hidden="true">
+         class="alteration-icon alteration-icon--race"
+         [class.alteration-icon--race--above-xyz]="card.overlayMaterials.length > 0"
+         alt="" aria-hidden="true">
   }
   @if (totalCounters(card.counters) > 0) {
     <div class="counter-indicator" aria-hidden="true"
-         [class.counter-indicator--with-xyz]="card.overlayMaterials.length > 0"
          [class.counter-indicator--pulse]="counterPulseKey() != null && counterPulseKey() === zoneId + '-' + relPlayer">{{ totalCounters(card.counters) }}</div>
   }
   @if (zoneId === 'S1' && card.currentLScale != null && card.baseLScale != null && card.currentLScale !== card.baseLScale) {

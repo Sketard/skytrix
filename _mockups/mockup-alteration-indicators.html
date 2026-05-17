@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Mockup — Alteration Indicators (3 directions DS)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   3 directions visuelles pour la surface "alteration" :
+
+   A — CURRENT (baseline, code actuel) — référence "avant"
+   B — SIGIL SYSTEM — chip unifiée gold/ember/neutral, anneau
+       pulsant attribut/race, ATK/DEF en chip sous-carte
+   C — RUNESTONE — variante plus marquée : sigils géométriques
+       (hexagones), accent gold gravé, ATK/DEF intégré dans
+       une mini stat-bar (mais on garde sous-carte comme demandé)
+   D — MINIMAL — variante sobre : tout en gris-gold uni,
+       différenciation par typographie + arrows, pas de couleur
+       boost/debuff (l'arrow ↑↓ porte le sens)
+
+   Chaque carte affiche en même temps :
+   - ATK boost (2300 → 2800) + DEF debuff (1700 → 1300)
+   - Level +2
+   - Effet négué
+   - Attribut changé (LIGHT → DARK)
+   - Compteur ×3
+   ============================================================ */
+
+:root {
+  /* ===== DS tokens (mirror _tokens.scss) ===== */
+  --surface-base: #121212;
+  --surface-card: #1E1E1E;
+  --surface-elevated: #1E293B;
+  --text-primary: #EAEAEA;
+  --text-secondary: #9E9E9E;
+
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  --gold: #C9A84C;
+  --gold-50: #ffe9a8;
+  --gold-100: #d4b25a;
+  --gold-700: #a8862e;
+  --gold-soft-15: rgba(201, 168, 76, 0.15);
+  --gold-soft-25: rgba(201, 168, 76, 0.25);
+  --gold-soft-30: rgba(201, 168, 76, 0.30);
+  --gold-soft-35: rgba(201, 168, 76, 0.35);
+  --gold-soft-45: rgba(201, 168, 76, 0.45);
+
+  /* Secondary palette (DS — _tokens.scss l.184) */
+  --cyan-300: #79b8ff;
+
+  /* Semantic (DS — _tokens.scss l.197+) */
+  --danger-light: #ff8a80;
+
+  /* Scrims (DS — _tokens.scss l.232+) */
+  --scrim-soft:   rgba(10, 10, 20, 0.45);
+  --scrim-medium: rgba(10, 10, 20, 0.60);
+  --scrim-strong: rgba(10, 10, 20, 0.85);
+  --scrim-deep:   rgba(10, 10, 20, 0.92);
+
+  /* Surface overlays (DS — _tokens.scss l.221) */
+  --surface-overlay: rgba(255, 255, 255, 0.04);
+
+  /* Typo (DS — _tokens.scss l.80+) */
+  --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
+  --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
+  --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+  --text-xl:  clamp(1.35rem, 1.20rem + 0.75vw, 1.60rem);
+
+  /* Font weights (DS — _tokens.scss l.92+) */
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-7: 32px; --space-8: 40px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.30);
+
+  /* Carte placeholder = 230×335 (proche d'une vraie carte board) */
+  --card-w: 230px;
+  --card-h: 335px;
+  --card-radius: 8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 30% 20%, #1a1a26, #0a0a10 70%);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  padding: var(--space-7) var(--space-5);
+  min-height: 100vh;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  margin: 0 0 var(--space-2);
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0 0 var(--space-7);
+  max-width: 80ch;
+  line-height: 1.5;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin-bottom: var(--space-7);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.legend span::before {
+  content: "●";
+  margin-right: 6px;
+  color: var(--gold);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-7);
+  margin-bottom: var(--space-8);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.col__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-50);
+}
+
+.col__notes {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 240px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ============================================================
+   CARTE — base partagée par toutes les variantes.
+   Image YGOPRODeck (Stardust Dragon) pour visualiser le rendu
+   final avec un vrai art carte (et non un placeholder).
+   ============================================================ */
+.card {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--card-radius);
+  background: #1a1a10;
+  box-shadow: var(--elevation-2);
+  overflow: visible;
+  margin-bottom: var(--space-6); /* room for under-card stats */
+}
+
+.card__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--card-radius);
+  object-fit: cover;
+  display: block;
+}
+
+/* ============================================================
+   ====================================================
+   VARIANT A — CURRENT (baseline du code actuel)
+   ====================================================
+   ============================================================ */
+.v-a {
+  --alt-boost: #4caf50;
+  --alt-debuff: #f44336;
+  --alt-badge-bg: rgba(0, 0, 0, 0.8);
+  --alt-counter: rgba(150, 50, 200, 0.85);
+}
+
+.v-a .monster-stats {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  -webkit-text-stroke: 1px #000;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.6);
+}
+.v-a .monster-stats .boost  { color: var(--alt-boost); }
+.v-a .monster-stats .debuff { color: var(--alt-debuff); }
+.v-a .monster-stats .sep    { margin: 0 2px; }
+
+.v-a .level-badge {
+  position: absolute;
+  top: 3%;
+  left: 3%;
+  background: var(--alt-badge-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3% 5%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--alt-boost);
+  z-index: 2;
+}
+.v-a .level-badge__icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+}
+
+.v-a .negated-icon {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 65%;
+  aspect-ratio: 1;
+  z-index: 3;
+  opacity: 0.55;
+  color: #b4b4b4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.v-a .negated-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.v-a .attribute-icon {
+  position: absolute;
+  top: 3%;
+  right: 3%;
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,0.7);
+  object-fit: contain;
+  z-index: 2;
+}
+.v-a .race-icon {
+  position: absolute;
+  top: calc(3% + 24% + 3%);
+  right: 3%;
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,0.7);
+  object-fit: contain;
+  z-index: 2;
+  background: rgba(0,0,0,0.4);
+  padding: 2px;
+}
+
+.v-a .counter-indicator {
+  position: absolute;
+  bottom: 3%;
+  right: 3%;
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--alt-counter);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  z-index: 2;
+}
+
+/* ============================================================
+   ====================================================
+   VARIANT B — SIGIL SYSTEM (recommandée)
+   ====================================================
+   Chip unifiée + ATK/DEF en chip obsidian sous-carte
+   Tokens proposés :
+     --pvp-alt-bg: gradient obsidian
+     --pvp-alt-border: gold soft
+     --pvp-alt-boost: gold DS (#d4b85e)
+     --pvp-alt-debuff: ember DS (#e07a4c)
+     --pvp-alt-neutral: gris-bleu (#7a8896)
+     --pvp-alt-counter: violet-gold (#b896e0)
+   ============================================================ */
+.v-b {
+  --alt-bg: linear-gradient(135deg, rgba(20,18,12,0.94), rgba(10,8,4,0.90));
+  --alt-border: rgba(201, 168, 76, 0.40);
+  --alt-boost: #d4b85e;
+  --alt-debuff: #e07a4c;
+  --alt-neutral: #7a8896;
+  --alt-counter: #b896e0;
+}
+
+/* Shared chip base */
+.v-b .alt-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.7rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  background: var(--alt-bg);
+  border: 1px solid var(--alt-border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.5),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2;
+  pointer-events: none;
+}
+.v-b .alt-chip--boost  { color: var(--alt-boost); border-color: rgba(212, 184, 94, 0.50); }
+.v-b .alt-chip--debuff { color: var(--alt-debuff); border-color: rgba(224, 122, 76, 0.50); }
+.v-b .alt-chip--counter { color: var(--alt-counter); border-color: rgba(184, 150, 224, 0.50); }
+
+.v-b .alt-chip__icon {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.v-b .alt-chip__icon-img {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 2px rgba(212, 184, 94, 0.5));
+}
+
+.v-b .level-chip {
+  top: 4%;
+  left: 4%;
+}
+
+.v-b .counter-chip {
+  bottom: 4%;
+  right: 4%;
+}
+
+/* ATK/DEF chip — straddles below card */
+.v-b .stats-chip {
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--alt-bg);
+  border: 1px solid var(--alt-border);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
+  backdrop-filter: blur(6px);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  z-index: 4;
+}
+.v-b .stats-chip__atk { color: var(--alt-boost); }
+.v-b .stats-chip__atk::after { content: " ↑"; font-size: 0.7rem; }
+.v-b .stats-chip__def { color: var(--alt-debuff); }
+.v-b .stats-chip__def::after { content: " ↓"; font-size: 0.7rem; }
+.v-b .stats-chip__sep {
+  color: var(--gold-soft-45);
+  font-weight: 400;
+}
+
+/* Attribute = icon framed by pulsing gold ring */
+.v-b .attribute-frame {
+  position: absolute;
+  top: 4%;
+  right: 4%;
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 2px;
+  background:
+    conic-gradient(from 0deg, var(--gold) 0%, var(--gold-700) 50%, var(--gold) 100%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 2px 8px rgba(201, 168, 76, 0.45);
+  z-index: 2;
+  animation: ring-pulse 2.4s ease-in-out infinite;
+}
+.v-b .attribute-frame__inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #1a1a2a, #050510);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.v-b .attribute-frame__inner img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+/* Race chip — below attribute, mirrors the chip style */
+.v-b .race-chip {
+  position: absolute;
+  top: calc(4% + 24% + 4%);
+  right: 4%;
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--alt-bg);
+  border: 1px solid var(--alt-border);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+  padding: 4px;
+}
+.v-b .race-chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(212, 184, 94, 0.4));
+}
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 2px 8px rgba(201, 168, 76, 0.45); }
+  50%      { box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 2px 14px rgba(201, 168, 76, 0.80); }
+}
+
+/* Negated — soft desaturation + top-center sigil */
+.v-b .negated-veil {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  background:
+    radial-gradient(ellipse at center, rgba(10,10,15,0.45) 0%, rgba(10,10,15,0.15) 70%);
+  z-index: 1;
+  pointer-events: none;
+}
+.v-b .negated-sigil {
+  position: absolute;
+  top: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--alt-bg);
+  border: 1px solid rgba(122, 136, 150, 0.50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--alt-neutral);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
+  backdrop-filter: blur(4px);
+  z-index: 3;
+}
+
+/* ============================================================
+   ====================================================
+   VARIANT C — RUNESTONE (plus marquée)
+   ====================================================
+   Sigils géométriques hexagonaux + ATK/DEF en chip sous-carte
+   plus large avec un fin liseré gold.
+   ============================================================ */
+.v-c {
+  --alt-bg: linear-gradient(135deg, #1a1610, #0d0a06);
+  --alt-border: rgba(201, 168, 76, 0.55);
+  --alt-boost: var(--gold-50);
+  --alt-debuff: #f0916a;
+  --alt-neutral: #8a8a8a;
+  --alt-counter: #c8a8e8;
+}
+
+.v-c .runestone {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background: var(--alt-bg);
+  border: 1.5px solid var(--alt-border);
+  /* hex clip */
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--alt-boost);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7));
+  z-index: 2;
+  letter-spacing: 0.02em;
+}
+.v-c .runestone--debuff { color: var(--alt-debuff); }
+.v-c .runestone--neutral { color: var(--alt-neutral); border-color: rgba(138,138,138,0.55); }
+.v-c .runestone--counter { color: var(--alt-counter); border-color: rgba(200,168,232,0.55); }
+
+.v-c .runestone__icon {
+  font-size: 0.55rem;
+  margin-right: 2px;
+}
+
+.v-c .runestone--level   { top: 4%; left: 4%; }
+.v-c .runestone--negated { top: 4%; left: 50%; transform: translateX(-50%); }
+.v-c .runestone--counter { bottom: 4%; right: 4%; }
+
+.v-c .attribute-frame {
+  position: absolute;
+  top: 4%;
+  right: 4%;
+  width: 36px;
+  height: 36px;
+  background:
+    linear-gradient(135deg, #2a2a4a, #0a0a1a);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 6px rgba(201, 168, 76, 0.55));
+  z-index: 2;
+  padding: 5px;
+  overflow: hidden;
+}
+.v-c .attribute-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.v-c .runestone__star {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* Race runestone — symmetric to attribute, top-right second slot */
+.v-c .race-frame {
+  position: absolute;
+  top: calc(4% + 36px + 4px);
+  right: 4%;
+  width: 36px;
+  height: 36px;
+  background:
+    linear-gradient(135deg, #1a1610, #0d0a06);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 4px rgba(201, 168, 76, 0.40));
+  z-index: 2;
+  padding: 5px;
+  overflow: hidden;
+}
+.v-c .race-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.v-c .negated-veil {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(138,138,138,0.06) 8px,
+      rgba(138,138,138,0.06) 9px),
+    radial-gradient(ellipse at center, rgba(10,10,15,0.35) 0%, transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.v-c .stats-bar {
+  position: absolute;
+  bottom: -14px;
+  left: 4%;
+  right: 4%;
+  height: 22px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  background: var(--alt-bg);
+  border: 1px solid var(--alt-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-1), inset 0 0 0 1px rgba(255,255,255,0.04);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  z-index: 4;
+  overflow: hidden;
+}
+.v-c .stats-bar__half {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+}
+.v-c .stats-bar__atk { color: var(--alt-boost); }
+.v-c .stats-bar__atk::before { content: "ATK"; font-size: 0.55rem; opacity: 0.6; margin-right: 3px; letter-spacing: 0.1em; }
+.v-c .stats-bar__atk::after  { content: "▲"; font-size: 0.55rem; }
+.v-c .stats-bar__def { color: var(--alt-debuff); }
+.v-c .stats-bar__def::before { content: "DEF"; font-size: 0.55rem; opacity: 0.6; margin-right: 3px; letter-spacing: 0.1em; }
+.v-c .stats-bar__def::after  { content: "▼"; font-size: 0.55rem; }
+.v-c .stats-bar__divider {
+  width: 1px;
+  height: 60%;
+  background: var(--gold-soft-35);
+}
+
+/* ============================================================
+   ====================================================
+   VARIANT D — MINIMAL
+   ====================================================
+   Tout gris-gold uni — différenciation par typo + flèches.
+   Pas de couleur boost/debuff (l'arrow porte le sens).
+   Idéal "ne pas dominer l'art carte".
+   ============================================================ */
+/* ============================================================
+   VARIANT D — tokens DS-conformes.
+   Namespace `--pvp-alteration-*` (cohérent avec _tokens.scss).
+   Aucune valeur hardcodée — tous les hardcodes ont migré vers
+   les tokens DS canoniques (--cyan-300, --danger-light,
+   --scrim-deep, --gold-soft-*, --text-*, --space-*, --radius-*,
+   --elevation-*).
+   ============================================================ */
+.v-d {
+  /* Surface & bordure de chip — réutilise les scrims DS */
+  --pvp-alteration-chip-bg:     var(--scrim-deep);
+  --pvp-alteration-chip-border: var(--gold-soft-30);
+  --pvp-alteration-chip-fg:     var(--gold-50);
+  --pvp-alteration-chip-muted:  var(--text-secondary);
+
+  /* Sémantique gain / perte — palette DS */
+  --pvp-alteration-gain: var(--cyan-300);     /* #79b8ff DS */
+  --pvp-alteration-loss: var(--danger-light); /* #ff8a80 DS */
+
+  /* Tailles icônes — alignées sur l'échelle typo DS */
+  --pvp-alteration-icon-sm: var(--text-sm);  /* level star inline */
+  --pvp-alteration-icon-md: var(--text-xl);  /* attribut / race */
+}
+
+.v-d .alt-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) calc(var(--space-1) + 2px);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-sm);
+  color: var(--pvp-alteration-chip-fg);
+  box-shadow: var(--elevation-1);
+  backdrop-filter: blur(4px);
+  z-index: 2;
+  text-transform: uppercase;
+}
+.v-d .alt-chip__delta {
+  color: var(--pvp-alteration-chip-muted);
+  font-size: var(--text-xs);
+}
+.v-d .alt-chip__delta--gain { color: var(--pvp-alteration-gain); }
+.v-d .alt-chip__delta--loss { color: var(--pvp-alteration-loss); }
+
+.v-d .level-chip   { top: 4%; left: 4%; }
+.v-d .counter-chip { bottom: 4%; right: 4%; }
+
+.v-d .attribute-chip {
+  position: absolute;
+  top: 4%;
+  right: 4%;
+  padding: var(--space-1);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  z-index: 2;
+}
+.v-d .attribute-chip img {
+  width: var(--pvp-alteration-icon-md);
+  height: var(--pvp-alteration-icon-md);
+  object-fit: contain;
+}
+.v-d .race-chip {
+  position: absolute;
+  /* Empilé sous l'attribut. Le calc reste géométrique (offset = taille
+     icône + 2× padding chip + gap), pas une valeur DS magique. */
+  top: calc(4% + var(--pvp-alteration-icon-md) + var(--space-2) + var(--space-1));
+  right: 4%;
+  padding: var(--space-1);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  z-index: 2;
+}
+.v-d .race-chip img {
+  width: var(--pvp-alteration-icon-md);
+  height: var(--pvp-alteration-icon-md);
+  object-fit: contain;
+}
+.v-d .alt-chip__star {
+  width: var(--pvp-alteration-icon-sm);
+  height: var(--pvp-alteration-icon-sm);
+  flex-shrink: 0;
+}
+
+/* Negated — circle-slash, voile diffus + ombre douce. */
+.v-d .negated-veil {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  height: 90%;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    var(--scrim-strong) 0%,
+    var(--scrim-soft) 50%,
+    transparent 80%);
+  z-index: 2;
+  pointer-events: none;
+}
+.v-d .negated-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.78;
+  color: var(--text-primary);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.75));
+}
+.v-d .negated-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.v-d .stats-line {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-1) var(--space-3);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
+  letter-spacing: 0.04em;
+  color: var(--pvp-alteration-chip-fg);
+  white-space: nowrap;
+  z-index: 4;
+  box-shadow: var(--elevation-1);
+}
+.v-d .stats-line__atk { color: var(--pvp-alteration-gain); }
+.v-d .stats-line__def { color: var(--pvp-alteration-loss); }
+.v-d .stats-line__sep {
+  margin: 0 var(--space-2);
+  color: var(--gold-soft-25);
+}
+
+/* ============================================================
+   Section bands
+   ============================================================ */
+section {
+  border-top: 1px solid var(--gold-soft-15);
+  padding-top: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+section h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 var(--space-1);
+}
+section p.section-desc {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  margin: 0 0 var(--space-6);
+  max-width: 75ch;
+  line-height: 1.5;
+}
+
+</style>
+</head>
+<body>
+
+<h1>Refonte des indicateurs d'altération · 3 directions</h1>
+<p class="subtitle">
+  Chaque carte (Stardust Dragon, image réelle YGOPRODeck) affiche <strong>les 6 altérations simultanément</strong> :
+  ATK boosté (2500→2800), DEF débuffé (2000→1300), Level +2, effet négué, attribut changé (WIND→DARK), race changée (Dragon→Spellcaster), compteur ×3.
+  L'ATK/DEF reste systématiquement <em>en chip sous la carte</em> (ton choix de positionnement).
+</p>
+
+<div class="legend">
+  <span>Carte réelle = Stardust Dragon (44508094, image YGOPRODeck)</span>
+  <span>Icônes = vrais assets du repo (../front/src/assets/images/)</span>
+  <span>Tokens DS : gold #C9A84C, obsidian gradient, radius DS</span>
+</div>
+
+<!-- ============================== A ============================== -->
+<section>
+  <h2>A — Actuel (baseline)</h2>
+  <p class="section-desc">
+    Code en place aujourd'hui. Texte stroke noir + couleurs Material vert/rouge,
+    box noire pour level, pastille violette pour counter, attribut en cercle PNG-style.
+    Référence "avant".
+  </p>
+  <div class="row">
+    <div class="col">
+      <div class="card v-a">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="Stardust Dragon">
+
+        <!-- Level badge top-left -->
+        <div class="level-badge">
+          <img class="level-badge__icon" src="../front/src/assets/images/icons/level-star.svg" alt="">6
+        </div>
+
+        <!-- Attribute top-right -->
+        <img class="attribute-icon" src="../front/src/assets/images/attributes/DARK.svg" alt="DARK">
+
+        <!-- Race (changed) — below attribute -->
+        <img class="race-icon" src="../front/src/assets/images/races/SPELLCASTER.webp" alt="Spellcaster">
+
+        <!-- Negated center -->
+        <div class="negated-icon">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
+            <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Counter bottom-right -->
+        <div class="counter-indicator">3</div>
+
+        <!-- ATK/DEF below card -->
+        <div class="monster-stats">
+          <span class="boost">2800</span>
+          <span class="sep">/</span>
+          <span class="debuff">1300</span>
+        </div>
+      </div>
+      <p class="col__notes">5 styles de "box" hétérogènes,<br>palette Material hors DS</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== B ============================== -->
+<section>
+  <h2>B — Sigil System · recommandée</h2>
+  <p class="section-desc">
+    Chip unifiée gradient obsidian + bord gold soft. Variantes par sémantique :
+    <strong>gold (boost)</strong>, <strong>ember (debuff)</strong>, <strong>gris-bleu (neutre/négué)</strong>,
+    <strong>violet-gold (counter)</strong>. L'attribut changé est entouré d'un <em>anneau gold pulsant</em>
+    plutôt qu'une chip dédiée. ATK/DEF en pill obsidian sous-carte avec flèches ↑↓.
+  </p>
+  <div class="row">
+    <div class="col">
+      <div class="card v-b">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="Stardust Dragon">
+
+        <!-- Negated veil + sigil -->
+        <div class="negated-veil"></div>
+        <div class="negated-sigil">⊘</div>
+
+        <!-- Level chip top-left -->
+        <div class="alt-chip alt-chip--boost level-chip">
+          <img class="alt-chip__icon-img" src="../front/src/assets/images/icons/level-star.svg" alt="">6
+        </div>
+
+        <!-- Attribute frame top-right (pulsing ring) -->
+        <div class="attribute-frame">
+          <div class="attribute-frame__inner">
+            <img src="../front/src/assets/images/attributes/DARK.svg" alt="DARK">
+          </div>
+        </div>
+
+        <!-- Race chip below attribute -->
+        <div class="race-chip">
+          <img src="../front/src/assets/images/races/SPELLCASTER.webp" alt="Spellcaster">
+        </div>
+
+        <!-- Counter chip bottom-right -->
+        <div class="alt-chip alt-chip--counter counter-chip">
+          <span class="alt-chip__icon">◆</span>3
+        </div>
+
+        <!-- ATK/DEF stats chip -->
+        <div class="stats-chip">
+          <span class="stats-chip__atk">2800</span>
+          <span class="stats-chip__sep">/</span>
+          <span class="stats-chip__def">1300</span>
+        </div>
+      </div>
+      <p class="col__notes">Système cohérent · 1 mixin chip · 4 accents sémantiques</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== C ============================== -->
+<section>
+  <h2>C — Runestone · plus marquée</h2>
+  <p class="section-desc">
+    Sigils en <strong>hexagones gravés</strong> (clip-path), liseré gold marqué.
+    Le voile négué est <em>strié diagonal</em> plutôt que radial. ATK/DEF en stat-bar plein-largeur sous-carte.
+    Plus identitaire mais plus chargée — risque de dominer l'art si abusé.
+  </p>
+  <div class="row">
+    <div class="col">
+      <div class="card v-c">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="Stardust Dragon">
+
+        <div class="negated-veil"></div>
+
+        <!-- Level top-left -->
+        <div class="runestone runestone--level">
+          <img class="runestone__star" src="../front/src/assets/images/icons/level-star.svg" alt="">6
+        </div>
+
+        <!-- Negated top-center -->
+        <div class="runestone runestone--negated runestone--neutral">⊘</div>
+
+        <!-- Attribute top-right (hexagon) -->
+        <div class="attribute-frame">
+          <img src="../front/src/assets/images/attributes/DARK.svg" alt="DARK">
+        </div>
+
+        <!-- Race below attribute (hexagon) -->
+        <div class="race-frame">
+          <img src="../front/src/assets/images/races/SPELLCASTER.webp" alt="Spellcaster">
+        </div>
+
+        <!-- Counter bottom-right -->
+        <div class="runestone runestone--counter">
+          <span class="runestone__icon">◆</span>3
+        </div>
+
+        <!-- Stats bar bottom -->
+        <div class="stats-bar">
+          <div class="stats-bar__half stats-bar__atk">2800</div>
+          <div class="stats-bar__divider"></div>
+          <div class="stats-bar__half stats-bar__def">1300</div>
+        </div>
+      </div>
+      <p class="col__notes">Identité forte (hexagones)<br>· risque de surcharge</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== D ============================== -->
+<section>
+  <h2>D — Minimal · sobre <span style="color: var(--text-secondary); font-weight: 400; font-size: 0.7rem; letter-spacing: 0.04em; text-transform: none;">(DS-conforme · tokens canoniques)</span></h2>
+  <p class="section-desc">
+    Monospace gris-gold. <strong>Gain = <code style="color: var(--cyan-300);">--cyan-300</code></strong>,
+    <strong>perte = <code style="color: var(--danger-light);">--danger-light</code></strong> : ATK et level +N en bleu DS, DEF en rouge DS.
+    La couleur seule porte le sens (pas de flèche). Effet négué = overlay prod actuel (cercle barré centré).
+    <strong>Tous les hardcodes ont migré vers les tokens DS canoniques</strong> (--scrim-deep, --gold-soft-30, --text-*, --space-*, --radius-*, --elevation-*).
+  </p>
+  <div class="row">
+    <div class="col">
+      <div class="card v-d">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="Stardust Dragon">
+
+        <!-- Negated overlay (current prod : centered SVG circle-slash) -->
+        <div class="negated-veil"></div>
+        <div class="negated-icon">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
+            <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Level -->
+        <div class="alt-chip level-chip">
+          <img class="alt-chip__star" src="../front/src/assets/images/icons/level-star.svg" alt="">LV6 <span class="alt-chip__delta alt-chip__delta--gain">+2</span>
+        </div>
+
+        <!-- Attribute -->
+        <div class="attribute-chip">
+          <img src="../front/src/assets/images/attributes/DARK.svg" alt="DARK">
+        </div>
+
+        <!-- Race -->
+        <div class="race-chip">
+          <img src="../front/src/assets/images/races/SPELLCASTER.webp" alt="Spellcaster">
+        </div>
+
+        <!-- Counter -->
+        <div class="alt-chip counter-chip">
+          ◆ 3
+        </div>
+
+        <!-- ATK/DEF -->
+        <div class="stats-line">
+          <span class="stats-line__atk">2800</span>
+          <span class="stats-line__sep">/</span>
+          <span class="stats-line__def">1300</span>
+        </div>
+      </div>
+      <p class="col__notes">Monospace · bleu (gain) / rouge (perte)</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Side-by-side compact ============================== -->
+<section>
+  <h2>Comparatif côte à côte</h2>
+  <p class="section-desc">
+    Les 4 variantes alignées pour comparer le poids visuel relatif.
+  </p>
+  <div class="row" style="grid-template-columns: repeat(4, 1fr); gap: var(--space-5);">
+
+    <div class="col">
+      <div class="col__title">A — Actuel</div>
+      <div class="card v-a" style="--card-w: 180px; --card-h: 262px;">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="">
+        <div class="level-badge">
+          <img class="level-badge__icon" src="../front/src/assets/images/icons/level-star.svg" alt="">6
+        </div>
+        <img class="attribute-icon" src="../front/src/assets/images/attributes/DARK.svg" alt="">
+        <img class="race-icon" src="../front/src/assets/images/races/SPELLCASTER.webp" alt="">
+        <div class="negated-icon">
+          <svg viewBox="0 0 100 100" fill="none">
+            <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
+            <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="counter-indicator">3</div>
+        <div class="monster-stats">
+          <span class="boost">2800</span>
+          <span class="sep">/</span>
+          <span class="debuff">1300</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col__title">B — Sigil</div>
+      <div class="card v-b" style="--card-w: 180px; --card-h: 262px;">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="">
+        <div class="negated-veil"></div>
+        <div class="negated-sigil">⊘</div>
+        <div class="alt-chip alt-chip--boost level-chip">
+          <img class="alt-chip__icon-img" src="../front/src/assets/images/icons/level-star.svg" alt="">6
+        </div>
+        <div class="attribute-frame">
+          <div class="attribute-frame__inner">
+            <img src="../front/src/assets/images/attributes/DARK.svg" alt="">
+          </div>
+        </div>
+        <div class="race-chip">
+          <img src="../front/src/assets/images/races/SPELLCASTER.webp" alt="">
+        </div>
+        <div class="alt-chip alt-chip--counter counter-chip"><span class="alt-chip__icon">◆</span>3</div>
+        <div class="stats-chip">
+          <span class="stats-chip__atk">2800</span>
+          <span class="stats-chip__sep">/</span>
+          <span class="stats-chip__def">1300</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col__title">C — Runestone</div>
+      <div class="card v-c" style="--card-w: 180px; --card-h: 262px;">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="">
+        <div class="negated-veil"></div>
+        <div class="runestone runestone--level">
+          <img class="runestone__star" src="../front/src/assets/images/icons/level-star.svg" alt="">6
+        </div>
+        <div class="runestone runestone--negated runestone--neutral">⊘</div>
+        <div class="attribute-frame">
+          <img src="../front/src/assets/images/attributes/DARK.svg" alt="">
+        </div>
+        <div class="race-frame">
+          <img src="../front/src/assets/images/races/SPELLCASTER.webp" alt="">
+        </div>
+        <div class="runestone runestone--counter"><span class="runestone__icon">◆</span>3</div>
+        <div class="stats-bar">
+          <div class="stats-bar__half stats-bar__atk">2800</div>
+          <div class="stats-bar__divider"></div>
+          <div class="stats-bar__half stats-bar__def">1300</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col__title">D — Minimal</div>
+      <div class="card v-d" style="--card-w: 180px; --card-h: 262px;">
+        <img class="card__art" src="https://images.ygoprodeck.com/images/cards/44508094.jpg" alt="">
+        <div class="negated-veil"></div>
+        <div class="negated-icon">
+          <svg viewBox="0 0 100 100" fill="none">
+            <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
+            <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="alt-chip level-chip">
+          <img class="alt-chip__star" src="../front/src/assets/images/icons/level-star.svg" alt="">LV6 <span class="alt-chip__delta alt-chip__delta--gain">+2</span>
+        </div>
+        <div class="attribute-chip">
+          <img src="../front/src/assets/images/attributes/DARK.svg" alt="">
+        </div>
+        <div class="race-chip">
+          <img src="../front/src/assets/images/races/SPELLCASTER.webp" alt="">
+        </div>
+        <div class="alt-chip counter-chip">◆ 3</div>
+        <div class="stats-line">
+          <span class="stats-line__atk">2800</span>
+          <span class="stats-line__sep">/</span>
+          <span class="stats-line__def">1300</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</body>
+</html>

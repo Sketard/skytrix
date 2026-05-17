@@ -214,125 +214,172 @@
   }
 }
 
-// === Alteration Indicators (Story 8.3) ===
+// === Alteration Indicators (Story 8.3 — DS-refresh 2026-05-17) ===
+// Wave 3 follow-up : refonte des indicateurs en système unifié de chips
+// monospace gold-on-obsidian, palette DS canonique (cyan-300 gain,
+// danger-light loss). Voir mockup `_mockups/mockup-alteration-indicators.html`
+// variant D pour la référence visuelle.
 
-// Always-on ATK/DEF stats (below card, straddling a few px)
+// Always-on ATK/DEF stats — pill obsidian sous-carte (bottom: -8px).
+// Plus de text-stroke ni text-shadow : la chip elle-même porte le contraste.
 .monster-stats {
   position: absolute;
-  bottom: -10px;
+  bottom: -8px;
   left: 50%;
   transform: translateX(-50%);
   pointer-events: none;
   z-index: 4;
-  display: flex;
-  align-items: baseline;
-  gap: 0;
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
-  color: #fff;
-  font-size: clamp(0.7rem, 1.8dvh, 1.1rem);
-  font-weight: 900;
+  padding: var(--space-1) var(--space-3);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--elevation-1);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--pvp-alteration-text-size);
   line-height: 1;
-  -webkit-text-stroke: 1px #000;
-  paint-order: stroke fill;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.04em;
+  color: var(--gold-50);
 
-  &--boost { color: var(--pvp-alteration-boost); }
-  &--debuff { color: var(--pvp-alteration-debuff); }
-  &--dim { color: #ccc; opacity: 0.9; }
+  &--boost { color: var(--pvp-alteration-gain); }
+  &--debuff { color: var(--pvp-alteration-loss); }
+  &--dim { color: var(--text-secondary); opacity: 0.65; }
 
   &--opponent {
     bottom: auto;
-    top: -10px;
+    top: -8px;
   }
 
   &__sep {
-    color: #fff;
-    margin: 0 1px;
+    color: var(--gold-soft-25);
+    margin: 0 var(--space-2);
   }
-
 }
 
-// AC2: Effect negated overlay (center) — inline SVG with currentColor for forced-colors fallback (AC12b)
+// AC2: Effect negated overlay — radial scrim derrière + cercle barré centré.
+// Le voile décolle le SVG du fond carte sans assombrir l'art complet.
+.negated-veil {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  height: 90%;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    var(--scrim-strong) 0%,
+    var(--scrim-soft) 50%,
+    transparent 80%);
+  z-index: 2;
+  pointer-events: none;
+}
 .negated-icon {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 65%;
-  height: 65%;
+  width: 60%;
+  height: 60%;
   pointer-events: none;
   z-index: 3;
   opacity: var(--pvp-alteration-negated-opacity);
-  color: #b4b4b4;
+  color: var(--text-primary);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.75));
 }
 
-// AC3: Level/Rank badge (top-left)
+// AC3: Level/Rank badge (top-left) — chip monospace
 .level-badge {
   position: absolute;
   top: 3%;
   left: 3%;
-  background: var(--pvp-alteration-badge-bg);
-  border-radius: var(--pvp-radius-sm);
-  font-size: var(--pvp-alteration-badge-font-size);
-  font-weight: 700;
-  padding: 3% 5%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) calc(var(--space-1) + 2px);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-1);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--pvp-alteration-text-size);
   line-height: 1;
+  letter-spacing: 0.05em;
+  color: var(--gold-50);
   pointer-events: none;
   z-index: 2;
   white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 2px;
 
   &__icon {
-    width: var(--pvp-alteration-badge-icon-size);
-    height: var(--pvp-alteration-badge-icon-size);
+    width: var(--text-sm);
+    height: var(--text-sm);
     flex-shrink: 0;
   }
 
-  &--boost { color: var(--pvp-alteration-boost); }
-  &--debuff { color: var(--pvp-alteration-debuff); }
+  &--boost { color: var(--pvp-alteration-gain); }
+  &--debuff { color: var(--pvp-alteration-loss); }
 }
 
-// AC4: Attribute/Type icons (top-right)
+// AC4: Attribute icon (top-right slot 1) — vraie image SVG dans une chip
+// carrée à fond obsidian. Plus de cercle radial-gradient PNG-style.
+// Race icon (--race) déménage côté bas-droit (cf. .alteration-icon--race
+// ci-dessous) pour libérer le top-right slot 2 au counter, qui collidait
+// avec la pill .monster-stats sinon.
 .alteration-icon {
   position: absolute;
   top: 3%;
   right: 3%;
-  width: 24%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
-  pointer-events: none;
+  width: var(--pvp-alteration-icon-md);
+  height: var(--pvp-alteration-icon-md);
+  padding: var(--space-1);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-1);
   object-fit: contain;
+  pointer-events: none;
   z-index: 2;
 
   &--race {
-    top: calc(3% + 24% + 3%);
+    // Bottom-right.
+    top: auto;
+    bottom: var(--space-2);
+    right: 3%;
+  }
+
+  &--race--above-xyz {
+    // Carte XYZ avec materials : `.xyz-indicator` interne occupe bottom 2px →
+    // race-icon remonte au-dessus pour ne pas chevaucher (offset = icône + gap).
+    bottom: calc(var(--space-2) + var(--pvp-alteration-icon-md) + var(--space-1));
   }
 }
 
-// AC5: Counter badge (bottom-right)
+// AC5: Counter badge (top-right slot 2) — pastille distinctive ronde
+// gold-outlined sous l'attribut. Garde la forme circulaire pour rester
+// reconnaissable (différencie d'une chip carrée).
 .counter-indicator {
   position: absolute;
-  bottom: 3%;
+  // Empilé sous l'attribut. Offset = taille icône + padding chip ×2 + gap.
+  top: calc(3% + var(--pvp-alteration-icon-md) + var(--space-2) + var(--space-1));
   right: 3%;
-  width: 24%;
+  width: var(--pvp-alteration-icon-md);
   aspect-ratio: 1;
   border-radius: 50%;
-  background: var(--pvp-counter-badge-bg);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  box-shadow: var(--elevation-1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--pvp-alteration-badge-font-size);
-  font-weight: 700;
-  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--pvp-alteration-text-size);
+  font-weight: var(--weight-bold);
+  color: var(--gold-50);
   pointer-events: none;
   z-index: 2;
-
-  &--with-xyz {
-    bottom: calc(3% + 24% + 3%);
-  }
 
   &--pulse {
     animation: counter-pulse var(--transition-slow) var(--ease-out);
@@ -357,24 +404,30 @@
   }
 }
 
-// AC7: Pendulum scale coloring (bottom-center, S1/S5 only)
+// AC7: Pendulum scale coloring (bottom-center, S1/S5 only) — chip monospace
 .pendulum-scale {
   position: absolute;
   bottom: 3%;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--pvp-alteration-badge-bg);
-  border-radius: var(--pvp-radius-sm);
-  font-size: var(--pvp-alteration-badge-font-size);
-  font-weight: 700;
-  padding: 3% 5%;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) calc(var(--space-1) + 2px);
+  background: var(--pvp-alteration-chip-bg);
+  border: 1px solid var(--pvp-alteration-chip-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-1);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--pvp-alteration-text-size);
   line-height: 1;
+  letter-spacing: 0.05em;
+  color: var(--gold-50);
   pointer-events: none;
   z-index: 2;
-  color: var(--text-primary);
 
-  &--boost { color: var(--pvp-alteration-boost); }
-  &--debuff { color: var(--pvp-alteration-debuff); }
+  &--boost { color: var(--pvp-alteration-gain); }
+  &--debuff { color: var(--pvp-alteration-loss); }
 }
 
 .card-art {
@@ -902,14 +955,18 @@
 
 }
 
-// AC11: Enhanced contrast — thicker badges
+// AC11: Enhanced contrast — thicker chip borders.
+// The chip-style refresh (Wave 3 follow-up) already carries a solid scrim
+// bg + gold border, so prefers-contrast only needs to bump border weight
+// rather than reintroducing text-stroke noise.
 @media (prefers-contrast: more) {
-  .level-badge {
-    border: 1px solid rgba(255, 255, 255, 0.8);
-  }
-
-  .monster-stats {
-    -webkit-text-stroke: 2px #000;
+  .monster-stats,
+  .level-badge,
+  .pendulum-scale,
+  .alteration-icon,
+  .counter-indicator {
+    border-color: var(--gold-soft-60);
+    border-width: 2px;
   }
 }
 

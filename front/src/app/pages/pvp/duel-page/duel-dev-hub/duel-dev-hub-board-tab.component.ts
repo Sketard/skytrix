@@ -5,7 +5,8 @@
 //   A — Thème de plateau (3 radios, drives DuelThemeService)
 //   B — Acteur courant (Moi / Adversaire, drives forcedActor)
 //   C — Urgence timer player (Green / Yellow / Red, drives forcedTimerMs)
-//   D — Mock states (toggles: opponent disconnected, replay readOnly, low LP)
+//   D — Mock states (toggles: opponent disconnected, replay readOnly, low LP,
+//       force on-card alterations)
 //   E — Force phase (6 buttons, drives forcedPhase + triggers announcement)
 //
 // Categories not yet wired in production data flow (deferred):
@@ -94,6 +95,16 @@ export class DuelDevHubBoardTabComponent {
   protected toggleLowLp(): void {
     const curr = this.devState.forcedLowLp();
     this.devState.forcedLowLp.set(curr === true ? null : true);
+  }
+
+  protected toggleAlterations(): void {
+    const curr = this.devState.forcedAlterations();
+    this.devState.forcedAlterations.set(curr === true ? null : true);
+  }
+
+  protected toggleXyzMaterials(): void {
+    const curr = this.devState.forcedXyzMaterials();
+    this.devState.forcedXyzMaterials.set(curr === true ? null : true);
   }
 
   /** Cat E — set the displayed phase AND trigger a phase announcement overlay.

@@ -100,6 +100,26 @@
       </span>
       LP &lt; 1000 (danger)
     </button>
+    <button type="button"
+            class="dev-hub-toggle"
+            [class.dev-hub-toggle--on]="devState.forcedAlterations() === true"
+            (click)="toggleAlterations()"
+            title="Force ATK/DEF boost+debuff, level↑, négué, compteur, attribut/race changés sur le 1er monstre face-up du joueur (M1–M5)">
+      <span class="dev-hub-toggle__box" aria-hidden="true">
+        {{ devState.forcedAlterations() === true ? '✓' : '' }}
+      </span>
+      Altérations carte (ATK/DEF, level, négué, compteur, attribut)
+    </button>
+    <button type="button"
+            class="dev-hub-toggle"
+            [class.dev-hub-toggle--on]="devState.forcedXyzMaterials() === true"
+            (click)="toggleXyzMaterials()"
+            title="Combiné avec Altérations carte : ajoute des materials XYZ pour tester le shift `--race--above-xyz`. Sans effet si Altérations carte est OFF.">
+      <span class="dev-hub-toggle__box" aria-hidden="true">
+        {{ devState.forcedXyzMaterials() === true ? '✓' : '' }}
+      </span>
+      XYZ materials (combo avec Altérations carte)
+    </button>
   </div>
 </section>
 

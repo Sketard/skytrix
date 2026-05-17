@@ -36,6 +36,16 @@ export class DuelDevStateService {
   readonly forcedOpponentDisconnected = this._signal<boolean | null>(null);
   readonly forcedLowLp = this._signal<boolean | null>(null);
   readonly forcedReadOnly = this._signal<boolean | null>(null);
+  /** Wave 3 follow-up — force all on-card alteration indicators (ATK/DEF
+   *  boost+debuff, Level↑, effect negated, counter, attribute changed) on
+   *  the first face-up monster of the local player so the DS rendering of
+   *  the alteration surface can be visually inspected without a live duel. */
+  readonly forcedAlterations = this._signal<boolean | null>(null);
+  /** When true AND forcedAlterations is true, the mocked monster gets fake
+   *  XYZ overlayMaterials so the `.alteration-icon--race--above-xyz` modifier
+   *  (race-icon remontée pour éviter le `.xyz-indicator` interne) peut être
+   *  inspecté sans avoir une vraie carte XYZ sur le terrain. */
+  readonly forcedXyzMaterials = this._signal<boolean | null>(null);
   /** Wave 3 Sprint 3 extension — Cat E force phase. Overrides displayedPhase
    *  passed to the phase-pill. The Board tab also triggers a phase announcement
    *  manually when set. */
@@ -59,6 +69,8 @@ export class DuelDevStateService {
     this.forcedOpponentDisconnected.set(null);
     this.forcedLowLp.set(null);
     this.forcedReadOnly.set(null);
+    this.forcedAlterations.set(null);
+    this.forcedXyzMaterials.set(null);
     this.forcedPhase.set(null);
     this.forcedPrompt.set(null);
     this.forcedResultOutcome.set(null);

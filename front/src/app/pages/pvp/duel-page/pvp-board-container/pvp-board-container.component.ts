@@ -39,8 +39,10 @@ interface ZoneRenderData {
 
 /** Dev hub mock — clone a card with every alteration indicator pinned on at
  *  once so the DS rendering surface (ATK/DEF colour, level badge, negated
- *  overlay, counter pill, attribute/race icons) can be visually inspected. */
-function applyMockAlterations(card: CardOnField): CardOnField {
+ *  overlay, counter pill, attribute/race icons) can be visually inspected.
+ *  When `withXyz` is true, also fakes 2 overlayMaterials so the XYZ indicator
+ *  + `.alteration-icon--race--above-xyz` shift kick in. */
+function applyMockAlterations(card: CardOnField, withXyz: boolean): CardOnField {
   const baseAtk = card.baseAtk ?? card.currentAtk ?? 1800;
   const baseDef = card.baseDef ?? card.currentDef ?? 1200;
   const baseLevel = card.baseLevel ?? card.currentLevel ?? 4;
@@ -62,6 +64,9 @@ function applyMockAlterations(card: CardOnField): CardOnField {
     currentRace: baseRace === 16 ? 32 : 16,
     isEffectNegated: true,
     counters: { ...(card.counters ?? {}), '0x1': 3 },
+    overlayMaterials: withXyz && card.overlayMaterials.length === 0
+      ? [89631139, 46986414]   // fake card codes (Blue-Eyes, Dark Magician) — purely visual
+      : card.overlayMaterials,
   };
 }
 
@@ -465,6 +470,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     const mockSlot = playerIndex === 0 && this.devState.forcedAlterations() === true
       ? this.findFirstFaceUpMonsterZone(player.zones)
       : null;
+    const mockXyz = this.devState.forcedXyzMaterials() === true;
 
     return FIELD_ZONE_IDS.map(zoneId => {
       const zone = zoneMap.get(zoneId);
@@ -474,7 +480,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
       let card = cards.length > 0 ? (isPile ? cards[cards.length - 1] : cards[0]) : null;
 
       if (card && zoneId === mockSlot) {
-        card = applyMockAlterations(card);
+        card = applyMockAlterations(card, mockXyz);
       }
 
       let renderMode: ZoneRenderMode = 'terrain';
