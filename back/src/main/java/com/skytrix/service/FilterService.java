@@ -15,6 +15,7 @@ import com.skytrix.model.dto.card.CardFilterDTO;
 import com.skytrix.model.dto.card.CardSetFilterDTO;
 import com.skytrix.model.entity.Card;
 import com.skytrix.model.entity.CardSet;
+import com.skytrix.model.enums.Race;
 import com.skytrix.security.AuthService;
 
 @Service
@@ -56,12 +57,26 @@ public class FilterService {
                 );
             }
 
-            if (filterDTO.getScale() != null) {
-                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("scale"), filterDTO.getScale()));
+            if (filterDTO.getMinScale() != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.greaterThanOrEqualTo(root.get("scale"), filterDTO.getMinScale()));
             }
 
-            if (filterDTO.getLinkval() != null) {
-                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("linkval"), filterDTO.getLinkval()));
+            if (filterDTO.getMaxScale() != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.lessThanOrEqualTo(root.get("scale"), filterDTO.getMaxScale()));
+            }
+
+            if (filterDTO.getMinLinkval() != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.greaterThanOrEqualTo(root.get("linkval"), filterDTO.getMinLinkval()));
+            }
+
+            if (filterDTO.getMaxLinkval() != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.lessThanOrEqualTo(root.get("linkval"), filterDTO.getMaxLinkval()));
+            }
+
+            var raceFilter = filterDTO.getRaces();
+            if (raceFilter != null && !raceFilter.isEmpty()) {
+                var raceNames = raceFilter.stream().map(Race::name).toList();
+                predicate = criteriaBuilder.and(predicate, root.get("race").in(raceNames));
             }
 
             if (filterDTO.isFavorite()) {

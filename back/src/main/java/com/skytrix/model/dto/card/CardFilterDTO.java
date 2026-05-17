@@ -2,6 +2,7 @@ package com.skytrix.model.dto.card;
 
 import java.util.List;
 
+import com.skytrix.model.enums.Race;
 import com.skytrix.model.enums.Type;
 
 import lombok.Data;
@@ -17,9 +18,12 @@ public class CardFilterDTO {
     private String name;
     private String attribute;
     private String archetype;
-    private Short scale;
-    private Short linkval;
+    private Short minScale;
+    private Short maxScale;
+    private Short minLinkval;
+    private Short maxLinkval;
     private List<Type> types;
+    private List<Race> races;
     private CardSetFilterDTO cardSetFilter;
     private boolean favorite;
 }
