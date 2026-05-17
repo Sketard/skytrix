@@ -109,6 +109,8 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly readOnly = input<boolean>(false);
   readonly duelState = input.required<DuelState>();
   readonly timerState = input<TimerStateMsg | null>(null);
+  /** Current actor — 'me' = own turn or active prompt, 'opp' = waiting on opp. Drives phase-pill colour + timer dim + duelist active glow. */
+  readonly actor = input<'me' | 'opp'>('me');
   readonly ownPlayerIndex = input<Player>(0);
   readonly highlightedZones = input<ReadonlySet<string>>(new Set());
   readonly chosenZone = input<string | null>(null);

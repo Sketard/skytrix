@@ -68,6 +68,7 @@
       <!-- Board -->
       <app-pvp-board-container [readOnly]="true"
                                [duelState]="activeDuelState()"
+                               [actor]="actor()"
                                [ownPlayerIndex]="perspectiveIndex()"
                                [displayedPhase]="currentState()?.boardState?.phase ?? null"
                                [displayedTurnPlayer]="replayDisplayedTurnPlayer()"

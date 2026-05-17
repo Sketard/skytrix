@@ -1,12 +1,17 @@
-<div class="phase-badge-container" role="toolbar" aria-label="Phase actions">
-  <div class="phase-badge"
-       [class.phase-badge--own-turn]="isOwnTurn()"
-       [class.phase-badge--opp-turn]="!isOwnTurn()"
-       [class.phase-badge--has-actions]="availableTransitions().length > 0"
-       (click)="toggleMenu()">
-    <span class="phase-badge__turn">{{ turnLabel() }}</span>
-    <span class="phase-badge__phase">{{ abbreviation() }}</span>
-  </div>
+<div class="phase-pill-container" role="toolbar" aria-label="Phase actions">
+  <button class="phase-pill"
+          type="button"
+          [class.phase-pill--opp]="actor() === 'opp'"
+          [class.phase-pill--actionable]="availableTransitions().length > 0"
+          [attr.disabled]="actor() === 'opp' || availableTransitions().length === 0 ? '' : null"
+          (click)="toggleMenu()">
+    <span class="phase-pill__turn">{{ turnLabel() }}</span>
+    <span class="phase-pill__sep" aria-hidden="true"></span>
+    <span class="phase-pill__name">{{ abbreviation() }}</span>
+    @if (availableTransitions().length > 0 && actor() === 'me') {
+      <span class="phase-pill__chev" aria-hidden="true">▾</span>
+    }
+  </button>
 
   @if (menuExpanded() && actionablePrompt() && availableTransitions().length > 0) {
     <div class="phase-menu" (keydown)="onMenuKeydown($event)">

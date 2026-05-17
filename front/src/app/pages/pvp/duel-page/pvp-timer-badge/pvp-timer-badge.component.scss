@@ -1,48 +1,190 @@
+// =============================================================================
+// Timer badge — Wave 3 spec.
+//
+// Two variants share this SCSS:
+//   - .timer--player : bottom-left, fully readable, drives urgency colour
+//   - .timer--opp    : top-right, value MUST stay illegible (2C blur + scrim
+//                      + 45° hatching). Gameplay-critical privacy rule.
+//
+// `--p` is set inline as a percentage for `.timer__bar-fill` width.
+// =============================================================================
+
 :host {
-  display: block;
+  display: contents; // Timer is absolutely positioned, host should not stack.
 }
 
-.timer-badge {
-  font-size: var(--pvp-timer-font-size);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  padding: 4px 8px;
-  border-radius: var(--pvp-radius-lg);
-  text-align: center;
-  min-width: 48px;
-  color: var(--text-primary);
-  transition: opacity var(--pvp-transition-highlight-flash), background var(--pvp-transition-highlight-flash);
+.timer {
+  position: absolute;
+  z-index: 71;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 64px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--overlay-strong);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--duel-accent-soft, var(--gold-soft-40));
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-2),
+              0 0 12px var(--duel-accent-soft, var(--gold-soft-20));
+  font-family: var(--font-display);
+  transition: opacity var(--transition-normal) var(--ease-out),
+              filter var(--transition-normal) var(--ease-out),
+              border-color var(--transition-normal) var(--ease-out),
+              box-shadow var(--transition-normal) var(--ease-out);
 }
 
-.timer--green {
-  background: rgba(76, 175, 80, 0.25);
-  color: var(--pvp-timer-green);
+.timer--player {
+  bottom: calc(var(--space-2) + 48px);
+  left: var(--space-3);
 }
 
-.timer--yellow {
-  background: rgba(255, 193, 7, 0.25);
-  color: var(--pvp-timer-yellow);
+.timer--opp {
+  top: calc(var(--space-2) + 48px);
+  right: calc(var(--touch-target-min) + var(--space-3));
+  border-color: var(--pvp-lp-opponent-soft-35);
+  box-shadow: var(--elevation-2), 0 0 12px var(--cyan-soft-15);
 }
 
-.timer--red {
-  background: rgba(244, 67, 54, 0.25);
-  color: var(--pvp-timer-red);
-}
-
-.timer--active {
-  // Color-specific backgrounds (.timer--green/yellow/red) take precedence.
-  // No background override here — active state is indicated by full opacity.
-}
-
-.timer--inactive {
+.timer--dimmed {
   opacity: 0.5;
+  filter: saturate(0.6);
 }
 
-.timer-disconnect {
+// --- Urgency tints (.timer--player only; opp is blurred regardless) ---------
+
+.timer--player.is-yellow {
+  .timer__value { color: var(--pvp-timer-yellow); }
+  .timer__bar-fill { background: var(--pvp-timer-yellow); }
+}
+
+.timer--player.is-red {
+  .timer__value { color: var(--pvp-timer-red); }
+  .timer__bar-fill {
+    background: var(--pvp-timer-red);
+    animation: ds-pulse-dot 800ms ease-in-out infinite;
+  }
+}
+
+// --- Row + value + icon ------------------------------------------------------
+
+.timer__row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  justify-content: center;
+}
+
+.timer__icon {
+  font-size: 0.85rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  line-height: 1;
+  color: var(--text-muted);
+  position: relative;
+  top: 1px;
+}
+
+.timer--opp .timer__icon {
+  color: var(--pvp-lp-opponent);
+  opacity: 0.7;
+}
+
+.timer__value {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: 0.85rem;
+  color: var(--duel-accent-primary, var(--text-primary));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.timer__bar {
+  height: 3px;
+  background: var(--duel-accent-soft, var(--gold-soft-20));
+  border-radius: var(--radius-pill);
+  position: relative;
+  overflow: hidden;
+}
+
+.timer__bar-fill {
+  position: absolute;
+  inset: 0;
+  width: var(--p, 100%);
+  background: var(--duel-accent-primary, var(--success));
+  border-radius: var(--radius-pill);
+  transition: width var(--transition-normal) linear,
+              background var(--transition-fast) var(--ease-out);
+}
+
+// =============================================================================
+// Opp brouillage 2C — gameplay-critical illegibility.
+// Layer 1 : blur(4px) + opacity 0.4 on value + bar
+// Layer 2 : ::before  cyan diagonal scrim
+// Layer 3 : ::after   45° fine cyan hatching
+// =============================================================================
+
+.timer--opp .timer__row,
+.timer--opp .timer__bar {
+  filter: blur(4px);
+  opacity: var(--opacity-disabled);
+}
+
+.timer--opp::before,
+.timer--opp::after {
+  content: "";
+  position: absolute;
+  inset: var(--space-1) var(--space-2);
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.timer--opp::before {
+  background: linear-gradient(
+    135deg,
+    var(--pvp-lp-opponent-soft-35) 0%,
+    var(--cyan-500-soft-25) 100%
+  );
+  z-index: 1;
+}
+
+.timer--opp::after {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(144, 202, 249, 0.55) 0,
+    rgba(144, 202, 249, 0.55) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  z-index: 2;
+}
+
+// Fallback for browsers without backdrop-filter (Safari iOS ≤ 14).
+@supports not (backdrop-filter: blur()) {
+  .timer--opp {
+    background: var(--surface-card-ds);
+
+    &::before {
+      background: var(--pvp-lp-opponent-soft-35);
+    }
+  }
+}
+
+// --- Disconnect (opp variant only) ------------------------------------------
+
+.timer__disconnect {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   color: var(--pvp-timer-yellow);
-  font-size: 0.75em;
+  font-size: var(--text-xs);
+  font-family: var(--font-body);
   white-space: nowrap;
+  line-height: 1.2;
+
+  ::ng-deep .mat-mdc-progress-spinner circle {
+    stroke: var(--pvp-timer-yellow);
+  }
 }

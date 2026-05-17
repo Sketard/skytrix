@@ -4,56 +4,118 @@
   display: block;
 }
 
-.phase-badge-container {
+.phase-pill-container {
   position: relative;
 }
 
-.phase-badge {
-  min-width: clamp(36px, 7dvh, 52px);
-  padding: 4px 10px;
-  border-radius: 999px;
-  display: flex;
-  flex-direction: column;
+// =============================================================================
+// Phase pill — compact central indicator (Wave 3 board enrichment).
+// Variants: gold (own turn / actor='me') vs cyan (opp turn).
+// Tokens: --duel-accent-primary / --duel-accent-soft cascade via `data-theme`
+// (Sprint 2 — currently fallback to --gold via `initial`).
+// =============================================================================
+
+.phase-pill {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-primary);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  transition: border-color var(--pvp-transition-highlight-flash), opacity var(--pvp-transition-highlight-flash);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--overlay-strong);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid var(--duel-accent-primary, var(--gold));
+  border-radius: var(--radius-pill);
+  box-shadow: var(--elevation-2),
+              0 0 20px var(--duel-emz-glow, var(--gold-soft-20));
+  font-family: var(--font-display);
+  cursor: default;
+  white-space: nowrap;
+  transition: transform var(--transition-fast) var(--ease-out),
+              border-color var(--transition-normal) var(--ease-out),
+              box-shadow var(--transition-normal) var(--ease-out);
 
-  &__turn {
-    font-size: 0.5rem;
-    letter-spacing: 0.05em;
-    opacity: 0.7;
-    line-height: 1;
+  // Touch-target hot-zone — pill is 28px but mat-target is 44px.
+  // Documented exception (board spec §2.1, ds-token-doctrine).
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -8px 0;
+    pointer-events: auto;
   }
 
-  &__phase {
-    font-size: var(--pvp-phase-badge-font-size);
-    line-height: 1;
-  }
-
-  &--own-turn {
-    border-color: var(--pvp-accent);
-    opacity: 1;
-  }
-
-  &--opp-turn {
-    border-color: rgba(200, 60, 60, 0.4);
-    background: rgba(80, 10, 10, 0.45);
-    opacity: 0.8;
-  }
-
-  &--has-actions {
+  &--actionable {
     cursor: pointer;
 
-    &:hover {
-      transform: scale(1.1);
+    &:hover:not([disabled]) {
+      transform: scale(1.04);
+      box-shadow: var(--elevation-3),
+                  0 0 28px var(--duel-zone-hover-glow, var(--gold-soft-30));
     }
   }
+
+  &--opp {
+    border-color: var(--pvp-lp-opponent);
+    box-shadow: var(--elevation-2),
+                0 0 20px var(--cyan-soft-25);
+    pointer-events: none;
+
+    .phase-pill__name {
+      color: var(--pvp-lp-opponent);
+    }
+
+    .phase-pill__sep {
+      background: var(--cyan-soft-40);
+    }
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  &[disabled] {
+    cursor: default;
+  }
 }
+
+.phase-pill__turn {
+  font-size: 0.55rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.phase-pill__sep {
+  width: 1px;
+  height: 14px;
+  background: var(--duel-accent-soft, var(--gold-soft-30));
+  margin: 0 2px;
+  transition: background var(--transition-normal) var(--ease-out);
+}
+
+.phase-pill__name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-black);
+  color: var(--duel-accent-primary, var(--gold-50));
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  filter: brightness(1.15);
+  transition: color var(--transition-normal) var(--ease-out);
+}
+
+.phase-pill__chev {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--duel-accent-primary, var(--gold));
+  opacity: 0.8;
+  line-height: 1;
+}
+
+// =============================================================================
+// Phase menu (popover) — drops down below the pill when actionable + clicked.
+// =============================================================================
 
 .phase-menu {
   position: absolute;
@@ -64,44 +126,44 @@
   flex-direction: column;
   background: var(--pvp-action-menu-bg);
   border-radius: var(--pvp-action-menu-radius);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 4px 0;
+  border: 1px solid var(--border-medium);
+  padding: var(--space-1) 0;
   min-width: 120px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--elevation-3);
   z-index: z.$z-pvp-card-action-menu;
 
   &__item {
-    padding: 8px 16px;
+    padding: var(--space-2) var(--space-4);
     border: none;
     background: transparent;
     color: var(--text-primary);
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     text-align: center;
     cursor: pointer;
     white-space: nowrap;
-    min-height: 44px;
+    min-height: var(--touch-target-min);
     display: flex;
     align-items: center;
     justify-content: center;
 
     &:hover,
     &:focus {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--surface-hover);
       outline: none;
     }
 
     &:focus-visible {
-      outline: 2px solid var(--pvp-accent);
+      outline: var(--focus-ring-width) solid var(--focus-ring-color);
       outline-offset: -2px;
     }
   }
 }
 
 @media (forced-colors: active) {
-  .phase-badge {
+  .phase-pill {
     border: 2px solid ButtonText;
 
-    &--own-turn {
+    &:not(.phase-pill--opp) {
       border-color: Highlight;
     }
   }

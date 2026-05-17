@@ -57,6 +57,7 @@ import { DuelToastService } from './duel-toast.service';
 import { DebugLogService } from './debug-log.service';
 import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
+import { DuelDevStateService } from './duel-dev-hub/duel-dev-state.service';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.component';
 import { PvpDiceArenaComponent } from './pvp-dice-arena/pvp-dice-arena.component';
@@ -287,6 +288,17 @@ export class DuelPageComponent implements OnInit {
 
   // Story 1.7 — Own turn detection
   readonly isOwnTurn = computed(() => this.renderedState().turnPlayer === 0);
+
+  // Wave 3 board enrichment — current actor (who the UI is "addressed to").
+  // 'me' = own turn OR active prompt requires my input (responding to opp chain).
+  // 'opp' = waiting on opponent (their turn AND no prompt for me).
+  // Dev override lives in DuelDevStateService.forcedActor (no-op in prod via _signal()).
+  private readonly devState = inject(DuelDevStateService);
+  readonly actor = computed<'me' | 'opp'>(() =>
+    this.devState.override(this.devState.forcedActor, () =>
+      this.hasActivePrompt() || this.isOwnTurn() ? 'me' : 'opp'
+    )
+  );
 
   // Server-driven: true when opponent has a pending prompt
   readonly waitingForOpponent = this.wsService.waitingForOpponent;

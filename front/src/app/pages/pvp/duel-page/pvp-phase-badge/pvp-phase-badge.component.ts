@@ -40,6 +40,7 @@ export class PvpPhaseBadgeComponent {
   readonly turnPlayer = input.required<Player>();
   readonly turnCount = input(0);
   readonly isOwnTurn = input(false);
+  readonly actor = input<'me' | 'opp'>('me');
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
 
   readonly phaseAction = output<{ action: number; index: null }>();

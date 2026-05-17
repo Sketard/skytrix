@@ -268,14 +268,15 @@
         }
       </div>
     }
-    <div class="central-badges">
-      <app-pvp-timer-badge [timerState]="timerState()"
-                           [turnPlayer]="absoluteTurnPlayer()"
-                           [opponentDisconnected]="opponentDisconnected()" />
+    <!-- Wave 3: phase-pill replaces central-badges. Anchored col 4 of the
+         central-strip grid (between EMZ-L and EMZ-R) via SCSS — see
+         `pvp-board-container.component.scss::.phase-pill-anchor`. -->
+    <div class="phase-pill-anchor">
       <app-pvp-phase-badge [phase]="phase()"
                            [turnPlayer]="turnPlayer()"
                            [turnCount]="turnCount()"
                            [isOwnTurn]="turnPlayer() === 0"
+                           [actor]="actor()"
                            [actionablePrompt]="readOnly() ? null : actionablePrompt()"
                            (phaseAction)="onPhaseAction($event)" />
     </div>
@@ -429,6 +430,18 @@
 
     <app-pvp-lp-badge [lp]="playerLp()" side="player" [animatingLp]="playerLpAnim()" />
   </section>
+
+  <!-- Wave 3 board-enrichment timers — absolute, anchored to .board-wrapper.
+       Player = bottom-left (readable). Opp = top-right (brouillage 2C). -->
+  <app-pvp-timer-badge variant="player"
+                       [timerState]="timerState()"
+                       [turnPlayer]="absoluteTurnPlayer()"
+                       [actor]="actor()" />
+  <app-pvp-timer-badge variant="opp"
+                       [timerState]="timerState()"
+                       [turnPlayer]="absoluteTurnPlayer()"
+                       [actor]="actor()"
+                       [opponentDisconnected]="opponentDisconnected()" />
 </div>
 
 @if (devMode) { <app-duel-dev-hub /> }

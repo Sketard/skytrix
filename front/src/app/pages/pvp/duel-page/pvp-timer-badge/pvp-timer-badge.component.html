@@ -1,16 +1,25 @@
-<div class="timer-badge"
-     [class.timer--green]="colorClass() === 'timer--green'"
-     [class.timer--yellow]="colorClass() === 'timer--yellow'"
-     [class.timer--red]="colorClass() === 'timer--red'"
-     [class.timer--active]="isActive()"
-     [class.timer--inactive]="!isActive()"
-     aria-live="polite">
-  @if (disconnectDisplay(); as text) {
-    <span class="timer-disconnect">
-      <mat-progress-spinner mode="indeterminate" [diameter]="20"></mat-progress-spinner>
-      {{ text }}
+<div class="timer"
+     [class.timer--player]="variant() === 'player'"
+     [class.timer--opp]="variant() === 'opp'"
+     [class.timer--dimmed]="!isActive() && !showDisconnect()"
+     [class.is-green]="urgency() === 'normal'"
+     [class.is-yellow]="urgency() === 'soon'"
+     [class.is-red]="urgency() === 'urgent'"
+     [style.--p.%]="progressPercent()"
+     [attr.aria-label]="variant() === 'opp' ? 'Opponent timer (hidden)' : 'Your timer'"
+     [attr.aria-live]="variant() === 'player' ? 'polite' : null">
+  @if (showDisconnect()) {
+    <span class="timer__disconnect">
+      <mat-progress-spinner mode="indeterminate" [diameter]="16"></mat-progress-spinner>
+      <span>Opponent connecting...</span>
     </span>
   } @else {
-    {{ display() }}
+    <span class="timer__row" [attr.aria-hidden]="variant() === 'opp' ? 'true' : null">
+      <mat-icon class="timer__icon" aria-hidden="true">schedule</mat-icon>
+      <span class="timer__value">{{ timeFormatted() }}</span>
+    </span>
+    <span class="timer__bar" aria-hidden="true">
+      <span class="timer__bar-fill"></span>
+    </span>
   }
 </div>

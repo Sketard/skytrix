@@ -107,14 +107,15 @@
   }
 }
 
-.central-badges {
+// Wave 3 board enrichment — phase-pill is anchored in col 4 of the central
+// strip (between EMZ-L col 3 and EMZ-R col 5). The pill is compact (~80×28)
+// so it never overflows onto the EMZ cards. Timers live outside the strip,
+// absolute-positioned on .board-wrapper.
+.phase-pill-anchor {
   grid-column: 4;
   grid-row: 1;
   justify-self: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  align-self: center;
   z-index: z.$z-pvp-card-action-menu;
 }
 

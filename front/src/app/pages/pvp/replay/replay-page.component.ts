@@ -266,6 +266,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return (tp === 0 ? 1 : 0) as Player;
   });
 
+  /** Replay actor — read-only, derived from perspective-adjusted turnPlayer. */
+  readonly actor = computed<'me' | 'opp'>(() =>
+    this.replayDisplayedTurnPlayer() === 0 ? 'me' : 'opp'
+  );
+
   /**
    * The skeleton stays visible while:
    *  - no precomputed states are available yet, OR
