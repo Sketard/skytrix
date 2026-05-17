@@ -15,6 +15,15 @@
   </app-card-searcher>
 </div>
 
+<app-active-filters-bar
+  class="cardSearchPage-mobileActiveFilters"
+  [searchService]="cardSearchService">
+</app-active-filters-bar>
+
+<div class="cardSearchPage-mobileCount">
+  {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
+</div>
+
 <div class="cardSearchPage-mobileResults cardSearchPage-searcher-result">
   <card-list
     [displayMode]="cardSearchService.displayMode()"

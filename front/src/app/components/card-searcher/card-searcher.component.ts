@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, Signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActiveFiltersBarComponent } from '../active-filters-bar/active-filters-bar.component';
 import { CardFiltersComponent } from '../card-filters/card-filters.component';
 import { CardListComponent } from '../card-list/card-list.component';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
@@ -12,11 +14,13 @@ import { FormGroup } from '@angular/forms';
 import { TypedForm } from '../../core/model/commons/typed-form';
 import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
 import { CardDetail } from '../../core/model/card-detail';
+import { Subscription } from 'rxjs';
 import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-card-searcher',
   imports: [
+    ActiveFiltersBarComponent,
     CardFiltersComponent,
     CardListComponent,
     MatButtonToggle,
@@ -48,6 +52,16 @@ export class CardSearcherComponent {
 
   public form: FormGroup<TypedForm<CardFilterDTO>> | undefined = undefined;
 
+  private readonly resultsCount = signal<number>(0);
+  readonly resultsLabel = computed<string | null>(() => {
+    const svc = this.searchService();
+    if (!svc) return null;
+    const count = this.resultsCount();
+    return svc.hasMoreResults() ? `${count}+` : `${count}`;
+  });
+
+  private resultsSub?: Subscription;
+
   constructor() {
     effect(() => {
       const service = this.searchService();
@@ -55,8 +69,16 @@ export class CardSearcherComponent {
         this.form = service.filterForm;
         this.displayMode = service.displayMode;
         this.favoriteFilter = service.favoriteFilter;
+        this.resultsSub?.unsubscribe();
+        this.resultsSub = service.cardsDetails$.subscribe(arr =>
+          this.resultsCount.set(arr.length),
+        );
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.resultsSub?.unsubscribe();
   }
 
   public setDisplayMode(mode: CardDisplayType) {

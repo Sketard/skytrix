@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, HostListener, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatTooltip } from '@angular/material/tooltip';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver } from '@angular/cdk/layout';
+import { ActiveFiltersBarComponent } from '../../components/active-filters-bar/active-filters-bar.component';
 import { CardSearcherComponent } from '../../components/card-searcher/card-searcher.component';
 import { SearchBarComponent } from '../../components/search-bar/search-bar.component';
 import { CardFiltersComponent } from '../../components/card-filters/card-filters.component';
@@ -24,7 +25,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'card-search-page',
   imports: [
-    CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
+    ActiveFiltersBarComponent, CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
     SearchBarComponent, CardFiltersComponent, CardListComponent, MatButtonToggle, MatButtonToggleGroup, MatTooltip,
     TranslatePipe,
   ],
@@ -66,6 +67,14 @@ export class CardSearchPageComponent {
     const cd = this.selectedCardDetail();
     if (!cd || cd.card.id == null) return undefined;
     return this.ownedCardService.ownedMap().get(cd.card.id) ?? 0;
+  });
+
+  private readonly cards = toSignal(this.cardSearchService.cardsDetails$, {
+    initialValue: this.cardSearchService.cardsDetails,
+  });
+  readonly resultsLabel = computed<string>(() => {
+    const count = this.cards().length;
+    return this.cardSearchService.hasMoreResults() ? `${count}+` : `${count}`;
   });
 
   onCardClicked(cd: CardDetail): void {

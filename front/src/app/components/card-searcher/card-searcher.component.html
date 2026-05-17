@@ -27,6 +27,14 @@
       <div class="cardSearchPage-searcher-filters">
         <app-card-filters [searchService]="searchService()"></app-card-filters>
       </div>
+      @if (searchService(); as svc) {
+        <app-active-filters-bar [searchService]="svc"></app-active-filters-bar>
+      }
+      @if (!deckBuildMode() && resultsLabel() !== null) {
+        <div class="cardSearchPage-searcher-count">
+          {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
+        </div>
+      }
       <div class="cardSearchPage-searcher-result">
         <card-list
           [displayMode]="displayMode()"

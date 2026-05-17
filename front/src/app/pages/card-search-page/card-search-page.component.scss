@@ -26,6 +26,25 @@
   }
 }
 
+.cardSearchPage-mobileActiveFilters {
+  display: none;
+  @include r.mobile-portrait {
+    display: block;
+  }
+}
+
+.cardSearchPage-mobileCount {
+  display: none;
+  @include r.mobile-portrait {
+    display: block;
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+  }
+}
+
 app-bottom-sheet {
   display: none;
   @include r.mobile-portrait {

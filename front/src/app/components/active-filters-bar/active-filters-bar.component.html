@@ -1,0 +1,24 @@
+@if (activeFilters().length > 0) {
+  <div class="active-filters-bar">
+    <span class="active-filters-bar__label">
+      {{ 'cardFilters.activeFilters' | translate }}
+    </span>
+    @for (filter of activeFilters(); track filter.key) {
+      <button
+        type="button"
+        class="active-filters-bar__chip"
+        (click)="remove(filter, $event)">
+        <span class="active-filters-bar__chip-label">
+          {{ filter.label | translate }}{{ filter.suffix }}
+        </span>
+        <mat-icon class="active-filters-bar__chip-remove">close</mat-icon>
+      </button>
+    }
+    <button
+      type="button"
+      class="active-filters-bar__clear"
+      (click)="clearAll()">
+      {{ 'cardFilters.clearAll' | translate }}
+    </button>
+  </div>
+}
