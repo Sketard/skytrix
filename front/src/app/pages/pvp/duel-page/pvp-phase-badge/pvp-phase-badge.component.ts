@@ -49,6 +49,18 @@ export class PvpPhaseBadgeComponent {
   readonly turnLabel = computed(() => this.translate.instant('duel.phase.turn', { n: this.turnCount() }));
   readonly menuExpanded = signal(false);
 
+  /** Rich aria-label — phase + actor + interaction hint when actionable. */
+  readonly ariaLabel = computed(() => {
+    const phase = this.abbreviation();
+    if (this.actor() === 'opp') {
+      return this.translate.instant('duel.a11y.phasePillOppTurn', { phase });
+    }
+    const key = this.availableTransitions().length > 0
+      ? 'duel.a11y.phasePillOwnTurn'
+      : 'duel.a11y.phasePillOwnTurnNoActions';
+    return this.translate.instant(key, { phase });
+  });
+
   readonly availableTransitions = computed((): PhaseTransition[] => {
     const prompt = this.actionablePrompt();
     if (!prompt || !this.isOwnTurn()) return [];

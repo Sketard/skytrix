@@ -4,10 +4,13 @@
           [class.phase-pill--opp]="actor() === 'opp'"
           [class.phase-pill--actionable]="availableTransitions().length > 0"
           [attr.disabled]="actor() === 'opp' || availableTransitions().length === 0 ? '' : null"
+          [attr.aria-label]="ariaLabel()"
+          [attr.aria-haspopup]="availableTransitions().length > 0 ? 'menu' : null"
+          [attr.aria-expanded]="availableTransitions().length > 0 ? menuExpanded() : null"
           (click)="toggleMenu()">
-    <span class="phase-pill__turn">{{ turnLabel() }}</span>
+    <span class="phase-pill__turn" aria-hidden="true">{{ turnLabel() }}</span>
     <span class="phase-pill__sep" aria-hidden="true"></span>
-    <span class="phase-pill__name">{{ abbreviation() }}</span>
+    <span class="phase-pill__name" aria-hidden="true">{{ abbreviation() }}</span>
     @if (availableTransitions().length > 0 && actor() === 'me') {
       <span class="phase-pill__chev" aria-hidden="true">▾</span>
     }

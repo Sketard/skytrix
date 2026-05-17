@@ -279,7 +279,12 @@
       "connectionRestored": "Connexion rétablie",
       "chainResolved": "Chaîne résolue",
       "opponentPhase": "Adversaire — {{phase}}",
-      "selectionCancelled": "Sélection annulée — retour au menu d'action"
+      "selectionCancelled": "Sélection annulée — retour au menu d'action",
+      "phasePillOwnTurn": "Phase courante : {{phase}}, votre tour, cliquer pour changer",
+      "phasePillOwnTurnNoActions": "Phase courante : {{phase}}, votre tour",
+      "phasePillOppTurn": "Phase courante : {{phase}}, tour de l'adversaire",
+      "timerPlayer": "Votre timer : {{value}}",
+      "timerOppHidden": "Timer de l'adversaire (volontairement masqué)"
     },
     "phase": {
       "turn": "Tour {{n}}",

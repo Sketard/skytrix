@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, untracked } from '@angular/core';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { Player, TimerStateMsg } from '../../duel-ws.types';
 import { MatIcon } from '@angular/material/icon';
+import { TranslateService } from '@ngx-translate/core';
 import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 
 type TimerVariant = 'player' | 'opp';
@@ -81,4 +83,38 @@ export class PvpTimerBadgeComponent {
   readonly showDisconnect = computed(
     () => this.variant() === 'opp' && this.opponentDisconnected()
   );
+
+  private readonly translate = inject(TranslateService);
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
+
+  /** A11y label — `Your timer: {{value}}` (player, dynamic) or `Opponent timer
+   *  (hidden by design)` (opp, fixed). Used as the only label read by screen
+   *  readers; the row + bar are aria-hidden behind it. */
+  readonly ariaLabel = computed(() => {
+    if (this.variant() === 'opp') {
+      return this.translate.instant('duel.a11y.timerOppHidden');
+    }
+    return this.translate.instant('duel.a11y.timerPlayer', { value: this.timeFormatted() });
+  });
+
+  constructor() {
+    // Announce urgency transitions only — green→yellow→red on the player timer.
+    // Avoid `aria-live` on the element itself (would read every tick).
+    let lastUrgency: TimerUrgency = 'normal';
+    effect(() => {
+      const u = this.urgency();
+      if (this.variant() !== 'player') return;
+      if (u === lastUrgency) return;
+      untracked(() => {
+        const sec = this.remainingSec();
+        if (sec != null && (u === 'soon' || u === 'urgent')) {
+          this.liveAnnouncer.announce(
+            this.translate.instant('duel.a11y.secondsRemaining', { t: sec }),
+            u === 'urgent' ? 'assertive' : 'polite',
+          );
+        }
+      });
+      lastUrgency = u;
+    });
+  }
 }

@@ -203,9 +203,43 @@
 }
 
 // =============================================================================
-// Reduced motion — kill ambient theme animations (a11y/_a11y.scss prends
-// le reste). Les particules pollen "Forest" sont en option et seront ajoutées
-// en Sprint 3 polish.
+// Forest theme — pollen particles overlay (Sprint 3 polish).
+// Container `.duel-particles` est toujours dans le DOM (board-container HTML),
+// caché par défaut, affiché uniquement sous Forest.
+// =============================================================================
+.duel-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  display: none;
+}
+
+.duel-particles__dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--duel-accent-primary, var(--gold));
+  opacity: 0.4;
+  filter: blur(0.5px);
+  animation: ds-duel-pollen-float 12s linear infinite;
+
+  &:nth-child(1) { left: 10%; animation-delay: 0s;  animation-duration: 14s; }
+  &:nth-child(2) { left: 25%; animation-delay: -3s; animation-duration: 11s; }
+  &:nth-child(3) { left: 45%; animation-delay: -6s; animation-duration: 13s; }
+  &:nth-child(4) { left: 60%; animation-delay: -2s; animation-duration: 15s; }
+  &:nth-child(5) { left: 75%; animation-delay: -9s; animation-duration: 10s; }
+  &:nth-child(6) { left: 90%; animation-delay: -5s; animation-duration: 12s; }
+}
+
+.board-host[data-theme="forest"] .duel-particles {
+  display: block;
+}
+
+// =============================================================================
+// Reduced motion — kill ambient theme animations + pollen drift
+// (`_a11y.scss` handles the rest).
 // =============================================================================
 @media (prefers-reduced-motion: reduce) {
   .board-host {
@@ -218,5 +252,10 @@
     &[data-theme="cosmic"]::after {
       animation: none;
     }
+  }
+
+  .duel-particles__dot {
+    animation: none;
+    opacity: 0;
   }
 }

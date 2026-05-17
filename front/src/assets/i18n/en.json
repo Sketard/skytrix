@@ -279,7 +279,12 @@
       "connectionRestored": "Connection restored",
       "chainResolved": "Chain resolved",
       "opponentPhase": "Opponent — {{phase}}",
-      "selectionCancelled": "Selection cancelled — back to action menu"
+      "selectionCancelled": "Selection cancelled — back to action menu",
+      "phasePillOwnTurn": "Current phase: {{phase}}, your turn, click to change",
+      "phasePillOwnTurnNoActions": "Current phase: {{phase}}, your turn",
+      "phasePillOppTurn": "Current phase: {{phase}}, opponent's turn",
+      "timerPlayer": "Your timer: {{value}}",
+      "timerOppHidden": "Opponent timer (hidden by design)"
     },
     "phase": {
       "turn": "Turn {{n}}",

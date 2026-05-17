@@ -1,4 +1,5 @@
 <div class="timer"
+     role="timer"
      [class.timer--player]="variant() === 'player'"
      [class.timer--opp]="variant() === 'opp'"
      [class.timer--dimmed]="!isActive() && !showDisconnect()"
@@ -6,15 +7,14 @@
      [class.is-yellow]="urgency() === 'soon'"
      [class.is-red]="urgency() === 'urgent'"
      [style.--p.%]="progressPercent()"
-     [attr.aria-label]="variant() === 'opp' ? 'Opponent timer (hidden)' : 'Your timer'"
-     [attr.aria-live]="variant() === 'player' ? 'polite' : null">
+     [attr.aria-label]="ariaLabel()">
   @if (showDisconnect()) {
     <span class="timer__disconnect">
       <mat-progress-spinner mode="indeterminate" [diameter]="16"></mat-progress-spinner>
       <span>Opponent connecting...</span>
     </span>
   } @else {
-    <span class="timer__row" [attr.aria-hidden]="variant() === 'opp' ? 'true' : null">
+    <span class="timer__row" aria-hidden="true">
       <mat-icon class="timer__icon" aria-hidden="true">schedule</mat-icon>
       <span class="timer__value">{{ timeFormatted() }}</span>
     </span>
