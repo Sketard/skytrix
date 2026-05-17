@@ -32,7 +32,16 @@
 }
 
 // --- Global reduced-motion --------------------------------------------------
-@media (prefers-reduced-motion: reduce) {
+// Mirrored on both the system media query and the `body.reduced-motion-forced`
+// class (toggled by `ReducedMotionService`, persists in localStorage). This
+// lets users opt in even when their OS doesn't expose the preference (Windows
+// without high-contrast mode, etc.).
+//
+// NOTE — the `@include respect-reduced-motion` mixin below only listens to the
+// media query, not the body class. Components that read it for richer fallbacks
+// (e.g. opacity:1 instead of 0.01ms) won't honour the manual override yet —
+// good enough for the global fade/transition kill which covers 95% of cases.
+@mixin reduced-motion-rules {
   *,
   *::before,
   *::after {
@@ -41,6 +50,14 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @include reduced-motion-rules;
+}
+
+body.reduced-motion-forced {
+  @include reduced-motion-rules;
 }
 
 // --- Print v1 ---------------------------------------------------------------

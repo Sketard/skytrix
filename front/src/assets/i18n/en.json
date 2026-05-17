@@ -502,6 +502,7 @@
       "cardSearch": "Card Search",
       "pvpArena": "PvP Arena",
       "replayPvp": "PVP Replay",
+      "preferences": "Preferences",
       "settings": "Settings"
     },
     "lang": {
@@ -586,6 +587,32 @@
     "loadingReplays": "Loading replays",
     "loadingWaitingRoom": "Loading waiting room",
     "loadingDuelBoard": "Loading duel board"
+  },
+  "preferences": {
+    "pageTitle": "Preferences",
+    "pageSubtitle": "Personalize how the app looks and behaves.",
+    "theme": {
+      "title": "Board theme",
+      "description": "Pick the visual mood of your duel board. The theme also applies in replay mode.",
+      "classic": "Classic",
+      "classicDesc": "Gold on obsidian — the default Skytrix mood.",
+      "cosmic": "Cosmic",
+      "cosmicDesc": "Nebular purple and twinkling stars.",
+      "forest": "Forest",
+      "forestDesc": "Forest green and aged gold, floating pollen particles."
+    },
+    "language": {
+      "title": "Language",
+      "description": "Pick the display language of the app.",
+      "fr": "Français",
+      "en": "English"
+    },
+    "motion": {
+      "title": "Animations",
+      "description": "Turn animations off if you're sensitive to motion or prefer a calmer experience. Independent of the system setting.",
+      "reducedLabel": "Reduce animations",
+      "reducedHint": "Transitions and animations are clamped to 0.01ms when enabled."
+    }
   },
   "solver": {
     "pageTitle": "Solver",

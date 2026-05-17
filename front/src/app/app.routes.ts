@@ -23,6 +23,11 @@ export const routes: Routes = [
   },
   { path: 'decks/:id', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
   { path: 'search', component: CardSearchPageComponent, canActivate: [AuthService] },
+  {
+    path: 'preferences',
+    loadComponent: () => import('./pages/preferences-page/preferences-page.component').then(m => m.PreferencesPageComponent),
+    canActivate: [AuthService],
+  },
   { path: 'parameters', component: ParameterPageComponent, canActivate: [AuthService, adminGuard] },
   {
     path: 'pvp',

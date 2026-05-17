@@ -1,0 +1,232 @@
+@use 'responsive' as r;
+
+// =============================================================================
+// Preferences page — user-facing settings (theme, language, motion).
+//
+// Layout convention aligned on lobby + replay-hub + parameters — same
+// `screen-bg` + page-header + section-header pattern. Container width =
+// `--container-medium` (780px), form-style panel.
+//
+// DS consumed:
+//   - .screen-bg / .screen-bg-grid / .screen-bg-glow--gold/--cyan
+//   - .page-header / .page-header__icon/__title-group/__text/__title/__subtitle
+//   - .section-header / .section-header__title-group / .section-header__title
+//   - .text-gold-gradient
+//   - .card-ds
+//
+// Local-only: .preferences-container, .pref-card, .pref-radio, .pref-toggle.
+// =============================================================================
+
+:host {
+  display: block;
+  position: relative;
+  isolation: isolate;
+  padding: var(--space-fluid-md);
+  min-height: 100dvh;
+
+  @include r.respond-above(r.$bp-tablet) {
+    padding: var(--space-fluid-lg);
+  }
+}
+
+.preferences-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--container-medium);
+  margin: 0 auto;
+}
+
+.page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.section-header__icon {
+  color: var(--gold);
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px var(--gold-soft-40));
+}
+
+// =============================================================================
+// Pref card — same surface treatment as the parameters job card.
+// =============================================================================
+.pref-card {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  &__description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--line-relaxed);
+  }
+
+  &__radios {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+
+    &--pair {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+// =============================================================================
+// Pref radio — card-style radio button (label + description stacked).
+// =============================================================================
+.pref-radio {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-overlay);
+  border: var(--border-width-thin) solid var(--border-soft);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-medium);
+  }
+
+  &--active {
+    border-color: var(--gold);
+    background: var(--gold-soft-10);
+    box-shadow: 0 0 12px var(--gold-soft-20);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  &__label {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &--active &__label {
+    color: var(--gold);
+  }
+
+  &__desc {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    line-height: var(--line-normal);
+  }
+}
+
+// =============================================================================
+// Pref toggle — switch-style for boolean preferences (reduced motion).
+// =============================================================================
+.pref-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  &__track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+    background: var(--surface-overlay);
+    border: var(--border-width-thin) solid var(--border-medium);
+    border-radius: var(--radius-pill);
+    transition: background var(--transition-fast) var(--ease-out),
+                border-color var(--transition-fast) var(--ease-out);
+  }
+
+  &__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: var(--text-secondary);
+    border-radius: var(--radius-pill);
+    transition: transform var(--transition-fast) var(--ease-out),
+                background var(--transition-fast) var(--ease-out);
+  }
+
+  &--on &__track {
+    background: var(--gold-soft-20);
+    border-color: var(--gold);
+  }
+
+  &--on &__thumb {
+    transform: translateX(20px);
+    background: var(--gold);
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  &__label {
+    font-size: var(--text-md);
+    color: var(--text-primary);
+    font-weight: var(--weight-semibold);
+  }
+
+  &__hint {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    line-height: var(--line-normal);
+  }
+}
+
+// =============================================================================
+// Narrow viewport — stack radios on one column.
+// =============================================================================
+@include r.respond-below(r.$bp-tablet) {
+  .pref-card__radios {
+    grid-template-columns: 1fr;
+
+    &--pair {
+      grid-template-columns: 1fr;
+    }
+  }
+}

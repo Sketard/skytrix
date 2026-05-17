@@ -502,6 +502,7 @@
       "cardSearch": "Recherche de cartes",
       "pvpArena": "Arène PvP",
       "replayPvp": "Replay PVP",
+      "preferences": "Préférences",
       "settings": "Paramètres"
     },
     "lang": {
@@ -586,6 +587,32 @@
     "loadingReplays": "Chargement des replays",
     "loadingWaitingRoom": "Chargement de la salle d'attente",
     "loadingDuelBoard": "Chargement du plateau de duel"
+  },
+  "preferences": {
+    "pageTitle": "Préférences",
+    "pageSubtitle": "Personnalisez l'apparence et le comportement de l'application.",
+    "theme": {
+      "title": "Thème du plateau",
+      "description": "Choisissez l'ambiance visuelle de votre plateau de duel. Le thème s'applique aussi en mode replay.",
+      "classic": "Classic",
+      "classicDesc": "Or sur obsidienne — l'ambiance Skytrix par défaut.",
+      "cosmic": "Cosmic",
+      "cosmicDesc": "Violet nébulaire et étoiles scintillantes.",
+      "forest": "Forest",
+      "forestDesc": "Vert forêt et doré ancien, particules de pollen flottantes."
+    },
+    "language": {
+      "title": "Langue",
+      "description": "Choisissez la langue d'affichage de l'application.",
+      "fr": "Français",
+      "en": "English"
+    },
+    "motion": {
+      "title": "Animations",
+      "description": "Désactivez les animations si vous y êtes sensible ou si vous préférez une expérience plus calme. Indépendant du réglage système.",
+      "reducedLabel": "Réduire les animations",
+      "reducedHint": "Les transitions et animations sont réduites à 0,01ms quand activé."
+    }
   },
   "solver": {
     "pageTitle": "Solveur",

@@ -1,0 +1,98 @@
+<div class="screen-bg" aria-hidden="true">
+  <div class="screen-bg-grid"></div>
+  <div class="screen-bg-glow screen-bg-glow--gold"></div>
+  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+</div>
+
+<div class="preferences-container">
+  <header class="page-header">
+    <div class="page-header__title-group">
+      <mat-icon class="page-header__icon" fontIcon="tune"></mat-icon>
+      <div class="page-header__text">
+        <h1 class="page-header__title text-gold-gradient">{{ 'preferences.pageTitle' | translate }}</h1>
+        <span class="page-header__subtitle">{{ 'preferences.pageSubtitle' | translate }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Theme section -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-header__title-group">
+        <mat-icon class="section-header__icon" fontIcon="palette"></mat-icon>
+        <h2 class="section-header__title">{{ 'preferences.theme.title' | translate }}</h2>
+      </div>
+    </div>
+
+    <div class="card-ds pref-card">
+      <p class="pref-card__description">{{ 'preferences.theme.description' | translate }}</p>
+      <div class="pref-card__radios" role="radiogroup" [attr.aria-label]="'preferences.theme.title' | translate">
+        @for (t of themes; track t) {
+          <button type="button"
+                  class="pref-radio"
+                  [class.pref-radio--active]="themeService.currentTheme() === t"
+                  [attr.aria-checked]="themeService.currentTheme() === t"
+                  role="radio"
+                  (click)="setTheme(t)">
+            <span class="pref-radio__label">{{ ('preferences.theme.' + t) | translate }}</span>
+            <span class="pref-radio__desc">{{ ('preferences.theme.' + t + 'Desc') | translate }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Language section -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-header__title-group">
+        <mat-icon class="section-header__icon" fontIcon="language"></mat-icon>
+        <h2 class="section-header__title">{{ 'preferences.language.title' | translate }}</h2>
+      </div>
+    </div>
+
+    <div class="card-ds pref-card">
+      <p class="pref-card__description">{{ 'preferences.language.description' | translate }}</p>
+      <div class="pref-card__radios pref-card__radios--pair" role="radiogroup" [attr.aria-label]="'preferences.language.title' | translate">
+        @for (l of langs; track l.code) {
+          <button type="button"
+                  class="pref-radio"
+                  [class.pref-radio--active]="currentLang() === l.code"
+                  [attr.aria-checked]="currentLang() === l.code"
+                  role="radio"
+                  (click)="setLang(l.code)">
+            <span class="pref-radio__label">{{ l.labelKey | translate }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Motion section -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-header__title-group">
+        <mat-icon class="section-header__icon" fontIcon="motion_photos_off"></mat-icon>
+        <h2 class="section-header__title">{{ 'preferences.motion.title' | translate }}</h2>
+      </div>
+    </div>
+
+    <div class="card-ds pref-card">
+      <p class="pref-card__description">{{ 'preferences.motion.description' | translate }}</p>
+      <button type="button"
+              class="pref-toggle"
+              [class.pref-toggle--on]="motionService.forced()"
+              role="switch"
+              [attr.aria-checked]="motionService.forced()"
+              (click)="toggleReducedMotion()">
+        <span class="pref-toggle__track" aria-hidden="true">
+          <span class="pref-toggle__thumb"></span>
+        </span>
+        <span class="pref-toggle__text">
+          <span class="pref-toggle__label">{{ 'preferences.motion.reducedLabel' | translate }}</span>
+          <span class="pref-toggle__hint">{{ 'preferences.motion.reducedHint' | translate }}</span>
+        </span>
+      </button>
+    </div>
+  </section>
+</div>
