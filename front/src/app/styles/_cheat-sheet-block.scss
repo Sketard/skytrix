@@ -1,0 +1,111 @@
+// =============================================================================
+// Cheat-sheet block partial — Replay Viewer (mockup §cheat-sheet parity).
+// =============================================================================
+// Source: _mockups/mockup-replay-viewer.html (ll. 1400-1437)
+//
+// Visual sub-block used inside the keyboard-shortcuts modal. Each shortcut is
+// a row (`.cheat-item`) with a left-aligned label and a stack of `<kbd>` chips
+// on the right. Sections are titled by `.cheat-section-title` which carries a
+// vertical gold accent-bar on the left edge to anchor the eye.
+//
+// Composition:
+//   .cheat-section
+//     .cheat-section-title       — eyebrow with gold accent-bar
+//     .cheat-list                — vertical stack, 6px gap
+//       .cheat-item              — row: label + keys
+//         .cheat-item-label
+//         .cheat-item-keys       — flex row of <kbd>
+//           .cheat-key           — 3D-look gradient key chip
+//           .cheat-key-plus      — small "+" separator
+//
+// Tokens only — no hex / no rgba inline / no `!important`.
+// =============================================================================
+
+.cheat-section {
+  margin-bottom: var(--space-5);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.cheat-section-title {
+  font: var(--weight-bold) var(--text-xs) / 1 var(--font-display);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-3);
+  position: relative;
+  padding-left: 14px;
+
+  // Vertical gold accent-bar on the left edge with soft glow — anchors the
+  // eye and matches the holographic-arena visual language used elsewhere
+  // (page-header, section-header).
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 12px;
+    background: var(--gold);
+    border-radius: 2px;
+    box-shadow: 0 0 6px var(--gold-soft-50);
+  }
+}
+
+.cheat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cheat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+}
+
+.cheat-item-label {
+  font: var(--weight-medium) var(--text-sm) / 1.3 var(--font-body);
+  color: var(--text-secondary);
+}
+
+.cheat-item-keys {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cheat-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  // 3D-look gradient — subtle highlight on top, shadow inset on bottom.
+  background: linear-gradient(180deg, var(--surface-hover), var(--surface-overlay));
+  border: 1px solid var(--border-medium);
+  // 3D-key chip shadows — composite values with no equivalent semantic token.
+  // Inset bottom = subtle key-press depth; outset top = highlight rim.
+  // Same exception pattern as `_bottom-sheet.scss` scrim (file head note).
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+  font: var(--weight-bold) 0.78rem / 1 var(--font-mono);
+  color: var(--text-primary);
+}
+
+.cheat-key-plus {
+  font: var(--weight-bold) 0.7rem / 1 var(--font-body);
+  color: var(--text-muted);
+  padding: 0 2px;
+}

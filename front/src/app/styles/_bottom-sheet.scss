@@ -36,6 +36,21 @@
   }
 }
 
+// Force the `<app-replay-bottom-sheet>` host to fill the flex backdrop width
+// up to the 540px ceiling — same constraint as `.bottom-sheet` below but
+// applied to the wrapper host so the inner sheet can resolve its `width: 100%`
+// against a sized parent. We must apply this in the GLOBAL partial (loaded
+// synchronously via `styles.scss`) rather than the component's scoped SCSS,
+// because the latter can lag one paint behind on the very first mount —
+// resulting in a narrow first-render that snaps to the correct width on the
+// second open. (Symptom reported 2026-05-17: first sheet opened renders at
+// content-size.)
+app-replay-bottom-sheet {
+  display: block;
+  width: 100%;
+  max-width: 540px;
+}
+
 .bottom-sheet {
   width: 100%;
   max-width: 540px;

@@ -4,11 +4,11 @@
 // (Viewer F0 partial: `.bottom-sheet`, `.bottom-sheet-header`,
 // `.bottom-sheet-title`, `.bottom-sheet-close`, `.bottom-sheet-body`).
 //
-// The wrapper sets :host display-mode so the .bottom-sheet block inside
-// behaves as a self-contained flex column with the partial-defined max-height.
-:host {
-  display: block;
-}
+// The host sizing (display, width, max-width) lives in `_bottom-sheet.scss`
+// as an `app-replay-bottom-sheet { ... }` selector — global partial, loaded
+// synchronously — so it always applies on the very first paint. A `:host`
+// rule here would race with Angular's scoped-CSS injection on the first
+// mount and cause a narrow first-open (bug reported 2026-05-17).
 
 // Tame the `<mat-icon>` inside the close button (default host bind is 24px;
 // the partial expects an 18px glyph centered in the 32x32 box).

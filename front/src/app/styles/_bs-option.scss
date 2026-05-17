@@ -1,0 +1,154 @@
+// =============================================================================
+// Bottom-sheet option-row partial — Replay Viewer (mockup §bs-option parity).
+// =============================================================================
+// Source: _mockups/mockup-replay-viewer.html (ll. 1695-1741)
+//
+// A reusable row used inside `.bottom-sheet-body` for option sheets, details
+// sheets, etc. Each row is composed of:
+//   - `.bs-option-icon`   — 32×32 gold-tinted icon chip (gold-soft-08 bg)
+//   - `.bs-option-text`   — label (primary) + meta (muted) stacked
+//   - `.bs-option-state`  — pill tag at row-end (default neutral, `--on` = gold)
+//   - `.bs-option-chevron` — affordance arrow / swap / copy icon
+//
+// Modifiers:
+//   - `.bs-option--fork`     — switches icon chip to cyan tint for Fork action
+//   - `.bs-option-state--on` — gold pill for active state
+//   - `.bs-option-state--off`— muted text only
+//
+// Consumers: replay-bottom-sheet (options + details), turn-picker bottom-sheet.
+// Tokens only — no hex / no rgba inline / no `!important`.
+// =============================================================================
+
+.bs-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  min-height: 52px;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled) {
+    border-color: var(--border-medium);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.bs-option-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--gold-soft-08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  flex-shrink: 0;
+
+  mat-icon,
+  .material-icons-round {
+    // !important: override mat-icon's default 24px host bind to fit the
+    // 32×32 icon chip without overflowing.
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+  }
+}
+
+.bs-option-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bs-option-label {
+  font: var(--weight-semibold) var(--text-sm) / 1.2 var(--font-body);
+  color: var(--text-primary);
+  // Truncate long labels (e.g. "Copier le lien à ce moment") on narrow phones.
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bs-option-meta {
+  font: var(--weight-medium) var(--text-xs) / 1 var(--font-body);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bs-option-state {
+  font: var(--weight-bold) var(--text-xs) / 1 var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg-deep);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bs-option-state--on {
+  background: var(--gold-soft-12);
+  border-color: var(--gold-soft-40);
+  color: var(--gold-50);
+}
+
+.bs-option-state--off {
+  color: var(--text-muted);
+}
+
+.bs-option-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+
+  mat-icon,
+  .material-icons-round {
+    // !important: override mat-icon's default 24px host bind so the chevron
+    // matches the mockup's 20px icon (visually balanced with the 32×32 chip).
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
+// `.bs-option--fork` — Fork action gets a cyan-tinted icon chip to mark it
+// visually distinct from the gold playback / decision options (mockup parity).
+.bs-option--fork .bs-option-icon {
+  background: var(--cyan-soft-15);
+  color: var(--cyan-300);
+}
+
+// `.bs-option-icon--avatar` — slot for `<app-avatar size="sm">` (32×32, already
+// circular with its own gradient). Drops the gold-tinted chip background so
+// the avatar isn't double-framed. Width/height stay aligned with the standard
+// chip so the row layout doesn't shift.
+.bs-option-icon--avatar {
+  background: transparent;
+  padding: 0;
+}
+
+// Section divider between option groups (e.g. visionnage / actions / fork).
+.bs-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-1) 0;
+}
