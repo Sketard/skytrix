@@ -1,0 +1,57 @@
+<div class="token-select" [class.token-select--open]="isOpen()">
+  <button
+    type="button"
+    class="token-select__trigger"
+    [attr.aria-haspopup]="'listbox'"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-label]="inputLabel() | translate"
+    (click)="toggle()">
+    @if (selectedOptions().length === 0) {
+      <span class="token-select__placeholder">{{ placeholder() | translate }}</span>
+    } @else {
+      <div class="token-select__chips">
+        @for (opt of selectedOptions(); track opt.id) {
+          <span class="token-select__chip">
+            @if (opt.icon) {
+              <img class="token-select__chip-icon" [src]="opt.icon" alt="" />
+            }
+            <span class="token-select__chip-label">{{ opt.name | translate }}</span>
+            <button
+              type="button"
+              class="token-select__chip-remove"
+              [attr.aria-label]="'cardFilters.tokenSelect.removeLabel' | translate"
+              (click)="deselect(opt, $event)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </span>
+        }
+      </div>
+    }
+    <mat-icon class="token-select__caret">expand_more</mat-icon>
+  </button>
+
+  @if (isOpen()) {
+    <div class="token-select__panel" role="listbox" [attr.aria-multiselectable]="true">
+      <div class="token-select__options">
+        @for (opt of displayedOptions(); track opt.id) {
+          <div
+            class="token-select__option"
+            role="option"
+            [class.token-select__option--selected]="isSelected(opt)"
+            [attr.aria-selected]="isSelected(opt)"
+            (click)="toggleSelection(opt)">
+            <span class="token-select__option-check">
+              @if (isSelected(opt)) {
+                <mat-icon>check</mat-icon>
+              }
+            </span>
+            @if (opt.icon) {
+              <img class="token-select__option-icon" [src]="opt.icon" alt="" />
+            }
+            <span class="token-select__option-label">{{ opt.name | translate }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

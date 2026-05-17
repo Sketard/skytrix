@@ -7,3 +7,7 @@ export type AutocompleteOption<T> = {
   id: T;
   name: string;
 };
+
+export type IconedAutocompleteOption<T> = AutocompleteOption<T> & {
+  icon?: string;
+};

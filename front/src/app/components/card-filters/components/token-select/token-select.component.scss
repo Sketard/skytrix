@@ -1,0 +1,231 @@
+// =============================================================================
+// app-token-select — multi-select with mini-chips trigger + dropdown panel
+// =============================================================================
+//
+// DS-conform: zero hardcoded hex/rgba/px (except trigger height = composant
+// geometry per ds-token-doctrine). Layout porté du mockup
+// `_mockups/mockup-deck-flow.html` (lignes 2087-2240).
+// =============================================================================
+
+:host {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.token-select {
+  position: relative;
+  width: 100%;
+}
+
+.token-select__trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 36px; // composant geometry — touch target
+  padding: var(--space-1) var(--space-2);
+  gap: var(--space-2);
+  background: var(--surface-card);
+  border: 1px solid var(--gold-soft-20);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  text-align: left;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background-color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    border-color: var(--gold-soft-45);
+    background: var(--gold-soft-06);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+}
+
+.token-select--open .token-select__trigger {
+  border-color: var(--gold);
+  background: var(--gold-soft-08);
+}
+
+.token-select__placeholder {
+  flex: 1;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.token-select__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.token-select__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 110px; // geometry composant — empêche un long label de pousser le trigger
+  padding: 2px var(--space-1) 2px var(--space-2);
+  background: var(--gold-soft-15);
+  border: 1px solid var(--gold-soft-30);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-tight);
+}
+
+.token-select__chip-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.token-select__chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.token-select__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast) var(--ease-out),
+              background-color var(--transition-fast) var(--ease-out);
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+  }
+
+  &:hover {
+    background: var(--danger-soft);
+    color: var(--danger-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 1px;
+  }
+}
+
+.token-select__caret {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform var(--transition-fast) var(--ease-out);
+}
+
+.token-select--open .token-select__caret {
+  transform: rotate(180deg);
+}
+
+.token-select__panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 280px;
+  overflow: hidden;
+  background: var(--surface-card);
+  border: 1px solid var(--gold-soft-30);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-3);
+  display: flex;
+  flex-direction: column;
+}
+
+.token-select__options {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+
+.token-select__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  transition: background-color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--gold-soft-08);
+  }
+}
+
+.token-select__option--selected {
+  background: var(--gold-soft-12);
+  color: var(--gold-50);
+
+  &:hover {
+    background: var(--gold-soft-18);
+  }
+}
+
+.token-select__option-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 1px solid var(--gold-soft-30);
+  border-radius: var(--radius-sm);
+  background: var(--surface-base);
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    color: var(--gold);
+  }
+}
+
+.token-select__option--selected .token-select__option-check {
+  background: var(--gold);
+  border-color: var(--gold);
+
+  mat-icon {
+    color: var(--surface-base);
+  }
+}
+
+.token-select__option-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.token-select__option-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
