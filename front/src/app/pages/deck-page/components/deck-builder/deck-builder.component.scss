@@ -37,12 +37,14 @@
 
 .dirty-dot {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 8px;
-  height: 8px;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: var(--accent-primary);
+  background: var(--gold);
+  border: 2px solid var(--surface-card);
+  box-shadow: 0 0 6px var(--gold-soft-60);
 }
 
 .deckBuilder {
@@ -53,52 +55,97 @@
   position: relative;
 
   user-select: none;
+}
 
-  // ─── DECK NAME (mobile only, above decklist) ───
-  &-deckNameMobile {
-    display: none;
+// ─── UNIFIED TOP HEADER (full width, replaces side-header + mobile bar) ───
+.deck-builder-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--gold-soft-15);
+  flex-shrink: 0;
 
-    @include r.respond-below(r.$bp-tablet) {
-      display: flex;
-      align-items: center;
-      width: 100%;
-      margin-bottom: 0.5em;
+  @include r.respond-below(r.$bp-tablet) {
+    padding: var(--space-1) var(--space-2);
+    gap: var(--space-1);
+  }
+}
 
-      mat-form-field {
-        flex: 1;
-        --mat-form-field-container-height: 48px;
-        --mat-form-field-filled-with-label-container-padding-top: 4px;
-        --mat-form-field-filled-with-label-container-padding-bottom: 4px;
-        --mdc-filled-text-field-container-color: var(--surface-card);
-        --mdc-filled-text-field-input-text-color: var(--text-primary);
-        --mdc-filled-text-field-caret-color: var(--text-primary);
-        --mdc-filled-text-field-focus-active-indicator-color: var(--accent-primary);
-        --mdc-filled-text-field-active-indicator-color: var(--border-subtle);
-        --mdc-filled-text-field-hover-active-indicator-color: var(--text-secondary);
-        --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
-        --mdc-filled-text-field-container-shape: 0;
-      }
+.deck-builder-header__name {
+  flex: 1 1 200px;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
 
-      button {
-        color: var(--text-primary);
-        flex-shrink: 0;
-      }
+  mat-form-field {
+    width: 100%;
+    --mdc-filled-text-field-container-color: var(--surface-base);
+    --mdc-filled-text-field-input-text-color: var(--text-primary);
+    --mdc-filled-text-field-caret-color: var(--gold);
+    --mdc-filled-text-field-focus-active-indicator-color: var(--gold);
+    --mdc-filled-text-field-active-indicator-color: var(--gold-soft-30);
+    --mdc-filled-text-field-hover-active-indicator-color: var(--gold-soft-45);
+    --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
+    --mdc-filled-text-field-container-shape: 0;
+  }
+}
 
-      @include r.landscape-split {
-        margin-bottom: 0.25em;
+.deck-builder-header__name-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast) var(--ease-out);
 
-        mat-form-field {
-          --mat-form-field-container-height: 40px;
-        }
-      }
-    }
+  &:hover {
+    background: var(--gold-soft-08);
+  }
+}
 
-    &-text {
-      @include collapsed-name-text;
-      font-size: 1.125rem;
+.deck-builder-header__counts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+
+  @include r.respond-below(r.$bp-tablet) {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.deck-builder-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+
+  // Hide button labels under tablet to save horizontal room.
+  // Icons remain visible — aria-label / title carry semantics.
+  @include r.respond-below(r.$bp-tablet) {
+    .deck-builder-header__btn-label {
+      display: none;
     }
   }
+}
 
+.deck-builder-header__save {
+  position: relative;
+}
+
+.deckBuilder {
   // ─── SEARCH TOGGLE (mobile portrait only) ───
   &-searchToggle.mat-mdc-icon-button {
     display: none;
@@ -146,48 +193,14 @@
       display: none;
     }
 
-    // ─── HEADER (inside side panel) ───
+    // ─── SIDE PANEL HEADER (deck-name moved to top — only deck preview row remains) ───
     &-header {
-      padding: 0.75em 0.75em 0.5em;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: var(--space-3) var(--space-3) var(--space-2);
+      border-bottom: 1px solid var(--gold-soft-15);
       flex-shrink: 0;
 
       @include r.respond-below(r.$bp-tablet) {
         display: none;
-      }
-
-      &-deckName {
-        display: flex;
-        align-items: center;
-        width: 100%;
-        margin-bottom: 0.5em;
-
-        @include r.respond-below(r.$bp-tablet) {
-          display: none;
-        }
-
-        mat-form-field {
-          flex: 1;
-          --mdc-filled-text-field-container-color: var(--surface-card);
-          --mdc-filled-text-field-input-text-color: var(--text-primary);
-          --mdc-filled-text-field-caret-color: var(--text-primary);
-          --mdc-filled-text-field-focus-active-indicator-color: var(--accent-primary);
-          --mdc-filled-text-field-active-indicator-color: var(--border-subtle);
-          --mdc-filled-text-field-hover-active-indicator-color: var(--text-secondary);
-          --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
-          --mdc-filled-text-field-container-shape: 0;
-        }
-
-        >button {
-          color: var(--text-secondary);
-          flex-shrink: 0;
-          transform: scale(0.85);
-        }
-
-        &-text {
-          @include collapsed-name-text;
-          font-size: 1rem;
-        }
       }
 
       &-row {

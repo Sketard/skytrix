@@ -1,38 +1,105 @@
 <div class="deckBuilder" cdkDropListGroup>
-  <!-- BODY (canvas + side panel with header) -->
+  <!-- UNIFIED TOP HEADER (full width) -->
+  <header class="deck-builder-header">
+    <div class="deck-builder-header__name">
+      @if (isEditingName()) {
+        <mat-form-field appearance="outline">
+          <input
+            #deckNameInputDesktop
+            matInput
+            [placeholder]="'deckBuilder.namePlaceholder' | translate"
+            [(ngModel)]="deckBuildService.deck().name"
+            (blur)="stopEditingName()"
+            (keydown)="onNameKeydown($event)" />
+        </mat-form-field>
+      } @else {
+        <span class="deck-builder-header__name-text"
+          tabindex="0"
+          role="button"
+          (click)="startEditingName()"
+          (keydown.enter)="startEditingName()"
+          (keydown.space)="startEditingName(); $event.preventDefault()">
+          {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
+        </span>
+      }
+    </div>
+
+    <div class="deck-builder-header__counts">
+      <span class="pill"
+        [class.pill--valid]="deckBuildService.mainCardNumber() >= 40 && deckBuildService.mainCardNumber() <= 60"
+        [class.pill--invalid]="deckBuildService.mainCardNumber() < 40 || deckBuildService.mainCardNumber() > 60">
+        {{ 'deckBuilder.viewer.main' | translate }} {{ deckBuildService.mainCardNumber() }}/60
+      </span>
+      <span class="pill"
+        [class.pill--valid]="deckBuildService.extraCardNumber() <= 15"
+        [class.pill--invalid]="deckBuildService.extraCardNumber() > 15">
+        {{ 'deckBuilder.viewer.extra' | translate }} {{ deckBuildService.extraCardNumber() }}/15
+      </span>
+      <span class="pill"
+        [class.pill--valid]="deckBuildService.sideCardNumber() <= 15"
+        [class.pill--invalid]="deckBuildService.sideCardNumber() > 15">
+        {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}/15
+      </span>
+    </div>
+
+    <div class="deck-builder-header__actions">
+      <button type="button" class="btn btn--ghost btn--sm"
+        [disabled]="deckBuildService.deckEmpty()"
+        (click)="toggleTestHand()">
+        <mat-icon>back_hand</mat-icon>
+        <span class="deck-builder-header__btn-label">{{ 'deckBuilder.testHand' | translate }}</span>
+      </button>
+      <button type="button" class="btn btn--ghost btn--sm"
+        [disabled]="!deckBuildService.deck().id || deckBuildService.deckEmpty()"
+        (click)="navigateToPvp()">
+        <mat-icon>sports_kabaddi</mat-icon>
+        <span class="deck-builder-header__btn-label">{{ 'deckBuilder.pvpDuel' | translate }}</span>
+      </button>
+      <button type="button" class="btn btn--primary btn--sm deck-builder-header__save"
+        [disabled]="deckBuildService.deckEmpty()"
+        (click)="save()"
+        [attr.aria-label]="'common.save' | translate">
+        <mat-icon>save</mat-icon>
+        <span class="deck-builder-header__btn-label">{{ 'deckBuilder.save' | translate }}</span>
+        @if (isDirty() && !deckBuildService.deckEmpty()) {
+          <span class="dirty-dot"></span>
+        }
+      </button>
+      <button mat-icon-button [matMenuTriggerFor]="actionsMenu" [attr.aria-label]="'deckBuilder.actions' | translate">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #actionsMenu="matMenu">
+        <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="createProxies()">
+          <mat-icon>print</mat-icon>
+          <span>{{ 'deckBuilder.generateProxies' | translate }}</span>
+        </button>
+        <button mat-menu-item (click)="export(ExportMode.CLASSIC)">
+          <mat-icon>cloud_download</mat-icon>
+          <span>{{ 'deckBuilder.exportStandard' | translate }}</span>
+        </button>
+        <button mat-menu-item (click)="export(ExportMode.MARKET)">
+          <mat-icon>cloud_download</mat-icon>
+          <span>{{ 'deckBuilder.exportCardmarket' | translate }}</span>
+        </button>
+        <button mat-menu-item (click)="openImportFile()">
+          <mat-icon>cloud_upload</mat-icon>
+          <span>{{ 'deckBuilder.import' | translate }}</span>
+        </button>
+        <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="sortByType()">
+          <mat-icon>sort</mat-icon>
+          <span>{{ 'deckBuilder.sortByType' | translate }}</span>
+        </button>
+        <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToSimulator()">
+          <mat-icon>sports_esports</mat-icon>
+          <span>{{ 'deckBuilder.simulator' | translate }}</span>
+        </button>
+      </mat-menu>
+    </div>
+  </header>
+
+  <!-- BODY (canvas + side panel) -->
   <div class="deckBuilder-body">
     <div class="deckBuilder-canvasParent">
-      <div class="deckBuilder-deckNameMobile">
-        @if (isEditingName()) {
-          <mat-form-field appearance="outline">
-            <input
-              #deckNameInput
-              matInput
-              [placeholder]="'deckBuilder.namePlaceholder' | translate"
-              [(ngModel)]="deckBuildService.deck().name"
-              (blur)="stopEditingName()"
-              (keydown)="onNameKeydown($event)" />
-          </mat-form-field>
-        } @else {
-          <span class="deckBuilder-deckNameMobile-text"
-            tabindex="0"
-            role="button"
-            (click)="startEditingName()"
-            (keydown.enter)="startEditingName()"
-            (keydown.space)="startEditingName(); $event.preventDefault()">
-            {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
-          </span>
-        }
-        <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" [attr.aria-label]="'common.save' | translate">
-          <mat-icon>save</mat-icon>
-          @if (isDirty() && !deckBuildService.deckEmpty()) {
-            <span class="dirty-dot"></span>
-          }
-        </button>
-        <button mat-icon-button [matMenuTriggerFor]="actionsMenu" [attr.aria-label]="'deckBuilder.actions' | translate">
-          <mat-icon>more_vert</mat-icon>
-        </button>
-      </div>
       <button
         mat-icon-button
         class="deckBuilder-searchToggle"
@@ -43,73 +110,8 @@
       <deck-viewer (cardClicked)="onDeckCardClicked($event)"></deck-viewer>
     </div>
     <div class="deckBuilder-side">
-      <!-- HEADER (inside side panel) -->
+      <!-- SIDE PANEL — mini deck preview only (deck name moved to top header) -->
       <div class="deckBuilder-side-header">
-        <div class="deckBuilder-side-header-deckName">
-          @if (isEditingName()) {
-            <mat-form-field appearance="outline">
-              <input
-                #deckNameInputDesktop
-                matInput
-                [placeholder]="'deckBuilder.namePlaceholder' | translate"
-                [(ngModel)]="deckBuildService.deck().name"
-                (blur)="stopEditingName()"
-                (keydown)="onNameKeydown($event)" />
-            </mat-form-field>
-          } @else {
-            <span class="deckBuilder-side-header-deckName-text"
-              tabindex="0"
-              role="button"
-              (click)="startEditingName()"
-              (keydown.enter)="startEditingName()"
-              (keydown.space)="startEditingName(); $event.preventDefault()">
-              {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
-            </span>
-          }
-          <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" [attr.aria-label]="'common.save' | translate">
-            <mat-icon>save</mat-icon>
-            @if (isDirty() && !deckBuildService.deckEmpty()) {
-              <span class="dirty-dot"></span>
-            }
-          </button>
-          <button mat-icon-button [matMenuTriggerFor]="actionsMenu" [attr.aria-label]="'deckBuilder.actions' | translate">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #actionsMenu="matMenu">
-            <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="createProxies()">
-              <mat-icon>print</mat-icon>
-              <span>{{ 'deckBuilder.generateProxies' | translate }}</span>
-            </button>
-            <button mat-menu-item (click)="export(ExportMode.CLASSIC)">
-              <mat-icon>cloud_download</mat-icon>
-              <span>{{ 'deckBuilder.exportStandard' | translate }}</span>
-            </button>
-            <button mat-menu-item (click)="export(ExportMode.MARKET)">
-              <mat-icon>cloud_download</mat-icon>
-              <span>{{ 'deckBuilder.exportCardmarket' | translate }}</span>
-            </button>
-            <button mat-menu-item (click)="openImportFile()">
-              <mat-icon>cloud_upload</mat-icon>
-              <span>{{ 'deckBuilder.import' | translate }}</span>
-            </button>
-            <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="sortByType()">
-              <mat-icon>sort</mat-icon>
-              <span>{{ 'deckBuilder.sortByType' | translate }}</span>
-            </button>
-            <button mat-menu-item (click)="toggleTestHand()">
-              <mat-icon>back_hand</mat-icon>
-              <span>{{ 'deckBuilder.testHand' | translate }}</span>
-            </button>
-            <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToSimulator()">
-              <mat-icon>sports_esports</mat-icon>
-              <span>{{ 'deckBuilder.simulator' | translate }}</span>
-            </button>
-            <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToPvp()">
-              <mat-icon>sports_kabaddi</mat-icon>
-              <span>{{ 'deckBuilder.pvpDuel' | translate }}</span>
-            </button>
-          </mat-menu>
-        </div>
         <div class="deckBuilder-side-header-row">
           <span class="deckBuilder-side-header-row-label">{{ 'deckBuilder.deckPreview' | translate }}</span>
           <deck-card-zone

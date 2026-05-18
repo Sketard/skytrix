@@ -480,6 +480,7 @@
   "deckBuilder": {
     "namePlaceholder": "Deck name...",
     "actions": "Deck actions",
+    "save": "Save",
     "searchCard": "Search a card",
     "generateProxies": "Generate proxies",
     "exportStandard": "Standard export",
