@@ -1,23 +1,35 @@
 .handTest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
   &-header {
     display: flex;
     align-items: center;
-    gap: 1em;
-    margin-bottom: 1em;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+
+    // Material slide-toggle tone — align with DS gold accent.
+    mat-slide-toggle {
+      --mat-slide-toggle-selected-handle-color: var(--gold);
+      --mat-slide-toggle-selected-track-color: var(--gold-soft-45);
+      --mat-slide-toggle-selected-focus-track-color: var(--gold-soft-45);
+      --mat-slide-toggle-selected-hover-track-color: var(--gold-soft-60);
+      --mat-slide-toggle-label-text-color: var(--text-primary);
+      --mat-slide-toggle-label-text-font: var(--font-body);
+    }
   }
 
   &-cards {
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
 
     .hand-card {
       width: 100px;
-      margin-right: 1em;
-
-      &:last-child {
-        margin-right: 0;
-      }
+      flex-shrink: 0;
     }
   }
 }

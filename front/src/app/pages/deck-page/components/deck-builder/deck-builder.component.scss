@@ -292,10 +292,12 @@
     position: fixed;
     inset: 0;
     z-index: z.$z-hand-backdrop;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--scrim);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease-in-out;
+    transition: opacity var(--transition-normal) var(--ease-out);
 
     &.opened {
       opacity: 1;
@@ -304,20 +306,21 @@
   }
 
   &-handOverlay {
-    transition: all 0.5s ease-in-out;
-    background-color: var(--surface-nav);
     position: fixed;
     width: 90%;
     max-width: 900px;
     bottom: -100%;
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 10px;
-    border: 1px solid var(--accent-primary);
-    padding: 1em;
+    background: var(--surface-card);
+    border: 1px solid var(--gold-soft-30);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elevation-3);
+    padding: var(--space-4);
+    transition: bottom var(--transition-slow) var(--ease-out);
 
     .deckBuilder-handBackdrop.opened & {
-      bottom: 1em;
+      bottom: var(--space-4);
     }
   }
 
