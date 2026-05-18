@@ -151,7 +151,19 @@
     "deleteTitle": "Delete deck",
     "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
     "empty": "No decks yet",
-    "createDeck": "Create a deck"
+    "createDeck": "Create a deck",
+    "title": "My Decks",
+    "subtitle": "Saved builds",
+    "filterPlaceholder": "Filter my decks…",
+    "newDeck": "New deck",
+    "noMatch": "No deck matches this filter",
+    "welcomeTitle": "Build your first deck",
+    "welcomeSubtitle": "Drag and drop your favorite cards to get started."
+  },
+  "deckStats": {
+    "decks": "Decks",
+    "cardsOwned": "Owned cards",
+    "legalDecks": "Legal decks"
   },
   "duel": {
     "leaveRoom": "Leave Room",

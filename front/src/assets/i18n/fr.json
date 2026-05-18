@@ -151,7 +151,19 @@
     "deleteTitle": "Supprimer le deck",
     "deleteConfirm": "Voulez-vous vraiment supprimer \"{{name}}\" ?",
     "empty": "Aucun deck pour le moment",
-    "createDeck": "Créer un deck"
+    "createDeck": "Créer un deck",
+    "title": "Mes Decks",
+    "subtitle": "Constructions enregistrées",
+    "filterPlaceholder": "Filtrer mes decks…",
+    "newDeck": "Nouveau deck",
+    "noMatch": "Aucun deck ne correspond à ce filtre",
+    "welcomeTitle": "Crée ton premier deck",
+    "welcomeSubtitle": "Glisse-dépose tes cartes préférées pour démarrer."
+  },
+  "deckStats": {
+    "decks": "Decks",
+    "cardsOwned": "Cartes possédées",
+    "legalDecks": "Decks légaux"
   },
   "duel": {
     "leaveRoom": "Quitter la room",

@@ -1,8 +1,35 @@
 @if (deckBuildService.decks$ | async; as decks) {
   @if (decks.length > 0) {
+    <header class="deck-list__header">
+      <div class="deck-list__title-block">
+        <mat-icon class="deck-list__icon">folder_special</mat-icon>
+        <div>
+          <h1 class="deck-list__title">{{ 'deckList.title' | translate }}</h1>
+          <p class="deck-list__subtitle">{{ 'deckList.subtitle' | translate }}</p>
+        </div>
+      </div>
+
+      <div class="deck-list__actions">
+        <label class="deck-list__search">
+          <mat-icon>search</mat-icon>
+          <input
+            type="text"
+            [formControl]="searchControl"
+            [placeholder]="'deckList.filterPlaceholder' | translate"
+            [attr.aria-label]="'deckList.filterPlaceholder' | translate" />
+        </label>
+        <a class="btn btn--primary" routerLink="/decks/builder">
+          <mat-icon>add</mat-icon>
+          <span>{{ 'deckList.newDeck' | translate }}</span>
+        </a>
+      </div>
+    </header>
+
+    <app-deck-stats-strip class="deck-list__stats" [stats]="stats()"></app-deck-stats-strip>
+
     <div class="deckPage">
       <deck-box class="deckPage-deck" [add]="true"></deck-box>
-      @for (deck of decks; track deck.id) {
+      @for (deck of filteredDecks(); track deck.id) {
         <div class="deckPage-deck">
           <deck-box [deck]="deck"></deck-box>
           <button
@@ -14,8 +41,17 @@
           </button>
         </div>
       }
+      @if (filteredDecks().length === 0) {
+        <div class="deck-list__no-match">
+          {{ 'deckList.noMatch' | translate }}
+        </div>
+      }
     </div>
   } @else {
-    <app-empty-state [message]="'deckList.empty' | translate" [ctaLabel]="'deckList.createDeck' | translate" ctaLink="/decks/builder"></app-empty-state>
+    <app-empty-state
+      [message]="'deckList.empty' | translate"
+      [ctaLabel]="'deckList.createDeck' | translate"
+      ctaLink="/decks/builder">
+    </app-empty-state>
   }
 }

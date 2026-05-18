@@ -1,11 +1,127 @@
 @use 'responsive' as *;
 @use 'z-layers' as z;
 
+:host {
+  display: block;
+  padding: var(--space-fluid-md);
+}
+
+// =============================================================================
+// Header
+// =============================================================================
+
+.deck-list__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.deck-list__title-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.deck-list__icon {
+  width: 40px;
+  height: 40px;
+  font-size: 32px;
+  line-height: 40px;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.deck-list__title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.deck-list__subtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.deck-list__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.deck-list__search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 200px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-card);
+  border: 1px solid var(--gold-soft-20);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    border-color: var(--gold-soft-45);
+  }
+
+  &:focus-within {
+    border-color: var(--gold);
+    background: var(--gold-soft-06);
+  }
+
+  mat-icon {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    outline: none;
+
+    &::placeholder {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+  }
+}
+
+// =============================================================================
+// Stats strip
+// =============================================================================
+
+.deck-list__stats {
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
+// =============================================================================
+// Grid (legacy class kept for unchanged consumers)
+// =============================================================================
+
 .deckPage {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
-  padding: 1rem;
+  gap: var(--space-3);
 
   @include respond-above($bp-mobile) {
     grid-template-columns: repeat(2, 1fr);
@@ -20,12 +136,12 @@
 
     &-solve {
       position: absolute;
-      top: 4px;
-      left: 4px;
+      top: var(--space-1);
+      left: var(--space-1);
       z-index: z.$z-deck-card-action;
       cursor: pointer;
-      color: var(--accent-primary);
-      transition: opacity 150ms ease;
+      color: var(--gold);
+      transition: opacity var(--transition-fast) var(--ease-out);
 
       @media (hover: hover) {
         opacity: 0;
@@ -36,12 +152,12 @@
 
     &-remove {
       position: absolute;
-      top: 4px;
-      right: 4px;
+      top: var(--space-1);
+      right: var(--space-1);
       z-index: z.$z-deck-card-action;
       cursor: pointer;
-      color: var(--danger);
-      transition: opacity 150ms ease;
+      color: var(--danger-strong);
+      transition: opacity var(--transition-fast) var(--ease-out);
 
       @media (hover: hover) {
         opacity: 0;
@@ -55,31 +171,14 @@
       opacity: 1;
     }
   }
+}
 
-  &-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 1rem;
-    gap: 1.5rem;
-
-    &-message {
-      color: var(--text-secondary);
-      font-size: 1.1rem;
-    }
-
-    &-cta {
-      color: var(--accent-primary);
-      border: 1px solid var(--accent-primary);
-      padding: 0.5rem 1.5rem;
-      border-radius: 8px;
-      text-decoration: none;
-      transition: background-color 150ms ease;
-
-      &:hover {
-        background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
-      }
-    }
-  }
+.deck-list__no-match {
+  grid-column: 1 / -1;
+  padding: var(--space-7) var(--space-3);
+  text-align: center;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-style: italic;
 }
