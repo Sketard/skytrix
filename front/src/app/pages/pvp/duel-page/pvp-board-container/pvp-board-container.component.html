@@ -233,7 +233,7 @@
     </div>
 
     @for (emz of emzConfigs(); track emz.zoneId) {
-      <div class="emz" [attr.data-zone]="emz.zoneId + '-0'" [class]="emz.cssClass"
+      <div class="emz" [attr.data-zone]="emz.zoneId + '-' + (emz.isOpponent ? '1' : '0')" [class]="emz.cssClass"
            [class.emz--opponent]="emz.isOpponent"
            [class.zone--highlighted]="isHighlighted(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
            [class.zone--chosen]="isChosenZone(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))">

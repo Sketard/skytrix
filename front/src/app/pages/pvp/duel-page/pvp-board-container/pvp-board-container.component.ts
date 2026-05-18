@@ -1,4 +1,4 @@
-import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, input, isDevMode, output, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, input, isDevMode, output, signal } from '@angular/core';
 import { ChainLinkState, DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense } from '../../pvp-card.utils';
@@ -101,63 +101,48 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     return this.devState.override(this.devState.forcedOpponentDisconnected, real);
   });
 
-  private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
   private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly zoneElements = new Map<string, HTMLElement>();
 
   /** When true, this instance is a miniature preview — skip zone resolver registration. */
   readonly preview = input(false);
 
-  /** Only rebuild zone map when players appear/disappear, not on every state update */
-  private readonly hasOpponent = computed(() => this.duelState().players[1] != null);
-
-  /** Guard against multiple `afterNextRender` callbacks queued on rapid hasOpponent flips. */
-  private _rebuildScheduled = false;
-
   constructor() {
     this.destroyRef.onDestroy(() => this.onLinkedLeave());
-
-    // Dynamic rebuild: re-query zone elements when opponent field first renders.
-    // Dedup ensures one rebuild per render cycle even if `hasOpponent` flips
-    // multiple times before the queued `afterNextRender` fires.
-    effect(() => {
-      this.hasOpponent(); // track only player presence changes
-      if (this.preview() || this._rebuildScheduled) return;
-      this._rebuildScheduled = true;
-      afterNextRender(() => {
-        this._rebuildScheduled = false;
-        this.rebuildZoneMap();
-      }, { injector: this.injector });
-    });
   }
 
   ngAfterViewInit(): void {
     if (this.preview()) return;
-    this.rebuildZoneMap();
     this.cardTravelEngine.registerZoneResolver(this.getZoneElement.bind(this));
   }
 
   getZoneElement(zoneKey: string): HTMLElement | null {
-    return this.zoneElements.get(zoneKey) ?? null;
-  }
-
-  private rebuildZoneMap(): void {
-    this.zoneElements.clear();
-    // Scope the query to the closest layout ancestor (board-area / duel-container)
-    // instead of the entire document, to avoid capturing zones from preview
-    // miniatures or other board instances. The scope also captures sibling
-    // zones (HAND-0, HAND-1 in app-pvp-hand-row) that share the duel-container
-    // ancestor — a single resolver is registered with cardTravelEngine, so
-    // hand zones must be resolvable through it too.
+    // Live lookup: EMZ slots flip their `data-zone` suffix (`-0` ↔ `-1`) when
+    // `isOpponentEmz` re-evaluates after a card lands on the opposite side.
+    // A cached map (the previous strategy) only saw the initial empty state
+    // where both EMZ were `-0` → `EMZ_R-1` was unresolvable from the
+    // perspective-1 viewer and the 2nd Synchro material travelled to nowhere.
+    // The query is scoped to the closest layout ancestor (board-area /
+    // duel-container) so preview miniatures + sibling boards never leak in.
+    if (this.preview()) return null;
     const host = this.elementRef.nativeElement as HTMLElement;
     const scope = host.parentElement ?? host;
-    const elements = scope.querySelectorAll<HTMLElement>('[data-zone]');
-    elements.forEach(el => {
-      const key = el.getAttribute('data-zone');
-      if (key) this.zoneElements.set(key, el);
-    });
+    const direct = scope.querySelector<HTMLElement>(`[data-zone="${zoneKey}"]`);
+    if (direct) return direct;
+    // EMZ slot fallback: EMZ_L/EMZ_R are physically shared between both
+    // players (Master Rule 5 — a single zone with two possible owners).
+    // `isOpponentEmz` only flips the suffix once a card actually lands, so
+    // when a Synchro/Link summon TARGETS the empty EMZ from the opposite
+    // perspective, the destination element still carries the wrong suffix.
+    // Cross-match the sibling `-0` ↔ `-1` so the travel resolves either way.
+    if (zoneKey.startsWith('EMZ_L') || zoneKey.startsWith('EMZ_R')) {
+      const sibling = zoneKey.endsWith('-1')
+        ? zoneKey.slice(0, -2) + '-0'
+        : zoneKey.slice(0, -2) + '-1';
+      return scope.querySelector<HTMLElement>(`[data-zone="${sibling}"]`);
+    }
+    return null;
   }
 
   readonly readOnly = input<boolean>(false);
