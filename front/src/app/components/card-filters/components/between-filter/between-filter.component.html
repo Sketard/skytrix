@@ -1,14 +1,16 @@
 <div class="betweenFilter">
   <div class="betweenFilter-name">{{ inputLabel() | translate }}</div>
-  <div class="betweenFilter-inputs">
-    <mat-form-field appearance="outline">
-      <mat-label>{{ 'cardFilters.min' | translate }}</mat-label>
-      <input matInput type="number" [formControl]="minForm()" />
-    </mat-form-field>
-
-    <mat-form-field appearance="outline">
-      <mat-label>{{ 'cardFilters.max' | translate }}</mat-label>
-      <input matInput type="number" [formControl]="maxForm()" />
-    </mat-form-field>
+  <div class="range-row">
+    <input
+      type="number"
+      [formControl]="minForm()"
+      [placeholder]="'cardFilters.min' | translate"
+      [attr.aria-label]="(inputLabel() | translate) + ' ' + ('cardFilters.min' | translate)" />
+    <span class="range-row__sep" aria-hidden="true">–</span>
+    <input
+      type="number"
+      [formControl]="maxForm()"
+      [placeholder]="'cardFilters.max' | translate"
+      [attr.aria-label]="(inputLabel() | translate) + ' ' + ('cardFilters.max' | translate)" />
   </div>
 </div>

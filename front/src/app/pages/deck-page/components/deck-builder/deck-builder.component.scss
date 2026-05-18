@@ -79,9 +79,23 @@
   }
 }
 
+// Title block — name + counts grouped on the same row, never wrap apart.
+.deck-builder-header__title-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+
+  @include r.respond-below(r.$bp-tablet) {
+    gap: var(--space-2);
+  }
+}
+
 .deck-builder-header__name {
-  flex: 1 1 200px;
-  min-width: 120px;
+  min-width: 80px;
+  max-width: 320px;
   display: flex;
   align-items: center;
 
@@ -105,7 +119,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-weight: var(--weight-bold);
   letter-spacing: 0.02em;
   color: var(--text-primary);
@@ -124,18 +138,22 @@
   align-items: center;
   gap: var(--space-1);
   flex-wrap: wrap;
-
-  @include r.respond-below(r.$bp-tablet) {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-  }
 }
 
 .deck-builder-header__actions {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+
+  // Smaller icons within action buttons (mockup uses 16-18px, default is 24px).
+  .btn mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
 
   // Hide button labels under tablet to save horizontal room.
   // Icons remain visible — aria-label / title carry semantics.

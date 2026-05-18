@@ -1,15 +1,18 @@
 <div class="toggleIconFilter">
-  <div class="toggleIconFilter-name">
-    {{ inputLabel() }}
-  </div>
-  <mat-chip-listbox
-    [formControl]="form()"
-    hideSingleSelectionIndicator>
+  <div class="toggleIconFilter-name">{{ inputLabel() | translate }}</div>
+  <div class="attr-row" role="radiogroup" [attr.aria-label]="inputLabel() | translate">
     @for (toggleIcon of toggleIcons(); track toggleIcon.value) {
-      <mat-chip-option [value]="toggleIcon.value">
-        <img matChipAvatar [src]="toggleIcon.icon" [alt]="toggleIcon.title" />
-        {{ toggleIcon.title }}
-      </mat-chip-option>
+      <button
+        type="button"
+        class="attr-icon"
+        [class.attr-icon--active]="isActive(toggleIcon.value)"
+        role="radio"
+        [attr.aria-checked]="isActive(toggleIcon.value)"
+        [title]="'card_attribute.' + toggleIcon.title | translate"
+        [attr.aria-label]="'card_attribute.' + toggleIcon.title | translate"
+        (click)="toggle(toggleIcon.value)">
+        <img [src]="toggleIcon.icon" [alt]="" />
+      </button>
     }
-  </mat-chip-listbox>
+  </div>
 </div>

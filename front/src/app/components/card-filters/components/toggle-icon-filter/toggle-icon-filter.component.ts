@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatChipAvatar, MatChipListbox, MatChipOption } from '@angular/material/chips';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export type ToggleIconFilter<T> = {
   title: string;
@@ -10,7 +10,7 @@ export type ToggleIconFilter<T> = {
 
 @Component({
   selector: 'app-toggle-icon-filter',
-  imports: [MatChipListbox, MatChipOption, MatChipAvatar, ReactiveFormsModule],
+  imports: [ReactiveFormsModule, TranslatePipe],
   templateUrl: './toggle-icon-filter.component.html',
   styleUrl: './toggle-icon-filter.component.scss',
   standalone: true,
@@ -20,4 +20,13 @@ export class ToggleIconFilterComponent<T> {
   readonly toggleIcons = input<Array<ToggleIconFilter<T>>>([]);
   readonly form = input<FormControl<T | null>>(new FormControl<T | null>(null));
   readonly inputLabel = input<string>('');
+
+  isActive(value: T): boolean {
+    return this.form().value === value;
+  }
+
+  toggle(value: T): void {
+    const ctrl = this.form();
+    ctrl.setValue(ctrl.value === value ? null : value);
+  }
 }

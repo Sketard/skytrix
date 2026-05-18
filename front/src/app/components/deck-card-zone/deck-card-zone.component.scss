@@ -54,6 +54,7 @@
       background: var(--gold-soft-04);
       transition: background-color var(--transition-fast) var(--ease-out),
                   border-color var(--transition-fast) var(--ease-out);
+      position: relative;
 
       &.cdk-drop-list-receiving,
       &.cdk-drop-list-dragging {
@@ -67,7 +68,14 @@
     }
 
     &-hint {
-      width: 100%;
+      // Absolute so the CDK-inserted drag placeholder doesn't push the
+      // hint up / out of the row. The hint stays centered inside the
+      // empty zone regardless of how the dragger inflates the layout.
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: var(--text-muted);
       font-family: var(--font-body);
       font-size: var(--text-sm);

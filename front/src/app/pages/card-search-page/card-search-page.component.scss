@@ -91,25 +91,56 @@
 .card-search-page__display-toggle {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   flex-shrink: 0;
+}
 
-  mat-button-toggle-group {
-    --mat-legacy-button-toggle-text-color: var(--text-primary);
-    --mat-legacy-button-toggle-selected-state-background-color: var(--gold-soft-15);
-    --mat-legacy-button-toggle-selected-state-text-color: var(--gold);
+// 2-button toggle group — mockup ll. 3391-3394.
+.card-search-page__view-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 
-    @include r.mobile-portrait {
-      display: none;
-    }
+  @include r.mobile-portrait {
+    display: none;
+  }
+}
+
+.card-search-page__view-btn {
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 var(--space-2) !important;
+  min-height: 32px !important;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+
+  &--active {
+    background: var(--gold-soft-15) !important;
+    color: var(--gold-50) !important;
   }
 }
 
 .card-search-page__favorite {
-  color: var(--text-muted);
+  padding: 0 var(--space-2) !important;
+  min-height: 32px !important;
+  color: var(--text-muted) !important;
 
-  &.active {
-    color: var(--gold);
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+
+  &--active {
+    color: var(--gold) !important;
   }
 }
 

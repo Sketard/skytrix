@@ -4,7 +4,6 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
-import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatTooltip } from '@angular/material/tooltip';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ActiveFiltersBarComponent } from '../../components/active-filters-bar/active-filters-bar.component';
@@ -25,7 +24,7 @@ import { TranslatePipe } from '@ngx-translate/core';
   selector: 'card-search-page',
   imports: [
     ActiveFiltersBarComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
-    SearchBarComponent, CardFiltersComponent, CardListComponent, MatButtonToggle, MatButtonToggleGroup, MatTooltip,
+    SearchBarComponent, CardFiltersComponent, CardListComponent, MatTooltip,
     TranslatePipe,
   ],
   templateUrl: './card-search-page.component.html',

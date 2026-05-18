@@ -7,45 +7,47 @@
 
   <!-- UNIFIED TOP HEADER (full width) -->
   <header class="deck-builder-header">
-    <div class="deck-builder-header__name">
-      @if (isEditingName()) {
-        <mat-form-field appearance="outline">
-          <input
-            #deckNameInputDesktop
-            matInput
-            [placeholder]="'deckBuilder.namePlaceholder' | translate"
-            [(ngModel)]="deckBuildService.deck().name"
-            (blur)="stopEditingName()"
-            (keydown)="onNameKeydown($event)" />
-        </mat-form-field>
-      } @else {
-        <span class="deck-builder-header__name-text"
-          tabindex="0"
-          role="button"
-          (click)="startEditingName()"
-          (keydown.enter)="startEditingName()"
-          (keydown.space)="startEditingName(); $event.preventDefault()">
-          {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
-        </span>
-      }
-    </div>
+    <div class="deck-builder-header__title-block">
+      <div class="deck-builder-header__name">
+        @if (isEditingName()) {
+          <mat-form-field appearance="outline">
+            <input
+              #deckNameInputDesktop
+              matInput
+              [placeholder]="'deckBuilder.namePlaceholder' | translate"
+              [(ngModel)]="deckBuildService.deck().name"
+              (blur)="stopEditingName()"
+              (keydown)="onNameKeydown($event)" />
+          </mat-form-field>
+        } @else {
+          <span class="deck-builder-header__name-text"
+            tabindex="0"
+            role="button"
+            (click)="startEditingName()"
+            (keydown.enter)="startEditingName()"
+            (keydown.space)="startEditingName(); $event.preventDefault()">
+            {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
+          </span>
+        }
+      </div>
 
-    <div class="deck-builder-header__counts">
-      <span class="pill"
-        [class.pill--valid]="deckBuildService.mainCardNumber() >= 40 && deckBuildService.mainCardNumber() <= 60"
-        [class.pill--invalid]="deckBuildService.mainCardNumber() < 40 || deckBuildService.mainCardNumber() > 60">
-        {{ 'deckBuilder.viewer.main' | translate }} {{ deckBuildService.mainCardNumber() }}/60
-      </span>
-      <span class="pill"
-        [class.pill--valid]="deckBuildService.extraCardNumber() <= 15"
-        [class.pill--invalid]="deckBuildService.extraCardNumber() > 15">
-        {{ 'deckBuilder.viewer.extra' | translate }} {{ deckBuildService.extraCardNumber() }}/15
-      </span>
-      <span class="pill"
-        [class.pill--valid]="deckBuildService.sideCardNumber() <= 15"
-        [class.pill--invalid]="deckBuildService.sideCardNumber() > 15">
-        {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}/15
-      </span>
+      <div class="deck-builder-header__counts">
+        <span class="pill"
+          [class.pill--valid]="deckBuildService.mainCardNumber() >= 40 && deckBuildService.mainCardNumber() <= 60"
+          [class.pill--invalid]="deckBuildService.mainCardNumber() < 40 || deckBuildService.mainCardNumber() > 60">
+          {{ 'deckBuilder.viewer.main' | translate }} {{ deckBuildService.mainCardNumber() }}/60
+        </span>
+        <span class="pill"
+          [class.pill--valid]="deckBuildService.extraCardNumber() <= 15"
+          [class.pill--invalid]="deckBuildService.extraCardNumber() > 15">
+          {{ 'deckBuilder.viewer.extra' | translate }} {{ deckBuildService.extraCardNumber() }}/15
+        </span>
+        <span class="pill"
+          [class.pill--valid]="deckBuildService.sideCardNumber() <= 15"
+          [class.pill--invalid]="deckBuildService.sideCardNumber() > 15">
+          {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}/15
+        </span>
+      </div>
     </div>
 
     <div class="deck-builder-header__actions">

@@ -538,6 +538,7 @@
     "favorites": "Favoris"
   },
   "cardFilters": {
+    "title": "Filtres",
     "cardType": "Type de carte",
     "attribute": "Attribut",
     "min": "Min.",
