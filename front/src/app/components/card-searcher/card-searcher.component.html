@@ -4,22 +4,35 @@
       <div class="cardSearchPage-searcher-bar">
         <search-bar [form]="form.controls.name" [searchService]="searchService()" (filterToggled)="toggleFilters()"></search-bar>
         <div class="cardSearchPage-searcher-bar-displayMode">
-          <mat-button-toggle-group
-            hideSingleSelectionIndicator
-            (change)="setDisplayMode($event.source.value)">
-            <mat-button-toggle [value]="displayType.GRID" [checked]="displayMode() === displayType.GRID" [matTooltip]="'cardSearcher.grid' | translate" [attr.aria-label]="'cardSearcher.grid' | translate">
+          <div class="cardSearchPage-searcher-view-group" role="radiogroup" [attr.aria-label]="'cardSearcher.grid' | translate">
+            <button type="button"
+              class="btn btn--ghost btn--sm cardSearchPage-searcher-view-btn"
+              [class.cardSearchPage-searcher-view-btn--active]="displayMode() === displayType.GRID"
+              role="radio"
+              [attr.aria-checked]="displayMode() === displayType.GRID"
+              [matTooltip]="'cardSearcher.grid' | translate"
+              [attr.aria-label]="'cardSearcher.grid' | translate"
+              (click)="setDisplayMode(displayType.GRID)">
               <mat-icon>view_module</mat-icon>
-            </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.LIST" [checked]="displayMode() === displayType.LIST" [matTooltip]="'cardSearcher.list' | translate" [attr.aria-label]="'cardSearcher.list' | translate">
+            </button>
+            <button type="button"
+              class="btn btn--ghost btn--sm cardSearchPage-searcher-view-btn"
+              [class.cardSearchPage-searcher-view-btn--active]="displayMode() === displayType.LIST"
+              role="radio"
+              [attr.aria-checked]="displayMode() === displayType.LIST"
+              [matTooltip]="'cardSearcher.list' | translate"
+              [attr.aria-label]="'cardSearcher.list' | translate"
+              (click)="setDisplayMode(displayType.LIST)">
               <mat-icon>view_headline</mat-icon>
-            </mat-button-toggle>
-          </mat-button-toggle-group>
+            </button>
+          </div>
 
-          <button mat-icon-button
-            class="favorite-toggle"
-            [class.active]="favoriteFilter()"
+          <button type="button"
+            class="btn btn--ghost btn--sm cardSearchPage-searcher-favorite"
+            [class.cardSearchPage-searcher-favorite--active]="favoriteFilter()"
             (click)="toggleFavoriteFilter()"
-            [matTooltip]="'cardSearcher.favorites' | translate" [attr.aria-label]="'cardSearcher.favorites' | translate">
+            [matTooltip]="'cardSearcher.favorites' | translate"
+            [attr.aria-label]="'cardSearcher.favorites' | translate">
             <mat-icon>{{ favoriteFilter() ? 'star' : 'star_border' }}</mat-icon>
           </button>
         </div>

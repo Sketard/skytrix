@@ -15,13 +15,6 @@
   border-bottom: 1px solid var(--gold-soft-08);
 }
 
-// Decision Axel 2026-05-17: mode LIST is desktop + tablet only —
-// hide the toggle (and the favorite button stays visible) on mobile.
-.cardSearchPage-searcher-bar-displayMode mat-button-toggle-group {
-  @include r.mobile-portrait {
-    display: none;
-  }
-}
 
 .cardSearchPage {
   display: flex;
@@ -102,41 +95,64 @@
         margin: 4rem 2rem 1rem 2rem;
       }
 
+      // Display-mode + favorite toggles row — aligned with the
+      // card-search-page header design (mockup ll. 3391-3395).
       &-displayMode {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: var(--space-2);
+        margin-top: var(--space-1);
+      }
+    }
 
-        mat-button-toggle-group {
-          border-radius: 0;
-          border: 0;
-          --mat-legacy-button-toggle-text-color: var(--text-primary);
-          --mat-legacy-button-toggle-selected-state-background-color: var(--accent-primary-dim);
-          --mat-legacy-button-toggle-selected-state-text-color: var(--accent-primary);
-        }
+    // 2-button toggle group (GRID/LIST) — boxed with a single border,
+    // active variant tinted gold.
+    &-view-group {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
 
-        mat-button-toggle {
-          --mat-standard-button-toggle-label-text-line-height: 0;
-          --mat-standard-button-toggle-height: 36px;
-        }
+      // Decision Axel 2026-05-17: list mode is desktop + tablet only.
+      @include r.mobile-portrait {
+        display: none;
+      }
+    }
 
-        mat-icon {
-          transform: scale(0.8);
-        }
+    &-view-btn {
+      border: 0 !important;
+      border-radius: 0 !important;
+      padding: 0 var(--space-2) !important;
+      min-height: 32px !important;
 
-        .favorite-toggle {
-          color: var(--text-primary);
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+      }
 
-          &.active {
-            color: var(--gold);
-          }
-        }
+      &--active {
+        background: var(--gold-soft-15) !important;
+        color: var(--gold-50) !important;
+      }
+    }
 
-        @include r.mobile-portrait {
-          mat-button-toggle {
-            --mat-standard-button-toggle-height: 32px;
-          }
-        }
+    &-favorite {
+      padding: 0 var(--space-2) !important;
+      min-height: 32px !important;
+      color: var(--text-muted) !important;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+      }
+
+      &--active {
+        color: var(--gold) !important;
       }
     }
 

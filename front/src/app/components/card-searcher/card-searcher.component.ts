@@ -3,9 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActiveFiltersBarComponent } from '../active-filters-bar/active-filters-bar.component';
 import { CardFiltersComponent } from '../card-filters/card-filters.component';
 import { CardListComponent } from '../card-list/card-list.component';
-import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
-import { MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
 import { SearchBarComponent } from '../search-bar/search-bar.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
@@ -23,10 +21,7 @@ import { TranslatePipe } from '@ngx-translate/core';
     ActiveFiltersBarComponent,
     CardFiltersComponent,
     CardListComponent,
-    MatButtonToggle,
-    MatButtonToggleGroup,
     MatIcon,
-    MatIconButton,
     MatTooltip,
     SearchBarComponent,
     TranslatePipe,
