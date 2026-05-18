@@ -397,6 +397,13 @@ export class AnimationOrchestratorService {
     return this._preActivationBuffer.length;
   }
 
+  /** Snapshot of pre-activation buffer contents for diagnostics. Returns a
+   *  defensive copy with only the type tag (the full payload is not needed
+   *  for debugging — `[ANIM:PIPELINE]` already traces each enqueue). */
+  preActivationBufferSnapshot(): ReadonlyArray<{ type: string }> {
+    return this._preActivationBuffer.map(e => ({ type: e.type }));
+  }
+
   /**
    * True while initial-draw events are still parked OR the breathe-delay
    * drain timer is pending. Consumed by `PromptDerivationService` to gate
@@ -826,13 +833,24 @@ export class AnimationOrchestratorService {
 
     if (result instanceof Promise) {
       this.trace('promiseReturn', { type: event.type, reason: 'travel' });
+      // Safety guard: warn + force-resume if a travel never resolves. The
+      // setTimeout must be cleared once `result` wins the race, otherwise it
+      // keeps firing on every long-running animation and floods the console
+      // with false "Travel promise never resolved" warnings even when the
+      // animation finished cleanly (regression observed pre-2026-05-18).
+      let guardTimer: ReturnType<typeof setTimeout> | null = null;
       const guard = new Promise<void>(resolve => {
-        setTimeout(() => {
+        guardTimer = setTimeout(() => {
+          guardTimer = null;
           this.logger.warn('Travel promise never resolved for %s — forcing queue continue', event.type);
           resolve();
         }, this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS));
       });
-      await Promise.race([result, guard]);
+      try {
+        await Promise.race([result, guard]);
+      } finally {
+        if (guardTimer !== null) clearTimeout(guardTimer);
+      }
       this.lpTracker.commitIfPending();
       this.animatingZone.set(null);
       return 'continue';

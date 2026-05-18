@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, isDevMode, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, isDevMode, OnDestroy, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -54,6 +54,7 @@ import { SOLO_SWITCH_PLAYER_MS, ZONE_BROWSER_CLOSE_MS } from './ui-timing-consta
 import { DuelAnimationBridgeService } from './duel-animation-bridge.service';
 import { DuelToastService } from './duel-toast.service';
 import { DebugLogService } from './debug-log.service';
+import { DuelDebugService } from './duel-debug.service';
 import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { DuelDevStateService } from './duel-dev-hub/duel-dev-state.service';
@@ -78,7 +79,7 @@ import { environment } from '../../../../environments/environment';
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
     AnimationOrchestratorService, CardTravelEngine, BoardEffectsService, FloatRegistryService, RoomStateMachineService, CardInspectionService,
-    DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
+    DebugLogService, DuelDebugService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
     DuelCardArtService, CardActionMenuService, PromptDerivationService,
     { provide: ANIMATION_DATA_SOURCE, useExisting: DuelWebSocketService },
@@ -99,7 +100,7 @@ import { environment } from '../../../../environments/environment';
     TranslatePipe,
   ],
 })
-export class DuelPageComponent implements OnInit {
+export class DuelPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
@@ -112,6 +113,7 @@ export class DuelPageComponent implements OnInit {
   private readonly cardDataCache = inject(CardDataCacheService);
   readonly tabGuard = inject(DuelTabGuardService);
   readonly debugLog = inject(DebugLogService);
+  private readonly debugService = inject(DuelDebugService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly orchestrator = inject(SoloDuelOrchestratorService);
   readonly showDebugTools = environment.debugTools;
@@ -622,7 +624,17 @@ export class DuelPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // (no-op — orientation lock is now its own component, see <app-orientation-lock>)
+    // Expose the debug snapshot service on window.__skytrixDebug. No-op in
+    // production (the service guards on isDevMode internally). Wire the
+    // pre-activation buffer accessor so the snapshot can surface events
+    // parked during the dice→board transition.
+    this.debugService.preActivationBufferAccessor =
+      () => this.animationService.preActivationBufferSnapshot();
+    this.debugService.bindToWindow();
+  }
+
+  ngOnDestroy(): void {
+    this.debugService.unbindFromWindow();
   }
 
   // --- Template-facing delegations to roomService ---

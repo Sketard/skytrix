@@ -2,6 +2,7 @@ import { Injectable, Injector, OnDestroy, inject } from '@angular/core';
 import { toCardRect, buildTravelKeyframes } from './card-travel-helpers';
 import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
+import { DuelLogger } from './duel-logger';
 import {
   TRAVEL_FLIP_MIDPOINT_FRACTION,
   TRAVEL_DEPARTURE_GLOW_FRACTION,
@@ -53,6 +54,10 @@ export interface TravelOptions {
 export class CardTravelEngine implements OnDestroy {
   private readonly injector = inject(Injector);
   private readonly floatRegistry = inject(FloatRegistryService);
+  /** Optional logger — `null` outside the duel-page injection scope (e.g.
+   *  preview miniatures, solo simulator). Resolved lazily so the engine
+   *  stays usable in contexts that don't provide DuelLogger. */
+  private readonly logger = inject(DuelLogger, { optional: true });
   private _boardEffects: BoardEffectsService | null = null;
   private _zoneResolver: ((zoneKey: string) => HTMLElement | null) | null = null;
   private _container: HTMLElement = document.body;
@@ -80,7 +85,10 @@ export class CardTravelEngine implements OnDestroy {
   }
 
   getZoneElement(zoneKey: string): HTMLElement | null {
-    return this._zoneResolver?.(zoneKey) ?? null;
+    const el = this._zoneResolver?.(zoneKey) ?? null;
+    this.logger?.resolve('getZoneElement', zoneKey, el,
+      this._zoneResolver ? undefined : 'noResolver');
+    return el;
   }
 
   /** The container element for floating overlays (attack lines, clash effects). */
@@ -125,12 +133,24 @@ export class CardTravelEngine implements OnDestroy {
     if (this._reducedMotion || !this._zoneResolver) return Promise.resolve();
 
     const sourceEl = typeof source === 'string'
-      ? this._zoneResolver(source)
+      ? this.getZoneElement(source)
       : source;
     const destEl = typeof destination === 'string'
-      ? this._zoneResolver(destination)
+      ? this.getZoneElement(destination)
       : destination;
-    if (!sourceEl || !destEl) return Promise.resolve();
+    if (!sourceEl || !destEl) {
+      // The resolver already warned at the precise input; add one combined
+      // travel-side warn so the caller chain (commitAndClearFloat, srcLock
+      // commit) is visible in the same log line. A missing element here
+      // means the card visually "teleports" — silence is the worst signal.
+      const srcLabel = typeof source === 'string' ? source : 'el';
+      const dstLabel = typeof destination === 'string' ? destination : 'el';
+      this.logger?.warn('travel skipped — src=%s(%s) dst=%s(%s) card=%d',
+        srcLabel, sourceEl ? 'found' : 'null',
+        dstLabel, destEl ? 'found' : 'null',
+        options.cardCode ?? 0);
+      return Promise.resolve();
+    }
 
     // When srcRotateZ is set the source card is visually rotated (e.g. defense position).
     // getBoundingClientRect() returns the AABB which has swapped width/height.

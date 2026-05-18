@@ -77,6 +77,20 @@ export class DuelEventProcessor {
   }
 
   processMessage(msg: ServerMessage): void {
+    const qBefore = this._animationQueue().length;
+    const phaseBefore = this._chainPhase();
+    this.logger?.log(DuelLogCategory.PIPELINE, 'processMessage in: type=%s qLen=%d phase=%s',
+      msg.type, qBefore, phaseBefore);
+    this._processMessageInner(msg);
+    const qAfter = this._animationQueue().length;
+    const phaseAfter = this._chainPhase();
+    if (qAfter !== qBefore || phaseAfter !== phaseBefore) {
+      this.logger?.log(DuelLogCategory.PIPELINE, 'processMessage out: type=%s qLen=%d→%d phase=%s→%s',
+        msg.type, qBefore, qAfter, phaseBefore, phaseAfter);
+    }
+  }
+
+  private _processMessageInner(msg: ServerMessage): void {
     switch (msg.type) {
       case 'MSG_CHAINING': {
         const chainingMsg = msg as ChainingMsg;

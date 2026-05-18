@@ -520,6 +520,7 @@ export class DuelConnection {
   }
 
   private handleMessage(message: ServerMessage): void {
+    this.logger?.log(DuelLogCategory.PIPELINE, 'ws.recv type=%s', message.type);
     this.onMessage?.(message);
     this.prefetchRevealedCards(message);
     switch (message.type) {

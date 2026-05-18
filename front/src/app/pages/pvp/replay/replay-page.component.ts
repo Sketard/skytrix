@@ -51,6 +51,7 @@ import { BoardEffectsService } from '../duel-page/board-effects.service';
 import { FloatRegistryService } from '../duel-page/float-registry.service';
 import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DebugLogService } from '../duel-page/debug-log.service';
+import { DuelDebugService } from '../duel-page/duel-debug.service';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
 import { AnimationOrchestratorService } from '../duel-page/animation-orchestrator.service';
 import { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
@@ -81,7 +82,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
     ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
-    DebugLogService,
+    DebugLogService, DuelDebugService,
     DuelWebSocketService, // Required by PvpPromptDialogComponent
     { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
   ],
@@ -120,6 +121,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private readonly elementRef = inject(ElementRef);
   private readonly duelCtx = inject(DuelContext);
   private readonly duelLogger = inject(DuelLogger);
+  private readonly debugService = inject(DuelDebugService);
   readonly adapter = inject(ReplayDuelAdapter);
   readonly orchestrator = inject(AnimationOrchestratorService);
   readonly chainManager = inject(ChainResolutionManager);
@@ -625,6 +627,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.navbarCollapse.setNavbarHidden(true);
     this.navbarCollapse.setFullscreenViewer(true);
 
+    // Expose the debug snapshot surface on window.__skytrixDebug. No-op in
+    // production (the service guards on isDevMode internally). Wire the
+    // pre-activation buffer accessor so the snapshot includes events
+    // parked during the dice→board transition (mirrors duel-page).
+    this.debugService.preActivationBufferAccessor =
+      () => this.orchestrator.preActivationBufferSnapshot();
+    this.debugService.bindToWindow();
+
     const replayId = this.route.snapshot.paramMap.get('replayId');
     if (replayId) {
       this.duelLogger.setTraceId(replayId);
@@ -669,6 +679,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     // `setNavbarHidden(true)` + `setFullscreenViewer(true)` calls in ngOnInit.
     this.navbarCollapse.setNavbarHidden(false);
     this.navbarCollapse.setFullscreenViewer(false);
+
+    this.debugService.unbindFromWindow();
 
     if (this.narrowMql && this.narrowMqlHandler) {
       this.narrowMql.removeEventListener('change', this.narrowMqlHandler);

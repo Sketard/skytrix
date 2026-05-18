@@ -205,6 +205,7 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
         this.rbs.assertNoLocks('advanceStep:done');
         this.rbs.syncRendered();
         this.busy.set(false);
+        this.logger.log(DuelLogCategory.PIPELINE, 'advanceStep: end (steps exhausted)');
         return;
       }
 
@@ -216,13 +217,22 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
         if (step.decision.prompt.type === 'SELECT_CHAIN') {
           // Auto-skip chain windows with no chainable cards — in PvP these are
           // auto-declined by the activation toggle and never shown to the player.
-          if (!cards?.length) continue;
+          if (!cards?.length) {
+            this.logger.log(DuelLogCategory.PIPELINE,
+              'advanceStep: skip SELECT_CHAIN (no chainable cards)');
+            continue;
+          }
         }
 
+        this.logger.log(DuelLogCategory.PIPELINE,
+          'advanceStep: decide prompt=%s', step.decision.prompt.type);
         this._activeDecision.set(step.decision);
         return; // busy stays true — waiting for resumeAfterPrompt()
       }
 
+      this.logger.log(DuelLogCategory.PIPELINE,
+        'advanceStep: animate events=%d hasPending=%s',
+        step.events.length, !!step.pendingState);
       // Feed events FIRST (same as PvP: events arrive before BOARD_STATE)
       for (const event of step.events) {
         this.processor.processMessage(event);
@@ -240,6 +250,9 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
         if (step.pendingState && this.processor.chainPhase() === 'idle') {
           this.rbs.syncRendered();
         }
+        this.logger.log(DuelLogCategory.PIPELINE,
+          'advanceStep: continue (queue still empty after %d events — events absorbed)',
+          step.events.length);
         continue;
       }
       return;

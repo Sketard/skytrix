@@ -1,4 +1,5 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, input, isDevMode, output, signal } from '@angular/core';
+import { DuelLogger } from '../duel-logger';
 import { ChainLinkState, DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense } from '../../pvp-card.utils';
@@ -104,6 +105,9 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   private readonly elementRef = inject(ElementRef);
   private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly destroyRef = inject(DestroyRef);
+  /** Optional logger — the duel-page provides DuelLogger at component level,
+   *  the preview / simulator embeddings don't. */
+  private readonly _logger = inject(DuelLogger, { optional: true });
 
   /** When true, this instance is a miniature preview — skip zone resolver registration. */
   readonly preview = input(false);
@@ -140,7 +144,13 @@ export class PvpBoardContainerComponent implements AfterViewInit {
       const sibling = zoneKey.endsWith('-1')
         ? zoneKey.slice(0, -2) + '-0'
         : zoneKey.slice(0, -2) + '-1';
-      return scope.querySelector<HTMLElement>(`[data-zone="${sibling}"]`);
+      const fallback = scope.querySelector<HTMLElement>(`[data-zone="${sibling}"]`);
+      // Trace at component level so the fallback path is visible alongside
+      // the engine-side RESOLVE log. The engine sees `getZoneElement(EMZ_R-1)
+      // → ok` either way — without this note, the sibling-vs-direct hit is
+      // indistinguishable in the logs.
+      this._logger?.resolve('zoneResolver', zoneKey, fallback, `fallback=${sibling}`);
+      return fallback;
     }
     return null;
   }

@@ -1,4 +1,5 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, inject } from '@angular/core';
+import { DuelLogger } from './duel-logger';
 
 interface InFlightEntry {
   animation: Animation;
@@ -28,6 +29,7 @@ interface InFlightEntry {
 export class FloatRegistryService implements OnDestroy {
   private readonly _inFlight = new Map<HTMLDivElement, InFlightEntry>();
   private readonly _landed = new Set<HTMLDivElement>();
+  private readonly logger = inject(DuelLogger, { optional: true });
 
   /**
    * Register a freshly-animated float. Returns a promise that resolves
@@ -85,6 +87,7 @@ export class FloatRegistryService implements OnDestroy {
    *     wasn't tagged with a cardCode).
    */
   popLandedFloat(dstPrefix?: string, cardCode?: number): HTMLElement | null {
+    const query = `${dstPrefix ?? '*'}${cardCode !== undefined ? `#${cardCode}` : ''}`;
     if (cardCode !== undefined) {
       let match: HTMLDivElement | null = null;
       for (const el of this._landed) {
@@ -93,13 +96,17 @@ export class FloatRegistryService implements OnDestroy {
         match = el;
       }
       if (match) this._landed.delete(match);
+      this.logger?.resolve('popLandedFloat', query, match,
+        match ? `dstKey=${match.dataset['dstKey']}` : `landed=${this._landed.size}`);
       return match;
     }
     for (const el of this._landed) {
       if (dstPrefix && !el.dataset['dstKey']?.startsWith(dstPrefix)) continue;
       this._landed.delete(el);
+      this.logger?.resolve('popLandedFloat', query, el, `dstKey=${el.dataset['dstKey']}`);
       return el;
     }
+    this.logger?.resolve('popLandedFloat', query, null, `landed=${this._landed.size}`);
     return null;
   }
 
@@ -114,6 +121,12 @@ export class FloatRegistryService implements OnDestroy {
       if (el.dataset['dstKey']?.startsWith(prefix)) out.push(el);
     }
     return out;
+  }
+
+  /** Read-only iteration over all landed floats — used by DuelDebugService.
+   *  Returns a fresh array snapshot so external code can't mutate the set. */
+  allLandedFloats(): HTMLDivElement[] {
+    return [...this._landed];
   }
 
   /**

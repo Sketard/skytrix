@@ -7,6 +7,7 @@ import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
+import { DuelLogger } from './duel-logger';
 import {
   TARGET_PILE_FLOAT_CASCADE_X_PX,
   TARGET_PILE_FLOAT_CASCADE_Y_PX,
@@ -38,6 +39,7 @@ export class TargetIndicatorManager implements OnDestroy {
   private readonly artService = inject(DuelCardArtService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
+  private readonly logger = inject(DuelLogger, { optional: true });
 
   private floats: TrackedFloat[] = [];
   private readonly floatsByZone = new Map<string, TrackedFloat[]>();
@@ -66,6 +68,12 @@ export class TargetIndicatorManager implements OnDestroy {
       const playerZones = board.players[relPlayer]?.zones ?? [];
       const zone = playerZones.find(z => z.zoneId === zoneId);
       const card = zone?.cards[target.sequence];
+      // RESOLVE trace covers the (zone, sequence) → CardOnField lookup. When
+      // `card` is null mid-chain (sequence already mutated by an earlier
+      // buffered MOVE), the float falls back to CARD_BACK and the user sees
+      // a face-down reticle on a publicly-known card.
+      this.logger?.resolve('targetCard', `${zoneKey}[${target.sequence}]`, card ?? null,
+        card ? `code=${card.cardCode ?? 'null'}` : `zoneLen=${zone?.cards.length ?? 0}`);
 
       // Banished face-down cards exist; show card back. Missing payload (server
       // bug or race) → show card back rather than crash. cardCode null → back.
