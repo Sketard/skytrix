@@ -4,8 +4,9 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { ReplayHubPageComponent } from './replay-hub-page.component';
 import { ReplayHubStore } from './replay-hub-store';
 import { AuthService } from '../../../services/auth.service';
@@ -42,9 +43,19 @@ describe('ReplayHubPageComponent', () => {
   let http: HttpTestingController;
   let router: Router;
   let deckSubject: BehaviorSubject<Array<{ name: string }>>;
+  let dialog: jasmine.SpyObj<MatDialog>;
+
+  /** Stub the destructive-action confirm dialog. `confirmed=true` simulates
+   *  the user clicking "Supprimer", `false` simulates Cancel/dismiss. */
+  function stubConfirmDialog(confirmed: boolean): void {
+    dialog.open.and.returnValue({
+      afterClosed: () => of(confirmed),
+    } as ReturnType<MatDialog['open']>);
+  }
 
   beforeEach(async () => {
     deckSubject = new BehaviorSubject<Array<{ name: string }>>([{ name: 'MyDeck' }]);
+    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
 
     const authStub = {
       user: () => ({ id: ME_ID, pseudo: 'Me', role: 'USER' } as unknown as UserDTO),
@@ -60,6 +71,7 @@ describe('ReplayHubPageComponent', () => {
         { provide: AuthService, useValue: authStub },
         { provide: DeckBuildService, useValue: { decks$: deckSubject.asObservable() } },
         { provide: NotificationService, useValue: jasmine.createSpyObj('Notify', ['error']) },
+        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
 
@@ -101,16 +113,17 @@ describe('ReplayHubPageComponent', () => {
 
   // ───────────────────────────────────────────────────────────────────────────
 
-  it('deletes immediately on click — no confirm dialog (mockup §replay-action-btn--danger tap & gone)', fakeAsync(() => {
+  it('deletes after the destructive confirm dialog is accepted', fakeAsync(() => {
     const r = makeReplay('xyz');
     initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
+    stubConfirmDialog(true);
 
     component.deleteReplay(r, new Event('click'));
     flush();
 
-    // Optimistic removal — card disappears immediately from filteredReplays.
+    expect(dialog.open).toHaveBeenCalled();
+    // Optimistic removal — card disappears from filteredReplays after confirm.
     expect(component['store'].replays().map(rp => rp.id)).not.toContain('xyz');
-    // Backend DELETE fires without user confirmation.
     http.expectOne({ url: '/api/replays/xyz', method: 'DELETE' }).flush(null);
     flush();
     // Stats refresh follows.
@@ -119,9 +132,24 @@ describe('ReplayHubPageComponent', () => {
     });
   }));
 
+  it('does NOT delete when the confirm dialog is dismissed', fakeAsync(() => {
+    const r = makeReplay('xyz');
+    initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
+    stubConfirmDialog(false);
+
+    component.deleteReplay(r, new Event('click'));
+    flush();
+
+    expect(dialog.open).toHaveBeenCalled();
+    // Card still present — no DELETE was issued (http.verify() in afterEach would
+    // catch a stray request anyway).
+    expect(component['store'].replays().map(rp => rp.id)).toContain('xyz');
+  }));
+
   it('rolls back the optimistic removal when the backend returns an error', fakeAsync(() => {
     const r = makeReplay('xyz');
     initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
+    stubConfirmDialog(true);
 
     component.deleteReplay(r, new Event('click'));
     flush();

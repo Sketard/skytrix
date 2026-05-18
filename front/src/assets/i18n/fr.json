@@ -826,6 +826,7 @@
         "opponentUnknown": "Adversaire inconnu",
         "open": "Ouvrir",
         "delete": "Supprimer",
+        "deleteTitle": "Supprimer le replay",
         "deleteConfirm": "Voulez-vous vraiment supprimer définitivement ce replay ?",
         "turns": "{{n}} tours",
         "result": {

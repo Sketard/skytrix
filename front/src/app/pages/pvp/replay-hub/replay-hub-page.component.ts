@@ -1,17 +1,20 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { ReplayDTO } from '../../../core/model/dto/replay-dto';
 import { DuelResult } from '../../../core/enums/duel-result.enum';
 import { AuthService } from '../../../services/auth.service';
 import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 import { ReplayCardSkeletonComponent } from '../../../shared/skel';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../components/confirm-dialog/confirm-dialog.component';
 import { ReplayHubStore, ReplayFilter, ReplaySortMode } from './replay-hub-store';
 
 interface ResultMeta {
@@ -68,6 +71,7 @@ export class ReplayHubPageComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
+  private readonly dialog = inject(MatDialog);
 
   readonly replayCardItemSize = REPLAY_CARD_ITEM_SIZE_PX;
   readonly deletingId = signal<string | null>(null);
@@ -210,13 +214,31 @@ export class ReplayHubPageComponent implements OnInit {
     this.router.navigate(['/pvp']);
   }
 
-  /** Mockup §replay-action-btn--danger — "tap & gone" delete. The store
-   *  performs the optimistic removal + auto-rollbacks on HTTP error (cf.
-   *  `ReplayHubStore.deleteReplay`), so no confirm modal is needed. The
-   *  spinner state via `deletingId` covers the brief network round-trip. */
+  /** Mockup §replay-action-btn--danger — delete with confirm modal.
+   *  Aligned with the rest of the app's destructive-action pattern
+   *  (deck delete, etc.) via `ConfirmDialogComponent`. The store still
+   *  performs optimistic removal + auto-rollback on HTTP error; the
+   *  `deletingId` spinner covers the brief network round-trip. */
   async deleteReplay(replay: ReplayDTO, event: Event): Promise<void> {
     event.stopPropagation();
     event.preventDefault();
+
+    const confirmed = await firstValueFrom(
+      this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+        data: {
+          title: this.translate.instant('replay.hub.card.deleteTitle'),
+          message: this.translate.instant('replay.hub.card.deleteConfirm'),
+          confirmLabel: this.translate.instant('common.delete'),
+          destructive: true,
+        },
+        width: '360px',
+        panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger'],
+        autoFocus: false,
+      }).afterClosed(),
+    );
+
+    if (!confirmed) return;
+
     this.deletingId.set(replay.id);
     try {
       await this.store.deleteReplay(replay.id);
