@@ -18,6 +18,16 @@
     grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
     gap: var(--space-1);
   }
+
+  // Decision Axel 2026-05-17: list mode is desktop + tablet only.
+  // On mobile portrait we force GRID-like rendering even when displayMode
+  // is LIST (the toggle is hidden by card-searcher / card-search-page).
+  @include r.mobile-portrait {
+    &.LIST {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+  }
 }
 
 @keyframes card-added {
@@ -39,6 +49,17 @@
   &.LIST {
     align-items: center;
     width: 100%;
+    padding: var(--space-2);
+    background: var(--surface-card);
+    border: 1px solid var(--gold-soft-15);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast) var(--ease-out),
+                background-color var(--transition-fast) var(--ease-out);
+
+    &:hover {
+      border-color: var(--gold-soft-30);
+      background: var(--gold-soft-04);
+    }
 
     app-card {
       width: 60px;
@@ -50,6 +71,25 @@
 
       app-card {
         width: 100px;
+      }
+    }
+
+    // Mobile fallback: list mode is hidden via UI toggle but state may
+    // be LIST from a desktop session — render grid-like instead.
+    @include r.mobile-portrait {
+      width: 100%;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+
+      app-card {
+        width: 100%;
+      }
+
+      &:hover {
+        border-color: transparent;
+        background: transparent;
       }
     }
   }
@@ -91,18 +131,30 @@
 }
 
 .card-info {
-  margin-left: 0.5em;
-  font-size: 0.75em;
+  margin-left: var(--space-3);
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  // Hidden under mobile-portrait — LIST mode renders as GRID.
+  @include r.mobile-portrait {
+    display: none;
+  }
 
   @include r.respond-above(r.$bp-tablet) {
-    width: 200px;
-    font-size: 0.7em;
+    width: 280px;
+    flex: 0 0 auto;
   }
 
   strong {
-    font-size: 0.9em;
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -113,21 +165,33 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
+    gap: var(--space-2);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
 
     &-icon {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      margin-right: 5px;
+      gap: var(--space-1);
 
       img {
         height: 16px;
-        margin-right: 3px;
+        width: 16px;
+        object-fit: contain;
       }
     }
   }
 
   div {
-    margin-top: 3px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+
+    span {
+      color: var(--text-primary);
+      font-weight: var(--weight-semibold);
+    }
   }
 }
 

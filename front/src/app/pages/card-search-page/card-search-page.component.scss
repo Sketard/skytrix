@@ -86,6 +86,12 @@ app-bottom-sheet {
         --mat-legacy-button-toggle-text-color: var(--text-primary);
         --mat-legacy-button-toggle-selected-state-background-color: var(--accent-primary-dim);
         --mat-legacy-button-toggle-selected-state-text-color: var(--accent-primary);
+
+        // Decision Axel 2026-05-17: list mode is desktop + tablet only.
+        // Mobile sheet keeps the favorite toggle but drops GRID/LIST.
+        @include r.mobile-portrait {
+          display: none;
+        }
       }
 
       mat-button-toggle {

@@ -15,6 +15,14 @@
   border-bottom: 1px solid var(--gold-soft-08);
 }
 
+// Decision Axel 2026-05-17: mode LIST is desktop + tablet only —
+// hide the toggle (and the favorite button stays visible) on mobile.
+.cardSearchPage-searcher-bar-displayMode mat-button-toggle-group {
+  @include r.mobile-portrait {
+    display: none;
+  }
+}
+
 .cardSearchPage {
   display: flex;
   width: 100%;
