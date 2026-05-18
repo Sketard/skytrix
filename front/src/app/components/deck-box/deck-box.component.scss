@@ -1,140 +1,174 @@
-@use 'animation' as *;
+// =============================================================================
+// deck-box — gallery item for the Deck List page
+// =============================================================================
+//
+// Two flavours:
+//   .deck-box           = saved deck (silhouette + 3-card fan-out + pills)
+//   .deck-box--add      = "Nouveau deck" tile (dashed border + icon)
+// =============================================================================
 
-.deckBox {
+:host {
+  display: block;
   width: 100%;
   height: 100%;
-  min-height: 170px;
-  border: none;
+}
+
+.deck-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  padding: var(--space-3);
   background: var(--surface-card);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--gold-soft-15);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-1);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background-color var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    border-color: var(--gold-soft-45);
+    background: var(--gold-soft-04);
+    box-shadow: var(--elevation-2);
+    transform: translateY(-2px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+}
+
+.deck-box__cover {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  padding: 1rem;
-  cursor: pointer;
+}
+
+.deck-box__silhouette {
   position: relative;
-  transition: background-color 150ms ease, box-shadow 150ms ease;
+  z-index: 1;
+  transition: opacity var(--transition-normal) var(--ease-out);
+}
 
-  &-preview {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1000;
+.deck-box:hover .deck-box__silhouette {
+  opacity: 0.25;
+}
 
-    &:hover &-card:nth-child(1) {
-      z-index: 1003;
-      animation: fanOut1 0.2s ease-in-out forwards;
-    }
+.deck-box__preview {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-    &:hover &-card:nth-child(2) {
-      z-index: 1002;
-      animation: fanOut2 0.2s ease-in-out forwards;
-    }
+.deck-box__preview-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 81px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gold-soft-40);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.65);
+  transform: translate(-50%, -50%) rotate(0deg);
+  opacity: 0;
+  transition: opacity var(--transition-fast) var(--ease-out),
+              transform var(--transition-normal) var(--ease-spring);
+}
 
-    &:hover &-card:nth-child(3) {
-      z-index: 1001;
-      animation: fanOut3 0.2s ease-in-out forwards;
-    }
+.deck-box:hover .deck-box__preview-card {
+  opacity: 1;
+}
 
-    &-card {
-      z-index: 1000;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(0deg);
-      width: 75px;
-      opacity: 0;
-    }
-  }
+.deck-box:hover .deck-box__preview-card:nth-child(1) {
+  transform: translate(-100%, -55%) rotate(-12deg);
+  z-index: 3;
+}
+
+.deck-box:hover .deck-box__preview-card:nth-child(2) {
+  transform: translate(-50%, -65%) rotate(0deg);
+  z-index: 4;
+}
+
+.deck-box:hover .deck-box__preview-card:nth-child(3) {
+  transform: translate(0%, -55%) rotate(12deg);
+  z-index: 3;
+}
+
+.deck-box__name {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deck-box__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: center;
+  width: 100%;
+}
+
+// --- Add tile ---
+
+.deck-box--add {
+  background: transparent;
+  border: 1px dashed var(--gold-soft-30);
+  box-shadow: none;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
-    background: var(--surface-card-hover);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  }
-
-  &-image {
-    max-width: 150px;
-    width: 60%;
-
-    &:hover {
-      animation: wiggle 0.5s infinite;
-    }
-  }
-
-  &-add {
-    color: var(--accent-primary);
-    font-size: 48px;
-  }
-
-  &-addContent {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  &-addLabel {
-    color: var(--accent-primary);
-    font-size: 0.85rem;
-    margin-top: 0.5rem;
-  }
-
-  &--add {
-    background: var(--accent-primary-dim);
-    border: dashed 2px var(--accent-primary-dim);
+    background: var(--gold-soft-06);
+    border-color: var(--gold);
     box-shadow: none;
-
-    &:hover {
-      border-color: var(--accent-primary);
-      background: var(--accent-primary-dim);
-      box-shadow: none;
-    }
-  }
-
-  &-name {
-    font-weight: bold;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    max-width: 100%;
+    transform: translateY(-2px);
   }
 }
 
-@keyframes fanOut1 {
-  0% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translate(-100%, -60%) rotate(-15deg);
-  }
+.deck-box__add-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--gold);
 }
 
-@keyframes fanOut2 {
-  0% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translate(-50%, -70%) rotate(0deg);
-  }
+.deck-box__add-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
 }
 
-@keyframes fanOut3 {
-  0% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translate(0%, -60%) rotate(15deg);
-  }
+.deck-box__add-label {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
 }

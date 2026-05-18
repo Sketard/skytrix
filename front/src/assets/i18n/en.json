@@ -554,7 +554,10 @@
   },
   "deckBox": {
     "addDeck": "Add a deck",
-    "newDeck": "New deck"
+    "newDeck": "New deck",
+    "legal": "Legal",
+    "incomplete": "Incomplete",
+    "mainCount": "Main {{count}}"
   },
   "simulator": {
     "undo": "Undo (Ctrl+Z)",

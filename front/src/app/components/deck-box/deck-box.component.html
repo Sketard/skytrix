@@ -1,24 +1,43 @@
 <div
-  class="deckBox"
-  [class.deckBox--add]="add()"
+  class="deck-box"
+  [class.deck-box--add]="add()"
   [title]="deck()?.name || ('deckBox.addDeck' | translate)"
   [routerLink]="add() ? '/decks/builder' : '/decks/' + deck()!.id">
-  @if (!add() && deck()?.urls) {
-    <div class="deckBox-preview">
-      @for (url of deck()!.urls; track $index) {
-        <img class="deckBox-preview-card" [src]="url" alt="" />
+
+  @if (add()) {
+    <div class="deck-box__add-content">
+      <mat-icon class="deck-box__add-icon">library_add</mat-icon>
+      <span class="deck-box__add-label">{{ 'deckBox.newDeck' | translate }}</span>
+    </div>
+  } @else {
+    <div class="deck-box__cover">
+      <app-deck-silhouette
+        class="deck-box__silhouette"
+        [deckId]="deck()!.id">
+      </app-deck-silhouette>
+
+      @if (deck()?.urls?.length) {
+        <div class="deck-box__preview">
+          @for (url of deck()!.urls; track $index) {
+            <img class="deck-box__preview-card" [src]="url" alt="" />
+          }
+        </div>
       }
     </div>
-  }
-  @if (!add()) {
-    <img class="deckBox-image" [src]="'/assets/images/deckbox.webp'" alt="deckbox" />
-  } @else {
-    <div class="deckBox-addContent">
-      <mat-icon class="deckBox-add">library_add</mat-icon>
-      <span class="deckBox-addLabel">{{ 'deckBox.newDeck' | translate }}</span>
+
+    <div class="deck-box__name">
+      {{ deck()?.name }}
+    </div>
+
+    <div class="deck-box__meta">
+      @if (statusPill(); as pill) {
+        <span class="pill" [class.pill--valid]="pill.variant === 'valid'" [class.pill--invalid]="pill.variant === 'invalid'">
+          {{ pill.key | translate }}
+        </span>
+      }
+      <span class="pill pill--gold">
+        {{ 'deckBox.mainCount' | translate:{ count: deck()?.mainDeckCount ?? 0 } }}
+      </span>
     </div>
   }
-  <div class="deckBox-name">
-    {{ deck()?.name }}
-  </div>
 </div>

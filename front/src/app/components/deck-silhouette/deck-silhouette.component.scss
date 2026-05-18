@@ -1,0 +1,100 @@
+// =============================================================================
+// app-deck-silhouette — vector deck-box visual, 5 deterministic themes
+// =============================================================================
+//
+// Replaces the legacy `deckbox.webp` Ultra Pro photo. Pure CSS (lid +
+// body in gradient), themed via `--deck-silhouette--{gold|cyan|purple|rose|green}`.
+// Sizes are component geometry (per ds-token-doctrine — local, not tokenised).
+// =============================================================================
+
+:host {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deck-silhouette {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 64px;
+  height: 88px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 0 8px var(--gold-soft-30));
+  transition: opacity var(--transition-normal) var(--ease-out);
+}
+
+.deck-silhouette__lid {
+  width: 100%;
+  height: 26px;
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-700) 100%);
+  border: 1px solid var(--gold-soft-60);
+  border-bottom: 0;
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px dashed rgba(255, 233, 168, 0.4);
+    border-radius: 2px;
+  }
+}
+
+.deck-silhouette__body {
+  width: 100%;
+  flex: 1;
+  background: linear-gradient(180deg, var(--gold-700) 0%, #6b541f 100%);
+  border: 1px solid var(--gold-soft-60);
+  border-top: 0;
+  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+// --- Variants (5 deterministic themes) ---
+
+.deck-silhouette--cyan {
+  .deck-silhouette__lid {
+    background: linear-gradient(180deg, var(--cyan-500) 0%, #2b5d8a 100%);
+    border-color: var(--cyan-soft-40);
+  }
+  .deck-silhouette__body {
+    background: linear-gradient(180deg, #2b5d8a 0%, #1a3a5a 100%);
+    border-color: var(--cyan-soft-40);
+  }
+}
+
+.deck-silhouette--purple {
+  .deck-silhouette__lid {
+    background: linear-gradient(180deg, #8866b8 0%, #4a3270 100%);
+    border-color: rgba(136, 102, 184, 0.5);
+  }
+  .deck-silhouette__body {
+    background: linear-gradient(180deg, #4a3270 0%, #2a1c45 100%);
+    border-color: rgba(136, 102, 184, 0.5);
+  }
+}
+
+.deck-silhouette--rose {
+  .deck-silhouette__lid {
+    background: linear-gradient(180deg, #b8408a 0%, #6e2454 100%);
+    border-color: rgba(184, 64, 138, 0.5);
+  }
+  .deck-silhouette__body {
+    background: linear-gradient(180deg, #6e2454 0%, #401333 100%);
+    border-color: rgba(184, 64, 138, 0.5);
+  }
+}
+
+.deck-silhouette--green {
+  .deck-silhouette__lid {
+    background: linear-gradient(180deg, #2ea88a 0%, #185f4f 100%);
+    border-color: rgba(46, 168, 138, 0.5);
+  }
+  .deck-silhouette__body {
+    background: linear-gradient(180deg, #185f4f 0%, #0d3a30 100%);
+    border-color: rgba(46, 168, 138, 0.5);
+  }
+}
