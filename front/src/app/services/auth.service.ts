@@ -47,6 +47,11 @@ export class AuthService {
     if (currentUser) {
       return true;
     }
+    console.warn('[auth.canActivate] redirect to /login', {
+      url: state?.url,
+      hasLocalStorage: !!currentUser,
+      hasSignal: !!this.user(),
+    });
     this.router.navigate(['/login'], { queryParams: { returnUrl: state?.url } });
     return false;
   }

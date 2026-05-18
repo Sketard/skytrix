@@ -95,10 +95,8 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    if (!this.returnUrl) {
-      this.authService.resetLogin();
-      this.ownedCardService.resetMap();
-    }
+    this.authService.resetLogin();
+    this.ownedCardService.resetMap();
   }
 
   ngOnDestroy(): void {
