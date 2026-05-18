@@ -478,6 +478,114 @@ When adding a constant: pick a `*_MS` name describing what it times,
 add a `*_MIN_MS` floor if the handler will pass a min, and document the
 single line "what does this gate" — most existing entries are 1-3 lines.
 
+## Debugging Animations (`DuelLogger` + `DuelDebugService` + harness)
+
+The animation pipeline has three layers of instrumentation. Use them in
+order — they're additive, not redundant.
+
+### Layer 1 — `DuelLogger` categories
+
+`DuelLogger` is the gated console logger. Eight categories, each filterable
+via `localStorage['duel-log-categories']` (CSV) or the DevHub toggle. Default
+set keeps the console readable; the two **verbose** categories are off by
+default and must be opted in.
+
+- `QUEUE` / `MOVE` / `DRAW` / `CHAIN` / `SHUFFLE` / `LP` / `PROC` / `REPLAY`
+  — the existing animation pipeline categories. Loud but bounded; on by
+  default.
+- `RESOLVE` (verbose) — every conversion from a string identifier to a
+  runtime object: `getZoneElement(zoneKey) → HTMLElement | null`,
+  `popLandedFloat(prefix, cardCode) → HTMLElement | null`,
+  `findCardOnField → CardOnField | null`. Off by default. **A failing
+  resolve auto-promotes to `logger.warn`** so silent skips surface even
+  when the category is filtered out.
+- `PIPELINE` (verbose) — message ingestion across the WS / Replay adapter /
+  `DuelEventProcessor` boundary. One line per WS message received
+  (`ws.recv type=…`), per `processMessage` entry/exit with queue-length
+  delta, per `advanceStep` step kind. Off by default. Use when diagnosing
+  "did the event arrive at all".
+
+`logger.resolve(method, input, result, note?)` is the canonical helper for
+the `RESOLVE` category — it formats consistently and handles the null →
+warn promotion automatically. Don't roll your own `console.log` for zone
+lookups; use `logger.resolve`.
+
+### Layer 2 — `window.__skytrixDebug`
+
+`DuelDebugService` is provided at the duel-page + replay-page component
+level and exposes itself on `window.__skytrixDebug` in dev mode only
+(`isDevMode() === true`). No-op + tree-shaken in production.
+
+The console surface:
+
+- `__skytrixDebug.snapshot()` — JSON-serialisable state dump
+  (logicalState, renderedState, animationQueue, chain.phase + activeLinks,
+  locks, inFlightFloats, landedFloats, preActivationBuffer). The
+  `domZones` field is a getter — invoking it forces ~50
+  `getBoundingClientRect` reads, so don't call it on every animation tick.
+- `__skytrixDebug.dump()` — same as snapshot, but also pretty-prints a
+  grouped console block. Cheap.
+- `__skytrixDebug.enableAll()` — turn on every log category, including
+  RESOLVE + PIPELINE. Persists to localStorage.
+- `__skytrixDebug.setLogCategories([...])` — fine-grained set.
+- `__skytrixDebug.help()` — lists the above in the console.
+
+The snapshot is the right tool when "the animation looks stalled, what's
+the state right now?". From DevTools console, paste:
+```
+copy(JSON.stringify(__skytrixDebug.snapshot(), null, 2))
+```
+and the JSON dump goes to your clipboard for bug-report inclusion.
+
+### Layer 3 — Playwright debug harness
+
+`front/e2e/debug-replay-harness.ts` (`runReplayDebug({ replayId,
+perspective, screenshotOn, buildFirst, fromEvent, timeoutSec })`) is the
+batch-mode equivalent: scripted replay playback, console capture,
+screenshots, JSON snapshots, and a Markdown report.
+
+Output goes to `_bmad-output/debug-replay/<tag>/`:
+
+- `report.md` — timeline of captures, warnings, errors, last 100 PIPELINE
+  lines. Read this first.
+- `console.log` — raw filtered log with timestamps.
+- `frames/<idx>-<label>.png` — screenshots at each trigger.
+- `snapshots/<idx>-<label>.json` — `__skytrixDebug.snapshot()` dump
+  paired with each screenshot.
+
+Two modes:
+
+1. **`buildFirst: false`** (fast, fragile) — points at the user's running
+   `ng serve`. Iterative dev mode. HMR can truncate captures if you edit
+   code mid-run.
+2. **`buildFirst: true`** (slow, reproducible) — runs `ng build
+   --configuration=development`, serves the static output on a free port,
+   captures against that. ~30s overhead for the build, then HMR-immune.
+   Use for archival captures + regression snapshots.
+
+Run via:
+```
+npm run debug:replay              # default example spec
+npx playwright test e2e/<spec>    # specific spec
+```
+
+Copy `debug-replay-example.spec.ts` as the template for a new bug
+investigation — set the `replayId`, `perspective`, and `screenshotOn`
+trigger substrings. The trigger pattern that worked for the 2026-05-18
+EMZ resolver bug was `screenshotOn: ['travel skipped']` — every `travel
+skipped` warn captures a frame + snapshot at the bug moment.
+
+### What NOT to instrument
+
+- Bind expensive payloads (board-state dumps, large arrays) behind
+  `logger.isEnabled(cat)` checks so the cost is paid only when the
+  category is on.
+- Don't use `duelAssert()` for new resolve-style failures — the
+  warn-on-null path in `logger.resolve()` is already the right
+  signal-without-throw mechanism.
+- Don't add console.log directly — go through DuelLogger so the output
+  is categorised + the prefix + traceId are consistent.
+
 ## Polling Removal — Regression Surface
 
 The legacy chain-poll back-off (`_pollTimeout` + 50→500ms exponential +
