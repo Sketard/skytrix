@@ -67,19 +67,21 @@
   color: transparent;
 }
 
+// Row holding `[search-bar, view-group, favorite]` together to the right
+// of the page title (mockup ll. 3385-3396 — inline flex, no wrap).
 .card-search-page__bar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex-shrink: 0;
 
   search-bar {
-    flex: 1 1 280px;
-    min-width: 200px;
+    min-width: 280px;
   }
 
   @include r.mobile-portrait {
-    gap: var(--space-2);
+    flex-wrap: wrap;
+    width: 100%;
 
     search-bar {
       flex: 1 1 100%;

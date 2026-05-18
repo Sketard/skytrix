@@ -14,25 +14,26 @@
       <mat-icon aria-hidden="true">close</mat-icon>
     </button>
   }
-  @if (showFilters()) {
-    @if ((numberOfActiveFilters$ | async); as numberOfActiveFilters) {
-      <button
-        type="button"
-        class="search-bar__clear search-bar__clear--filters"
-        [attr.aria-label]="'cardFilters.clearAll' | translate"
-        (click)="clearFilters()">
-        <mat-icon aria-hidden="true">backspace</mat-icon>
-      </button>
-    }
+</div>
+
+@if (showFilters()) {
+  @if ((numberOfActiveFilters$ | async); as numberOfActiveFilters) {
     <button
       type="button"
-      class="search-bar__filters-btn"
-      [attr.aria-label]="'deckBuilder.actions' | translate"
-      (click)="openFilters()">
-      <mat-icon aria-hidden="true">tune</mat-icon>
-      @if ((numberOfActiveFilters$ | async); as numberOfActiveFilters) {
-        <span class="search-bar__badge">{{ numberOfActiveFilters }}</span>
-      }
+      class="search-bar__ext search-bar__ext--clear"
+      [attr.aria-label]="'cardFilters.clearAll' | translate"
+      (click)="clearFilters()">
+      <mat-icon aria-hidden="true">backspace</mat-icon>
     </button>
   }
-</div>
+  <button
+    type="button"
+    class="search-bar__ext search-bar__ext--filters"
+    [attr.aria-label]="'deckBuilder.actions' | translate"
+    (click)="openFilters()">
+    <mat-icon aria-hidden="true">tune</mat-icon>
+    @if ((numberOfActiveFilters$ | async); as numberOfActiveFilters) {
+      <span class="search-bar__badge">{{ numberOfActiveFilters }}</span>
+    }
+  </button>
+}

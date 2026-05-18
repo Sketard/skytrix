@@ -74,10 +74,17 @@
   color: var(--danger-strong);
 }
 
-.pill--success {
+.pill--success,
+.pill--valid {
   background: var(--success-soft);
   border: 1px solid rgba(76, 175, 80, 0.3);
   color: var(--success);
+}
+
+.pill--invalid {
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: var(--danger-strong);
 }
 
 // --- Sizes ------------------------------------------------------------------

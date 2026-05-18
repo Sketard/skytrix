@@ -1,16 +1,20 @@
 @use 'responsive' as r;
 
 // =============================================================================
-// search-bar — flat DS search input
+// search-bar — flat DS search input + optional external filters button
 // =============================================================================
 //
-// Mockup `_mockups/mockup-deck-flow.html:624-656`. Plain input on a
-// --surface-card-low background, gold focus ring, optional clear button
-// and filter toggle with active count badge.
+// Mockup `_mockups/mockup-deck-flow.html:624-656` (.search-bar) +
+// ll. 3389-3395 (external filter button beside the bar).
+// The `.search-bar` keeps only the input + clear; the filters toggle
+// + clear-filters live OUTSIDE the bar as separate `.btn--ghost`
+// siblings so they don't share the bar's focus ring.
 // =============================================================================
 
 :host {
   display: flex;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -47,26 +51,30 @@
 .search-bar__input {
   flex: 1;
   min-width: 0;
+  margin: 0;
+  padding: 0;
   background: transparent;
-  border: 0;
+  border: 0 !important;
   outline: 0;
+  box-shadow: none;
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: var(--text-sm);
+  -webkit-appearance: none;
+  appearance: none;
 
   &::placeholder {
     color: var(--text-disabled);
   }
 
-  // Remove native search-input clear button (we render our own).
-  &::-webkit-search-cancel-button {
+  &::-webkit-search-cancel-button,
+  &::-webkit-search-decoration {
     -webkit-appearance: none;
     appearance: none;
   }
 }
 
-.search-bar__clear,
-.search-bar__filters-btn {
+.search-bar__clear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -100,20 +108,51 @@
   }
 }
 
-.search-bar__filters-btn {
+// =============================================================================
+// External filter buttons — siblings of `.search-bar`, not inside it.
+// =============================================================================
+
+.search-bar__ext {
   position: relative;
-  margin-left: var(--space-1);
-  border-left: 1px solid var(--border-soft);
-  padding-left: var(--space-2);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  width: auto;
-  min-width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+  background: var(--surface-card-low);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast) var(--ease-out),
+              background-color var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+
+  &:hover {
+    color: var(--gold);
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
 }
 
 .search-bar__badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
