@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, output } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DeckBuildService, DeckZone } from '../../../../../../services/deck-build.service';
 import { DeckCardZoneComponent } from '../../../../../../components/deck-card-zone/deck-card-zone.component';
@@ -19,4 +19,19 @@ export class DeckViewerComponent {
   readonly cardClicked = output<IndexedCardDetail>();
 
   public constructor(public deckBuildService: DeckBuildService) {}
+
+  readonly mainPillVariant = computed<'valid' | 'invalid'>(() => {
+    const c = this.deckBuildService.mainCardNumber();
+    return c >= 40 && c <= 60 ? 'valid' : 'invalid';
+  });
+
+  readonly extraPillVariant = computed<'valid' | 'invalid'>(() => {
+    const c = this.deckBuildService.extraCardNumber();
+    return c <= 15 ? 'valid' : 'invalid';
+  });
+
+  readonly sidePillVariant = computed<'valid' | 'invalid'>(() => {
+    const c = this.deckBuildService.sideCardNumber();
+    return c <= 15 ? 'valid' : 'invalid';
+  });
 }

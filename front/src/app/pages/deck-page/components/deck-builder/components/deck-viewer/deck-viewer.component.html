@@ -1,40 +1,42 @@
-<div class="deckViewer">
-  <div class="deckViewer-part">
-    <div class="deckViewer-part-header">
-      <span>{{ 'deckBuilder.viewer.main' | translate }}</span>
-      <span class="deckViewer-part-header-count" [class.illegal]="deckBuildService.mainCardNumber() < 40 || deckBuildService.mainCardNumber() > 60">
-        [{{ deckBuildService.mainCardNumber() }}]
+<div class="deck-viewer">
+  <section class="deck-viewer__zone deck-viewer__zone--main">
+    <header class="deck-viewer__zone-header">
+      <span class="deck-viewer__zone-title">{{ 'deckBuilder.viewer.main' | translate }}</span>
+      <span class="pill" [class.pill--valid]="mainPillVariant() === 'valid'" [class.pill--invalid]="mainPillVariant() === 'invalid'">
+        {{ deckBuildService.mainCardNumber() }} / 60
       </span>
-    </div>
+    </header>
     <deck-card-zone
       [cardDetails]="deckBuildService.deck().mainDeck"
       [deckZone]="deckZone.MAIN"
       (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
-  </div>
-  <div class="deckViewer-part extra">
-    <div class="deckViewer-part-header">
-      <span>{{ 'deckBuilder.viewer.extra' | translate }}</span>
-      <span class="deckViewer-part-header-count">
-        [{{ deckBuildService.extraCardNumber() }}]
+  </section>
+
+  <section class="deck-viewer__zone deck-viewer__zone--extra">
+    <header class="deck-viewer__zone-header">
+      <span class="deck-viewer__zone-title">{{ 'deckBuilder.viewer.extra' | translate }}</span>
+      <span class="pill" [class.pill--valid]="extraPillVariant() === 'valid'" [class.pill--invalid]="extraPillVariant() === 'invalid'">
+        {{ deckBuildService.extraCardNumber() }} / 15
       </span>
-    </div>
+    </header>
     <deck-card-zone
       [cardDetails]="deckBuildService.deck().extraDeck"
       [deckZone]="deckZone.EXTRA"
       [slotNumber]="15"
       (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
-  </div>
-  <div class="deckViewer-part side">
-    <div class="deckViewer-part-header">
-      <span>{{ 'deckBuilder.viewer.side' | translate }}</span>
-      <span class="deckViewer-part-header-count">
-        [{{ deckBuildService.sideCardNumber() }}]
+  </section>
+
+  <section class="deck-viewer__zone deck-viewer__zone--side">
+    <header class="deck-viewer__zone-header">
+      <span class="deck-viewer__zone-title">{{ 'deckBuilder.viewer.side' | translate }}</span>
+      <span class="pill" [class.pill--valid]="sidePillVariant() === 'valid'" [class.pill--invalid]="sidePillVariant() === 'invalid'">
+        {{ deckBuildService.sideCardNumber() }} / 15
       </span>
-    </div>
+    </header>
     <deck-card-zone
       [cardDetails]="deckBuildService.deck().sideDeck"
       [deckZone]="deckZone.SIDE"
       [slotNumber]="15"
       (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
-  </div>
+  </section>
 </div>
