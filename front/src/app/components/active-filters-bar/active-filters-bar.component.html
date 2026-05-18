@@ -7,11 +7,12 @@
       <button
         type="button"
         class="active-filters-bar__chip"
+        [attr.aria-label]="('cardFilters.tokenSelect.removeLabel' | translate) + ' — ' + (filter.label | translate) + filter.suffix"
         (click)="remove(filter, $event)">
         <span class="active-filters-bar__chip-label">
           {{ filter.label | translate }}{{ filter.suffix }}
         </span>
-        <mat-icon class="active-filters-bar__chip-remove">close</mat-icon>
+        <mat-icon class="active-filters-bar__chip-remove" aria-hidden="true">close</mat-icon>
       </button>
     }
     <button

@@ -49,7 +49,10 @@
     </div>
   } @else {
     <app-empty-state
-      [message]="'deckList.empty' | translate"
+      variant="welcome"
+      icon="folder_special"
+      [message]="'deckList.welcomeTitle' | translate"
+      [subtitle]="'deckList.welcomeSubtitle' | translate"
       [ctaLabel]="'deckList.createDeck' | translate"
       ctaLink="/decks/builder">
     </app-empty-state>

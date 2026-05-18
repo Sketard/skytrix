@@ -1,31 +1,39 @@
+// Base layout — shared with the DS `_empty-state.scss` partial which
+// owns the global `.empty-state__title` typography. Local overrides are
+// only for things the partial doesn't cover (gap, icon hero in welcome
+// variant, subtitle).
+
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 1rem;
-  gap: 1.5rem;
+  padding: var(--space-7) var(--space-3);
+  gap: var(--space-3);
+}
 
-  &-message {
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-    text-align: center;
-    margin: 0;
-  }
+.empty-state__subtitle {
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  text-align: center;
+  margin: 0;
+  max-width: 36ch;
+}
 
-  &-cta {
-    color: var(--accent-primary);
-    border: 1px solid var(--accent-primary);
-    padding: 0.5rem 1.5rem;
-    border-radius: 8px;
-    background: transparent;
-    text-decoration: none;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background-color 150ms ease;
+// --- Welcome variant: oversized icon hero + tighter typography ---
 
-    &:hover {
-      background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
-    }
-  }
+.empty-state--welcome {
+  padding: var(--space-9) var(--space-4);
+  gap: var(--space-4);
+}
+
+.empty-state__icon {
+  font-size: 72px;
+  width: 72px;
+  height: 72px;
+  line-height: 72px;
+  color: var(--gold);
+  filter: drop-shadow(0 0 12px var(--gold-soft-30));
+  margin-bottom: var(--space-2);
 }

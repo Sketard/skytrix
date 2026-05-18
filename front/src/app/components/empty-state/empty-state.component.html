@@ -1,5 +1,11 @@
-<div class="empty-state">
+<div class="empty-state" [class.empty-state--welcome]="variant() === 'welcome'">
+  @if (variant() === 'welcome' && icon()) {
+    <mat-icon class="empty-state__icon">{{ icon() }}</mat-icon>
+  }
   <p class="empty-state__title">{{ message() }}</p>
+  @if (subtitle()) {
+    <p class="empty-state__subtitle">{{ subtitle() }}</p>
+  }
   @if (ctaLink()) {
     <a class="btn btn--primary btn--lg btn--cta" [routerLink]="ctaLink()">{{ ctaLabel() }}</a>
   } @else if (ctaLabel()) {

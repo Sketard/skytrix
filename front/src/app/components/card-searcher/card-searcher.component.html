@@ -31,7 +31,7 @@
         <app-active-filters-bar [searchService]="svc"></app-active-filters-bar>
       }
       @if (!deckBuildMode() && resultsLabel() !== null) {
-        <div class="cardSearchPage-searcher-count">
+        <div class="cardSearchPage-searcher-count" aria-live="polite" aria-atomic="true">
           {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
         </div>
       }

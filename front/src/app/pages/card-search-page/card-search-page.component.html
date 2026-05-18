@@ -20,7 +20,7 @@
   [searchService]="cardSearchService">
 </app-active-filters-bar>
 
-<div class="cardSearchPage-mobileCount">
+<div class="cardSearchPage-mobileCount" aria-live="polite" aria-atomic="true">
   {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
 </div>
 
