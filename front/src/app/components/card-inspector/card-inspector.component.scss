@@ -3,11 +3,11 @@
 
   // DS defaults — consumers may override via :host.mode-* below or
   // host-level CSS variables.
-  --inspector-bg: var(--surface-card);
+  --inspector-bg: var(--surface-card-ds);
   --inspector-border-color: var(--gold-soft-20);
   --inspector-border-radius: var(--radius-lg);
   --inspector-text: var(--text-primary);
-  --inspector-text-secondary: var(--text-secondary);
+  --inspector-text-secondary: var(--text-muted);
   --inspector-backdrop: var(--scrim);
 }
 
@@ -51,7 +51,7 @@
 
 // Click mode: backdrop + centered panel (modal)
 :host.mode-click {
-  --inspector-bg: var(--surface-card);
+  --inspector-bg: var(--surface-card-ds);
   --inspector-border-color: var(--gold-soft-30);
   --inspector-border-radius: var(--radius-lg);
   --inspector-width: min(400px, 90vw);

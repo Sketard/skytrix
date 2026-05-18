@@ -1,6 +1,21 @@
 @if (searchService()) {
   <div class="cardFilters">
 
+    <!-- Filter panel header — title + active count + Tout effacer -->
+    <header class="cardFilters__panel-header">
+      <span class="cardFilters__panel-title">{{ 'cardFilters.title' | translate }}</span>
+      <button
+        type="button"
+        class="cardFilters__panel-clear"
+        [disabled]="activeFilterCount() === 0"
+        (click)="clearAllFilters()">
+        {{ 'cardFilters.clear' | translate }}
+        @if (activeFilterCount() > 0) {
+          <span>({{ activeFilterCount() }})</span>
+        }
+      </button>
+    </header>
+
     <!-- 1. Type — token-select (17 options, no icons) -->
     <div class="cardFilters__group">
       <label class="cardFilters__label">{{ 'cardFilters.cardType' | translate }}</label>

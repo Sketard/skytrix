@@ -1,11 +1,19 @@
 @if (deckBuildService.decks$ | async; as decks) {
   @if (decks.length > 0) {
-    <header class="deck-list__header">
-      <div class="deck-list__title-block">
-        <mat-icon class="deck-list__icon">folder_special</mat-icon>
-        <div>
-          <h1 class="deck-list__title">{{ 'deckList.title' | translate }}</h1>
-          <p class="deck-list__subtitle">{{ 'deckList.subtitle' | translate }}</p>
+    <div class="screen-bg" aria-hidden="true">
+      <div class="screen-bg-grid"></div>
+      <div class="screen-bg-glow screen-bg-glow--gold"></div>
+      <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+    </div>
+
+    <header class="page-header page-header--bordered deck-list__header">
+      <div class="page-header__title-group">
+        <span class="deck-list__icon-wrap" aria-hidden="true">
+          <mat-icon class="page-header__icon">folder_special</mat-icon>
+        </span>
+        <div class="page-header__text">
+          <h1 class="page-header__title text-gold-gradient">{{ 'deckList.title' | translate }}</h1>
+          <span class="page-header__subtitle">{{ 'deckList.subtitle' | translate }}</span>
         </div>
       </div>
 

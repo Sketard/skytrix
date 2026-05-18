@@ -1,12 +1,20 @@
 <div class="card-search-page">
 
+  <div class="screen-bg" aria-hidden="true">
+    <div class="screen-bg-grid"></div>
+    <div class="screen-bg-glow screen-bg-glow--gold"></div>
+    <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+  </div>
+
   <!-- TOP HEADER (full width) -->
-  <header class="card-search-page__header">
-    <div class="card-search-page__title-block">
-      <mat-icon class="card-search-page__icon">search</mat-icon>
-      <div>
-        <h1 class="card-search-page__title">{{ 'cardSearchPage.title' | translate }}</h1>
-        <p class="card-search-page__subtitle">{{ 'cardSearchPage.subtitle' | translate }}</p>
+  <header class="page-header card-search-page__header">
+    <div class="page-header__title-group">
+      <span class="card-search-page__icon-wrap" aria-hidden="true">
+        <mat-icon class="page-header__icon">search</mat-icon>
+      </span>
+      <div class="page-header__text">
+        <h1 class="page-header__title card-search-page__title">{{ 'cardSearchPage.title' | translate }}</h1>
+        <span class="page-header__subtitle">{{ 'cardSearchPage.subtitle' | translate }}</span>
       </div>
     </div>
 

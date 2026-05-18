@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
 import { BetweenFilterComponent } from './components/between-filter/between-filter.component';
 import { TokenSelectComponent } from './components/token-select/token-select.component';
 import { ToggleIconFilterComponent } from './components/toggle-icon-filter/toggle-icon-filter.component';
@@ -57,6 +57,28 @@ export class CardFiltersComponent {
 
   public readonly localForm = new FormGroup(SearchServiceCore.buildSearchForm());
 
+  private readonly formVersion = signal(0);
+  readonly activeFilterCount = computed<number>(() => {
+    this.formVersion();
+    const v = this.localForm.value;
+    let n = 0;
+    if (v.types && v.types.length) n++;
+    if (v.races && v.races.length) n++;
+    if (v.attribute) n++;
+    if (v.archetype) n++;
+    if (v.minAtk != null || v.maxAtk != null) n++;
+    if (v.minDef != null || v.maxDef != null) n++;
+    if (v.minScale != null || v.maxScale != null) n++;
+    if (v.minLinkval != null || v.maxLinkval != null) n++;
+    const csf = v.cardSetFilter;
+    if (csf && (csf.cardSetName || csf.cardSetCode || csf.cardRarityCode)) n++;
+    return n;
+  });
+
+  clearAllFilters(): void {
+    this.searchService()?.clearFilters();
+  }
+
   constructor() {
     effect(() => {
       const service = this.searchService();
@@ -64,6 +86,7 @@ export class CardFiltersComponent {
         this.localForm.patchValue(service.filterForm.value);
         this.unsubscribe$.next();
         this.localForm.valueChanges.pipe(takeUntil(this.unsubscribe$)).subscribe(() => {
+          this.formVersion.update(v => v + 1);
           this.syncToService();
         });
         service.filtersCleared$.pipe(takeUntil(this.unsubscribe$)).subscribe(() => {

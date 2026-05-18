@@ -24,7 +24,7 @@
   align-items: flex-start;
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
-  background: var(--surface-card);
+  background: var(--surface-card-low);
   border: 1px solid var(--gold-soft-15);
   border-radius: var(--radius-md);
   box-shadow: var(--elevation-1);
@@ -60,5 +60,5 @@
   font-weight: var(--weight-medium);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }

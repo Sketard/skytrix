@@ -27,7 +27,7 @@
   min-height: 36px; // composant geometry — touch target
   padding: var(--space-1) var(--space-2);
   gap: var(--space-2);
-  background: var(--surface-card);
+  background: var(--surface-card-low);
   border: 1px solid var(--gold-soft-20);
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -56,7 +56,7 @@
 
 .token-select__placeholder {
   flex: 1;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -108,7 +108,7 @@
   background: transparent;
   border: none;
   border-radius: var(--radius-pill);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: pointer;
   transition: color var(--transition-fast) var(--ease-out),
               background-color var(--transition-fast) var(--ease-out);
@@ -144,7 +144,7 @@
 
 .token-select__caret {
   flex-shrink: 0;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   transition: transform var(--transition-fast) var(--ease-out);
 }
 
@@ -160,7 +160,7 @@
   z-index: 10;
   max-height: 280px;
   overflow: hidden;
-  background: var(--surface-card);
+  background: var(--surface-card-low);
   border: 1px solid var(--gold-soft-30);
   border-radius: var(--radius-md);
   box-shadow: var(--elevation-3);
@@ -186,7 +186,7 @@
 }
 
 .token-select__search-icon {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   flex-shrink: 0;
   font-size: 18px;
   width: 18px;
@@ -205,7 +205,7 @@
   outline: none;
 
   &::placeholder {
-    color: var(--text-secondary);
+    color: var(--text-muted);
     font-style: italic;
   }
 }
@@ -218,7 +218,7 @@
 
 .token-select__empty {
   padding: var(--space-3) var(--space-2);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: var(--text-sm);
   font-style: italic;
   text-align: center;
@@ -263,7 +263,7 @@
   flex-shrink: 0;
   border: 1px solid var(--gold-soft-30);
   border-radius: var(--radius-sm);
-  background: var(--surface-base);
+  background: var(--surface-bg);
 
   mat-icon {
     font-size: 14px;
@@ -279,7 +279,7 @@
   border-color: var(--gold);
 
   mat-icon {
-    color: var(--surface-base);
+    color: var(--surface-bg);
   }
 }
 
@@ -305,9 +305,9 @@
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--gold-soft-15);
-  background: var(--surface-base);
+  background: var(--surface-bg);
   font-size: var(--text-xs);
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .token-select__footer-clear {

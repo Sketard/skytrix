@@ -23,24 +23,45 @@
   width: 100%;
   height: 100%;
   min-height: 200px;
-  padding: var(--space-3);
-  background: var(--surface-card);
-  border: 1px solid var(--gold-soft-15);
+  padding: var(--space-4);
+  background: linear-gradient(135deg, var(--surface-card-ds) 0%, var(--surface-card-low) 100%);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--elevation-1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
   text-decoration: none;
   color: inherit;
-  transition: border-color var(--transition-fast) var(--ease-out),
-              background-color var(--transition-fast) var(--ease-out),
-              box-shadow var(--transition-fast) var(--ease-out),
-              transform var(--transition-fast) var(--ease-out);
+  overflow: hidden;
+  transition: border-color var(--transition-normal) var(--ease-out),
+              background-color var(--transition-normal) var(--ease-out),
+              box-shadow var(--transition-normal) var(--ease-out),
+              transform var(--transition-normal) var(--ease-out);
+
+  // Vertical gold rail on the left edge (mockup ll. 777-785, 791).
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 15%;
+    bottom: 15%;
+    width: 3px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+    opacity: 0.5;
+    transition: opacity var(--transition-fast) var(--ease-out),
+                width var(--transition-fast) var(--ease-out);
+  }
 
   &:hover {
-    border-color: var(--gold-soft-45);
-    background: var(--gold-soft-04);
-    box-shadow: var(--elevation-2);
+    border-color: var(--gold-soft-40);
     transform: translateY(-2px);
+    box-shadow: var(--elevation-2), 0 0 24px var(--gold-soft-15);
+  }
+
+  &:hover::before {
+    opacity: 1;
+    width: 4px;
   }
 
   &:focus-visible {
