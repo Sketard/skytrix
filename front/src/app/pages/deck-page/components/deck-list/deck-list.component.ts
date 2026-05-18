@@ -82,8 +82,9 @@ export class DeckListComponent {
         title: this.translate.instant('deckList.deleteTitle'),
         message: this.translate.instant('deckList.deleteConfirm', { name: deck.name }),
         confirmLabel: this.translate.instant('common.delete'),
+        destructive: true,
       },
-      width: '320px',
+      width: '360px',
       panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger'],
       autoFocus: false,
     });
