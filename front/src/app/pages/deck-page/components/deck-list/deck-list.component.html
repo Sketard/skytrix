@@ -25,27 +25,29 @@
       </div>
     </header>
 
-    <app-deck-stats-strip class="deck-list__stats" [stats]="stats()"></app-deck-stats-strip>
+    <div class="deck-list__body">
+      <app-deck-stats-strip class="deck-list__stats" [stats]="stats()"></app-deck-stats-strip>
 
-    <div class="deckPage">
-      <deck-box class="deckPage-deck" [add]="true"></deck-box>
-      @for (deck of filteredDecks(); track deck.id) {
-        <div class="deckPage-deck">
-          <deck-box [deck]="deck"></deck-box>
-          <button
-            mat-icon-button
-            class="deckPage-deck-remove"
-            [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
-            (click)="confirmDelete(deck); $event.stopPropagation()">
-            <mat-icon fontIcon="delete"></mat-icon>
-          </button>
-        </div>
-      }
-      @if (filteredDecks().length === 0) {
-        <div class="deck-list__no-match">
-          {{ 'deckList.noMatch' | translate }}
-        </div>
-      }
+      <div class="deckPage">
+        <deck-box class="deckPage-deck" [add]="true"></deck-box>
+        @for (deck of filteredDecks(); track deck.id) {
+          <div class="deckPage-deck">
+            <deck-box [deck]="deck"></deck-box>
+            <button
+              mat-icon-button
+              class="deckPage-deck-remove"
+              [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
+              (click)="confirmDelete(deck); $event.stopPropagation()">
+              <mat-icon fontIcon="delete"></mat-icon>
+            </button>
+          </div>
+        }
+        @if (filteredDecks().length === 0) {
+          <div class="deck-list__no-match">
+            {{ 'deckList.noMatch' | translate }}
+          </div>
+        }
+      </div>
     </div>
   } @else {
     <app-empty-state

@@ -3,26 +3,32 @@
 
 :host {
   display: block;
-  padding: var(--space-fluid-md);
+  height: 100%;
+  overflow-y: auto;
 }
 
 // =============================================================================
-// Header
+// Header (full width strip — mirror of `.card-search-page__header`)
 // =============================================================================
 
 .deck-list__header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--gold-soft-15);
+
+  @media (max-width: 767px) {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
 }
 
 .deck-list__title-block {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -62,9 +68,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  flex: 1 1 240px;
   min-width: 200px;
   padding: var(--space-1) var(--space-2);
-  background: var(--surface-card);
+  background: var(--surface-base);
   border: 1px solid var(--gold-soft-20);
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -106,8 +113,12 @@
 }
 
 // =============================================================================
-// Stats strip
+// Body (stats + grid)
 // =============================================================================
+
+.deck-list__body {
+  padding: var(--space-fluid-md);
+}
 
 .deck-list__stats {
   display: block;
