@@ -1,19 +1,16 @@
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatIconButton } from '@angular/material/button';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { map, of, switchMap } from 'rxjs';
+import { MatIconModule } from '@angular/material/icon';
 import { AsyncPipe } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { map, of, switchMap } from 'rxjs';
 import { countValidValues } from '../../core/utilities/functions';
 import { SearchServiceCore } from '../../services/search-service-core.service';
 
 @Component({
   selector: 'search-bar',
-  imports: [AsyncPipe, ReactiveFormsModule, MatInputModule, MatFormFieldModule, MatIconModule, MatIconButton, TranslatePipe],
+  imports: [AsyncPipe, ReactiveFormsModule, MatIconModule, TranslatePipe],
   templateUrl: './search-bar.component.html',
   styleUrl: './search-bar.component.scss',
   standalone: true,
@@ -22,6 +19,7 @@ import { SearchServiceCore } from '../../services/search-service-core.service';
 export class SearchBarComponent {
   readonly form = input(new FormControl<string>(''));
   readonly searchService = input<SearchServiceCore | undefined>(undefined);
+  readonly showFilters = input<boolean>(true);
   readonly filterToggled = output<void>();
 
   readonly numberOfActiveFilters$ = toObservable(this.searchService).pipe(

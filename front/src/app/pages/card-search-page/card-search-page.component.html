@@ -21,7 +21,8 @@
     <div class="card-search-page__bar">
       <search-bar
         [form]="cardSearchService.filterForm.controls.name"
-        [searchService]="cardSearchService">
+        [searchService]="cardSearchService"
+        [showFilters]="false">
       </search-bar>
 
       <div class="card-search-page__display-toggle">

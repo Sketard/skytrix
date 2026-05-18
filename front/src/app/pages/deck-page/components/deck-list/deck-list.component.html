@@ -1,42 +1,50 @@
-@if (deckBuildService.decks$ | async; as decks) {
-  @if (decks.length > 0) {
-    <div class="screen-bg" aria-hidden="true">
-      <div class="screen-bg-grid"></div>
-      <div class="screen-bg-glow screen-bg-glow--gold"></div>
-      <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+<div class="screen-bg" aria-hidden="true">
+  <div class="screen-bg-grid"></div>
+  <div class="screen-bg-glow screen-bg-glow--gold"></div>
+  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+</div>
+
+@let decks = (deckBuildService.decks$ | async) ?? [];
+@let firstLoad = deckBuildService.isFirstDeckLoad();
+
+<!-- During the first network fetch we always render the page chrome
+     (header + stats placeholder + skeleton grid). After resolution we
+     branch on decks.length to either render the welcome empty state or
+     the populated grid. -->
+@if (firstLoad || decks.length > 0) {
+  <header class="page-header deck-list__header">
+    <div class="page-header__title-group">
+      <span class="deck-list__icon-wrap" aria-hidden="true">
+        <mat-icon class="page-header__icon">folder_special</mat-icon>
+      </span>
+      <div class="page-header__text">
+        <h1 class="page-header__title text-gold-gradient">{{ 'deckList.title' | translate }}</h1>
+        <span class="page-header__subtitle">{{ 'deckList.subtitle' | translate }}</span>
+      </div>
     </div>
 
-    <header class="page-header page-header--bordered deck-list__header">
-      <div class="page-header__title-group">
-        <span class="deck-list__icon-wrap" aria-hidden="true">
-          <mat-icon class="page-header__icon">folder_special</mat-icon>
-        </span>
-        <div class="page-header__text">
-          <h1 class="page-header__title text-gold-gradient">{{ 'deckList.title' | translate }}</h1>
-          <span class="page-header__subtitle">{{ 'deckList.subtitle' | translate }}</span>
-        </div>
-      </div>
+    <div class="deck-list__actions">
+      <search-bar
+        class="deck-list__search"
+        [form]="searchControl"
+        [showFilters]="false">
+      </search-bar>
+      <a class="btn btn--primary btn--md deck-list__cta" routerLink="/decks/builder">
+        <mat-icon>add</mat-icon>
+        <span>{{ 'deckList.newDeck' | translate }}</span>
+      </a>
+    </div>
+  </header>
 
-      <div class="deck-list__actions">
-        <label class="deck-list__search">
-          <mat-icon>search</mat-icon>
-          <input
-            type="text"
-            [formControl]="searchControl"
-            [placeholder]="'deckList.filterPlaceholder' | translate"
-            [attr.aria-label]="'deckList.filterPlaceholder' | translate" />
-        </label>
-        <a class="btn btn--primary btn--md" routerLink="/decks/builder">
-          <mat-icon>add</mat-icon>
-          <span>{{ 'deckList.newDeck' | translate }}</span>
-        </a>
-      </div>
-    </header>
-
-    <div class="deck-list__body">
+  <div class="deck-list__body">
+    @if (!firstLoad) {
       <app-deck-stats-strip class="deck-list__stats" [stats]="stats()"></app-deck-stats-strip>
+    }
 
-      <div class="deckPage">
+    <div class="deckPage">
+      @if (firstLoad) {
+        <app-deck-card-skeleton [count]="6"></app-deck-card-skeleton>
+      } @else {
         <deck-box class="deckPage-deck" [add]="true"></deck-box>
         @for (deck of filteredDecks(); track deck.id) {
           <div class="deckPage-deck">
@@ -55,16 +63,16 @@
             {{ 'deckList.noMatch' | translate }}
           </div>
         }
-      </div>
+      }
     </div>
-  } @else {
-    <app-empty-state
-      variant="welcome"
-      icon="folder_special"
-      [message]="'deckList.welcomeTitle' | translate"
-      [subtitle]="'deckList.welcomeSubtitle' | translate"
-      [ctaLabel]="'deckList.createDeck' | translate"
-      ctaLink="/decks/builder">
-    </app-empty-state>
-  }
+  </div>
+} @else {
+  <app-empty-state
+    variant="welcome"
+    icon="folder_special"
+    [message]="'deckList.welcomeTitle' | translate"
+    [subtitle]="'deckList.welcomeSubtitle' | translate"
+    [ctaLabel]="'deckList.createDeck' | translate"
+    ctaLink="/decks/builder">
+  </app-empty-state>
 }

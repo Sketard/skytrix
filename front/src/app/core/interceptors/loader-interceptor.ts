@@ -20,7 +20,9 @@ export function loaderInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn
       // of the skeleton pattern.
       || /\/api\/rooms(?:\b|\/)/.test(req.url)            // lobby + waiting + duel transitions
       || /\/api\/replays(?:\b|\/)/.test(req.url)          // replay hub + viewer
-      || /\/api\/decks\/[^/?]+$/.test(req.url)            // pre-duel deck fetch (handled by duel-loading-effects)
+      || /\/api\/decks(?:\b|\/)/.test(req.url)            // deck list + builder + pre-duel deck fetch
+      || /\/api\/cards\/search/.test(req.url)             // card search page + builder side searcher
+      || /\/api\/cards\/possessed/.test(req.url)          // owned-card map (deck list stats)
       || /\/api\/admin\/rooms(?:\b|\/)/.test(req.url);    // admin force-close also silent (used from lobby)
   };
 

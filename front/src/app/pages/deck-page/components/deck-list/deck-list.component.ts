@@ -4,6 +4,8 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { startWith } from 'rxjs/operators';
 import { DeckBuildService } from '../../../../services/deck-build.service';
 import { DeckBoxComponent } from '../../../../components/deck-box/deck-box.component';
+import { SearchBarComponent } from '../../../../components/search-bar/search-bar.component';
+import { DeckCardSkeletonComponent } from '../../../../shared/skel/deck-card-skeleton.component';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,6 +28,8 @@ import { formattedWithoutCaseAndAccent } from '../../../../core/utilities/functi
     CommonModule,
     DeckBoxComponent,
     DeckStatsStripComponent,
+    SearchBarComponent,
+    DeckCardSkeletonComponent,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,

@@ -38,6 +38,14 @@ export class DeckBuildService extends SearchServiceCore {
   private readonly _isFetching = signal(false);
   private readonly _cancelFetch$ = new Subject<void>();
 
+  // True until the first decks fetch resolves successfully. Used by the
+  // Deck List template to render a skeleton instead of flashing the "no
+  // decks" welcome state during the initial round-trip. Stays false
+  // after the first fetch even if the cache is invalidated later
+  // (post-save/delete) — subsequent refetches show the previous list.
+  private readonly _hasLoadedOnce = signal(false);
+  readonly isFirstDeckLoad = computed(() => !this._hasLoadedOnce());
+
   private readonly deckState = signal<Deck>(new Deck());
   readonly deck = this.deckState.asReadonly();
   readonly deckEmpty = computed(() => !this.deck().hasCard);
@@ -162,6 +170,7 @@ export class DeckBuildService extends SearchServiceCore {
         next: (decks: Array<ShortDeck>) => {
           this.deckSubject.next(decks);
           this._cachedAt.set(Date.now());
+          this._hasLoadedOnce.set(true);
         },
         // On transient errors, the previous cache value stays visible —
         // callers consuming `decks$` see the last good list. Mutation flows
@@ -183,6 +192,7 @@ export class DeckBuildService extends SearchServiceCore {
   public clearDeckList(): void {
     this.deckSubject.next([]);
     this._cachedAt.set(null);
+    this._hasLoadedOnce.set(false);
   }
 
   private isCacheFresh(): boolean {

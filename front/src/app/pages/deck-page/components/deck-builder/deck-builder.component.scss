@@ -35,16 +35,19 @@
   }
 }
 
-.dirty-dot {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
+// Dirty-dot — small warning indicator inline after the deck name.
+// Mockup `.builder-title-dirty` (ll. 1063-1070): 6×6 round, --warning fill
+// + glow. Placed after the name text, NOT on the save button (the save
+// button uses its own disabled/enabled state to signal pending changes).
+.deck-builder-header__dirty-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--gold);
-  border: 2px solid var(--surface-bg);
-  box-shadow: 0 0 6px var(--gold-soft-60);
+  background: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
+  margin-left: var(--space-2);
+  vertical-align: middle;
 }
 
 .deckBuilder {
@@ -164,9 +167,6 @@
   }
 }
 
-.deck-builder-header__save {
-  position: relative;
-}
 
 .deckBuilder {
   // ─── SEARCH TOGGLE (mobile portrait only) ───
@@ -229,9 +229,8 @@
       &-row {
         display: flex;
         align-items: center;
-        gap: 0.5em;
-        padding-top: 0.5em;
-        border-top: 1px solid var(--border-subtle);
+        gap: var(--space-2);
+        padding-top: var(--space-2);
 
         &-label {
           font-size: 0.75em;

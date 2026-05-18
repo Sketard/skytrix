@@ -27,6 +27,11 @@
             (keydown.enter)="startEditingName()"
             (keydown.space)="startEditingName(); $event.preventDefault()">
             {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
+            @if (isDirty() && !deckBuildService.deckEmpty()) {
+              <span class="deck-builder-header__dirty-dot"
+                [title]="'deckBuilder.unsavedChanges' | translate"
+                aria-hidden="true"></span>
+            }
           </span>
         }
       </div>
@@ -34,18 +39,17 @@
       <div class="deck-builder-header__counts">
         <span class="pill"
           [class.pill--valid]="deckBuildService.mainCardNumber() >= 40 && deckBuildService.mainCardNumber() <= 60"
-          [class.pill--invalid]="deckBuildService.mainCardNumber() < 40 || deckBuildService.mainCardNumber() > 60">
-          {{ 'deckBuilder.viewer.main' | translate }} {{ deckBuildService.mainCardNumber() }}/60
+          [class.pill--invalid]="deckBuildService.mainCardNumber() > 60">
+          {{ 'deckBuilder.viewer.main' | translate }} {{ deckBuildService.mainCardNumber() }}&nbsp;/&nbsp;60
         </span>
         <span class="pill"
-          [class.pill--valid]="deckBuildService.extraCardNumber() <= 15"
+          [class.pill--gold]="deckBuildService.extraCardNumber() > 0 && deckBuildService.extraCardNumber() <= 15"
           [class.pill--invalid]="deckBuildService.extraCardNumber() > 15">
-          {{ 'deckBuilder.viewer.extra' | translate }} {{ deckBuildService.extraCardNumber() }}/15
+          {{ 'deckBuilder.viewer.extra' | translate }} {{ deckBuildService.extraCardNumber() }}&nbsp;/&nbsp;15
         </span>
         <span class="pill"
-          [class.pill--valid]="deckBuildService.sideCardNumber() <= 15"
           [class.pill--invalid]="deckBuildService.sideCardNumber() > 15">
-          {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}/15
+          {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}&nbsp;/&nbsp;15
         </span>
       </div>
     </div>
@@ -63,18 +67,17 @@
         <mat-icon>sports_kabaddi</mat-icon>
         <span class="deck-builder-header__btn-label">{{ 'deckBuilder.pvpDuel' | translate }}</span>
       </button>
-      <button type="button" class="btn btn--primary btn--sm deck-builder-header__save"
+      <button type="button" class="btn btn--ghost btn--sm btn--icon"
+        [matMenuTriggerFor]="actionsMenu"
+        [attr.aria-label]="'deckBuilder.actions' | translate">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <button type="button" class="btn btn--primary btn--sm"
         [disabled]="deckBuildService.deckEmpty()"
         (click)="save()"
         [attr.aria-label]="'common.save' | translate">
         <mat-icon>save</mat-icon>
         <span class="deck-builder-header__btn-label">{{ 'deckBuilder.save' | translate }}</span>
-        @if (isDirty() && !deckBuildService.deckEmpty()) {
-          <span class="dirty-dot"></span>
-        }
-      </button>
-      <button mat-icon-button [matMenuTriggerFor]="actionsMenu" [attr.aria-label]="'deckBuilder.actions' | translate">
-        <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #actionsMenu="matMenu">
         <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="createProxies()">

@@ -46,64 +46,23 @@
 
 .deck-list__actions {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-2);
   flex-wrap: wrap;
-
-  // CTA "Nouveau deck" never shrinks below its content width.
-  .btn {
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
 }
 
 .deck-list__search {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
   flex: 1 1 200px;
   min-width: 160px;
   max-width: 320px;
-  padding: var(--space-1) var(--space-2);
-  background: var(--surface-card-low);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  transition: border-color var(--transition-fast) var(--ease-out);
+}
 
-  &:hover {
-    border-color: var(--gold-soft-45);
-  }
-
-  &:focus-within {
-    border-color: var(--gold);
-    background: var(--gold-soft-06);
-  }
-
-  mat-icon {
-    color: var(--text-muted);
-    flex-shrink: 0;
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-  }
-
-  input {
-    flex: 1;
-    min-width: 0;
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    font-family: var(--font-body);
-    font-size: var(--text-sm);
-    outline: none;
-
-    &::placeholder {
-      color: var(--text-muted);
-      font-style: italic;
-    }
-  }
+// CTA "Nouveau deck" — height aligned with .search-bar (36px min-height).
+.deck-list__cta {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-height: 36px !important;
+  height: 36px;
 }
 
 // =============================================================================

@@ -1,81 +1,130 @@
 @use 'responsive' as r;
 
-.searchBar {
+// =============================================================================
+// search-bar — flat DS search input
+// =============================================================================
+//
+// Mockup `_mockups/mockup-deck-flow.html:624-656`. Plain input on a
+// --surface-card-low background, gold focus ring, optional clear button
+// and filter toggle with active count badge.
+// =============================================================================
+
+:host {
+  display: flex;
+  min-width: 0;
+}
+
+.search-bar {
   display: flex;
   align-items: center;
-  overflow: hidden;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  background: var(--surface-card-low);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  position: relative;
+  transition: border-color var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
 
-  @include r.mobile-portrait {
-    --mat-form-field-container-height: 40px;
-    --mat-form-field-filled-with-label-container-padding-top: 4px;
-    --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+  &:focus-within {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-soft-15);
+  }
+}
+
+.search-bar__icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.search-bar__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+
+  &::placeholder {
+    color: var(--text-disabled);
   }
 
-  &-field {
-    position: relative;
-    flex: 1;
-    min-width: 0;
+  // Remove native search-input clear button (we render our own).
+  &::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+.search-bar__clear,
+.search-bar__filters-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--transition-fast) var(--ease-out),
+              background-color var(--transition-fast) var(--ease-out);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
   }
 
-  &-input {
-    width: 100%;
-
-    --mdc-filled-text-field-container-color: var(--surface-card);
-    --mdc-filled-text-field-input-text-color: var(--text-primary);
-    --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
-    --mdc-filled-text-field-caret-color: var(--text-primary);
-    --mdc-filled-text-field-focus-active-indicator-color: var(--accent-primary);
-    --mdc-filled-text-field-active-indicator-color: var(--border-subtle);
-    --mdc-filled-text-field-hover-active-indicator-color: var(--text-secondary);
-    --mdc-filled-text-field-container-shape: 0;
-
-    .mat-icon {
-      color: var(--text-primary);
-    }
-
-    // mat-icon defaults to inline-block + line-height:24px, which baseline-aligns
-    // inside the prefix flex slot and drifts off-center when container-height
-    // is customized (e.g. 40px on mobile-portrait). Force flex centering.
-    .mat-mdc-form-field-icon-prefix > .mat-icon,
-    .mat-mdc-form-field-icon-suffix > .mat-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-    }
+  &:hover {
+    color: var(--gold);
+    background: var(--gold-soft-08);
   }
 
-  &-clear {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-primary);
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 1px;
   }
+}
 
-  &-clearFilters {
-    color: var(--text-primary);
-  }
+.search-bar__filters-btn {
+  position: relative;
+  margin-left: var(--space-1);
+  border-left: 1px solid var(--border-soft);
+  padding-left: var(--space-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  width: auto;
+  min-width: 32px;
+}
 
-  &-input-filters {
-    position: relative;
-    color: var(--text-primary);
-
-    &-number {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: absolute;
-      top: 0px;
-      right: 0px;
-      z-index: 1;
-      height: 21px;
-      width: 21px;
-      border: 1px solid var(--accent-primary);
-      background-color: var(--surface-card);
-      border-radius: 100%;
-      color: var(--accent-primary);
-      font-size: 0.7em;
-    }
-  }
+.search-bar__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--gold);
+  color: var(--text-inverse);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: var(--weight-bold);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--surface-bg);
 }
