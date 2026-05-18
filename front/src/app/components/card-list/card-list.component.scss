@@ -49,6 +49,7 @@
   &.LIST {
     align-items: center;
     width: 100%;
+    min-width: 0;
     padding: var(--space-2);
     background: var(--surface-card-low);
     border: 1px solid var(--gold-soft-15);
@@ -67,8 +68,10 @@
     }
 
     @include r.respond-above(r.$bp-tablet) {
-      width: auto;
-
+      // Stay `100%` (not `auto`) so the row fills its grid column and the
+      // inner `.card-info` shrinks via `min-width: 0` instead of forcing
+      // the wrapper wider than its container (deck-builder sidebar is
+      // 280-360px — `width: auto` + `card-info 280px` overflowed).
       app-card {
         width: 100px;
       }
@@ -101,6 +104,8 @@
 
 .card-image-container {
   position: relative;
+  width: 100%;
+  aspect-ratio: 59 / 86;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -132,7 +137,7 @@
 
 .card-info {
   margin-left: var(--space-3);
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   display: flex;
@@ -142,11 +147,6 @@
   // Hidden under mobile-portrait — LIST mode renders as GRID.
   @include r.mobile-portrait {
     display: none;
-  }
-
-  @include r.respond-above(r.$bp-tablet) {
-    width: 280px;
-    flex: 0 0 auto;
   }
 
   strong {
@@ -207,18 +207,3 @@ app-empty-state {
   grid-column: 1 / -1;
 }
 
-.scroll-indicator {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  padding: var(--space-5) 0;
-  grid-column: 1 / -1;
-
-  --mdc-circular-progress-active-indicator-color: var(--gold);
-
-  &--end {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-}

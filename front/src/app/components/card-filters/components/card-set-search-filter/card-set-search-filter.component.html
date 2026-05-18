@@ -1,12 +1,11 @@
-<mat-form-field appearance="outline">
-  <mat-label>{{ 'cardFilters.cardSet' | translate }}</mat-label>
-  <input
-    matInput
-    [formControl]="displayControl"
-    [matAutocomplete]="auto" />
-  <mat-autocomplete #auto (optionSelected)="onOptionSelected($event)">
-    @for (option of suggestions(); track option.name) {
-      <mat-option [value]="option.name">{{ option.name }}</mat-option>
-    }
-  </mat-autocomplete>
-</mat-form-field>
+<input
+  type="text"
+  class="cardFilters__text-input"
+  [formControl]="displayControl"
+  [matAutocomplete]="auto"
+  [placeholder]="'cardFilters.cardSet' | translate" />
+<mat-autocomplete #auto (optionSelected)="onOptionSelected($event)">
+  @for (option of suggestions(); track option.name) {
+    <mat-option [value]="option.name">{{ option.name }}</mat-option>
+  }
+</mat-autocomplete>

@@ -4,7 +4,6 @@ import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatAutocomplete, MatAutocompleteSelectedEvent, MatAutocompleteTrigger, MatOption } from '@angular/material/autocomplete';
-import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CardSetFilterDTO } from '../../../../core/model/dto/card-filter-dto';
 import { TypedForm } from '../../../../core/model/commons/typed-form';
@@ -17,9 +16,6 @@ import { CardSetService, CardSetShortDTO } from '../../../../services/card-set.s
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
-    MatInput,
-    MatFormField,
-    MatLabel,
     MatAutocomplete,
     MatAutocompleteTrigger,
     MatOption,

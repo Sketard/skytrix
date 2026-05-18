@@ -23,6 +23,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-1);
+  min-width: 0;
   padding: var(--space-3) var(--space-4);
   background: var(--surface-card-low);
   border: 1px solid var(--gold-soft-15);

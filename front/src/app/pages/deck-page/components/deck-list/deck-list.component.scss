@@ -7,6 +7,11 @@
   min-height: 100%;
   height: auto;
   overflow-y: auto;
+  // Defensive: clip any child that exceeds the viewport width (mobile
+  // portrait bug 2026-05-18 — horizontal scroll appeared on small
+  // viewports). Children should still constrain themselves correctly,
+  // but this prevents a stray fixed-width element from breaking layout.
+  overflow-x: hidden;
   background: var(--surface-bg);
 }
 
@@ -101,6 +106,15 @@
 
   &-deck {
     position: relative;
+    // Grid item override: `1fr` resolves to `minmax(auto, 1fr)`, and `auto`
+    // = `min-content`. The `<deck-box>` has a `.deck-box__name` with
+    // `white-space: nowrap`, whose min-content is the full unwrapped text
+    // width — for long deck names that exceeds the viewport and forces
+    // the grid track wider than the page (mobile portrait horizontal scroll
+    // bug 2026-05-18). `min-width: 0` lets the track shrink to the actual
+    // `1fr`, and `overflow: hidden` + `text-overflow: ellipsis` on the
+    // name handle the visual truncation.
+    min-width: 0;
 
     &-solve {
       position: absolute;

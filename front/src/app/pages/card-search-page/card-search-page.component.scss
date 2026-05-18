@@ -238,7 +238,8 @@
 .card-search-page__sheet {
   height: 100%;
   overflow-y: auto;
-  padding: var(--space-3);
+  // Lateral padding lives on `.bottom-sheet-content` (shared component).
+  padding: var(--space-3) 0;
 }
 
 app-bottom-sheet {
