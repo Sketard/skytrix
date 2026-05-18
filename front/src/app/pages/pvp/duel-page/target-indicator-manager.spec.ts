@@ -47,6 +47,8 @@ describe('TargetIndicatorManager', () => {
   let createdFloats: HTMLDivElement[];
   let removedFloats: HTMLDivElement[];
   let fadedFloats: HTMLDivElement[];
+  let ownPlayerIndexValue: 0 | 1;
+  let relativePlayerImpl: (p: number) => 0 | 1;
 
   beforeEach(() => {
     createdFloats = [];
@@ -88,9 +90,11 @@ describe('TargetIndicatorManager', () => {
     mockArtService = jasmine.createSpyObj<DuelCardArtService>('DuelCardArtService', ['resolveUrl']);
     mockArtService.resolveUrl.and.callFake((code: number | null | undefined) => code == null ? 'card_back.jpg' : `art/${code}.jpg`);
 
+    ownPlayerIndexValue = 0;
+    relativePlayerImpl = (p: number) => (p === 0 ? 0 : 1) as 0 | 1;
     const mockCtx = {
-      ownPlayerIndex: () => 0,
-      relativePlayer: (p: number) => (p === 0 ? 0 : 1) as 0 | 1,
+      ownPlayerIndex: () => ownPlayerIndexValue,
+      relativePlayer: (p: number) => relativePlayerImpl(p),
       speedMultiplier: () => 1,
       isBoardActive: () => true,
       reducedMotion: signal(false),
@@ -141,6 +145,22 @@ describe('TargetIndicatorManager', () => {
       manager.spawnPileFloats(targetMsg([{ player: 1, location: LOCATION.GRAVE, sequence: 0 }]));
       const args = mockBoardEffects.createTargetFloat.calls.mostRecent().args;
       expect(args[0]).toBe('GY-1');
+    });
+
+    it('reads card via relPlayer (not absolute target.player) so toggled-perspective replays resolve the face image', () => {
+      // Perspective is the OCGCore player 1 (replay toggled). renderedState
+      // is already swapped: players[0] = self (= OCG player 1), players[1] =
+      // opponent (= OCG player 0). The card in OCG player 1's GY now lives at
+      // renderedState().players[0]. With the absolute-index bug, indexing by
+      // target.player=1 would read the opponent's empty GY → card missing →
+      // CARD_BACK fallback.
+      ownPlayerIndexValue = 1;
+      relativePlayerImpl = (p: number) => (p === 1 ? 0 : 1) as 0 | 1;
+      renderedState.set(makeBoardWithGyCards(0, [{ cardCode: 42 }]));
+      manager.spawnPileFloats(targetMsg([{ player: 1, location: LOCATION.GRAVE, sequence: 0 }]));
+      const args = mockBoardEffects.createTargetFloat.calls.mostRecent().args;
+      expect(args[0]).toBe('GY-0');           // relPlayer=0 (self after toggle)
+      expect(args[1]).toBe('art/42.jpg');     // face image, NOT card_back
     });
 
     it('cascades indices monotonically across consecutive spawns on the same zone', () => {

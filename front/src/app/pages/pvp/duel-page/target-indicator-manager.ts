@@ -57,7 +57,13 @@ export class TargetIndicatorManager implements OnDestroy {
       const relPlayer = target.player === ownIdx ? 0 : 1;
       const zoneKey = `${zoneId}-${relPlayer}`;
 
-      const playerZones = board.players[target.player]?.zones ?? [];
+      // renderedState().players is swapped to the current perspective
+      // (players[0] = self, players[1] = opponent), so we must index by the
+      // *relative* player, not the absolute OCGCore index. Otherwise — when
+      // the perspective is OCGCore player 1 (toggled in replay or playing as
+      // P1 in PvP) — `target.player=1` reads player 0's zones, the card is
+      // missed and the float falls back to CARD_BACK.
+      const playerZones = board.players[relPlayer]?.zones ?? [];
       const zone = playerZones.find(z => z.zoneId === zoneId);
       const card = zone?.cards[target.sequence];
 
