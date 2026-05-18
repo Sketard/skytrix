@@ -7,13 +7,17 @@
   display: contents;
 }
 
-// Stack the sticky topbar above the opponent hand row. Without this the
-// hand-opponent (z = z-pvp-hand = 50) escapes its parent `.board-area`
-// via `position: absolute; top: calc(...);` and slips over the sticky
-// header during scroll/animation. We pick z-pvp-zone-browser (65) — still
-// below the chain overlay (950) and prompt sheet (80), but above hand.
+// Stack the sticky topbar above the opponent hand row AND above traveling
+// card floats. The hand-opponent (z = z-pvp-hand = 50) escapes its parent
+// `.board-area` via `position: absolute; top: calc(...);` and slips over
+// the sticky header during scroll/animation. More importantly, card-travel
+// floats are `position: fixed; z-index: 900` ($z-pvp-card-travel) and would
+// otherwise slide over the topbar during opponent draw/tutor animations
+// (regression introduced by the V-F4 topbar — PvP duel-page is headerless
+// so the bug never surfaced there). z = card-travel + 20 = 920 sits above
+// the float, still below the chain overlay (950).
 .page-header {
-  z-index: z.$z-pvp-zone-browser;
+  z-index: z.$z-pvp-card-travel + 20;
 }
 
 .replay-topbar__back-label {
