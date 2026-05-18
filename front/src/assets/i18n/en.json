@@ -490,7 +490,8 @@
     "viewer": {
       "main": "MAIN",
       "extra": "EXTRA",
-      "side": "SIDE"
+      "side": "SIDE",
+      "dropHint": "Drag or double-click to add"
     }
   },
   "nav": {

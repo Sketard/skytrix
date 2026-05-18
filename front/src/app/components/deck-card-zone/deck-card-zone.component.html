@@ -16,7 +16,7 @@
     [id]="deckZone() || staticDeckZone.OTHER"
     (cdkDropListDropped)="drop($event)">
     @if (isEmpty()) {
-      <span class="grid-list-hint">Glissez ou double-cliquez pour ajouter</span>
+      <span class="grid-list-hint">{{ 'deckBuilder.viewer.dropHint' | translate }}</span>
     }
     @for (cardDetail of cardDetails(); track cardDetail.id + i; let i = $index) {
       <div
@@ -36,7 +36,7 @@
             (click)="onCardClick(cardDetail)">
           </app-card>
           @if (cardDetail.card.card.banInfo < 3) {
-            <div class="ban-badge">
+            <div class="ban-badge" [attr.data-ban]="cardDetail.card.card.banInfo">
               <div>{{ 'card_ban.' + cardDetail.card.card.banInfo | translate }}</div>
             </div>
           }

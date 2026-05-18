@@ -15,7 +15,7 @@
     width: 100%;
 
     &.cdk-drop-list-dragging {
-      filter: brightness(85%);
+      filter: brightness(0.92);
     }
 
     // Deck zone cards: 5 per row (mobile), 10 per row (desktop)
@@ -45,12 +45,21 @@
 
     // Empty deck zone placeholder (visible drop target)
     &.empty {
-      min-height: 60px;
-      border: 1px dashed rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
+      min-height: 80px;
+      border: 1px dashed var(--gold-soft-30);
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
+      background: var(--gold-soft-04);
+      transition: background-color var(--transition-fast) var(--ease-out),
+                  border-color var(--transition-fast) var(--ease-out);
+
+      &.cdk-drop-list-receiving,
+      &.cdk-drop-list-dragging {
+        background: var(--gold-soft-08);
+        border-color: var(--gold-soft-45);
+      }
 
       .grid-list-slot {
         display: none;
@@ -59,11 +68,14 @@
 
     &-hint {
       width: 100%;
-      color: rgba(255, 255, 255, 0.3);
-      font-size: 0.8em;
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-style: italic;
       text-align: center;
       pointer-events: none;
       user-select: none;
+      padding: var(--space-3);
     }
 
     // Background slot grid (cover images, no deckZone) must stay flexbox
@@ -86,9 +98,25 @@
           --card-shadow: none;
         }
 
-        // CDK drag placeholder: invisible but keeps its grid cell
+        // CDK drag placeholder: dashed silhouette that keeps the grid cell.
+        // We hide the inner content but keep an outlined box visible — this
+        // makes the drop target obvious. The :empty fallback lets us still
+        // hide the content of the original draggable when the CDK clones it.
         &.cdk-drag-placeholder {
-          visibility: hidden;
+          app-card,
+          .ban-badge {
+            visibility: hidden;
+          }
+
+          &::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border: 1.5px dashed var(--gold-soft-45);
+            border-radius: var(--radius-sm);
+            background: var(--gold-soft-06);
+            pointer-events: none;
+          }
         }
 
         &.cdk-drag-animating {
