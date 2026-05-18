@@ -32,6 +32,17 @@
     .mat-icon {
       color: var(--text-primary);
     }
+
+    // mat-icon defaults to inline-block + line-height:24px, which baseline-aligns
+    // inside the prefix flex slot and drifts off-center when container-height
+    // is customized (e.g. 40px on mobile-portrait). Force flex centering.
+    .mat-mdc-form-field-icon-prefix > .mat-icon,
+    .mat-mdc-form-field-icon-suffix > .mat-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
   }
 
   &-clear {

@@ -27,7 +27,13 @@
 .search-bar__icon {
   color: var(--text-muted);
   font-size: 18px !important; // !important: override mat-icon default
+  width: 18px !important;
+  height: 18px !important;
+  line-height: 18px !important;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .search-bar__input {
