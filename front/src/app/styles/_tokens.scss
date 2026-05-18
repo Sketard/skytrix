@@ -194,6 +194,42 @@
   // Alias palette-scoped (Wave 3 — board timer opp brouillé 2C).
   --cyan-500-soft-25: rgba(74, 144, 217, 0.25);
 
+  // --- Deck-silhouette theme palettes ---
+  // Each deck is themed deterministically via `pickDeckTheme(deck.id)`
+  // (front/src/app/core/utilities/deck-theme.ts) into one of 5 buckets:
+  // gold / cyan / purple / rose / green. Gold + cyan reuse the existing
+  // accent tokens; the 3 remaining palettes live below. Naming convention
+  // mirrors the existing palettes: `--{hue}-{shade}` (lid top → body
+  // bottom = light → dark). Soft variants are reserved for borders.
+  --purple-400: #8866b8;
+  --purple-600: #4a3270;
+  --purple-800: #2a1c45;
+  --purple-soft-50: rgba(136, 102, 184, 0.50);
+
+  --rose-400: #b8408a;
+  --rose-600: #6e2454;
+  --rose-800: #401333;
+  --rose-soft-50: rgba(184, 64, 138, 0.50);
+
+  --green-deck-400: #2ea88a;
+  --green-deck-600: #185f4f;
+  --green-deck-800: #0d3a30;
+  --green-deck-soft-50: rgba(46, 168, 138, 0.50);
+
+  // Cyan deck variants (lid bottom + body bottom darker than --cyan-500
+  // base, body-bottom darker still for the gradient endpoint).
+  --cyan-deck-700: #2b5d8a;
+  --cyan-deck-900: #1a3a5a;
+
+  // Gold deck variants (body-bottom darker than --gold-900).
+  --gold-deck-deep: #6b541f;
+
+  // Lid inner dashed line — soft pale gold reading on top of the
+  // gradient lid. Distinct from `--gold-soft-*` (which sits on dark
+  // surfaces); this one sits on a saturated mid-tone gold so it needs
+  // a brighter pale start.
+  --gold-pale-soft-40: rgba(255, 233, 168, 0.40);
+
   // --- Semantic — extended palette ---
   --success:        #4caf50;
   --success-light:  #66bb6a;         // Lighter success — gradient endpoints (rematch invited)

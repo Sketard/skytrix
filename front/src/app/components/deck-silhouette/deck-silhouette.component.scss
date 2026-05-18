@@ -5,6 +5,8 @@
 // Replaces the legacy `deckbox.webp` Ultra Pro photo. Pure CSS (lid +
 // body in gradient), themed via `--deck-silhouette--{gold|cyan|purple|rose|green}`.
 // Sizes are component geometry (per ds-token-doctrine — local, not tokenised).
+// Theme palette tokens live in `_tokens.scss` (search `--purple-`, `--rose-`,
+// `--green-deck-`, `--cyan-deck-`, `--gold-deck-deep`, `--gold-pale-soft-40`).
 // =============================================================================
 
 :host {
@@ -19,7 +21,7 @@
   flex-direction: column;
   width: 64px;
   height: 88px;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6))
+  filter: drop-shadow(0 4px 8px var(--scrim-medium))
           drop-shadow(0 0 8px var(--gold-soft-30));
   transition: opacity var(--transition-normal) var(--ease-out);
 }
@@ -38,7 +40,7 @@
     content: '';
     position: absolute;
     inset: 4px;
-    border: 1px dashed rgba(255, 233, 168, 0.4);
+    border: 1px dashed var(--gold-pale-soft-40);
     border-radius: 2px;
   }
 }
@@ -46,7 +48,7 @@
 .deck-silhouette__body {
   width: 100%;
   flex: 1;
-  background: linear-gradient(180deg, var(--gold-700) 0%, #6b541f 100%);
+  background: linear-gradient(180deg, var(--gold-700) 0%, var(--gold-deck-deep) 100%);
   border: 1px solid var(--gold-soft-60);
   border-top: 0;
   border-bottom-left-radius: var(--radius-sm);
@@ -57,44 +59,44 @@
 
 .deck-silhouette--cyan {
   .deck-silhouette__lid {
-    background: linear-gradient(180deg, var(--cyan-500) 0%, #2b5d8a 100%);
+    background: linear-gradient(180deg, var(--cyan-500) 0%, var(--cyan-deck-700) 100%);
     border-color: var(--cyan-soft-40);
   }
   .deck-silhouette__body {
-    background: linear-gradient(180deg, #2b5d8a 0%, #1a3a5a 100%);
+    background: linear-gradient(180deg, var(--cyan-deck-700) 0%, var(--cyan-deck-900) 100%);
     border-color: var(--cyan-soft-40);
   }
 }
 
 .deck-silhouette--purple {
   .deck-silhouette__lid {
-    background: linear-gradient(180deg, #8866b8 0%, #4a3270 100%);
-    border-color: rgba(136, 102, 184, 0.5);
+    background: linear-gradient(180deg, var(--purple-400) 0%, var(--purple-600) 100%);
+    border-color: var(--purple-soft-50);
   }
   .deck-silhouette__body {
-    background: linear-gradient(180deg, #4a3270 0%, #2a1c45 100%);
-    border-color: rgba(136, 102, 184, 0.5);
+    background: linear-gradient(180deg, var(--purple-600) 0%, var(--purple-800) 100%);
+    border-color: var(--purple-soft-50);
   }
 }
 
 .deck-silhouette--rose {
   .deck-silhouette__lid {
-    background: linear-gradient(180deg, #b8408a 0%, #6e2454 100%);
-    border-color: rgba(184, 64, 138, 0.5);
+    background: linear-gradient(180deg, var(--rose-400) 0%, var(--rose-600) 100%);
+    border-color: var(--rose-soft-50);
   }
   .deck-silhouette__body {
-    background: linear-gradient(180deg, #6e2454 0%, #401333 100%);
-    border-color: rgba(184, 64, 138, 0.5);
+    background: linear-gradient(180deg, var(--rose-600) 0%, var(--rose-800) 100%);
+    border-color: var(--rose-soft-50);
   }
 }
 
 .deck-silhouette--green {
   .deck-silhouette__lid {
-    background: linear-gradient(180deg, #2ea88a 0%, #185f4f 100%);
-    border-color: rgba(46, 168, 138, 0.5);
+    background: linear-gradient(180deg, var(--green-deck-400) 0%, var(--green-deck-600) 100%);
+    border-color: var(--green-deck-soft-50);
   }
   .deck-silhouette__body {
-    background: linear-gradient(180deg, #185f4f 0%, #0d3a30 100%);
-    border-color: rgba(46, 168, 138, 0.5);
+    background: linear-gradient(180deg, var(--green-deck-600) 0%, var(--green-deck-800) 100%);
+    border-color: var(--green-deck-soft-50);
   }
 }

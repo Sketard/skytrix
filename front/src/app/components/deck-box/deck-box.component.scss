@@ -87,7 +87,7 @@
   height: 81px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--gold-soft-40);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.65);
+  box-shadow: var(--elevation-3);
   transform: translate(-50%, -50%) rotate(0deg);
   opacity: 0;
   transition: opacity var(--transition-fast) var(--ease-out),
