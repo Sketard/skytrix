@@ -38,6 +38,29 @@
 // Override the h1 fluid size to match the lobby — DS spec defers to consumer.
 .page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
 
+// Mobile (≤ 480px) — le bouton "Lobby" wrapait sous le titre (effet "perdu")
+// à cause de `flex-wrap: wrap` sur `.page-header`. On le repositionne en
+// icon-only à gauche du titre via `order: -1`, on cache son label texte, on
+// réduit padding/gap pour qu'il se fonde dans la title row (pattern back-nav
+// standard mobile). Pas de changement de markup — uniquement CSS.
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .page-header {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .page-header > .btn {
+    order: -1;
+    flex: 0 0 auto;
+    padding: var(--space-2);
+    min-width: 0;
+    > span { display: none; }
+    mat-icon { margin: 0; }
+  }
+  .page-header__title-group { min-width: 0; flex: 1 1 auto; }
+  .page-header__icon { display: none; } // libère la place : back-icon joue ce rôle visuel
+}
+
 // =============================================================================
 // Stats strip — 2/4 grid responsive
 // =============================================================================
@@ -53,9 +76,24 @@
     grid-template-columns: repeat(4, 1fr);
   }
 
-  // Mobile landscape (≤ 500px tall) — the stats strip alone is ~160px which
-  // pushes the replay list mostly off-screen. Hide it; the count badge on the
-  // list header still surfaces the totals at a glance (Axel 2026-05-17).
+  // Mobile (≤ 480px) — strip compacte 1 ligne × 4 colonnes (Axel 2026-05-18 :
+  // l'ancien grid 2×2 mangeait ~180px verticaux sur un viewport ~700px utile,
+  // soit un tiers de l'écran). On retire les surface-cards individuelles, on
+  // remplace par un seul container avec des séparateurs verticaux. Hauteur
+  // ~48px au lieu de ~180px. L'icône ronde est cachée ; valeur + label-court
+  // restent, le label long est tronqué via la cascade `.hub-stat-label`.
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+  }
+
+  // Mobile landscape (≤ 500px tall) — la strip compacte est déjà discrète,
+  // mais on la cache complètement pour libérer le viewport très court
+  // (cohérent avec le mode landscape existant).
   @media (orientation: landscape) and (max-height: 500px) {
     display: none;
   }
@@ -67,6 +105,24 @@
   gap: var(--space-3);
   padding: var(--space-4);
   min-width: 0;
+
+  // Strip compacte sous 480px : neutralise la surface-card individuelle,
+  // ajoute un divider vertical entre items (sauf le premier).
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: var(--space-1) var(--space-2);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+
+    &:not(:first-child) {
+      border-left: 1px solid var(--border-soft);
+    }
+  }
 }
 
 .hub-stat-icon {
@@ -84,6 +140,11 @@
     width: 20px !important;
     height: 20px !important;
   }
+
+  // Strip compacte : pas de place pour les ronds décoratifs.
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    display: none;
+  }
 }
 
 .hub-stat-icon--total   { background: var(--cyan-soft-15);  color: var(--cyan-300); }
@@ -96,12 +157,22 @@
   flex-direction: column;
   min-width: 0;
   gap: var(--space-1);
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    align-items: center;
+    gap: 0;
+    text-align: center;
+  }
 }
 
 .hub-stat-value {
   font: var(--weight-bold) var(--text-xl) / var(--line-tight) var(--font-display);
   letter-spacing: 0.02em;
   color: var(--text-primary);
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    font-size: var(--text-md);
+  }
 }
 
 .hub-stat-value--gold   { color: var(--gold-50); }
@@ -112,6 +183,15 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 // =============================================================================
@@ -170,41 +250,94 @@
   text-decoration: none;
   color: inherit;
 
-  // Mobile redesign (Q5-4) — compact 2-row layout that keeps the visual
-  // hierarchy tight. Title row holds avatar + opponent + result pill + tap
-  // delete button. Sub row groups decks (left) and date/turns/duration
-  // (right) on a single line. Smaller avatar, tighter padding.
+  // Mobile redesign — 3-row layout to avoid the deck/times collision that
+  // occurred when both shared the same grid cell (Axel 2026-05-18 : sous
+  // 360px, l'ancien layout `display: contents` empilait deck et times dans
+  // la même grid-area). Title row (avatar + opponent + pill + delete), puis
+  // une ligne pleine largeur pour les decks, puis une ligne pleine largeur
+  // alignée droite pour date · turns · durée. Coût : +1 ligne en hauteur,
+  // mais lisibilité garantie par construction.
+  //
+  // `display: contents` sur __info casse la boîte CSS de l'élément pour que
+  // ses deux enfants (__title et __meta) participent au grid parent comme
+  // des items à part entière, chacun dans sa propre area.
   @include r.respond-below(r.$bp-pvp-narrow) {
     grid-template-columns: auto 1fr auto auto;
     grid-template-areas:
-      'avatar info pill   actions'
-      'avatar meta meta   meta';
-    gap: var(--space-1) var(--space-3);
-    padding: var(--space-3);
+      'avatar title  pill actions'
+      'decks  decks  decks decks'
+      'times  times  times times';
+    // gap row=2px (lignes serrées) ; column=space-1 (4px) — avatar-vs collait
+    // moins fort à space-2 (8px), créait un trou inhabituel après le scale 0.75.
+    gap: 2px var(--space-1);
+    padding: var(--space-2) var(--space-3);
     align-items: center;
 
-    .replay-card__avatar app-avatar { transform: scale(0.85); transform-origin: left center; }
-    .replay-card__times {
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: var(--space-1) var(--space-3);
-      justify-content: flex-end;
-    }
-    // Decks meta on mobile : single line, ellipsis if too long.
+    .replay-card__avatar app-avatar { transform: scale(0.75); transform-origin: left center; }
+    .replay-card__avatar { grid-area: avatar; align-self: center; }
+
+    .replay-card__info { display: contents; }
+    .replay-card__title { grid-area: title; min-width: 0; align-self: center; }
     .replay-card__info > .replay-card__meta {
+      grid-area: decks;
       flex-wrap: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      margin-top: var(--space-1);
+      padding-top: var(--space-2);
+      border-top: 1px solid var(--border-subtle);
+      // Hiérarchie mobile : deck = info principale (text-primary blanc cassé
+      // + semibold), date/turns = contextuel (muted + plus petit). Note :
+      // `--text-secondary` et `--text-muted` valent tous deux #9E9E9E dans
+      // les tokens — n'ont aucune différence visuelle, ne pas les opposer.
+      // Seul --text-primary (#EAEAEA) contraste assez pour marquer la
+      // hiérarchie.
+      color: var(--text-primary);
+      font-weight: var(--weight-semibold);
     }
-    // Pull info-meta (decks) OUT of info on mobile by hiding its container
-    // and re-displaying decks in the bottom row via a manual order. We can't
-    // restructure the DOM here, so we use `display: contents` instead — info
-    // becomes transparent in the grid, and its child .replay-card__meta is
-    // placed in the `meta` area directly.
-    .replay-card__info { display: contents; }
-    .replay-card__title { grid-area: info; min-width: 0; }
-    .replay-card__info > .replay-card__meta { grid-area: meta; }
+    .replay-card__times {
+      grid-area: times;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-2);
+      justify-content: flex-start;
+      align-items: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    // Date sans-serif sous 480px : la mono créait un mismatch visuel avec
+    // `.replay-card__deck` (sans-serif) placés sur lignes adjacentes. Sur
+    // grand écran la mono reste pertinente (look "compteur" + colonne droite
+    // alignée), mais sur mobile les deux lignes sont superposées verticalement
+    // et la cohérence typo prime.
+    .replay-card__date {
+      font-family: var(--font-body);
+      color: var(--text-muted); // unifier avec le reste de __times
+    }
+    // Pill icon-only sous 480px. Le sélecteur descend depuis `.replay-card`
+    // déjà en scope (on est dans `.replay-card { @include respond-below { … } }`)
+    // donc pas de re-préfixe `.replay-card` ici sinon SCSS génère
+    // `.replay-card .replay-card .pill` qui ne matche jamais (bug 2026-05-18).
+    .pill {
+      grid-area: pill;
+      align-self: center;
+      justify-self: end;
+      padding-left: var(--space-2);
+      padding-right: var(--space-2);
+      > span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    }
+    .replay-card__actions { grid-area: actions; align-self: center; }
   }
 
   // Desktop — hover reveals the ghost delete button + the gold "Open" pill.
@@ -235,19 +368,22 @@
 // contrôles plutôt que la composition `search | chips` côte-à-côte).
 //
 // Le fallback mobile (flex-wrap: nowrap + overflow-x: auto + fade-right) est
-// fourni par `_chips.scss @container chip-row (max-width: 480px)` — on déclare
-// donc `.chip-row` comme container et le DS prend le relais sous 480px.
+// fourni par `_chips.scss @container chip-row (max-width: 480px)`. Le container
+// est déclaré sur `.hub-filters` (largeur stable = colonne parent) et NON sur
+// `.chip-row` lui-même — sinon le row mesure sa propre largeur après wrap,
+// donc tant que les chips tiennent il reste large > 480px et la query ne se
+// déclenche jamais (le rail scrollable disparaît silencieusement).
 .hub-filters {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  container-type: inline-size;
+  container-name: chip-row;
 
   .search-bar { flex: 1 1 auto; min-width: 0; }
   .chip-row {
     flex: 0 0 auto;
     max-width: 100%;
-    container-type: inline-size;
-    container-name: chip-row;
   }
 }
 
@@ -377,11 +513,23 @@
   min-height: 280px;
 }
 
-// =============================================================================
-// Mat menu — sort menu active state (matches lobby convention)
-// =============================================================================
-::ng-deep .mat-mdc-menu-item.is-active {
-  // !important: override Material's default menu-item color cascade.
-  color: var(--gold) !important;
-  font-weight: var(--weight-semibold);
+// Empty-state CTA "Effacer les filtres" — `btn--lg` paraît surdimensionné
+// sous 480px à côté de la card compactée. On rétrograde sa taille et son
+// padding pour matcher l'échelle du reste de l'écran mobile (Axel 2026-05-18).
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .empty-state .btn.btn--lg {
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1);
+
+    mat-icon {
+      font-size: 18px !important;
+      width: 18px !important;
+      height: 18px !important;
+    }
+  }
 }
+
+// Mat menu styling moved to DS partial `_mat-menu.scss` (2026-05-18) —
+// panel + items + `.is-active` consolidated globally so lobby + replay-hub
+// + future menus share one source of truth.
