@@ -20,7 +20,7 @@
       <div class="card-image-container">
         <app-card [card]="toSharedCardData(cd)" />
         @if (cd.card.banInfo < 3) {
-          <div class="ban-badge">
+          <div class="ban-badge" [attr.data-ban]="cd.card.banInfo">
             <div>{{ 'card_ban.' + cd.card.banInfo | translate }}</div>
           </div>
         }

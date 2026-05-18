@@ -1,5 +1,14 @@
 :host {
   user-select: text;
+
+  // DS defaults — consumers may override via :host.mode-* below or
+  // host-level CSS variables.
+  --inspector-bg: var(--surface-card);
+  --inspector-border-color: var(--gold-soft-20);
+  --inspector-border-radius: var(--radius-lg);
+  --inspector-text: var(--text-primary);
+  --inspector-text-secondary: var(--text-secondary);
+  --inspector-backdrop: var(--scrim);
 }
 
 // Dismissable mode: absolute positioned panel
@@ -40,11 +49,11 @@
   }
 }
 
-// Click mode: default theme for click-mode consumers
+// Click mode: backdrop + centered panel (modal)
 :host.mode-click {
-  --inspector-bg: rgba(30, 30, 30, 0.95);
-  --inspector-border-color: rgba(255, 255, 255, 0.1);
-  --inspector-border-radius: 12px;
+  --inspector-bg: var(--surface-card);
+  --inspector-border-color: var(--gold-soft-30);
+  --inspector-border-radius: var(--radius-lg);
   --inspector-width: min(400px, 90vw);
   --inspector-image-width: 140px;
   --inspector-z-index: 1050;
@@ -302,10 +311,10 @@
   }
 
   .favorite-toggle {
-    color: var(--inspector-text-secondary, #94a3b8);
+    color: var(--inspector-text-secondary);
 
     &.active {
-      color: gold;
+      color: var(--gold);
     }
   }
 }
@@ -353,16 +362,16 @@
     width: auto;
     height: auto;
     object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elevation-4);
     transform-origin: center center;
-    transition: transform 150ms ease;
+    transition: transform var(--transition-fast) var(--ease-out);
     touch-action: none;
 
     @media (max-width: 480px) {
       max-width: 95vw;
       max-height: 85dvh;
-      border-radius: 4px;
+      border-radius: var(--radius-sm);
     }
   }
 }
