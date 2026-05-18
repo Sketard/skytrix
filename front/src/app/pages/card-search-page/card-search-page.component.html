@@ -1,50 +1,22 @@
-<button mat-icon-button class="cardSearchPage-searchToggle"
-  [attr.aria-label]="'deckBuilder.searchCard' | translate"
-  [attr.aria-expanded]="searchPanelOpened() && isMobilePortrait()"
-  (click)="toggleSearchPanel()">
-  <mat-icon>search</mat-icon>
-</button>
+<div class="card-search-page">
 
-<div class="cardSearchPage-desktop">
-  <app-card-searcher
-    [deckBuildMode]="false"
-    [externalFilters]="!!useExternalFilters()"
-    [searchService]="cardSearchService"
-    (cardClicked)="onCardClicked($event)"
-    (filtersExpanded)="onFiltersExpanded($event)">
-  </app-card-searcher>
-</div>
+  <!-- TOP HEADER (full width) -->
+  <header class="card-search-page__header">
+    <div class="card-search-page__title-block">
+      <mat-icon class="card-search-page__icon">search</mat-icon>
+      <div>
+        <h1 class="card-search-page__title">{{ 'cardSearchPage.title' | translate }}</h1>
+        <p class="card-search-page__subtitle">{{ 'cardSearchPage.subtitle' | translate }}</p>
+      </div>
+    </div>
 
-<app-active-filters-bar
-  class="cardSearchPage-mobileActiveFilters"
-  [searchService]="cardSearchService">
-</app-active-filters-bar>
-
-<div class="cardSearchPage-mobileCount" aria-live="polite" aria-atomic="true">
-  {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
-</div>
-
-<div class="cardSearchPage-mobileResults cardSearchPage-searcher-result">
-  <card-list
-    [displayMode]="cardSearchService.displayMode()"
-    [searchService]="cardSearchService"
-    [deckBuildMode]="false"
-    (cardClicked)="onCardClicked($event)">
-  </card-list>
-</div>
-
-<app-bottom-sheet
-  [opened]="searchPanelOpened() && isMobilePortrait()"
-  [ariaLabel]="'Panneau de recherche de cartes'"
-  [requestedSnap]="filtersRequestedSnap()"
-  (closed)="searchPanelOpened.set(false)">
-  <div class="cardSearchPage-sheet">
-    <div class="cardSearchPage-sheet-bar">
+    <div class="card-search-page__bar">
       <search-bar
         [form]="cardSearchService.filterForm.controls.name"
         [searchService]="cardSearchService">
       </search-bar>
-      <div class="cardSearchPage-sheet-bar-displayMode">
+
+      <div class="card-search-page__display-toggle">
         <mat-button-toggle-group
           hideSingleSelectionIndicator
           (change)="setDisplayMode($event.source.value)">
@@ -57,7 +29,7 @@
         </mat-button-toggle-group>
 
         <button mat-icon-button
-          class="favorite-toggle-btn"
+          class="card-search-page__favorite"
           [class.active]="cardSearchService.favoriteFilter()"
           (click)="toggleFavoriteFilter()"
           [matTooltip]="'cardSearcher.favorites' | translate" [attr.aria-label]="'cardSearcher.favorites' | translate">
@@ -65,30 +37,66 @@
         </button>
       </div>
     </div>
-    <div class="cardSearchPage-sheet-filters">
-      <app-card-filters
-        [searchService]="cardSearchService">
-      </app-card-filters>
-    </div>
+  </header>
+
+  <!-- DESKTOP: 2-cols layout (sidebar filters + results) -->
+  <div class="card-search-page__body">
+    <aside class="card-search-page__sidebar">
+      <app-card-filters [searchService]="cardSearchService"></app-card-filters>
+    </aside>
+
+    <main class="card-search-page__main">
+      <app-active-filters-bar [searchService]="cardSearchService"></app-active-filters-bar>
+
+      <div class="card-search-page__count" aria-live="polite" aria-atomic="true">
+        {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
+      </div>
+
+      <div class="card-search-page__results">
+        <card-list
+          [displayMode]="cardSearchService.displayMode()"
+          [searchService]="cardSearchService"
+          [deckBuildMode]="false"
+          (cardClicked)="onCardClicked($event)">
+        </card-list>
+      </div>
+    </main>
   </div>
-</app-bottom-sheet>
 
-<app-bottom-sheet
-  class="cardSearchPage-externalFilters"
-  [opened]="externalFiltersOpened()"
-  [ariaLabel]="'Panneau de filtres'"
-  (closed)="externalFiltersOpened.set(false)">
-  <app-card-filters
-    [searchService]="cardSearchService">
-  </app-card-filters>
-</app-bottom-sheet>
+  <!-- MOBILE FAB: open the filters bottom-sheet -->
+  <button mat-icon-button class="card-search-page__fab"
+    [attr.aria-label]="'deckBuilder.searchCard' | translate"
+    (click)="toggleSearchPanel()">
+    <mat-icon>tune</mat-icon>
+  </button>
 
-<app-card-inspector
-  [card]="selectedCardForInspector()"
-  mode="click"
-  [ownedCount]="selectedCardOwnedCount()"
-  [isFavorite]="selectedCardDetail()?.favorite ?? false"
-  (ownedCountChange)="onOwnedCountChange($event)"
-  (favoriteChange)="onFavoriteChange()"
-  (dismissed)="dismissInspector()">
-</app-card-inspector>
+  <!-- MOBILE BOTTOM-SHEET: filters -->
+  <app-bottom-sheet
+    [opened]="searchPanelOpened() && isMobilePortrait()"
+    [ariaLabel]="'Panneau de recherche de cartes'"
+    [requestedSnap]="filtersRequestedSnap()"
+    (closed)="searchPanelOpened.set(false)">
+    <div class="card-search-page__sheet">
+      <app-card-filters [searchService]="cardSearchService"></app-card-filters>
+    </div>
+  </app-bottom-sheet>
+
+  <!-- LANDSCAPE-SPLIT external filters bottom-sheet (legacy compact mode) -->
+  <app-bottom-sheet
+    class="card-search-page__external-filters"
+    [opened]="externalFiltersOpened()"
+    [ariaLabel]="'Panneau de filtres'"
+    (closed)="externalFiltersOpened.set(false)">
+    <app-card-filters [searchService]="cardSearchService"></app-card-filters>
+  </app-bottom-sheet>
+
+  <app-card-inspector
+    [card]="selectedCardForInspector()"
+    mode="click"
+    [ownedCount]="selectedCardOwnedCount()"
+    [isFavorite]="selectedCardDetail()?.favorite ?? false"
+    (ownedCountChange)="onOwnedCountChange($event)"
+    (favoriteChange)="onFavoriteChange()"
+    (dismissed)="dismissInspector()">
+  </app-card-inspector>
+</div>

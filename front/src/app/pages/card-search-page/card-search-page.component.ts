@@ -8,7 +8,6 @@ import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-
 import { MatTooltip } from '@angular/material/tooltip';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ActiveFiltersBarComponent } from '../../components/active-filters-bar/active-filters-bar.component';
-import { CardSearcherComponent } from '../../components/card-searcher/card-searcher.component';
 import { SearchBarComponent } from '../../components/search-bar/search-bar.component';
 import { CardFiltersComponent } from '../../components/card-filters/card-filters.component';
 import { CardListComponent } from '../../components/card-list/card-list.component';
@@ -25,7 +24,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'card-search-page',
   imports: [
-    ActiveFiltersBarComponent, CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
+    ActiveFiltersBarComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
     SearchBarComponent, CardFiltersComponent, CardListComponent, MatButtonToggle, MatButtonToggleGroup, MatTooltip,
     TranslatePipe,
   ],

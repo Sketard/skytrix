@@ -165,6 +165,10 @@
     "cardsOwned": "Owned cards",
     "legalDecks": "Legal decks"
   },
+  "cardSearchPage": {
+    "title": "Card search",
+    "subtitle": "Full database"
+  },
   "duel": {
     "leaveRoom": "Leave Room",
     "waiting": {

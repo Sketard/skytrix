@@ -165,6 +165,10 @@
     "cardsOwned": "Cartes possédées",
     "legalDecks": "Decks légaux"
   },
+  "cardSearchPage": {
+    "title": "Recherche de cartes",
+    "subtitle": "Base complète"
+  },
   "duel": {
     "leaveRoom": "Quitter la room",
     "waiting": {

@@ -1,48 +1,193 @@
 @use 'responsive' as r;
-@use 'variable' as *;
 
 :host {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+}
+
+// =============================================================================
+// Root layout
+// =============================================================================
+
+.card-search-page {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
-.cardSearchPage-desktop {
-  display: contents;
+// =============================================================================
+// Header (full width)
+// =============================================================================
+
+.card-search-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--gold-soft-15);
+  flex-shrink: 0;
+
+  @include r.mobile-portrait {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+}
+
+.card-search-page__title-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.card-search-page__icon {
+  width: 40px;
+  height: 40px;
+  font-size: 32px;
+  line-height: 40px;
+  color: var(--cyan-500);
+  flex-shrink: 0;
+}
+
+.card-search-page__title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-search-page__subtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.card-search-page__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+
+  search-bar {
+    flex: 1 1 280px;
+    min-width: 200px;
+  }
+}
+
+.card-search-page__display-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+
+  mat-button-toggle-group {
+    --mat-legacy-button-toggle-text-color: var(--text-primary);
+    --mat-legacy-button-toggle-selected-state-background-color: var(--gold-soft-15);
+    --mat-legacy-button-toggle-selected-state-text-color: var(--gold);
+
+    @include r.mobile-portrait {
+      // Decision Axel 2026-05-17: list mode is desktop + tablet only.
+      display: none;
+    }
+  }
+}
+
+.card-search-page__favorite {
+  color: var(--text-secondary);
+
+  &.active {
+    color: var(--gold);
+  }
+}
+
+// =============================================================================
+// Body (2-cols desktop / single col mobile)
+// =============================================================================
+
+.card-search-page__body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+
+  @include r.mobile-portrait {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card-search-page__sidebar {
+  border-right: 1px solid var(--gold-soft-15);
+  background: var(--surface-base);
+  overflow-y: auto;
+  min-height: 0;
+
+  // Sticky panel handled by the inner overflow + flex layout.
+  // Hidden on mobile-portrait (replaced by bottom-sheet).
   @include r.mobile-portrait {
     display: none;
   }
 }
 
-.cardSearchPage-mobileResults {
+.card-search-page__main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card-search-page__count {
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--gold-soft-08);
+  flex-shrink: 0;
+}
+
+.card-search-page__results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+// =============================================================================
+// Mobile FAB + sheets
+// =============================================================================
+
+.card-search-page__fab.mat-mdc-icon-button {
   display: none;
+
   @include r.mobile-portrait {
-    display: block;
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    padding: 0 0.75rem;
+    display: flex;
+    position: fixed;
+    bottom: var(--space-4);
+    right: var(--space-4);
+    z-index: 10;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-700) 100%);
+    color: var(--surface-base);
+    box-shadow: var(--elevation-3);
+    @include r.touch-target-min;
+
+    &:hover {
+      box-shadow: var(--elevation-4);
+    }
   }
 }
 
-.cardSearchPage-mobileActiveFilters {
-  display: none;
-  @include r.mobile-portrait {
-    display: block;
-  }
-}
-
-.cardSearchPage-mobileCount {
-  display: none;
-  @include r.mobile-portrait {
-    display: block;
-    padding: var(--space-2) var(--space-3);
-    font-family: var(--font-body);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-    color: var(--text-secondary);
-  }
+.card-search-page__sheet {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-3);
 }
 
 app-bottom-sheet {
@@ -52,7 +197,7 @@ app-bottom-sheet {
   }
 }
 
-.cardSearchPage-externalFilters {
+.card-search-page__external-filters {
   display: none;
 
   @media (min-width: 768px) and (max-height: 500px) {
@@ -64,76 +209,8 @@ app-bottom-sheet {
   }
 }
 
-.cardSearchPage-sheet {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  height: 100%;
-
-  &-bar {
-    padding: 0.75rem 0.75rem 0.25rem;
-
-    // Hide filter toggle — filters are always visible in the sheet
-    search-bar ::ng-deep .searchBar-input-filters {
-      display: none;
-    }
-
-    &-displayMode {
-      margin-bottom: 0.25em;
-
-      mat-button-toggle-group {
-        border-radius: 0;
-        border: 0;
-        --mat-legacy-button-toggle-text-color: var(--text-primary);
-        --mat-legacy-button-toggle-selected-state-background-color: var(--accent-primary-dim);
-        --mat-legacy-button-toggle-selected-state-text-color: var(--accent-primary);
-
-        // Decision Axel 2026-05-17: list mode is desktop + tablet only.
-        // Mobile sheet keeps the favorite toggle but drops GRID/LIST.
-        @include r.mobile-portrait {
-          display: none;
-        }
-      }
-
-      mat-button-toggle {
-        --mat-standard-button-toggle-label-text-line-height: 0;
-        --mat-standard-button-toggle-height: 32px;
-      }
-
-      mat-icon {
-        transform: scale(0.8);
-      }
-    }
-  }
-
-  &-filters {
-    overflow-y: auto;
-    min-height: 0;
-    padding: 0 1rem;
-  }
-}
-
-.cardSearchPage-searchToggle.mat-mdc-icon-button {
-  display: none;
-  @include r.mobile-portrait {
-    display: flex;
-    position: fixed;
-    bottom: 1em;
-    right: 1em;
-    z-index: 10;
-    color: $white;
-    background: rgba(0, 0, 0, 0.6);
-    @include r.touch-target-min;
-  }
-}
-
 app-card-inspector {
   @include r.mobile-portrait {
     --inspector-z-index: 1001;
   }
-}
-
-.favorite-toggle {
-  color: $white;
-  margin-top: 1rem;
-  @include r.touch-target-min;
 }
