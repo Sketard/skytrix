@@ -83,12 +83,8 @@
 // (cf. _section-header.scss / _pills.scss / _buttons.scss / _search-bar.scss
 // / _icon-button.scss).
 
-// Mark the currently-selected sort option in the Material menu with the
-// gold accent so the user can read it at a glance when re-opening.
-::ng-deep .mat-mdc-menu-item.is-active {
-  color: var(--gold) !important;
-  font-weight: var(--weight-semibold);
-}
+// Mat menu styling — including `.is-active` gold accent — lives in the DS
+// partial `_mat-menu.scss` (consolidated 2026-05-18).
 
 // Clear button uses `.icon-btn.icon-btn--sm` from `_icon-button.scss` (DS Wave 1 §2.8).
 

@@ -1,0 +1,91 @@
+// =============================================================================
+// Mat Menu — DS overrides for Angular Material's `<mat-menu>`.
+// Source: DS Wave 1 follow-up 2026-05-18 (Axel — replay-hub sort menu lacked
+// DS alignment; lobby duplicated the .is-active override; no shared partial).
+//
+// Cible : panel sombre opaque + hover gold-soft + item structure DS.
+// Material's `mat-mdc-menu-*` classes ship to the CDK overlay (rendered as a
+// sibling of `<body>`), so these selectors MUST be global — no `::ng-deep`
+// scoping from a component would reach them. That's why this partial exists
+// instead of per-component overrides.
+//
+// Specificity strategy : every rule targets `.mat-mdc-menu-panel` (or a
+// descendant) and uses `!important` only where Material's MDC layer wins via
+// cascade order (background-color, color). Otherwise no `!important`.
+// =============================================================================
+
+// --- Panel surface ----------------------------------------------------------
+// Material default is white with subtle shadow. We replace with the DS dark
+// surface : `--surface-elevated` opaque, `--border-soft` 1px, `--radius-md`,
+// elevation shadow already provided by Material (kept).
+.mat-mdc-menu-panel.mat-mdc-menu-panel {
+  // Double class for +1 specificity to win against Material's `--mdc-elevated-surface-color`
+  // CSS variable token (which sets `background-color` via `--mat-app-surface`).
+  background: var(--surface-elevated) !important;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  min-height: 0; // remove Material's 48px min that adds empty space on short menus
+  overflow: hidden; // clip items' hover background to the rounded corners
+}
+
+.mat-mdc-menu-content {
+  padding: var(--space-1) 0; // tight vertical padding — items already have their own
+  background: transparent; // inherit panel background, no double layer
+}
+
+// --- Item -------------------------------------------------------------------
+.mat-mdc-menu-item {
+  // Material defaults : 48px height, 16px h-padding, body-2 font. We tighten
+  // and switch to DS tokens for a denser, more navigable list.
+  min-height: 36px !important; // !important: override --mat-menu-item-container-height (48px)
+  padding: var(--space-2) var(--space-3) !important;
+  color: var(--text-primary) !important; // !important: override --mat-menu-item-label-text-color
+  font: var(--weight-medium) var(--text-sm) / 1.2 var(--font-body);
+  letter-spacing: 0.01em;
+
+  // mat-icon at item start — DS sizing (was 24px Material default).
+  .mat-icon, mat-icon {
+    color: var(--text-secondary);
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    margin-right: var(--space-2);
+  }
+
+  // Hover / focus / keyboard nav — gold-soft tint (option a, accent identitaire).
+  // Material's `.cdk-program-focused` + `.cdk-keyboard-focused` + `:hover` all
+  // matter for keyboard parity.
+  &:hover:not([disabled]),
+  &.cdk-program-focused:not([disabled]),
+  &.cdk-keyboard-focused:not([disabled]),
+  &:focus-visible:not([disabled]) {
+    background: var(--gold-soft-12) !important; // !important: --mat-menu-item-hover-state-layer-color
+    color: var(--gold) !important;
+
+    .mat-icon, mat-icon { color: var(--gold); }
+  }
+
+  // Disabled — keep readable but de-emphasised.
+  &[disabled] {
+    color: var(--text-muted) !important;
+    opacity: 0.5;
+  }
+}
+
+// Active state — the consumer marks the currently-selected item via
+// `[class.is-active]`. Gold permanent (not just on hover). Replaces the two
+// duplicate `::ng-deep .mat-mdc-menu-item.is-active` rules previously in
+// replay-hub-page.scss + lobby-page.scss.
+.mat-mdc-menu-item.is-active {
+  color: var(--gold) !important;
+  font-weight: var(--weight-semibold) !important;
+
+  .mat-icon, mat-icon { color: var(--gold); }
+}
+
+// --- Divider ----------------------------------------------------------------
+.mat-mdc-menu-panel .mat-mdc-divider,
+.mat-mdc-menu-panel mat-divider {
+  border-top-color: var(--border-subtle);
+  margin: var(--space-1) 0;
+}

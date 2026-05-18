@@ -47,6 +47,7 @@
 @use 'app/styles/mini-board';            // Viewer F0
 @use 'app/styles/surface-floating';      // Viewer follow-up — floating panels (popover, modal)
 @use 'app/styles/holo-modal';
+@use 'app/styles/mat-menu';              // DS override for Angular Material `<mat-menu>`
 
 // 5. Legacy (read-only, do not extend)
 @use 'app/styles/variable' as v;
