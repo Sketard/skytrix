@@ -7,8 +7,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #1a1a2e;
-  color: #eee;
+  background: var(--pvp-bg-dark-navy);
+  color: var(--text-primary);
   user-select: none;
 }
 
