@@ -11,7 +11,6 @@ import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
 import { OwnedCardService } from '../../services/owned-card.service';
 import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 import { LongPressDragDirective } from '../../core/directives/long-press-drag.directive';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -26,7 +25,6 @@ import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
     AsyncPipe,
     NgClass,
     MatIconModule,
-    MatProgressSpinner,
     EmptyStateComponent,
     LongPressDragDirective,
     TranslatePipe,
@@ -77,7 +75,9 @@ export class CardListComponent implements OnDestroy {
 
   private setupScrollListener(service: SearchServiceCore): void {
     this.scrollSub?.unsubscribe();
-    this.scrollContainer = this.elementRef.nativeElement.closest('.cardSearchPage-searcher-result');
+    this.scrollContainer = this.elementRef.nativeElement.closest(
+      '.cardSearchPage-searcher-result, .card-search-page__results'
+    );
     if (!this.scrollContainer) return;
 
     const container = this.scrollContainer;

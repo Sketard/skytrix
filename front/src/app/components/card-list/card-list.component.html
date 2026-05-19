@@ -38,12 +38,12 @@
           <div class="card-info-icons">
             @if (cd.card.hasAttributeIcon) {
               <span class="card-info-icons-icon">
-                <img [src]="'assets/images/attributes/' + cd.card.attribute + '.svg'" [alt]="'card_attribute.' + cd.card.attribute | translate" />{{ 'card_attribute.' + cd.card.attribute | translate }}
+                <img [src]="'assets/images/attributes/' + cd.card.attribute + '.svg'" [alt]="'card_attribute.' + cd.card.attribute | translate" width="16" height="16" />{{ 'card_attribute.' + cd.card.attribute | translate }}
               </span>
             }
             <span class="card-info-icons-icon">
               @if (cd.card.isMonster) {
-                <img [src]="'assets/images/races/' + cd.card.race + '.webp'" [alt]="'card_race.' + cd.card.race | translate" />
+                <img [src]="'assets/images/races/' + cd.card.race + '.webp'" [alt]="'card_race.' + cd.card.race | translate" width="16" height="16" />
               }
               {{ 'card_race.' + cd.card.race | translate }}
             </span>
@@ -61,11 +61,6 @@
     </div>
   }
   @let svc = searchService();
-  @if (svc?.isLoading()) {
-    <div class="scroll-indicator">
-      <mat-spinner diameter="32"></mat-spinner>
-    </div>
-  }
   @if (!svc?.isLoading() && (cardsDetails$() | async)?.length === 0) {
     <app-empty-state
       [message]="emptyMessage"

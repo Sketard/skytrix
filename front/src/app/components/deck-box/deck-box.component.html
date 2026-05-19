@@ -19,7 +19,7 @@
       @if (deck()?.urls?.length) {
         <div class="deck-box__preview">
           @for (url of deck()!.urls; track $index) {
-            <img class="deck-box__preview-card" [src]="url" alt="" />
+            <img class="deck-box__preview-card" [src]="url" alt="" width="56" height="81" />
           }
         </div>
       }
