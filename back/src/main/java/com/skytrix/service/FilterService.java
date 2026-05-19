@@ -14,7 +14,6 @@ import static org.springframework.util.StringUtils.hasText;
 import com.skytrix.model.dto.card.CardFilterDTO;
 import com.skytrix.model.dto.card.CardSetFilterDTO;
 import com.skytrix.model.entity.Card;
-import com.skytrix.model.entity.CardSet;
 import com.skytrix.model.enums.Race;
 import com.skytrix.security.AuthService;
 
@@ -102,8 +101,9 @@ public class FilterService {
                 if (hasText(cardSetFilter.getCardSetCode())) {
                     predicate = criteriaBuilder.and(predicate, criteriaBuilder.like(setJoin.get("code"), "%" + cardSetFilter.getCardSetCode() + "%"));
                 }
-                if (hasText(cardSetFilter.getCardSetName())) {
-                    predicate = criteriaBuilder.and(predicate, criteriaBuilder.like(setJoin.get("name"), "%" + cardSetFilter.getCardSetName() + "%"));
+                var names = cardSetFilter.getCardSetNames();
+                if (names != null && !names.isEmpty()) {
+                    predicate = criteriaBuilder.and(predicate, setJoin.get("name").in(names));
                 }
                 if (hasText(cardSetFilter.getCardRarityCode())) {
                     predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(setJoin.get("rarityCode"), cardSetFilter.getCardRarityCode()));
@@ -124,24 +124,5 @@ public class FilterService {
             return predicate;
         };
     }
-
-    public Specification<CardSet> cardSetSpecification(CardSetFilterDTO filter) {
-        return (Root<CardSet> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
-            Predicate predicate = cb.conjunction();
-
-            if (filter.getCardSetName() != null && !filter.getCardSetName().isEmpty()) {
-                predicate = cb.and(predicate, cb.like(cb.lower(root.get("name")), "%" + filter.getCardSetName().toLowerCase() + "%"));
-            }
-            if (filter.getCardSetCode() != null && !filter.getCardSetCode().isEmpty()) {
-                predicate = cb.and(predicate, cb.like(cb.lower(root.get("code")), "%" + filter.getCardSetCode().toLowerCase() + "%"));
-            }
-            if (filter.getCardRarityCode() != null && !filter.getCardRarityCode().isEmpty()) {
-                predicate = cb.and(predicate, cb.equal(root.get("rarityCode"), filter.getCardRarityCode()));
-            }
-
-            return predicate;
-        };
-    }
-
 
 }

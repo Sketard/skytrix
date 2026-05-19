@@ -39,12 +39,12 @@ export class CardFilterDTO {
 }
 
 export class CardSetFilterDTO {
-  cardSetName: string | null;
+  cardSetNames: Array<string>;
   cardSetCode: string | null;
   cardRarityCode: string | null;
 
   constructor() {
-    this.cardSetName = null;
+    this.cardSetNames = [];
     this.cardSetCode = null;
     this.cardRarityCode = null;
   }

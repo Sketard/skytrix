@@ -91,7 +91,9 @@ export abstract class SearchServiceCore implements OnDestroy {
     this.filterForm.controls.maxScale.reset(null, { emitEvent: false });
     this.filterForm.controls.minLinkval.reset(null, { emitEvent: false });
     this.filterForm.controls.maxLinkval.reset(null, { emitEvent: false });
-    this.filterForm.controls.cardSetFilter.reset({ cardSetName: '', cardSetCode: '', cardRarityCode: '' }, { emitEvent: false });
+    this.filterForm.controls.cardSetFilter.controls.cardSetCode.reset('', { emitEvent: false });
+    this.filterForm.controls.cardSetFilter.controls.cardRarityCode.reset('', { emitEvent: false });
+    clearFormArray(this.filterForm.controls.cardSetFilter.controls.cardSetNames, false);
     clearFormArray(this.filterForm.controls.types, false);
     clearFormArray(this.filterForm.controls.races, false);
     this.filterForm.updateValueAndValidity();
@@ -179,7 +181,7 @@ export abstract class SearchServiceCore implements OnDestroy {
       races: new FormArray<FormControl<CardRace>>([]),
       favorite: new FormControl<boolean>(false, { nonNullable: true }),
       cardSetFilter: new FormGroup<TypedForm<CardSetFilterDTO>>({
-        cardSetName: new FormControl<string>(''),
+        cardSetNames: new FormArray<FormControl<string>>([]),
         cardSetCode: new FormControl<string>(''),
         cardRarityCode: new FormControl<string>(''),
       }),

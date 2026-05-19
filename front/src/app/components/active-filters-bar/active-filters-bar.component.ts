@@ -91,16 +91,21 @@ export class ActiveFiltersBarComponent implements OnInit, OnDestroy {
       () => this.clearRange(svc, 'minLinkval', 'maxLinkval'));
 
     const csf = value.cardSetFilter;
-    if (csf && (csf.cardSetName || csf.cardSetCode || csf.cardRarityCode)) {
+    const hasNames = !!(csf?.cardSetNames && csf.cardSetNames.length);
+    if (hasNames || csf?.cardSetCode || csf?.cardRarityCode) {
       const parts: Array<string> = [];
-      if (csf.cardSetName) parts.push(csf.cardSetName);
-      if (csf.cardSetCode) parts.push(csf.cardSetCode);
-      if (csf.cardRarityCode) parts.push(csf.cardRarityCode);
+      if (hasNames) parts.push(csf!.cardSetNames!.join(', '));
+      if (csf?.cardSetCode) parts.push(csf.cardSetCode);
+      if (csf?.cardRarityCode) parts.push(csf.cardRarityCode);
       out.push({
         key: 'cardSet',
         label: 'cardFilters.cardSet',
         suffix: ` : ${parts.join(' ')}`,
-        remove: () => svc.filterForm.controls.cardSetFilter.reset({ cardSetName: '', cardSetCode: '', cardRarityCode: '' }),
+        remove: () => {
+          clearFormArray(svc.filterForm.controls.cardSetFilter.controls.cardSetNames);
+          svc.filterForm.controls.cardSetFilter.controls.cardSetCode.setValue('');
+          svc.filterForm.controls.cardSetFilter.controls.cardRarityCode.setValue('');
+        },
       });
     }
     return out;

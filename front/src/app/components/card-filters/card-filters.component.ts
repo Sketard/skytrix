@@ -1,15 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { BetweenFilterComponent } from './components/between-filter/between-filter.component';
 import { TokenSelectComponent } from './components/token-select/token-select.component';
 import { ToggleIconFilterComponent } from './components/toggle-icon-filter/toggle-icon-filter.component';
-import { CardSetSearchFilterComponent } from './components/card-set-search-filter/card-set-search-filter.component';
 import { CardType } from '../../core/enums/card-type.enum';
 import { CardRace } from '../../core/enums/card-race.enum';
 import { CardAttribute } from '../../core/enums/card-attribute';
 import { SearchServiceCore } from '../../services/search-service-core.service';
+import { CardSetService } from '../../services/card-set.service';
 import { clearFormArray } from '../../core/utilities/functions';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { takeUntil } from 'rxjs/operators';
+import { map, takeUntil } from 'rxjs/operators';
 import { Observable, of, Subject } from 'rxjs';
 import { TranslatePipe } from '@ngx-translate/core';
 import { IconedAutocompleteOption } from '../../core/model/commons/short-resource';
@@ -20,7 +20,6 @@ import { IconedAutocompleteOption } from '../../core/model/commons/short-resourc
     BetweenFilterComponent,
     TokenSelectComponent,
     ToggleIconFilterComponent,
-    CardSetSearchFilterComponent,
     ReactiveFormsModule,
     TranslatePipe,
   ],
@@ -32,6 +31,7 @@ import { IconedAutocompleteOption } from '../../core/model/commons/short-resourc
 export class CardFiltersComponent {
   readonly searchService = input<SearchServiceCore | undefined>(undefined);
 
+  private readonly cardSetService = inject(CardSetService);
   private readonly unsubscribe$ = new Subject<void>();
 
   public readonly types = Object.values(CardType).filter(type => type !== CardType.SKILL);
@@ -55,6 +55,11 @@ export class CardFiltersComponent {
     }))
   );
 
+  public readonly cardSets$: Observable<Array<IconedAutocompleteOption<string>>> =
+    this.cardSetService.fetchAllNames().pipe(
+      map(names => names.map(n => ({ id: n, name: n })))
+    );
+
   public readonly localForm = new FormGroup(SearchServiceCore.buildSearchForm());
 
   private readonly formVersion = signal(0);
@@ -71,7 +76,7 @@ export class CardFiltersComponent {
     if (v.minScale != null || v.maxScale != null) n++;
     if (v.minLinkval != null || v.maxLinkval != null) n++;
     const csf = v.cardSetFilter;
-    if (csf && (csf.cardSetName || csf.cardSetCode || csf.cardRarityCode)) n++;
+    if (csf && ((csf.cardSetNames && csf.cardSetNames.length) || csf.cardSetCode || csf.cardRarityCode)) n++;
     return n;
   });
 
@@ -92,6 +97,7 @@ export class CardFiltersComponent {
         service.filtersCleared$.pipe(takeUntil(this.unsubscribe$)).subscribe(() => {
           clearFormArray(this.localForm.controls.types, false);
           clearFormArray(this.localForm.controls.races, false);
+          clearFormArray(this.localForm.controls.cardSetFilter.controls.cardSetNames, false);
           this.localForm.patchValue({
             minAtk: null,
             maxAtk: null,
@@ -103,7 +109,7 @@ export class CardFiltersComponent {
             maxScale: null,
             minLinkval: null,
             maxLinkval: null,
-            cardSetFilter: { cardSetName: '', cardSetCode: '', cardRarityCode: '' },
+            cardSetFilter: { cardSetCode: '', cardRarityCode: '' },
           }, { emitEvent: false });
         });
       }
@@ -125,6 +131,11 @@ export class CardFiltersComponent {
     const targetRaces = service.filterForm.controls.races;
     clearFormArray(targetRaces, false);
     this.localForm.controls.races.controls.forEach(c => targetRaces.push(c, { emitEvent: false }));
+
+    const targetSetNames = service.filterForm.controls.cardSetFilter.controls.cardSetNames;
+    clearFormArray(targetSetNames, false);
+    this.localForm.controls.cardSetFilter.controls.cardSetNames.controls
+      .forEach(c => targetSetNames.push(c, { emitEvent: false }));
 
     service.filterForm.patchValue(this.localForm.value);
   }

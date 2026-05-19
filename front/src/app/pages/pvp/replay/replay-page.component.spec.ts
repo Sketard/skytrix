@@ -37,6 +37,7 @@ import { BoardEffectsService } from '../duel-page/board-effects.service';
 import { FloatRegistryService } from '../duel-page/float-registry.service';
 import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DebugLogService } from '../duel-page/debug-log.service';
+import { DuelDebugService } from '../duel-page/duel-debug.service';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
 import { AnimationOrchestratorService } from '../duel-page/animation-orchestrator.service';
 import { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
@@ -289,6 +290,14 @@ function setupTestBed(): void {
         { provide: PhaseAnnouncementService, useClass: StubPhaseAnnouncement },
         { provide: DuelToastService, useValue: {} },
         { provide: DebugLogService, useValue: { logServerMessage: () => undefined, logPlayerResponse: () => undefined } },
+        {
+          provide: DuelDebugService,
+          useValue: {
+            bindToWindow: () => undefined,
+            unbindFromWindow: () => undefined,
+            preActivationBufferAccessor: null as unknown,
+          },
+        },
         { provide: DuelWebSocketService, useValue: {} },
         { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
       ],

@@ -1,12 +1,9 @@
 package com.skytrix.controller;
 
-import com.skytrix.model.dto.card.CardSetFilterDTO;
-import com.skytrix.model.dto.card.CardSetShortDTO;
 import com.skytrix.service.CardSetService;
 import jakarta.inject.Inject;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,9 +17,9 @@ public class CardSetController {
     @Inject
     private CardSetService cardSetService;
 
-    @PostMapping("/search/short")
+    @GetMapping("/names")
     @ResponseStatus(HttpStatus.OK)
-    public List<CardSetShortDTO> searchShort(@RequestBody CardSetFilterDTO filter) {
-        return cardSetService.searchShort(filter);
+    public List<String> findAllNames() {
+        return cardSetService.findAllNames();
     }
 }

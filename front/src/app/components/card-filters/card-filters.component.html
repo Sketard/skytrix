@@ -93,11 +93,15 @@
       </app-between-filter>
     </div>
 
-    <!-- 9. Extension — card-set search -->
+    <!-- 9. Extension — token-select (multi, options loaded once) -->
     <div class="cardFilters__group">
       <label class="cardFilters__label">{{ 'cardFilters.cardSet' | translate }}</label>
-      <app-card-set-search-filter [form]="localForm.controls.cardSetFilter">
-      </app-card-set-search-filter>
+      <app-token-select
+        [form]="localForm.controls.cardSetFilter.controls.cardSetNames"
+        [options$]="cardSets$"
+        [inputLabel]="'cardFilters.cardSet'"
+        [searchService]="searchService()">
+      </app-token-select>
     </div>
   </div>
 }

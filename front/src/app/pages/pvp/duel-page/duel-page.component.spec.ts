@@ -47,6 +47,7 @@ import { FloatRegistryService } from './float-registry.service';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { CardInspectionService } from './card-inspection.service';
 import { DebugLogService } from './debug-log.service';
+import { DuelDebugService } from './duel-debug.service';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { PhaseAnnouncementService } from './phase-announcement.service';
 import { DuelToastService } from './duel-toast.service';
@@ -386,6 +387,14 @@ function setupTestBed(routeStub: ActivatedRoute = makeRouteStub()): void {
         { provide: RoomStateMachineService, useClass: StubRoomStateMachine },
         { provide: CardInspectionService, useClass: StubCardInspection },
         { provide: DebugLogService, useValue: { logServerMessage: () => undefined, logPlayerResponse: () => undefined } },
+        {
+          provide: DuelDebugService,
+          useValue: {
+            bindToWindow: () => undefined,
+            unbindFromWindow: () => undefined,
+            preActivationBufferAccessor: null as unknown,
+          },
+        },
         { provide: SoloDuelOrchestratorService, useClass: StubSoloOrchestrator },
         { provide: PhaseAnnouncementService, useClass: StubPhaseAnnouncementService },
         { provide: DuelToastService, useValue: {} },
