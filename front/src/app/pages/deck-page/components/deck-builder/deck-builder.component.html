@@ -48,6 +48,7 @@
           {{ 'deckBuilder.viewer.extra' | translate }} {{ deckBuildService.extraCardNumber() }}&nbsp;/&nbsp;15
         </span>
         <span class="pill"
+          [class.pill--neutral]="deckBuildService.sideCardNumber() <= 15"
           [class.pill--invalid]="deckBuildService.sideCardNumber() > 15">
           {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}&nbsp;/&nbsp;15
         </span>
