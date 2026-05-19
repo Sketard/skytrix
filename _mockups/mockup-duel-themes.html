@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Mockup — Duel · Thèmes immersifs (Classic / Cosmic / Forest)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+/* ============================================================
+   ARCHITECTURE — Theme system parametré
+   ============================================================
+   Chaque thème = un bloc de tokens --duel-* sous le sélecteur
+   .board-host[data-theme="X"]. HTML strictement identique des 3
+   côtés. Seuls les tokens (couleurs, gradients, animations,
+   ambiances) changent.
+
+   Pour ajouter un thème "Volcano" :
+   1. Copier un bloc data-theme existant
+   2. Re-mapper les ~20 tokens --duel-*
+   3. Optionnellement définir une animation idle dédiée
+   ============================================================ */
+
+:root {
+  /* ============================================================
+     DS tokens (mirror partiel)
+     ============================================================ */
+  --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
+  --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
+  --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+  --text-xl:  clamp(1.35rem, 1.20rem + 0.75vw, 1.60rem);
+  --text-2xl: clamp(1.70rem, 1.40rem + 1.50vw, 2.20rem);
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 800;
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 40px;
+
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-pill: 999px;
+  --pvp-radius-sm: 2px;
+  --pvp-radius-md: 4px;
+
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.30);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.40);
+
+  /* Globals que les thèmes vont re-mapper */
+  --gold:     #C9A84C;
+  --gold-50:  #ffe9a8;
+  --gold-soft-20: rgba(201, 168, 76, 0.20);
+  --gold-soft-30: rgba(201, 168, 76, 0.30);
+  --gold-soft-50: rgba(201, 168, 76, 0.50);
+
+  --cyan-500: #4a90d9;
+  --success: #4caf50;
+  --warning: #ffc107;
+  --danger-strong: #ff5252;
+
+  --surface-thumb-gradient: linear-gradient(135deg, #2a2640, #1a1830);
+  --border-soft:   rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --text-primary:   #eaeaea;
+  --text-secondary: #c0c0c0;
+  --text-muted:     #9e9e9e;
+  --text-disabled:  #6e6e6e;
+  --text-inverse:   #1a1208;
+
+  --transition-fast:   150ms;
+  --transition-normal: 250ms;
+  --transition-slow:   400ms;
+  --transition-theme:  600ms;
+  --ease-out:    cubic-bezier(0.25, 0.8, 0.25, 1);
+
+  --touch-target-min: 44px;
+  --overlay-strong: rgba(0, 0, 0, 0.78);
+
+  --pvp-lp-own: var(--success);
+  --pvp-lp-opponent: #90caf9;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: #07070d;
+  color: var(--text-primary);
+  padding: 70px var(--space-6) var(--space-8);
+  min-height: 100vh;
+}
+
+/* Toolbar */
+.toolbar {
+  position: fixed; top: var(--space-3); left: 50%; transform: translateX(-50%);
+  display: flex; gap: var(--space-2); z-index: 200;
+  background: rgba(10, 10, 20, 0.92);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-medium);
+  backdrop-filter: blur(12px);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.toolbar-label {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: var(--space-1);
+}
+.toolbar-btn {
+  font: inherit;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: all var(--transition-fast) var(--ease-out);
+}
+.toolbar-btn:hover { border-color: var(--gold-soft-50); color: var(--text-primary); }
+.toolbar-btn.active {
+  background: rgba(201, 168, 76, 0.15);
+  border-color: var(--gold-soft-50);
+  color: var(--gold-50);
+}
+.toolbar-sep { width: 1px; height: 20px; background: var(--border-medium); margin: 0 var(--space-2); }
+
+.page { max-width: 1400px; margin: 0 auto; }
+.page-header { margin-bottom: var(--space-6); text-align: center; }
+.page-header h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-black);
+  color: var(--gold-50);
+  letter-spacing: 0.02em;
+  margin-bottom: var(--space-2);
+}
+.page-header p {
+  color: var(--text-muted);
+  max-width: 820px;
+  margin: 0 auto;
+  line-height: 1.6;
+  font-size: var(--text-sm);
+}
+.page-header em {
+  color: var(--gold-50);
+  font-style: normal;
+  font-weight: var(--weight-semibold);
+}
+
+/* ============================================================
+   BOARD HOST + THEME TOKENS
+   ============================================================ */
+.board-host {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  user-select: none;
+  isolation: isolate;
+
+  /* Defaults — override par data-theme */
+  background:
+    var(--duel-bg-overlay, transparent),
+    var(--duel-bg-radial, transparent),
+    var(--duel-bg-base, #1a1a2e);
+  transition: background var(--transition-theme) var(--ease-out);
+}
+
+/* Vignette + grain overlay (commun, intensité par thème) */
+.board-host::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at center,
+      transparent 30%,
+      var(--duel-vignette, rgba(0,0,0,0.4)) 100%);
+  pointer-events: none;
+  z-index: 1;
+  transition: background var(--transition-theme) var(--ease-out);
+}
+.board-host::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--duel-mat-pattern, none);
+  pointer-events: none;
+  z-index: 2;
+  opacity: var(--duel-mat-pattern-opacity, 0);
+  mix-blend-mode: var(--duel-mat-blend, overlay);
+  transition: opacity var(--transition-theme) var(--ease-out);
+}
+
+/* ============================================================
+   THEME 1 — CLASSIC (gold/obsidien enrichi)
+   ============================================================ */
+.board-host[data-theme="classic"] {
+  --duel-bg-base: #1a1a2e;
+  --duel-bg-radial:
+    radial-gradient(ellipse at 50% 50%, rgba(201, 168, 76, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 100%, rgba(201, 168, 76, 0.06) 0%, transparent 50%);
+  --duel-bg-overlay: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.25) 100%);
+  --duel-vignette: rgba(0,0,0,0.55);
+
+  --duel-mat-pattern:
+    repeating-linear-gradient(0deg, rgba(201, 168, 76, 0.04) 0 1px, transparent 1px 60px),
+    repeating-linear-gradient(90deg, rgba(201, 168, 76, 0.04) 0 1px, transparent 1px 60px);
+  --duel-mat-pattern-opacity: 0.7;
+  --duel-mat-blend: overlay;
+
+  --duel-accent-primary: var(--gold);
+  --duel-accent-soft: rgba(201, 168, 76, 0.15);
+  --duel-zone-border: rgba(201, 168, 76, 0.18);
+  --duel-zone-bg: rgba(0, 0, 0, 0.20);
+  --duel-zone-hover-glow: rgba(201, 168, 76, 0.35);
+  --duel-emz-bg: rgba(201, 168, 76, 0.08);
+  --duel-emz-border: rgba(201, 168, 76, 0.35);
+  --duel-emz-glow: rgba(201, 168, 76, 0.25);
+  --duel-pile-tint: rgba(201, 168, 76, 0.10);
+
+  --duel-idle-anim: classic-shimmer 8s ease-in-out infinite;
+}
+
+.board-host[data-theme="classic"] .board-wrapper::after {
+  /* Halo gold qui respire au centre du plateau */
+  content: "";
+  position: absolute;
+  inset: -10%;
+  background: radial-gradient(ellipse at center, rgba(201, 168, 76, 0.10) 0%, transparent 50%);
+  pointer-events: none;
+  animation: classic-shimmer 8s ease-in-out infinite;
+  z-index: 0;
+}
+@keyframes classic-shimmer {
+  0%, 100% { opacity: 0.5; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+/* ============================================================
+   THEME 2 — COSMIC (violet/nébula)
+   ============================================================ */
+.board-host[data-theme="cosmic"] {
+  --duel-bg-base: #0a0518;
+  --duel-bg-radial:
+    radial-gradient(ellipse at 25% 30%, rgba(139, 92, 246, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 70%, rgba(236, 72, 153, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+  --duel-bg-overlay: linear-gradient(180deg, transparent 0%, rgba(10, 5, 24, 0.45) 100%);
+  --duel-vignette: rgba(5, 0, 15, 0.70);
+
+  --duel-mat-pattern:
+    radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.8), transparent 50%),
+    radial-gradient(1.5px 1.5px at 60% 20%, rgba(180, 130, 255, 0.7), transparent 50%),
+    radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.6), transparent 50%),
+    radial-gradient(2px 2px at 80% 50%, rgba(220, 180, 255, 0.5), transparent 50%),
+    radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.7), transparent 50%),
+    radial-gradient(1.5px 1.5px at 10% 60%, rgba(180, 130, 255, 0.6), transparent 50%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.5), transparent 50%),
+    radial-gradient(1.5px 1.5px at 70% 85%, rgba(220, 180, 255, 0.6), transparent 50%);
+  --duel-mat-pattern-opacity: 0.85;
+  --duel-mat-blend: screen;
+
+  --duel-accent-primary: #c4b5fd;
+  --duel-accent-soft: rgba(196, 181, 253, 0.18);
+  --duel-zone-border: rgba(196, 181, 253, 0.22);
+  --duel-zone-bg: rgba(20, 12, 45, 0.40);
+  --duel-zone-hover-glow: rgba(196, 181, 253, 0.40);
+  --duel-emz-bg: rgba(139, 92, 246, 0.14);
+  --duel-emz-border: rgba(196, 181, 253, 0.50);
+  --duel-emz-glow: rgba(196, 181, 253, 0.35);
+  --duel-pile-tint: rgba(139, 92, 246, 0.12);
+}
+
+/* Cosmic — nébula qui ondule */
+.board-host[data-theme="cosmic"] .board-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(168, 85, 247, 0.25) 0%, transparent 45%),
+    radial-gradient(ellipse at 70% 60%, rgba(236, 72, 153, 0.20) 0%, transparent 50%);
+  pointer-events: none;
+  filter: blur(40px);
+  animation: cosmic-nebula 15s ease-in-out infinite;
+  z-index: 0;
+}
+@keyframes cosmic-nebula {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  33% { transform: translate(2%, -1%) rotate(2deg) scale(1.05); }
+  66% { transform: translate(-1%, 2%) rotate(-1deg) scale(0.95); }
+}
+
+/* Cosmic — étoiles qui scintillent */
+.board-host[data-theme="cosmic"]::after {
+  animation: cosmic-stars-twinkle 4s ease-in-out infinite;
+}
+@keyframes cosmic-stars-twinkle {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ============================================================
+   THEME 3 — FOREST (vert/doré ancien)
+   ============================================================ */
+.board-host[data-theme="forest"] {
+  --duel-bg-base: #0a1a10;
+  --duel-bg-radial:
+    radial-gradient(ellipse at 50% 60%, rgba(34, 197, 94, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 30% 20%, rgba(180, 145, 70, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 90%, rgba(34, 197, 94, 0.12) 0%, transparent 60%);
+  --duel-bg-overlay: linear-gradient(180deg, rgba(10, 26, 16, 0.25) 0%, rgba(5, 18, 10, 0.50) 100%);
+  --duel-vignette: rgba(0, 10, 5, 0.70);
+
+  --duel-mat-pattern:
+    radial-gradient(circle at 50% 50%, rgba(120, 200, 130, 0.06) 1px, transparent 1.5px),
+    repeating-radial-gradient(circle at 50% 50%, rgba(180, 145, 70, 0.05) 0, rgba(180, 145, 70, 0.05) 1px, transparent 1px, transparent 80px);
+  --duel-mat-pattern-opacity: 0.6;
+  --duel-mat-blend: soft-light;
+
+  --duel-accent-primary: #d4a854;
+  --duel-accent-soft: rgba(212, 168, 84, 0.15);
+  --duel-zone-border: rgba(180, 145, 70, 0.25);
+  --duel-zone-bg: rgba(10, 30, 18, 0.45);
+  --duel-zone-hover-glow: rgba(212, 168, 84, 0.35);
+  --duel-emz-bg: rgba(34, 197, 94, 0.10);
+  --duel-emz-border: rgba(180, 145, 70, 0.45);
+  --duel-emz-glow: rgba(212, 168, 84, 0.30);
+  --duel-pile-tint: rgba(180, 145, 70, 0.10);
+}
+
+/* Forest — feuillage / brise lumineuse qui passe */
+.board-host[data-theme="forest"] .board-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: -5%;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(180, 230, 150, 0.10) 0%, transparent 35%),
+    radial-gradient(ellipse at 80% 60%, rgba(212, 168, 84, 0.12) 0%, transparent 40%);
+  pointer-events: none;
+  filter: blur(30px);
+  animation: forest-breeze 12s ease-in-out infinite;
+  z-index: 0;
+}
+@keyframes forest-breeze {
+  0%, 100% { transform: translateX(-2%); opacity: 0.6; }
+  50% { transform: translateX(2%); opacity: 1; }
+}
+
+/* Forest — particules pollen qui flottent */
+.board-host[data-theme="forest"] .duel-particles {
+  display: block;
+}
+
+/* Particules génériques (utilisées par certains thèmes) */
+.duel-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  display: none;
+}
+.duel-particles__dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--duel-accent-primary, var(--gold));
+  opacity: 0.4;
+  filter: blur(0.5px);
+  animation: float 12s linear infinite;
+}
+.duel-particles__dot:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 14s; }
+.duel-particles__dot:nth-child(2) { left: 25%; animation-delay: -3s; animation-duration: 11s; }
+.duel-particles__dot:nth-child(3) { left: 45%; animation-delay: -6s; animation-duration: 13s; }
+.duel-particles__dot:nth-child(4) { left: 60%; animation-delay: -2s; animation-duration: 15s; }
+.duel-particles__dot:nth-child(5) { left: 75%; animation-delay: -9s; animation-duration: 10s; }
+.duel-particles__dot:nth-child(6) { left: 90%; animation-delay: -5s; animation-duration: 12s; }
+@keyframes float {
+  0%   { transform: translateY(110%) translateX(0); opacity: 0; }
+  10%  { opacity: 0.4; }
+  90%  { opacity: 0.4; }
+  100% { transform: translateY(-10%) translateX(20px); opacity: 0; }
+}
+
+/* ============================================================
+   Hand rows, duelists, mini-toolbar
+   ============================================================ */
+.hand-opponent, .hand-player {
+  position: absolute;
+  left: var(--space-4); right: 56px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  z-index: 5;
+}
+.hand-opponent { top: 4px; }
+.hand-player { bottom: 4px; }
+.hand-card {
+  width: 28px;
+  height: 38px;
+  background: var(--surface-thumb-gradient);
+  border-radius: 3px;
+  border: 1px solid var(--duel-accent-soft, rgba(201, 168, 76, 0.20));
+  opacity: 0.75;
+  transition: border-color var(--transition-theme) var(--ease-out);
+}
+
+.duelist-card {
+  position: absolute;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  background: var(--overlay-strong);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--duel-accent-soft, rgba(201, 168, 76, 0.30));
+  border-radius: var(--radius-pill);
+  box-shadow: var(--elevation-2), 0 0 16px var(--duel-accent-soft);
+  transition: border-color var(--transition-theme) var(--ease-out),
+              box-shadow var(--transition-theme) var(--ease-out);
+}
+.duelist-card--opp {
+  top: var(--space-2);
+  right: calc(var(--touch-target-min) + var(--space-3));
+  border-color: rgba(144, 202, 249, 0.4);
+}
+.duelist-card--player {
+  bottom: var(--space-2);
+  left: var(--space-3);
+  border-color: var(--duel-accent-primary, var(--gold));
+  box-shadow: var(--elevation-2), 0 0 20px var(--duel-emz-glow);
+}
+.duelist-avatar {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--duel-accent-primary, var(--gold)), #533c0e);
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: var(--weight-black);
+  color: var(--text-inverse);
+  transition: background var(--transition-theme) var(--ease-out);
+}
+.duelist-card--opp .duelist-avatar {
+  background: linear-gradient(135deg, var(--pvp-lp-opponent), #4a90d9);
+}
+.duelist-info {
+  display: flex; flex-direction: column; gap: 1px; line-height: 1;
+}
+.duelist-name {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.duelist-card--opp .duelist-name { color: var(--pvp-lp-opponent); }
+.duelist-card--player .duelist-name { color: var(--duel-accent-primary); }
+.duelist-lp {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: var(--weight-black);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.duelist-card--player .duelist-lp { color: var(--pvp-lp-own); }
+.duelist-card--opp .duelist-lp { color: var(--pvp-lp-opponent); }
+
+.mini-toolbar {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.mini-toolbar__item {
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border: 1px solid var(--duel-accent-soft, var(--gold-soft-30));
+  background: var(--overlay-strong);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+  display: grid; place-items: center;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--transition-theme) var(--ease-out);
+}
+
+/* ============================================================
+   Board wrapper + zones (utilisent les tokens --duel-*)
+   ============================================================ */
+.board-wrapper {
+  position: absolute;
+  inset: 8% 56px 8% var(--space-3);
+  display: grid;
+  grid-template-rows: 2fr 1fr 2fr;
+  z-index: 30;
+}
+.field-section {
+  display: grid;
+  grid-template-columns: 59fr repeat(5, 86fr) 59fr;
+  gap: 2px;
+  padding: 2px;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
+}
+.field-section--player {
+  grid-template-areas:
+    'field    mz1 mz2 mz3 mz4 mz5 gy'
+    'extra    st1 st2 st3 st4 st5 deck';
+}
+.field-section--opp {
+  grid-template-areas:
+    'deck     st5 st4 st3 st2 st1 extra'
+    'gy       mz5 mz4 mz3 mz2 mz1 field';
+}
+.zone {
+  position: relative;
+  border: 1px solid var(--duel-zone-border, var(--border-soft));
+  border-radius: var(--pvp-radius-md);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--duel-zone-bg, rgba(0,0,0,0.15));
+  min-width: 0; min-height: 0; height: 100%;
+  transition: border-color var(--transition-theme) var(--ease-out),
+              background var(--transition-theme) var(--ease-out);
+}
+.zone[data-zone*='mz'], .zone[data-zone*='st'] {
+  aspect-ratio: 1;
+  justify-self: center;
+}
+.zone--banished {
+  aspect-ratio: 59 / 86;
+  width: 100%;
+}
+.zone--banished {
+  background: var(--duel-pile-tint, rgba(0,0,0,0.20));
+}
+.zone-card {
+  width: 80%; height: 80%;
+  background: var(--surface-thumb-gradient);
+  border-radius: var(--pvp-radius-sm);
+  border: 1px solid var(--duel-accent-soft);
+  transition: border-color var(--transition-theme) var(--ease-out);
+}
+.zone--has-card {
+  background: var(--duel-accent-soft, var(--gold-soft-20));
+  box-shadow: inset 0 0 8px var(--duel-zone-hover-glow);
+}
+
+/* Central strip */
+.central-strip {
+  display: grid;
+  grid-template-columns: 59fr repeat(5, 86fr) 59fr;
+  gap: 2px;
+  padding: 0 2px;
+  align-items: center;
+  z-index: 35;
+  position: relative;
+}
+.emz {
+  height: 100%;
+  aspect-ratio: 1;
+  justify-self: center;
+  border: 1px solid var(--duel-emz-border, var(--gold-soft-30));
+  border-radius: var(--pvp-radius-md);
+  background: var(--duel-emz-bg, var(--gold-soft-08));
+  box-shadow: inset 0 0 16px var(--duel-emz-glow, var(--gold-soft-20));
+  transition: border-color var(--transition-theme) var(--ease-out),
+              background var(--transition-theme) var(--ease-out),
+              box-shadow var(--transition-theme) var(--ease-out);
+}
+.emz--left { grid-column: 3; }
+.emz--right { grid-column: 5; }
+
+/* ============================================================
+   Phase pill central — utilise --duel-accent-primary
+   ============================================================ */
+.phase-pill {
+  grid-column: 4;
+  justify-self: center;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--overlay-strong);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid var(--duel-accent-primary, var(--gold));
+  border-radius: var(--radius-pill);
+  box-shadow: var(--elevation-2), 0 0 20px var(--duel-emz-glow);
+  font-family: var(--font-display);
+  cursor: pointer;
+  z-index: 80;
+  white-space: nowrap;
+  transition: all var(--transition-fast) var(--ease-out),
+              border-color var(--transition-theme) var(--ease-out),
+              box-shadow var(--transition-theme) var(--ease-out);
+}
+.phase-pill:hover:not([disabled]) {
+  transform: scale(1.04);
+  box-shadow: var(--elevation-3), 0 0 28px var(--duel-zone-hover-glow);
+}
+.phase-pill__turn {
+  font-size: 0.55rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  line-height: 1;
+}
+.phase-pill__sep {
+  width: 1px;
+  height: 14px;
+  background: var(--duel-accent-soft, var(--gold-soft-30));
+  margin: 0 2px;
+}
+.phase-pill__name {
+  font-size: 0.92rem;
+  font-weight: var(--weight-black);
+  color: var(--duel-accent-primary, var(--gold-50));
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  filter: brightness(1.15);
+  transition: color var(--transition-theme) var(--ease-out);
+}
+.phase-pill__chev {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--duel-accent-primary, var(--gold));
+  opacity: 0.8;
+  line-height: 1;
+}
+
+/* ============================================================
+   Timer player + opp (brouillé 2C)
+   ============================================================ */
+.timer {
+  position: absolute;
+  z-index: 71;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 64px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--overlay-strong);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--duel-accent-soft, var(--gold-soft-40));
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-2), 0 0 12px var(--duel-accent-soft);
+  font-family: var(--font-display);
+  transition: border-color var(--transition-theme) var(--ease-out),
+              box-shadow var(--transition-theme) var(--ease-out);
+}
+.timer--player {
+  bottom: calc(var(--space-2) + 48px);
+  left: var(--space-3);
+}
+.timer--opp {
+  top: calc(var(--space-2) + 48px);
+  right: calc(var(--touch-target-min) + var(--space-3));
+  border-color: rgba(144, 202, 249, 0.4);
+  box-shadow: var(--elevation-2), 0 0 12px rgba(144, 202, 249, 0.15);
+}
+.timer__row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  justify-content: center;
+}
+.timer__icon {
+  font-family: 'Material Icons Round';
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1;
+  position: relative; top: 1px;
+}
+.timer--opp .timer__icon { color: var(--pvp-lp-opponent); opacity: 0.7; }
+.timer__value {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: 0.85rem;
+  color: var(--duel-accent-primary, var(--text-primary));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.timer__bar {
+  height: 3px;
+  background: var(--duel-accent-soft, var(--gold-soft-20));
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+}
+.timer__bar-fill {
+  position: absolute;
+  inset: 0;
+  width: 65%;
+  background: var(--duel-accent-primary, var(--success));
+  border-radius: 999px;
+}
+.timer--opp .timer__row,
+.timer--opp .timer__bar {
+  filter: blur(4px);
+  opacity: 0.4;
+}
+.timer--opp::before {
+  content: "";
+  position: absolute;
+  inset: var(--space-1) var(--space-2);
+  background: linear-gradient(
+    135deg,
+    rgba(144, 202, 249, 0.35) 0%,
+    rgba(74, 144, 217, 0.25) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  border-radius: 2px;
+}
+.timer--opp::after {
+  content: "";
+  position: absolute;
+  inset: var(--space-1) var(--space-2);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(144, 202, 249, 0.55) 0,
+    rgba(144, 202, 249, 0.55) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   THEME PRESENTATION CARDS (sous le mockup)
+   ============================================================ */
+.theme-cards {
+  margin-top: var(--space-7);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+.theme-card {
+  padding: var(--space-4);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  border-top: 3px solid;
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  transition: transform var(--transition-fast) var(--ease-out);
+}
+.theme-card--classic { border-top-color: #C9A84C; }
+.theme-card--cosmic { border-top-color: #c4b5fd; }
+.theme-card--forest { border-top-color: #d4a854; }
+.theme-card h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+}
+.theme-card--classic h3 { color: #ffe9a8; }
+.theme-card--cosmic h3 { color: #c4b5fd; }
+.theme-card--forest h3 { color: #d4a854; }
+.theme-card__palette {
+  display: flex;
+  gap: 4px;
+  margin: var(--space-2) 0;
+}
+.theme-card__swatch {
+  width: 24px; height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.10);
+  flex-shrink: 0;
+}
+.theme-card ul { padding-left: var(--space-4); margin-top: var(--space-2); }
+.theme-card li { margin-bottom: 3px; }
+.theme-card code {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  background: rgba(0,0,0,0.30);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.archi-note {
+  margin-top: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(201, 168, 76, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.archi-note h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  color: #ffe9a8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+}
+.archi-note code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: rgba(0,0,0,0.40);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #ffe9a8;
+}
+.archi-note pre {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: rgba(0,0,0,0.50);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  margin: var(--space-2) 0;
+  overflow-x: auto;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-label">Thème</span>
+  <button class="toolbar-btn active" data-theme="classic">Classic</button>
+  <button class="toolbar-btn" data-theme="cosmic">Cosmic</button>
+  <button class="toolbar-btn" data-theme="forest">Forest</button>
+</div>
+
+<div class="page">
+  <div class="page-header">
+    <h1>Thèmes de plateau · Architecture paramétrique</h1>
+    <p>
+      <strong>HTML strictement identique</strong> entre les 3 thèmes. Seuls les tokens
+      <code style="font-family: var(--font-mono); background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 3px;">--duel-*</code>
+      changent (couleurs, gradients, motifs, animations). Toggle le thème en haut pour
+      voir le swap — les zones, EMZ, piles, duelist cards, phase pill et timers prennent tous
+      l'ambiance du thème actif.
+    </p>
+  </div>
+
+  <div class="board-host" id="board" data-theme="classic">
+
+    <!-- Hand opp -->
+    <div class="hand-opponent">
+      <span class="hand-card"></span><span class="hand-card"></span><span class="hand-card"></span>
+      <span class="hand-card"></span><span class="hand-card"></span>
+    </div>
+
+    <!-- Particles container (utilisé par Forest) -->
+    <div class="duel-particles">
+      <span class="duel-particles__dot"></span>
+      <span class="duel-particles__dot"></span>
+      <span class="duel-particles__dot"></span>
+      <span class="duel-particles__dot"></span>
+      <span class="duel-particles__dot"></span>
+      <span class="duel-particles__dot"></span>
+    </div>
+
+    <!-- Board wrapper -->
+    <div class="board-wrapper">
+
+      <div class="field-section field-section--opp">
+        <div class="zone zone--banished" style="grid-area: deck;"></div>
+        <div class="zone" data-zone="st5" style="grid-area: st5;"></div>
+        <div class="zone zone--has-card" data-zone="st4" style="grid-area: st4;"><div class="zone-card"></div></div>
+        <div class="zone" data-zone="st3" style="grid-area: st3;"></div>
+        <div class="zone" data-zone="st2" style="grid-area: st2;"></div>
+        <div class="zone" data-zone="st1" style="grid-area: st1;"></div>
+        <div class="zone zone--banished" style="grid-area: extra;"></div>
+        <div class="zone zone--banished" style="grid-area: gy;"></div>
+        <div class="zone" data-zone="mz5" style="grid-area: mz5;"></div>
+        <div class="zone zone--has-card" data-zone="mz4" style="grid-area: mz4;"><div class="zone-card"></div></div>
+        <div class="zone" data-zone="mz3" style="grid-area: mz3;"></div>
+        <div class="zone" data-zone="mz2" style="grid-area: mz2;"></div>
+        <div class="zone" data-zone="mz1" style="grid-area: mz1;"></div>
+        <div class="zone zone--banished" style="grid-area: field;"></div>
+      </div>
+
+      <div class="central-strip">
+        <div class="emz emz--left"></div>
+        <button class="phase-pill" type="button">
+          <span class="phase-pill__turn">T 5</span>
+          <span class="phase-pill__sep"></span>
+          <span class="phase-pill__name">M1</span>
+          <span class="phase-pill__chev">▾</span>
+        </button>
+        <div class="emz emz--right"></div>
+      </div>
+
+      <div class="field-section field-section--player">
+        <div class="zone zone--banished" style="grid-area: field;"></div>
+        <div class="zone" data-zone="mz1" style="grid-area: mz1;"></div>
+        <div class="zone" data-zone="mz2" style="grid-area: mz2;"></div>
+        <div class="zone zone--has-card" data-zone="mz3" style="grid-area: mz3;"><div class="zone-card"></div></div>
+        <div class="zone" data-zone="mz4" style="grid-area: mz4;"></div>
+        <div class="zone" data-zone="mz5" style="grid-area: mz5;"></div>
+        <div class="zone zone--banished" style="grid-area: gy;"></div>
+        <div class="zone zone--banished" style="grid-area: extra;"></div>
+        <div class="zone" data-zone="st1" style="grid-area: st1;"></div>
+        <div class="zone zone--has-card" data-zone="st2" style="grid-area: st2;"><div class="zone-card"></div></div>
+        <div class="zone" data-zone="st3" style="grid-area: st3;"></div>
+        <div class="zone" data-zone="st4" style="grid-area: st4;"></div>
+        <div class="zone" data-zone="st5" style="grid-area: st5;"></div>
+        <div class="zone zone--banished" style="grid-area: deck;"></div>
+      </div>
+
+    </div>
+
+    <!-- Duelist cards -->
+    <div class="duelist-card duelist-card--opp">
+      <div class="duelist-avatar">D</div>
+      <div class="duelist-info">
+        <span class="duelist-name">DragonSlayer92</span>
+        <span class="duelist-lp">8000</span>
+      </div>
+    </div>
+    <div class="duelist-card duelist-card--player">
+      <div class="duelist-avatar">A</div>
+      <div class="duelist-info">
+        <span class="duelist-name">Axel</span>
+        <span class="duelist-lp">8000</span>
+      </div>
+    </div>
+
+    <div class="mini-toolbar">
+      <button class="mini-toolbar__item">🏳</button>
+      <button class="mini-toolbar__item">⚡</button>
+    </div>
+
+    <div class="hand-player">
+      <span class="hand-card"></span><span class="hand-card"></span><span class="hand-card"></span>
+      <span class="hand-card"></span><span class="hand-card"></span>
+    </div>
+
+    <!-- Timer player + opp -->
+    <div class="timer timer--player">
+      <span class="timer__row">
+        <span class="timer__icon">schedule</span>
+        <span class="timer__value">1:47</span>
+      </span>
+      <span class="timer__bar">
+        <span class="timer__bar-fill"></span>
+      </span>
+    </div>
+    <div class="timer timer--opp">
+      <span class="timer__row">
+        <span class="timer__icon">schedule</span>
+        <span class="timer__value">1:47</span>
+      </span>
+      <span class="timer__bar">
+        <span class="timer__bar-fill"></span>
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       PRESENTATION DES 3 THEMES
+       ============================================================ -->
+  <div class="theme-cards">
+    <div class="theme-card theme-card--classic">
+      <h3>Classic · Gold/Obsidien</h3>
+      <div class="theme-card__palette">
+        <span class="theme-card__swatch" style="background: #1a1a2e;"></span>
+        <span class="theme-card__swatch" style="background: #C9A84C;"></span>
+        <span class="theme-card__swatch" style="background: #ffe9a8;"></span>
+        <span class="theme-card__swatch" style="background: #533c0e;"></span>
+      </div>
+      <ul>
+        <li>Halo gold respirant au centre (8s)</li>
+        <li>Grille 60×60 légère en overlay (matte texture)</li>
+        <li>Vignette profonde, identité existante enrichie</li>
+        <li>Token signature : <code>--duel-accent-primary: #C9A84C</code></li>
+      </ul>
+    </div>
+
+    <div class="theme-card theme-card--cosmic">
+      <h3>Cosmic · Violet/Nébula</h3>
+      <div class="theme-card__palette">
+        <span class="theme-card__swatch" style="background: #0a0518;"></span>
+        <span class="theme-card__swatch" style="background: #8b5cf6;"></span>
+        <span class="theme-card__swatch" style="background: #c4b5fd;"></span>
+        <span class="theme-card__swatch" style="background: #ec4899;"></span>
+      </div>
+      <ul>
+        <li>Champ d'étoiles scintillantes (8 sprites SVG)</li>
+        <li>Nébula qui ondule lentement en fond (15s)</li>
+        <li>Profondeur cosmique radicalement différente</li>
+        <li>Token signature : <code>--duel-accent-primary: #c4b5fd</code></li>
+      </ul>
+    </div>
+
+    <div class="theme-card theme-card--forest">
+      <h3>Forest · Vert/Doré ancien</h3>
+      <div class="theme-card__palette">
+        <span class="theme-card__swatch" style="background: #0a1a10;"></span>
+        <span class="theme-card__swatch" style="background: #22c55e;"></span>
+        <span class="theme-card__swatch" style="background: #d4a854;"></span>
+        <span class="theme-card__swatch" style="background: #b49146;"></span>
+      </div>
+      <ul>
+        <li>Brise lumineuse qui passe (12s)</li>
+        <li>Particules pollen qui montent (6 dots, 10-15s)</li>
+        <li>Cercle concentrique très subtil en motif</li>
+        <li>Token signature : <code>--duel-accent-primary: #d4a854</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       ARCHITECTURE NOTE
+       ============================================================ -->
+  <div class="archi-note">
+    <h3>Architecture — comment ajouter un 4ème thème</h3>
+    <p>
+      Le système est purement déclaratif. Pour ajouter un thème "Volcano" :
+    </p>
+    <pre>.board-host[data-theme="volcano"] {
+  --duel-bg-base: #1a0a05;
+  --duel-bg-radial: radial-gradient(ellipse at 50% 80%, rgba(255, 80, 30, 0.3) 0%, transparent 60%);
+  --duel-vignette: rgba(40, 5, 0, 0.8);
+  --duel-accent-primary: #ff6b35;
+  --duel-accent-soft: rgba(255, 107, 53, 0.18);
+  --duel-zone-border: rgba(255, 107, 53, 0.25);
+  --duel-zone-bg: rgba(40, 8, 0, 0.45);
+  --duel-emz-border: rgba(255, 140, 50, 0.55);
+  --duel-emz-glow: rgba(255, 107, 53, 0.35);
+  --duel-emz-bg: rgba(180, 50, 0, 0.18);
+  --duel-pile-tint: rgba(255, 107, 53, 0.12);
+  /* ...plus animation idle "magma-flow" si besoin */
+}</pre>
+    <p>
+      Aucun HTML modifié. Aucun composant Angular impacté. La règle <strong>Animation Parity</strong>
+      tient (orchestrator → tokens via host class). Replay hérite gratuitement : il suffit que la
+      classe <code>data-theme</code> soit appliquée par le composant racine PvP ET Replay.
+    </p>
+    <p style="margin-top: var(--space-3);">
+      <strong>Implémentation Angular :</strong> un <code>ThemeService</code> avec un signal
+      <code>currentTheme: Signal&lt;'classic' | 'cosmic' | 'forest'&gt;</code> bindé en attribut sur
+      le host. Sélection persistée par utilisateur (LocalStorage). Optionnel : par-deck (le thème
+      voyage avec le deck choisi).
+    </p>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.toolbar-btn[data-theme]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const theme = btn.dataset.theme;
+      document.querySelectorAll('.toolbar-btn[data-theme]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('board').setAttribute('data-theme', theme);
+    });
+  });
+</script>
+
+</body>
+</html>
