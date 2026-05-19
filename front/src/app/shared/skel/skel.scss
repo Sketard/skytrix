@@ -89,6 +89,120 @@
 }
 
 // =============================================================================
+// COMPOSITE — Deck stats strip skeleton (Deck List page KPI row placeholder)
+// Calqué sur `.deck-stats-strip` (deck-stats-strip.component.scss).
+// =============================================================================
+.deck-stats-strip-skel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+  width: 100%;
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-1);
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-card-low);
+    border: 1px solid var(--gold-soft-15);
+    border-radius: var(--radius-md);
+    box-shadow: var(--elevation-1);
+
+    @media (max-width: 640px) {
+      padding: var(--space-2) var(--space-3);
+    }
+  }
+
+  &__value {
+    @extend %skel-block;
+    height: 24px;
+    width: 56px;
+    border-radius: 4px;
+  }
+
+  &__label {
+    @extend %skel-block;
+    height: 10px;
+    width: 80%;
+    max-width: 110px;
+    border-radius: 4px;
+  }
+}
+
+// =============================================================================
+// COMPOSITE — Deck box skeleton (Deck List page gallery placeholder)
+// Calqué sur la cartouche réelle `.deck-box` (deck-box.component.scss) :
+// gradient + border-subtle + radius-lg + rail gold + silhouette + 2 pills.
+// =============================================================================
+.deck-box-skel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 200px;
+  padding: var(--space-4);
+  background: linear-gradient(135deg, var(--surface-card-ds) 0%, var(--surface-card-low) 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-1);
+  overflow: hidden;
+
+  &__rail {
+    position: absolute;
+    left: 0;
+    top: 15%;
+    bottom: 15%;
+    width: 3px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+    opacity: 0.5;
+  }
+
+  &__cover {
+    width: 100%;
+    flex: 1;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__silhouette {
+    @extend %skel-block;
+    width: 56px;
+    height: 81px;
+    border-radius: var(--radius-sm);
+  }
+
+  &__name {
+    @extend %skel-block;
+    height: 14px;
+    width: 65%;
+    border-radius: 4px;
+  }
+
+  &__meta {
+    display: flex;
+    gap: var(--space-1);
+    width: 100%;
+    justify-content: center;
+  }
+
+  &__pill {
+    @extend %skel-block;
+    height: 18px;
+    width: 60px;
+    border-radius: var(--radius-pill);
+  }
+}
+
+// =============================================================================
 // COMPOSITE — Deck card skeleton (deck picker modal placeholder)
 // =============================================================================
 .deck-card-skel {

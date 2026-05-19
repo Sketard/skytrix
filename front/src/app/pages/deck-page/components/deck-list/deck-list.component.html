@@ -37,13 +37,15 @@
   </header>
 
   <div class="deck-list__body">
-    @if (!firstLoad) {
+    @if (firstLoad) {
+      <app-deck-stats-strip-skeleton class="deck-list__stats" [count]="3"></app-deck-stats-strip-skeleton>
+    } @else {
       <app-deck-stats-strip class="deck-list__stats" [stats]="stats()"></app-deck-stats-strip>
     }
 
     <div class="deckPage">
       @if (firstLoad) {
-        <app-deck-card-skeleton [count]="6"></app-deck-card-skeleton>
+        <app-deck-box-skeleton [count]="6"></app-deck-box-skeleton>
       } @else {
         <deck-box class="deckPage-deck" [add]="true"></deck-box>
         @for (deck of filteredDecks(); track deck.id) {
