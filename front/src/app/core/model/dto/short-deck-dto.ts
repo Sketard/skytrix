@@ -7,4 +7,7 @@ export type ShortDeckDTO = {
   // DeckMapper.toShortDeckDTO.
   mainDeckCount: number;
   valid: boolean;
+  // ISO-8601 timestamp of the most recent save (V016 migration, 2026-05-18).
+  // Drives the deck-list "Recent" sort mode.
+  updatedAt: string;
 };

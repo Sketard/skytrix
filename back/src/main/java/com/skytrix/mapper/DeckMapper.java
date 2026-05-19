@@ -98,6 +98,7 @@ public abstract class DeckMapper {
 				&& extraCount <= EXTRA.getMaxSize()
 				&& sideCount <= SIDE.getMaxSize()
 		);
+		target.setUpdatedAt(source.getUpdatedAt());
 		return target;
 	}
 
