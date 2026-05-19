@@ -1,5 +1,5 @@
-<div class="handTest">
-  <div class="handTest-header">
+<div class="hand-test">
+  <div class="hand-test-header">
     <button type="button" class="btn btn--ghost" (click)="retry()">
       <mat-icon>shuffle</mat-icon>
       <span>{{ 'deckBuilder.handTest.shuffle' | translate }}</span>
@@ -9,7 +9,7 @@
     </mat-slide-toggle>
   </div>
 
-  <div class="handTest-cards">
+  <div class="hand-test-cards">
     @for (cardDetail of cards(); track cardDetail.id) {
       <app-card class="hand-card" [card]="toCardData(cardDetail)" />
     }

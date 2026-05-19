@@ -41,17 +41,17 @@
       <app-stats-strip class="deck-list__stats" [stats]="stats()"></app-stats-strip>
     }
 
-    <div class="deckPage">
+    <div class="deck-page">
       @if (firstLoad) {
         <app-deck-box-skeleton [count]="6"></app-deck-box-skeleton>
       } @else {
-        <deck-box class="deckPage-deck" [add]="true"></deck-box>
+        <deck-box class="deck-page-deck" [add]="true"></deck-box>
         @for (deck of filteredDecks(); track deck.id) {
-          <div class="deckPage-deck">
+          <div class="deck-page-deck">
             <deck-box [deck]="deck"></deck-box>
             <button
               mat-icon-button
-              class="deckPage-deck-remove"
+              class="deck-page-deck-remove"
               [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
               (click)="confirmDelete(deck); $event.stopPropagation()">
               <mat-icon fontIcon="delete"></mat-icon>

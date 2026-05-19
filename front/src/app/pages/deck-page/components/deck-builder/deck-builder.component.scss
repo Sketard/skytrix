@@ -14,24 +14,44 @@
   padding: 0.25em 0;
 }
 
-.inspector-actions {
+// Mini-panel projected into <app-card-inspector> via ng-content (deck count).
+// Mirrors the inspector's "Possédées" panel structure — vertical stack:
+// uppercase label on top, +/- control row below (mockup lines 3321-3327).
+.inspector-deck-panel {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--gold-soft-08);
+  border: 1px solid var(--gold-soft-30);
+  border-radius: var(--radius-sm);
+  min-width: 0;
 
-  button {
-    color: var(--text-primary);
-    @include r.touch-target-min;
+  &__label {
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  &-count {
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-weight: 600;
+  &__control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1);
+  }
+
+  &__count {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-bold);
+    font-size: var(--text-sm);
     min-width: 1.5rem;
     text-align: center;
+    color: var(--gold-50);
   }
 }
 
@@ -50,7 +70,7 @@
   vertical-align: middle;
 }
 
-.deckBuilder {
+.deck-builder {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -168,9 +188,9 @@
 }
 
 
-.deckBuilder {
+.deck-builder {
   // ─── SEARCH TOGGLE (mobile portrait only) ───
-  &-searchToggle.mat-mdc-icon-button {
+  &-search-toggle.mat-mdc-icon-button {
     display: none;
 
     @media (max-width: 767px) and (orientation: portrait) {
@@ -194,7 +214,7 @@
   }
 
   // ─── DECK VIEWER PARENT (scrollable) ───
-  &-canvasParent {
+  &-canvas-parent {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -282,17 +302,17 @@
   }
 
   // ─── EXTERNAL FILTERS BOTTOM SHEET (hidden by default) ───
-  .deckBuilder-externalFilters {
+  .deck-builder-external-filters {
     display: none;
   }
 
   // ─── LANDSCAPE SPLIT (mobile landscape: side-by-side layout) ───
   @include r.landscape-split {
-    &-searchToggle.mat-mdc-icon-button {
+    &-search-toggle.mat-mdc-icon-button {
       display: none;
     }
 
-    &-canvasParent {
+    &-canvas-parent {
       flex: 55;
       padding: 0.5em;
     }
@@ -310,20 +330,20 @@
       }
     }
 
-    .deckBuilder-externalFilters {
+    .deck-builder-external-filters {
       display: block;
     }
   }
 
   // ─── COMPACT HEIGHT (tablet/desktop with limited height) ───
   @media (min-width: 768px) and (max-height: 500px) {
-    .deckBuilder-externalFilters {
+    .deck-builder-external-filters {
       display: block;
     }
   }
 
   // ─── HAND TEST BACKDROP + OVERLAY ───
-  &-handBackdrop {
+  &-hand-backdrop {
     position: fixed;
     inset: 0;
     z-index: z.$z-hand-backdrop;
@@ -340,7 +360,7 @@
     }
   }
 
-  &-handOverlay {
+  &-hand-overlay {
     position: fixed;
     width: 90%;
     max-width: 900px;
@@ -356,7 +376,7 @@
     padding: var(--space-4);
     transition: bottom var(--transition-slow) var(--ease-out);
 
-    .deckBuilder-handBackdrop.opened & {
+    .deck-builder-hand-backdrop.opened & {
       bottom: var(--space-4);
     }
   }
@@ -369,7 +389,7 @@
   }
 
   // ─── PVP ROOM CREATION LOADING OVERLAY ───
-  &-pvpLoading {
+  &-pvp-loading {
     position: fixed;
     inset: 0;
     z-index: z.$z-hand-backdrop;

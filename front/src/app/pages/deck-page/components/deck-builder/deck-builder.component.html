@@ -1,4 +1,4 @@
-<div class="deckBuilder" cdkDropListGroup>
+<div class="deck-builder" cdkDropListGroup>
   <div class="screen-bg" aria-hidden="true">
     <div class="screen-bg-grid"></div>
     <div class="screen-bg-glow screen-bg-glow--gold"></div>
@@ -110,29 +110,29 @@
   </header>
 
   <!-- BODY (canvas + side panel) -->
-  <div class="deckBuilder-body">
-    <div class="deckBuilder-canvasParent">
+  <div class="deck-builder-body">
+    <div class="deck-builder-canvas-parent">
       <button
         mat-icon-button
-        class="deckBuilder-searchToggle"
+        class="deck-builder-search-toggle"
         [attr.aria-label]="'deckBuilder.searchCard' | translate"
         (click)="toggleSearchPanel()">
         <mat-icon>search</mat-icon>
       </button>
       <deck-viewer (cardClicked)="onDeckCardClicked($event)"></deck-viewer>
     </div>
-    <div class="deckBuilder-side">
+    <div class="deck-builder-side">
       <!-- SIDE PANEL — mini deck preview only (deck name moved to top header) -->
-      <div class="deckBuilder-side-header">
-        <div class="deckBuilder-side-header-row">
-          <span class="deckBuilder-side-header-row-label">{{ 'deckBuilder.deckPreview' | translate }}</span>
+      <div class="deck-builder-side-header">
+        <div class="deck-builder-side-header-row">
+          <span class="deck-builder-side-header-row-label">{{ 'deckBuilder.deckPreview' | translate }}</span>
           <deck-card-zone
             [cardDetails]="deckBuildService.deck().images"
             [slotNumber]="3"
             (cardClicked)="onDeckCardClicked($event)"></deck-card-zone>
         </div>
       </div>
-      <div class="deckBuilder-side-searcher">
+      <div class="deck-builder-side-searcher">
         <app-card-searcher
           [deckBuildMode]="true"
           [externalFilters]="!!useExternalFilters()"
@@ -145,7 +145,7 @@
 
   <!-- LANDSCAPE FILTERS BOTTOM SHEET (full viewport overlay) -->
   <app-bottom-sheet
-    class="deckBuilder-externalFilters"
+    class="deck-builder-external-filters"
     [opened]="externalFiltersOpened()"
     [ariaLabel]="'deckBuilder.filterPanel' | translate"
     (closed)="externalFiltersOpened.set(false)">
@@ -171,8 +171,8 @@
   <input id="importDeckInput" hidden type="file" #importInput (change)="import()" />
 
   <!-- Hand test overlay with backdrop -->
-  <div class="deckBuilder-handBackdrop" [class.opened]="handTestOpened()" (click)="toggleTestHand()">
-    <div class="deckBuilder-handOverlay" (click)="$event.stopPropagation()">
+  <div class="deck-builder-hand-backdrop" [class.opened]="handTestOpened()" (click)="toggleTestHand()">
+    <div class="deck-builder-hand-overlay" (click)="$event.stopPropagation()">
       @if (handTestOpened()) {
         <app-hand-test></app-hand-test>
       }
@@ -181,7 +181,7 @@
 
   <!-- PvP room creation loading overlay -->
   @if (pvpLoading()) {
-    <div class="deckBuilder-pvpLoading" role="status" [attr.aria-label]="'deckBuilder.creatingRoom' | translate">
+    <div class="deck-builder-pvp-loading" role="status" [attr.aria-label]="'deckBuilder.creatingRoom' | translate">
       <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
       <p>{{ 'deckBuilder.creatingRoom' | translate }}</p>
     </div>
@@ -196,14 +196,21 @@
     (favoriteChange)="onFavoriteChange()"
     (imageChange)="onImageChange($event)"
     (dismissed)="dismissInspector()">
-    <div class="inspector-actions" (click)="$event.stopPropagation()">
-      <button mat-icon-button (click)="removeSelectedCardFromDeck()" [title]="'deckBuilder.removeFromDeck' | translate">
-        <mat-icon>remove</mat-icon>
-      </button>
-      <span class="inspector-actions-count">{{ selectedCardCount() }}</span>
-      <button mat-icon-button (click)="addSelectedCardToDeck()" [title]="'deckBuilder.addToDeck' | translate">
-        <mat-icon>add</mat-icon>
-      </button>
+    <div class="inspector-deck-panel" (click)="$event.stopPropagation()">
+      <span class="inspector-deck-panel__label">{{ 'deckBuilder.deck' | translate }}</span>
+      <div class="inspector-deck-panel__control">
+        <button type="button" class="icon-btn icon-btn--sm"
+          (click)="removeSelectedCardFromDeck()"
+          [attr.aria-label]="'deckBuilder.removeFromDeck' | translate">
+          <mat-icon>remove</mat-icon>
+        </button>
+        <span class="inspector-deck-panel__count">{{ selectedCardCount() }}</span>
+        <button type="button" class="icon-btn icon-btn--sm"
+          (click)="addSelectedCardToDeck()"
+          [attr.aria-label]="'deckBuilder.addToDeck' | translate">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
     </div>
   </app-card-inspector>
 </div>
