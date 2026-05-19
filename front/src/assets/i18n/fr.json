@@ -541,7 +541,8 @@
   "cardSearcher": {
     "grid": "Grille",
     "list": "Liste",
-    "favorites": "Favoris"
+    "favorites": "Favoris",
+    "searchAndFilters": "Recherche et filtres"
   },
   "cardFilters": {
     "title": "Filtres",

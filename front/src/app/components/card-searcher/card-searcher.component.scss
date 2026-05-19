@@ -138,7 +138,9 @@
       overflow: hidden;
 
       // Decision Axel 2026-05-17: list mode is desktop + tablet only.
-      @include r.mobile-portrait {
+      // Extended to all orientations < 768px (Wave B-1, 2026-05-18) — the
+      // toggle is just as useless in deck-build landscape mobile.
+      @include r.mobile-full {
         display: none;
       }
     }

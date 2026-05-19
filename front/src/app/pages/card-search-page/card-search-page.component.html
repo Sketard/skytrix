@@ -16,50 +16,65 @@
       </div>
     </div>
 
-    <div class="card-search-page__bar">
-      <search-bar
-        [form]="cardSearchService.filterForm.controls.name"
-        [searchService]="cardSearchService"
-        [showFilters]="false">
-      </search-bar>
+    @if (!isMobile()) {
+      <div class="card-search-page__bar">
+        <search-bar
+          [form]="cardSearchService.filterForm.controls.name"
+          [searchService]="cardSearchService"
+          [showFilters]="false">
+        </search-bar>
 
-      <div class="card-search-page__display-toggle">
-        <div class="card-search-page__view-group" role="radiogroup" [attr.aria-label]="'cardSearcher.grid' | translate">
+        <div class="card-search-page__display-toggle">
+          <div class="card-search-page__view-group" role="radiogroup" [attr.aria-label]="'cardSearcher.grid' | translate">
+            <button type="button"
+              class="btn btn--ghost btn--sm card-search-page__view-btn"
+              [class.card-search-page__view-btn--active]="cardSearchService.displayMode() === displayType.GRID"
+              role="radio"
+              [attr.aria-checked]="cardSearchService.displayMode() === displayType.GRID"
+              [matTooltip]="'cardSearcher.grid' | translate"
+              [attr.aria-label]="'cardSearcher.grid' | translate"
+              (click)="setDisplayMode(displayType.GRID)">
+              <mat-icon>view_module</mat-icon>
+            </button>
+            <button type="button"
+              class="btn btn--ghost btn--sm card-search-page__view-btn"
+              [class.card-search-page__view-btn--active]="cardSearchService.displayMode() === displayType.LIST"
+              role="radio"
+              [attr.aria-checked]="cardSearchService.displayMode() === displayType.LIST"
+              [matTooltip]="'cardSearcher.list' | translate"
+              [attr.aria-label]="'cardSearcher.list' | translate"
+              (click)="setDisplayMode(displayType.LIST)">
+              <mat-icon>view_headline</mat-icon>
+            </button>
+          </div>
+
           <button type="button"
-            class="btn btn--ghost btn--sm card-search-page__view-btn"
-            [class.card-search-page__view-btn--active]="cardSearchService.displayMode() === displayType.GRID"
-            role="radio"
-            [attr.aria-checked]="cardSearchService.displayMode() === displayType.GRID"
-            [matTooltip]="'cardSearcher.grid' | translate"
-            [attr.aria-label]="'cardSearcher.grid' | translate"
-            (click)="setDisplayMode(displayType.GRID)">
-            <mat-icon>view_module</mat-icon>
-          </button>
-          <button type="button"
-            class="btn btn--ghost btn--sm card-search-page__view-btn"
-            [class.card-search-page__view-btn--active]="cardSearchService.displayMode() === displayType.LIST"
-            role="radio"
-            [attr.aria-checked]="cardSearchService.displayMode() === displayType.LIST"
-            [matTooltip]="'cardSearcher.list' | translate"
-            [attr.aria-label]="'cardSearcher.list' | translate"
-            (click)="setDisplayMode(displayType.LIST)">
-            <mat-icon>view_headline</mat-icon>
+            class="btn btn--ghost btn--sm card-search-page__favorite"
+            [class.card-search-page__favorite--active]="cardSearchService.favoriteFilter()"
+            (click)="toggleFavoriteFilter()"
+            [matTooltip]="'cardSearcher.favorites' | translate"
+            [attr.aria-label]="'cardSearcher.favorites' | translate">
+            <mat-icon>{{ cardSearchService.favoriteFilter() ? 'star' : 'star_border' }}</mat-icon>
           </button>
         </div>
-
+      </div>
+    } @else {
+      <div class="card-search-page__mobile-meta">
+        <span class="card-search-page__count card-search-page__count--mobile" aria-live="polite" aria-atomic="true">
+          {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
+        </span>
         <button type="button"
           class="btn btn--ghost btn--sm card-search-page__favorite"
           [class.card-search-page__favorite--active]="cardSearchService.favoriteFilter()"
           (click)="toggleFavoriteFilter()"
-          [matTooltip]="'cardSearcher.favorites' | translate"
           [attr.aria-label]="'cardSearcher.favorites' | translate">
           <mat-icon>{{ cardSearchService.favoriteFilter() ? 'star' : 'star_border' }}</mat-icon>
         </button>
       </div>
-    </div>
+    }
   </header>
 
-  <!-- DESKTOP: 2-cols layout (sidebar filters + results) -->
+  <!-- 2-cols layout (sidebar filters + results) — collapses to single column on mobile -->
   <div class="card-search-page__body">
     <aside class="card-search-page__sidebar">
       <app-card-filters [searchService]="cardSearchService"></app-card-filters>
@@ -68,9 +83,11 @@
     <main class="card-search-page__main">
       <app-active-filters-bar [searchService]="cardSearchService"></app-active-filters-bar>
 
-      <div class="card-search-page__count" aria-live="polite" aria-atomic="true">
-        {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
-      </div>
+      @if (!isMobile()) {
+        <div class="card-search-page__count" aria-live="polite" aria-atomic="true">
+          {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
+        </div>
+      }
 
       <div class="card-search-page__results">
         <card-list
@@ -80,43 +97,40 @@
           (cardClicked)="onCardClicked($event)">
         </card-list>
       </div>
+
+      <app-card-inspector
+        [card]="selectedCardForInspector()"
+        mode="dismissable"
+        [ownedCount]="selectedCardOwnedCount()"
+        [isFavorite]="selectedCardDetail()?.favorite ?? false"
+        (ownedCountChange)="onOwnedCountChange($event)"
+        (favoriteChange)="onFavoriteChange()"
+        (dismissed)="dismissInspector()">
+      </app-card-inspector>
     </main>
   </div>
 
-  <!-- MOBILE FAB: open the filters bottom-sheet -->
+  <!-- MOBILE FAB: open the search+filters bottom-sheet -->
   <button mat-icon-button class="card-search-page__fab"
-    [attr.aria-label]="'deckBuilder.searchCard' | translate"
+    [attr.aria-label]="'cardSearcher.searchAndFilters' | translate"
     (click)="toggleSearchPanel()">
     <mat-icon>tune</mat-icon>
   </button>
 
-  <!-- MOBILE BOTTOM-SHEET: filters -->
+  <!-- MOBILE BOTTOM-SHEET: search-bar + filters together -->
   <app-bottom-sheet
-    [opened]="searchPanelOpened() && isMobilePortrait()"
-    [ariaLabel]="'Panneau de recherche de cartes'"
+    [opened]="searchPanelOpened() && isMobile()"
+    [ariaLabel]="'cardSearcher.searchAndFilters' | translate"
     [requestedSnap]="filtersRequestedSnap()"
     (closed)="searchPanelOpened.set(false)">
     <div class="card-search-page__sheet">
+      <search-bar
+        [form]="cardSearchService.filterForm.controls.name"
+        [searchService]="cardSearchService"
+        [showFilters]="false">
+      </search-bar>
       <app-card-filters [searchService]="cardSearchService"></app-card-filters>
     </div>
   </app-bottom-sheet>
 
-  <!-- LANDSCAPE-SPLIT external filters bottom-sheet (legacy compact mode) -->
-  <app-bottom-sheet
-    class="card-search-page__external-filters"
-    [opened]="externalFiltersOpened()"
-    [ariaLabel]="'Panneau de filtres'"
-    (closed)="externalFiltersOpened.set(false)">
-    <app-card-filters [searchService]="cardSearchService"></app-card-filters>
-  </app-bottom-sheet>
-
-  <app-card-inspector
-    [card]="selectedCardForInspector()"
-    mode="click"
-    [ownedCount]="selectedCardOwnedCount()"
-    [isFavorite]="selectedCardDetail()?.favorite ?? false"
-    (ownedCountChange)="onOwnedCountChange($event)"
-    (favoriteChange)="onFavoriteChange()"
-    (dismissed)="dismissInspector()">
-  </app-card-inspector>
 </div>

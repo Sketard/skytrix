@@ -46,6 +46,19 @@ $bp-replay-narrow: 760px; // Replay viewer — width-driven stepper threshold (D
   }
 }
 
+// Mobile-full: any orientation below tablet, plus the landscape-compact
+// fallback (≤1023px wide AND ≤500px tall — iPad landscape squished). Page-
+// level gate for Track B pages whose mobile layout doesn't compose with
+// anything else on screen (card-search, etc.). Distinct from mobile-portrait
+// which gates Track A bottom-sheets where landscape keeps the side-pane two-
+// column layout. Matches NavbarCollapseService.isMobile in TypeScript.
+@mixin mobile-full {
+  @media (max-width: ($bp-tablet - 1px)),
+         (max-width: 1023px) and (max-height: 500px) {
+    @content;
+  }
+}
+
 // Touch target utility (NFR12: 44x44px minimum on mobile)
 // Usage: @include touch-target-min; in component SCSS
 @mixin touch-target-min {

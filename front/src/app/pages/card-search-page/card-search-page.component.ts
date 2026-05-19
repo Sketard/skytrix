@@ -1,11 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, HostListener, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom, map } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { ActiveFiltersBarComponent } from '../../components/active-filters-bar/active-filters-bar.component';
 import { SearchBarComponent } from '../../components/search-bar/search-bar.component';
 import { CardFiltersComponent } from '../../components/card-filters/card-filters.component';
@@ -41,22 +40,8 @@ export class CardSearchPageComponent {
   readonly filtersRequestedSnap = signal<'full' | null>(null);
   readonly displayType = CardDisplayType;
 
-  readonly externalFiltersOpened = signal(false);
-
   private readonly navbarCollapseService = inject(NavbarCollapseService);
-  private readonly breakpointObserver = inject(BreakpointObserver);
-  readonly isMobilePortrait = this.navbarCollapseService.isMobilePortrait;
-  readonly isCompactHeight = toSignal(
-    this.breakpointObserver.observe(['(min-width: 768px) and (max-height: 500px)'])
-      .pipe(map(result => result.matches)),
-    { initialValue: false }
-  );
-  readonly isLandscapeSplit = toSignal(
-    this.breakpointObserver.observe(['(orientation: landscape) and (min-width: 576px) and (max-width: 767px)'])
-      .pipe(map(result => result.matches)),
-    { initialValue: false }
-  );
-  readonly useExternalFilters = computed(() => this.isLandscapeSplit() || this.isCompactHeight());
+  readonly isMobile = this.navbarCollapseService.isMobile;
 
   protected readonly cardSearchService = inject(CardSearchService);
   private readonly ownedCardService = inject(OwnedCardService);
@@ -88,14 +73,6 @@ export class CardSearchPageComponent {
 
   toggleSearchPanel(): void {
     this.searchPanelOpened.update(v => !v);
-  }
-
-  onFiltersExpanded(expanded: boolean): void {
-    if (this.useExternalFilters()) {
-      this.externalFiltersOpened.set(expanded);
-    } else {
-      this.filtersRequestedSnap.set(expanded ? 'full' : null);
-    }
   }
 
   setDisplayMode(mode: CardDisplayType): void {
