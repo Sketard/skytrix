@@ -36,7 +36,7 @@ export class CardSearchPageComponent {
   readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
   protected readonly selectedCardDetail = signal<CardDetail | null>(null);
 
-  readonly searchPanelOpened = signal(true);
+  readonly searchPanelOpened = signal(false);
   readonly filtersRequestedSnap = signal<'full' | null>(null);
   readonly displayType = CardDisplayType;
 
