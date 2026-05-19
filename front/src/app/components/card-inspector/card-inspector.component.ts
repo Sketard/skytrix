@@ -183,7 +183,7 @@ export class CardInspectorComponent {
   @HostListener('document:mousedown', ['$event'])
   onDocumentMousedown(event: MouseEvent): void {
     if (!this.isVisible()) return;
-    if (this.mode() !== 'dismissable') return;
+    if (this.mode() === 'permanent') return;
     if (this.elementRef.nativeElement.contains(event.target as HTMLElement)) return;
     this.dismissed.emit();
   }

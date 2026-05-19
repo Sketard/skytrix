@@ -505,6 +505,7 @@
     "creatingRoom": "Création de la room...",
     "removeFromDeck": "Retirer du deck",
     "addToDeck": "Ajouter au deck",
+    "deck": "Deck",
     "handTest": {
       "shuffle": "Mélanger",
       "goSecond": "Aller deuxième"

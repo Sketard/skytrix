@@ -3,34 +3,52 @@
 :host {
   user-select: text;
 
-  // DS defaults — consumers may override via :host.mode-* below or
-  // host-level CSS variables.
-  --inspector-bg: var(--surface-card-ds);
-  --inspector-border-color: var(--gold-soft-20);
-  --inspector-border-radius: var(--radius-lg);
+  // DS premium defaults — gold halo + gradient surface (mockup parity).
+  --inspector-bg: linear-gradient(180deg, var(--surface-card) 0%, var(--surface-card-low) 100%);
+  --inspector-border-color: var(--gold-soft-40);
+  --inspector-border-radius: var(--radius-md);
+  --inspector-glow: 0 0 20px var(--gold-soft-15);
   --inspector-text: var(--text-primary);
-  --inspector-text-secondary: var(--text-muted);
-  --inspector-backdrop: var(--scrim);
+  --inspector-text-secondary: var(--text-secondary);
+  --inspector-text-muted: var(--text-muted);
+  --inspector-name-color: var(--gold-50);
+  --inspector-stat-accent: var(--gold-50);
+  --inspector-backdrop: rgba(10, 10, 20, 0.78);
+
+  // Image banner: shows the card ART only (cropped), not the full frame.
+  // Yu-Gi-Oh card art occupies roughly y=18%..55% on a 59:86 image — center
+  // of the art sits around y=36%. With object-fit: cover, object-position
+  // tuned so the art band lands centered in the banner (no top frame visible).
+  // Unified across click + dismissable (mockup parity — same size everywhere).
+  --inspector-image-height: 200px;
+  --inspector-image-art-position: 50% 30%;
+  // Extra zoom on top of object-fit:cover — pushes the card frame fully
+  // out of the banner's viewport. Tuned to ~1.4 for typical card sources.
+  --inspector-image-zoom: 1.4;
+
+  // Panel width — unified across click + dismissable.
+  --inspector-width: 380px;
 }
 
-// Dismissable mode: absolute positioned panel
+// Dismissable mode: absolute positioned panel (deck-builder overlay)
 :host.mode-dismissable {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: var(--inspector-width, 420px);
-  max-height: calc(100% - 16px);
-  background: var(--inspector-bg, rgba(17, 24, 39, 0.92));
-  border: 1px solid var(--inspector-border-color, rgba(0, 212, 255, 0.15));
-  border-radius: var(--inspector-border-radius, 8px);
+  top: var(--space-4);
+  left: var(--space-4);
+  width: var(--inspector-width, 380px);
+  max-height: calc(100% - var(--space-8));
+  background: var(--inspector-bg);
+  border: 1px solid var(--inspector-border-color);
+  border-radius: var(--inspector-border-radius);
+  box-shadow: var(--elevation-3), var(--inspector-glow);
+  backdrop-filter: blur(12px);
   z-index: var(--inspector-z-index, 50);
-  padding: 1rem;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
   transition: opacity 150ms ease;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 
   &.visible {
     opacity: 1;
@@ -39,11 +57,11 @@
 
   &.position-right {
     left: auto;
-    right: 8px;
+    right: var(--space-4);
   }
 
   &.position-top {
-    top: 8px;
+    top: var(--space-4);
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
@@ -51,34 +69,34 @@
   }
 }
 
-// Click mode: backdrop + centered panel (modal)
+// Click mode: centered panel (no backdrop) — card-search
+// Same width/image-height as dismissable for visual consistency.
 :host.mode-click {
-  --inspector-bg: var(--surface-card-ds);
-  --inspector-border-color: var(--gold-soft-30);
   --inspector-border-radius: var(--radius-lg);
-  --inspector-width: min(400px, 90vw);
-  --inspector-image-width: 140px;
+  --inspector-glow: 0 0 32px var(--gold-soft-25);
   --inspector-z-index: 1050;
 }
 
-// Permanent mode: always visible, no transitions
+// Permanent mode: always visible, no transitions (PvP/simulator side panel)
 :host.mode-permanent {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: var(--inspector-width, 420px);
-  max-height: calc(100% - 16px);
-  background: var(--inspector-bg, rgba(17, 24, 39, 0.92));
-  border: 1px solid var(--inspector-border-color, rgba(0, 212, 255, 0.15));
-  border-radius: var(--inspector-border-radius, 8px);
+  top: var(--space-4);
+  left: var(--space-4);
+  width: var(--inspector-width, 380px);
+  max-height: calc(100% - var(--space-8));
+  background: var(--inspector-bg);
+  border: 1px solid var(--inspector-border-color);
+  border-radius: var(--inspector-border-radius);
+  box-shadow: var(--elevation-3), var(--inspector-glow);
+  backdrop-filter: blur(12px);
   z-index: var(--inspector-z-index, 50);
-  padding: 1rem;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 
   &.position-right {
     left: auto;
-    right: 8px;
+    right: var(--space-4);
   }
 
   &:not(.visible) {
@@ -86,92 +104,122 @@
   }
 }
 
-// Dismissable / Permanent: horizontal layout
-.inspector-content {
-  display: flex;
-  gap: 0.75rem;
-  flex: 1;
-  min-height: 0;
+// ---------- Image frame (mockup parity) ----------
+// Full-width art banner — the full card image is cropped (object-fit: cover
+// + object-position) to show ONLY the artwork (not the card frame/name/text).
+// Height is fixed so the banner stays compact at any panel width.
+.inspector-image-frame {
+  width: 100%;
+  height: var(--inspector-image-height);
+  border-bottom: 1px solid var(--gold-soft-20);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-card-low);
 
-  > .inspector-image {
-    width: var(--inspector-image-width, 120px);
-    flex-shrink: 0;
-    border-radius: var(--inspector-border-radius, 8px);
-    align-self: flex-start;
+  // Bottom gradient overlay (mockup parity — softens the edge into the body)
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.55));
+    z-index: 2;
   }
 }
 
-.inspector-left {
+.inspector-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--inspector-image-art-position);
+  transform: scale(var(--inspector-image-zoom, 1));
+  transform-origin: center 30%;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+// ---------- Body ----------
+.inspector-body {
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-
-  > .inspector-image {
-    width: var(--inspector-image-width, 120px);
-    border-radius: var(--inspector-border-radius, 8px);
-  }
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-// Click mode: backdrop + centered panel
+// ---------- Header (name + optional favorite) ----------
+.inspector-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.card-name {
+  color: var(--inspector-name-color);
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+// ---------- Click mode: centered overlay (no backdrop, per Axel 2026-05-19) ----------
+// The backdrop is intentionally transparent + pointer-events: none so clicks
+// outside the panel still reach the underlying page. Only the inspector panel
+// itself catches pointer events. Dismiss-on-outside-click is wired via the
+// host @HostListener('document:mousedown').
 .inspector-backdrop {
   position: fixed;
   inset: 0;
-  background: var(--inspector-backdrop, rgba(0, 0, 0, 0.6));
+  background: transparent;
+  pointer-events: none;
   z-index: var(--inspector-z-index, 1050);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--space-4);
+
+  > .inspector-panel {
+    pointer-events: auto;
+  }
 }
 
 .inspector-panel {
-  width: var(--inspector-width, min(400px, 90vw));
+  width: var(--inspector-width);
   max-height: 90vh;
-  background: var(--inspector-bg, rgba(17, 24, 39, 0.92));
-  border: 1px solid var(--inspector-border-color, rgba(0, 212, 255, 0.15));
-  border-radius: var(--inspector-border-radius, 8px);
-  padding: 1rem;
+  background: var(--inspector-bg);
+  border: 1px solid var(--inspector-border-color);
+  border-radius: var(--inspector-border-radius);
+  box-shadow: var(--elevation-3), var(--inspector-glow);
+  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-
-  > .inspector-image {
-    width: var(--inspector-image-width, 140px);
-    border-radius: var(--inspector-border-radius, 8px);
-  }
-
-  @media (orientation: landscape) and (max-height: 500px) {
-    flex-direction: row;
-    align-items: flex-start;
-    width: min(600px, 90vw);
-    max-height: 80vh;
-    overflow-y: auto;
-
-    > .inspector-image {
-      width: var(--inspector-image-width, 140px);
-      flex-shrink: 0;
-    }
-  }
+  overflow: hidden;
 }
 
-// Art switcher (dots / counter + arrows)
+// ---------- Art switcher (dots / counter + arrows) ----------
 .art-switcher {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  margin-top: 0.375rem;
+  gap: var(--space-1);
 
   &-arrow {
     width: 28px;
     height: 28px;
     padding: 0;
     transform: scale(0.8);
-    color: var(--inspector-text-secondary, #94a3b8);
+    color: var(--inspector-text-secondary);
 
     &:hover {
-      color: var(--inspector-text, #f1f5f9);
+      color: var(--inspector-text);
     }
   }
 
@@ -185,54 +233,81 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    border: 1.5px solid var(--inspector-text-secondary, #94a3b8);
+    border: 1.5px solid var(--inspector-text-muted);
     background: transparent;
     padding: 0;
     cursor: pointer;
     transition: background 150ms ease, border-color 150ms ease;
 
     &.active {
-      background: var(--inspector-border-color, rgba(0, 212, 255, 0.6));
-      border-color: var(--inspector-border-color, rgba(0, 212, 255, 0.6));
+      background: var(--gold-50);
+      border-color: var(--gold-50);
     }
 
     &:hover:not(.active) {
-      border-color: var(--inspector-text, #f1f5f9);
+      border-color: var(--inspector-text);
     }
   }
 
   &-counter {
-    color: var(--inspector-text-secondary, #94a3b8);
-    font-size: 0.75rem;
+    color: var(--inspector-text-secondary);
+    font-size: var(--text-xs);
+    font-family: var(--font-mono);
     min-width: 3rem;
     text-align: center;
     user-select: none;
   }
 }
 
-// Shared detail styles
+// ---------- Details (stats / atk-def / effect) ----------
 .inspector-details {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
   min-height: 0;
 }
 
-.card-name {
-  color: var(--inspector-text, #f1f5f9);
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.375rem;
+.card-stats {
+  color: var(--inspector-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+
+  .stat {
+    display: inline-flex;
+    align-items: center;
+
+    & + .stat::before {
+      content: '·';
+      margin-right: var(--space-2);
+      color: var(--inspector-text-muted);
+    }
+  }
 }
 
-.card-stats,
 .card-atk-def {
-  color: var(--inspector-text-secondary, #94a3b8);
-  font-size: 0.8125rem;
+  color: var(--inspector-stat-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   display: flex;
-  gap: 0.375rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
+
+  span {
+    display: inline-flex;
+    gap: var(--space-1);
+  }
+
+  strong {
+    font-weight: var(--weight-bold);
+    color: var(--inspector-name-color);
+  }
 }
 
 // Live type alterations (granted/removed type flags from active effects).
@@ -240,15 +315,14 @@
 // non-empty — i.e. in PvP/replay context with an alteration in flight.
 .card-type-alterations {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--space-1);
   flex-wrap: wrap;
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
 
   .type-alteration {
-    padding: 0.125rem 0.375rem;
-    border-radius: 0.25rem;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
     background: var(--pvp-alteration-chip-bg);
     border: 1px solid var(--pvp-alteration-chip-border);
 
@@ -263,81 +337,103 @@
 }
 
 .card-effect {
-  color: var(--inspector-text, #f1f5f9);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  margin-top: 0.5rem;
+  color: var(--inspector-text-secondary);
+  font-size: var(--text-xs);
+  line-height: var(--line-relaxed);
   flex: 1;
   min-height: 0;
+  max-height: 200px;
   overflow-y: auto;
+  padding-right: var(--space-1);
 }
 
-// Personal metadata (owned count + favorite)
-.inspector-personal {
+// ---------- Personal row (Deck + Possédées side-by-side via ng-content) ----------
+// Fixed 1fr/1fr grid: both modes always allocate two columns. In card-search
+// (no "Deck" projected via ng-content), the owned panel lands in the RIGHT
+// column and the left column stays empty — keeps the panel sized like the
+// builder ("Possédées" ~50% width, right-aligned visually).
+.inspector-personal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+
+  > .inspector-owned {
+    grid-column: 2;
+  }
+
+  // Deck-builder projects ".inspector-deck-panel" via ng-content — when
+  // present it takes column 1 and pushes owned back to its natural slot.
+  > .inspector-deck-panel + .inspector-owned {
+    grid-column: auto;
+  }
+}
+
+// ---------- Owned panel (mockup .inspector-owned, lines 3321-3327) ----------
+// Vertical stack: label (uppercase, centered, tiny) on top, control row
+// (- count + [optional ★]) below.
+.inspector-owned {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--gold-soft-08);
+  border: 1px solid var(--gold-soft-30);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.inspector-owned-label {
+  font-size: 0.55rem;
+  color: var(--inspector-text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-owned-control {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--inspector-border-color, rgba(0, 212, 255, 0.15));
-  color: var(--inspector-text-secondary, #94a3b8);
-  font-size: 0.8125rem;
-
-  &-owned {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    min-width: 0;
-
-    > span:first-child {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    button {
-      transform: scale(0.75);
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      flex-shrink: 0;
-      color: var(--inspector-text-secondary, #94a3b8);
-    }
-
-    &-count {
-      font-weight: 600;
-      min-width: 1.5rem;
-      text-align: center;
-      color: var(--inspector-text, #f1f5f9);
-    }
-  }
-
-  .favorite-toggle {
-    color: var(--inspector-text-secondary);
-
-    &.active {
-      color: var(--gold);
-    }
-  }
+  justify-content: center;
+  gap: var(--space-1);
 }
 
-// Mobile: dismissable mode centered horizontally
+.inspector-owned-count {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  min-width: 1.5rem;
+  text-align: center;
+  color: var(--gold-50);
+}
+
+// Favorite star uses .icon-btn DS sizing; only the active state is custom.
+.favorite-toggle.icon-btn.active {
+  color: var(--gold);
+  border-color: var(--gold-soft-50);
+  background: var(--gold-soft-12);
+
+  .material-icons-round,
+  mat-icon { color: var(--gold); }
+}
+
+// ---------- Mobile: dismissable centered + smaller image ----------
 @include r.respond-below(r.$bp-tablet) {
   :host.mode-dismissable {
-    top: 8px;
+    top: var(--space-2);
     left: 50%;
     transform: translateX(-50%);
-    width: 90%;
+    width: calc(100% - var(--space-4));
+    max-width: 420px;
 
     &.position-right {
       left: 50%;
       right: auto;
     }
 
-  }
-
-  :host.mode-dismissable .inspector-image {
-    width: 60px;
+    --inspector-image-max-height: 140px;
   }
 }
 
@@ -346,7 +442,7 @@
   cursor: zoom-in;
 }
 
-// Full-screen image lightbox
+// ---------- Full-screen image lightbox ----------
 .image-lightbox {
   position: fixed;
   inset: 0;
@@ -378,7 +474,7 @@
   }
 }
 
-// Reduced motion support
+// ---------- Reduced motion ----------
 @media (prefers-reduced-motion: reduce) {
   :host {
     transition: none;

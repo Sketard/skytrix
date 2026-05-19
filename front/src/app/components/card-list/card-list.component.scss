@@ -19,12 +19,19 @@
     gap: var(--space-1);
   }
 
-  // Decision Axel 2026-05-17: list mode is desktop + tablet only.
-  // On mobile portrait we force GRID-like rendering even when displayMode
-  // is LIST (the toggle is hidden by card-searcher / card-search-page).
-  @include r.mobile-portrait {
+  &.LIST {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  // Decision Axel 2026-05-17 + Wave B-1 (2026-05-18): list mode is desktop +
+  // tablet only. Below 768px (any orientation) we force GRID-like rendering
+  // even when displayMode is LIST — the toggle is hidden by card-searcher /
+  // card-search-page in the same range.
+  @include r.mobile-full {
     &.LIST {
       display: grid;
+      flex-direction: row;
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
   }
@@ -62,7 +69,7 @@
       background: var(--gold-soft-04);
     }
 
-    app-card {
+    .card-image-container {
       width: 60px;
       flex-shrink: 0;
     }
@@ -72,14 +79,14 @@
       // inner `.card-info` shrinks via `min-width: 0` instead of forcing
       // the wrapper wider than its container (deck-builder sidebar is
       // 280-360px — `width: auto` + `card-info 280px` overflowed).
-      app-card {
+      .card-image-container {
         width: 100px;
       }
     }
 
     // Mobile fallback: list mode is hidden via UI toggle but state may
     // be LIST from a desktop session — render grid-like instead.
-    @include r.mobile-portrait {
+    @include r.mobile-full {
       width: 100%;
       padding: 0;
       background: transparent;

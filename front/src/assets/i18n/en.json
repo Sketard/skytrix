@@ -505,6 +505,7 @@
     "creatingRoom": "Creating room...",
     "removeFromDeck": "Remove from deck",
     "addToDeck": "Add to deck",
+    "deck": "Deck",
     "handTest": {
       "shuffle": "Shuffle",
       "goSecond": "Go second"

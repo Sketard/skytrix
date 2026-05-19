@@ -199,13 +199,13 @@
     <div class="inspector-deck-panel" (click)="$event.stopPropagation()">
       <span class="inspector-deck-panel__label">{{ 'deckBuilder.deck' | translate }}</span>
       <div class="inspector-deck-panel__control">
-        <button type="button" class="icon-btn icon-btn--sm"
+        <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
           (click)="removeSelectedCardFromDeck()"
           [attr.aria-label]="'deckBuilder.removeFromDeck' | translate">
           <mat-icon>remove</mat-icon>
         </button>
         <span class="inspector-deck-panel__count">{{ selectedCardCount() }}</span>
-        <button type="button" class="icon-btn icon-btn--sm"
+        <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
           (click)="addSelectedCardToDeck()"
           [attr.aria-label]="'deckBuilder.addToDeck' | translate">
           <mat-icon>add</mat-icon>

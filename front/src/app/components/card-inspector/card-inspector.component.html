@@ -1,7 +1,18 @@
 <!-- Shared card details template (M1 fix: deduplicated) -->
 <ng-template #cardDetails let-c>
   <div class="inspector-details">
-    <h3 class="card-name">{{ c | cardName }}</h3>
+    <div class="inspector-header">
+      <h3 class="card-name">{{ c | cardName }}</h3>
+      @if (showPersonalMetadata()) {
+        <button type="button"
+          class="icon-btn icon-btn--sm icon-btn--framed favorite-toggle"
+          [class.active]="isFavorite()"
+          (click)="toggleFavorite(); $event.stopPropagation()"
+          [attr.aria-label]="'a11y.favorite' | translate">
+          <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
+        </button>
+      }
+    </div>
     @if (c.isMonster) {
       <div class="card-stats">
         @if (c.attribute) {
@@ -20,9 +31,9 @@
         }
       </div>
       <div class="card-atk-def">
-        <span>ATK {{ c.displayAtk }}</span>
+        <span>ATK <strong>{{ c.displayAtk }}</strong></span>
         @if (c.hasDefense) {
-          <span>DEF {{ c.displayDef }}</span>
+          <span>DEF <strong>{{ c.displayDef }}</strong></span>
         }
       </div>
       @if (c.liveOverlay && (c.liveOverlay.addedTypeLabels?.length || c.liveOverlay.removedTypeLabels?.length)) {
@@ -43,27 +54,26 @@
       </div>
     }
     <div class="card-effect" [innerHTML]="c | cardDesc"></div>
-    @if (showPersonalMetadata()) {
-      <div class="inspector-personal">
-        <div class="inspector-personal-owned">
-          <span>{{ 'cardInspector.owned' | translate }}</span>
-          <button mat-icon-button (click)="changeOwned(-1); $event.stopPropagation()">
-            <mat-icon>remove</mat-icon>
-          </button>
-          <span class="inspector-personal-owned-count">{{ ownedCount() }}</span>
-          <button mat-icon-button (click)="changeOwned(1); $event.stopPropagation()">
-            <mat-icon>add</mat-icon>
-          </button>
-        </div>
-        <button mat-icon-button
-          class="favorite-toggle"
-          [class.active]="isFavorite()"
-          (click)="toggleFavorite(); $event.stopPropagation()"
-          [attr.aria-label]="'a11y.favorite' | translate">
-          <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
-        </button>
-      </div>
-    }
+  </div>
+</ng-template>
+
+<!-- Owned mini-panel (rendered inline in each mode below) -->
+<ng-template #ownedMini>
+  <div class="inspector-owned">
+    <span class="inspector-owned-label">{{ 'cardInspector.owned' | translate }}</span>
+    <div class="inspector-owned-control">
+      <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
+        (click)="changeOwned(-1); $event.stopPropagation()"
+        [attr.aria-label]="'a11y.decrement' | translate">
+        <mat-icon>remove</mat-icon>
+      </button>
+      <span class="inspector-owned-count">{{ ownedCount() }}</span>
+      <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
+        (click)="changeOwned(1); $event.stopPropagation()"
+        [attr.aria-label]="'a11y.increment' | translate">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
   </div>
 </ng-template>
 
@@ -105,38 +115,52 @@
 }
 
 @if (mode() === 'click') {
-  <!-- Click mode: full-screen backdrop + centered panel -->
+  <!-- Click mode: full-screen backdrop + centered panel (favorite in owned footer) -->
   @if (isVisible()) {
     @if (card(); as c) {
-      <div class="inspector-backdrop" (click)="dismissed.emit()">
-        <div class="inspector-panel" (click)="$event.stopPropagation()">
-          <img [src]="currentImageUrlFull()"
-               [alt]="c | cardName"
-               class="inspector-image inspector-image--zoomable"
-               (click)="openLightbox(); $event.stopPropagation()"
-               (error)="$any($event.target).src='assets/images/card_back.jpg'" />
-          <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
-          <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
+      <div class="inspector-backdrop">
+        <div class="inspector-panel">
+          <div class="inspector-image-frame">
+            <img [src]="currentImageUrl()"
+                 [alt]="c | cardName"
+                 class="inspector-image inspector-image--zoomable"
+                 (click)="openLightbox(); $event.stopPropagation()"
+                 (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+          </div>
+          <div class="inspector-body">
+            <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
+            <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
+            @if (showPersonalMetadata()) {
+              <div class="inspector-personal-row">
+                <ng-content></ng-content>
+                <ng-container *ngTemplateOutlet="ownedMini"></ng-container>
+              </div>
+            }
+          </div>
         </div>
-        <ng-content></ng-content>
       </div>
     }
   }
 } @else {
-  <!-- Dismissable + Permanent modes: inline layout -->
+  <!-- Dismissable + Permanent modes: vertical stacked (favorite inline with name) -->
   @if (isVisible()) {
     @if (card(); as c) {
-      <div class="inspector-content">
-        <div class="inspector-left">
-          <img [src]="currentImageUrl()"
-               [alt]="c | cardName"
-               class="inspector-image inspector-image--zoomable"
-               (click)="openLightbox()"
-               (error)="$any($event.target).src='assets/images/card_back.jpg'" />
-          <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
-          <ng-content></ng-content>
-        </div>
+      <div class="inspector-image-frame">
+        <img [src]="currentImageUrl()"
+             [alt]="c | cardName"
+             class="inspector-image inspector-image--zoomable"
+             (click)="openLightbox()"
+             (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+      </div>
+      <div class="inspector-body">
+        <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
         <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
+        @if (showPersonalMetadata()) {
+          <div class="inspector-personal-row">
+            <ng-content></ng-content>
+            <ng-container *ngTemplateOutlet="ownedMini"></ng-container>
+          </div>
+        }
       </div>
     }
   }
