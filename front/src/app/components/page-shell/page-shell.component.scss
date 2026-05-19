@@ -1,0 +1,48 @@
+@use 'responsive' as r;
+
+// Host renders as a fragment — the page chrome (screen-bg + page-header) is
+// projected at the top, then a default <ng-content> for the body. No host
+// box needed.
+:host {
+  display: contents;
+}
+
+// Pattern A6 (pages-homogenization-findings-consolidated-2026-05-18):
+// On narrow mobile portrait the back-nav wraps under the title because
+// `.page-header` is `flex-wrap: wrap`. We reposition it as icon-only at the
+// LEFT of the title row (`order: -1`), hide its text label, and collapse
+// the decorative page icon — the back arrow becomes the visual anchor.
+//
+// Scoped to `:host` so this rule only fires when the consumer uses the
+// shell (existing inline `.page-header > .btn` overrides in replay-hub /
+// lobby are dead once those pages migrate to <app-page-shell>).
+:host {
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    .page-header {
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .page-shell__back {
+      order: -1;
+      flex: 0 0 auto;
+      padding: var(--space-2);
+      min-width: 0;
+
+      > span { display: none; }
+      mat-icon { margin: 0; }
+    }
+
+    .page-header__title-group {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    // Decorative icon collapses on mobile — the back arrow plays that role.
+    .page-header__icon,
+    app-icon-wrap {
+      display: none;
+    }
+  }
+}

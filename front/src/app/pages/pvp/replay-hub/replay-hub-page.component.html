@@ -1,26 +1,12 @@
-<div class="screen-bg" aria-hidden="true">
-  <div class="screen-bg-grid"></div>
-  <div class="screen-bg-glow screen-bg-glow--gold"></div>
-  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
-</div>
+<app-page-shell
+  titleKey="replay.hub.title"
+  subtitleKey="replay.hub.subtitle"
+  icon="play_circle"
+  [backActionEnabled]="true"
+  backLabelKey="replay.hub.back"
+  (backAction)="goToLobby()">
 
 <div class="hub-container">
-  <header class="page-header">
-    <div class="page-header__title-group">
-      <mat-icon class="page-header__icon">play_circle</mat-icon>
-      <div class="page-header__text">
-        <h1 class="page-header__title text-gold-gradient">{{ 'replay.hub.title' | translate }}</h1>
-        <span class="page-header__subtitle">{{ 'replay.hub.subtitle' | translate }}</span>
-      </div>
-    </div>
-    <button type="button"
-            class="btn btn--ghost btn--sm"
-            (click)="goToLobby()"
-            [attr.aria-label]="'replay.hub.back' | translate">
-      <mat-icon>arrow_back</mat-icon>
-      <span>{{ 'replay.hub.back' | translate }}</span>
-    </button>
-  </header>
 
   <!-- Stats strip -->
   @if (store.stats()) {
@@ -211,3 +197,5 @@
     </cdk-virtual-scroll-viewport>
   }
 </div>
+
+</app-page-shell>

@@ -38,28 +38,7 @@
 // Override the h1 fluid size to match the lobby — DS spec defers to consumer.
 .page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
 
-// Mobile (≤ 480px) — le bouton "Lobby" wrapait sous le titre (effet "perdu")
-// à cause de `flex-wrap: wrap` sur `.page-header`. On le repositionne en
-// icon-only à gauche du titre via `order: -1`, on cache son label texte, on
-// réduit padding/gap pour qu'il se fonde dans la title row (pattern back-nav
-// standard mobile). Pas de changement de markup — uniquement CSS.
-@include r.respond-below(r.$bp-pvp-narrow) {
-  .page-header {
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .page-header > .btn {
-    order: -1;
-    flex: 0 0 auto;
-    padding: var(--space-2);
-    min-width: 0;
-    > span { display: none; }
-    mat-icon { margin: 0; }
-  }
-  .page-header__title-group { min-width: 0; flex: 1 1 auto; }
-  .page-header__icon { display: none; } // libère la place : back-icon joue ce rôle visuel
-}
+// Mobile back-nav pattern (A6) now lives in <app-page-shell> — Wave C.
 
 // Stats strip styles moved to `<app-stats-strip>` component (Wave A, 2026-05-18).
 

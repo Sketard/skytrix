@@ -58,6 +58,16 @@ describe('DeckListStore', () => {
 
     store = TestBed.inject(DeckListStore);
     http = TestBed.inject(HttpTestingController);
+    // start() wires the decks$ → items subscription. Per-test fetchSnapshot
+    // assertions explicitly handle the HTTP request after start().
+    store.start();
+    // Consume the start()-triggered HTTP fetch unless the test wants it.
+    const initialReq = http.expectOne('/api/decks');
+    initialReq.flush([]);
+    // The effect that mirrors `isFirstDeckLoad → loading` only fires on the
+    // next CD tick; tests that read `showEmptyState`/`showNoResultsState`
+    // need a synchronous value, so we set it explicitly.
+    store.loading.set(false);
   });
 
   afterEach(() => {
@@ -143,6 +153,7 @@ describe('DeckListStore', () => {
   // ─── fetchSnapshot ──────────────────────────────────────────────────────────
 
   it('fetchSnapshot pushes to the shared cache on success', async () => {
+    fetchDecksSpy.calls.reset(); // start() already triggered one
     const promise = store.fetchSnapshot();
     const req = http.expectOne('/api/decks');
     expect(req.request.method).toBe('GET');

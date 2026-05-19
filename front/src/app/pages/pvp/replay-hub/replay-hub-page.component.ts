@@ -16,6 +16,7 @@ import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 import { ReplayCardSkeletonComponent } from '../../../shared/skel';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../components/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../components/empty-state/empty-state.component';
+import { PageShellComponent } from '../../../components/page-shell/page-shell.component';
 import { SectionHeaderComponent } from '../../../components/section-header/section-header.component';
 import { StatsStripComponent, StatItem } from '../../../components/stats-strip/stats-strip.component';
 import { ReplayHubStore, ReplayFilter, ReplaySortMode } from './replay-hub-store';
@@ -64,6 +65,7 @@ type DisplayedItem =
     AvatarComponent,
     ReplayCardSkeletonComponent,
     EmptyStateComponent,
+    PageShellComponent,
     SectionHeaderComponent,
     StatsStripComponent,
   ],

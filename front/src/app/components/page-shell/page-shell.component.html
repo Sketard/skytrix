@@ -1,0 +1,41 @@
+<div class="screen-bg" aria-hidden="true">
+  <div class="screen-bg-grid"></div>
+  <div class="screen-bg-glow screen-bg-glow--gold"></div>
+  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+</div>
+
+<header [class]="headerClass()">
+  <div class="page-header__title-group">
+    @if (iconWrapPalette()) {
+      <app-icon-wrap [palette]="iconWrapPalette()!" [icon]="icon() ?? ''"></app-icon-wrap>
+    } @else if (icon()) {
+      <mat-icon class="page-header__icon">{{ icon() }}</mat-icon>
+    }
+    <div class="page-header__text">
+      <h1 class="page-header__title text-gold-gradient">{{ titleKey() | translate }}</h1>
+      @if (subtitleKey()) {
+        <span class="page-header__subtitle">{{ subtitleKey()! | translate }}</span>
+      }
+    </div>
+  </div>
+
+  @if (hasBackRoute()) {
+    <a class="btn btn--ghost btn--sm page-shell__back"
+       [routerLink]="backRoute()"
+       [attr.aria-label]="(backAriaLabelKey() ?? backLabelKey()) | translate">
+      <mat-icon>arrow_back</mat-icon>
+      <span>{{ backLabelKey() | translate }}</span>
+    </a>
+  } @else if (hasBackAction()) {
+    <button type="button" class="btn btn--ghost btn--sm page-shell__back"
+            (click)="backAction.emit()"
+            [attr.aria-label]="(backAriaLabelKey() ?? backLabelKey()) | translate">
+      <mat-icon>arrow_back</mat-icon>
+      <span>{{ backLabelKey() | translate }}</span>
+    </button>
+  }
+
+  <ng-content select="[header-actions]"></ng-content>
+</header>
+
+<ng-content></ng-content>
