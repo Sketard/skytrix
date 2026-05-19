@@ -173,50 +173,14 @@
   z-index: z.$z-pvp-replay-sheet-backdrop;
 }
 
-// Floating back-to-hub FAB — only visible in mobile landscape (≤ 500px tall)
-// where the topbar is hidden. Position fixed top-left so it sits above the
-// safe-area inset. Small touch-target (44×44 WCAG min), gold-soft scrim so it
-// reads as a system-level affordance rather than a board element. Above the
-// board (z-pvp-zone-browser) but below modals/sheets (z-overlay).
-.replay-page__back-fab {
+// Back FAB visibility — only show when the topbar is hidden (mobile
+// landscape with cramped vertical budget). The actual button styling +
+// position-fixed lives in <app-back-fab> (Wave D shared component);
+// this wrapper is the page-specific gate.
+.replay-page__back-fab-host {
   display: none;
-  position: fixed;
-  top: max(var(--space-2), env(safe-area-inset-top, var(--space-2)));
-  left: max(var(--space-2), env(safe-area-inset-left, var(--space-2)));
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--surface-card-ds);
-  border: 1px solid var(--gold-soft-25);
-  color: var(--gold);
-  cursor: pointer;
-  z-index: z.$z-pvp-zone-browser;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(6px);
-  box-shadow: var(--elevation-2), 0 0 16px var(--gold-soft-12);
-  transition: border-color var(--transition-fast) var(--ease-out),
-              background var(--transition-fast) var(--ease-out);
 
-  mat-icon {
-    // !important: override mat-icon's default 24px host bind — keep 20px
-    // glyph centered in the 44×44 touch target.
-    font-size: 20px !important;
-    width: 20px !important;
-    height: 20px !important;
-  }
-
-  &:hover,
-  &:focus-visible {
-    border-color: var(--gold);
-    background: var(--gold-soft-12);
-  }
-}
-
-// Mirror the topbar's landscape-hide rule: show the FAB only when the topbar
-// is hidden (mobile landscape with cramped vertical budget).
-@media (orientation: landscape) and (max-height: 500px) {
-  .replay-page__back-fab {
-    display: inline-flex;
+  @media (orientation: landscape) and (max-height: 500px) {
+    display: contents;
   }
 }

@@ -18,14 +18,17 @@
        the board (see topbar.scss landscape rule). Without an explicit back
        affordance the user would be stuck (Axel 2026-05-17). This FAB only
        shows when the topbar is suppressed; everywhere else the topbar's own
-       back button is the canonical exit. -->
-  <button
-    type="button"
-    class="replay-page__back-fab"
-    [attr.aria-label]="'replay.hub.back' | translate"
-    (click)="onBackToHub()">
-    <mat-icon aria-hidden="true">arrow_back</mat-icon>
-  </button>
+       back button is the canonical exit. Visibility is CSS-driven (the
+       `replay-page__back-fab-host` media-query wrapper hides it outside
+       landscape-compact) — `<app-back-fab>` is told it's visible because
+       the wrapper already owns the gate. -->
+  <div class="replay-page__back-fab-host">
+    <app-back-fab
+      [visible]="true"
+      ariaLabelKey="replay.hub.back"
+      (back)="onBackToHub()">
+    </app-back-fab>
+  </div>
 
   <div class="replay-viewer" (keydown)="onKeydown($event)" tabindex="0">
     <div class="board-area"

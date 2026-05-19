@@ -1,0 +1,8 @@
+// The host is a flex column by default — most skeleton lists vertically
+// stack their items. Consumers can override via :host CSS variables or
+// wrap the component in their own grid container if needed.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--skeleton-list-gap, 10px);
+}

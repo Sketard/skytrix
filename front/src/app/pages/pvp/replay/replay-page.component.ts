@@ -28,6 +28,7 @@ import { AuthService } from '../../../services/auth.service';
 import { LoaderService } from '../../../services/loader.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { OrientationLockComponent } from '../../../shared/orientation-lock/orientation-lock.component';
+import { BackFabComponent } from '../../../components/back-fab/back-fab.component';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
@@ -92,6 +93,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     TimelineBarComponent, TransportBarComponent, DebugLogPanelComponent,
     PvpPromptDialogComponent, PvpChainOverlayComponent, PvpDuelOverlaysComponent,
     OrientationLockComponent,
+    BackFabComponent,
     ReplayTopbarComponent, ReplayLoadingSkeletonComponent,
     ReplayEndOverlayComponent, ReplayCheatSheetComponent, ReplayBottomSheetComponent,
     TimelineStepperComponent, TurnPickerSheetComponent, SubEventPickerSheetComponent,

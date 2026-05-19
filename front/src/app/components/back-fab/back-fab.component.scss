@@ -1,0 +1,50 @@
+@use 'z-layers' as z;
+
+// Floating back FAB — top-left, gold halo, 44×44 WCAG touch target.
+// The host pulls the button out of normal flow with `position: fixed`,
+// so consumers don't need to reserve space. Visibility is parent-driven
+// via the `visible` input → `back-fab--hidden` host class.
+
+:host {
+  display: contents;
+}
+
+:host(.back-fab--hidden) .back-fab {
+  display: none;
+}
+
+.back-fab {
+  position: fixed;
+  top: max(var(--space-2), env(safe-area-inset-top, var(--space-2)));
+  left: max(var(--space-2), env(safe-area-inset-left, var(--space-2)));
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-card-ds);
+  border: 1px solid var(--gold-soft-25);
+  color: var(--gold);
+  cursor: pointer;
+  z-index: z.$z-pvp-zone-browser;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: var(--elevation-2), 0 0 16px var(--gold-soft-12);
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  mat-icon {
+    // !important: override mat-icon's default 24px host bind — keep 20px
+    // glyph centered in the 44×44 touch target.
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--gold);
+    background: var(--gold-soft-12);
+  }
+}
