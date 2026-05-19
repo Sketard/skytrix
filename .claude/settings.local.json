@@ -14,7 +14,9 @@
       "Bash(SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts --node-budget=400 --budget-ms=3600000 --only=stun-runick-opener --label=step2-phase2-runick)",
       "Bash(npx tsx *)",
       "Read(//c/c/Users/Axel/Desktop/code/skytrix/**)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(xargs grep -h \"var\\(--text-secondary\\)\")",
+      "Bash(xargs grep -h \"var\\(--border-subtle\\)\")"
     ]
   }
 }
