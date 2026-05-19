@@ -63,8 +63,8 @@
   @let svc = searchService();
   @if (!svc?.isLoading() && (cardsDetails$() | async)?.length === 0) {
     <app-empty-state
-      [message]="emptyMessage"
-      [ctaLabel]="emptyCta"
+      titleKey="cardList.emptyMessage"
+      ctaLabelKey="cardList.emptyCta"
       (ctaAction)="onEmptyCta()">
     </app-empty-state>
   }

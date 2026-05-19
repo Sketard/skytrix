@@ -17,7 +17,8 @@ import { RouterLink } from '@angular/router';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../components/confirm-dialog/confirm-dialog.component';
 import { ShortDeck } from '../../../../core/model/short-deck';
 import { EmptyStateComponent } from '../../../../components/empty-state/empty-state.component';
-import { DeckStatsStripComponent, DeckStat } from '../../../../components/deck-stats-strip/deck-stats-strip.component';
+import { IconWrapComponent } from '../../../../components/icon-wrap/icon-wrap.component';
+import { StatsStripComponent, StatItem } from '../../../../components/stats-strip/stats-strip.component';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { OwnedCardService } from '../../../../services/owned-card.service';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -28,7 +29,7 @@ import { formattedWithoutCaseAndAccent } from '../../../../core/utilities/functi
   imports: [
     CommonModule,
     DeckBoxComponent,
-    DeckStatsStripComponent,
+    StatsStripComponent,
     SearchBarComponent,
     DeckBoxSkeletonComponent,
     DeckStatsStripSkeletonComponent,
@@ -36,6 +37,7 @@ import { formattedWithoutCaseAndAccent } from '../../../../core/utilities/functi
     MatButtonModule,
     MatTooltipModule,
     EmptyStateComponent,
+    IconWrapComponent,
     TranslatePipe,
     ReactiveFormsModule,
     RouterLink,
@@ -68,13 +70,13 @@ export class DeckListComponent {
     return all.filter(d => formattedWithoutCaseAndAccent(d.name).includes(needle));
   });
 
-  readonly stats = computed<Array<DeckStat>>(() => {
+  readonly stats = computed<StatItem[]>(() => {
     const all = this.decksSignal();
     const ownedSum = Array.from(this.ownedCardService.ownedMap().values()).reduce((acc, n) => acc + n, 0);
     return [
-      { label: 'deckStats.decks', value: all.length },
-      { label: 'deckStats.cardsOwned', value: ownedSum },
-      { label: 'deckStats.legalDecks', value: all.filter(d => d.valid).length },
+      { labelKey: 'deckStats.decks', value: all.length },
+      { labelKey: 'deckStats.cardsOwned', value: ownedSum },
+      { labelKey: 'deckStats.legalDecks', value: all.filter(d => d.valid).length },
     ];
   });
 

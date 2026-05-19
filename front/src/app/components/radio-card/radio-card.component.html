@@ -1,0 +1,11 @@
+<button type="button"
+        class="radio-card"
+        [class.radio-card--active]="active()"
+        [attr.aria-checked]="active()"
+        role="radio"
+        (click)="select.emit()">
+  <span class="radio-card__label">{{ labelKey() | translate }}</span>
+  @if (descKey()) {
+    <span class="radio-card__desc">{{ descKey()! | translate }}</span>
+  }
+</button>

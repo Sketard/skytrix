@@ -114,6 +114,11 @@
   --space-fluid-md: clamp(16px, 3vw, 24px);
   --space-fluid-lg: clamp(24px, 5vw, 48px);
 
+  // --- Sizing — inline controls ---
+  // Pairs with .search-bar so inline CTAs (deck-list "Create deck", etc.)
+  // align with sibling search inputs without ad-hoc !important min-heights.
+  --cta-inline-height: 36px;
+
   // --- Radius (DS generalised — `--pvp-radius-*` retained for legacy PvP) ---
   --radius-sm:   6px;
   --radius-md:   10px;

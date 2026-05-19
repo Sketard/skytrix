@@ -15,6 +15,9 @@ import { AuthService } from '../../../services/auth.service';
 import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 import { ReplayCardSkeletonComponent } from '../../../shared/skel';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../components/confirm-dialog/confirm-dialog.component';
+import { EmptyStateComponent } from '../../../components/empty-state/empty-state.component';
+import { SectionHeaderComponent } from '../../../components/section-header/section-header.component';
+import { StatsStripComponent, StatItem } from '../../../components/stats-strip/stats-strip.component';
 import { ReplayHubStore, ReplayFilter, ReplaySortMode } from './replay-hub-store';
 
 interface ResultMeta {
@@ -60,6 +63,9 @@ type DisplayedItem =
     RouterLink,
     AvatarComponent,
     ReplayCardSkeletonComponent,
+    EmptyStateComponent,
+    SectionHeaderComponent,
+    StatsStripComponent,
   ],
   providers: [ReplayHubStore],
   templateUrl: './replay-hub-page.component.html',
@@ -104,6 +110,17 @@ export class ReplayHubPageComponent implements OnInit {
     const s = this.store.stats();
     if (!s) return 0;
     return Math.round(s.winrate * 100);
+  });
+
+  readonly statsItems = computed<StatItem[]>(() => {
+    const s = this.store.stats();
+    if (!s) return [];
+    return [
+      { icon: 'movie',        iconVariant: 'total',   value: s.total,                labelKey: 'replay.hub.stats.total',     surfaceAccent: 'cyan' },
+      { icon: 'emoji_events', iconVariant: 'win',     value: s.victories,            labelKey: 'replay.hub.stats.victories', surfaceAccent: 'gold', valueVariant: 'gold' },
+      { icon: 'close',        iconVariant: 'loss',    value: s.defeats,              labelKey: 'replay.hub.stats.defeats',   surfaceAccent: 'neutral', valueVariant: 'muted' },
+      { icon: 'trending_up',  iconVariant: 'winrate', value: `${this.winratePercent()}%`, labelKey: 'replay.hub.stats.winrate', surfaceAccent: 'gold', valueVariant: 'gold' },
+    ];
   });
 
   /** Items rendered by the virtual-scroll. Real replay-cards followed by 2

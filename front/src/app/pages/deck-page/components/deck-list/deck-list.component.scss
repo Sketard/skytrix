@@ -27,28 +27,6 @@
   }
 }
 
-// Icon wrapper — 44×44 carré radius-md fond gold-soft + border + drop-shadow.
-// Pattern mockup (`_mockups/mockup-deck-flow.html:727-735`). Overrides the
-// raw `.page-header__icon` 38px applied by the partial.
-.deck-list__icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  display: grid;
-  place-items: center;
-  background: var(--gold-soft-12);
-  border: 1px solid var(--gold-soft-30);
-  flex-shrink: 0;
-
-  .page-header__icon {
-    font-size: 24px !important;
-    width: 24px !important;
-    height: 24px !important;
-    color: var(--gold);
-    filter: drop-shadow(0 0 8px var(--gold-soft-50));
-  }
-}
-
 .deck-list__actions {
   display: flex;
   align-items: stretch;
@@ -62,12 +40,12 @@
   max-width: 320px;
 }
 
-// CTA "Nouveau deck" — height aligned with .search-bar (36px min-height).
+// CTA "Nouveau deck" — height aligned with .search-bar via DS token.
 .deck-list__cta {
   flex-shrink: 0;
   white-space: nowrap;
-  min-height: 36px !important;
-  height: 36px;
+  min-height: var(--cta-inline-height) !important;
+  height: var(--cta-inline-height);
 }
 
 // =============================================================================

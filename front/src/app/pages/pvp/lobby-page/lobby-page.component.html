@@ -37,13 +37,7 @@
     </button>
   </div>
 
-  <div class="section-header">
-    <div class="section-header__title-group">
-      <span class="section-header__title">{{ 'lobby.openRooms' | translate }}</span>
-      <span class="badge badge--gold" [attr.aria-label]="'lobby.roomsCount' | translate: { count: roomsCount() }">
-        {{ roomsCount() }}
-      </span>
-    </div>
+  <app-section-header titleKey="lobby.openRooms" [count]="roomsCount()" countKey="lobby.roomsCount">
     <button type="button"
             class="btn btn--ghost btn--sm"
             [attr.aria-label]="'lobby.sort.label' | translate"
@@ -60,7 +54,7 @@
         </button>
       }
     </mat-menu>
-  </div>
+  </app-section-header>
 
   @if (store.showLiveSyncBanner()) {
     <app-error-banner
@@ -96,37 +90,36 @@
       <app-room-card-skeleton [count]="4"></app-room-card-skeleton>
     </div>
   } @else if (store.error()) {
-    <div class="empty-state empty-state--error">
-      <mat-icon class="empty-state__icon">wifi_off</mat-icon>
-      <p class="empty-state__title">{{ 'lobby.emptyError' | translate }}</p>
-      <button type="button" class="btn btn--secondary" (click)="store.fetchSnapshot()">
-        <mat-icon>refresh</mat-icon>
-        {{ 'common.retry' | translate }}
-      </button>
-    </div>
+    <app-empty-state
+      variant="error"
+      icon="wifi_off"
+      titleKey="lobby.emptyError"
+      ctaLabelKey="common.retry"
+      ctaIcon="refresh"
+      ctaVariant="secondary"
+      (ctaAction)="store.fetchSnapshot()">
+    </app-empty-state>
   } @else if (showEmptyState()) {
-    <div class="empty-state">
-      <mat-icon class="empty-state__icon">groups</mat-icon>
-      <p class="empty-state__title">{{ 'lobby.emptyTitle' | translate }}</p>
-      <p class="empty-state__desc">{{ 'lobby.emptySubtitle' | translate }}</p>
-      <button type="button"
-              class="btn btn--primary btn--lg btn--cta"
-              [disabled]="creatingRoom()"
-              (click)="createRoom()">
-        <mat-icon>add_circle</mat-icon>
-        {{ 'lobby.createFirstRoom' | translate }}
-      </button>
-    </div>
+    <app-empty-state
+      icon="groups"
+      titleKey="lobby.emptyTitle"
+      descKey="lobby.emptySubtitle"
+      ctaLabelKey="lobby.createFirstRoom"
+      ctaIcon="add_circle"
+      [ctaDisabled]="creatingRoom()"
+      (ctaAction)="createRoom()">
+    </app-empty-state>
   } @else if (showNoResultsState()) {
-    <div class="empty-state">
-      <mat-icon class="empty-state__icon">search_off</mat-icon>
-      <p class="empty-state__title">{{ 'lobby.noResultsTitle' | translate }}</p>
-      <p class="empty-state__desc">{{ 'lobby.noResultsSubtitle' | translate }}</p>
-      <button type="button" class="btn btn--secondary" (click)="clearSearch()">
-        <mat-icon>backspace</mat-icon>
-        {{ 'lobby.clearSearch' | translate }}
-      </button>
-    </div>
+    <app-empty-state
+      variant="no-results"
+      icon="search_off"
+      titleKey="lobby.noResultsTitle"
+      descKey="lobby.noResultsSubtitle"
+      ctaLabelKey="lobby.clearSearch"
+      ctaIcon="backspace"
+      ctaVariant="secondary"
+      (ctaAction)="clearSearch()">
+    </app-empty-state>
   } @else {
     <cdk-virtual-scroll-viewport
         class="room-list-viewport"

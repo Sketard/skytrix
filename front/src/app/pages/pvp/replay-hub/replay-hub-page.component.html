@@ -23,45 +23,8 @@
   </header>
 
   <!-- Stats strip -->
-  @if (store.stats(); as stats) {
-    <section class="hub-stats" [attr.aria-label]="'replay.hub.stats.total' | translate">
-      <div class="surface-card surface-card--accent-cyan hub-stat-card">
-        <span class="hub-stat-icon hub-stat-icon--total">
-          <mat-icon>movie</mat-icon>
-        </span>
-        <div class="hub-stat-content">
-          <span class="hub-stat-value">{{ stats.total }}</span>
-          <span class="hub-stat-label">{{ 'replay.hub.stats.total' | translate }}</span>
-        </div>
-      </div>
-      <div class="surface-card surface-card--accent-gold hub-stat-card">
-        <span class="hub-stat-icon hub-stat-icon--win">
-          <mat-icon>emoji_events</mat-icon>
-        </span>
-        <div class="hub-stat-content">
-          <span class="hub-stat-value hub-stat-value--gold">{{ stats.victories }}</span>
-          <span class="hub-stat-label">{{ 'replay.hub.stats.victories' | translate }}</span>
-        </div>
-      </div>
-      <div class="surface-card surface-card--accent-neutral hub-stat-card">
-        <span class="hub-stat-icon hub-stat-icon--loss">
-          <mat-icon>close</mat-icon>
-        </span>
-        <div class="hub-stat-content">
-          <span class="hub-stat-value hub-stat-value--muted">{{ stats.defeats }}</span>
-          <span class="hub-stat-label">{{ 'replay.hub.stats.defeats' | translate }}</span>
-        </div>
-      </div>
-      <div class="surface-card surface-card--accent-gold hub-stat-card">
-        <span class="hub-stat-icon hub-stat-icon--winrate">
-          <mat-icon>trending_up</mat-icon>
-        </span>
-        <div class="hub-stat-content">
-          <span class="hub-stat-value hub-stat-value--gold">{{ winratePercent() }}%</span>
-          <span class="hub-stat-label">{{ 'replay.hub.stats.winrate' | translate }}</span>
-        </div>
-      </div>
-    </section>
+  @if (store.stats()) {
+    <app-stats-strip [stats]="statsItems()" ariaLabelKey="replay.hub.stats.total"></app-stats-strip>
   }
 
   <!-- Mockup §hub-filters — search and chips on the same row on desktop,
@@ -103,15 +66,10 @@
   </div>
 
   <!-- List header -->
-  <div class="section-header">
-    <div class="section-header__title-group">
-      <span class="section-header__title">{{ 'replay.hub.list.title' | translate }}</span>
-      @if (!store.loading() && !store.error()) {
-        <span class="badge badge--gold">
-          {{ 'replay.hub.list.count' | translate: { count: store.filteredReplays().length } }}
-        </span>
-      }
-    </div>
+  <app-section-header
+    titleKey="replay.hub.list.title"
+    [count]="(!store.loading() && !store.error()) ? store.filteredReplays().length : null"
+    countKey="replay.hub.list.count">
     <button type="button"
             class="btn btn--ghost btn--sm"
             [attr.aria-label]="sortLabelKey() | translate"
@@ -128,7 +86,7 @@
         </button>
       }
     </mat-menu>
-  </div>
+  </app-section-header>
 
   <!-- States -->
   @if (store.loading() && store.replays().length === 0) {
@@ -136,30 +94,31 @@
       <app-replay-card-skeleton [count]="4"></app-replay-card-skeleton>
     </div>
   } @else if (store.error()) {
-    <div class="empty-state empty-state--error">
-      <mat-icon class="empty-state__icon">wifi_off</mat-icon>
-      <p class="empty-state__title">{{ 'replay.hub.error.title' | translate }}</p>
-      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="store.fetchSnapshot()">
-        <mat-icon>refresh</mat-icon>
-        {{ 'replay.hub.error.retry' | translate }}
-      </button>
-    </div>
+    <app-empty-state
+      variant="error"
+      icon="wifi_off"
+      titleKey="replay.hub.error.title"
+      ctaLabelKey="replay.hub.error.retry"
+      ctaIcon="refresh"
+      (ctaAction)="store.fetchSnapshot()">
+    </app-empty-state>
   } @else if (showEmptyState()) {
-    <div class="empty-state empty-state--rich">
-      <mat-icon class="empty-state__icon">movie_filter</mat-icon>
-      <p class="empty-state__title">{{ 'replay.hub.empty.title' | translate }}</p>
-      <p class="empty-state__desc">{{ 'replay.hub.empty.desc' | translate }}</p>
-    </div>
+    <app-empty-state
+      variant="rich"
+      icon="movie_filter"
+      titleKey="replay.hub.empty.title"
+      descKey="replay.hub.empty.desc">
+    </app-empty-state>
   } @else if (showNoResultsState()) {
-    <div class="empty-state">
-      <mat-icon class="empty-state__icon">search_off</mat-icon>
-      <p class="empty-state__title">{{ 'replay.hub.noResults.title' | translate }}</p>
-      <p class="empty-state__desc">{{ 'replay.hub.noResults.desc' | translate }}</p>
-      <button type="button" class="btn btn--primary btn--lg btn--cta" (click)="clearFilters()">
-        <mat-icon>backspace</mat-icon>
-        {{ 'replay.hub.noResults.clearFilter' | translate }}
-      </button>
-    </div>
+    <app-empty-state
+      variant="no-results"
+      icon="search_off"
+      titleKey="replay.hub.noResults.title"
+      descKey="replay.hub.noResults.desc"
+      ctaLabelKey="replay.hub.noResults.clearFilter"
+      ctaIcon="backspace"
+      (ctaAction)="clearFilters()">
+    </app-empty-state>
   } @else {
     <cdk-virtual-scroll-viewport
         #viewport

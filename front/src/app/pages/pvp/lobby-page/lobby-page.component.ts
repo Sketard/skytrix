@@ -18,6 +18,8 @@ import { DeckPickerDialogComponent, DeckPickerContext, deckPickerDialogConfig } 
 import { AvatarComponent } from '../../../shared/avatar';
 import { RoomCardSkeletonComponent } from '../../../shared/skel';
 import { ErrorBannerComponent } from '../../../shared/error-banner';
+import { EmptyStateComponent } from '../../../components/empty-state/empty-state.component';
+import { SectionHeaderComponent } from '../../../components/section-header/section-header.component';
 import { LobbyRoomsStore } from './lobby-rooms-store';
 
 // Fixed virtual-scroll item size: rendered .room-card height (~88-92px on
@@ -41,6 +43,7 @@ const LOBBY_SORT_MODES: readonly LobbySortMode[] = ['newest', 'oldest', 'pseudoA
     ScrollingModule,
     RelativeTimePipe, TranslatePipe,
     AvatarComponent, RoomCardSkeletonComponent, ErrorBannerComponent,
+    EmptyStateComponent, SectionHeaderComponent,
   ],
 })
 export class LobbyPageComponent implements OnInit {

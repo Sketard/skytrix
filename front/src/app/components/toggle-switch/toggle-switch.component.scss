@@ -1,0 +1,80 @@
+:host {
+  display: block;
+}
+
+.toggle-switch {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast) var(--ease-out);
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  &__track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+    background: var(--surface-overlay);
+    border: var(--border-width-thin) solid var(--border-medium);
+    border-radius: var(--radius-pill);
+    transition: background var(--transition-fast) var(--ease-out),
+                border-color var(--transition-fast) var(--ease-out);
+  }
+
+  &__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: var(--text-secondary);
+    border-radius: var(--radius-pill);
+    transition: transform var(--transition-fast) var(--ease-out),
+                background var(--transition-fast) var(--ease-out);
+  }
+
+  &--on &__track {
+    background: var(--gold-soft-20);
+    border-color: var(--gold);
+  }
+
+  &--on &__thumb {
+    transform: translateX(20px);
+    background: var(--gold);
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  &__label {
+    font-size: var(--text-md);
+    color: var(--text-primary);
+    font-weight: var(--weight-semibold);
+  }
+
+  &__hint {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    line-height: var(--line-normal);
+  }
+}

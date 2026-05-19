@@ -44,10 +44,61 @@
 
 | Component | Role |
 |---|---|
-| `EmptyStateComponent` | "No results" placeholder |
+| `EmptyStateComponent` | Versatile empty-state surface (default / welcome / error / no-results / rich variants) with optional icon, desc, and CTA (link or imperative button, primary or secondary). Consumed by: replay-hub-page, lobby-page, deck-list, card-list. |
+| `SectionHeaderComponent` | Title + optional count badge + slotted actions (sort menu, filter triggers). Pairs with the global `_section-header.scss` partial. Consumed by: replay-hub-page, lobby-page. |
+| `StatsStripComponent` | Generic KPI strip (icon avatar + value + label, with surface accent + value variants). Responsive: 4-col → 2-col → compact mobile strip with vertical dividers. Replaces the page-local `hub-stats` + `deck-stats-strip`. Consumed by: replay-hub-page, deck-list. |
+| `IconWrapComponent` | 44×44 decorative icon square with palette (`gold` \| `cyan`), border, glow on the icon. Consumed by: deck-list, card-search-page. |
+| `RadioCardGroupComponent` | Container for a row of `<app-radio-card>` (radiogroup role, configurable columns 2/3/4, mobile stacks to 1 col). Consumed by: preferences-page. |
+| `RadioCardComponent` | Card-style radio (label + optional desc, gold active state). Designed to live inside a `<app-radio-card-group>`. |
+| `ToggleSwitchComponent` | Switch-style toggle for boolean preferences (track + thumb, gold-on state). Consumed by: preferences-page. |
 | `MultipleActionButtonComponent` | Split button with dropdown menu |
 | `ScalingContainerComponent` | Responsive container that scales to its parent |
 | `CustomTooltipComponent` | Enhanced Material tooltip |
+
+### Wave A — usage examples (2026-05-18)
+
+```html
+<!-- EmptyState — error variant with secondary retry CTA -->
+<app-empty-state
+  variant="error"
+  icon="wifi_off"
+  titleKey="replay.hub.error.title"
+  ctaLabelKey="replay.hub.error.retry"
+  ctaIcon="refresh"
+  (ctaAction)="store.fetchSnapshot()">
+</app-empty-state>
+
+<!-- SectionHeader — title + count + slotted sort menu trigger -->
+<app-section-header titleKey="lobby.openRooms" [count]="roomsCount()" countKey="lobby.roomsCount">
+  <button class="btn btn--ghost btn--sm" [matMenuTriggerFor]="sortMenu">…</button>
+</app-section-header>
+
+<!-- StatsStrip — typed StatItem[] driven by a computed -->
+<app-stats-strip [stats]="statsItems()" ariaLabelKey="replay.hub.stats.total"></app-stats-strip>
+
+<!-- IconWrap — pair with page-header__title-group -->
+<app-icon-wrap palette="gold" icon="folder_special"></app-icon-wrap>
+
+<!-- RadioCardGroup + RadioCard -->
+<app-radio-card-group [columns]="3" [ariaLabel]="'preferences.theme.title' | translate">
+  @for (t of themes; track t) {
+    <app-radio-card
+      [labelKey]="'preferences.theme.' + t"
+      [descKey]="'preferences.theme.' + t + 'Desc'"
+      [active]="themeService.currentTheme() === t"
+      (select)="setTheme(t)">
+    </app-radio-card>
+  }
+</app-radio-card-group>
+
+<!-- ToggleSwitch -->
+<app-toggle-switch
+  [checked]="motionService.forced()"
+  labelKey="preferences.motion.reducedLabel"
+  hintKey="preferences.motion.reducedHint"
+  (change)="toggleReducedMotion()">
+</app-toggle-switch>
+```
 
 ## Dialog & notification
 

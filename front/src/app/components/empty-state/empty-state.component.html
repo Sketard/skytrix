@@ -1,14 +1,24 @@
-<div class="empty-state" [class.empty-state--welcome]="variant() === 'welcome'">
-  @if (variant() === 'welcome' && icon()) {
+<div class="empty-state" [ngClass]="variantClass()">
+  @if (icon()) {
     <mat-icon class="empty-state__icon">{{ icon() }}</mat-icon>
   }
-  <p class="empty-state__title">{{ message() }}</p>
-  @if (subtitle()) {
-    <p class="empty-state__subtitle">{{ subtitle() }}</p>
+  <p class="empty-state__title">{{ titleKey() | translate }}</p>
+  @if (descKey()) {
+    <p class="empty-state__desc">{{ descKey()! | translate }}</p>
   }
-  @if (ctaLink()) {
-    <a class="btn btn--primary btn--lg btn--cta" [routerLink]="ctaLink()">{{ ctaLabel() }}</a>
-  } @else if (ctaLabel()) {
-    <button class="btn btn--primary btn--lg btn--cta" (click)="ctaAction.emit()">{{ ctaLabel() }}</button>
+  @if (ctaLink() && ctaLabelKey()) {
+    <a [class]="ctaButtonClass()" [routerLink]="ctaLink()">
+      @if (ctaIcon()) {
+        <mat-icon>{{ ctaIcon() }}</mat-icon>
+      }
+      {{ ctaLabelKey()! | translate }}
+    </a>
+  } @else if (ctaLabelKey()) {
+    <button type="button" [class]="ctaButtonClass()" [disabled]="ctaDisabled()" (click)="ctaAction.emit()">
+      @if (ctaIcon()) {
+        <mat-icon>{{ ctaIcon() }}</mat-icon>
+      }
+      {{ ctaLabelKey()! | translate }}
+    </button>
   }
 </div>

@@ -1,0 +1,12 @@
+// All `.section-header*` rules live in the global partial
+// `styles/_section-header.scss` (source of truth, BEM strict). The component
+// contributes the template shell + count badge logic; no local styles needed.
+
+// Local helper: icon micro-spacing inside the title-group.
+.section-header__icon {
+  font-size: var(--text-md);
+  width: var(--text-md);
+  height: var(--text-md);
+  color: var(--gold);
+  line-height: 1;
+}

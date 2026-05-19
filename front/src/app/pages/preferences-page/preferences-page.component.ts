@@ -3,6 +3,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DUEL_THEMES, DuelTheme, DuelThemeService } from '../pvp/duel-page/duel-theme.service';
 import { ReducedMotionService } from '../../services/reduced-motion.service';
+import { RadioCardGroupComponent } from '../../components/radio-card-group/radio-card-group.component';
+import { RadioCardComponent } from '../../components/radio-card/radio-card.component';
+import { ToggleSwitchComponent } from '../../components/toggle-switch/toggle-switch.component';
 
 type Lang = 'fr' | 'en';
 
@@ -13,7 +16,7 @@ const LANGS: ReadonlyArray<{ code: Lang; labelKey: string }> = [
 
 @Component({
   selector: 'app-preferences-page',
-  imports: [MatIconModule, TranslatePipe],
+  imports: [MatIconModule, TranslatePipe, RadioCardGroupComponent, RadioCardComponent, ToggleSwitchComponent],
   templateUrl: './preferences-page.component.html',
   styleUrl: './preferences-page.component.scss',
   standalone: true,

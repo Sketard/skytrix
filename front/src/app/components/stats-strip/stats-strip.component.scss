@@ -1,0 +1,158 @@
+@use 'responsive' as r;
+
+// =============================================================================
+// Stats Strip — DS shared component for KPI rows.
+// Replaces .hub-stats (replay-hub) and .deck-stats-strip (deck-list).
+// Source: pages-homogenization Wave A, 2026-05-18.
+// =============================================================================
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.stats-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+
+  // Tablet+: 4 columns when the strip has 4 items (auto-fit handles 2/3-item).
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  // ≤ 480px portrait — single container, vertical dividers, icons hidden.
+  // Pattern copied from replay-hub spec (Axel 2026-05-18): the 2×2 grid eats
+  // ~180px vertical on a 700px viewport, so we compress to a single 4-col row.
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+  }
+
+  // Mobile landscape — hide entirely to free the very short viewport.
+  @media (orientation: landscape) and (max-height: 500px) {
+    display: none;
+  }
+}
+
+// =============================================================================
+// Item — surface-card with accent border on desktop, naked + divider on mobile.
+// =============================================================================
+.stats-strip__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  min-width: 0;
+  background: var(--surface-card-low);
+  border: 1px solid var(--gold-soft-15);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-1);
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: var(--space-1) var(--space-2);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+
+    &:not(:first-child) {
+      border-left: 1px solid var(--border-soft);
+    }
+  }
+}
+
+// Accent borders — match `.surface-card--accent-*` semantics.
+.stats-strip__item--accent-gold {
+  border-color: var(--gold-soft-30);
+}
+
+.stats-strip__item--accent-cyan {
+  border-color: var(--cyan-soft-30, var(--gold-soft-15));
+}
+
+.stats-strip__item--accent-neutral {
+  // Inherits the default gold-soft-15 border from .stats-strip__item.
+}
+
+// =============================================================================
+// Icon avatar — 38px circle, hidden in compact mobile mode.
+// =============================================================================
+.stats-strip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 20px !important; // override mat-icon's default 24px
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    display: none;
+  }
+}
+
+.stats-strip__icon--total   { background: var(--cyan-soft-15);     color: var(--cyan-300); }
+.stats-strip__icon--win     { background: var(--gold-soft-12);     color: var(--gold); }
+.stats-strip__icon--loss    { background: var(--surface-overlay);  color: var(--text-muted); }
+.stats-strip__icon--winrate { background: var(--gold-soft-12);     color: var(--gold-50); }
+.stats-strip__icon--neutral { background: var(--surface-overlay);  color: var(--text-muted); }
+
+// =============================================================================
+// Content stack
+// =============================================================================
+.stats-strip__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--space-1);
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    align-items: center;
+    gap: 0;
+    text-align: center;
+  }
+}
+
+.stats-strip__value {
+  font: var(--weight-bold) var(--text-xl) / var(--line-tight) var(--font-display);
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    font-size: var(--text-md);
+  }
+}
+
+.stats-strip__value--gold  { color: var(--gold-50); }
+.stats-strip__value--muted { color: var(--text-secondary); }
+
+.stats-strip__label {
+  font: var(--weight-semibold) var(--text-xs) / 1 var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+
+  @include r.respond-below(r.$bp-pvp-narrow) {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

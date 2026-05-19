@@ -26,19 +26,16 @@
 
     <div class="card-ds pref-card">
       <p class="pref-card__description">{{ 'preferences.theme.description' | translate }}</p>
-      <div class="pref-card__radios" role="radiogroup" [attr.aria-label]="'preferences.theme.title' | translate">
+      <app-radio-card-group [columns]="3" [ariaLabel]="'preferences.theme.title' | translate">
         @for (t of themes; track t) {
-          <button type="button"
-                  class="pref-radio"
-                  [class.pref-radio--active]="themeService.currentTheme() === t"
-                  [attr.aria-checked]="themeService.currentTheme() === t"
-                  role="radio"
-                  (click)="setTheme(t)">
-            <span class="pref-radio__label">{{ ('preferences.theme.' + t) | translate }}</span>
-            <span class="pref-radio__desc">{{ ('preferences.theme.' + t + 'Desc') | translate }}</span>
-          </button>
+          <app-radio-card
+            [labelKey]="'preferences.theme.' + t"
+            [descKey]="'preferences.theme.' + t + 'Desc'"
+            [active]="themeService.currentTheme() === t"
+            (select)="setTheme(t)">
+          </app-radio-card>
         }
-      </div>
+      </app-radio-card-group>
     </div>
   </section>
 
@@ -53,18 +50,15 @@
 
     <div class="card-ds pref-card">
       <p class="pref-card__description">{{ 'preferences.language.description' | translate }}</p>
-      <div class="pref-card__radios pref-card__radios--pair" role="radiogroup" [attr.aria-label]="'preferences.language.title' | translate">
+      <app-radio-card-group [columns]="2" [ariaLabel]="'preferences.language.title' | translate">
         @for (l of langs; track l.code) {
-          <button type="button"
-                  class="pref-radio"
-                  [class.pref-radio--active]="currentLang() === l.code"
-                  [attr.aria-checked]="currentLang() === l.code"
-                  role="radio"
-                  (click)="setLang(l.code)">
-            <span class="pref-radio__label">{{ l.labelKey | translate }}</span>
-          </button>
+          <app-radio-card
+            [labelKey]="l.labelKey"
+            [active]="currentLang() === l.code"
+            (select)="setLang(l.code)">
+          </app-radio-card>
         }
-      </div>
+      </app-radio-card-group>
     </div>
   </section>
 
@@ -79,20 +73,12 @@
 
     <div class="card-ds pref-card">
       <p class="pref-card__description">{{ 'preferences.motion.description' | translate }}</p>
-      <button type="button"
-              class="pref-toggle"
-              [class.pref-toggle--on]="motionService.forced()"
-              role="switch"
-              [attr.aria-checked]="motionService.forced()"
-              (click)="toggleReducedMotion()">
-        <span class="pref-toggle__track" aria-hidden="true">
-          <span class="pref-toggle__thumb"></span>
-        </span>
-        <span class="pref-toggle__text">
-          <span class="pref-toggle__label">{{ 'preferences.motion.reducedLabel' | translate }}</span>
-          <span class="pref-toggle__hint">{{ 'preferences.motion.reducedHint' | translate }}</span>
-        </span>
-      </button>
+      <app-toggle-switch
+        [checked]="motionService.forced()"
+        labelKey="preferences.motion.reducedLabel"
+        hintKey="preferences.motion.reducedHint"
+        (change)="toggleReducedMotion()">
+      </app-toggle-switch>
     </div>
   </section>
 </div>

@@ -85,6 +85,30 @@
   }
 }
 
+// =============================================================================
+// Variant `--welcome` — first-run / first-deck hero state (deck-list, etc.).
+// =============================================================================
+.empty-state--welcome {
+  padding: var(--space-9) var(--space-4);
+  gap: var(--space-4);
+
+  .empty-state__icon {
+    font-size: 72px !important;
+    width: 72px !important;
+    height: 72px !important;
+    color: var(--gold);
+    filter: drop-shadow(0 0 12px var(--gold-soft-30));
+  }
+}
+
+// =============================================================================
+// Variant `--no-results` — filter / search returned nothing. Matches default
+// proportions; reserved selector for future tuning (icon color shift, etc.).
+// =============================================================================
+.empty-state--no-results {
+  // Same dimensions as default; semantic hook for callers.
+}
+
 // Legacy kebab-simple aliases (.empty-state-icon / -title / -desc / -cta)
 // removed in Commit 3. Source of truth: BEM `__` (.empty-state__icon /
 // __title / __desc) + `.btn.btn--primary.btn--lg.btn--cta` for CTAs.

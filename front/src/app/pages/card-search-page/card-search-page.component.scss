@@ -38,26 +38,6 @@
   }
 }
 
-// Icon wrap 44×44 (cyan version of the gold one in deck-list).
-.card-search-page__icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  display: grid;
-  place-items: center;
-  background: var(--cyan-soft-15);
-  border: 1px solid var(--cyan-soft-40);
-  flex-shrink: 0;
-
-  .page-header__icon {
-    font-size: 24px !important;
-    width: 24px !important;
-    height: 24px !important;
-    color: var(--cyan-500);
-    filter: drop-shadow(0 0 8px var(--cyan-soft-40));
-  }
-}
-
 // Cyan gradient title (mockup `.search-page-title h1` ll. 1929-1937).
 .card-search-page__title {
   background: linear-gradient(135deg, #c0e0ff 0%, var(--cyan-500) 100%);

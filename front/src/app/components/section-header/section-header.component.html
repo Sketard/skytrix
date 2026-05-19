@@ -1,0 +1,19 @@
+<div class="section-header">
+  <div class="section-header__title-group">
+    @if (icon()) {
+      <mat-icon class="section-header__icon">{{ icon() }}</mat-icon>
+    }
+    <span class="section-header__title">{{ titleKey() | translate }}</span>
+    @if (hasCount()) {
+      <span class="badge badge--gold"
+            [attr.aria-label]="countLabel() ? (countLabel()! | translate: { count: count() }) : null">
+        @if (countLabel()) {
+          {{ countLabel()! | translate: { count: count() } }}
+        } @else {
+          {{ count() }}
+        }
+      </span>
+    }
+  </div>
+  <ng-content></ng-content>
+</div>

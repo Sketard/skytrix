@@ -12,6 +12,7 @@ import { CardFiltersComponent } from '../../components/card-filters/card-filters
 import { CardListComponent } from '../../components/card-list/card-list.component';
 import { CardSearchService } from '../../services/card-search.service';
 import { CardInspectorComponent } from '../../components/card-inspector/card-inspector.component';
+import { IconWrapComponent } from '../../components/icon-wrap/icon-wrap.component';
 import { BottomSheetComponent } from '../../components/bottom-sheet/bottom-sheet.component';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../core/model/shared-card-data';
@@ -23,7 +24,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'card-search-page',
   imports: [
-    ActiveFiltersBarComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
+    ActiveFiltersBarComponent, CardInspectorComponent, IconWrapComponent, MatIconButton, MatIcon, BottomSheetComponent,
     SearchBarComponent, CardFiltersComponent, CardListComponent, MatTooltip,
     TranslatePipe,
   ],

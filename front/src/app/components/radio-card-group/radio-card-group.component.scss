@@ -1,0 +1,24 @@
+@use 'responsive' as r;
+
+:host {
+  display: grid;
+  gap: var(--space-3);
+}
+
+:host(.radio-card-group--cols-2) {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+:host(.radio-card-group--cols-3) {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+:host(.radio-card-group--cols-4) {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@include r.respond-below(r.$bp-tablet) {
+  :host {
+    grid-template-columns: 1fr;
+  }
+}

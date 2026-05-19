@@ -13,7 +13,7 @@ import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 import { LongPressDragDirective } from '../../core/directives/long-press-drag.directive';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
 
 @Component({
@@ -47,10 +47,6 @@ export class CardListComponent implements OnDestroy {
   readonly toSharedCardData = toSharedCardData;
   readonly displayType = CardDisplayType;
   private dragging = false;
-
-  private readonly translateService = inject(TranslateService);
-  readonly emptyMessage = this.translateService.instant('cardList.emptyMessage');
-  readonly emptyCta = this.translateService.instant('cardList.emptyCta');
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private scrollContainer: HTMLElement | null = null;

@@ -1,0 +1,16 @@
+<button type="button"
+        class="toggle-switch"
+        [class.toggle-switch--on]="checked()"
+        role="switch"
+        [attr.aria-checked]="checked()"
+        (click)="change.emit()">
+  <span class="toggle-switch__track" aria-hidden="true">
+    <span class="toggle-switch__thumb"></span>
+  </span>
+  <span class="toggle-switch__text">
+    <span class="toggle-switch__label">{{ labelKey() | translate }}</span>
+    @if (hintKey()) {
+      <span class="toggle-switch__hint">{{ hintKey()! | translate }}</span>
+    }
+  </span>
+</button>

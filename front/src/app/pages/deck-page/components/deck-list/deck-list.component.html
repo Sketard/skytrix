@@ -14,9 +14,7 @@
 @if (firstLoad || decks.length > 0) {
   <header class="page-header deck-list__header">
     <div class="page-header__title-group">
-      <span class="deck-list__icon-wrap" aria-hidden="true">
-        <mat-icon class="page-header__icon">folder_special</mat-icon>
-      </span>
+      <app-icon-wrap palette="gold" icon="folder_special"></app-icon-wrap>
       <div class="page-header__text">
         <h1 class="page-header__title text-gold-gradient">{{ 'deckList.title' | translate }}</h1>
         <span class="page-header__subtitle">{{ 'deckList.subtitle' | translate }}</span>
@@ -40,7 +38,7 @@
     @if (firstLoad) {
       <app-deck-stats-strip-skeleton class="deck-list__stats" [count]="3"></app-deck-stats-strip-skeleton>
     } @else {
-      <app-deck-stats-strip class="deck-list__stats" [stats]="stats()"></app-deck-stats-strip>
+      <app-stats-strip class="deck-list__stats" [stats]="stats()"></app-stats-strip>
     }
 
     <div class="deckPage">
@@ -72,9 +70,9 @@
   <app-empty-state
     variant="welcome"
     icon="folder_special"
-    [message]="'deckList.welcomeTitle' | translate"
-    [subtitle]="'deckList.welcomeSubtitle' | translate"
-    [ctaLabel]="'deckList.createDeck' | translate"
+    titleKey="deckList.welcomeTitle"
+    descKey="deckList.welcomeSubtitle"
+    ctaLabelKey="deckList.createDeck"
     ctaLink="/decks/builder">
   </app-empty-state>
 }
