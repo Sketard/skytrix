@@ -133,12 +133,16 @@
   }
 }
 
-.deck-list__no-match {
+// Empty state (no-results variant) lives inside the .deck-page grid, so it
+// must span the full row instead of occupying a single grid track.
+.deck-page > app-empty-state {
   grid-column: 1 / -1;
-  padding: var(--space-7) var(--space-3);
-  text-align: center;
-  color: var(--text-muted);
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  font-style: italic;
+}
+
+// Hide the sort label text below tablet — the icon alone is enough at this
+// size; the aria-label still carries semantics for screen readers.
+.deck-list__sort-label {
+  @media (max-width: 575px) {
+    display: none;
+  }
 }

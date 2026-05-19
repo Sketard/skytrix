@@ -4,8 +4,8 @@
   <div class="screen-bg-glow screen-bg-glow--cyan"></div>
 </div>
 
-@let decks = (deckBuildService.decks$ | async) ?? [];
-@let firstLoad = deckBuildService.isFirstDeckLoad();
+@let decks = store.decks();
+@let firstLoad = store.loading();
 
 <!-- During the first network fetch we always render the page chrome
      (header + stats placeholder + skeleton grid). After resolution we
@@ -38,33 +38,71 @@
     @if (firstLoad) {
       <app-deck-stats-strip-skeleton class="deck-list__stats" [count]="3"></app-deck-stats-strip-skeleton>
     } @else {
-      <app-stats-strip class="deck-list__stats" [stats]="stats()"></app-stats-strip>
+      <app-stats-strip class="deck-list__stats" [stats]="store.stats()"></app-stats-strip>
     }
 
-    <div class="deck-page">
-      @if (firstLoad) {
-        <app-deck-box-skeleton [count]="6"></app-deck-box-skeleton>
-      } @else {
-        <deck-box class="deck-page-deck" [add]="true"></deck-box>
-        @for (deck of filteredDecks(); track deck.id) {
-          <div class="deck-page-deck">
-            <deck-box [deck]="deck"></deck-box>
-            <button
-              mat-icon-button
-              class="deck-page-deck-remove"
-              [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
-              (click)="confirmDelete(deck); $event.stopPropagation()">
-              <mat-icon fontIcon="delete"></mat-icon>
+    @if (store.error()) {
+      <app-empty-state
+        variant="error"
+        icon="wifi_off"
+        titleKey="deckList.error.title"
+        ctaLabelKey="deckList.error.retry"
+        ctaIcon="refresh"
+        (ctaAction)="store.fetchSnapshot()">
+      </app-empty-state>
+    } @else {
+      <app-section-header
+        titleKey="deckList.list.title"
+        [count]="firstLoad ? null : store.filteredDecks().length"
+        countKey="deckList.list.count">
+        <button type="button"
+                class="btn btn--ghost btn--sm"
+                [attr.aria-label]="'deckList.sort.label' | translate"
+                [matMenuTriggerFor]="sortMenu">
+          <mat-icon>sort</mat-icon>
+          <span class="deck-list__sort-label">{{ sortLabelKey() | translate }}</span>
+        </button>
+        <mat-menu #sortMenu="matMenu" xPosition="before">
+          @for (mode of store.sortModes; track mode) {
+            <button mat-menu-item type="button"
+                    [class.is-active]="store.sortMode() === mode"
+                    (click)="setSortMode(mode)">
+              {{ 'deckList.sort.' + mode | translate }}
             </button>
-          </div>
+          }
+        </mat-menu>
+      </app-section-header>
+
+      <div class="deck-page">
+        @if (firstLoad) {
+          <app-deck-box-skeleton [count]="6"></app-deck-box-skeleton>
+        } @else if (store.showNoResultsState()) {
+          <app-empty-state
+            variant="no-results"
+            icon="search_off"
+            titleKey="deckList.noResults.title"
+            descKey="deckList.noResults.desc"
+            ctaLabelKey="deckList.noResults.clearSearch"
+            ctaIcon="backspace"
+            (ctaAction)="clearSearch()">
+          </app-empty-state>
+        } @else {
+          <deck-box class="deck-page-deck" [add]="true"></deck-box>
+          @for (deck of store.filteredDecks(); track deck.id) {
+            <div class="deck-page-deck">
+              <deck-box [deck]="deck"></deck-box>
+              <button
+                mat-icon-button
+                class="deck-page-deck-remove"
+                [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
+                (click)="confirmDelete(deck); $event.stopPropagation()">
+                <mat-icon fontIcon="delete"></mat-icon>
+              </button>
+            </div>
+          }
         }
-        @if (filteredDecks().length === 0) {
-          <div class="deck-list__no-match">
-            {{ 'deckList.noMatch' | translate }}
-          </div>
-        }
-      }
-    </div>
+      </div>
+    }
   </div>
 } @else {
   <app-empty-state

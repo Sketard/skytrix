@@ -158,7 +158,26 @@
     "newDeck": "New deck",
     "noMatch": "No deck matches this filter",
     "welcomeTitle": "Build your first deck",
-    "welcomeSubtitle": "Drag and drop your favorite cards to get started."
+    "welcomeSubtitle": "Drag and drop your favorite cards to get started.",
+    "list": {
+      "title": "My decks",
+      "count": "{{count}} decks"
+    },
+    "sort": {
+      "label": "Sort",
+      "recent": "Recent",
+      "name": "Name",
+      "legality": "Legality"
+    },
+    "noResults": {
+      "title": "No matching decks",
+      "desc": "Try another name or create a new deck.",
+      "clearSearch": "Clear search"
+    },
+    "error": {
+      "title": "Failed to load decks",
+      "retry": "Retry"
+    }
   },
   "deckStats": {
     "decks": "Decks",

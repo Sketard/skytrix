@@ -169,13 +169,15 @@ describe('ReplayHubPageComponent', () => {
       [makeReplay('a')],
       { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 },
     );
-    const stats = fixture.nativeElement.querySelector('.hub-stats');
+    // Wave A (2026-05-18): the inline `.hub-stats` block was replaced by
+    // the shared `<app-stats-strip>` which renders `.stats-strip`.
+    const stats = fixture.nativeElement.querySelector('app-stats-strip .stats-strip');
     expect(stats).not.toBeNull();
   });
 
   it('hides the stats strip when stats() fetch fails', () => {
     initialFetchFlush([makeReplay('a')], null);
-    const stats = fixture.nativeElement.querySelector('.hub-stats');
+    const stats = fixture.nativeElement.querySelector('app-stats-strip');
     expect(stats).toBeNull();
   });
 

@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { startWith } from 'rxjs/operators';
 import { DeckBuildService } from '../../../../services/deck-build.service';
 import { DeckBoxComponent } from '../../../../components/deck-box/deck-box.component';
@@ -10,6 +10,7 @@ import { DeckStatsStripSkeletonComponent } from '../../../../shared/skel/deck-st
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
@@ -18,11 +19,10 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../component
 import { ShortDeck } from '../../../../core/model/short-deck';
 import { EmptyStateComponent } from '../../../../components/empty-state/empty-state.component';
 import { IconWrapComponent } from '../../../../components/icon-wrap/icon-wrap.component';
-import { StatsStripComponent, StatItem } from '../../../../components/stats-strip/stats-strip.component';
-import { NotificationService } from '../../../../core/services/notification.service';
-import { OwnedCardService } from '../../../../services/owned-card.service';
+import { SectionHeaderComponent } from '../../../../components/section-header/section-header.component';
+import { StatsStripComponent } from '../../../../components/stats-strip/stats-strip.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { formattedWithoutCaseAndAccent } from '../../../../core/utilities/functions';
+import { DeckListStore, DeckSortMode } from './deck-list-store';
 
 @Component({
   selector: 'deck-list',
@@ -30,11 +30,13 @@ import { formattedWithoutCaseAndAccent } from '../../../../core/utilities/functi
     CommonModule,
     DeckBoxComponent,
     StatsStripComponent,
+    SectionHeaderComponent,
     SearchBarComponent,
     DeckBoxSkeletonComponent,
     DeckStatsStripSkeletonComponent,
     MatIconModule,
     MatButtonModule,
+    MatMenuModule,
     MatTooltipModule,
     EmptyStateComponent,
     IconWrapComponent,
@@ -46,42 +48,48 @@ import { formattedWithoutCaseAndAccent } from '../../../../core/utilities/functi
   styleUrl: './deck-list.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [DeckListStore],
 })
-export class DeckListComponent {
+export class DeckListComponent implements OnInit {
   readonly deckBuildService = inject(DeckBuildService);
+  protected readonly store = inject(DeckListStore);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly ownedCardService = inject(OwnedCardService);
 
   readonly searchControl = new FormControl<string>('', { nonNullable: true });
-  private readonly searchTerm = toSignal(
+
+  // Two-way bridge: form ↔ store.searchQuery. The form drives the input UX
+  // (clear button, debounce in search-bar). The store owns the canonical
+  // value so the filteredDecks computed and the empty/no-results gates
+  // share it.
+  private readonly searchFromForm = toSignal(
     this.searchControl.valueChanges.pipe(startWith('')),
     { initialValue: '' },
   );
 
-  private readonly decksSignal = toSignal(this.deckBuildService.decks$, { initialValue: [] as Array<ShortDeck> });
-
-  readonly filteredDecks = computed<Array<ShortDeck>>(() => {
-    const term = this.searchTerm() ?? '';
-    const all = this.decksSignal();
-    if (!term) return all;
-    const needle = formattedWithoutCaseAndAccent(term);
-    return all.filter(d => formattedWithoutCaseAndAccent(d.name).includes(needle));
-  });
-
-  readonly stats = computed<StatItem[]>(() => {
-    const all = this.decksSignal();
-    const ownedSum = Array.from(this.ownedCardService.ownedMap().values()).reduce((acc, n) => acc + n, 0);
-    return [
-      { labelKey: 'deckStats.decks', value: all.length },
-      { labelKey: 'deckStats.cardsOwned', value: ownedSum },
-      { labelKey: 'deckStats.legalDecks', value: all.filter(d => d.valid).length },
-    ];
-  });
+  readonly sortLabelKey = computed(() => `deckList.sort.${this.store.sortMode()}`);
 
   constructor() {
-    this.deckBuildService.fetchDecks();
+    // Propagate form changes into the store. We don't propagate back —
+    // the store is set only via UI (form input) or clearSearch() (which
+    // resets the form directly below).
+    effect(() => {
+      const value = this.searchFromForm();
+      this.store.setSearchQuery(value);
+    });
+  }
+
+  ngOnInit(): void {
+    this.store.start();
+  }
+
+  setSortMode(mode: DeckSortMode): void {
+    this.store.setSortMode(mode);
+  }
+
+  clearSearch(): void {
+    this.searchControl.setValue('');
+    this.store.clearSearch();
   }
 
   confirmDelete(deck: ShortDeck) {
@@ -99,11 +107,7 @@ export class DeckListComponent {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
-        this.deckBuildService.deleteById(
-          deck.id!,
-          () => this.notify.success('success.DECK_DELETED'),
-          (err) => this.notify.error(err)
-        );
+        this.store.deleteDeck(deck);
       }
     });
   }

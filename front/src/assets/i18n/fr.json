@@ -158,7 +158,26 @@
     "newDeck": "Nouveau deck",
     "noMatch": "Aucun deck ne correspond à ce filtre",
     "welcomeTitle": "Crée ton premier deck",
-    "welcomeSubtitle": "Glisse-dépose tes cartes préférées pour démarrer."
+    "welcomeSubtitle": "Glisse-dépose tes cartes préférées pour démarrer.",
+    "list": {
+      "title": "Mes decks",
+      "count": "{{count}} decks"
+    },
+    "sort": {
+      "label": "Trier",
+      "recent": "Récents",
+      "name": "Nom",
+      "legality": "Légalité"
+    },
+    "noResults": {
+      "title": "Aucun deck ne correspond",
+      "desc": "Essayez un autre nom ou créez un nouveau deck.",
+      "clearSearch": "Effacer la recherche"
+    },
+    "error": {
+      "title": "Impossible de charger les decks",
+      "retry": "Réessayer"
+    }
   },
   "deckStats": {
     "decks": "Decks",
