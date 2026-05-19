@@ -190,11 +190,14 @@
 
 // Pollen particle float — vertical drift bottom→top with a slight x offset.
 // Consumed by `.duel-particles__dot` (Forest theme only, see `_duel-tokens.scss`).
+// The dot starts at `top: 100%` (i.e. just below the board); the keyframe
+// drives it upward via `translateY` in viewport units (NOT percentages,
+// which would resolve to a fraction of the 3px dot itself — invisible).
 @keyframes ds-duel-pollen-float {
-  0%   { transform: translateY(110%) translateX(0);    opacity: 0; }
+  0%   { transform: translateY(10vh)   translateX(0);    opacity: 0; }
   10%  { opacity: 0.4; }
   90%  { opacity: 0.4; }
-  100% { transform: translateY(-10%) translateX(20px); opacity: 0; }
+  100% { transform: translateY(-110vh) translateX(20px); opacity: 0; }
 }
 
 // =============================================================================

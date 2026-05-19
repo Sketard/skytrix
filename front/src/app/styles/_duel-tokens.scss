@@ -217,6 +217,7 @@
 
 .duel-particles__dot {
   position: absolute;
+  top: 100%;  // start below the board — keyframe drifts them upward via translateY(-Nvh)
   width: 3px;
   height: 3px;
   border-radius: 50%;
