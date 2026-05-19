@@ -34,10 +34,11 @@
 .option-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   max-height: 45vh;
   max-height: 45dvh;
   overflow-y: auto;
+  padding: var(--space-1);
 }
 
 .option-item {
@@ -46,22 +47,58 @@
   gap: var(--space-2);
   width: 100%;
   min-height: var(--touch-target-primary);
+  padding: var(--space-2) var(--space-3);
   text-align: left;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: var(--border-width-medium) solid transparent;
   border-radius: var(--radius-md);
-  transition: background var(--transition-fast) var(--ease-out);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast) var(--ease-out),
+    border-color var(--transition-fast) var(--ease-out),
+    color var(--transition-fast) var(--ease-out),
+    transform var(--transition-fast) var(--ease-out),
+    box-shadow var(--transition-fast) var(--ease-out);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: var(--surface-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   }
 
   &--selected {
-    background: var(--gold-soft-20) !important;
+    border-color: var(--gold);
+    background: var(--gold-soft-15);
     color: var(--gold);
+    font-weight: var(--weight-semibold);
+    box-shadow:
+      var(--pvp-selection-glow),
+      inset 0 0 0 1px var(--gold-soft-30);
   }
 
   &:focus-visible {
     outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: -2px;
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  &:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: default;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option-item {
+    transition: none;
+
+    &:hover:not(:disabled) {
+      transform: none;
+    }
   }
 }
 
@@ -88,8 +125,8 @@
 
 :host(.read-only) {
   pointer-events: none;
-  .option-btn--selected { @include btn.replay-chosen-pulse; }
-  .option-btn:not(.option-btn--selected) { @include btn.replay-not-chosen; }
+  .option-item--selected { @include btn.replay-chosen-pulse; }
+  .option-item:not(.option-item--selected) { @include btn.replay-not-chosen; }
 }
 
 // `@keyframes replay-chosen-pulse` removed — consolidated into `_motion.scss`

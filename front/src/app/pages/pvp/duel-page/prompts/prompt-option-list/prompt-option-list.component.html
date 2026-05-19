@@ -13,8 +13,7 @@
 }
 <div class="option-list scrollbar-visible" role="group" aria-label="Options">
   @for (opt of options; track opt.index) {
-    <button mat-button
-            class="option-item"
+    <button class="option-item"
             [class.option-item--selected]="selectedIndex() === opt.index"
             (click)="selectOption(opt.index)"
             (dblclick)="dblclickOption(opt.index)"

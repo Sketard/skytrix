@@ -8,7 +8,6 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { CardInfo, POSITION, SelectPositionMsg, SelectOptionMsg, AnnounceRaceMsg, AnnounceAttribMsg } from '../../../duel-ws.types';
@@ -29,7 +28,7 @@ type OptionListPrompt = SelectPositionMsg | SelectOptionMsg | AnnounceRaceMsg | 
   styleUrl: './prompt-option-list.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, TranslatePipe],
+  imports: [TranslatePipe],
 })
 export class PromptOptionListComponent implements PromptSubComponent<OptionListPrompt>, OnInit {
   promptData: OptionListPrompt | null = null;
