@@ -1,10 +1,17 @@
 import { CardDetail } from './card-detail';
 import { CardImageDTO } from './dto/card-image-dto';
+import { CardTranslationEntry } from './dto/card-dto';
 
 export interface SharedCardData {
   readonly name: string;
   readonly imageUrl: string;
   readonly imageUrlFull?: string;
+  /**
+   * Per-language name/description. Carried through so the `cardName` /
+   * `cardDesc` pipes can resolve the UI language — without it they always
+   * fall back to `name`/`description`, which the backend pins to FR.
+   */
+  readonly translations?: Record<string, CardTranslationEntry>;
 }
 
 /**
@@ -56,6 +63,7 @@ export function toSharedCardData(cd: CardDetail, selectedImageId?: number): Shar
     name: cd.card.name ?? '',
     imageUrl: image?.smallUrl ?? '',
     imageUrlFull: image?.url ?? '',
+    translations: cd.card.translations,
   };
 }
 
@@ -66,6 +74,7 @@ export function toSharedCardInspectorData(cd: CardDetail, selectedImageId?: numb
     name: c.name ?? '',
     imageUrl: image?.smallUrl ?? '',
     imageUrlFull: image?.url ?? '',
+    translations: c.translations,
     isMonster: c.isMonster ?? false,
     attribute: c.attribute,
     race: c.race,
