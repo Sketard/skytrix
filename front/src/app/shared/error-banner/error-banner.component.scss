@@ -35,7 +35,7 @@
 
 .error-banner-icon {
   flex-shrink: 0;
-  color: #ff5252;
+  color: var(--danger-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -47,7 +47,7 @@
   }
 }
 
-:host.error-banner--warning .error-banner-icon { color: #ffc107; }
+:host.error-banner--warning .error-banner-icon { color: var(--warning); }
 :host.error-banner--info    .error-banner-icon { color: var(--gold); }
 
 .error-banner-body {

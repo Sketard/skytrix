@@ -249,6 +249,10 @@
   --surface-overlay:   rgba(255, 255, 255, 0.04);
   --surface-hover:     rgba(255, 255, 255, 0.06);
 
+  // Bouton d'action sur les overlays système (system-overlay) — bleu réseau.
+  --surface-info:       #0f3460;
+  --surface-info-hover: #1a4a7a;
+
   // Scrims — opaques sombres alignés sur `--surface-bg-deep` (#0f0f1c).
   // Famille séparée de `--surface-overlay*` (qui éclaire en rgba blanc) :
   // `--scrim-*` assombrit pour rendre lisibles des hints/pills/modales
@@ -257,6 +261,7 @@
   //   - medium (0.60) : pills sur fond clair (login orbits)
   //   - strong (0.85) : hints flottants (replay swipe-hint, login menu open)
   //   - deep   (0.92) : overlays modaux saturés (login fullscreen scrim)
+  --scrim-faint:  rgba(0, 0, 0, 0.12);   // voile très léger (loader plein écran)
   --scrim-soft:   rgba(10, 10, 20, 0.45);
   --scrim-medium: rgba(10, 10, 20, 0.60);
   --scrim-strong: rgba(10, 10, 20, 0.85);

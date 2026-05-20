@@ -39,7 +39,7 @@
   &__title {
     font-size: 1.4rem;
     font-weight: 700;
-    color: #e0e0e0;
+    color: var(--text-primary);
     margin: 0;
 
     &--pulse { animation: system-overlay-pulse 1.5s ease-in-out infinite; }
@@ -97,14 +97,14 @@
   &:disabled { opacity: 0.4; cursor: default; }
 
   &--primary {
-    background: #0f3460;
-    color: #eee;
+    background: var(--surface-info);
+    color: var(--text-primary);
     border-color: transparent;
 
     &:hover {
-      background: #1a4a7a;
+      background: var(--surface-info-hover);
       border-color: transparent;
-      color: #fff;
+      color: var(--text-primary);
     }
   }
 }

@@ -4,7 +4,7 @@
 
 .loader {
   &-spinner {
-    background-color: #0000001f;
+    background-color: var(--scrim-faint);
     position: fixed;
     right: 0;
     top: 0;

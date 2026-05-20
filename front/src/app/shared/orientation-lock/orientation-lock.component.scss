@@ -8,7 +8,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #1a1a2e;
+  background: var(--surface-dialog-from);
   z-index: z.$z-pvp-orientation-lock;
 }
 

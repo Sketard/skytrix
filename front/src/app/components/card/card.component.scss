@@ -71,7 +71,7 @@
   position: absolute;
   width: 100%;
   height: 100%;
-  background: var(--card-material-bg, #1e293b);
+  background: var(--card-material-bg, var(--surface-elevated));
   border: 1px solid var(--card-material-border, rgba(0, 212, 255, 0.15));
   border-radius: var(--card-border-radius, 0.25rem);
 }
