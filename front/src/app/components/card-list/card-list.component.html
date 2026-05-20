@@ -1,3 +1,5 @@
+@let svc = searchService();
+@let cards = cardsDetails$() | async;
 <div
   class="cardsContainer"
   [ngClass]="displayMode()"
@@ -6,6 +8,9 @@
   cdkDropListSortingDisabled
   [cdkDropListData]="{ source: 'search' }"
   (cdkDropListDropped)="onDrop($event)">
+  @if (svc?.isReloading() && displayMode() === displayType.GRID) {
+    <app-card-grid-skeleton [count]="skeletonCount(cards)" />
+  } @else {
   @for (cd of cardsDetails$() | async; track cd.card.id) {
     <div class="card-wrapper" [ngClass]="displayMode()"
          cdkDrag
@@ -20,8 +25,10 @@
       <div class="card-image-container">
         <app-card [card]="toSharedCardData(cd)" />
         @if (cd.card.banInfo < 3) {
-          <div class="ban-badge" [attr.data-ban]="cd.card.banInfo">
-            <div>{{ 'card_ban.' + cd.card.banInfo | translate }}</div>
+          <div class="ban-ribbon" [attr.data-ban]="cd.card.banInfo"
+               role="img"
+               [attr.aria-label]="'banlist.label_' + cd.card.banInfo | translate">
+            <span class="ban-ribbon__icon"></span>
           </div>
         }
         @if (deckBuildMode()) {
@@ -60,15 +67,17 @@
       }
     </div>
   }
-  @let svc = searchService();
-  @let cards = cardsDetails$() | async;
-  @if (svc?.isLoading() && (cards?.length ?? 0) === 0 && displayMode() === displayType.GRID) {
-    <app-card-grid-skeleton [count]="18" />
-  } @else if (!svc?.isLoading() && cards?.length === 0) {
+  @if (!svc?.isLoading() && cards?.length === 0) {
     <app-empty-state
+      variant="no-results"
+      icon="search_off"
       titleKey="cardList.emptyMessage"
+      descKey="cardList.emptyDesc"
       ctaLabelKey="cardList.emptyCta"
+      ctaIcon="backspace"
+      ctaVariant="secondary"
       (ctaAction)="onEmptyCta()">
     </app-empty-state>
+  }
   }
 </div>

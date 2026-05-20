@@ -179,6 +179,13 @@ export class CardListComponent implements OnDestroy {
     this.searchService()?.clearFilters();
   }
 
+  // Match the skeleton count to the currently visible cards so the grid keeps
+  // its height during a reload (no jump). Caps at 24, floors at 18 for the
+  // first search (empty grid).
+  skeletonCount(cards: Array<CardDetail> | null): number {
+    return Math.min(Math.max(cards?.length ?? 18, 18), 24);
+  }
+
   ngOnDestroy(): void {
     this.scrollSub?.unsubscribe();
     if (this.scrollContainer) {

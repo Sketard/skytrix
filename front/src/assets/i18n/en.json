@@ -556,7 +556,8 @@
     }
   },
   "search": {
-    "placeholder": "Enter a name..."
+    "placeholder": "Enter a name...",
+    "clear": "Clear search"
   },
   "cardSearcher": {
     "grid": "Grid",
@@ -599,6 +600,7 @@
   },
   "cardList": {
     "emptyMessage": "No results found",
+    "emptyDesc": "No card matches your search. Try adjusting or clearing your filters.",
     "emptyCta": "Clear filters"
   },
   "deckBox": {

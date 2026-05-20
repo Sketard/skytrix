@@ -44,6 +44,11 @@ export abstract class SearchServiceCore implements OnDestroy {
   private readonly isLoadingState = signal<boolean>(false);
   readonly isLoading = this.isLoadingState.asReadonly();
 
+  // True only while a fresh search (offset 0) resolves — NOT during
+  // loadNextPage pagination. Drives the full-grid skeleton swap.
+  private readonly isReloadingState = signal<boolean>(false);
+  readonly isReloading = this.isReloadingState.asReadonly();
+
   private readonly hasMoreResultsState = signal<boolean>(true);
   readonly hasMoreResults = this.hasMoreResultsState.asReadonly();
 
@@ -111,7 +116,7 @@ export abstract class SearchServiceCore implements OnDestroy {
     this.filterForm.valueChanges
       .pipe(
         debounce(() => {
-          return this.skipDebounceState() ? of({}) : timer(750);
+          return this.skipDebounceState() ? of({}) : timer(300);
         }),
         tap(() => {
           this.skipDebounceState.set(false);
@@ -123,6 +128,7 @@ export abstract class SearchServiceCore implements OnDestroy {
         this.offset = 0;
         this.hasMoreResultsState.set(true);
         this.isLoadingState.set(true);
+        this.isReloadingState.set(true);
         this.search(httpClient, this.filters, this.quantity, this.offset)
           .pipe(take(1))
           .subscribe({
@@ -131,9 +137,11 @@ export abstract class SearchServiceCore implements OnDestroy {
               this.offset += 1;
               this.hasMoreResultsState.set(cards.length >= this.quantity);
               this.isLoadingState.set(false);
+              this.isReloadingState.set(false);
             },
             error: () => {
               this.isLoadingState.set(false);
+              this.isReloadingState.set(false);
             },
           });
       });

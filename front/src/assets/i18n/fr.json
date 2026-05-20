@@ -556,7 +556,8 @@
     }
   },
   "search": {
-    "placeholder": "Entrez un nom..."
+    "placeholder": "Entrez un nom...",
+    "clear": "Effacer la recherche"
   },
   "cardSearcher": {
     "grid": "Grille",
@@ -599,6 +600,7 @@
   },
   "cardList": {
     "emptyMessage": "Aucun résultat trouvé",
+    "emptyDesc": "Aucune carte ne correspond à votre recherche. Ajustez ou effacez vos filtres.",
     "emptyCta": "Effacer les filtres"
   },
   "deckBox": {
