@@ -111,12 +111,12 @@
 
 .verified-chip {
   margin-left: 0.5rem;
-  --mdc-chip-elevated-container-color: var(--mat-sys-tertiary);
-  --mdc-chip-label-text-color: var(--mat-sys-on-tertiary);
+  --mat-chip-elevated-container-color: var(--mat-sys-tertiary);
+  --mat-chip-label-text-color: var(--mat-sys-on-tertiary);
 
   &.failed {
-    --mdc-chip-elevated-container-color: var(--mat-sys-error);
-    --mdc-chip-label-text-color: var(--mat-sys-on-error);
+    --mat-chip-elevated-container-color: var(--mat-sys-error);
+    --mat-chip-label-text-color: var(--mat-sys-on-error);
   }
 }
 

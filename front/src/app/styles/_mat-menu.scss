@@ -19,7 +19,7 @@
 // surface : `--surface-elevated` opaque, `--border-soft` 1px, `--radius-md`,
 // elevation shadow already provided by Material (kept).
 .mat-mdc-menu-panel.mat-mdc-menu-panel {
-  // Double class for +1 specificity to win against Material's `--mdc-elevated-surface-color`
+  // Double class for +1 specificity to win against Material's `--mat-elevated-surface-color`
   // CSS variable token (which sets `background-color` via `--mat-app-surface`).
   background: var(--surface-elevated) !important;
   border: 1px solid var(--border-soft);

@@ -181,24 +181,24 @@ input[type='number'] {
 }
 
 .mat-mdc-unelevated-button:not(:disabled) {
-  --mdc-filled-button-label-text-color: #{v.$white};
-  --mdc-filled-button-container-color: #{v.$black};
+  --mat-button-filled-label-text-color: #{v.$white};
+  --mat-button-filled-container-color: #{v.$black};
 }
 
 .mat-mdc-unelevated-button[disabled], .mat-mdc-unelevated-button.mat-mdc-button-disabled {
-  --mdc-filled-button-disabled-label-text-color: #{v.$grey};
+  --mat-button-filled-disabled-label-text-color: #{v.$grey};
 }
 
 .mdc-switch--checked {
   .mdc-switch__icon {
-    --mdc-switch-selected-icon-color: transparent;
+    --mat-slide-toggle-selected-icon-color: transparent;
   }
 }
 
 
 .mdc-switch {
   .mdc-switch__icon {
-    --mdc-switch-unselected-icon-color: transparent;
+    --mat-slide-toggle-unselected-icon-color: transparent;
   }
 }
 
@@ -220,7 +220,7 @@ a, button {
   // combined selector — panelClass can land on the container itself
   &.mat-mdc-snack-bar-container,
   .mat-mdc-snack-bar-container {
-    --mdc-snackbar-container-color: transparent;
+    --mat-snackbar-container-color: transparent;
     margin: 0.5rem 0 0 !important;
     padding: 0 !important;
   }

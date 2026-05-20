@@ -274,10 +274,10 @@
 // Used by surrender / inactivity / generic confirm dialogs in PvP.
 // =============================================================================
 .pvp-dialog-panel {
-  --mdc-dialog-container-color: var(--surface-dialog-deep);
-  --mdc-dialog-container-shape: 12px;
-  --mdc-dialog-subhead-color: var(--text-primary);
-  --mdc-dialog-supporting-text-color: var(--text-muted);
+  --mat-dialog-container-color: var(--surface-dialog-deep);
+  --mat-dialog-container-shape: 12px;
+  --mat-dialog-subhead-color: var(--text-primary);
+  --mat-dialog-supporting-text-color: var(--text-muted);
 
   .mat-mdc-dialog-surface {
     // !important: override Material's default surface chrome.
@@ -298,14 +298,14 @@
     gap: 8px;
 
     .mat-mdc-outlined-button {
-      --mdc-outlined-button-label-text-color: rgba(255, 255, 255, 0.5);
-      --mdc-outlined-button-outline-color: rgba(255, 255, 255, 0.2);
+      --mat-button-outlined-label-text-color: rgba(255, 255, 255, 0.5);
+      --mat-button-outlined-outline-color: rgba(255, 255, 255, 0.2);
     }
 
     .mat-mdc-unelevated-button {
       // hex: pure white literal (no themed alternative — high-contrast label on
       // gold/danger/warning filled-button surfaces). Wave 1 exception per §6 c.2.
-      --mdc-filled-button-label-text-color: #fff;
+      --mat-button-filled-label-text-color: #fff;
     }
   }
 
@@ -316,7 +316,7 @@
   }
 
   &--danger .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
-    --mdc-filled-button-container-color: var(--danger-flat);
+    --mat-button-filled-container-color: var(--danger-flat);
   }
 
   // --- Inactivity (warning) ---
@@ -326,6 +326,6 @@
   }
 
   &--warning .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
-    --mdc-filled-button-container-color: var(--warning-flat);
+    --mat-button-filled-container-color: var(--warning-flat);
   }
 }

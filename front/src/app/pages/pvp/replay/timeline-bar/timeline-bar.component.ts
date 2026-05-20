@@ -1,5 +1,5 @@
 import {
-  afterRender, ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, OnDestroy, output, signal, viewChild,
+  afterEveryRender, ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, OnDestroy, output, signal, viewChild,
 } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -122,7 +122,7 @@ export class TimelineBarComponent implements OnDestroy {
 
   /**
    * Position the playhead on the current bullet and auto-scroll.
-   * Direct DOM write — avoids the signal-in-afterRender refresh issue.
+   * Direct DOM write — avoids the signal-in-afterEveryRender refresh issue.
    */
   private syncPlayhead(): void {
     const track = this.trackEl()?.nativeElement;
@@ -193,7 +193,7 @@ export class TimelineBarComponent implements OnDestroy {
 
   constructor() {
     this.pointerMql.addEventListener('change', this.pointerMqlHandler);
-    afterRender(() => this.syncPlayhead());
+    afterEveryRender(() => this.syncPlayhead());
   }
 
   ngOnDestroy(): void {

@@ -71,8 +71,8 @@
       <span class="tree-breakdown-chips">
         @for (chip of node.breakdownChips; track chip.label) {
           <mat-chip
-            [style.--mdc-chip-elevated-container-color]="chip.color"
-            [style.--mdc-chip-label-text-color]="chip.isAmber ? '#121212' : '#fff'">
+            [style.--mat-chip-elevated-container-color]="chip.color"
+            [style.--mat-chip-label-text-color]="chip.isAmber ? '#121212' : '#fff'">
             {{ chip.label }} ×{{ chip.count }}
           </mat-chip>
         }

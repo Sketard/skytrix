@@ -124,14 +124,14 @@
 
   mat-form-field {
     width: 100%;
-    --mdc-filled-text-field-container-color: var(--surface-card-low);
-    --mdc-filled-text-field-input-text-color: var(--text-primary);
-    --mdc-filled-text-field-caret-color: var(--gold);
-    --mdc-filled-text-field-focus-active-indicator-color: var(--gold);
-    --mdc-filled-text-field-active-indicator-color: var(--gold-soft-30);
-    --mdc-filled-text-field-hover-active-indicator-color: var(--gold-soft-45);
-    --mdc-filled-text-field-input-text-placeholder-color: var(--text-muted);
-    --mdc-filled-text-field-container-shape: 0;
+    --mat-form-field-filled-container-color: var(--surface-card-low);
+    --mat-form-field-filled-input-text-color: var(--text-primary);
+    --mat-form-field-filled-caret-color: var(--gold);
+    --mat-form-field-filled-focus-active-indicator-color: var(--gold);
+    --mat-form-field-filled-active-indicator-color: var(--gold-soft-30);
+    --mat-form-field-filled-hover-active-indicator-color: var(--gold-soft-45);
+    --mat-form-field-filled-input-text-placeholder-color: var(--text-muted);
+    --mat-form-field-filled-container-shape: 0;
   }
 }
 

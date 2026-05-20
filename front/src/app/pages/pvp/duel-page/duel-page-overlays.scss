@@ -111,7 +111,7 @@
 // `panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger']` is wired in
 // duel-page.component.ts:confirmSurrender().
 ::ng-deep .pvp-dialog-panel--danger .mat-mdc-dialog-container {
-  --mdc-dialog-container-color: transparent;
+  --mat-dialog-container-color: transparent;
   padding: 0;
   box-shadow: var(--elevation-3);
 }
