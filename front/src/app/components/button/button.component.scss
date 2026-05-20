@@ -89,7 +89,7 @@
   color: var(--text-secondary);
 
   &:hover:not(:disabled):not([aria-disabled='true']) {
-    color: var(--gold);
+    color: var(--gold-on-surface); // text → on-surface token (light-mode doctrine)
     border-color: var(--gold-soft-40);
     background: var(--gold-soft-08);
   }
