@@ -137,7 +137,7 @@ app-pvp-board-container {
     align-items: center;
     padding: 3px 4px 2px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: var(--pvp-radius-lg);
+    border-radius: var(--radius-lg);
     background: var(--pvp-prompt-dialog-bg, rgba(15, 23, 42, 0.92));
     color: var(--text-primary);
     cursor: pointer;

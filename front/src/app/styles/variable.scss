@@ -11,12 +11,13 @@
 // reworks d'écran (cf. memory: project_design_system_strategy.md migration
 // mapping).
 //
-// Variables actives :
-//   $black             — referenced lobby-styles legacy + sim background
-//   $blue              — referenced styles.scss autofill
-//   $grey              — referenced styles.scss disabled state
-//   $white             — referenced styles.scss autofill
-//   $unselected-black  — superseded by --accent-primary-dim (token)
+// Variables actives (audit 2026-05-20) — uniquement dans styles.scss :
+//   $black  — mdc-button override + autofill
+//   $blue   — mdc-button focus shadow
+//   $grey   — mdc-button disabled label
+//   $white  — mdc-button label + autofill text-fill
+//   Migration de ces 4 vars repoussée avec les surcharges Material MDC.
+//   $unselected-black — superseded par --gold-soft-20 (token), plus consommé.
 //
 // Audit 2026-05-14 (Wave 1 Niveau 1 refacto) : aucune référence dans les
 // nouveaux partials Wave 1 (a11y, motion, typography, card-surface, buttons,

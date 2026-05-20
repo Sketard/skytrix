@@ -15,18 +15,18 @@
   }
 
   &-success {
-    border-left-color: var(--accent-primary);
+    border-left-color: var(--gold);
 
     mat-icon:first-child {
-      color: var(--accent-primary);
+      color: var(--gold);
     }
   }
 
   &-error {
-    border-left-color: var(--danger);
+    border-left-color: var(--danger-strong);
 
     mat-icon:first-child {
-      color: var(--danger);
+      color: var(--danger-strong);
     }
   }
 

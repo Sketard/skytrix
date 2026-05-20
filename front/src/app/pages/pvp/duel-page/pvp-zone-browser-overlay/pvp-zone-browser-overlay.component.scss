@@ -17,7 +17,7 @@
   flex: 1;
   min-height: 0;
   background: var(--pvp-zone-browser-bg);
-  border-radius: var(--pvp-radius-lg) 0 0 var(--pvp-radius-lg);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-right: none;
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.6);
@@ -60,7 +60,7 @@
   background: var(--pvp-zone-browser-bg);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-right: none;
-  border-radius: var(--pvp-radius-lg) 0 0 var(--pvp-radius-lg);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -119,7 +119,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   line-height: 0;
 
   &:hover,
@@ -141,7 +141,7 @@
   max-height: var(--pvp-hand-card-height);
   aspect-ratio: 59 / 86;
   object-fit: cover;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   display: block;
 }
 

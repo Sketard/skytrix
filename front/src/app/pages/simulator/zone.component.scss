@@ -46,7 +46,7 @@ app-card {
 // CDK DragDrop feedback — external card hovering over this zone
 .sim-zone.cdk-drop-list-receiving:not(.cdk-drop-list-dragging) {
   background: var(--sim-zone-highlight);
-  border-color: var(--accent-primary);
+  border-color: var(--sim-accent);
   transition: background 100ms ease, border-color 100ms ease;
 
   // Hide label — highlight + existing card are sufficient feedback
@@ -58,7 +58,7 @@ app-card {
 // Source zone highlight (own card being dragged)
 .sim-zone.cdk-drop-list-dragging {
   background: var(--sim-zone-highlight);
-  border-color: var(--accent-primary);
+  border-color: var(--sim-accent);
 }
 
 // Own card being dragged out — faded placeholder

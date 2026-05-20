@@ -465,7 +465,7 @@
       @extend %skel-block;
       height: 100%;
       aspect-ratio: 59 / 86;
-      border-radius: var(--pvp-radius-sm, 4px);
+      border-radius: var(--radius-sm);
     }
 
     &--opponent {
@@ -528,7 +528,7 @@
     aspect-ratio: 1;
     height: 100%;
     justify-self: center;
-    border-radius: var(--pvp-radius-md, 8px);
+    border-radius: var(--radius-md);
   }
 
   // EMZ positions (col 3 and col 5 of central strip).
@@ -542,7 +542,7 @@
     aspect-ratio: 59 / 86;
     width: 100%;
     height: auto;
-    border-radius: var(--pvp-radius-md, 8px);
+    border-radius: var(--radius-md);
   }
 
   // Banished slots (central strip cols 1 and 7).

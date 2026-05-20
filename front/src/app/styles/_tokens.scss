@@ -18,30 +18,17 @@
 // Migration Mapping — Old SCSS variable → New CSS custom property
 // -----------------------------------------------------------------------------
 //
-//   Old Variable          Old Value      New Token               New Value
-//   -------------------   -----------    ----------------------  -----------
-//   $black                #303030        --text-primary          #EAEAEA
-//   $white                #fff           --surface-card          #1E1E1E
-//   $blue                 #93dafa        --accent-primary        #C9A84C
-//   $red                  #a30000        --danger                #CF6679
-//   $grey                 #a0a0a0        --text-secondary        #9E9E9E
-//   $unselected-black     #1f14142f      --accent-primary-dim    #C9A84C33
+//   La migration light→dark est terminée. Les écrans consomment les tokens
+//   sémantiques (--gold, --surface-*, --text-*, --danger-strong). Les alias
+//   de transition (--accent-primary, --accent-primary-dim, --surface-card-hover,
+//   --danger) ont été supprimés le 2026-05-20.
 //
-//   No direct replacement (kept in variable.scss as-is):
-//     $green   (#00b451)  — valid count indicator, no semantic token equivalent
-//     $purple  (#6d005b)  — unused in redesigned screens
-//     $orange  (#ffac4d)  — unused in redesigned screens
-//     $yellow  (#FFDF00)  — unused in redesigned screens
-//
-//   Deprecated but not yet removed (remain in variable.scss):
-//     $white              — replaced by surface/text tokens contextually
-//     $unselected-black   — replaced by --accent-primary-dim
-//     $black              — replaced by --text-primary / --surface-base contextually
-//
-//   Note: Old variables were for a light theme (dark text on light bg).
-//   New tokens are for a dark theme (light text on dark bg). This is NOT a 1:1
-//   value swap — it's a complete palette inversion. Each migration story must
-//   remap both the token reference AND the visual intent.
+//   Reliquat — SCSS variables encore dans variable.scss (light-theme era) :
+//     $black / $white / $blue / $grey  — uniquement dans styles.scss
+//       (overrides Material MDC + autofill). Migration repoussée avec les
+//       autres surcharges MDC.
+//     $green / $purple / $orange / $yellow — sans équivalent sémantique,
+//       gelées en l'état.
 //
 // =============================================================================
 
@@ -119,7 +106,7 @@
   // align with sibling search inputs without ad-hoc !important min-heights.
   --cta-inline-height: 36px;
 
-  // --- Radius (DS generalised — `--pvp-radius-*` retained for legacy PvP) ---
+  // --- Radius (DS canonical — échelle unique, PvP compris depuis 2026-05-20) ---
   --radius-sm:   6px;
   --radius-md:   10px;
   --radius-lg:   14px;
@@ -321,18 +308,6 @@
   --touch-target-min:     44px;
   --touch-target-primary: 48px;
 
-  // =========================================================================
-  // === Legacy aliases (Wave 1.5, 2026-05-15)
-  // === Mapped to DS canonical tokens. Kept for migration grace period —
-  // === bulk-replace + delete in Wave 2.
-  // === All values identical: aliases incur zero visual change.
-  // =========================================================================
-  --accent-primary:      var(--gold);             // 31 usages
-  --accent-primary-dim:  var(--gold-soft-20);     // 8 usages
-  --surface-card-hover:  var(--surface-hover);    // 3 usages
-  --danger:              var(--danger-strong);    // 5 usages (#CF6679 -> #ff5252,
-                                                  // unifie sur la palette DS Wave 1)
-
   // --- Border widths — use tokens when intent matters (focus = medium,
   // emphasized = thick). `1px solid` literal stays acceptable for default
   // borders since the value is universally legible.
@@ -358,16 +333,10 @@
 
   // =========================================================================
   // === PvP Tokens ===
-  // === --pvp-radius-* échelle 2/4/8/12 (DIFFÉRENTE de --radius-* DS 6/10/14/18).
-  // === 30+ usages dans duel-page/prompts/skel. À fusionner en Wave 3 quand
-  // === le duel in-game sera refondu — décision design requise sur l'échelle.
+  // === Radius : l'échelle PvP legacy (--pvp-radius-* 2/4/8/12) a été fusionnée
+  // === dans l'échelle DS canonique --radius-* (6/10/14/18) le 2026-05-20.
+  // === Les usages duel consomment désormais --radius-* directement.
   // =========================================================================
-
-  // --- Border Radius ---
-  --pvp-radius-sm: 2px;
-  --pvp-radius-md: 4px;
-  --pvp-radius-lg: 8px;
-  --pvp-radius-xl: 12px;
 
   // --- Perspective ---
   --pvp-opponent-field-scale: 0.69;
@@ -460,7 +429,7 @@
 
   // --- Action Menu ---
   --pvp-action-menu-bg: rgba(20, 20, 40, 0.95);
-  --pvp-action-menu-radius: var(--pvp-radius-lg);
+  --pvp-action-menu-radius: var(--radius-lg);
 
   // --- Zone Browser ---
   --pvp-zone-browser-bg: rgba(20, 20, 40, 0.95);
@@ -513,7 +482,7 @@
 
   // --- Lobby ---
   --pvp-lobby-card-bg: var(--surface-card);
-  --pvp-lobby-card-hover: var(--surface-card-hover);
+  --pvp-lobby-card-hover: var(--surface-hover);
   --pvp-lobby-accent-border: 3px solid var(--pvp-accent);
   --pvp-lobby-cta-bg: var(--pvp-accent);
   --pvp-lobby-cta-color: #121212;
