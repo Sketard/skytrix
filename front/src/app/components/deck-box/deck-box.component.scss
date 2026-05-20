@@ -170,6 +170,12 @@
     box-shadow: none;
     transform: translateY(-2px);
   }
+
+  // Mobile (grille en colonne unique sous $bp-mobile) — petit espace au-dessus
+  // de la tuile "Nouveau deck", qui est en tête de liste.
+  @media (max-width: 575px) {
+    margin-top: var(--space-3);
+  }
 }
 
 .deck-box__add-content {

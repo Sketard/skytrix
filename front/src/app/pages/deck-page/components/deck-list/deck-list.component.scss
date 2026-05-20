@@ -4,6 +4,7 @@
 :host {
   display: block;
   position: relative;
+  isolation: isolate;
   min-height: 100%;
   height: auto;
   overflow-y: auto;
@@ -13,19 +14,20 @@
   // but this prevents a stray fixed-width element from breaking layout.
   overflow-x: hidden;
   background: var(--surface-bg);
-}
+  // Page padding — aligned on the replay-hub / lobby pattern. The header
+  // is projected via <app-page-shell> (display: contents), so it inherits
+  // this padding directly instead of carrying its own.
+  padding: var(--space-fluid-md, 16px);
 
-// =============================================================================
-// Header — consumes the DS `.page-header` utility + adds local actions row
-// =============================================================================
-
-.deck-list__header {
-  padding: var(--space-5) var(--space-7) var(--space-4);
-
-  @media (max-width: 767px) {
-    padding: var(--space-4) var(--space-3) var(--space-3);
+  @include respond-above($bp-tablet) {
+    padding: var(--space-fluid-lg, 24px);
   }
 }
+
+// =============================================================================
+// Header actions — projected into <app-page-shell>'s [header-actions] slot.
+// The page-header chrome itself (icon + title + screen-bg) lives in the shell.
+// =============================================================================
 
 .deck-list__actions {
   display: flex;
@@ -55,11 +57,12 @@
 // =============================================================================
 
 .deck-list__body {
-  padding: 0 var(--space-7) var(--space-7);
-
-  @media (max-width: 767px) {
-    padding: 0 var(--space-3) var(--space-5);
-  }
+  // Centered content column — aligns with <app-page-shell>'s header
+  // (contentMaxWidth="--container-wide"). Famille "large" unifiée.
+  // Horizontal padding lives on :host; the header↔body gap is owned by
+  // <app-page-shell> (.page-header margin-bottom).
+  max-width: var(--container-wide);
+  margin-inline: auto;
 }
 
 .deck-list__stats {

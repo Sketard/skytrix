@@ -21,7 +21,7 @@ import {
 } from '../../../../components/confirm-dialog/confirm-dialog.component';
 import { ShortDeck } from '../../../../core/model/short-deck';
 import { EmptyStateComponent } from '../../../../components/empty-state/empty-state.component';
-import { IconWrapComponent } from '../../../../components/icon-wrap/icon-wrap.component';
+import { PageShellComponent } from '../../../../components/page-shell/page-shell.component';
 import { SectionHeaderComponent } from '../../../../components/section-header/section-header.component';
 import { StatsStripComponent } from '../../../../components/stats-strip/stats-strip.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -41,7 +41,7 @@ import { DeckListStore, DeckSortMode } from './deck-list-store';
     MatMenuModule,
     MatTooltipModule,
     EmptyStateComponent,
-    IconWrapComponent,
+    PageShellComponent,
     TranslatePipe,
     ReactiveFormsModule,
     ButtonComponent,

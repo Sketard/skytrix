@@ -6,6 +6,7 @@
 
 <header [class]="headerClass()"
         [style.max-width]="contentMaxWidth() ?? null"
+        [style.width]="contentMaxWidth() ? '100%' : null"
         [style.margin-inline]="contentMaxWidth() ? 'auto' : null">
   <div class="page-header__title-group">
     @if (iconWrapPalette() && icon()) {

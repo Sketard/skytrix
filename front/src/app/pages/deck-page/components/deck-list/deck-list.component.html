@@ -1,17 +1,12 @@
-<div class="screen-bg" aria-hidden="true">
-  <div class="screen-bg-grid"></div>
-  <div class="screen-bg-glow screen-bg-glow--gold"></div>
-  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
-</div>
-
 @let decks = store.decks();
 @let firstLoad = store.loading();
 
 <!-- Three top-level branches:
      1. Initial-load error (firstLoad + error AND no cached decks) — show the
-        error empty-state full-bleed (no skeleton chrome above). Review fix F26.
-     2. Skeleton chrome OR populated list (firstLoad || decks.length > 0).
-     3. Welcome state (first-time user, no decks). -->
+        error empty-state full-bleed (no page-shell chrome above). Review fix F26.
+     2. Skeleton chrome OR populated list (firstLoad || decks.length > 0) —
+        wrapped in <app-page-shell> (header + screen-bg).
+     3. Welcome state (first-time user, no decks) — full-bleed empty-state. -->
 @if (store.error() && firstLoad) {
   <app-empty-state
     variant="error"
@@ -22,16 +17,14 @@
     (ctaAction)="store.fetchSnapshot()">
   </app-empty-state>
 } @else if (firstLoad || decks.length > 0) {
-  <header class="page-header deck-list__header">
-    <div class="page-header__title-group">
-      <app-icon-wrap palette="gold" icon="folder_special"></app-icon-wrap>
-      <div class="page-header__text">
-        <h1 class="page-header__title text-gold-gradient">{{ 'deckList.title' | translate }}</h1>
-        <span class="page-header__subtitle">{{ 'deckList.subtitle' | translate }}</span>
-      </div>
-    </div>
+  <app-page-shell
+    titleKey="deckList.title"
+    subtitleKey="deckList.subtitle"
+    icon="folder_special"
+    iconWrapPalette="gold"
+    contentMaxWidth="var(--container-wide)">
 
-    <div class="deck-list__actions">
+    <div class="deck-list__actions" header-actions>
       <search-bar
         class="deck-list__search"
         [form]="searchControl"
@@ -42,77 +35,77 @@
         <span>{{ 'deckList.newDeck' | translate }}</span>
       </app-button>
     </div>
-  </header>
 
-  <div class="deck-list__body">
-    @if (firstLoad) {
-      <app-deck-stats-strip-skeleton class="deck-list__stats" [count]="3"></app-deck-stats-strip-skeleton>
-    } @else {
-      <app-stats-strip class="deck-list__stats" [stats]="store.stats()"></app-stats-strip>
-    }
+    <div class="deck-list__body">
+      @if (firstLoad) {
+        <app-deck-stats-strip-skeleton class="deck-list__stats" [count]="3"></app-deck-stats-strip-skeleton>
+      } @else {
+        <app-stats-strip class="deck-list__stats" [stats]="store.stats()"></app-stats-strip>
+      }
 
-    @if (store.error()) {
-      <app-empty-state
-        variant="error"
-        icon="wifi_off"
-        titleKey="deckList.error.title"
-        ctaLabelKey="deckList.error.retry"
-        ctaIcon="refresh"
-        (ctaAction)="store.fetchSnapshot()">
-      </app-empty-state>
-    } @else {
-      <app-section-header
-        titleKey="deckList.list.title"
-        [count]="firstLoad ? null : store.filteredDecks().length"
-        countKey="deckList.list.count">
-        <app-button variant="ghost" size="sm"
-                [ariaLabel]="'deckList.sort.label' | translate"
-                [matMenuTriggerFor]="sortMenu">
-          <mat-icon>sort</mat-icon>
-          <span class="deck-list__sort-label">{{ sortLabelKey() | translate }}</span>
-        </app-button>
-        <mat-menu #sortMenu="matMenu" xPosition="before">
-          @for (mode of store.sortModes; track mode) {
-            <button mat-menu-item type="button"
-                    [class.is-active]="store.sortMode() === mode"
-                    (click)="setSortMode(mode)">
-              {{ 'deckList.sort.' + mode | translate }}
-            </button>
-          }
-        </mat-menu>
-      </app-section-header>
-
-      <div class="deck-page">
-        @if (firstLoad) {
-          <app-deck-box-skeleton [count]="6"></app-deck-box-skeleton>
-        } @else if (store.showNoResultsState()) {
-          <app-empty-state
-            variant="no-results"
-            icon="search_off"
-            titleKey="deckList.noResults.title"
-            descKey="deckList.noResults.desc"
-            ctaLabelKey="deckList.noResults.clearSearch"
-            ctaIcon="backspace"
-            (ctaAction)="clearSearch()">
-          </app-empty-state>
-        } @else {
-          <deck-box class="deck-page-deck" [add]="true"></deck-box>
-          @for (deck of store.filteredDecks(); track deck.id) {
-            <div class="deck-page-deck">
-              <deck-box [deck]="deck"></deck-box>
-              <button
-                mat-icon-button
-                class="deck-page-deck-remove"
-                [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
-                (click)="confirmDelete(deck); $event.stopPropagation()">
-                <mat-icon fontIcon="delete"></mat-icon>
+      @if (store.error()) {
+        <app-empty-state
+          variant="error"
+          icon="wifi_off"
+          titleKey="deckList.error.title"
+          ctaLabelKey="deckList.error.retry"
+          ctaIcon="refresh"
+          (ctaAction)="store.fetchSnapshot()">
+        </app-empty-state>
+      } @else {
+        <app-section-header
+          titleKey="deckList.list.title"
+          [count]="firstLoad ? null : store.filteredDecks().length"
+          countKey="deckList.list.count">
+          <app-button variant="ghost" size="sm"
+                  [ariaLabel]="'deckList.sort.label' | translate"
+                  [matMenuTriggerFor]="sortMenu">
+            <mat-icon>sort</mat-icon>
+            <span class="deck-list__sort-label">{{ sortLabelKey() | translate }}</span>
+          </app-button>
+          <mat-menu #sortMenu="matMenu" xPosition="before">
+            @for (mode of store.sortModes; track mode) {
+              <button mat-menu-item type="button"
+                      [class.is-active]="store.sortMode() === mode"
+                      (click)="setSortMode(mode)">
+                {{ 'deckList.sort.' + mode | translate }}
               </button>
-            </div>
+            }
+          </mat-menu>
+        </app-section-header>
+
+        <div class="deck-page">
+          @if (firstLoad) {
+            <app-deck-box-skeleton [count]="6"></app-deck-box-skeleton>
+          } @else if (store.showNoResultsState()) {
+            <app-empty-state
+              variant="no-results"
+              icon="search_off"
+              titleKey="deckList.noResults.title"
+              descKey="deckList.noResults.desc"
+              ctaLabelKey="deckList.noResults.clearSearch"
+              ctaIcon="backspace"
+              (ctaAction)="clearSearch()">
+            </app-empty-state>
+          } @else {
+            <deck-box class="deck-page-deck" [add]="true"></deck-box>
+            @for (deck of store.filteredDecks(); track deck.id) {
+              <div class="deck-page-deck">
+                <deck-box [deck]="deck"></deck-box>
+                <button
+                  mat-icon-button
+                  class="deck-page-deck-remove"
+                  [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
+                  (click)="confirmDelete(deck); $event.stopPropagation()">
+                  <mat-icon fontIcon="delete"></mat-icon>
+                </button>
+              </div>
+            }
           }
-        }
-      </div>
-    }
-  </div>
+        </div>
+      }
+    </div>
+  </app-page-shell>
 } @else {
   <app-empty-state
     variant="welcome"

@@ -7,6 +7,15 @@
   display: contents;
 }
 
+// Espace header ↔ body. <app-page-shell> projette le header HORS du flex
+// container du body, donc le `gap` du container ne peut pas l'espacer (à la
+// différence des pages qui gardent leur header dans le même flex parent,
+// p. ex. le lobby). La marge vit donc ici pour que tous les consommateurs du
+// shell (replay-hub, deck-list, …) aient le même rythme vertical.
+.page-header:not(.page-header--compact) {
+  margin-bottom: var(--space-6);
+}
+
 // Pattern A6 (pages-homogenization-findings-consolidated-2026-05-18):
 // On narrow mobile portrait the back-nav wraps under the title because
 // `.page-header` is `flex-wrap: wrap`. We reposition it as icon-only at the
