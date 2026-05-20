@@ -1,5 +1,6 @@
 @use 'responsive' as *;
 @use 'z-layers' as z;
+@use 'mixin' as *;
 
 // =============================================================================
 // Navbar — Direction B (Refresh identité skytrix)
@@ -231,9 +232,7 @@
   }
 
   .chevron {
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
+    @include icon-size(18px);
     transition: transform var(--transition-fast) var(--ease-out);
   }
 }
@@ -297,9 +296,7 @@
 
   .check {
     margin-left: auto;
-    font-size: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
+    @include icon-size(16px);
     color: var(--gold);
   }
 }

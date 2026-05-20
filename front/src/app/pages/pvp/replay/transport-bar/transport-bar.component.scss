@@ -1,4 +1,5 @@
 @use '../../../../styles/responsive' as r;
+@use '../../../../styles/mixin' as *;
 
 // =============================================================================
 // Transport-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
@@ -113,9 +114,7 @@
 
   mat-icon {
     // !important: override mat-icon's default 24px host bind.
-    font-size: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
+    @include icon-size(16px);
     color: inherit;
   }
 
@@ -153,9 +152,7 @@
   &:hover { border-color: var(--gold-soft-40); }
 
   mat-icon {
-    font-size: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
+    @include icon-size(16px);
     color: var(--text-muted);
   }
 }
@@ -186,9 +183,7 @@
 // 18px (DS default `mat-icon` n'a pas de pin size dans `.btn`).
 .transport-bar__fork {
   mat-icon {
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
+    @include icon-size(18px);
   }
 
   &:hover:not(:disabled) {

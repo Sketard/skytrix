@@ -1,4 +1,5 @@
 @use 'z-layers' as z;
+@use 'mixin' as *;
 
 // Floating back FAB — top-left, gold halo, 44×44 WCAG touch target.
 // The host pulls the button out of normal flow with `position: fixed`,
@@ -35,11 +36,8 @@
               background var(--transition-fast) var(--ease-out);
 
   mat-icon {
-    // !important: override mat-icon's default 24px host bind — keep 20px
-    // glyph centered in the 44×44 touch target.
-    font-size: 20px !important;
-    width: 20px !important;
-    height: 20px !important;
+    // 20px glyph centré dans la cible tactile 44×44.
+    @include icon-size(20px);
   }
 
   &:hover,

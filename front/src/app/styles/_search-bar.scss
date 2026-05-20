@@ -7,6 +7,8 @@
 // Pas de @extend ici — on garde la composition côté HTML pour lisibilité.
 // =============================================================================
 
+@use 'mixin' as *;
+
 .search-bar {
   display: flex;
   align-items: center;
@@ -26,9 +28,7 @@
 
 .search-bar__icon {
   color: var(--text-muted);
-  font-size: 18px !important; // !important: override mat-icon default
-  width: 18px !important;
-  height: 18px !important;
+  @include icon-size(18px);
   line-height: 18px !important;
   flex-shrink: 0;
   display: inline-flex;

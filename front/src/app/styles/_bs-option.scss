@@ -16,8 +16,11 @@
 //   - `.bs-option-state--off`— muted text only
 //
 // Consumers: replay-bottom-sheet (options + details), turn-picker bottom-sheet.
-// Tokens only — no hex / no rgba inline / no `!important`.
+// Tokens only — no hex / no rgba inline. (Le sizing d'icône passe par le
+// mixin icon-size : le `!important` requis par Material y est centralisé.)
 // =============================================================================
+
+@use 'mixin' as *;
 
 .bs-option {
   display: flex;
@@ -58,11 +61,7 @@
 
   mat-icon,
   .material-icons-round {
-    // !important: override mat-icon's default 24px host bind to fit the
-    // 32×32 icon chip without overflowing.
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
+    @include icon-size(18px);
   }
 }
 
@@ -122,11 +121,8 @@
 
   mat-icon,
   .material-icons-round {
-    // !important: override mat-icon's default 24px host bind so the chevron
-    // matches the mockup's 20px icon (visually balanced with the 32×32 chip).
-    font-size: 20px !important;
-    width: 20px !important;
-    height: 20px !important;
+    // Chevron à 20px (équilibré avec le chip 32×32 — mockup).
+    @include icon-size(20px);
   }
 }
 

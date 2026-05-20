@@ -4,6 +4,8 @@
 // Tokens DS consumed: --gold*, --space-*, --text-*, --radius-*, --elevation-*.
 // =============================================================================
 
+@use '../../../styles/mixin' as *;
+
 :host {
   display: block;
 }
@@ -628,9 +630,7 @@
   gap: var(--space-1);
 
   mat-icon {
-    font-size: 12px !important;
-    width: 12px !important;
-    height: 12px !important;
+    @include icon-size(12px);
     color: var(--gold);
   }
 }

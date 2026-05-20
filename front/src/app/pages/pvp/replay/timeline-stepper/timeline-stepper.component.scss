@@ -1,4 +1,5 @@
 @use '../../../../styles/responsive' as r;
+@use '../../../../styles/mixin' as *;
 
 // Layout-only — icon-btn / typography come from DS Wave 1.
 // The pill is a viewer-specific composite (gold-soft glow + dot progress +
@@ -81,9 +82,7 @@
 .timeline-stepper__pill-icon {
   color: var(--gold);
   // !important: override mat-icon's default 24px host bind.
-  font-size: 18px !important;
-  width: 18px !important;
-  height: 18px !important;
+  @include icon-size(18px);
   flex-shrink: 0;
 }
 
@@ -113,9 +112,7 @@
   color: var(--gold);
   // !important: override mat-icon's default 24px host bind — keep the 14px
   // chevron compact next to the turn label.
-  font-size: 14px !important;
-  width: 14px !important;
-  height: 14px !important;
+  @include icon-size(14px);
   line-height: var(--line-tight);
 }
 

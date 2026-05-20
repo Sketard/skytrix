@@ -1,4 +1,5 @@
 @use '../../../../styles/responsive' as r;
+@use '../../../../styles/mixin' as *;
 
 // Component-scoped layout — visuals all come from `_bottom-sheet.scss`
 // (Viewer F0 partial: `.bottom-sheet`, `.bottom-sheet-header`,
@@ -14,9 +15,7 @@
 // the partial expects an 18px glyph centered in the 32x32 box).
 .bottom-sheet-close mat-icon {
   // !important: override mat-icon's default 24px host bind.
-  font-size: 18px !important;
-  width: 18px !important;
-  height: 18px !important;
+  @include icon-size(18px);
   line-height: 18px !important;
 }
 

@@ -3,6 +3,8 @@
 // Replaces per-page `.{page}__icon-wrap`. Wave A, 2026-05-18.
 // =============================================================================
 
+@use 'mixin' as *;
+
 :host {
   width: 44px;
   height: 44px;
@@ -13,9 +15,7 @@
 }
 
 .icon-wrap__icon {
-  font-size: 24px !important;
-  width: 24px !important;
-  height: 24px !important;
+  @include icon-size(24px);
 }
 
 :host(.icon-wrap--gold) {

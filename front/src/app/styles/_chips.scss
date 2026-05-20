@@ -7,6 +7,8 @@
 // aria-pressed obligatoire côté HTML (critère de PR review).
 // =============================================================================
 
+@use 'mixin' as *;
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -37,9 +39,7 @@
   // font-size alone leaves the glyph floating inside the 24px box. Pin
   // all three dims so `align-items: center` of the parent lands the
   // icon on the same baseline as the chip text.
-  font-size: 14px !important; // !important: override mat-icon default
-  width: 14px !important;
-  height: 14px !important;
+  @include icon-size(14px);
   line-height: 14px !important;
   display: inline-flex;
   align-items: center;

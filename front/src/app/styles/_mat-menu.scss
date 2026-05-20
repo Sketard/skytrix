@@ -14,6 +14,8 @@
 // cascade order (background-color, color). Otherwise no `!important`.
 // =============================================================================
 
+@use 'mixin' as *;
+
 // --- Panel surface ----------------------------------------------------------
 // Material default is white with subtle shadow. We replace with the DS dark
 // surface : `--surface-elevated` opaque, `--border-soft` 1px, `--radius-md`,
@@ -46,9 +48,7 @@
   // mat-icon at item start — DS sizing (was 24px Material default).
   .mat-icon, mat-icon {
     color: var(--text-secondary);
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
+    @include icon-size(18px);
     margin-right: var(--space-2);
   }
 

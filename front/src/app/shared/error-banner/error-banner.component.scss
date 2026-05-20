@@ -2,6 +2,9 @@
 // Error banner — inline (non-toast) warning component.
 // Spec source: _mockups/mockup-1-holo-arena.html (ERROR BANNERS, ll. 1826-1875).
 // =============================================================================
+
+@use 'mixin' as *;
+
 :host.error-banner {
   display: flex;
   align-items: flex-start;
@@ -41,9 +44,7 @@
   justify-content: center;
 
   mat-icon {
-    font-size: 22px !important;
-    width: 22px !important;
-    height: 22px !important;
+    @include icon-size(22px);
   }
 }
 

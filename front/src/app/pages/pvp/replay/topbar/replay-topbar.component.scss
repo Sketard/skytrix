@@ -1,5 +1,6 @@
 @use '../../../../styles/responsive' as r;
 @use '../../../../styles/z-layers' as z;
+@use '../../../../styles/mixin' as *;
 
 // Layout-only. All visuals come from DS Wave 1 (`.page-header--compact`,
 // `.btn--ghost`, `.icon-btn`, `.pill--*`, `.text-eyebrow`, `.text-mono`).
@@ -77,9 +78,7 @@
 // same pattern as `_buttons.scss` icon size overrides.
 .replay-topbar__meta-icon {
   // !important: override mat-icon's default 24px host bind.
-  font-size: 14px !important;
-  width: 14px !important;
-  height: 14px !important;
+  @include icon-size(14px);
   color: var(--text-muted);
 }
 
@@ -117,9 +116,7 @@
 
   mat-icon {
     // !important: override mat-icon's default 24px host bind.
-    font-size: 14px !important;
-    width: 14px !important;
-    height: 14px !important;
+    @include icon-size(14px);
   }
 
   &:hover {

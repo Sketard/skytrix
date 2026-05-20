@@ -1,4 +1,5 @@
 @use '../../../../styles/responsive' as r;
+@use '../../../../styles/mixin' as *;
 
 // Turn picker — mockup-fidèle (mockup §turn-picker ll. 861-968).
 // Visuals derived from DS tokens (`--gold*`, `--cyan*`, `--surface-overlay`).
@@ -208,9 +209,7 @@
 
   mat-icon {
     // !important: override mat-icon's default 24px host bind to fit the footer.
-    font-size: 12px !important;
-    width: 12px !important;
-    height: 12px !important;
+    @include icon-size(12px);
   }
 }
 

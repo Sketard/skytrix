@@ -3,6 +3,22 @@
   margin-bottom: 0.5em;
 }
 
+// =============================================================================
+// icon-size — taille d'un <mat-icon>.
+// =============================================================================
+// Material applique `.mat-icon { font-size/width/height: 24px }` avec une
+// spécificité qu'on ne bat pas sans `!important`. Ce mixin centralise le
+// trio + le `!important` en une source unique — au lieu de le dupliquer
+// dans chaque composant qui redimensionne une icône.
+//
+// Usage :  mat-icon { @include icon-size(18px); }
+// =============================================================================
+@mixin icon-size($size) {
+  font-size: $size !important;
+  width: $size !important;
+  height: $size !important;
+}
+
 @mixin icon-as-button {
   .mdc-icon-button {
     border-radius: 0;

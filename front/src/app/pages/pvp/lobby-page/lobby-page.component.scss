@@ -1,4 +1,5 @@
 @use '../../../styles/responsive' as r;
+@use '../../../styles/mixin' as *;
 
 // =============================================================================
 // Lobby page — Phase 1.6 refonte visuelle (mockup-1-holo-arena).
@@ -67,9 +68,7 @@
   gap: var(--space-3);
 
   mat-icon {
-    font-size: 22px !important;
-    width: 22px !important;
-    height: 22px !important;
+    @include icon-size(22px);
     position: relative;
     z-index: 1;
   }
@@ -226,9 +225,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 
   mat-icon {
-    font-size: 10px !important;
-    width: 10px !important;
-    height: 10px !important;
+    @include icon-size(10px);
     line-height: 10px;
   }
 }
@@ -270,9 +267,7 @@
   }
 
   mat-icon {
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
+    @include icon-size(18px);
   }
 
   // Desktop : shrink + hover-revealed inside the parent card.
@@ -281,9 +276,7 @@
     height: 30px;
 
     mat-icon {
-      font-size: 16px !important;
-      width: 16px !important;
-      height: 16px !important;
+      @include icon-size(16px);
     }
   }
 }
@@ -354,9 +347,7 @@
   width: 100%;
 
   mat-icon {
-    font-size: 16px !important;
-    width: 16px !important;
-    height: 16px !important;
+    @include icon-size(16px);
     transition: transform var(--transition-normal) var(--ease-inout);
   }
 

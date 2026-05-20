@@ -22,6 +22,8 @@
 // `:focus-visible` est géré globalement par `_a11y.scss`.
 // =============================================================================
 
+@use 'mixin' as *;
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -35,9 +37,7 @@
 }
 
 .empty-state__icon {
-  font-size: 96px !important; // !important: override mat-icon default 24px
-  width: 96px !important;
-  height: 96px !important;
+  @include icon-size(96px);
   color: rgba(201, 168, 76, 0.3);
   filter: drop-shadow(0 4px 16px rgba(201, 168, 76, 0.2));
   margin-bottom: 8px;
@@ -73,9 +73,7 @@
   padding: var(--space-8) var(--space-4);
 
   .empty-state__icon {
-    font-size: 96px !important;
-    width: 96px !important;
-    height: 96px !important;
+    @include icon-size(96px);
     filter: drop-shadow(0 0 24px var(--gold-soft-12));
   }
 
@@ -93,9 +91,7 @@
   gap: var(--space-4);
 
   .empty-state__icon {
-    font-size: 72px !important;
-    width: 72px !important;
-    height: 72px !important;
+    @include icon-size(72px);
     color: var(--gold);
     filter: drop-shadow(0 0 12px var(--gold-soft-30));
   }
@@ -115,9 +111,7 @@
     gap: var(--space-1);
 
     mat-icon {
-      font-size: 18px !important;
-      width: 18px !important;
-      height: 18px !important;
+      @include icon-size(18px);
     }
   }
 }

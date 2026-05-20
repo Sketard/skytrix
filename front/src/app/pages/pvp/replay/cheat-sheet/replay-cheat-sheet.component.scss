@@ -1,6 +1,7 @@
 @use '../../../../styles/responsive' as r;
 @use 'z-layers' as z;
 @use 'surface-floating' as sf;
+@use '../../../../styles/mixin' as *;
 
 // Cheat-sheet modal — mockup-fidèle (mockup §cheat-sheet ll. 1345-1437).
 // Visuals delegated to `_cheat-sheet-block.scss` (`.cheat-section*`, `.cheat-item*`,
@@ -73,9 +74,7 @@
   -webkit-text-fill-color: var(--gold) !important;
   filter: drop-shadow(0 0 8px var(--gold-soft-40));
   // !important: override mat-icon's default 24px host bind to fit the title row.
-  font-size: 22px !important;
-  width: 22px !important;
-  height: 22px !important;
+  @include icon-size(22px);
   flex-shrink: 0;
 }
 
