@@ -59,6 +59,14 @@ export class DeckBuildService extends SearchServiceCore {
   readonly isDirty = this._isDirty.asReadonly();
   private readonly _isSaving = signal(false);
   readonly isSaving = this._isSaving.asReadonly();
+
+  // True while the deck-builder is fetching an existing deck for edit.
+  // Drives the deck-zone skeletons. Set by `beginDeckLoad()` and cleared
+  // by `initDeck()` — the builder owns the fetch subscription, so it
+  // brackets the load explicitly rather than baking it into `getById()`
+  // (which the simulator also calls and must not flip this flag).
+  private readonly _isLoadingDeck = signal(false);
+  readonly isLoadingDeck = this._isLoadingDeck.asReadonly();
   private readonly cardDragActiveState = signal(false);
   readonly cardDragActive = this.cardDragActiveState.asReadonly();
 
@@ -74,9 +82,16 @@ export class DeckBuildService extends SearchServiceCore {
     this.resetDirty();
   }
 
+  /** Mark the start of an existing-deck fetch — flips `isLoadingDeck` so the
+   *  builder shows zone skeletons. Cleared by `initDeck()` once data lands. */
+  public beginDeckLoad() {
+    this._isLoadingDeck.set(true);
+  }
+
   public initDeck(deck: Deck) {
     this.deckState.set(deck.sortDeck());
     this.resetDirty();
+    this._isLoadingDeck.set(false);
   }
 
   public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false, selectedImageId?: number) {

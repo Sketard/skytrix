@@ -3,11 +3,12 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DeckBuildService, DeckZone } from '../../../../../../services/deck-build.service';
 import { DeckCardZoneComponent } from '../../../../../../components/deck-card-zone/deck-card-zone.component';
 import { IndexedCardDetail } from '../../../../../../core/model/card-detail';
+import { DeckZoneSkeletonComponent } from '../../../../../../shared/skel';
 import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'deck-viewer',
-  imports: [DragDropModule, DeckCardZoneComponent, TranslatePipe],
+  imports: [DragDropModule, DeckCardZoneComponent, DeckZoneSkeletonComponent, TranslatePipe],
   templateUrl: './deck-viewer.component.html',
   styleUrl: './deck-viewer.component.scss',
   standalone: true,

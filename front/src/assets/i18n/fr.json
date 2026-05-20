@@ -654,6 +654,8 @@
     "loadingDiceArena": "Chargement de l'arène de dés",
     "loadingRooms": "Chargement des rooms",
     "loadingDecks": "Chargement des decks",
+    "loadingDeck": "Chargement du deck",
+    "loadingCards": "Chargement des cartes",
     "loadingReplays": "Chargement des replays",
     "loadingWaitingRoom": "Chargement de la salle d'attente",
     "loadingDuelBoard": "Chargement du plateau de duel",

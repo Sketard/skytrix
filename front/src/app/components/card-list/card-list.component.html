@@ -61,7 +61,10 @@
     </div>
   }
   @let svc = searchService();
-  @if (!svc?.isLoading() && (cardsDetails$() | async)?.length === 0) {
+  @let cards = cardsDetails$() | async;
+  @if (svc?.isLoading() && (cards?.length ?? 0) === 0 && displayMode() === displayType.GRID) {
+    <app-card-grid-skeleton [count]="18" />
+  } @else if (!svc?.isLoading() && cards?.length === 0) {
     <app-empty-state
       titleKey="cardList.emptyMessage"
       ctaLabelKey="cardList.emptyCta"

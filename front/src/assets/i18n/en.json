@@ -654,6 +654,8 @@
     "loadingDiceArena": "Loading dice arena",
     "loadingRooms": "Loading rooms",
     "loadingDecks": "Loading decks",
+    "loadingDeck": "Loading deck",
+    "loadingCards": "Loading cards",
     "loadingReplays": "Loading replays",
     "loadingWaitingRoom": "Loading waiting room",
     "loadingDuelBoard": "Loading duel board",

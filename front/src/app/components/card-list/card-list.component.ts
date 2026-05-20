@@ -12,6 +12,7 @@ import { OwnedCardService } from '../../services/owned-card.service';
 import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
+import { CardGridSkeletonComponent } from '../../shared/skel';
 import { LongPressDragDirective } from '../../core/directives/long-press-drag.directive';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
@@ -26,6 +27,7 @@ import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
     NgClass,
     MatIconModule,
     EmptyStateComponent,
+    CardGridSkeletonComponent,
     LongPressDragDirective,
     TranslatePipe,
     CardNamePipe,

@@ -203,6 +203,40 @@
 }
 
 // =============================================================================
+// COMPOSITE — Card grid skeleton (card-search results placeholder)
+// One tile per card slot — matches `.card-image-container` in card-list
+// (aspect 59/86, 2px radius) so the swap to real cards is layout-shift free.
+// =============================================================================
+.card-grid-skel {
+  @extend %skel-block;
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  border-radius: 2px;
+}
+
+// =============================================================================
+// COMPOSITE — Deck zone skeleton (deck-builder main/extra/side placeholder)
+// Flexbox mirrors `deck-card-zone` — 5 slots per row on mobile, 10 on
+// desktop — so the swap to real card slots is layout-shift free.
+// =============================================================================
+.deck-zone-skel {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-1, 4px);
+  width: 100%;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(10, 1fr);
+  }
+
+  &__slot {
+    @extend %skel-block;
+    aspect-ratio: 59 / 86;
+    border-radius: 2px;
+  }
+}
+
+// =============================================================================
 // COMPOSITE — Deck card skeleton (deck picker modal placeholder)
 // =============================================================================
 .deck-card-skel {

@@ -65,7 +65,13 @@ export class DeckBuilderComponent implements OnDestroy {
   @Input()
   set id(deckId: number | undefined) {
     if (deckId) {
-      this.deckBuildService.getById(deckId).subscribe((deck: Deck) => this.deckBuildService.initDeck(deck));
+      this.deckBuildService.beginDeckLoad();
+      this.deckBuildService.getById(deckId).subscribe({
+        next: (deck: Deck) => this.deckBuildService.initDeck(deck),
+        // initDeck clears isLoadingDeck — on error, clear it via an empty
+        // deck so the skeleton doesn't stay stuck on a failed fetch.
+        error: () => this.deckBuildService.initDeck(new Deck()),
+      });
     }
   }
 

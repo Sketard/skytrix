@@ -6,10 +6,14 @@
         {{ deckBuildService.mainCardNumber() }} / 60
       </span>
     </header>
-    <deck-card-zone
-      [cardDetails]="deckBuildService.deck().mainDeck"
-      [deckZone]="deckZone.MAIN"
-      (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
+    @if (deckBuildService.isLoadingDeck()) {
+      <app-deck-zone-skeleton [count]="40" />
+    } @else {
+      <deck-card-zone
+        [cardDetails]="deckBuildService.deck().mainDeck"
+        [deckZone]="deckZone.MAIN"
+        (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
+    }
   </section>
 
   <section class="deck-viewer__zone deck-viewer__zone--extra">
@@ -19,11 +23,15 @@
         {{ deckBuildService.extraCardNumber() }} / 15
       </span>
     </header>
-    <deck-card-zone
-      [cardDetails]="deckBuildService.deck().extraDeck"
-      [deckZone]="deckZone.EXTRA"
-      [slotNumber]="15"
-      (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
+    @if (deckBuildService.isLoadingDeck()) {
+      <app-deck-zone-skeleton [count]="15" />
+    } @else {
+      <deck-card-zone
+        [cardDetails]="deckBuildService.deck().extraDeck"
+        [deckZone]="deckZone.EXTRA"
+        [slotNumber]="15"
+        (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
+    }
   </section>
 
   <section class="deck-viewer__zone deck-viewer__zone--side">
@@ -33,10 +41,14 @@
         {{ deckBuildService.sideCardNumber() }} / 15
       </span>
     </header>
-    <deck-card-zone
-      [cardDetails]="deckBuildService.deck().sideDeck"
-      [deckZone]="deckZone.SIDE"
-      [slotNumber]="15"
-      (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
+    @if (deckBuildService.isLoadingDeck()) {
+      <app-deck-zone-skeleton [count]="15" />
+    } @else {
+      <deck-card-zone
+        [cardDetails]="deckBuildService.deck().sideDeck"
+        [deckZone]="deckZone.SIDE"
+        [slotNumber]="15"
+        (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
+    }
   </section>
 </div>
