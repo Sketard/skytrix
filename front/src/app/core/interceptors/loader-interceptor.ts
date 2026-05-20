@@ -23,7 +23,12 @@ export function loaderInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn
       || /\/api\/decks(?:\b|\/)/.test(req.url)            // deck list + builder + pre-duel deck fetch
       || /\/api\/cards\/search/.test(req.url)             // card search page + builder side searcher
       || /\/api\/cards\/possessed/.test(req.url)          // owned-card map (deck list stats)
-      || /\/api\/admin\/rooms(?:\b|\/)/.test(req.url);    // admin force-close also silent (used from lobby)
+      || /\/api\/admin\/rooms(?:\b|\/)/.test(req.url)     // admin force-close also silent (used from lobby)
+      // Auth endpoints — the login page owns its own inline loading state
+      // (the submit button's `loading` spinner). The global full-screen
+      // loader has no timeout/watchdog, so a stalled login left the user
+      // stuck on a monochrome scrim with no redirect.
+      || /\/api\/(login|logout|refresh|create-account)\b/.test(req.url);
   };
 
   const removeRequest = (req: HttpRequest<unknown>) => {
