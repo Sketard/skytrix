@@ -27,7 +27,9 @@
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   margin-bottom: var(--space-2);
-  background: var(--scrim-strong);
+  // Surface thémée (et non `--scrim-*` qui reste sombre en light) — un
+  // header de panneau doit suivre le thème. Translucide → blur conservé.
+  background: var(--surface-card-low);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-left: 3px solid var(--gold);

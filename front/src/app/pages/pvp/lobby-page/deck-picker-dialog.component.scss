@@ -17,7 +17,7 @@
   border-bottom: 1px solid var(--border-subtle);
   background:
     radial-gradient(circle at top, var(--gold-soft-12), transparent 70%),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent);
+    linear-gradient(to bottom, var(--surface-overlay), transparent);
   flex-shrink: 0;
 
   // Mobile portrait — bottom-sheet has limited vertical room, the header
@@ -68,11 +68,11 @@
 }
 
 .picker-title-icon {
-  color: var(--gold);
+  color: var(--gold-on-surface);
   font-size: clamp(22px, 5vw, 28px);
   width: clamp(22px, 5vw, 28px);
   height: clamp(22px, 5vw, 28px);
-  -webkit-text-fill-color: var(--gold);
+  -webkit-text-fill-color: var(--gold-on-surface);
   filter: drop-shadow(0 0 8px var(--gold-soft-50));
 }
 
@@ -172,7 +172,7 @@
   font: var(--weight-bold) var(--text-xs) / var(--line-tight) var(--font-display);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-on-surface);
 }
 
 .qd-section-hint {
@@ -195,7 +195,7 @@
   padding: var(--space-3) var(--space-4);
   min-height: var(--touch-target-min);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-overlay);
   border: 1.5px solid var(--border-subtle);
   color: var(--text-secondary);
   font: var(--weight-semibold) var(--text-sm) / var(--line-tight) var(--font-body);
@@ -215,7 +215,7 @@
   &.active {
     background: var(--gold-soft-12);
     border-color: var(--gold);
-    color: var(--gold);
+    color: var(--gold-on-surface);
   }
 }
 
@@ -248,7 +248,7 @@
   justify-content: center;
   background: var(--gold-soft-12);
   border: 1px solid var(--gold-soft-40);
-  color: var(--gold);
+  color: var(--gold-on-surface);
   flex-shrink: 0;
 
   mat-icon {
@@ -269,7 +269,7 @@
 .qd-mirror-title {
   font: var(--weight-bold) var(--text-md) / var(--line-tight) var(--font-display);
   letter-spacing: 0.03em;
-  color: var(--gold);
+  color: var(--gold-on-surface);
 }
 
 .qd-mirror-desc {
@@ -311,7 +311,7 @@
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-overlay);
   border: 1px solid var(--border-subtle);
   margin-bottom: var(--space-3);
 }
@@ -329,10 +329,10 @@
   --mat-slide-toggle-handle-height: 20px;
   --mat-slide-toggle-handle-shape: 50%;
   // OFF rail = neutral white-on-dark, ON rail = gold.
-  --mat-slide-toggle-unselected-track-color: rgba(255, 255, 255, 0.1);
-  --mat-slide-toggle-unselected-hover-track-color: rgba(255, 255, 255, 0.14);
-  --mat-slide-toggle-unselected-focus-track-color: rgba(255, 255, 255, 0.14);
-  --mat-slide-toggle-unselected-pressed-track-color: rgba(255, 255, 255, 0.18);
+  --mat-slide-toggle-unselected-track-color: var(--border-medium);
+  --mat-slide-toggle-unselected-hover-track-color: var(--border-medium);
+  --mat-slide-toggle-unselected-focus-track-color: var(--border-medium);
+  --mat-slide-toggle-unselected-pressed-track-color: var(--border-medium);
   --mat-slide-toggle-selected-track-color: var(--gold);
   --mat-slide-toggle-selected-hover-track-color: var(--gold);
   --mat-slide-toggle-selected-focus-track-color: var(--gold);
@@ -396,7 +396,7 @@
 .qd-slider-card {
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-overlay);
   border: 1px solid var(--border-subtle);
 }
 
@@ -426,7 +426,7 @@
 
 .qd-slider-value-num {
   font: var(--weight-black) var(--text-lg) / var(--line-tight) var(--font-display);
-  color: var(--gold);
+  color: var(--gold-on-surface);
   letter-spacing: 0.02em;
   min-width: var(--space-7); // 32px — bump from 28px arbitrary to scale
   text-align: right;
@@ -436,7 +436,7 @@
   font: var(--weight-semibold) var(--text-xs) / var(--line-tight) var(--font-display);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-on-surface);
   opacity: 0.7;
 }
 
@@ -452,7 +452,7 @@
     to right,
     var(--gold) 0%,
     var(--gold) var(--slider-percent, 35%),
-    rgba(255, 255, 255, 0.1) var(--slider-percent, 35%)
+    var(--border-medium) var(--slider-percent, 35%)
   );
   cursor: pointer;
   margin: 0;
@@ -525,12 +525,12 @@
               background var(--transition-normal, 200ms) var(--ease-inout);
 
   &:hover {
-    color: var(--gold);
+    color: var(--gold-on-surface);
     background: var(--gold-soft-08);
   }
 
   &.active {
-    color: var(--gold);
+    color: var(--gold-on-surface);
   }
 }
 
@@ -553,7 +553,7 @@
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   border: 2px solid transparent;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-overlay);
   cursor: pointer;
   transition: all var(--transition-normal, 200ms) var(--ease-inout);
   overflow: hidden;
@@ -584,7 +584,7 @@
       position: absolute;
       top: var(--space-2);
       right: var(--space-2);
-      color: var(--gold);
+      color: var(--gold-on-surface);
       font-size: 22px;
       filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
     }
@@ -631,7 +631,7 @@
 
   mat-icon {
     @include icon-size(12px);
-    color: var(--gold);
+    color: var(--gold-on-surface);
   }
 }
 
@@ -645,7 +645,7 @@
     // Cancel the lift + brighter background normal cards get on hover —
     // invalid cards stay flat so they can't be confused with the active row.
     transform: none;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--surface-overlay);
   }
 
   // Red ban icon top-right replaces the gold check used by .selected.
@@ -688,7 +688,7 @@
     font: var(--weight-semibold) var(--text-xs) / var(--line-normal) var(--font-body);
     white-space: nowrap;
     z-index: 10;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--elevation-2);
     pointer-events: none;
   }
 }

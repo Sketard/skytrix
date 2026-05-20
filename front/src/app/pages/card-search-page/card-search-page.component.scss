@@ -181,7 +181,7 @@
     right: var(--space-4);
     z-index: 10;
     background: linear-gradient(135deg, var(--gold) 0%, var(--gold-700) 100%);
-    color: var(--surface-bg);
+    color: var(--text-inverse);
     box-shadow: var(--elevation-3);
     @include r.touch-target-min;
 

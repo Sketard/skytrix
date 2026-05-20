@@ -270,7 +270,7 @@
     width: 14px;
     height: 14px;
     line-height: 14px;
-    color: var(--gold);
+    color: var(--gold-on-surface);
   }
 }
 
@@ -279,7 +279,7 @@
   border-color: var(--gold);
 
   mat-icon {
-    color: var(--surface-bg);
+    color: var(--text-inverse);
   }
 }
 

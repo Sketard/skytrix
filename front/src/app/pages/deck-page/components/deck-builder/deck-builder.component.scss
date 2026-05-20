@@ -200,7 +200,8 @@
       right: 1em;
       z-index: z.$z-ui-button;
       color: var(--text-primary);
-      background: var(--scrim-medium);
+      background: var(--surface-elevated);
+      box-shadow: var(--elevation-2);
       @include r.touch-target-min;
     }
   }

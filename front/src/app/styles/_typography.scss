@@ -13,6 +13,14 @@
   color: transparent; // fallback browsers sans -webkit-text-fill-color
 }
 
+// En light, le stop central `--gold` (clair) rendrait la moitié du titre
+// illisible. Gradient entièrement sombre — stops tous sous le seuil AA.
+:root.theme-light .text-gold-gradient {
+  background: linear-gradient(135deg, #6B541F 0%, #8A6A20 50%, #4F3D14 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
 // Eyebrow — sur-titre Rajdhani uppercase letter-spaced.
 .text-eyebrow {
   font: var(--weight-bold) var(--text-xs) / 1.1 'Inter', sans-serif;
@@ -54,4 +62,12 @@
   background: rgba(0, 0, 0, 0.2);
   color: var(--gold-50);
   user-select: all;
+}
+
+// En light, les fonds `rgba(0,0,0,.x)` du code restent sombres mais
+// translucides → gris moyen sur crème. On les opacifie en surface sombre
+// franche pour que le code gold-50 (sombre en light) garde son contraste.
+:root.theme-light {
+  .text-code        { background: var(--logo-plate); color: var(--gold); }
+  .text-code--inline { background: var(--logo-plate); color: var(--gold); }
 }

@@ -62,7 +62,7 @@
 }
 
 .surface-card--accent-neutral::before {
-  background: linear-gradient(to bottom, transparent, var(--text-muted), transparent);
+  background: linear-gradient(to bottom, transparent, var(--border-medium), transparent);
 }
 
 .surface-card--accent-warning::before {
