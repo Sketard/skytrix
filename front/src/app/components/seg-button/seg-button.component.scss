@@ -1,0 +1,55 @@
+// =============================================================================
+// <app-seg-button> — DS segmented-control button, encapsulated.
+// Migrated from the former global `.seg-btn` SCSS class (`_segmented.scss`).
+//
+// A compact view-toggle cell — no button chrome, just a clickable cell with a
+// gold `active` state. The host carries the state classes and is the layout
+// box; the inner `.seg-btn__el` is the real `<button>` and fills the host.
+//
+// Gold doctrine: `--gold-on-surface` for hover text, `--gold-50` for the
+// active state text (light-mode-aware tokens — aliased in dark).
+// =============================================================================
+
+@use '../../styles/mixin' as *;
+
+:host {
+  display: inline-flex;
+}
+
+.seg-btn__el {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0 var(--space-2);
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled) {
+    color: var(--gold-on-surface);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  mat-icon {
+    @include icon-size(18px);
+    line-height: 18px;
+    flex-shrink: 0;
+  }
+}
+
+:host(.seg-btn--active) .seg-btn__el {
+  background: var(--gold-soft-15);
+  color: var(--gold-50);
+}

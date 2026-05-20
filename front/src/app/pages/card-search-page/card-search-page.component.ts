@@ -19,13 +19,14 @@ import { CardDetail } from '../../core/model/card-detail';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { OwnedCardService } from '../../services/owned-card.service';
 import { TranslatePipe } from '@ngx-translate/core';
+import { SegButtonComponent } from '../../components/seg-button/seg-button.component';
 
 @Component({
   selector: 'card-search-page',
   imports: [
     ActiveFiltersBarComponent, CardInspectorComponent, IconWrapComponent, MatIconButton, MatIcon, BottomSheetComponent,
     SearchBarComponent, CardFiltersComponent, CardListComponent, MatTooltip,
-    TranslatePipe,
+    TranslatePipe, SegButtonComponent,
   ],
   templateUrl: './card-search-page.component.html',
   styleUrl: './card-search-page.component.scss',

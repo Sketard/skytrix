@@ -14,6 +14,7 @@ import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
 import { CardDetail } from '../../core/model/card-detail';
 import { Subscription } from 'rxjs';
 import { TranslatePipe } from '@ngx-translate/core';
+import { SegButtonComponent } from '../seg-button/seg-button.component';
 
 @Component({
   selector: 'app-card-searcher',
@@ -25,6 +26,7 @@ import { TranslatePipe } from '@ngx-translate/core';
     MatTooltip,
     SearchBarComponent,
     TranslatePipe,
+    SegButtonComponent,
   ],
   templateUrl: './card-searcher.component.html',
   styleUrl: './card-searcher.component.scss',

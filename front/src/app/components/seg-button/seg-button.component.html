@@ -1,0 +1,9 @@
+<button
+  class="seg-btn__el"
+  [type]="type()"
+  [disabled]="disabled()"
+  [attr.aria-label]="ariaLabel()"
+  [attr.role]="checked() !== undefined ? 'radio' : null"
+  [attr.aria-checked]="checked() !== undefined ? checked() : null">
+  <ng-content />
+</button>
