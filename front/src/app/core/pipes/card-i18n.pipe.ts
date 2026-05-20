@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, inject, OnDestroy, Pipe, PipeTransform } from '@angular/core';
+import { ChangeDetectorRef, inject, Injectable, OnDestroy, Pipe, PipeTransform } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
 
@@ -20,7 +20,11 @@ function resolve<K extends string>(
  * Base for the card i18n pipes. Impure so it re-evaluates each CD cycle, and
  * subscribed to `onLangChange` so an OnPush host with no other `| translate`
  * binding still re-renders when the UI language switches.
+ *
+ * `@Injectable()` is required: Angular 19+ rejects an undecorated abstract
+ * class that uses DI / lifecycle hooks (NG2007).
  */
+@Injectable()
 abstract class CardI18nPipe implements OnDestroy {
   protected readonly translate = inject(TranslateService);
   private readonly sub: Subscription;
