@@ -725,7 +725,7 @@
 
 // === Zone Highlight (Story 1.6 — SELECT_PLACE / SELECT_DISFIELD) ===
 .zone--highlighted {
-  border-color: var(--pvp-accent, #c9a84c);
+  border-color: var(--pvp-accent);
   box-shadow: inset 0 0 6px var(--gold-soft-40);
 }
 
@@ -771,7 +771,7 @@
   min-width: 24px;
   min-height: 24px;
   border-radius: 50%;
-  border: 2px solid var(--pvp-accent, #c9a84c);
+  border: 2px solid var(--pvp-accent);
   background: var(--gold-soft-85);
   color: var(--surface-base);
   font-size: clamp(0.75rem, 2dvh, 1rem);

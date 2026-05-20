@@ -551,9 +551,9 @@
 .waiting-start-btn {
   min-height: 48px;
   font: var(--weight-bold) 0.95rem / 1 'Inter', sans-serif;
-  background: linear-gradient(135deg, var(--gold-bright, #f6cf6f) 0%, var(--gold, #d4a437) 100%);
-  color: var(--obsidian, #0c0c10);
-  border: 1px solid var(--gold, #d4a437);
+  background: linear-gradient(135deg, var(--gold-75) 0%, var(--gold) 100%);
+  color: var(--text-inverse);
+  border: 1px solid var(--gold);
   border-radius: var(--radius-md);
   cursor: pointer;
   display: inline-flex;
@@ -621,7 +621,7 @@
   &:active { transform: scale(0.95); }
 
   &:focus-visible {
-    outline: 2px solid var(--gold, #d4a437);
+    outline: 2px solid var(--gold);
     outline-offset: 2px;
   }
 }
@@ -642,7 +642,7 @@
     font-size: 18px !important;
     width: 18px !important;
     height: 18px !important;
-    color: var(--gold, #d4a437);
+    color: var(--gold);
   }
 }
 
