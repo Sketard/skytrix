@@ -156,6 +156,10 @@ $DECK_CARD_WIDTH: 75px;
 }
 
 .ban-ribbon {
+  // Deck slots are small (5-10 per row) so the band sits on the mixin's
+  // 13px floor — visually heavy at this thumbnail size. Scale it down to
+  // match the lighter feel of the inspector ribbon.
+  --ban-ribbon-scale: 0.7;
   @include ban-ribbon;
 }
 
