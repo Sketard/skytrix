@@ -38,6 +38,7 @@ import { MoveAnimationRouter } from './move-animation-router';
 import { TargetIndicatorManager } from './target-indicator-manager';
 import { DuelToastService } from './duel-toast.service';
 import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
+import { PollDropWatchdog } from './poll-drop-watchdog';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
@@ -143,23 +144,23 @@ export class AnimationOrchestratorService {
   /** Active equip line elements — tracked for cleanup on destroy/reset. */
   private activeEquipLines: HTMLDivElement[] = [];
   /**
-   * POLL-DROP REGRESSION watchdog. Armed when the dispatcher finalizes
-   * the queue while `chainPhase === 'resolving'` — i.e. the dropped poll
-   * mechanism would have been engaged. If no chain event re-wakes the
-   * queue within POLL_DROP_REGRESSION_WATCHDOG_MS, fires a high-visibility
-   * `logger.error` (grep marker: 'POLL-DROP REGRESSION') + duelAssert in
-   * dev. Cleared on chainManager.reset(), startProcessingIfIdle, and
-   * destroy. See CLAUDE.md "Polling Removal — Regression Surface".
+   * POLL-DROP REGRESSION watchdog. Armed when the dispatcher finalizes the
+   * queue while `chainPhase === 'resolving'` — i.e. the dropped poll
+   * mechanism would have been engaged. Fires a high-visibility
+   * `console.error` (grep marker: 'POLL-DROP REGRESSION') + duelAssert in
+   * dev if no chain event re-wakes the queue in time. Pause-aware: a paused
+   * resolving chain is healthy, not stalled. Extracted to a pure,
+   * unit-tested class — see `poll-drop-watchdog.ts`. Cleared on
+   * startProcessingIfIdle, clearTimersAndPolling, destroy.
    */
-  private _pollDropWatchdog: ReturnType<typeof setTimeout> | null = null;
-  /**
-   * True while replay auto-play is paused by the user. A chain can legitimately
-   * sit in `resolving` with an empty queue when paused — the next link / the
-   * MSG_CHAIN_END live in a not-yet-loaded transition that `maybeAdvance`
-   * won't schedule while paused. The POLL-DROP watchdog must NOT fire in that
-   * case (it would `duelAssert` on a perfectly healthy paused state). Always
-   * false in PvP — there is no pause there. */
-  private _playbackPaused = false;
+  private readonly pollDropWatchdog = new PollDropWatchdog(
+    () => ({
+      isResolving: this.dataSource.chainPhase() === 'resolving',
+      queueLen: this.dataSource.animationQueue().length,
+      isAnimating: this._isAnimating(),
+    }),
+    () => this.firePollDropRegression(),
+  );
   /** Re-entry guard for processAnimationQueue (prevents double-dequeue). */
   private _isProcessing = false;
   /** Detects parallel re-entry into _processAnimationQueueInner (audit finding C4).
@@ -275,7 +276,7 @@ export class AnimationOrchestratorService {
     // POLL-DROP REGRESSION watchdog. Even when _isAnimating is already
     // true (re-entry from another caller), the watchdog might have been
     // armed by an earlier finalize that has since been superseded.
-    this.clearPollDropWatchdog();
+    this.pollDropWatchdog.clear();
     if (!this._isAnimating()) {
       this._isAnimating.set(true);
       this.dataSource.setAnimating(true);
@@ -288,67 +289,37 @@ export class AnimationOrchestratorService {
   }
 
   /**
-   * POLL-DROP REGRESSION watchdog — see CLAUDE.md "Polling Removal —
-   * Regression Surface" for the full investigation context. Armed at
-   * finalize-during-resolving; if it fires the dropped poll mechanism
-   * would have rescued the queue, so we surface the regression with a
-   * non-missable error log and (in dev) a duelAssert.
+   * Fire callback for `pollDropWatchdog` — surfaces a genuine finalize-
+   * during-resolving stall with a non-missable `console.error` (NOT
+   * `logger.error`, which doesn't exist, so the marker is unfilterable by
+   * debug-category settings) + a dev-mode `duelAssert`. See CLAUDE.md
+   * "Polling Removal — Regression Surface".
    */
-  private armPollDropWatchdog(): void {
-    this.clearPollDropWatchdog();
-    // Paused replay: a resolving chain with an empty queue is expected, not
-    // a stall — don't arm. setPlaybackPaused(false) re-arms on resume.
-    if (this._playbackPaused) return;
-    this._pollDropWatchdog = setTimeout(() => {
-      this._pollDropWatchdog = null;
-      // Re-check state at fire time: if anything has changed (queue
-      // re-filled, chain ended, playback paused), the watchdog is moot.
-      const stillResolving = this.dataSource.chainPhase() === 'resolving';
-      const queueLen = this.dataSource.animationQueue().length;
-      if (!stillResolving || queueLen > 0 || this._isAnimating() || this._playbackPaused) return;
-      const links = this.dataSource.activeChainLinks();
-      // console.error (NOT logger.error — that doesn't exist) so the
-      // marker is unfilterable by debug-category settings.
-      console.error(
-        '[POLL-DROP REGRESSION] chain stuck after finalize-during-resolving for %dms. '
-        + 'activeChainLinks=%o queueLen=%d isWaitingForOverlay=%s hasBufferedEvents=%s. '
-        + 'See CLAUDE.md "Polling Removal — Regression Surface" — the dropped poll '
-        + 'mechanism would have rescued this state.',
-        POLL_DROP_REGRESSION_WATCHDOG_MS,
-        links.map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence })),
-        queueLen,
-        this.chainManager.isWaitingForOverlay,
-        this.chainManager.hasBufferedEvents,
-      );
-      duelAssert(false, 'POLL-DROP-REGRESSION',
-        `chain stuck after ${POLL_DROP_REGRESSION_WATCHDOG_MS}ms — see error log above`);
-    }, POLL_DROP_REGRESSION_WATCHDOG_MS);
-  }
-
-  private clearPollDropWatchdog(): void {
-    if (this._pollDropWatchdog !== null) {
-      clearTimeout(this._pollDropWatchdog);
-      this._pollDropWatchdog = null;
-    }
+  private firePollDropRegression(): void {
+    const links = this.dataSource.activeChainLinks();
+    console.error(
+      '[POLL-DROP REGRESSION] chain stuck after finalize-during-resolving for %dms. '
+      + 'activeChainLinks=%o queueLen=%d isWaitingForOverlay=%s hasBufferedEvents=%s. '
+      + 'See CLAUDE.md "Polling Removal — Regression Surface" — the dropped poll '
+      + 'mechanism would have rescued this state.',
+      POLL_DROP_REGRESSION_WATCHDOG_MS,
+      links.map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence })),
+      this.dataSource.animationQueue().length,
+      this.chainManager.isWaitingForOverlay,
+      this.chainManager.hasBufferedEvents,
+    );
+    duelAssert(false, 'POLL-DROP-REGRESSION',
+      `chain stuck after ${POLL_DROP_REGRESSION_WATCHDOG_MS}ms — see error log above`);
   }
 
   /**
    * Replay-only: notify the orchestrator of auto-play pause/resume so the
    * POLL-DROP watchdog doesn't false-fire on a paused-but-healthy resolving
-   * chain. On pause, the pending watchdog is cleared. On resume, it is
-   * re-armed if the queue is still empty mid-resolution (a genuine stall
-   * would then surface as before). No-op semantics in PvP (never called).
+   * chain. Delegates to the watchdog (pure, unit-tested). No-op semantics in
+   * PvP (never called).
    */
   setPlaybackPaused(paused: boolean): void {
-    if (this._playbackPaused === paused) return;
-    this._playbackPaused = paused;
-    if (paused) {
-      this.clearPollDropWatchdog();
-    } else if (this.dataSource.chainPhase() === 'resolving'
-        && this.dataSource.animationQueue().length === 0
-        && !this._isAnimating()) {
-      this.armPollDropWatchdog();
-    }
+    this.pollDropWatchdog.setPaused(paused);
   }
 
   /** Sync tracked LP to authoritative board state. */
@@ -522,7 +493,7 @@ export class AnimationOrchestratorService {
     this.animationTimeouts = [];
     for (const el of this.activeEquipLines) el.remove();
     this.activeEquipLines = [];
-    this.clearPollDropWatchdog();
+    this.pollDropWatchdog.clear();
     this._awaitSignalEffect?.destroy();
     this._awaitSignalEffect = null;
     this._isProcessing = false;
@@ -818,7 +789,7 @@ export class AnimationOrchestratorService {
             // dropped poll mechanism would have engaged here while
             // chainPhase === 'resolving'; this watchdog catches stalls.
             if (this.dataSource.chainPhase() === 'resolving') {
-              this.armPollDropWatchdog();
+              this.pollDropWatchdog.arm();
             }
             this.finalizeAndCommit();
             this.drawManager.resetHandAnimationState();
