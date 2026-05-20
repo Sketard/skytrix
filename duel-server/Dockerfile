@@ -20,10 +20,18 @@ RUN npm ci
 COPY duel-server/ .
 
 # Le prebuild check-ws-protocol-sync.mjs résout les chemins depuis / :
-#   /duel-server/src/ws-protocol.ts  → symlink vers /app
-#   /front/src/app/pages/pvp/duel-ws.types.ts → copié depuis le contexte racine
+#   /duel-server/src/ws-protocol-*.ts        → symlink vers /app
+#   /front/src/app/pages/pvp/duel-ws-*.types.ts → copiés depuis le contexte racine
+# Le protocole a été splitté en 6 sous-fichiers (shared/game/prompts/system/
+# replay/solver) — le script byte-compare ces 6 paires, PAS les index.
 RUN ln -s /app /duel-server
-COPY front/src/app/pages/pvp/duel-ws.types.ts /front/src/app/pages/pvp/duel-ws.types.ts
+COPY front/src/app/pages/pvp/duel-ws-shared.types.ts \
+     front/src/app/pages/pvp/duel-ws-game.types.ts \
+     front/src/app/pages/pvp/duel-ws-prompts.types.ts \
+     front/src/app/pages/pvp/duel-ws-system.types.ts \
+     front/src/app/pages/pvp/duel-ws-replay.types.ts \
+     front/src/app/pages/pvp/duel-ws-solver.types.ts \
+     /front/src/app/pages/pvp/
 
 RUN npm run build
 
