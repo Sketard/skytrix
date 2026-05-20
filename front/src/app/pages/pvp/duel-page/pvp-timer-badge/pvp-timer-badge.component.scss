@@ -183,8 +183,54 @@
   font-family: var(--font-body);
   white-space: nowrap;
   line-height: 1.2;
+  // Couleur du spinner Material → styles/_cdk-overrides.scss.
+}
 
-  ::ng-deep .mat-mdc-progress-spinner circle {
-    stroke: var(--pvp-timer-yellow);
+// --- Embedded variant — inside pvp-player-card (was ::ng-deep there) ---------
+// Le timer flotte normalement (badge autonome positionné sur le board) ;
+// en mode embedded il participe au flux de la metrics-row de la player-card
+// comme un pur élément typographique, sans chrome.
+.timer--embedded {
+  // `position: relative` est critique : les ::before / ::after du variant opp
+  // (scrim de brouillage + hachures) s'ancrent au plus proche ancêtre
+  // positionné. Sans ça ils s'échapperaient vers la player-card.
+  position: relative;
+  inset: auto;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  gap: 2px;
+
+  // Largeur fixe de la valeur — la LP ne saute pas quand le nombre de
+  // chiffres change (4:50 → 4:09). `tabular-nums` = chiffres monospacés.
+  .timer__value {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    min-width: 4ch; // couvre `m:ss` / `--:--`
+    text-align: right;
+    display: inline-block;
+  }
+
+  .timer__icon {
+    font-size: var(--text-md);
+    width: var(--text-md);
+    height: var(--text-md);
+    opacity: 0.85;
+  }
+
+  // Barre fine et discrète — repère visuel du temps restant.
+  .timer__bar {
+    height: 2px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.06);
   }
 }

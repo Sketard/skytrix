@@ -120,14 +120,8 @@
   border-bottom: var(--border-width-thin) solid var(--border-soft);
   text-align: center;
 
-  // innerHTML-injected spans — needs ::ng-deep to pierce encapsulation
-  ::ng-deep .hint-card-name {
-    color: var(--gold);
-  }
-
-  ::ng-deep .hint-action {
-    color: var(--gold);
-  }
+  // Spans injectés via [innerHTML] (.hint-card-name / .hint-action) :
+  // colorisation → styles/_cdk-overrides.scss (non encapsulés).
 }
 
 .collapsed-bar {

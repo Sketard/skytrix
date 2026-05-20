@@ -2,6 +2,7 @@
      role="timer"
      [class.timer--player]="variant() === 'player'"
      [class.timer--opp]="variant() === 'opp'"
+     [class.timer--embedded]="embedded()"
      [class.timer--dimmed]="!isActive() && !showDisconnect()"
      [class.is-green]="urgency() === 'normal'"
      [class.is-yellow]="urgency() === 'soon'"

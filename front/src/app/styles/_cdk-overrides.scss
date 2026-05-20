@@ -82,3 +82,30 @@
 .qd-row mat-slide-toggle .mdc-switch__focus-ring {
   display: none;
 }
+
+// --- pvp-timer-badge : couleur du spinner Material de l'état déconnecté.
+.timer__disconnect .mat-mdc-progress-spinner circle {
+  stroke: var(--pvp-timer-yellow);
+}
+
+// --- pvp-prompt-dialog : spans injectés via [innerHTML] (non encapsulés).
+.hint-card-name,
+.hint-action {
+  color: var(--gold);
+}
+
+// --- duel surrender dialog : le conteneur Material reçoit la classe
+// `pvp-dialog-panel--danger` via panelClass (overlay CDK hors composant).
+.pvp-dialog-panel--danger .mat-mdc-dialog-container {
+  --mat-dialog-container-color: transparent;
+  padding: 0;
+  box-shadow: var(--elevation-3);
+}
+
+// --- waiting-room : le spinner Material indéterminé respecte reduced-motion.
+@media (prefers-reduced-motion: reduce) {
+  .waiting-room .mdc-circular-progress__indeterminate-container,
+  .waiting-room .mdc-circular-progress__spinner-layer {
+    animation: none !important;
+  }
+}

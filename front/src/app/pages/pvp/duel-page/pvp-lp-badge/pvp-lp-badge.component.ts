@@ -15,6 +15,7 @@ export interface LpAnimData {
   styleUrl: './pvp-lp-badge.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.embedded]': 'embedded()' },
 })
 export class PvpLpBadgeComponent {
   private readonly destroyRef = inject(DestroyRef);
@@ -22,6 +23,9 @@ export class PvpLpBadgeComponent {
   readonly lp = input.required<number>();
   readonly side = input.required<'player' | 'opponent'>();
   readonly animatingLp = input<LpAnimData | null>(null);
+  /** Embedded mode — flows inline inside pvp-player-card (no floating badge
+   *  chrome) instead of being a standalone board badge. */
+  readonly embedded = input(false);
 
   private readonly _displayedLp = signal<number | null>(null);
   readonly flashType = signal<'damage' | 'recover' | null>(null);

@@ -29,6 +29,9 @@ export class PvpTimerBadgeComponent {
   readonly variant = input<TimerVariant>('player');
   /** Current actor — drives dimming when this side is inactive. */
   readonly actor = input<'me' | 'opp'>('me');
+  /** Embedded mode — flows inline inside pvp-player-card (no floating chrome,
+   *  no absolute positioning) instead of being a standalone board badge. */
+  readonly embedded = input(false);
 
   /** Dev override — only honoured on the player variant (opp is brouillé anyway). */
   private readonly devState = inject(DuelDevStateService);

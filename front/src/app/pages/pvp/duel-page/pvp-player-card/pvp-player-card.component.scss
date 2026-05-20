@@ -108,84 +108,10 @@
   text-shadow: 0 0 12px var(--gold-soft-50), 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-
-// The inner timer + LP children inherit their existing styles, but the parent
-// host scoping pushes them to flow naturally in the metrics row.
-// Override their `position: absolute` so they participate in the flex flow.
-:host ::ng-deep app-pvp-timer-badge .timer {
-  // The legacy timer badge used absolute positioning anchored to the board;
-  // inside the player card it flows inline as a pure typographic element.
-  // `position: relative` is critical here: the timer's `::before` / `::after`
-  // (opp brouillage scrim + hatching) anchor to the nearest positioned
-  // ancestor. Without this, they'd escape to the player-card host and cover
-  // the whole card instead of just the opp timer.
-  position: relative;
-  bottom: auto;
-  left: auto;
-  top: auto;
-  right: auto;
-  min-width: 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  gap: 2px;
-}
-
-// Lock the timer value width so the LP doesn't shift when the digit count
-// changes (e.g. 4:50 → 4:09). `tabular-nums` makes digits monospaced even
-// in a proportional font.
-:host ::ng-deep app-pvp-timer-badge .timer__value {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  min-width: 4ch; // covers `m:ss` / `--:--` worst case
-  text-align: right;
-  display: inline-block;
-}
-
-:host ::ng-deep app-pvp-timer-badge .timer__icon {
-  font-size: var(--text-md);
-  width: var(--text-md);
-  height: var(--text-md);
-  opacity: 0.85;
-}
-
-// Bar fill stays thin and discrete — visual cue of remaining time.
-:host ::ng-deep app-pvp-timer-badge .timer__bar {
-  height: 2px;
-  border-radius: 2px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-:host ::ng-deep app-pvp-lp-badge {
-  position: static !important;
-}
-
-// Strip the badge chrome — inside the player card the LP is a pure
-// typographic element, not a standalone floating badge anymore.
-:host ::ng-deep app-pvp-lp-badge .lp-badge {
-  padding: 0;
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-:host ::ng-deep app-pvp-lp-badge .lp-value {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-black);
-  letter-spacing: 0.02em;
-  text-shadow:
-    0 0 8px rgba(0, 0, 0, 0.45),
-    0 1px 2px rgba(0, 0, 0, 0.6);
-}
+// Le re-styling « inline » du timer + LP est porté par les composants
+// enfants eux-mêmes via leur input `[embedded]` (variante --embedded dans
+// pvp-timer-badge / :host(.embedded) dans pvp-lp-badge). pvp-player-card
+// passe simplement [embedded]="true" — plus de ::ng-deep cross-composant.
 
 // =============================================================================
 // Responsive — when the viewport doesn't leave lateral void around the board

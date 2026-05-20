@@ -77,12 +77,7 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .waiting-room ::ng-deep .mdc-circular-progress__indeterminate-container,
-  .waiting-room ::ng-deep .mdc-circular-progress__spinner-layer {
-    animation: none !important;
-  }
-}
+// Spinner Material indéterminé + reduced-motion → styles/_cdk-overrides.scss.
 
 // =============================================================================
 // === Waiting Container (Phase 1.7 refonte — mockup-1-holo-arena)
