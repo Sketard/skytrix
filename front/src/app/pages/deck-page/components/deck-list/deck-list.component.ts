@@ -7,7 +7,7 @@ import { DeckBoxComponent } from '../../../../components/deck-box/deck-box.compo
 import { SearchBarComponent } from '../../../../components/search-bar/search-bar.component';
 import { DeckBoxSkeletonComponent } from '../../../../shared/skel/deck-box-skeleton.component';
 import { DeckStatsStripSkeletonComponent } from '../../../../shared/skel/deck-stats-strip-skeleton.component';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
@@ -15,7 +15,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 
-import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../components/confirm-dialog/confirm-dialog.component';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../../../components/confirm-dialog/confirm-dialog.component';
 import { ShortDeck } from '../../../../core/model/short-deck';
 import { EmptyStateComponent } from '../../../../components/empty-state/empty-state.component';
 import { IconWrapComponent } from '../../../../components/icon-wrap/icon-wrap.component';
@@ -27,7 +30,6 @@ import { DeckListStore, DeckSortMode } from './deck-list-store';
 @Component({
   selector: 'deck-list',
   imports: [
-    CommonModule,
     DeckBoxComponent,
     StatsStripComponent,
     SectionHeaderComponent,
@@ -62,10 +64,7 @@ export class DeckListComponent implements OnInit {
   // (clear button, debounce in search-bar). The store owns the canonical
   // value so the filteredDecks computed and the empty/no-results gates
   // share it.
-  private readonly searchFromForm = toSignal(
-    this.searchControl.valueChanges.pipe(startWith('')),
-    { initialValue: '' },
-  );
+  private readonly searchFromForm = toSignal(this.searchControl.valueChanges.pipe(startWith('')), { initialValue: '' });
 
   readonly sortLabelKey = computed(() => `deckList.sort.${this.store.sortMode()}`);
 
