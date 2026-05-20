@@ -10,9 +10,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Roboto = Angular Material default. Rajdhani / Inter / JetBrains Mono = DS Phase 1 (mockup-1-holo-arena).
          display=swap : show fallback text immediately, swap to web font when loaded. -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Rajdhani:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Rajdhani:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Rajdhani:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
+    <!-- Icon fonts : display=block masque le glyphe jusqu'à 3s plutôt que d'afficher
+         le texte littéral ("tune", "search", …) avant que la font WOFF n'arrive.
+         Reserve `width: 1em` minimum sur tout conteneur `.material-icons*` pour
+         empêcher le reflow au swap (cf. _icon-button.scss, _bs-option.scss). -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=block" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=block" />
   </head>
   <body class="mat-typography">
     <app-root></app-root>
