@@ -8,7 +8,7 @@ import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './a
 import {
   LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD,
   REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
-  POLL_DROP_REGRESSION_WATCHDOG_MS,
+  POLL_DROP_REGRESSION_WATCHDOG_MS, RESCUE_NO_PROGRESS_CEILING,
   BOARD_BREATHE_MS, BOARD_BREATHE_MIN_MS,
   POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS, TARGET_PILE_FLOAT_STAGGER_MS, TARGET_PILE_FLOAT_FADE_OUT_MS,
   CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
@@ -152,6 +152,14 @@ export class AnimationOrchestratorService {
    * destroy. See CLAUDE.md "Polling Removal — Regression Surface".
    */
   private _pollDropWatchdog: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * True while replay auto-play is paused by the user. A chain can legitimately
+   * sit in `resolving` with an empty queue when paused — the next link / the
+   * MSG_CHAIN_END live in a not-yet-loaded transition that `maybeAdvance`
+   * won't schedule while paused. The POLL-DROP watchdog must NOT fire in that
+   * case (it would `duelAssert` on a perfectly healthy paused state). Always
+   * false in PvP — there is no pause there. */
+  private _playbackPaused = false;
   /** Re-entry guard for processAnimationQueue (prevents double-dequeue). */
   private _isProcessing = false;
   /** Detects parallel re-entry into _processAnimationQueueInner (audit finding C4).
@@ -162,6 +170,28 @@ export class AnimationOrchestratorService {
   private _innerLoopDepth = 0;
   /** Set while inline replayBuffer is dispatching buffered events, so processEvent skips re-buffering. */
   private _isReplayingBuffer = false;
+  /**
+   * Anti-runaway guard for the `processAnimationQueue` finally-block rescue.
+   * The rescue re-launches the queue when the inner loop exits with entries
+   * still queued (see cases (a)/(b) at the callsite). If the queue never
+   * drains — e.g. a seek/abort raced the loop and left undispatchable
+   * entries — the rescue would re-fire in a tight microtask loop forever
+   * ("infinite rescue" symptom on sub-event click during playback). This
+   * counts consecutive rescues that made NO progress (queueLen unchanged);
+   * past the ceiling the rescue bails instead of looping. Reset whenever
+   * the queue actually shrinks or on any hard reset. */
+  private _rescueNoProgressCount = 0;
+  private _lastRescueQueueLen = -1;
+  /**
+   * Reset generation token. `_processAnimationQueueInner` is an async loop
+   * that cannot be cancelled mid-`await`; a reset (seek / sub-event click /
+   * resetForSwitch) only flips `_isAnimating` to false. But the very next
+   * feed flips it back to true before the suspended loop resumes — so the
+   * stale loop would keep running in parallel with the fresh one (two
+   * coroutines draining the same queue → desync → a stuck entry → infinite
+   * rescue). Each reset bumps this counter; the inner loop captures it on
+   * entry and bails the moment it observes a mismatch. */
+  private _resetGeneration = 0;
   /** Active await-signal effect (cleaned up on destroy/resetForSwitch). */
   private _awaitSignalEffect: EffectRef | null = null;
 
@@ -266,13 +296,16 @@ export class AnimationOrchestratorService {
    */
   private armPollDropWatchdog(): void {
     this.clearPollDropWatchdog();
+    // Paused replay: a resolving chain with an empty queue is expected, not
+    // a stall — don't arm. setPlaybackPaused(false) re-arms on resume.
+    if (this._playbackPaused) return;
     this._pollDropWatchdog = setTimeout(() => {
       this._pollDropWatchdog = null;
       // Re-check state at fire time: if anything has changed (queue
-      // re-filled, chain ended), the watchdog is moot.
+      // re-filled, chain ended, playback paused), the watchdog is moot.
       const stillResolving = this.dataSource.chainPhase() === 'resolving';
       const queueLen = this.dataSource.animationQueue().length;
-      if (!stillResolving || queueLen > 0 || this._isAnimating()) return;
+      if (!stillResolving || queueLen > 0 || this._isAnimating() || this._playbackPaused) return;
       const links = this.dataSource.activeChainLinks();
       // console.error (NOT logger.error — that doesn't exist) so the
       // marker is unfilterable by debug-category settings.
@@ -296,6 +329,25 @@ export class AnimationOrchestratorService {
     if (this._pollDropWatchdog !== null) {
       clearTimeout(this._pollDropWatchdog);
       this._pollDropWatchdog = null;
+    }
+  }
+
+  /**
+   * Replay-only: notify the orchestrator of auto-play pause/resume so the
+   * POLL-DROP watchdog doesn't false-fire on a paused-but-healthy resolving
+   * chain. On pause, the pending watchdog is cleared. On resume, it is
+   * re-armed if the queue is still empty mid-resolution (a genuine stall
+   * would then surface as before). No-op semantics in PvP (never called).
+   */
+  setPlaybackPaused(paused: boolean): void {
+    if (this._playbackPaused === paused) return;
+    this._playbackPaused = paused;
+    if (paused) {
+      this.clearPollDropWatchdog();
+    } else if (this.dataSource.chainPhase() === 'resolving'
+        && this.dataSource.animationQueue().length === 0
+        && !this._isAnimating()) {
+      this.armPollDropWatchdog();
     }
   }
 
@@ -474,6 +526,19 @@ export class AnimationOrchestratorService {
     this._awaitSignalEffect?.destroy();
     this._awaitSignalEffect = null;
     this._isProcessing = false;
+    this._rescueNoProgressCount = 0;
+    this._lastRescueQueueLen = -1;
+    // Invalidate any in-flight `_processAnimationQueueInner` — a suspended
+    // stale loop will see the bumped generation on resume and bail.
+    this._resetGeneration++;
+    // Reset the re-entry depth counter. A reset can land while a loop is
+    // suspended on an `await`; that loop's `finally { _innerLoopDepth-- }`
+    // has not run yet, so the counter is stale at 1. Without this reset the
+    // next loop's `_innerLoopDepth++` hits 2 and the parallel-re-entry
+    // duelAssert throws — even though the stale loop will simply bail on
+    // its generation check. Zeroing here + the `Math.max(0, …)` floor in
+    // the inner-loop finally keeps the counter balanced across resets.
+    this._innerLoopDepth = 0;
     // Drop any parked initial-draw events — a hard reset (destroy /
     // resetForSwitch) means the next duel starts fresh, replaying its own
     // BOARD_STATE + MSG_DRAW sequence. Carrying stale buffered events
@@ -604,16 +669,44 @@ export class AnimationOrchestratorService {
   private processAnimationQueue(): void {
     if (this._isProcessing || !this._isAnimating()) return;
     this._isProcessing = true;
+    const generation = this._resetGeneration;
     this._processAnimationQueueInner().finally(() => {
+      // A reset (seek / sub-event click) superseded this run — its feed
+      // already started a fresh loop. Touching _isProcessing or the rescue
+      // here would race that fresh loop, so this stale finally is inert.
+      if (this._resetGeneration !== generation) return;
       this._isProcessing = false;
       const queueLen = this.dataSource.animationQueue().length;
-      if (queueLen === 0) return;
+      if (queueLen === 0) {
+        this._rescueNoProgressCount = 0;
+        this._lastRescueQueueLen = -1;
+        return;
+      }
       // Skip rescue when the inner loop paused on a legitimate wait — the
       // overlay-ready effect (isWaitingForOverlay) and draws-complete
       // callback (hasDrawsInFlight) own the resume. A rescue here retriggers
       // the inner loop's early return in a tight microtask loop, starving
       // the setTimeout-based animations that would clear the wait.
       if (this.chainManager.isWaitingForOverlay || this.drawManager.hasDrawsInFlight) return;
+      // Anti-runaway: if the queue has not shrunk since the last rescue,
+      // re-launching cannot help — a seek/abort race left undispatchable
+      // entries, or the inner loop returns early every tick. Count the
+      // no-progress rescues; past the ceiling, bail with a warn instead
+      // of spinning the microtask queue forever ("infinite rescue").
+      if (queueLen >= this._lastRescueQueueLen && this._lastRescueQueueLen !== -1) {
+        this._rescueNoProgressCount++;
+      } else {
+        this._rescueNoProgressCount = 0;
+      }
+      this._lastRescueQueueLen = queueLen;
+      if (this._rescueNoProgressCount > RESCUE_NO_PROGRESS_CEILING) {
+        this.logger.warn('[ANIM:QUEUE] rescue abandoned — %d no-progress passes, queueLen=%d. '
+          + 'A seek/abort likely raced the queue; the next user action (seek, play) re-syncs.',
+          this._rescueNoProgressCount, queueLen);
+        this._rescueNoProgressCount = 0;
+        this._lastRescueQueueLen = -1;
+        return;
+      }
       // Rescue cases for a stalled queue:
       //  (a) setAnimating(false) in the inner loop synchronously triggered
       //      advanceStep → feedTransition → enqueue. The effect that calls
@@ -640,8 +733,19 @@ export class AnimationOrchestratorService {
       `finalize block (lines ~648-656) opened a window where a second async loop ` +
       `started before the first finished (audit finding C4).`,
     );
+    // Capture the reset generation at entry. Any reset (seek / sub-event
+    // click / resetForSwitch) during an `await` bumps it; the guard at the
+    // top of each loop turn then bails this now-stale loop instead of
+    // letting it race the fresh one started by the post-reset feed.
+    const generation = this._resetGeneration;
     try {
       while (this._isAnimating()) {
+        if (this._resetGeneration !== generation) {
+          this.logger.log(DuelLogCategory.QUEUE,
+            'inner loop bailing — reset generation changed (%d → %d), a seek/abort superseded this run',
+            generation, this._resetGeneration);
+          return;
+        }
         // Pre-lock pass is a non-decisional side effect: it must run before
         // the dispatcher reads the queue so locks for queued sources are in
         // place when downstream branches commit/dequeue.
@@ -745,7 +849,10 @@ export class AnimationOrchestratorService {
         }
       }
     } finally {
-      this._innerLoopDepth--;
+      // Floor at 0 — `clearTimersAndPolling` may have already zeroed the
+      // counter while this loop was suspended on an `await`, in which case
+      // a bare `--` would go negative and corrupt the next assert.
+      this._innerLoopDepth = Math.max(0, this._innerLoopDepth - 1);
     }
   }
 

@@ -119,10 +119,14 @@
 }
 
 // Chain badge pulse — remplace chain-badge-pulse (×2 dupliqué)
-// Values bit-exactes depuis pvp-board-container.component.scss:558-561.
+// `--chain-badge-rotate` (default 0deg) folds the opponent-side 180°
+// counter-rotation INTO this single `transform` so it composes with the
+// `translate(-50%,-50%)` centering. Applying the rotation via the separate
+// `rotate` property instead pivots around the layout-position origin and
+// shifts the badge off-center by ~its own size (board chain badges bug).
 @keyframes ds-chain-badge-pulse {
-  from { opacity: 0.4; transform: translate(-50%, -50%) scale(0.9); }
-  to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
+  from { opacity: 0.4; transform: translate(-50%, -50%) rotate(var(--chain-badge-rotate, 0deg)) scale(0.9); }
+  to   { opacity: 1;   transform: translate(-50%, -50%) rotate(var(--chain-badge-rotate, 0deg)) scale(1.1); }
 }
 
 // Cheat-sheet backdrop fade-in (Replay Viewer modal)

@@ -718,6 +718,44 @@ back-off, no ceiling — the watchdog is the ceiling).
 `POLL-DROP REGRESSION` (the console.error string) and
 `POLL-DROP-REGRESSION` (the duelAssert site tag).
 
+### Replay interruption safety (seek / pause during a chain)
+
+Interrupting a replay mid-chain has two distinct failure modes, both
+fixed defensively in `AnimationOrchestratorService` (2026-05-20):
+
+1. **Stale async loop after a seek.** `_processAnimationQueueInner` is an
+   async loop that cannot be cancelled mid-`await`. A seek / sub-event
+   click runs `abortAndClean` → `resetForSwitch` (flips `_isAnimating`
+   false) then a fresh feed flips it back true — so the suspended stale
+   loop would resume and run alongside the new one.
+
+   **Root cause of the "infinite rescue" (fixed 2026-05-20):** when the
+   reset landed while a loop was suspended on an `await`, that loop's
+   `finally { _innerLoopDepth-- }` had not run, leaving `_innerLoopDepth`
+   stale at 1. The post-reset feed's fresh loop then did `_innerLoopDepth++`
+   → 2 → the parallel-re-entry `duelAssert` **threw**, aborting the loop
+   body before it dispatched anything → the queue never drained → the
+   `processAnimationQueue` finally rescue re-fired forever. Fix:
+   `clearTimersAndPolling` zeroes `_innerLoopDepth`, and the inner-loop
+   `finally` floors it at 0 (`Math.max(0, …)`) so a stale loop resuming
+   after the reset can't drive it negative.
+
+   Defense in depth: a `_resetGeneration` counter (bumped in
+   `clearTimersAndPolling`) — the inner loop captures it on entry and
+   bails on mismatch; the `processAnimationQueue` finally skips its
+   rescue when the generation moved. And a no-progress ceiling
+   (`RESCUE_NO_PROGRESS_CEILING`) — past N rescues with `queueLen`
+   unchanged the rescue abandons with a `logger.warn` instead of looping.
+
+2. **Watchdog false-fire while paused.** A resolving chain can sit with
+   an empty queue when replay auto-play is paused — the next link /
+   `MSG_CHAIN_END` are in a transition `maybeAdvance` won't schedule
+   until resume. That is healthy, not a stall. `setPlaybackPaused(bool)`
+   (called from a replay-page effect watching `transport.isPlaying`)
+   clears the watchdog on pause and re-arms it on resume if still
+   mid-resolution. `armPollDropWatchdog` no-ops while `_playbackPaused`.
+   PvP never calls `setPlaybackPaused` (no pause there).
+
 ## Server Module Configuration (`createConfigurable<T>`)
 
 Server-side modules extracted from `server.ts` follow a two-phase init

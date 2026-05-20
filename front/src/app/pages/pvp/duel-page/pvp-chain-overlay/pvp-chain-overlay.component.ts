@@ -200,6 +200,13 @@ export class PvpChainOverlayComponent {
       exit: `${d.exit}ms`,
       entry: `${d.entry}ms`,
       overflow: `${d.overflow}ms`,
+      // Cascade cards (the chain links shifting forward to fill the slot a
+      // resolved card vacated) wait this long before sliding — so the
+      // exiting card has visibly faded BEFORE the next card arrives at
+      // front, instead of the two animations overlapping ("the resolved
+      // card gets shoved" symptom). 55% of the exit duration leaves the
+      // shift finishing just after the fade completes.
+      cascadeDelay: `${Math.round(d.exit * 0.55)}ms`,
     };
   });
 

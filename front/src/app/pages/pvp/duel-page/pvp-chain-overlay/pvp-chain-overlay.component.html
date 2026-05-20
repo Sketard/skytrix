@@ -6,10 +6,12 @@
        [style.--chain-resolve-exit]="cssDurations().exit"
        [style.--chain-entry-duration]="cssDurations().entry"
        [style.--chain-overflow-duration]="cssDurations().overflow"
+       [style.--chain-cascade-delay]="cssDurations().cascadeDelay"
        role="status"
        aria-live="polite">
     <div class="chain-overlay-backdrop"></div>
-    <div class="chain-card-container">
+    <div class="chain-card-container"
+         [class.chain-card-container--exiting]="!!exitingCard()">
       <!-- Exiting card (overflow or resolve-exit) -->
       @if (exitingCard(); as exiting) {
         <div class="chain-card"

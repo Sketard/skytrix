@@ -55,6 +55,23 @@
   }
 }
 
+// While a card is exiting (resolved card sliding out), hold the cascade
+// shift back by `--chain-cascade-delay` so the exiting card has visibly
+// faded BEFORE the next link slides into the front slot — instead of the
+// arriving card appearing to shove the resolved one. Position/size only;
+// opacity/filter still react immediately so a card fading in is unaffected.
+@media (prefers-reduced-motion: no-preference) {
+  .chain-card-container--exiting .chain-card {
+    transition-delay: var(--chain-cascade-delay, 0ms),
+                      var(--chain-cascade-delay, 0ms),
+                      var(--chain-cascade-delay, 0ms),
+                      var(--chain-cascade-delay, 0ms),
+                      var(--chain-cascade-delay, 0ms),
+                      0ms,
+                      0ms;
+  }
+}
+
 .chain-card__art {
   width: 100%;
   height: 100%;
@@ -139,19 +156,22 @@
   }
 }
 
-// --- Resolution exit (front card slides out right) ---
+// --- Resolution exit (front card fades out in place) ---
+// Fades on the spot (no slide) so the cascade card arriving at the front
+// slot doesn't look like it shoves the resolved card sideways — the
+// resolved card simply dims and shrinks slightly where it stands.
 
 @keyframes chain-resolve-exit {
   from {
     top: calc(80% - 45dvh);
     left: calc(70% - 45dvh * 59 / 86);
-    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg);
+    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1);
     opacity: 1;
   }
   to {
     top: calc(80% - 45dvh);
-    left: calc(70% - 45dvh * 59 / 86 + 200px);
-    transform: perspective(1200px) rotateZ(3deg) rotateY(-20deg) scale(0.85);
+    left: calc(70% - 45dvh * 59 / 86);
+    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(0.92);
     opacity: 0;
   }
 }

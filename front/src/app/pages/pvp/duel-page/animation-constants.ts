@@ -18,6 +18,17 @@ export const LOCK_SAFETY_TIMEOUT_MS = 5000;
  */
 export const POLL_DROP_REGRESSION_WATCHDOG_MS = 10_000;
 
+/**
+ * Ceiling for consecutive no-progress rescues in `processAnimationQueue`'s
+ * finally block. The rescue re-launches the queue when the inner loop exits
+ * with entries still queued; if a seek/abort race leaves undispatchable
+ * entries, the rescue would loop forever ("infinite rescue" on sub-event
+ * click during playback). Past this many rescues WITHOUT the queue
+ * shrinking, the rescue bails. Small (3) — a healthy rescue drains at
+ * least one entry per pass, so >3 stalls is unambiguously a runaway.
+ */
+export const RESCUE_NO_PROGRESS_CEILING = 3;
+
 /** Queue collapse fires when queue length exceeds this threshold. */
 export const QUEUE_COLLAPSE_THRESHOLD = 5;
 

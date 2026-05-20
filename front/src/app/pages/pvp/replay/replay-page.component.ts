@@ -588,6 +588,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       untracked(() => this.transport.maybeAdvance());
     });
 
+    // Pause notifier — a resolving chain can legitimately idle (empty queue)
+    // while paused: the next link / MSG_CHAIN_END live in a transition that
+    // `maybeAdvance` won't schedule until resume. Tell the orchestrator so
+    // its POLL-DROP watchdog doesn't false-fire on the paused chain.
+    effect(() => {
+      const playing = this.transport.isPlaying();
+      untracked(() => this.orchestrator.setPlaybackPaused(!playing));
+    });
+
     // Phase announcement detection
     effect(() => {
       const state = this.activeDuelState();

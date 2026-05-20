@@ -123,9 +123,16 @@
 // Opponent mirroring: rotate .card-inner (art + indicators) 180°,
 // counter-rotate text children for readability. Defense −90° on
 // .zone-card composes naturally — no opponent override needed.
+// `.chain-badge` is EXCLUDED from the counter-rotation here — it centers
+// via `transform: translate(-50%,-50%)`, and the separate `rotate` property
+// pivots around the layout origin, shifting it off-center. Its 180° is
+// folded into its own `transform` via `--chain-badge-rotate` instead.
 :is(.opponent-field, .emz--opponent) {
   .card-inner { rotate: 180deg; }
-  .card-inner > :not(.card-art):not(.xray-overlay) { rotate: 180deg; }
+  .card-inner > :not(.card-art):not(.xray-overlay):not(.chain-badge) { rotate: 180deg; }
+  // Counter-rotate the chain badge for readability — via its own transform
+  // (see `.chain-badge` + the `ds-chain-badge-pulse` keyframe).
+  .chain-badge { --chain-badge-rotate: 180deg; }
 }
 
 // === Zone Cell ===
@@ -603,7 +610,10 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  // `--chain-badge-rotate` is 0deg by default and 180deg on opponent-side
+  // cards — folded into `transform` (not the `rotate` property) so the
+  // counter-rotation composes with the `translate(-50%,-50%)` centering.
+  transform: translate(-50%, -50%) rotate(var(--chain-badge-rotate, 0deg));
   width: 35%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
