@@ -77,13 +77,24 @@ a posé ces conventions — à respecter pour tout nouveau style :
   la règle dans `styles/_cdk-overrides.scss` (feuille globale). Pour
   styler un composant enfant, lui ajouter un `input` de variante
   (cf. `embedded` sur `pvp-timer-badge`/`pvp-lp-badge`).
-- **Boutons** → `<button class="btn …">` natif + partials
-  `_buttons.scss`. Éviter `mat-raised-button`/`mat-*-button` (la couche
-  MDC force des `!important`). Les bascules de vue utilisent
-  `.seg-btn` (`styles/_segmented.scss`), pas `.btn`.
+- **Composants DS** → boutons / pills / bascules sont des composants
+  Angular, plus des classes SCSS globales (composantisation 2026-05-20) :
+  `<app-button>`, `<app-icon-button>`, `<app-pill>`, `<app-seg-button>`
+  (dans `components/`). Les partials `_buttons.scss` / `_icon-button.scss`
+  / `_pills.scss` / `_segmented.scss` ont été supprimés. Ne PAS combiner
+  avec `mat-raised-button`/`mat-*-button` (la couche MDC force des
+  `!important`). Chaque composant a un host (porte les classes de
+  variante) + un élément interne (`.btn__el` / `.icon-btn__el` /
+  `.seg-btn__el`) : un override de chrome côté page (padding, fond, hover,
+  `:disabled`) DOIT cibler l'élément interne ; les contraintes de taille
+  (`min-height`, `width`) restent sur le host. `.badge` reste une classe
+  globale (`_badge.scss`, un seul consommateur).
 - **`!important`** → réservé aux cas structurels : override Material/CDK,
   `prefers-reduced-motion`, état devant primer sur un `:hover` plus
   spécifique, style inline à battre. Tout `!important` hors mixin doit
   porter un commentaire `// !important : <pourquoi>`.
+- **Tokens dorés** → `--gold` pour fond/accent/bordure/glow,
+  `--gold-on-surface` pour le `color:` d'un texte/icône doré (doctrine
+  light mode — alias de `--gold` en dark).
 - **Radius** → échelle unique `--radius-{sm,md,lg,xl,pill}` (l'échelle
   PvP `--pvp-radius-*` a été fusionnée).
