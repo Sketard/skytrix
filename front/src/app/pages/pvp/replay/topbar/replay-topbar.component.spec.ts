@@ -103,14 +103,14 @@ describe('ReplayTopbarComponent', () => {
     expect(detailsSpy).toHaveBeenCalled();
   });
 
-  it('toggles btn--success-flash on the copy-link icon when copyJustSucceeded is true', () => {
+  it('toggles the active gold tint on the copy-link icon when copyJustSucceeded is true', () => {
     bind(makeMeta(), 0, true);
-    const copyBtn = el.querySelector('.icon-btn');
-    expect(copyBtn?.classList.contains('btn--success-flash')).toBe(true);
+    const copyBtn = el.querySelector('app-icon-button');
+    expect(copyBtn?.classList.contains('icon-btn--active')).toBe(true);
 
     bind(makeMeta(), 0, false);
-    const copyBtnAfter = el.querySelector('.icon-btn');
-    expect(copyBtnAfter?.classList.contains('btn--success-flash')).toBe(false);
+    const copyBtnAfter = el.querySelector('app-icon-button');
+    expect(copyBtnAfter?.classList.contains('icon-btn--active')).toBe(false);
   });
 
   it('renders nothing in summary when metadata is null', () => {

@@ -1,12 +1,12 @@
 <div class="timeline-stepper__row">
-  <button
-    type="button"
-    class="icon-btn icon-btn--lg icon-btn--framed timeline-stepper__nav"
-    [attr.aria-label]="'replay.viewer.stepper.prevTurn' | translate"
+  <app-icon-button
+    size="lg" variant="framed"
+    class="timeline-stepper__nav"
+    [ariaLabel]="'replay.viewer.stepper.prevTurn' | translate"
     [disabled]="!canStepPrev()"
     (click)="onPrev()">
     <mat-icon>chevron_left</mat-icon>
-  </button>
+  </app-icon-button>
 
   <!-- Picker affordance — pill is a "tap to open turn picker" button. The turn
        label (`T3 / 11`) lives in the transport-bar context-pill directly below,
@@ -27,12 +27,12 @@
     <mat-icon aria-hidden="true" class="timeline-stepper__chevron">expand_more</mat-icon>
   </button>
 
-  <button
-    type="button"
-    class="icon-btn icon-btn--lg icon-btn--framed timeline-stepper__nav"
-    [attr.aria-label]="'replay.viewer.stepper.nextTurn' | translate"
+  <app-icon-button
+    size="lg" variant="framed"
+    class="timeline-stepper__nav"
+    [ariaLabel]="'replay.viewer.stepper.nextTurn' | translate"
     [disabled]="!canStepNext()"
     (click)="onNext()">
     <mat-icon>chevron_right</mat-icon>
-  </button>
+  </app-icon-button>
 </div>

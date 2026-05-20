@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import type { TurnMeta } from '../../replay-ws.types';
+import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
 
 // Mobile-only stepper that replaces the desktop timeline-bar under `.is-narrow`
 // (D3 / D5 / spec §F2). Layout:
@@ -26,7 +27,7 @@ import type { TurnMeta } from '../../replay-ws.types';
   selector: 'app-timeline-stepper',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, MatIconModule],
+  imports: [TranslateModule, MatIconModule, IconButtonComponent],
   templateUrl: './timeline-stepper.component.html',
   styleUrl: './timeline-stepper.component.scss',
 })

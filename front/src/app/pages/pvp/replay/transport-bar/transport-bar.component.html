@@ -10,47 +10,47 @@
 
   <!-- CENTER: transport controls -->
   <div class="transport-bar__controls" role="group" [attr.aria-label]="'replay.viewer.cheatSheet.section.playback' | translate">
-    <button
-      type="button"
-      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
-      [attr.aria-label]="'replay.transport.skipStart' | translate"
+    <app-icon-button
+      size="lg" variant="framed"
+      class="transport-bar__step"
+      [ariaLabel]="'replay.transport.skipStart' | translate"
       [title]="'replay.transport.skipStart' | translate"
       (click)="skipStart.emit()">
       <mat-icon>skip_previous</mat-icon>
-    </button>
-    <button
-      type="button"
-      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
-      [attr.aria-label]="'replay.transport.stepBack' | translate"
+    </app-icon-button>
+    <app-icon-button
+      size="lg" variant="framed"
+      class="transport-bar__step"
+      [ariaLabel]="'replay.transport.stepBack' | translate"
       [title]="'replay.transport.stepBack' | translate"
       (click)="stepBack.emit()">
       <mat-icon>arrow_left</mat-icon>
-    </button>
-    <button
-      type="button"
-      class="icon-btn icon-btn--xl icon-btn--round icon-btn--primary transport-bar__play"
-      [attr.aria-label]="playAriaKey() | translate"
+    </app-icon-button>
+    <app-icon-button
+      size="xl" variant="primary" round
+      class="transport-bar__play"
+      [ariaLabel]="playAriaKey() | translate"
       [title]="playAriaKey() | translate"
       [disabled]="atEnd() && !isPlaying()"
       (click)="playPause.emit()">
       <mat-icon>{{ playIcon() }}</mat-icon>
-    </button>
-    <button
-      type="button"
-      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
-      [attr.aria-label]="'replay.transport.stepForward' | translate"
+    </app-icon-button>
+    <app-icon-button
+      size="lg" variant="framed"
+      class="transport-bar__step"
+      [ariaLabel]="'replay.transport.stepForward' | translate"
       [title]="'replay.transport.stepForward' | translate"
       (click)="stepForward.emit()">
       <mat-icon>arrow_right</mat-icon>
-    </button>
-    <button
-      type="button"
-      class="icon-btn icon-btn--lg icon-btn--framed transport-bar__step"
-      [attr.aria-label]="'replay.transport.skipEnd' | translate"
+    </app-icon-button>
+    <app-icon-button
+      size="lg" variant="framed"
+      class="transport-bar__step"
+      [ariaLabel]="'replay.transport.skipEnd' | translate"
       [title]="'replay.transport.skipEnd' | translate"
       (click)="skipEnd.emit()">
       <mat-icon>skip_next</mat-icon>
-    </button>
+    </app-icon-button>
   </div>
 
   <!-- RIGHT: options -->
@@ -103,24 +103,24 @@
       <mat-icon aria-hidden="true">fork_right</mat-icon>
       <span class="transport-bar__fork-label">{{ 'replay.transport.forkShort' | translate }}</span>
     </app-button>
-    <button
-      type="button"
-      class="icon-btn icon-btn--md transport-bar__cheat"
-      [attr.aria-label]="'replay.viewer.cheatSheet.help' | translate"
+    <app-icon-button
+      size="md"
+      class="transport-bar__cheat"
+      [ariaLabel]="'replay.viewer.cheatSheet.help' | translate"
       [title]="'replay.viewer.cheatSheet.help' | translate"
       (click)="openCheatSheet.emit()">
       <mat-icon>keyboard</mat-icon>
-    </button>
+    </app-icon-button>
 
     <!-- Mobile-only ⋯ More button — collapses toggles + fork + perspective. -->
-    <button
-      type="button"
-      class="icon-btn icon-btn--lg transport-bar__more"
+    <app-icon-button
+      size="lg"
+      class="transport-bar__more"
       [class.transport-bar__more--has-non-default]="hasNonDefaultOption()"
-      [attr.aria-label]="'replay.viewer.bottomSheet.options.title' | translate"
+      [ariaLabel]="'replay.viewer.bottomSheet.options.title' | translate"
       (click)="openMoreOptions.emit()">
       <mat-icon>more_horiz</mat-icon>
-    </button>
+    </app-icon-button>
   </div>
 
 </div>

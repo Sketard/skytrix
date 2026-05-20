@@ -4,13 +4,12 @@
       <mat-icon aria-hidden="true" class="replay-cheat-sheet__title-icon">keyboard</mat-icon>
       <span>{{ 'replay.viewer.cheatSheet.title' | translate }}</span>
     </h2>
-    <button
-      type="button"
-      class="icon-btn icon-btn--md"
-      [attr.aria-label]="'common.close' | translate"
+    <app-icon-button
+      size="md"
+      [ariaLabel]="'common.close' | translate"
       (click)="close.emit()">
       <mat-icon>close</mat-icon>
-    </button>
+    </app-icon-button>
   </header>
 
   <div class="replay-cheat-sheet__body">

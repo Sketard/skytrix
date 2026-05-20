@@ -54,14 +54,13 @@
         <span class="text-mono">{{ dur }}</span>
       </span>
     }
-    <button
-      type="button"
-      class="icon-btn icon-btn--md"
-      [class.btn--success-flash]="copyJustSucceeded()"
-      [attr.aria-label]="'replay.viewer.bottomSheet.options.copyLink' | translate"
+    <app-icon-button
+      size="md"
+      [active]="copyJustSucceeded()"
+      [ariaLabel]="'replay.viewer.bottomSheet.options.copyLink' | translate"
       (click)="copyLink.emit()">
       <mat-icon>link</mat-icon>
-    </button>
+    </app-icon-button>
     <!-- Mobile-only pill (mockup §replay-mobile-details-btn parity). Compact
          icon + label so the action is discoverable on a phone where the
          summary chips are hidden. Hidden ≥ 480px (CSS in component scss). -->

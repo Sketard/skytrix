@@ -482,15 +482,8 @@
   color: var(--gold-50);
 }
 
-// Favorite star uses .icon-btn DS sizing; only the active state is custom.
-.favorite-toggle.icon-btn.active {
-  color: var(--gold);
-  border-color: var(--gold-soft-50);
-  background: var(--gold-soft-12);
-
-  .material-icons-round,
-  mat-icon { color: var(--gold); }
-}
+// Favorite star — the active gold tint is handled natively by
+// `<app-icon-button [active]>` (its `--active` variant), no local override.
 
 // ---------- Mobile: dismissable centered (H + V) + smaller image ----------
 // `position: fixed` (not absolute) so the panel centers on the viewport

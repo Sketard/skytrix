@@ -205,17 +205,17 @@
     <div class="inspector-deck-panel" (click)="$event.stopPropagation()">
       <span class="inspector-deck-panel__label">{{ 'deckBuilder.deck' | translate }}</span>
       <div class="inspector-deck-panel__control">
-        <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
+        <app-icon-button size="sm" variant="framed"
           (click)="removeSelectedCardFromDeck()"
-          [attr.aria-label]="'deckBuilder.removeFromDeck' | translate">
+          [ariaLabel]="'deckBuilder.removeFromDeck' | translate">
           <mat-icon>remove</mat-icon>
-        </button>
+        </app-icon-button>
         <span class="inspector-deck-panel__count">{{ selectedCardCount() }}</span>
-        <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
+        <app-icon-button size="sm" variant="framed"
           (click)="addSelectedCardToDeck()"
-          [attr.aria-label]="'deckBuilder.addToDeck' | translate">
+          [ariaLabel]="'deckBuilder.addToDeck' | translate">
           <mat-icon>add</mat-icon>
-        </button>
+        </app-icon-button>
       </div>
     </div>
   </app-card-inspector>

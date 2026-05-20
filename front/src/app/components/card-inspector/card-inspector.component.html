@@ -4,13 +4,14 @@
     <div class="inspector-header">
       <h3 class="card-name">{{ c | cardName }}</h3>
       @if (showPersonalMetadata()) {
-        <button type="button"
-          class="icon-btn icon-btn--sm icon-btn--framed favorite-toggle"
-          [class.active]="isFavorite()"
+        <app-icon-button
+          size="sm" variant="framed"
+          class="favorite-toggle"
+          [active]="isFavorite()"
           (click)="toggleFavorite(); $event.stopPropagation()"
-          [attr.aria-label]="'a11y.favorite' | translate">
+          [ariaLabel]="'a11y.favorite' | translate">
           <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
-        </button>
+        </app-icon-button>
       }
     </div>
     @if (c.isMonster) {
@@ -62,17 +63,17 @@
   <div class="inspector-owned">
     <span class="inspector-owned-label">{{ 'cardInspector.owned' | translate }}</span>
     <div class="inspector-owned-control">
-      <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
+      <app-icon-button size="sm" variant="framed"
         (click)="changeOwned(-1); $event.stopPropagation()"
-        [attr.aria-label]="'a11y.decrement' | translate">
+        [ariaLabel]="'a11y.decrement' | translate">
         <mat-icon>remove</mat-icon>
-      </button>
+      </app-icon-button>
       <span class="inspector-owned-count">{{ ownedCount() }}</span>
-      <button type="button" class="icon-btn icon-btn--sm icon-btn--framed"
+      <app-icon-button size="sm" variant="framed"
         (click)="changeOwned(1); $event.stopPropagation()"
-        [attr.aria-label]="'a11y.increment' | translate">
+        [ariaLabel]="'a11y.increment' | translate">
         <mat-icon>add</mat-icon>
-      </button>
+      </app-icon-button>
     </div>
   </div>
 </ng-template>

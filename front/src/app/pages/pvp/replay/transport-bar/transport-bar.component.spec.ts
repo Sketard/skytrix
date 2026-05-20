@@ -98,13 +98,13 @@ describe('TransportBarComponent — F3 refonte 3 zones', () => {
 
   it('disables the play button when atEnd && !isPlaying', () => {
     bind({ atEnd: true, isPlaying: false });
-    const play = el.querySelector('.transport-bar__play') as HTMLButtonElement;
+    const play = el.querySelector('.transport-bar__play .icon-btn__el') as HTMLButtonElement;
     expect(play.disabled).toBe(true);
   });
 
   it('keeps the play button enabled while playing even at end (so pause works)', () => {
     bind({ atEnd: true, isPlaying: true });
-    const play = el.querySelector('.transport-bar__play') as HTMLButtonElement;
+    const play = el.querySelector('.transport-bar__play .icon-btn__el') as HTMLButtonElement;
     expect(play.disabled).toBe(false);
   });
 

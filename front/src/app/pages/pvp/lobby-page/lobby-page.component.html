@@ -72,13 +72,12 @@
       (input)="onSearchInput($event)"
       [attr.aria-label]="'lobby.filterPlaceholder' | translate" />
     @if (hasSearchActive()) {
-      <button
-        type="button"
-        class="icon-btn icon-btn--sm"
-        [attr.aria-label]="'common.clear' | translate"
+      <app-icon-button
+        size="sm"
+        [ariaLabel]="'common.clear' | translate"
         (click)="clearSearch()">
         <mat-icon>close</mat-icon>
-      </button>
+      </app-icon-button>
     }
   </label>
 

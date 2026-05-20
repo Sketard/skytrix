@@ -183,10 +183,17 @@
     .replay-card__actions { grid-area: actions; align-self: center; }
   }
 
-  // Desktop — hover reveals the ghost delete button + the gold "Open" pill.
+  // Desktop — hover-revealed delete button (opacity 0 at rest). Was the
+  // `.icon-btn--ghost-hover-only` DS variant; now a local card concern
+  // since `<app-icon-button>` has no hover-reveal variant.
   @include r.respond-above(r.$bp-pvp-narrow) {
-    &:hover .icon-btn--ghost-hover-only,
-    &:focus-within .icon-btn--ghost-hover-only {
+    .replay-card__delete {
+      opacity: 0;
+      transition: opacity var(--transition-fast) var(--ease-out);
+    }
+
+    &:hover .replay-card__delete,
+    &:focus-within .replay-card__delete {
       opacity: 1;
     }
   }
@@ -194,7 +201,7 @@
   // Mobile — the delete button stays visible (no hover). Pinned to the
   // bottom-right of the meta row so it doesn't squeeze the title.
   @include r.respond-below(r.$bp-pvp-narrow) {
-    .icon-btn--ghost-hover-only {
+    .replay-card__delete {
       opacity: 0.7;
     }
   }

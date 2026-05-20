@@ -5,6 +5,7 @@ import { AvatarComponent } from '../../../../shared/avatar/avatar.component';
 import type { ReplayMetadataMsg } from '../../duel-ws.types';
 import { deriveOutcome, type ReplayOutcome } from '../replay-outcome.util';
 import { ButtonComponent } from '../../../../components/button/button.component';
+import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
 
 // Sticky horizontal page header for the replay viewer (DS Wave 1 §2.10 variant
 // `.page-header--compact`). 3 zones grid: back-btn · match summary · meta + actions.
@@ -24,7 +25,7 @@ import { ButtonComponent } from '../../../../components/button/button.component'
   selector: 'app-replay-topbar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, MatIconModule, AvatarComponent, ButtonComponent],
+  imports: [TranslateModule, MatIconModule, AvatarComponent, ButtonComponent, IconButtonComponent],
   templateUrl: './replay-topbar.component.html',
   styleUrl: './replay-topbar.component.scss',
   host: { role: 'banner' },

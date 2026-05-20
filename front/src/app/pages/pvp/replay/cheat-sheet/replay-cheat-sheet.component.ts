@@ -3,6 +3,7 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 import { i18nAttr } from '../../../../shared/i18n';
+import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
 
 interface CheatItem {
   /** i18n key under `replay.transport.*` (existing) or `replay.viewer.cheatSheet.*` (new). */
@@ -27,7 +28,7 @@ interface CheatSection {
   selector: 'app-replay-cheat-sheet',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, MatIconModule, A11yModule],
+  imports: [TranslateModule, MatIconModule, A11yModule, IconButtonComponent],
   templateUrl: './replay-cheat-sheet.component.html',
   styleUrl: './replay-cheat-sheet.component.scss',
   host: {

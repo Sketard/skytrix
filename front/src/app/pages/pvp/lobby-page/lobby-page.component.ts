@@ -21,6 +21,7 @@ import { EmptyStateComponent } from '../../../components/empty-state/empty-state
 import { SectionHeaderComponent } from '../../../components/section-header/section-header.component';
 import { LobbyRoomsStore } from './lobby-rooms-store';
 import { ButtonComponent } from '../../../components/button/button.component';
+import { IconButtonComponent } from '../../../components/icon-button/icon-button.component';
 
 // Fixed virtual-scroll item size: rendered .room-card height (~88-92px on
 // desktop, ~96px on mobile w/ stacked CTA) + 12px row gap. Matches the
@@ -43,7 +44,7 @@ const LOBBY_SORT_MODES: readonly LobbySortMode[] = ['newest', 'oldest', 'pseudoA
     ScrollingModule,
     RelativeTimePipe, TranslatePipe,
     AvatarComponent, RoomCardSkeletonComponent, ErrorBannerComponent,
-    EmptyStateComponent, SectionHeaderComponent, ButtonComponent,
+    EmptyStateComponent, SectionHeaderComponent, ButtonComponent, IconButtonComponent,
   ],
 })
 export class LobbyPageComponent implements OnInit {

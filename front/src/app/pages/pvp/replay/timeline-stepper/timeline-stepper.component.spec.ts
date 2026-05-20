@@ -49,19 +49,19 @@ describe('TimelineStepperComponent', () => {
 
   it('disables prev on the first turn and next on the last computed turn', () => {
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5), stubMeta(2, 6, 8)], 0, 8);
-    const navs = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav');
+    const navs = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav .icon-btn__el');
     expect(navs[0].disabled).toBe(true);
     expect(navs[1].disabled).toBe(false);
 
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5), stubMeta(2, 6, 8)], 2, 8);
-    const navs2 = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav');
+    const navs2 = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav .icon-btn__el');
     expect(navs2[0].disabled).toBe(false);
     expect(navs2[1].disabled).toBe(true);
   });
 
   it('disables next when the next turn is not yet computed', () => {
     bind([stubMeta(0, 0, 2), stubMeta(1, 3, 5), stubMeta(2, 6, 8)], 1, 4); // upTo=4 < turn2.start=6
-    const navs = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav');
+    const navs = el.querySelectorAll<HTMLButtonElement>('.timeline-stepper__nav .icon-btn__el');
     expect(navs[1].disabled).toBe(true);
   });
 

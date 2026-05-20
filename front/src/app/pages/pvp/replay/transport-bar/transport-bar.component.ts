@@ -4,6 +4,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ContextPillComponent } from '../context-pill/context-pill.component';
 import { TimelineZoomControlComponent, type ZoomLevel } from '../timeline-zoom-control/timeline-zoom-control.component';
 import { ButtonComponent } from '../../../../components/button/button.component';
+import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
 
 // 3-zone transport bar (F3 viewer-rework). Layout:
 //
@@ -27,7 +28,7 @@ import { ButtonComponent } from '../../../../components/button/button.component'
   styleUrl: './transport-bar.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, MatIconModule, ContextPillComponent, TimelineZoomControlComponent, ButtonComponent],
+  imports: [TranslateModule, MatIconModule, ContextPillComponent, TimelineZoomControlComponent, ButtonComponent, IconButtonComponent],
 })
 export class TransportBarComponent {
   // === Context inputs (left zone) ============================================

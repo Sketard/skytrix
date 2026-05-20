@@ -5,7 +5,7 @@
 // Order is critical:
 //   1. Foundations (tokens MUST come first — a11y/motion/typography rely on it)
 //   2. Background / surfaces / scroll
-//   3. Building blocks (composables: card-surface, pills, chips, icon-button)
+//   3. Building blocks (composables: card-surface, pills, chips)
 //   4. Composites (search-bar, page-header, section-header, empty-state,
 //      holo-modal)
 //   5. Legacy (long-press — frozen, do not extend)
@@ -15,6 +15,8 @@
 
 // 1. Foundations
 @use 'app/styles/tokens';
+@use 'app/styles/tokens-light';      // `html.theme-light` overrides — pages "app"
+@use 'app/styles/tokens-dark-scope'; // `.theme-dark` garde-fou — duel + replay viewer
 @use 'app/styles/duel-tokens';   // Scoped to `.board-host[data-theme="X"]` (Wave 3)
 @use 'app/styles/a11y';
 @use 'app/styles/motion';
@@ -29,7 +31,6 @@
 @use 'app/styles/segmented';
 @use 'app/styles/pills';
 @use 'app/styles/chips';
-@use 'app/styles/icon-button';
 
 // 4. Composites
 @use 'app/styles/search-bar';

@@ -5,6 +5,7 @@ import { MatIconButton } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CardNamePipe, CardDescPipe } from '../../core/pipes/card-i18n.pipe';
 import { SharedCardInspectorData } from '../../core/model/shared-card-data';
+import { IconButtonComponent } from '../icon-button/icon-button.component';
 
 const DOT_THRESHOLD = 5;
 
@@ -13,7 +14,7 @@ const DOT_THRESHOLD = 5;
   templateUrl: './card-inspector.component.html',
   styleUrl: './card-inspector.component.scss',
   standalone: true,
-  imports: [NgTemplateOutlet, DecimalPipe, MatIcon, MatIconButton, TranslatePipe, CardNamePipe, CardDescPipe],
+  imports: [NgTemplateOutlet, DecimalPipe, MatIcon, MatIconButton, TranslatePipe, CardNamePipe, CardDescPipe, IconButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     'role': 'complementary',

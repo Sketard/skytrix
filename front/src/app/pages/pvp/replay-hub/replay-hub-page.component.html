@@ -26,13 +26,12 @@
         (input)="onSearchInput($event)"
         [attr.aria-label]="'replay.hub.search.placeholder' | translate" />
       @if (hasSearchActive()) {
-        <button
-          type="button"
-          class="icon-btn icon-btn--sm"
-          [attr.aria-label]="'common.clear' | translate"
+        <app-icon-button
+          size="sm"
+          [ariaLabel]="'common.clear' | translate"
           (click)="clearSearch()">
           <mat-icon>close</mat-icon>
-        </button>
+        </app-icon-button>
       }
     </label>
 
@@ -176,9 +175,10 @@
                 <span>{{ 'replay.hub.card.open' | translate }}</span>
                 <mat-icon>arrow_forward</mat-icon>
               </span>
-              <button type="button"
-                      class="icon-btn icon-btn--md icon-btn--danger icon-btn--ghost-hover-only"
-                      [attr.aria-label]="'replay.hub.card.delete' | translate"
+              <app-icon-button
+                      size="md" variant="danger"
+                      class="replay-card__delete"
+                      [ariaLabel]="'replay.hub.card.delete' | translate"
                       [matTooltip]="'replay.hub.card.delete' | translate"
                       [disabled]="deletingId() === replay.id"
                       (click)="deleteReplay(replay, $event)">
@@ -187,7 +187,7 @@
                 } @else {
                   <mat-icon>delete_outline</mat-icon>
                 }
-              </button>
+              </app-icon-button>
             </div>
           </a>
         }

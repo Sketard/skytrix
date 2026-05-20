@@ -35,6 +35,7 @@ import { RoomApiService } from '../../../pvp/room-api.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ButtonComponent } from '../../../../components/button/button.component';
+import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
 
 @Component({
   selector: 'app-deck-builder',
@@ -57,6 +58,7 @@ import { ButtonComponent } from '../../../../components/button/button.component'
     MatProgressSpinner,
     TranslatePipe,
     ButtonComponent,
+    IconButtonComponent,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',

@@ -1,0 +1,140 @@
+// =============================================================================
+// <app-icon-button> — DS icon-only button, encapsulated.
+// Migrated from the former global `.icon-btn` SCSS class (`_icon-button.scss`).
+//
+// The host carries the variant/size classes and IS the layout box; the inner
+// `.icon-btn__el` is the real `<button>` and fills the host. Sizes drive the
+// host's width/height so a parent rule can override the box.
+//
+// Gold doctrine: `--gold-on-surface` for icon `color:`, `--gold` for
+// background/border (light-mode prep — aliased in dark, zero visual change).
+// =============================================================================
+
+:host {
+  display: inline-flex;
+  flex-shrink: 0;
+  vertical-align: middle;
+  border-radius: var(--radius-md);
+}
+
+.icon-btn__el {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              opacity var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  // mat-icon ships with `width/height/line-height: 24px`; without overriding
+  // the box too, the glyph drifts inside that frame and the flex center
+  // fails. Pinned per size below.
+  .material-icons-round,
+  mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+// --- Sizes -------------------------------------------------------------------
+:host(.icon-btn--sm) { width: 28px; height: 28px; }
+:host(.icon-btn--md) { width: 34px; height: 34px; }
+:host(.icon-btn--lg) { width: 44px; height: 44px; } // touch-target-min
+:host(.icon-btn--xl) { width: 52px; height: 52px; } // hero CTAs (transport play)
+
+:host(.icon-btn--sm) .icon-btn__el {
+  .material-icons-round, mat-icon { font-size: 14px; width: 14px; height: 14px; line-height: 14px; }
+}
+:host(.icon-btn--md) .icon-btn__el {
+  .material-icons-round, mat-icon { font-size: 16px; width: 16px; height: 16px; line-height: 16px; }
+}
+:host(.icon-btn--lg) .icon-btn__el {
+  .material-icons-round, mat-icon { font-size: 20px; width: 20px; height: 20px; line-height: 20px; }
+}
+:host(.icon-btn--xl) .icon-btn__el {
+  .material-icons-round, mat-icon { font-size: 24px; width: 24px; height: 24px; line-height: 24px; }
+}
+
+// --- Variants ----------------------------------------------------------------
+:host(.icon-btn--danger) .icon-btn__el:hover:not(:disabled) {
+  color: var(--danger-strong);
+  border-color: rgba(255, 82, 82, 0.3);
+  background: rgba(255, 82, 82, 0.08);
+}
+
+:host(.icon-btn--active) .icon-btn__el {
+  background: var(--gold-soft-12);
+  border-color: var(--gold-soft-50);
+  color: var(--gold-on-surface);
+
+  .material-icons-round,
+  mat-icon { color: var(--gold-on-surface); }
+}
+
+// Framed — overlay bg + border-soft, gold "lift" on hover. For PRIMARY
+// repeated actions in a dock (transport-bar, timeline-stepper).
+:host(.icon-btn--framed) .icon-btn__el {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    color: var(--gold-on-surface);
+    background: var(--gold-soft-08);
+    border-color: var(--gold-soft-40);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.96);
+  }
+}
+
+// Primary — gold gradient hero variant. Aligned with `<app-button>` primary.
+:host(.icon-btn--primary) .icon-btn__el {
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse);
+  border: none;
+  box-shadow:
+    0 4px 16px var(--gold-soft-40),
+    inset 0 1px 0 var(--gold-soft-30);
+
+  .material-icons-round,
+  mat-icon { color: var(--text-inverse); }
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow:
+      0 8px 24px var(--gold-soft-50),
+      inset 0 1px 0 var(--gold-soft-30);
+  }
+}
+
+// --- Round modifier ----------------------------------------------------------
+:host(.icon-btn--round) {
+  border-radius: 50%;
+}
