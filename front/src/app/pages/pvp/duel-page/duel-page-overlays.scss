@@ -73,15 +73,15 @@
     animation: rps-fade-in var(--transition-normal) var(--ease-out) 500ms both;
 
     &--win {
-      color: #4caf50;
+      color: var(--result-win);
     }
 
     &--lose {
-      color: #f44336;
+      color: var(--result-lose);
     }
 
     &--draw {
-      color: #ffeb3b;
+      color: var(--result-draw);
     }
   }
 }

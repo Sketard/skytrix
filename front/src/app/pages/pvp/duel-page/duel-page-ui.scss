@@ -57,15 +57,15 @@
     margin: 0;
 
     &--green {
-      color: #4caf50;
+      color: var(--result-win);
     }
 
     &--yellow {
-      color: #ffeb3b;
+      color: var(--result-draw);
     }
 
     &--red {
-      color: #f44336;
+      color: var(--result-lose);
     }
   }
 

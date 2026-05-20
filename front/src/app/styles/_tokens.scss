@@ -237,6 +237,12 @@
   --danger-light:  #ff8a80;          // Soft danger — invalid states (vs destructive)
   --danger-soft-40: rgba(255, 82, 82, 0.40);
 
+  // --- Résultat de partie (RPS, fin de duel) — trio sémantique distinct
+  // des couleurs de statut UI. Consommé par duel-page-ui + duel-page-overlays.
+  --result-win:  #4caf50;   // victoire
+  --result-lose: #f44336;   // défaite (Material Red)
+  --result-draw: #ffeb3b;   // égalité
+
   // --- Scrim / backdrop — shared by all fullscreen overlays (modals, sheets) ---
   --scrim: rgba(5, 5, 10, 0.5);
 
