@@ -212,6 +212,13 @@ public class YugiproApiService {
         var task = syncTaskTracker.get("images");
         var executor = Executors.newFixedThreadPool(IMAGE_THREAD_POOL_SIZE);
         try {
+            // Re-sync the local/smallLocal flags with the actual disk state first.
+            // A flag marked `true` while the file is missing makes the card
+            // invisible to the missing-image query below — the image would never
+            // be re-fetched. Reconciling restores the flag so the card is picked
+            // up again.
+            reconcileImageFlags();
+
             var firstPage = cardImageRepository.findAllBySmallLocalOrLocal(false, false, PageRequest.of(0, 100));
             task.start((int) firstPage.getTotalElements());
             var consecutiveFailures = new AtomicInteger(0);
@@ -237,6 +244,50 @@ public class YugiproApiService {
         } finally {
             executor.shutdown();
         }
+    }
+
+    /**
+     * Re-aligns the {@code local} / {@code smallLocal} flags with the real
+     * filesystem state. When a flag claims an image is present but the file is
+     * gone, the flag is cleared so the missing-image fetch picks the card up
+     * again. Paginated to avoid loading the whole table at once.
+     */
+    void reconcileImageFlags() {
+        var pageSize = 500;
+        var pageIndex = 0;
+        // Collect first, persist last: clearing a flag mid-walk would shrink the
+        // `smallLocal=true OR local=true` result set and shift the OFFSET-based
+        // pages, skipping cards. Reading every page before any write keeps the
+        // pagination stable.
+        var dirty = new ArrayList<CardImage>();
+        org.springframework.data.domain.Page<CardImage> page;
+        do {
+            page = cardImageRepository.findAllBySmallLocalOrLocal(true, true,
+                    PageRequest.of(pageIndex, pageSize));
+            for (var cardImage : page.getContent()) {
+                var changed = false;
+                if (cardImage.isLocal() && fileMissing(cardImage.getUrl())) {
+                    cardImage.setLocal(false);
+                    changed = true;
+                }
+                if (cardImage.isSmallLocal() && fileMissing(cardImage.getSmallUrl())) {
+                    cardImage.setSmallLocal(false);
+                    changed = true;
+                }
+                if (changed) {
+                    dirty.add(cardImage);
+                }
+            }
+            pageIndex++;
+        } while (page.hasNext());
+        if (!dirty.isEmpty()) {
+            cardImageRepository.saveAll(dirty);
+            log.warn("Reconciled {} card_image flag(s) — image file was missing on disk", dirty.size());
+        }
+    }
+
+    private boolean fileMissing(String path) {
+        return path == null || !Files.exists(Path.of(path));
     }
 
     public void updateTcgImages() {
