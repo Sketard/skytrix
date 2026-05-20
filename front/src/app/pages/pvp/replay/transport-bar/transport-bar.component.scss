@@ -53,12 +53,12 @@
 
 // Step buttons (skip-start / step-back / step-forward / skip-end) — mockup
 // §transport-btn parity. Composition DS dans le template :
-//   `.icon-btn .icon-btn--lg .icon-btn--framed .transport-bar__step`
-// → bg overlay + border-soft + hover gold lift (translateY -1px) viennent
-// de `.icon-btn--framed` (`_icon-button.scss`).
-// Ce sélecteur ne porte plus que l'override `:disabled` opacity 0.3 (le DS
-// est à 0.4 ; mockup §transport-btn:disabled veut un cue plus net).
-.transport-bar__step:disabled {
+//   `<app-icon-button size="lg" variant="framed" class="transport-bar__step">`
+// → bg overlay + border-soft + hover gold lift come from the `framed` variant.
+// This rule only overrides `:disabled` opacity to 0.3 (DS default is 0.4 ;
+// mockup §transport-btn:disabled wants a sharper cue). The `:disabled` state
+// lives on the inner `.icon-btn__el`, not the host.
+.transport-bar__step .icon-btn__el:disabled {
   opacity: 0.3;
   transform: none;
 }
@@ -77,7 +77,7 @@
 // Ce sélecteur ne porte plus que le hover-lift (translateY) qui est spécifique
 // au transport-bar (les autres .icon-btn--primary potentiels ne lifteront pas
 // forcément). `:disabled` est géré par `.icon-btn` (opacity 0.4 + pointer-events).
-.transport-bar__play {
+.transport-bar__play .icon-btn__el {
   transition: opacity var(--transition-fast) var(--ease-out),
               transform var(--transition-fast) var(--ease-out),
               filter   var(--transition-fast) var(--ease-out),

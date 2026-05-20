@@ -19,14 +19,14 @@
   </header>
 
   <div class="cta-row">
-    <app-button variant="primary" size="lg" cta shimmer
+    <app-button variant="primary" size="lg" cta shimmer full
             [ariaLabel]="'a11y.createRoom' | translate"
             [disabled]="creatingRoom()"
             (click)="createRoom()">
       <mat-icon>add_circle</mat-icon>
       <span>{{ 'lobby.createRoom' | translate }}</span>
     </app-button>
-    <app-button variant="secondary" size="lg" cta
+    <app-button variant="secondary" size="lg" cta full
             [ariaLabel]="'a11y.sandbox' | translate"
             [disabled]="creatingRoom()"
             (click)="quickDuel()">

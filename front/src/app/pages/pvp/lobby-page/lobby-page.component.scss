@@ -57,16 +57,19 @@
   }
 }
 
-// `.btn` styles vivent dans `front/src/app/styles/_buttons.scss` (DS Wave 1 §2.5).
 // Lobby CTA-specific overrides : les CTAs lobby sont physiquement plus grands
-// que le `.btn--lg` du DS. Le sélecteur `.btn.btn--lg` (encapsulé, 0-3-0)
-// bat `.btn--lg` du partial global (0-1-0) — pas de `!important` nécessaire.
-.btn.btn--lg {
+// que le `.btn--lg` du DS. `<app-button>` carries `.btn--lg` on its host;
+// `min-height` lives on the host (size contract) while the chrome props
+// (padding / font / radius) target the inner `.btn__el`.
+app-button.btn--lg {
   min-height: 56px; // CTA hauteur premium, alignée échelle (14×4)
-  padding: 0 var(--space-6);
-  font: var(--weight-bold) var(--text-md) / var(--line-tight) var(--font-display);
-  border-radius: var(--radius-lg);
-  gap: var(--space-3);
+
+  .btn__el {
+    padding: 0 var(--space-6);
+    font: var(--weight-bold) var(--text-md) / var(--line-tight) var(--font-display);
+    border-radius: var(--radius-lg);
+    gap: var(--space-3);
+  }
 
   mat-icon {
     @include icon-size(22px);
@@ -338,32 +341,39 @@
 // se remplit au hover » propre au lobby. Le sélecteur `.btn.room-join-btn`
 // (0-2-0, encapsulé) bat les utilitaires `.btn` / `.btn--sm` — pas de
 // `!important` nécessaire depuis le passage de mat-raised-button au natif.
-.btn.room-join-btn {
+// `<app-button class="room-join-btn">` — a lobby-specific "gold ghost that
+// fills on hover" look. The host carries width/min-height (size contract);
+// the chrome (bg / color / border / padding / font) targets the inner
+// `.btn__el`, the real visible button.
+app-button.room-join-btn {
   min-height: var(--touch-target-min);
-  padding: 0 var(--space-4);
-  font: var(--weight-bold) var(--text-sm) / var(--line-tight) var(--font-display);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border-radius: var(--radius-md);
-  background: var(--gold-soft-12);
-  color: var(--gold);
-  border: 1px solid var(--gold-soft-40);
-  transition: all var(--transition-normal) var(--ease-inout);
   width: 100%;
+
+  .btn__el {
+    padding: 0 var(--space-4);
+    font: var(--weight-bold) var(--text-sm) / var(--line-tight) var(--font-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: var(--radius-md);
+    background: var(--gold-soft-12);
+    color: var(--gold-on-surface);
+    border: 1px solid var(--gold-soft-40);
+    transition: all var(--transition-normal) var(--ease-inout);
+
+    &:hover:not(:disabled) {
+      background: var(--gold);
+      color: var(--text-inverse);
+      box-shadow: 0 4px 16px var(--gold-soft-40);
+
+      mat-icon {
+        transform: translateX(3px);
+      }
+    }
+  }
 
   mat-icon {
     @include icon-size(16px);
     transition: transform var(--transition-normal) var(--ease-inout);
-  }
-
-  &:hover:not(:disabled) {
-    background: var(--gold);
-    color: var(--text-inverse);
-    box-shadow: 0 4px 16px var(--gold-soft-40);
-
-    mat-icon {
-      transform: translateX(3px);
-    }
   }
 
   @media (min-width: 480px) {

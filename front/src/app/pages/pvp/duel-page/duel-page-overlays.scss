@@ -218,8 +218,9 @@
   }
 }
 
-// Rematch invited — surcharge légère du partial .btn--primary.
-.btn.btn--primary.is-invited {
+// Rematch invited — `<app-button variant="primary" class="is-invited">`.
+// The chrome override targets the inner `.btn__el` (the visible button).
+app-button.btn--primary.is-invited .btn__el {
   background: var(--pvp-rematch-invited-gradient);
   border-color: var(--success);
   animation: ds-rematch-invited-pulse 1.5s var(--ease-inout) infinite;
@@ -230,7 +231,7 @@
     animation: none;
     &__title, &__reason, &__actions > * { animation: none; }
   }
-  .btn.btn--primary.is-invited { animation: none; }
+  app-button.btn--primary.is-invited .btn__el { animation: none; }
 }
 
 // === Narrow viewport adjustments ===

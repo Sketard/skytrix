@@ -79,9 +79,9 @@
     flex-direction: column;
     width: 100%;
 
-    .btn {
+    // `<app-button>` host — full-width on the stacked mobile layout.
+    app-button {
       width: 100%;
-      justify-content: center;
     }
   }
 }

@@ -37,15 +37,19 @@
   flex: 0 0 44px;
   height: 44px;
 
-  &:active:not(:disabled) {
-    transform: translateY(0) scale(0.94);
-  }
+  // Active/disabled states live on the inner `.icon-btn__el` (the real
+  // `<button>`), not the `<app-icon-button>` host.
+  .icon-btn__el {
+    &:active:not(:disabled) {
+      transform: translateY(0) scale(0.94);
+    }
 
-  &:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-    pointer-events: none;
-    transform: none;
+    &:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      pointer-events: none;
+      transform: none;
+    }
   }
 }
 

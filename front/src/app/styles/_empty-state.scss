@@ -92,7 +92,7 @@
 
   .empty-state__icon {
     @include icon-size(72px);
-    color: var(--gold);
+    color: var(--gold-on-surface);
     filter: drop-shadow(0 0 12px var(--gold-soft-30));
   }
 }
@@ -105,14 +105,17 @@
 // state blocks into <app-empty-state>'s view-encapsulated template.
 // =============================================================================
 @media (max-width: 479px) {
-  .empty-state .btn.btn--lg {
+  // The CTA is an `<app-button size="lg">` (host carries `.btn--lg`); the
+  // chrome props target the inner `.btn__el`. Global sheet → reaches the
+  // component's encapsulated template without `::ng-deep`.
+  .empty-state app-button.btn--lg .btn__el {
     font-size: var(--text-sm);
     padding: var(--space-2) var(--space-3);
     gap: var(--space-1);
+  }
 
-    mat-icon {
-      @include icon-size(18px);
-    }
+  .empty-state app-button.btn--lg mat-icon {
+    @include icon-size(18px);
   }
 }
 
