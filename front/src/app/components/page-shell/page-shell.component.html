@@ -6,8 +6,8 @@
 
 <header [class]="headerClass()">
   <div class="page-header__title-group">
-    @if (iconWrapPalette()) {
-      <app-icon-wrap [palette]="iconWrapPalette()!" [icon]="icon() ?? ''"></app-icon-wrap>
+    @if (iconWrapPalette() && icon()) {
+      <app-icon-wrap [palette]="iconWrapPalette()!" [icon]="icon()!"></app-icon-wrap>
     } @else if (icon()) {
       <mat-icon class="page-header__icon">{{ icon() }}</mat-icon>
     }

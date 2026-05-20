@@ -7,13 +7,14 @@ import { NgTemplateOutlet } from '@angular/common';
  * aria-busy, aria-live, aria-label).
  *
  * The item shape is fully owned by the caller — `<app-skeleton-list>`
- * only knows how to repeat + announce. The template is selected via the
- * `*skelItem` structural directive (no need to project as a named slot).
+ * only knows how to repeat + announce. Project a single bare `<ng-template>`
+ * inside the component; `contentChild.required(TemplateRef)` picks the
+ * first template child (no marker directive needed).
  *
  * Usage:
  * ```html
  * <app-skeleton-list [count]="4" ariaLabel="a11y.loadingRooms">
- *   <ng-template skelItem>
+ *   <ng-template>
  *     <div class="room-card-skel" aria-hidden="true">…</div>
  *   </ng-template>
  * </app-skeleton-list>

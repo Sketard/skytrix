@@ -2,6 +2,7 @@
         class="radio-card"
         [class.radio-card--active]="active()"
         [attr.aria-checked]="active()"
+        [attr.tabindex]="active() ? 0 : -1"
         role="radio"
         (click)="select.emit()">
   <span class="radio-card__label">{{ labelKey() | translate }}</span>

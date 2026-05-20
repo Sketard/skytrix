@@ -3,6 +3,15 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 
+/** Seeds a `toSignal` with the live `matchMedia` result so the first render
+ *  reflects the actual viewport instead of a hardcoded `false`. Without this,
+ *  a cold load on a mobile device flashes the desktop layout for one tick
+ *  before BreakpointObserver's first async emission lands. */
+function matchesAny(queries: readonly string[]): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return queries.some(q => window.matchMedia(q).matches);
+}
+
 @Injectable({ providedIn: 'root' })
 export class NavbarCollapseService {
   private readonly EXPANDED_WIDTH = 260;
@@ -11,18 +20,26 @@ export class NavbarCollapseService {
 
   private readonly breakpointObserver = inject(BreakpointObserver);
 
+  private static readonly MOBILE_QUERIES = [
+    '(max-width: 767px)',
+    '(max-width: 1023px) and (max-height: 500px)',
+  ];
+  private static readonly MOBILE_PORTRAIT_QUERIES = [
+    '(max-width: 767px) and (orientation: portrait)',
+  ];
+
   readonly isMobile = toSignal(
     this.breakpointObserver
-      .observe(['(max-width: 767px)', '(max-width: 1023px) and (max-height: 500px)'])
+      .observe(NavbarCollapseService.MOBILE_QUERIES)
       .pipe(map(result => result.matches)),
-    { initialValue: false }
+    { initialValue: matchesAny(NavbarCollapseService.MOBILE_QUERIES) }
   );
 
   readonly isMobilePortrait = toSignal(
     this.breakpointObserver
-      .observe(['(max-width: 767px) and (orientation: portrait)'])
+      .observe(NavbarCollapseService.MOBILE_PORTRAIT_QUERIES)
       .pipe(map(result => result.matches)),
-    { initialValue: false }
+    { initialValue: matchesAny(NavbarCollapseService.MOBILE_PORTRAIT_QUERIES) }
   );
 
   private readonly _immersiveMode = signal(false);

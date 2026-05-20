@@ -1,8 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { BehaviorSubject, of } from 'rxjs';
-import { computed, signal } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+import { signal } from '@angular/core';
 import { DeckListStore } from './deck-list-store';
 import { DeckBuildService } from '../../../../services/deck-build.service';
 import { OwnedCardService } from '../../../../services/owned-card.service';
@@ -23,7 +21,6 @@ function makeDeck(overrides: Partial<ShortDeck>): ShortDeck {
 
 describe('DeckListStore', () => {
   let store: DeckListStore;
-  let http: HttpTestingController;
   let deckSubject: BehaviorSubject<ShortDeck[]>;
   let fetchDecksSpy: jasmine.Spy;
   let deleteByIdSpy: jasmine.Spy;
@@ -48,8 +45,6 @@ describe('DeckListStore', () => {
     TestBed.configureTestingModule({
       providers: [
         DeckListStore,
-        provideHttpClient(),
-        provideHttpClientTesting(),
         { provide: DeckBuildService, useValue: deckBuildStub },
         { provide: OwnedCardService, useValue: ownedStub },
         { provide: NotificationService, useValue: notify },
@@ -57,21 +52,9 @@ describe('DeckListStore', () => {
     });
 
     store = TestBed.inject(DeckListStore);
-    http = TestBed.inject(HttpTestingController);
-    // start() wires the decks$ → items subscription. Per-test fetchSnapshot
-    // assertions explicitly handle the HTTP request after start().
+    // start() wires the decks$ → items subscription + an initial
+    // fetchSnapshot() which now delegates to the stubbed fetchDecks (no HTTP).
     store.start();
-    // Consume the start()-triggered HTTP fetch unless the test wants it.
-    const initialReq = http.expectOne('/api/decks');
-    initialReq.flush([]);
-    // The effect that mirrors `isFirstDeckLoad → loading` only fires on the
-    // next CD tick; tests that read `showEmptyState`/`showNoResultsState`
-    // need a synchronous value, so we set it explicitly.
-    store.loading.set(false);
-  });
-
-  afterEach(() => {
-    http.verify();
   });
 
   // ─── filteredDecks / sort ───────────────────────────────────────────────────
@@ -152,34 +135,61 @@ describe('DeckListStore', () => {
 
   // ─── fetchSnapshot ──────────────────────────────────────────────────────────
 
-  it('fetchSnapshot pushes to the shared cache on success', async () => {
-    fetchDecksSpy.calls.reset(); // start() already triggered one
-    const promise = store.fetchSnapshot();
-    const req = http.expectOne('/api/decks');
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-    await promise;
-    expect(fetchDecksSpy).toHaveBeenCalledWith(true);
+  it('start() triggers an initial fetchSnapshot → fetchDecks(true, onError)', () => {
+    expect(fetchDecksSpy).toHaveBeenCalledTimes(1);
+    const [force, onError] = fetchDecksSpy.calls.mostRecent().args;
+    expect(force).toBeTrue();
+    expect(typeof onError).toBe('function');
     expect(store.error()).toBeNull();
   });
 
-  it('fetchSnapshot surfaces error when HTTP fails', async () => {
-    const promise = store.fetchSnapshot();
-    const req = http.expectOne('/api/decks');
-    req.flush('boom', { status: 500, statusText: 'Server Error' });
-    await promise;
+  it('fetchSnapshot delegates to the shared service fetchDecks(true, onError)', () => {
+    fetchDecksSpy.calls.reset(); // start() already triggered one
+    store.fetchSnapshot();
+    expect(fetchDecksSpy).toHaveBeenCalledTimes(1);
+    const [force, onError] = fetchDecksSpy.calls.mostRecent().args;
+    expect(force).toBeTrue();
+    expect(typeof onError).toBe('function');
+    expect(store.error()).toBeNull();
+  });
+
+  it('fetchSnapshot surfaces the error via the onError callback', () => {
+    fetchDecksSpy.calls.reset();
+    store.fetchSnapshot();
+    const onError = fetchDecksSpy.calls.mostRecent().args[1] as (e: unknown) => void;
+    onError(new Error('boom'));
     expect(store.error()).not.toBeNull();
   });
 
   // ─── deleteDeck ─────────────────────────────────────────────────────────────
 
-  it('deleteDeck delegates to the shared service with success notification', () => {
-    const deck = makeDeck({ id: 7 });
-    store.deleteDeck(deck);
+  it('deleteDeck optimistically removes the deck and notifies on success', () => {
+    const kept = makeDeck({ id: 1, name: 'Keep' });
+    const doomed = makeDeck({ id: 7, name: 'Doomed' });
+    deckSubject.next([kept, doomed]);
+
+    store.deleteDeck(doomed);
+    // Optimistic: gone from the list before the HTTP resolves.
+    expect(store.decks().map(d => d.id)).toEqual([1]);
     expect(deleteByIdSpy).toHaveBeenCalledWith(7, jasmine.any(Function), jasmine.any(Function));
-    // Simulate success
+
     const successCb = deleteByIdSpy.calls.mostRecent().args[1] as () => void;
     successCb();
     expect(notify.success).toHaveBeenCalledWith('success.DECK_DELETED');
+  });
+
+  it('deleteDeck rolls back the optimistic removal on error', () => {
+    const kept = makeDeck({ id: 1, name: 'Keep' });
+    const doomed = makeDeck({ id: 7, name: 'Doomed' });
+    deckSubject.next([kept, doomed]);
+
+    store.deleteDeck(doomed);
+    expect(store.decks().map(d => d.id)).toEqual([1]);
+
+    const errorCb = deleteByIdSpy.calls.mostRecent().args[2] as (e: unknown) => void;
+    errorCb(new Error('server down'));
+    // Rolled back: the doomed deck is restored.
+    expect(store.decks().map(d => d.id).sort()).toEqual([1, 7]);
+    expect(notify.error).toHaveBeenCalled();
   });
 });

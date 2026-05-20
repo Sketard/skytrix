@@ -11,6 +11,11 @@ type Filter = 'all' | 'a-only' | 'b-only';
 class TestListStore extends ListStore<Item, Sort, Filter> {
   constructor() { super('name', 'all'); }
 
+  /** Test-only passthrough to the protected `setLoading` hook. */
+  setLoadingForTest(value: boolean): void {
+    this.setLoading(value);
+  }
+
   protected searchMatches(item: Item, query: string): boolean {
     return item.name.toLowerCase().includes(query);
   }
@@ -38,7 +43,7 @@ describe('ListStore', () => {
       { id: 1, name: 'Apple',  tag: 'a' },
       { id: 2, name: 'Banana', tag: 'a' },
     ]);
-    store.loading.set(false);
+    store.setLoadingForTest(false);
   });
 
   it('exposes filteredItems sorted by initial sort mode', () => {
@@ -89,7 +94,7 @@ describe('ListStore', () => {
 
   it('neither empty nor no-results when loading', () => {
     store.items.set([]);
-    store.loading.set(true);
+    store.setLoadingForTest(true);
     expect(store.showEmptyState()).toBeFalse();
     expect(store.showNoResultsState()).toBeFalse();
   });

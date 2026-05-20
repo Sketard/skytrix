@@ -7,11 +7,21 @@
 @let decks = store.decks();
 @let firstLoad = store.loading();
 
-<!-- During the first network fetch we always render the page chrome
-     (header + stats placeholder + skeleton grid). After resolution we
-     branch on decks.length to either render the welcome empty state or
-     the populated grid. -->
-@if (firstLoad || decks.length > 0) {
+<!-- Three top-level branches:
+     1. Initial-load error (firstLoad + error AND no cached decks) — show the
+        error empty-state full-bleed (no skeleton chrome above). Review fix F26.
+     2. Skeleton chrome OR populated list (firstLoad || decks.length > 0).
+     3. Welcome state (first-time user, no decks). -->
+@if (store.error() && firstLoad) {
+  <app-empty-state
+    variant="error"
+    icon="wifi_off"
+    titleKey="deckList.error.title"
+    ctaLabelKey="deckList.error.retry"
+    ctaIcon="refresh"
+    (ctaAction)="store.fetchSnapshot()">
+  </app-empty-state>
+} @else if (firstLoad || decks.length > 0) {
   <header class="page-header deck-list__header">
     <div class="page-header__title-group">
       <app-icon-wrap palette="gold" icon="folder_special"></app-icon-wrap>

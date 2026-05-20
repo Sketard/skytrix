@@ -152,7 +152,11 @@ export class DeckBuildService extends SearchServiceCore {
   // fetch is already in-flight, it is cancelled and replaced — so a save() or
   // delete() that triggers `fetchDecks(true)` is never swallowed by an
   // in-flight stale read. Subscribers consume `decks$`.
-  public fetchDecks(force = false): void {
+  //
+  // `onError` is an optional callback for callers that want to surface the
+  // failure (e.g., the deck-list page rendering an error empty-state). When
+  // omitted, errors stay silent — the cached list stays visible.
+  public fetchDecks(force = false, onError?: (err: unknown) => void): void {
     if (!force && (this._isFetching() || this.isCacheFresh())) return;
 
     if (this._isFetching()) {
@@ -173,9 +177,10 @@ export class DeckBuildService extends SearchServiceCore {
           this._hasLoadedOnce.set(true);
         },
         // On transient errors, the previous cache value stays visible —
-        // callers consuming `decks$` see the last good list. Mutation flows
-        // (save/delete) surface their own errors via their callbacks.
-        error: () => {},
+        // callers consuming `decks$` see the last good list. Callers can
+        // pass `onError` when they want to surface the failure (deck-list
+        // page error empty-state).
+        error: (err: unknown) => onError?.(err),
       });
   }
 

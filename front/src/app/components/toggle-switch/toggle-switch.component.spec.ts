@@ -11,7 +11,7 @@ import { ToggleSwitchComponent } from './toggle-switch.component';
       [checked]="checked"
       [labelKey]="labelKey"
       [hintKey]="hintKey"
-      (change)="onChange()">
+      (toggled)="onChange()">
     </app-toggle-switch>
   `,
 })

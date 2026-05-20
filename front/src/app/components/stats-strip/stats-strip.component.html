@@ -9,10 +9,8 @@
          [class.stats-strip__item--accent-neutral]="!stat.surfaceAccent || stat.surfaceAccent === 'neutral'">
       @if (stat.icon) {
         <span class="stats-strip__icon"
-              [class.stats-strip__icon--total]="stat.iconVariant === 'total'"
-              [class.stats-strip__icon--win]="stat.iconVariant === 'win'"
-              [class.stats-strip__icon--loss]="stat.iconVariant === 'loss'"
-              [class.stats-strip__icon--winrate]="stat.iconVariant === 'winrate'"
+              [class.stats-strip__icon--cyan]="stat.iconVariant === 'cyan'"
+              [class.stats-strip__icon--gold]="stat.iconVariant === 'gold'"
               [class.stats-strip__icon--neutral]="!stat.iconVariant || stat.iconVariant === 'neutral'">
           <mat-icon>{{ stat.icon }}</mat-icon>
         </span>

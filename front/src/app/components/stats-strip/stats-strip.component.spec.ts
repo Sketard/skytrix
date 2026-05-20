@@ -51,12 +51,12 @@ describe('StatsStripComponent', () => {
   });
 
   it('renders the icon avatar with the requested variant when stat.icon is set', () => {
-    host.stats = [{ labelKey: 'stat.a', value: 1, icon: 'emoji_events', iconVariant: 'win' }];
+    host.stats = [{ labelKey: 'stat.a', value: 1, icon: 'emoji_events', iconVariant: 'gold' }];
     fixture.detectChanges();
 
     const iconWrap = root().querySelector('.stats-strip__icon');
     expect(iconWrap).not.toBeNull();
-    expect(iconWrap?.classList.contains('stats-strip__icon--win')).toBeTrue();
+    expect(iconWrap?.classList.contains('stats-strip__icon--gold')).toBeTrue();
     expect(iconWrap?.querySelector('mat-icon')?.textContent?.trim()).toBe('emoji_events');
   });
 

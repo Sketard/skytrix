@@ -13,10 +13,10 @@
 // LEFT of the title row (`order: -1`), hide its text label, and collapse
 // the decorative page icon — the back arrow becomes the visual anchor.
 //
-// Scoped to `:host` so this rule only fires when the consumer uses the
-// shell (existing inline `.page-header > .btn` overrides in replay-hub /
-// lobby are dead once those pages migrate to <app-page-shell>).
-:host {
+// Gated on `:host(.page-shell--has-back)` so consumers WITHOUT a back-nav
+// keep their decorative icon under 480px portrait (review fix F22 — was
+// firing unconditionally and stripping icons from no-back pages).
+:host(.page-shell--has-back) {
   @include r.respond-below(r.$bp-pvp-narrow) {
     .page-header {
       flex-wrap: nowrap;

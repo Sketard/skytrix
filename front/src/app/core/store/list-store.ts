@@ -28,8 +28,21 @@ import { Signal, computed, signal } from '@angular/core';
 export abstract class ListStore<T, SortMode extends string = string, FilterMode extends string = 'all'> {
   /** Raw items signal. Concrete stores write to it via setters or in `start()`. */
   readonly items = signal<T[]>([]);
-  readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
+
+  /** Loading flag. Defaults to a writable signal seeded `true`; concrete
+   *  stores write it via `setLoading()`. A subclass that already owns a
+   *  loading signal elsewhere (e.g. a shared service's `isFirstDeckLoad`)
+   *  can override this property with a plain `Signal<boolean>` alias —
+   *  hence the public type is the read-only `Signal<boolean>`. */
+  readonly loading: Signal<boolean> = signal<boolean>(true);
+
+  /** Mutate the default `loading` signal. No-op contract violation if a
+   *  subclass overrode `loading` with a non-writable alias — those stores
+   *  manage their own loading source and must not call this. */
+  protected setLoading(value: boolean): void {
+    (this.loading as ReturnType<typeof signal<boolean>>).set(value);
+  }
 
   readonly searchQuery = signal<string>('');
   readonly sortMode: ReturnType<typeof signal<SortMode>>;
@@ -65,12 +78,16 @@ export abstract class ListStore<T, SortMode extends string = string, FilterMode 
       const query = this.normalizeQuery(this.searchQuery());
       const filter = this.activeFilter();
       const mode = this.sortMode();
+      // `Array.prototype.filter` already returns a fresh array — `sortItems`
+      // receives an array it fully owns and may mutate in place (e.g. via
+      // `.sort()`). It never aliases `items()`, so an in-place sort here can
+      // never mutate the source signal.
       const filtered = this.items().filter(item => {
         if (query && !this.searchMatches(item, query)) return false;
         if (!this.passesFilter(item, filter)) return false;
         return true;
       });
-      return this.sortItems([...filtered], mode);
+      return this.sortItems(filtered, mode);
     });
   }
 

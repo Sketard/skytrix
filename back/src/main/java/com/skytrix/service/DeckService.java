@@ -6,6 +6,7 @@ import static com.skytrix.utils.CoreUtils.findAny;
 import static com.skytrix.utils.CoreUtils.getNullSafe;
 import static com.skytrix.utils.CoreUtils.mapToList;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -85,6 +86,13 @@ public class DeckService {
         deck.addCards(getCardDeckIndex(extraIds, cards, deck, DeckKeyword.EXTRA, selectedImages));
         deck.addCards(getCardDeckIndex(sideIds, cards, deck, DeckKeyword.SIDE, selectedImages));
         deck.setUser(authService.getConnectedUser());
+        // @UpdateTimestamp only fires when Hibernate detects a dirty field on
+        // the parent entity. Edits that touch only the child collection
+        // (cardsIndexed / images — the most common case: adding/removing
+        // cards without renaming the deck) would NOT bump updated_at,
+        // breaking the deck-list "Recent" sort. Force it here so the
+        // timestamp always reflects the user's last meaningful action.
+        deck.setUpdatedAt(Instant.now());
         deckRepository.save(deck);
         return deckMapper.toDeckDTO(deck);
     }

@@ -118,10 +118,10 @@ export class ReplayHubPageComponent implements OnInit {
     const s = this.store.stats();
     if (!s) return [];
     return [
-      { icon: 'movie',        iconVariant: 'total',   value: s.total,                labelKey: 'replay.hub.stats.total',     surfaceAccent: 'cyan' },
-      { icon: 'emoji_events', iconVariant: 'win',     value: s.victories,            labelKey: 'replay.hub.stats.victories', surfaceAccent: 'gold', valueVariant: 'gold' },
-      { icon: 'close',        iconVariant: 'loss',    value: s.defeats,              labelKey: 'replay.hub.stats.defeats',   surfaceAccent: 'neutral', valueVariant: 'muted' },
-      { icon: 'trending_up',  iconVariant: 'winrate', value: `${this.winratePercent()}%`, labelKey: 'replay.hub.stats.winrate', surfaceAccent: 'gold', valueVariant: 'gold' },
+      { icon: 'movie',        iconVariant: 'cyan',    value: s.total,                labelKey: 'replay.hub.stats.total',     surfaceAccent: 'cyan' },
+      { icon: 'emoji_events', iconVariant: 'gold',    value: s.victories,            labelKey: 'replay.hub.stats.victories', surfaceAccent: 'gold', valueVariant: 'gold' },
+      { icon: 'close',        iconVariant: 'neutral', value: s.defeats,              labelKey: 'replay.hub.stats.defeats',   surfaceAccent: 'neutral', valueVariant: 'muted' },
+      { icon: 'trending_up',  iconVariant: 'gold',    value: `${this.winratePercent()}%`, labelKey: 'replay.hub.stats.winrate', surfaceAccent: 'gold', valueVariant: 'gold' },
     ];
   });
 

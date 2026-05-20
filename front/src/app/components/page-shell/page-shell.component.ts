@@ -26,6 +26,9 @@ import { IconWrapComponent, IconWrapPalette } from '../icon-wrap/icon-wrap.compo
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './page-shell.component.html',
   styleUrl: './page-shell.component.scss',
+  host: {
+    '[class.page-shell--has-back]': 'hasBack()',
+  },
 })
 export class PageShellComponent {
   readonly titleKey = input.required<string>();

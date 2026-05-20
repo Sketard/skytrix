@@ -2,7 +2,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 
-export type StatIconVariant = 'total' | 'win' | 'loss' | 'winrate' | 'neutral';
+/** Color of the round icon avatar background + glyph. Color-named so
+ *  callers map their domain semantics (e.g., decks→cyan, winrate→gold)
+ *  without re-using replay-hub vocabulary in other contexts. */
+export type StatIconVariant = 'cyan' | 'gold' | 'neutral';
 export type StatValueVariant = 'default' | 'gold' | 'muted';
 export type StatSurfaceAccent = 'cyan' | 'gold' | 'neutral';
 

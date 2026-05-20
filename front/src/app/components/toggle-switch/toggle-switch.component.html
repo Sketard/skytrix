@@ -3,7 +3,7 @@
         [class.toggle-switch--on]="checked()"
         role="switch"
         [attr.aria-checked]="checked()"
-        (click)="change.emit()">
+        (click)="toggled.emit()">
   <span class="toggle-switch__track" aria-hidden="true">
     <span class="toggle-switch__thumb"></span>
   </span>

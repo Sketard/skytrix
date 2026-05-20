@@ -1,12 +1,11 @@
-import { DestroyRef, Injectable, computed, effect, inject } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { DeckBuildService } from '../../../../services/deck-build.service';
 import { OwnedCardService } from '../../../../services/owned-card.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ShortDeck } from '../../../../core/model/short-deck';
-import { ShortDeckDTO } from '../../../../core/model/dto/short-deck-dto';
 import { StatItem } from '../../../../components/stats-strip/stats-strip.component';
 import { formattedWithoutCaseAndAccent } from '../../../../core/utilities/functions';
 import { ListStore } from '../../../../core/store/list-store';
@@ -24,19 +23,22 @@ export const DECK_SORT_MODES: ReadonlyArray<DeckSortMode> = ['recent', 'name', '
  * Public API (in addition to ListStore base):
  *   - `stats()` — `StatItem[]` ready for `<app-stats-strip>`.
  *   - `start()` — wires the subscription + initial fetch. Called from ngOnInit.
- *   - `fetchSnapshot()` — re-fetch via own HTTP to surface errors that
- *     `DeckBuildService.fetchDecks()` swallows for cache continuity.
- *   - `deleteDeck(deck)` — delegates to the shared service with notification.
+ *   - `fetchSnapshot()` — re-fetch via the shared service with error surfacing.
+ *   - `deleteDeck(deck)` — optimistic delete with rollback on error.
  */
 @Injectable()
 export class DeckListStore extends ListStore<ShortDeck, DeckSortMode> {
   private readonly deckBuildService = inject(DeckBuildService);
   private readonly ownedCardService = inject(OwnedCardService);
   private readonly notify = inject(NotificationService);
-  private readonly httpClient = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly sortModes = DECK_SORT_MODES;
+
+  /** Direct alias of the shared service's `isFirstDeckLoad` signal — avoids
+   *  the one-tick flash-of-skeleton on cold load with warm cache. Overrides
+   *  the base `loading` signal from ListStore via property re-declaration. */
+  override readonly loading = this.deckBuildService.isFirstDeckLoad;
 
   /** Convenience alias for `items()` — clearer at call sites that expect a
    *  domain noun. */
@@ -53,14 +55,14 @@ export class DeckListStore extends ListStore<ShortDeck, DeckSortMode> {
         labelKey: 'deckStats.decks',
         value: all.length,
         icon: 'folder_special',
-        iconVariant: 'total',
+        iconVariant: 'cyan',
         surfaceAccent: 'cyan',
       },
       {
         labelKey: 'deckStats.cardsOwned',
         value: ownedSum,
         icon: 'style',
-        iconVariant: 'win',
+        iconVariant: 'gold',
         valueVariant: 'gold',
         surfaceAccent: 'gold',
       },
@@ -68,7 +70,7 @@ export class DeckListStore extends ListStore<ShortDeck, DeckSortMode> {
         labelKey: 'deckStats.legalDecks',
         value: all.filter(d => d.valid).length,
         icon: 'check_circle',
-        iconVariant: 'winrate',
+        iconVariant: 'gold',
         valueVariant: 'gold',
         surfaceAccent: 'gold',
       },
@@ -77,8 +79,6 @@ export class DeckListStore extends ListStore<ShortDeck, DeckSortMode> {
 
   constructor() {
     super('recent', 'all');
-    // Mirror the canonical loading flag from the shared service via effect.
-    effect(() => this.loading.set(this.deckBuildService.isFirstDeckLoad()));
   }
 
   start(): void {
@@ -93,32 +93,40 @@ export class DeckListStore extends ListStore<ShortDeck, DeckSortMode> {
     this.fetchSnapshot();
   }
 
-  /** Re-fetches the deck list directly via HTTP to surface errors that
-   *  `DeckBuildService.fetchDecks()` swallows for cache continuity. On
-   *  success the shared cache is refreshed via `fetchDecks(true)` so other
-   *  consumers (deck-picker, etc.) stay in sync. */
-  async fetchSnapshot(): Promise<void> {
+  /** Single HTTP GET via the shared service, with error surfacing through
+   *  the `onError` callback (Wave B-2 review fix M4 — was double-GET).
+   *
+   *  Mash-clicked Retry CTAs are safe by construction: `fetchDecks(true)`
+   *  cancels any in-flight request via the service's `_cancelFetch$` and
+   *  replaces it — so there is never more than one request in the air
+   *  (review fix F30 — no extra guard needed). */
+  fetchSnapshot(): void {
     this.error.set(null);
-    try {
-      await firstValueFrom(this.httpClient.get<ShortDeckDTO[]>('/api/decks'));
-      this.deckBuildService.fetchDecks(true);
-    } catch (err) {
+    this.deckBuildService.fetchDecks(true, (err: unknown) => {
       this.error.set(
         err instanceof HttpErrorResponse
           ? (err.message || 'Failed to load decks')
           : 'Failed to load decks',
       );
-    }
+    });
   }
 
-  /** Optimistic delete: dispatch via the shared service so cache invalidation
-   *  runs centrally. Rollback is implicit (service's success callback calls
-   *  fetchDecks(true) which restores the authoritative list). */
+  /** Optimistic delete: remove from the local items signal first, fire the
+   *  HTTP DELETE via the shared service, rollback on error. Notification is
+   *  surfaced via the service's success/error callbacks. */
   deleteDeck(deck: ShortDeck): void {
+    const snapshot = this.items();
+    // Optimistic: drop the deck immediately so the UI feels responsive.
+    this.items.update(list => list.filter(d => d.id !== deck.id));
     this.deckBuildService.deleteById(
       deck.id!,
       () => this.notify.success('success.DECK_DELETED'),
-      (err) => this.notify.error(err),
+      (err) => {
+        // Rollback: the shared cache wasn't touched yet (deleteById fires
+        // fetchDecks(true) only on success), so restore the local snapshot.
+        this.items.set(snapshot);
+        this.notify.error(err);
+      },
     );
   }
 

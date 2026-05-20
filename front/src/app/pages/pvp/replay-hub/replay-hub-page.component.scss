@@ -35,8 +35,9 @@
   width: 100%;
 }
 
-// Override the h1 fluid size to match the lobby — DS spec defers to consumer.
-.page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
+// Page-header title sizing moved to the DS partial (`_page-header.scss`) —
+// the override here was a no-op after the Wave C migration to <app-page-shell>
+// because the h1 lives in the component's view-encapsulated template.
 
 // Mobile back-nav pattern (A6) now lives in <app-page-shell> — Wave C.
 
@@ -361,22 +362,9 @@
   min-height: 280px;
 }
 
-// Empty-state CTA "Effacer les filtres" — `btn--lg` paraît surdimensionné
-// sous 480px à côté de la card compactée. On rétrograde sa taille et son
-// padding pour matcher l'échelle du reste de l'écran mobile (Axel 2026-05-18).
-@include r.respond-below(r.$bp-pvp-narrow) {
-  .empty-state .btn.btn--lg {
-    font-size: var(--text-sm);
-    padding: var(--space-2) var(--space-3);
-    gap: var(--space-1);
-
-    mat-icon {
-      font-size: 18px !important;
-      width: 18px !important;
-      height: 18px !important;
-    }
-  }
-}
+// Empty-state CTA mobile rescale moved to DS partial `_empty-state.scss`
+// (Wave C review fix F9) — was a no-op here after empty-state migration to
+// the encapsulated component.
 
 // Mat menu styling moved to DS partial `_mat-menu.scss` (2026-05-18) —
 // panel + items + `.is-active` consolidated globally so lobby + replay-hub

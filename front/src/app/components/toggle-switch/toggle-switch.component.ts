@@ -21,5 +21,7 @@ export class ToggleSwitchComponent {
   readonly labelKey = input.required<string>();
   readonly hintKey = input<string>();
 
-  readonly change = output<void>();
+  /** Emitted when the user toggles the switch. Renamed from `change` to
+   *  avoid shadowing the native DOM `change` event on the host. */
+  readonly toggled = output<void>();
 }

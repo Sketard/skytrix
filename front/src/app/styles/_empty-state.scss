@@ -102,11 +102,24 @@
 }
 
 // =============================================================================
-// Variant `--no-results` — filter / search returned nothing. Matches default
-// proportions; reserved selector for future tuning (icon color shift, etc.).
+// Mobile (≤ 480px) — `btn--lg` CTAs look oversized next to the compact
+// empty-state on phones. Downscale font + padding + icon to match the
+// surrounding screen scale (Axel 2026-05-18). Lives here in the DS partial
+// instead of per-page so the rule survives the migration of inline empty-
+// state blocks into <app-empty-state>'s view-encapsulated template.
 // =============================================================================
-.empty-state--no-results {
-  // Same dimensions as default; semantic hook for callers.
+@media (max-width: 479px) {
+  .empty-state .btn.btn--lg {
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1);
+
+    mat-icon {
+      font-size: 18px !important;
+      width: 18px !important;
+      height: 18px !important;
+    }
+  }
 }
 
 // Legacy kebab-simple aliases (.empty-state-icon / -title / -desc / -cta)

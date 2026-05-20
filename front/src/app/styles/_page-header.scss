@@ -38,7 +38,9 @@
 .page-header__title {
   font-family: 'Rajdhani', 'Inter', sans-serif;
   margin: 0;
-  font-size: var(--text-xl);
+  // Fluid index-page size, matches lobby + replay-hub. The `--compact` variant
+  // (viewer topbar) overrides to a flat var(--text-md) below.
+  font-size: clamp(1.4rem, 5vw, 1.85rem);
   font-weight: var(--weight-bold);
   letter-spacing: 0.04em;
   line-height: 1.1;

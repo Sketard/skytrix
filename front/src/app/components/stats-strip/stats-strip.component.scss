@@ -76,7 +76,7 @@
 }
 
 .stats-strip__item--accent-cyan {
-  border-color: var(--cyan-soft-30, var(--gold-soft-15));
+  border-color: var(--cyan-soft-40);
 }
 
 .stats-strip__item--accent-neutral {
@@ -106,10 +106,8 @@
   }
 }
 
-.stats-strip__icon--total   { background: var(--cyan-soft-15);     color: var(--cyan-300); }
-.stats-strip__icon--win     { background: var(--gold-soft-12);     color: var(--gold); }
-.stats-strip__icon--loss    { background: var(--surface-overlay);  color: var(--text-muted); }
-.stats-strip__icon--winrate { background: var(--gold-soft-12);     color: var(--gold-50); }
+.stats-strip__icon--cyan    { background: var(--cyan-soft-15);     color: var(--cyan-300); }
+.stats-strip__icon--gold    { background: var(--gold-soft-12);     color: var(--gold); }
 .stats-strip__icon--neutral { background: var(--surface-overlay);  color: var(--text-muted); }
 
 // =============================================================================

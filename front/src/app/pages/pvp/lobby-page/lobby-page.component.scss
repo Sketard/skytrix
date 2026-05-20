@@ -29,10 +29,8 @@
 
 // ── Header ──────────────────────────────────────────────────────────────────
 // `.page-header*` styles vivent dans `front/src/app/styles/_page-header.scss`
-// (DS Wave 1 §2.10). Override local du h1 font-size pour rester fluide
-// (clamp 1.4→1.85rem) au lieu du --text-xl token DS — sera unifié Wave 1.5
-// si le clamp s'avère équivalent.
-.page-header__title { font-size: clamp(1.4rem, 5vw, 1.85rem); }
+// (DS Wave 1 §2.10). Le clamp fluide 1.4→1.85rem est désormais le default
+// du partial (Wave C review fix M5) — pas besoin d'override local ici.
 
 .alpha-chip {
   font-size: var(--text-xs);
