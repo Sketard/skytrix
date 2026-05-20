@@ -27,8 +27,8 @@
         <div class="card-search-page__display-toggle">
           <div class="card-search-page__view-group" role="radiogroup" [attr.aria-label]="'cardSearcher.grid' | translate">
             <button type="button"
-              class="btn btn--ghost btn--sm card-search-page__view-btn"
-              [class.card-search-page__view-btn--active]="cardSearchService.displayMode() === displayType.GRID"
+              class="seg-btn"
+              [class.seg-btn--active]="cardSearchService.displayMode() === displayType.GRID"
               role="radio"
               [attr.aria-checked]="cardSearchService.displayMode() === displayType.GRID"
               [matTooltip]="'cardSearcher.grid' | translate"
@@ -37,8 +37,8 @@
               <mat-icon>view_module</mat-icon>
             </button>
             <button type="button"
-              class="btn btn--ghost btn--sm card-search-page__view-btn"
-              [class.card-search-page__view-btn--active]="cardSearchService.displayMode() === displayType.LIST"
+              class="seg-btn"
+              [class.seg-btn--active]="cardSearchService.displayMode() === displayType.LIST"
               role="radio"
               [attr.aria-checked]="cardSearchService.displayMode() === displayType.LIST"
               [matTooltip]="'cardSearcher.list' | translate"
@@ -49,8 +49,8 @@
           </div>
 
           <button type="button"
-            class="btn btn--ghost btn--sm card-search-page__favorite"
-            [class.card-search-page__favorite--active]="cardSearchService.favoriteFilter()"
+            class="seg-btn"
+            [class.seg-btn--active]="cardSearchService.favoriteFilter()"
             (click)="toggleFavoriteFilter()"
             [matTooltip]="'cardSearcher.favorites' | translate"
             [attr.aria-label]="'cardSearcher.favorites' | translate">
@@ -64,8 +64,8 @@
           {{ 'cardFilters.resultsCount' | translate:{ count: resultsLabel() } }}
         </span>
         <button type="button"
-          class="btn btn--ghost btn--sm card-search-page__favorite"
-          [class.card-search-page__favorite--active]="cardSearchService.favoriteFilter()"
+          class="seg-btn"
+          [class.seg-btn--active]="cardSearchService.favoriteFilter()"
           (click)="toggleFavoriteFilter()"
           [attr.aria-label]="'cardSearcher.favorites' | translate">
           <mat-icon>{{ cardSearchService.favoriteFilter() ? 'star' : 'star_border' }}</mat-icon>

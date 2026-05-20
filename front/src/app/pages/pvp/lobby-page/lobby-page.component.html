@@ -163,8 +163,8 @@
             }
           </button>
         }
-        <button mat-raised-button
-                class="room-join-btn"
+        <button type="button"
+                class="btn btn--sm room-join-btn"
                 [disabled]="joiningRoomCode() !== null"
                 (click)="joinRoom(room)">
           @if (joiningRoomCode() === room.roomCode) {

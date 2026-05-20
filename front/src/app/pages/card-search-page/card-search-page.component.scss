@@ -99,41 +99,7 @@
   overflow: hidden;
 }
 
-.card-search-page__view-btn {
-  border: 0 !important;
-  border-radius: 0 !important;
-  padding: 0 var(--space-2) !important;
-  min-height: 32px !important;
-
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-  }
-
-  &--active {
-    background: var(--gold-soft-15) !important;
-    color: var(--gold-50) !important;
-  }
-}
-
-.card-search-page__favorite {
-  padding: 0 var(--space-2) !important;
-  min-height: 32px !important;
-  color: var(--text-muted) !important;
-
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-  }
-
-  &--active {
-    color: var(--gold) !important;
-  }
-}
+// Les toggles de vue + favoris utilisent `.seg-btn` (styles/_segmented.scss).
 
 // =============================================================================
 // Body — 2-cols grid (sidebar 280px sticky + main)

@@ -6,8 +6,8 @@
         <div class="cardSearchPage-searcher-bar-displayMode">
           <div class="cardSearchPage-searcher-view-group" role="radiogroup" [attr.aria-label]="'cardSearcher.grid' | translate">
             <button type="button"
-              class="btn btn--ghost btn--sm cardSearchPage-searcher-view-btn"
-              [class.cardSearchPage-searcher-view-btn--active]="displayMode() === displayType.GRID"
+              class="seg-btn"
+              [class.seg-btn--active]="displayMode() === displayType.GRID"
               role="radio"
               [attr.aria-checked]="displayMode() === displayType.GRID"
               [matTooltip]="'cardSearcher.grid' | translate"
@@ -16,8 +16,8 @@
               <mat-icon>view_module</mat-icon>
             </button>
             <button type="button"
-              class="btn btn--ghost btn--sm cardSearchPage-searcher-view-btn"
-              [class.cardSearchPage-searcher-view-btn--active]="displayMode() === displayType.LIST"
+              class="seg-btn"
+              [class.seg-btn--active]="displayMode() === displayType.LIST"
               role="radio"
               [attr.aria-checked]="displayMode() === displayType.LIST"
               [matTooltip]="'cardSearcher.list' | translate"
@@ -28,8 +28,8 @@
           </div>
 
           <button type="button"
-            class="btn btn--ghost btn--sm cardSearchPage-searcher-favorite"
-            [class.cardSearchPage-searcher-favorite--active]="favoriteFilter()"
+            class="seg-btn"
+            [class.seg-btn--active]="favoriteFilter()"
             (click)="toggleFavoriteFilter()"
             [matTooltip]="'cardSearcher.favorites' | translate"
             [attr.aria-label]="'cardSearcher.favorites' | translate">

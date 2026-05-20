@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
@@ -39,7 +38,7 @@ const LOBBY_SORT_MODES: readonly LobbySortMode[] = ['newest', 'oldest', 'pseudoA
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [LobbyRoomsStore],
   imports: [
-    MatButton, MatIcon, MatProgressSpinner, MatTooltipModule, MatMenuModule,
+    MatIcon, MatProgressSpinner, MatTooltipModule, MatMenuModule,
     ScrollingModule,
     RelativeTimePipe, TranslatePipe,
     AvatarComponent, RoomCardSkeletonComponent, ErrorBannerComponent,
