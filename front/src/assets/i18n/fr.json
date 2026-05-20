@@ -592,7 +592,10 @@
     }
   },
   "cardInspector": {
-    "owned": "Possédées"
+    "owned": "Possédées",
+    "zoomHint": "Cliquez pour agrandir",
+    "lightboxHint": "Molette ou pincement pour zoomer · Échap pour fermer",
+    "zoomLevel": "Zoom {{level}}×"
   },
   "cardList": {
     "emptyMessage": "Aucun résultat trouvé",

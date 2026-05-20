@@ -110,6 +110,11 @@
 @if (lightboxOpen()) {
   @if (card(); as c) {
     <div class="image-lightbox" (click)="closeLightbox()" role="dialog" [attr.aria-label]="c | cardName">
+      <button type="button" class="image-lightbox__close"
+              [attr.aria-label]="'a11y.close' | translate"
+              (click)="closeLightbox(); $event.stopPropagation()">
+        <mat-icon>close</mat-icon>
+      </button>
       <img [src]="currentImageUrlFull()"
            [alt]="c | cardName"
            class="image-lightbox__img"
@@ -117,6 +122,14 @@
            [style.cursor]="lightboxZoom() < 4 ? 'zoom-in' : 'zoom-out'"
            (click)="onLightboxImgClick($event)"
            (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+      @if (lightboxZoom() > 1) {
+        <div class="image-lightbox__zoom-level" aria-hidden="true">
+          {{ 'cardInspector.zoomLevel' | translate:{ level: lightboxZoom() | number:'1.1-1' } }}
+        </div>
+      }
+      <div class="image-lightbox__hint" [class.is-fading]="lightboxHintFaded()" aria-hidden="true">
+        {{ 'cardInspector.lightboxHint' | translate }}
+      </div>
     </div>
   }
 }
@@ -127,13 +140,17 @@
     @if (card(); as c) {
       <div class="inspector-backdrop">
         <div class="inspector-panel">
-          <div class="inspector-image-frame">
+          <button type="button" class="inspector-image-frame inspector-image-frame--zoomable"
+                  [attr.aria-label]="'cardInspector.zoomHint' | translate"
+                  (click)="openLightbox(); $event.stopPropagation()">
             <img [src]="currentImageUrl()"
                  [alt]="c | cardName"
-                 class="inspector-image inspector-image--zoomable"
-                 (click)="openLightbox(); $event.stopPropagation()"
+                 class="inspector-image"
                  (error)="$any($event.target).src='assets/images/card_back.jpg'" />
-          </div>
+            <span class="inspector-zoom-badge" aria-hidden="true">
+              <mat-icon>zoom_in</mat-icon>
+            </span>
+          </button>
           <div class="inspector-body">
             <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
             <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
@@ -152,13 +169,17 @@
   <!-- Dismissable + Permanent modes: vertical stacked (favorite inline with name) -->
   @if (isVisible()) {
     @if (card(); as c) {
-      <div class="inspector-image-frame">
+      <button type="button" class="inspector-image-frame inspector-image-frame--zoomable"
+              [attr.aria-label]="'cardInspector.zoomHint' | translate"
+              (click)="openLightbox()">
         <img [src]="currentImageUrl()"
              [alt]="c | cardName"
-             class="inspector-image inspector-image--zoomable"
-             (click)="openLightbox()"
+             class="inspector-image"
              (error)="$any($event.target).src='assets/images/card_back.jpg'" />
-      </div>
+        <span class="inspector-zoom-badge" aria-hidden="true">
+          <mat-icon>zoom_in</mat-icon>
+        </span>
+      </button>
       <div class="inspector-body">
         <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
         <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>

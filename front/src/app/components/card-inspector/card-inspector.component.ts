@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, HostListener, inject, input, model, output, signal, effect } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet, DecimalPipe } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -13,7 +13,7 @@ const DOT_THRESHOLD = 5;
   templateUrl: './card-inspector.component.html',
   styleUrl: './card-inspector.component.scss',
   standalone: true,
-  imports: [NgTemplateOutlet, MatIcon, MatIconButton, TranslatePipe, CardNamePipe, CardDescPipe],
+  imports: [NgTemplateOutlet, DecimalPipe, MatIcon, MatIconButton, TranslatePipe, CardNamePipe, CardDescPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     'role': 'complementary',
@@ -44,10 +44,15 @@ export class CardInspectorComponent {
   readonly showPersonalMetadata = computed(() => this.ownedCount() !== undefined);
   readonly lightboxOpen = signal(false);
   readonly lightboxZoom = signal(1);
+  /** Hint pill auto-fades a couple seconds after the lightbox opens. */
+  readonly lightboxHintFaded = signal(false);
 
   private static readonly LIGHTBOX_ZOOM_STEP = 0.2;
   private static readonly LIGHTBOX_ZOOM_MIN = 1;
   private static readonly LIGHTBOX_ZOOM_MAX = 4;
+  private static readonly LIGHTBOX_HINT_FADE_MS = 2200;
+
+  private _hintFadeTimer: ReturnType<typeof setTimeout> | undefined;
 
   private _pinchStartDist = 0;
   private _pinchStartZoom = 1;
@@ -114,6 +119,7 @@ export class CardInspectorComponent {
       document.removeEventListener('wheel', this._lightboxWheelHandler);
       document.removeEventListener('touchstart', this._pinchStartHandler);
       document.removeEventListener('touchmove', this._pinchMoveHandler);
+      clearTimeout(this._hintFadeTimer);
     });
   }
 
@@ -150,11 +156,18 @@ export class CardInspectorComponent {
 
   openLightbox(): void {
     this.lightboxOpen.set(true);
+    this.lightboxHintFaded.set(false);
+    clearTimeout(this._hintFadeTimer);
+    this._hintFadeTimer = setTimeout(
+      () => this.lightboxHintFaded.set(true),
+      CardInspectorComponent.LIGHTBOX_HINT_FADE_MS,
+    );
   }
 
   closeLightbox(): void {
     this.lightboxOpen.set(false);
     this.lightboxZoom.set(1);
+    clearTimeout(this._hintFadeTimer);
   }
 
   onLightboxImgClick(event: MouseEvent): void {

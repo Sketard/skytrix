@@ -592,7 +592,10 @@
     }
   },
   "cardInspector": {
-    "owned": "Owned"
+    "owned": "Owned",
+    "zoomHint": "Click to enlarge",
+    "lightboxHint": "Scroll or pinch to zoom · Esc to close",
+    "zoomLevel": "Zoom {{level}}×"
   },
   "cardList": {
     "emptyMessage": "No results found",
