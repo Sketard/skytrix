@@ -42,6 +42,8 @@
   // Text tokens (single source of truth — used 80+/51+ times across the app)
   --text-primary: #EAEAEA;           // Primary text
   --text-secondary: #9E9E9E;         // Secondary text (metadata)
+  --white: #fff;                     // Blanc pur — distinct de --text-primary
+                                     // (cassé). Thumb de toggle, badges sur couleur.
 
   // Border tokens
   --border-subtle: rgba(255, 255, 255, 0.3); // Subtle borders/indicators on dark surfaces

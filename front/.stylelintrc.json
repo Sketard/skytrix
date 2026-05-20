@@ -71,8 +71,12 @@
       }
     },
     {
-      "comment": "styles/ DÉFINIT les tokens — les couleurs littérales y sont légitimes.",
-      "files": ["**/styles/**/*.scss", "**/_sim-tokens.scss"],
+      "comment": "Fichiers DÉFINISSEURS de tokens — styles/, _sim-tokens, et le :host du simulator (theming scopé composant, audité 2026-05-20 : 0 usage de couleur en dur, uniquement des définitions de custom properties). Les couleurs littérales y sont légitimes.",
+      "files": [
+        "**/styles/**/*.scss",
+        "**/_sim-tokens.scss",
+        "**/simulator-page.component.scss"
+      ],
       "rules": {
         "color-no-hex": null
       }

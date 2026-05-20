@@ -336,12 +336,12 @@
   --mat-slide-toggle-selected-focus-track-color: var(--gold);
   --mat-slide-toggle-selected-pressed-track-color: var(--gold);
   // Thumb stays pure white in both states (mockup pattern).
-  --mat-slide-toggle-unselected-handle-color: #fff;
-  --mat-slide-toggle-unselected-hover-handle-color: #fff;
-  --mat-slide-toggle-unselected-focus-handle-color: #fff;
-  --mat-slide-toggle-selected-handle-color: #fff;
-  --mat-slide-toggle-selected-hover-handle-color: #fff;
-  --mat-slide-toggle-selected-focus-handle-color: #fff;
+  --mat-slide-toggle-unselected-handle-color: var(--white);
+  --mat-slide-toggle-unselected-hover-handle-color: var(--white);
+  --mat-slide-toggle-unselected-focus-handle-color: var(--white);
+  --mat-slide-toggle-selected-handle-color: var(--white);
+  --mat-slide-toggle-selected-hover-handle-color: var(--white);
+  --mat-slide-toggle-selected-focus-handle-color: var(--white);
   // Material draws icons inside the thumb — the mockup has none.
   --mat-slide-toggle-selected-icon-color: transparent;
   --mat-slide-toggle-unselected-icon-color: transparent;
