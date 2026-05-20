@@ -1,6 +1,9 @@
-@use '../../styles/variable' as *;
 @use '../../styles/responsive' as r;
 @use '../../styles/mixin' as *;
+
+// Dimensions de slot de carte de deck (ex-variable.scss).
+$DECK_CARD_HEIGHT: 100px;
+$DECK_CARD_WIDTH: 75px;
 
 .grid {
   display: flex;
@@ -139,7 +142,7 @@
       // Background slot grid (cover images only): keep fixed sizes
       &.grid {
         position: relative;
-        border: var(--slot-border-color, #{$white}) solid 1px;
+        border: var(--slot-border-color, var(--white)) solid 1px;
         background-color: rgba(255, 255, 255, 0.3);
         height: var(--slot-height, #{$DECK_CARD_HEIGHT});
         width: var(--slot-width, #{$DECK_CARD_WIDTH});

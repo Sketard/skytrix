@@ -9,12 +9,9 @@
 //      icon-button)
 //   4. Composites (search-bar, page-header, section-header, empty-state,
 //      holo-modal)
-//   5. Legacy (variable.scss, long-press — frozen, do not extend)
+//   5. Legacy (long-press — frozen, do not extend)
 //   6. Skel (composite of motion + card-surface)
 //   7. Material overrides (MUST be last to win specificity)
-//
-// SCSS variables (`$blue`, `$black`, `$grey`, `$white`) are accessed via the
-// `v` namespace (`@use 'app/styles/variable' as v`).
 // =============================================================================
 
 // 1. Foundations
@@ -51,7 +48,6 @@
 @use 'app/styles/cdk-overrides';         // Éléments CDK/Material non encapsulés (ex-::ng-deep)
 
 // 5. Legacy (read-only, do not extend)
-@use 'app/styles/variable' as v;
 @use 'app/styles/long-press';
 
 // 6. Skel (consumer of motion + card-surface)
@@ -99,7 +95,7 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px var(--surface-card) inset;
-  -webkit-text-fill-color: v.$white;
+  -webkit-text-fill-color: var(--text-primary);
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -167,27 +163,28 @@ input[type='number'] {
   }
 }
 
+// Boutons Material résiduels (solver, lobby) — alignés sur le DS.
 .mdc-button {
   border: 0px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0.5rem;
   transition: all 0.1s ease 0s;
   white-space: nowrap;
-  box-shadow: v.$blue 0px 0px 0px 2px;
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
   font-weight: 600;
-  background-color: v.$black;
-  color: rgb(238, 238, 238);
+  background-color: var(--surface-elevated);
+  color: var(--text-primary);
   font-size: 0.8rem;
 }
 
 .mat-mdc-unelevated-button:not(:disabled) {
-  --mat-button-filled-label-text-color: #{v.$white};
-  --mat-button-filled-container-color: #{v.$black};
+  --mat-button-filled-label-text-color: var(--text-primary);
+  --mat-button-filled-container-color: var(--surface-elevated);
 }
 
 .mat-mdc-unelevated-button[disabled], .mat-mdc-unelevated-button.mat-mdc-button-disabled {
-  --mat-button-filled-disabled-label-text-color: #{v.$grey};
+  --mat-button-filled-disabled-label-text-color: var(--text-disabled);
 }
 
 .mdc-switch--checked {

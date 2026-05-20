@@ -3,7 +3,6 @@
 
 @include mat.elevation-classes();
 @include mat.app-background();
-@import 'variable';
 
 $mat-theme-primary-palette: map-merge(
     mat.$m2-cyan-palette,
