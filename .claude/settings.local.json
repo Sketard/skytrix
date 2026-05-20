@@ -16,7 +16,8 @@
       "Read(//c/c/Users/Axel/Desktop/code/skytrix/**)",
       "Bash(npx ng *)",
       "Bash(xargs grep -h \"var\\(--text-secondary\\)\")",
-      "Bash(xargs grep -h \"var\\(--border-subtle\\)\")"
+      "Bash(xargs grep -h \"var\\(--border-subtle\\)\")",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Axel\\\\Desktop\\\\code\\\\skytrix\\\\front\" -Recurse -Directory | Where-Object { $_.Name -match \"deck-builder|solver|shared\" } | Select-Object -First 30 | Format-List FullName)"
     ]
   }
 }
