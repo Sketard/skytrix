@@ -106,8 +106,8 @@
   inset: 0;
   background-image: linear-gradient(to right, var(--gold-soft-08) 1px, transparent 1px);
   background-size: 30px 100%;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  -webkit-mask-image: var(--mask-fade-horizontal);
+  mask-image: var(--mask-fade-horizontal);
   opacity: 0.4;
 }
 
@@ -379,7 +379,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   font: 600 0.9rem/1 'Rajdhani', 'Inter', sans-serif;
   letter-spacing: 0.04em;
-  color: #c0c0c0;
+  color: var(--text-secondary);
   flex-wrap: wrap;
   justify-content: center;
   text-align: center;
@@ -388,7 +388,7 @@
   &__total { font: 700 1rem/1 'Rajdhani', sans-serif; color: var(--text-primary); }
   &__total--opp { color: var(--cyan-300); }
   &__sum   { font-size: 1.3rem; }
-  &__sep   { font-size: 0.7rem; color: #6a6a6a; padding: 0 6px; }
+  &__sep   { font-size: 0.7rem; color: var(--text-disabled); padding: 0 6px; }
 }
 
 // ============================================================
@@ -407,7 +407,7 @@
   &--lost {
     background: linear-gradient(135deg, rgba(255, 82, 82, 0.12), rgba(255, 82, 82, 0.04));
     border-color: rgba(255, 82, 82, 0.3);
-    .dice-banner__icon { background: var(--danger-strong); color: #fff; }
+    .dice-banner__icon { background: var(--danger-strong); color: var(--white); }
   }
   &--draw {
     background: linear-gradient(135deg, rgba(255, 193, 7, 0.12), rgba(255, 193, 7, 0.04));
@@ -631,7 +631,7 @@
   }
   &--second &__icon {
     background: linear-gradient(135deg, var(--cyan-300), var(--cyan-500));
-    color: #0a1428;
+    color: var(--text-on-cyan);
     box-shadow: 0 6px 20px var(--cyan-soft-50), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
 
@@ -646,7 +646,7 @@
     -webkit-text-fill-color: transparent;
   }
   &--second &__headline {
-    background: linear-gradient(135deg, #d8ecff, var(--cyan-300));
+    background: linear-gradient(135deg, var(--cyan-100), var(--cyan-300));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;

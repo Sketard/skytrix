@@ -450,7 +450,7 @@
   position: absolute;
   inset: 2px;
   border-radius: var(--radius-sm);
-  background: #2a2a3e;
+  background: var(--surface-slot);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -543,7 +543,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: #1e293b;
+    background: var(--surface-elevated);
     border: 1px solid rgba(0, 212, 255, 0.15);
     border-radius: var(--radius-sm);
   }
@@ -569,7 +569,7 @@
 .xyz-material-layer-3 {
   position: absolute;
   inset: 0;
-  background: #1e293b;
+  background: var(--surface-elevated);
   border: 1px solid rgba(0, 212, 255, 0.15);
   border-radius: var(--radius-sm);
   transform: translate(calc(4.5% * var(--_stack-dir)), calc(9% * var(--_stack-dir)));
@@ -619,7 +619,7 @@
   &.chain-badge--double {
     font-size: clamp(0.55rem, 1.4dvh, 0.95rem);
   }
-  color: #fff;
+  color: var(--white);
   pointer-events: none;
   z-index: 5;
   animation: ds-chain-badge-pulse 1s var(--ease-inout) infinite alternate;

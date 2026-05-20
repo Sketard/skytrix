@@ -90,7 +90,7 @@
   justify-content: center;
   font-size: clamp(0.8rem, 2dvh, 1.4rem);
   font-weight: 900;
-  color: #000;
+  color: var(--text-inverse);
   pointer-events: none;
   z-index: 5;
   animation: ds-chain-badge-pulse 1s ease-in-out infinite alternate;

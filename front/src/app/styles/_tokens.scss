@@ -38,6 +38,7 @@
   --surface-card: #1E1E1E;           // Card surfaces, form field backgrounds
   --surface-elevated: #1E293B;       // Elevated panels (Simulator pile-overlay, control-bar)
   --surface-nav: #161616;            // Sidebar / toolbar
+  --surface-slot: #2a2a3e;           // Fond de slot de zone (board PvP)
 
   // Text tokens (single source of truth — used 80+/51+ times across the app)
   --text-primary: #EAEAEA;           // Primary text
@@ -176,6 +177,7 @@
   --opp-amber-glow:  rgba(245, 158, 11, 0.55);
 
   // --- Cyan (secondary / "second player" accent) ---
+  --cyan-100: #d8ecff;   // Cyan pâle — endpoint clair de gradient
   --cyan-300: #79b8ff;
   --cyan-500: #4a90d9;
   --cyan-soft-06: rgba(74, 144, 217, 0.06);
@@ -308,10 +310,11 @@
   --gradient-arena-glow-gold: radial-gradient(circle, rgba(201, 168, 76, 0.55), transparent 70%);
   --gradient-arena-glow-cyan: radial-gradient(circle, rgba(74, 144, 217, 0.45), transparent 70%);
 
-  // --- Masks — fondu alpha (mask-image), pas une couleur. Indice de
-  // scrollabilité : le bas du viewport s'estompe. Consommé par lobby +
-  // replay-hub via -webkit-mask-image / mask-image.
+  // --- Masks — fondu alpha (mask-image), pas une couleur.
+  // bottom : indice de scrollabilité (lobby + replay-hub).
+  // horizontal : fondu des deux bords (dice-arena event log).
   --mask-fade-bottom: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+  --mask-fade-horizontal: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
 
   // --- Titre dégradé cyan (background-clip: text) — card-search-page.
   --gradient-title-cyan: linear-gradient(135deg, #c0e0ff 0%, var(--cyan-500) 100%);
@@ -319,7 +322,8 @@
   // --- Text — DS extended scale (legacy --text-primary/--text-secondary above) ---
   --text-muted:    #9e9e9e;
   --text-disabled: #6e6e6e;
-  --text-inverse:  #1a1208;
+  --text-inverse:  #1a1208;          // Texte sombre sur fond clair/doré
+  --text-on-cyan:  #0a1428;          // Texte sombre sur surface cyan claire
 
   // --- Focus ring DS — gold 2px outline + 2px offset, applied globally ---
   --focus-ring-color:  var(--gold);
