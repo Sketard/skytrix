@@ -77,18 +77,23 @@ a posé ces conventions — à respecter pour tout nouveau style :
   la règle dans `styles/_cdk-overrides.scss` (feuille globale). Pour
   styler un composant enfant, lui ajouter un `input` de variante
   (cf. `embedded` sur `pvp-timer-badge`/`pvp-lp-badge`).
-- **Composants DS** → boutons / pills / bascules sont des composants
-  Angular, plus des classes SCSS globales (composantisation 2026-05-20) :
-  `<app-button>`, `<app-icon-button>`, `<app-pill>`, `<app-seg-button>`
-  (dans `components/`). Les partials `_buttons.scss` / `_icon-button.scss`
-  / `_pills.scss` / `_segmented.scss` ont été supprimés. Ne PAS combiner
-  avec `mat-raised-button`/`mat-*-button` (la couche MDC force des
-  `!important`). Chaque composant a un host (porte les classes de
-  variante) + un élément interne (`.btn__el` / `.icon-btn__el` /
-  `.seg-btn__el`) : un override de chrome côté page (padding, fond, hover,
-  `:disabled`) DOIT cibler l'élément interne ; les contraintes de taille
-  (`min-height`, `width`) restent sur le host. `.badge` reste une classe
-  globale (`_badge.scss`, un seul consommateur).
+- **Composants DS** → boutons / pills / chips / bascules / form controls
+  sont des composants Angular, plus des classes SCSS globales
+  (composantisation 2026-05-20) : `<app-button>`, `<app-icon-button>`,
+  `<app-pill>`, `<app-chip>`, `<app-seg-button>`, `<app-input>`,
+  `<app-checkbox>` (dans `components/`). Les partials `_buttons.scss` /
+  `_icon-button.scss` / `_pills.scss` / `_segmented.scss` / `_chips.scss`
+  ont été supprimés. Ne PAS combiner avec `mat-raised-button` /
+  `mat-*-button` / `mat-chip` (la couche MDC) — il ne reste AUCUN
+  `<mat-chip>`. Les composants button/pill/chip/seg ont un host (porte
+  les classes de variante) + un élément interne (`.btn__el` /
+  `.icon-btn__el` / `.chip__el` / `.seg-btn__el`) : un override de chrome
+  côté page (padding, fond, hover, `:disabled`) DOIT cibler l'élément
+  interne ; les contraintes de taille (`min-height`, `width`) restent sur
+  le host. `<app-input>`/`<app-checkbox>` sont des `ControlValueAccessor`
+  (compatibles `[(ngModel)]` + reactive forms). `.badge` reste une classe
+  globale (`_badge.scss`, un seul consommateur). Material conservé
+  volontairement pour les inputs couplés `<mat-autocomplete>`.
 - **`!important`** → réservé aux cas structurels : override Material/CDK,
   `prefers-reduced-motion`, état devant primer sur un `:hover` plus
   spécifique, style inline à battre. Tout `!important` hors mixin doit

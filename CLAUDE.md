@@ -20,21 +20,30 @@ The front-end has a custom Design System. Styling rules are enforced by
 - **`::ng-deep`** → forbidden in components. Style non-encapsulated
   CDK/Material elements via `styles/_cdk-overrides.scss`; style a child
   component via a variant `input` (e.g. `embedded` on `pvp-timer-badge`).
-- **DS components** → buttons / pills / toggles are Angular components,
-  NOT global SCSS classes (componentisation 2026-05-20):
+- **DS components** → buttons / pills / chips / toggles / form controls
+  are Angular components, NOT global SCSS classes (componentisation
+  2026-05-20):
   - `<app-button>` (`components/button/`) — variants primary/secondary/
     ghost/danger × sm/md/lg, modifiers cta/shimmer/full/iconOnly/flash/
     loading; polymorphic host (`link`/`href` → `<a>`, else `<button>`).
   - `<app-icon-button>` (`components/icon-button/`) — icon-only;
     `ariaLabel` is `input.required`.
-  - `<app-pill>` (`components/pill/`) — non-interactive status label.
+  - `<app-pill>` (`components/pill/`) — non-interactive status label;
+    typed variants or arbitrary `color`/`textColor` for data-driven tags.
+  - `<app-chip>` (`components/chip/`) — interactive filter toggle
+    (renders `aria-pressed`).
   - `<app-seg-button>` (`components/seg-button/`) — segmented view toggle.
-  Each has a host wrapper carrying the variant classes + an inner
-  `.btn__el` / `.icon-btn__el` / `.seg-btn__el` element. A parent SCSS
-  override of chrome (padding, bg, hover, `:disabled`) MUST target the
-  inner element; size contracts (`min-height`, `width`) stay on the host.
-  Never combine with `mat-*-button` (MDC layer forces `!important`).
+  - `<app-input>` / `<app-checkbox>` (`components/input|checkbox/`) —
+    `ControlValueAccessor` form controls (work with `[(ngModel)]` +
+    reactive forms).
+  The button/pill/chip/seg components have a host wrapper carrying the
+  variant classes + an inner `.btn__el` / `.icon-btn__el` / `.chip__el`
+  / `.seg-btn__el` element. A parent SCSS override of chrome (padding,
+  bg, hover, `:disabled`) MUST target the inner element; size contracts
+  (`min-height`, `width`) stay on the host. Never combine with
+  `mat-*-button` / `mat-chip` (MDC layer). NO Material `<mat-chip>` left.
   `.badge` stays a global class (`_badge.scss`, single consumer).
+  Material kept intentionally for `<mat-autocomplete>`-coupled inputs.
 - **`!important`** → structural cases only (Material/CDK override,
   `prefers-reduced-motion`, state vs higher-specificity `:hover`, inline
   style). Any `!important` outside the mixin needs a `// !important: why`
