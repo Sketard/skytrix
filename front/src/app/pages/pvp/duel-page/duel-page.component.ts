@@ -75,6 +75,9 @@ import { environment } from '../../../../environments/environment';
   styleUrls: ['./duel-page.component.scss', './duel-page-overlays.scss', './duel-page-ui.scss', '../_pvp-overlays.scss'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // `theme-dark` re-déclare les tokens DS sombres (`_tokens-dark-scope.scss`)
+  // pour que le duel reste dark même quand `html.theme-light` est actif.
+  host: { class: 'theme-dark' },
   providers: [
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,

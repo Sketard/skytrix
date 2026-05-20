@@ -17,7 +17,17 @@
 // =============================================================================
 
 :root {
-  color-scheme: dark; // DS-D7 — pas de variant light v1
+  color-scheme: dark; // défaut — UI native (scrollbars, form controls)
+}
+
+// Light mode (pages "app") — bascule la UI native en clair.
+html.theme-light {
+  color-scheme: light;
+}
+
+// Garde-fou PvP — duel + replay viewer restent dark même sous theme-light.
+.theme-dark {
+  color-scheme: dark;
 }
 
 // --- Global focus ring (gold) -----------------------------------------------

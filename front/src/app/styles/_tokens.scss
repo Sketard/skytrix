@@ -145,6 +145,14 @@
   --gold:      #C9A84C;
   --gold-700:  #a8862e;
   --gold-900:  #8a6a20;
+
+  // Gold de TEXTE/icône sur surface — alias de `--gold` en dark (zéro
+  // changement visuel). Diverge en light mode (`_tokens-light.scss`) : un
+  // gold clair en texte sur fond clair est illisible. Doctrine "gold clair
+  // ancre" — `--gold` = couleur de FOND/accent, `--gold-on-surface` =
+  // couleur de TEXTE doré. Préférer ce token pour tout `color:` / `fill:`.
+  --gold-on-surface: var(--gold);
+
   --gold-soft-06: rgba(201, 168, 76, 0.06);
   --gold-soft-08: rgba(201, 168, 76, 0.08);
   --gold-soft-10: rgba(201, 168, 76, 0.10);
@@ -255,6 +263,12 @@
   // --- Surfaces — DS extended (gold-on-dark holo-arena theme) ---
   --surface-bg:        #0a0a14;
   --surface-bg-deep:   #0f0f1c;
+
+  // Pastille sombre derrière le logo skytrix (PNG tons clairs froids) —
+  // valeur CONSTANTE quel que soit le thème : le logo a besoin d'un
+  // support sombre pour ressortir, y compris en light mode. N'est donc
+  // redéclaré ni dans `_tokens-light.scss` ni dans `_tokens-dark-scope.scss`.
+  --logo-plate: #0f0f1c;
   --surface-card-ds:   rgba(30, 30, 46, 0.85);
   --surface-card-low:  rgba(22, 22, 36, 0.85);
   --surface-overlay:   rgba(255, 255, 255, 0.04);
@@ -277,6 +291,13 @@
   --scrim-medium: rgba(10, 10, 20, 0.60);
   --scrim-strong: rgba(10, 10, 20, 0.85);
   --scrim-deep:   rgba(10, 10, 20, 0.92);
+
+  // Surface de pastille / badge / FAB semi-opaque posé sur une image ou un
+  // fond saturé (zoom-badge inspecteur, FAB toggle deck-builder). DISTINCT
+  // de `--scrim-*` (réservé aux backdrops PLEIN ÉCRAN) : `--surface-badge`
+  // est THÉMÉ — sombre translucide en dark, clair translucide en light
+  // (`_tokens-light.scss`) — pour que le badge suive le thème.
+  --surface-badge: rgba(15, 15, 28, 0.82);
 
   // Overlay strong — saturated dark navy used by prompt dialogs + duel
   // surrender frame + result overlay tints (Wave 3 duel refresh).

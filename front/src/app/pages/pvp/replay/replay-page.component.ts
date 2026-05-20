@@ -105,6 +105,9 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
   ],
   host: {
     '[class.is-narrow]': 'isNarrow()',
+    // `theme-dark` re-déclare les tokens DS sombres (`_tokens-dark-scope.scss`)
+    // pour que le replay viewer reste dark même quand `html.theme-light` est actif.
+    'class': 'theme-dark',
   },
 })
 export class ReplayPageComponent implements OnInit, OnDestroy {

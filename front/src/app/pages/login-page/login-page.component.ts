@@ -60,6 +60,9 @@ const cardUrl = (passcode: number): string => `/api/documents/small/code/${passc
   styleUrl: './login-page.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // L'ambiance "Constellation" du login est sombre par design. `theme-dark`
+  // re-déclare les tokens DS sombres pour qu'elle reste intacte sous theme-light.
+  host: { class: 'theme-dark' },
 })
 export class LoginPageComponent implements OnInit, OnDestroy {
   public loginForm: FormGroup<TypedForm<LoginDTO>>;

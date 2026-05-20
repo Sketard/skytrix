@@ -1,0 +1,82 @@
+// =============================================================================
+// Dark scope — garde-fou PvP
+// -----------------------------------------------------------------------------
+// Le light mode (`html.theme-light`) ne concerne QUE les pages "app". Le
+// plateau de duel et le replay viewer doivent rester dark quel que soit le
+// thème global (décision : ambiance "arène").
+//
+// Ce partial re-déclare les tokens NEUTRES dark sous `.theme-dark`. Les
+// composants concernés posent cette classe sur leur élément racine :
+//   - duel-page.component       (route `pvp/duel/:roomCode`)
+//   - replay-page.component     (route `pvp/replay/:replayId`)
+// Le lobby (`pvp`) et le replay-hub (`pvp/history`) sont des pages "app"
+// normales — elles NE portent PAS `.theme-dark` et suivent le thème global.
+//
+// Seuls les tokens overridés par `_tokens-light.scss` sont re-déclarés ici —
+// la liste DOIT rester synchronisée avec ce fichier. Tout token ajouté à
+// `_tokens-light.scss` doit être ajouté ici aussi, sinon il "fuiterait"
+// clair dans le PvP.
+//
+// NON câblé tant que ce partial n'est pas `@use`-é dans `styles.scss` et que
+// les 2 composants ne portent pas la classe.
+// =============================================================================
+
+.theme-dark {
+  // --- Surfaces ---------------------------------------------------------
+  --surface-base:     #121212;
+  --surface-card:     #1E1E1E;
+  --surface-elevated: #1E293B;
+  --surface-nav:      #161616;
+  --surface-hover:    rgba(255, 255, 255, 0.06);
+  --surface-overlay:  rgba(255, 255, 255, 0.04);
+  --surface-card-ds:  rgba(30, 30, 46, 0.85);
+  --surface-card-low: rgba(22, 22, 36, 0.85);
+  --surface-bg:       #0a0a14;
+  --surface-bg-deep:  #0f0f1c;
+  --surface-badge:    rgba(15, 15, 28, 0.82);
+
+  // --- Texte ------------------------------------------------------------
+  --text-primary:   #EAEAEA;
+  --text-secondary: #9E9E9E;
+  --text-muted:     #9E9E9E;
+  --text-disabled:  #6E6E6E;
+  --text-inverse:   #1a1208;
+
+  // --- Bordures ---------------------------------------------------------
+  --border-subtle: rgba(255, 255, 255, 0.30);
+  --border-soft:   rgba(255, 255, 255, 0.10);
+  --border-medium: rgba(255, 255, 255, 0.18);
+
+  // --- Gold -------------------------------------------------------------
+  --gold:            #C9A84C;
+  --gold-100:        #d4b25a;
+  --gold-on-surface: #C9A84C;
+  --gold-50:         #ffe9a8;
+  --gold-700:        #a8862e;
+  --gold-900:        #8a6a20;
+
+  // --- Cyan -------------------------------------------------------------
+  --cyan-300: #79b8ff;
+  --cyan-500: #4a90d9;
+  --gradient-title-cyan: linear-gradient(135deg, #c0e0ff 0%, #4a90d9 100%);
+
+  // --- Sémantiques ------------------------------------------------------
+  --success:       #4caf50;
+  --warning:       #ffc107;
+  --danger-strong: #ff5252;
+
+  // --- Élévation --------------------------------------------------------
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.30);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.40);
+  --elevation-4: 0 16px 48px rgba(0, 0, 0, 0.50);
+
+  // --- Gradients --------------------------------------------------------
+  --gradient-card-ds:
+    linear-gradient(135deg, var(--surface-card-ds) 0%, var(--surface-card-low) 100%);
+  --gradient-arena-radial:
+    radial-gradient(ellipse at top, #1a1a2e 0%, #0f0f1c 65%, #0a0a14 100%);
+
+  // --- Scrim ------------------------------------------------------------
+  --scrim: rgba(5, 5, 10, 0.5);
+}

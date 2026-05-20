@@ -1,0 +1,99 @@
+// =============================================================================
+// Light Theme — token overrides
+// -----------------------------------------------------------------------------
+// Périmètre : pages "app" uniquement (login, lobby, decks, card-search,
+// parameters, preferences, replay-hub, navbar). Le PvP (duel-page + replay
+// viewer) reste TOUJOURS dark via un `.theme-dark` local qui re-déclare les
+// tokens sombres — voir `_tokens-dark-scope.scss`.
+//
+// Activé par `AppThemeService` qui pose `html.theme-light`. NON câblé tant
+// que ce partial n'est pas `@use`-é dans `styles.scss` (juste après `tokens`).
+//
+// Doctrine — seuls les tokens NEUTRES + DIRECTIONNELS sont overridés :
+//   - surfaces / texte / bordures : valeurs claires
+//   - rgba(255,255,255,.x) directionnels → rgba(0,0,0,.x) (inversés)
+//   - gold/cyan/sémantiques : ASSOMBRIS pour la lisibilité du texte, PAS
+//     inversés. `--gold` reste clair (ancre des fonds) ; `--gold-on-surface`
+//     devient sombre (texte).
+//   - gradients arena : neutralisés (l'ambiance holo-arena n'a pas de sens
+//     en clair).
+// Les ~95 autres tokens (spacing, radius, typo, easings, ratios) sont
+// theme-agnostiques et ne sont PAS redéclarés ici.
+//
+// Palette validée dans `_mockups/mockup-light-mode.html`.
+// =============================================================================
+
+html.theme-light {
+  // --- Surfaces — gris très clairs, hiérarchie conservée -----------------
+  --surface-base:     #F4F2ED;   // Fond page — crème neutre chaud
+  --surface-card:     #FFFFFF;   // Cartes / form-fields — blanc franc
+  --surface-elevated: #FFFFFF;   // Panneaux élevés
+  --surface-nav:      #FAF8F3;   // Navbar — crème légèrement plus chaud
+  --surface-hover:    rgba(0, 0, 0, 0.05);   // INVERSÉ : assombrit au survol
+  --surface-overlay:  rgba(0, 0, 0, 0.035);  // INVERSÉ : voile sombre subtil
+  --surface-card-ds:  rgba(255, 255, 255, 0.95);
+  --surface-card-low: rgba(251, 249, 244, 0.95);
+
+  // Fonds de page "holo-arena" (deck-list, card-search, deck-builder) —
+  // un cran plus sombre que --surface-base en dark. En light : un cran plus
+  // FONCÉ que --surface-base pour garder la hiérarchie fond < base < card.
+  // (Le login force `.theme-dark` sur son host → son fond Constellation
+  // reste sombre, non concerné par ces valeurs.)
+  --surface-bg:      #ECEAE3;
+  --surface-bg-deep: #E4E1D8;
+
+  // Pastille/badge sur image — clair translucide en light (cf. _tokens.scss).
+  --surface-badge: rgba(255, 255, 255, 0.88);
+
+  // --- Texte — ancré sur gris très sombre (pas noir pur) ----------------
+  --text-primary:   #1F1B16;   // 14:1 sur card blanc — AAA
+  --text-secondary: #6B655C;   // 5.1:1 — AA
+  --text-muted:     #756F66;   // metadata — 4.6:1 sur card (AA texte normal)
+  --text-disabled:  #B3ADA3;
+  --text-inverse:   #2A2008;   // texte ENCRE sur fond gold clair (bouton primary)
+
+  // --- Bordures — INVERSÉES en rgba noir --------------------------------
+  --border-subtle: rgba(0, 0, 0, 0.16);
+  --border-soft:   rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.14);
+
+  // --- Gold — doctrine "gold clair ancre" -------------------------------
+  // `--gold` reste CLAIR (fond CTA, badges) ; `--gold-on-surface` devient
+  // SOMBRE (texte/icône dorés). Un gold clair en texte sur blanc = illisible.
+  --gold:            #E4BE54;   // gold clair lumineux — FOND, texte encre dessus
+  --gold-100:        #D4AC3E;   // survol primary + bordure du CTA gold
+  --gold-on-surface: #8A6A20;   // gold pour TEXTE/icône sur clair — 4.8:1, AA
+  --gold-50:         #5A4719;   // "gold clair" du dark → gold sombre (chip actif)
+  // --gold-700 / -900 servent de stops de GRADIENT DE FOND (alpha-ribbon,
+  // FAB, text-gold-gradient). Ils doivent rester CLAIRS en light, sinon le
+  // gradient vire au sombre. Texte encre par-dessus.
+  --gold-700:        #C9A23C;
+  --gold-900:        #A8842C;
+
+  // --- Cyan — assombri pour la lisibilité du texte sur clair ------------
+  --cyan-300: #1E6FB8;   // "cyan clair" du dark → cyan profond (texte)
+  --cyan-500: #2C7DC4;
+  // Gradient de titre (background-clip: text) — sombre en light pour rester
+  // lisible sur fond clair (le #c0e0ff dark serait illisible).
+  --gradient-title-cyan: linear-gradient(135deg, #2C7DC4 0%, #1A4E7E 100%);
+
+  // --- Sémantiques — assombries (les couleurs vives bavent sur clair) ---
+  --success:       #2E7D32;   // vert assombri — AA sur blanc
+  --warning:       #946A00;   // ambre assombri — 4.7:1 en texte sur --warning-soft
+  --danger-strong: #C62828;   // rouge assombri — AA sur blanc
+
+  // --- Élévation — ombres bien plus douces sur fond clair ---------------
+  // Une ombre dark-mode (alpha 0.4 noir) noircirait brutalement sur clair.
+  --elevation-1: 0 1px 3px rgba(31, 27, 22, 0.10);
+  --elevation-2: 0 3px 10px rgba(31, 27, 22, 0.12);
+  --elevation-3: 0 8px 24px rgba(31, 27, 22, 0.16);
+  --elevation-4: 0 16px 48px rgba(31, 27, 22, 0.20);
+
+  // --- Gradients — neutralisés (l'ambiance holo-arena est dark-only) ----
+  --gradient-card-ds: linear-gradient(135deg, #FFFFFF 0%, #FBF9F4 100%);
+  --gradient-arena-radial:
+    radial-gradient(ellipse at top, #FBFAF6 0%, #F4F2ED 60%, #ECE9E1 100%);
+
+  // --- Scrim — reste sombre (un backdrop doit toujours assombrir) -------
+  --scrim: rgba(20, 18, 14, 0.45);
+}

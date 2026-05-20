@@ -11,6 +11,7 @@ import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { GlobalErrorHandler } from './core/services/global-error-handler';
 import { ReducedMotionService } from './services/reduced-motion.service';
+import { AppThemeService } from './services/app-theme.service';
 
 function initLanguage(translate: TranslateService) {
   return () => {
@@ -23,6 +24,12 @@ function initLanguage(translate: TranslateService) {
 // Force instantiation at boot so the body class is applied before the first
 // paint (the service's constructor sets up the effect that toggles the class).
 function initReducedMotion(_motion: ReducedMotionService) {
+  return () => void 0;
+}
+
+// Force instantiation at boot so `html.theme-light` is applied before the
+// first paint — the constructor applies the class synchronously.
+function initAppTheme(_theme: AppThemeService) {
   return () => void 0;
 }
 
@@ -72,6 +79,7 @@ export const appConfig: ApplicationConfig = {
     ),
     { provide: APP_INITIALIZER, useFactory: initLanguage, deps: [TranslateService], multi: true },
     { provide: APP_INITIALIZER, useFactory: initReducedMotion, deps: [ReducedMotionService], multi: true },
+    { provide: APP_INITIALIZER, useFactory: initAppTheme, deps: [AppThemeService], multi: true },
     { provide: MatPaginatorIntl, useFactory: paginatorIntlFactory, deps: [TranslateService] },
   ],
 };
