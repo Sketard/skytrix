@@ -130,7 +130,7 @@
   height: 32px !important;
   line-height: 32px !important;
 
-  ::ng-deep .mat-mdc-button-touch-target { width: 32px; height: 32px; }
+  // Material touch-target (élément non encapsulé) → styles/_cdk-overrides.scss.
 
   mat-icon {
     font-size: 18px;
@@ -346,12 +346,8 @@
   --mat-slide-toggle-selected-icon-color: transparent;
   --mat-slide-toggle-unselected-icon-color: transparent;
 
-  ::ng-deep {
-    .mdc-switch__icons { display: none; }
-    // Material's focus ring overflows the compact rail by ~12px — tighten it.
-    .mdc-switch__ripple,
-    .mdc-switch__focus-ring { display: none; }
-  }
+  // Internes mdc-switch (icônes, ripple, focus-ring — éléments non
+  // encapsulés) → styles/_cdk-overrides.scss.
 }
 
 .qd-row-text {

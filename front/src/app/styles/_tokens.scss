@@ -306,6 +306,9 @@
   // replay-hub via -webkit-mask-image / mask-image.
   --mask-fade-bottom: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
 
+  // --- Titre dégradé cyan (background-clip: text) — card-search-page.
+  --gradient-title-cyan: linear-gradient(135deg, #c0e0ff 0%, var(--cyan-500) 100%);
+
   // --- Text — DS extended scale (legacy --text-primary/--text-secondary above) ---
   --text-muted:    #9e9e9e;
   --text-disabled: #6e6e6e;

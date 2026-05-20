@@ -104,11 +104,7 @@
   mask-image:         var(--mask-fade-bottom);
 
   // Scrollbar = Ghost global (cf. _scrollbar.scss). Pas d'override ici.
-
-  // CDK injects two helper layers — let them inherit our viewport sizing.
-  ::ng-deep .cdk-virtual-scroll-content-wrapper {
-    width: 100%;
-  }
+  // Sizing de la couche CDK virtual-scroll → styles/_cdk-overrides.scss.
 }
 
 // Skeleton wrapper shown during the initial fetch — no virtual scroll, just

@@ -46,16 +46,8 @@
   transition: box-shadow 100ms ease;
 }
 
-// Pierce encapsulation: CDK clones from other components lack _ngcontent-hand attribute
-// stylelint-disable-next-line selector-pseudo-element-no-unknown
-:host ::ng-deep .cdk-drag-placeholder {
-  opacity: 0 !important;
-  position: absolute !important;
-  left: 50%;
-  bottom: 4px;
-  translate: -50% 0;
-  pointer-events: none;
-}
+// CDK drag-placeholder positioning → styles/_cdk-overrides.scss (élément non
+// encapsulé : règle déplacée en global pour éviter ::ng-deep).
 
 // Gold glow on successful drop
 @keyframes gold-glow {

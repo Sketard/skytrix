@@ -74,14 +74,7 @@
   -webkit-mask-image: var(--mask-fade-bottom);
   mask-image:         var(--mask-fade-bottom);
 
-  ::ng-deep .cdk-virtual-scroll-content-wrapper {
-    width: 100%;
-    // Breathing room at the top so the first card's hover lift
-    // (`transform: translateY(-1px)` + glow shadow) isn't cropped by the
-    // viewport edge. Same value as the card's own bottom-margin for visual
-    // symmetry.
-    padding-top: var(--space-3);
-  }
+  // Sizing + padding de la couche CDK virtual-scroll → styles/_cdk-overrides.scss.
 }
 
 // =============================================================================

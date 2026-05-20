@@ -202,12 +202,8 @@
   }
 }
 
-// Hide placeholder when dragging a deck card over the search results list
-:host ::ng-deep {
-  .cardsContainer > .cdk-drag-placeholder:not(.card-wrapper) {
-    display: none;
-  }
-}
+// CDK drag-placeholder masking → styles/_cdk-overrides.scss (élément non
+// encapsulé : règle déplacée en global pour éviter ::ng-deep).
 
 app-empty-state {
   width: 100%;

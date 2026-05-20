@@ -1,0 +1,84 @@
+// =============================================================================
+// CDK / Material non-encapsulated element overrides.
+//
+// Angular CDK insère ses placeholders de drag-drop et ses couches de virtual
+// scroll SANS l'attribut `_ngcontent-*` ; Angular Material rend certains
+// éléments internes (`.mdc-switch__*`, `.mat-mdc-button-touch-target`) hors
+// de l'encapsulation des composants. Un sélecteur scopé d'un composant ne
+// les atteint jamais — d'où, historiquement, `::ng-deep` (déprécié).
+//
+// Ces règles sont donc regroupées ici, dans une feuille GLOBALE non
+// encapsulée : pas besoin de `::ng-deep`, et le scope est préservé par le
+// sélecteur ancêtre propre à chaque composant (`.cardsContainer`,
+// `.grid-list`, `.room-list-viewport`, etc. — classes uniques).
+// =============================================================================
+
+@use 'responsive' as r;
+
+// --- card-list : masquer le placeholder quand on glisse une carte de deck
+// au-dessus de la liste de résultats de recherche.
+.cardsContainer > .cdk-drag-placeholder:not(.card-wrapper) {
+  display: none;
+}
+
+// --- deck-card-zone : le CDK insère des placeholders dynamiquement sans
+// attribut `_ngcontent`.
+.grid-list > .cdk-drag-placeholder:not(.grid-list-slot) {
+  width: 20%;
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+  visibility: hidden;
+
+  @include r.respond-above(r.$bp-desktop-sm) {
+    width: 10%;
+  }
+}
+
+.grid-list.element > .cdk-drag-placeholder:not(.grid-list-slot) {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+// --- simulator hand : les clones CDK provenant d'autres composants n'ont
+// pas l'attribut `_ngcontent-hand`.
+.sim-hand .cdk-drag-placeholder {
+  opacity: 0 !important;
+  position: absolute !important;
+  left: 50%;
+  bottom: 4px;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+// --- lobby + replay-hub : couche helper du CDK virtual scroll — lui faire
+// hériter du sizing du viewport.
+.room-list-viewport .cdk-virtual-scroll-content-wrapper {
+  width: 100%;
+}
+
+.replay-list-viewport .cdk-virtual-scroll-content-wrapper {
+  width: 100%;
+  // Marge en haut pour que le hover-lift de la première carte
+  // (translateY(-1px) + glow) ne soit pas rogné par le bord du viewport.
+  padding-top: var(--space-3);
+}
+
+// --- deck-picker-dialog : touch-target Material du bouton clear (48px par
+// défaut, trop large dans la barre de recherche compacte) + icônes du
+// mdc-switch (le mockup n'en a pas).
+.picker-search-clear .mat-mdc-button-touch-target {
+  width: 32px;
+  height: 32px;
+}
+
+.qd-row mat-slide-toggle .mdc-switch__icons {
+  display: none;
+}
+
+// Material's focus ring overflows the compact rail by ~12px — masqué.
+.qd-row mat-slide-toggle .mdc-switch__ripple,
+.qd-row mat-slide-toggle .mdc-switch__focus-ring {
+  display: none;
+}

@@ -61,7 +61,7 @@
 
 // Cyan gradient title (mockup `.search-page-title h1` ll. 1929-1937).
 .card-search-page__title {
-  background: linear-gradient(135deg, #c0e0ff 0%, var(--cyan-500) 100%);
+  background: var(--gradient-title-cyan);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
