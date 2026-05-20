@@ -47,6 +47,12 @@ export class PageShellComponent {
   readonly compact = input<boolean>(false);
   /** Apply the `--bordered` variant (bottom border + padding). */
   readonly bordered = input<boolean>(false);
+  /**
+   * Constrain the header row to a centered column of this CSS width, so it
+   * aligns with a projected body that is itself `max-width` + `margin: 0 auto`
+   * (e.g. replay-hub `--container-wide`). Defaults to full width.
+   */
+  readonly contentMaxWidth = input<string>();
 
   readonly backAction = output<void>();
 

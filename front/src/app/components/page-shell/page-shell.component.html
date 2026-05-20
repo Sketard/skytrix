@@ -4,7 +4,9 @@
   <div class="screen-bg-glow screen-bg-glow--cyan"></div>
 </div>
 
-<header [class]="headerClass()">
+<header [class]="headerClass()"
+        [style.max-width]="contentMaxWidth() ?? null"
+        [style.margin-inline]="contentMaxWidth() ? 'auto' : null">
   <div class="page-header__title-group">
     @if (iconWrapPalette() && icon()) {
       <app-icon-wrap [palette]="iconWrapPalette()!" [icon]="icon()!"></app-icon-wrap>
