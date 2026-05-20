@@ -4,6 +4,31 @@
 
 When writing or modifying code, always apply the `clean-code` and `code-principles` skills to enforce DRY, KISS, SRP, YAGNI, and Miller's Law thresholds.
 
+## Design System & Styling Conventions
+
+The front-end has a custom Design System. Styling rules are enforced by
+`stylelint` + a pre-commit hook (`scripts/hooks/`, activated via
+`core.hooksPath`). Full reference: `front/LINTING.md`.
+
+- **Colors** → always a token `var(--…)`. Literal hex is allowed only in
+  token-defining files (`front/src/app/styles/**`, `_sim-tokens.scss`,
+  `simulator-page.component.scss`).
+- **`mat-icon` sizing** → `@include icon-size($size, $line-height?)` from
+  `styles/mixin.scss`. Never re-write the `font-size/width/height
+  !important` trio by hand — the `!important` (required by Material) is
+  centralized in that mixin.
+- **`::ng-deep`** → forbidden in components. Style non-encapsulated
+  CDK/Material elements via `styles/_cdk-overrides.scss`; style a child
+  component via a variant `input` (e.g. `embedded` on `pvp-timer-badge`).
+- **Buttons** → native `<button class="btn …">` + `_buttons.scss`. Avoid
+  `mat-*-button` (MDC layer forces `!important`). View toggles use
+  `.seg-btn` (`styles/_segmented.scss`).
+- **`!important`** → structural cases only (Material/CDK override,
+  `prefers-reduced-motion`, state vs higher-specificity `:hover`, inline
+  style). Any `!important` outside the mixin needs a `// !important: why`
+  comment.
+- **Radius** → single scale `--radius-{sm,md,lg,xl,pill}`.
+
 ## Animation Parity Rule
 
 Any animation added to `AnimationOrchestratorService` MUST work through the

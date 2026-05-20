@@ -58,3 +58,32 @@ maintient cet état pour tout nouveau code.
 `debug-log-panel` est exclu du lint (dev-tooling, cf. `ignoreFiles`).
 Les `::ng-deep` légitimes (éléments CDK/Material non encapsulés par
 Angular) vivent regroupés dans `src/app/styles/_cdk-overrides.scss`.
+
+## Conventions DS issues du chantier (2026-05-20)
+
+Le chantier d'assainissement (étapes 1-3 + SCSS legacy + `!important`)
+a posé ces conventions — à respecter pour tout nouveau style :
+
+- **Couleurs** → toujours un token `var(--…)`. Les hex littéraux ne sont
+  permis que dans les fichiers *définisseurs de tokens* (`styles/**`,
+  `_sim-tokens.scss`, `simulator-page.component.scss`). `color-no-hex`
+  l'impose.
+- **Sizing d'icône `mat-icon`** → mixin `icon-size($size, $line-height?)`
+  de `styles/mixin.scss`. Ne PAS réécrire le trio
+  `font-size/width/height !important` à la main — Material impose 24px,
+  le `!important` est centralisé dans le mixin.
+- **`::ng-deep`** → interdit dans un composant. Pour styler un élément
+  non encapsulé par Angular (placeholder CDK, interne Material), mettre
+  la règle dans `styles/_cdk-overrides.scss` (feuille globale). Pour
+  styler un composant enfant, lui ajouter un `input` de variante
+  (cf. `embedded` sur `pvp-timer-badge`/`pvp-lp-badge`).
+- **Boutons** → `<button class="btn …">` natif + partials
+  `_buttons.scss`. Éviter `mat-raised-button`/`mat-*-button` (la couche
+  MDC force des `!important`). Les bascules de vue utilisent
+  `.seg-btn` (`styles/_segmented.scss`), pas `.btn`.
+- **`!important`** → réservé aux cas structurels : override Material/CDK,
+  `prefers-reduced-motion`, état devant primer sur un `:hover` plus
+  spécifique, style inline à battre. Tout `!important` hors mixin doit
+  porter un commentaire `// !important : <pourquoi>`.
+- **Radius** → échelle unique `--radius-{sm,md,lg,xl,pill}` (l'échelle
+  PvP `--pvp-radius-*` a été fusionnée).
