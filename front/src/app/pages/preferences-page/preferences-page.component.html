@@ -15,7 +15,31 @@
     </div>
   </header>
 
-  <!-- Theme section -->
+  <!-- Appearance (light/dark) section -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-header__title-group">
+        <mat-icon class="section-header__icon" fontIcon="contrast"></mat-icon>
+        <h2 class="section-header__title">{{ 'preferences.appearance.title' | translate }}</h2>
+      </div>
+    </div>
+
+    <div class="card-ds pref-card">
+      <p class="pref-card__description">{{ 'preferences.appearance.description' | translate }}</p>
+      <app-radio-card-group [columns]="3" [ariaLabel]="'preferences.appearance.title' | translate">
+        @for (m of appThemeModes; track m) {
+          <app-radio-card
+            [labelKey]="'preferences.appearance.' + m"
+            [descKey]="'preferences.appearance.' + m + 'Desc'"
+            [active]="appThemeService.mode() === m"
+            (select)="setAppTheme(m)">
+          </app-radio-card>
+        }
+      </app-radio-card-group>
+    </div>
+  </section>
+
+  <!-- Duel theme section -->
   <section class="section">
     <div class="section-header">
       <div class="section-header__title-group">

@@ -52,7 +52,7 @@
   border-color: var(--gold-soft-50);
   color: var(--gold-50);
 
-  .chip__icon { color: var(--gold); }
+  .chip__icon { color: var(--gold-on-surface); }
 }
 
 .chip.chip--active.chip--cyan {
@@ -62,7 +62,7 @@
 }
 
 .chip.chip--active.chip--neutral {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-hover);
   border-color: var(--border-medium);
   color: var(--text-primary);
 }

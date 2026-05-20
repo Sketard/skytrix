@@ -682,6 +682,16 @@
   "preferences": {
     "pageTitle": "Préférences",
     "pageSubtitle": "Personnalisez l'apparence et le comportement de l'application.",
+    "appearance": {
+      "title": "Apparence",
+      "description": "Choisissez le thème clair ou sombre de l'application. Le plateau de duel et les replays restent toujours en mode sombre.",
+      "auto": "Automatique",
+      "autoDesc": "Suit le réglage de votre système.",
+      "light": "Clair",
+      "lightDesc": "Interface claire et lumineuse.",
+      "dark": "Sombre",
+      "darkDesc": "Interface sombre — le réglage par défaut de Skytrix."
+    },
     "theme": {
       "title": "Thème du plateau",
       "description": "Choisissez l'ambiance visuelle de votre plateau de duel. Le thème s'applique aussi en mode replay.",

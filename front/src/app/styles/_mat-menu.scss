@@ -60,9 +60,9 @@
   &.cdk-keyboard-focused:not([disabled]),
   &:focus-visible:not([disabled]) {
     background: var(--gold-soft-12) !important; // !important: --mat-menu-item-hover-state-layer-color
-    color: var(--gold) !important;
+    color: var(--gold-on-surface) !important;
 
-    .mat-icon, mat-icon { color: var(--gold); }
+    .mat-icon, mat-icon { color: var(--gold-on-surface); }
   }
 
   // Disabled — keep readable but de-emphasised.
@@ -77,10 +77,10 @@
 // duplicate `::ng-deep .mat-mdc-menu-item.is-active` rules previously in
 // replay-hub-page.scss + lobby-page.scss.
 .mat-mdc-menu-item.is-active {
-  color: var(--gold) !important;
+  color: var(--gold-on-surface) !important;
   font-weight: var(--weight-semibold) !important;
 
-  .mat-icon, mat-icon { color: var(--gold); }
+  .mat-icon, mat-icon { color: var(--gold-on-surface); }
 }
 
 // --- Divider ----------------------------------------------------------------

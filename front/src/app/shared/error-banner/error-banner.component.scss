@@ -49,7 +49,7 @@
 }
 
 :host.error-banner--warning .error-banner-icon { color: var(--warning); }
-:host.error-banner--info    .error-banner-icon { color: var(--gold); }
+:host.error-banner--info    .error-banner-icon { color: var(--gold-on-surface); }
 
 .error-banner-body {
   flex: 1;

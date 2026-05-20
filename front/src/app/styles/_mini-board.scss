@@ -158,7 +158,7 @@
   font-size: 12px;
   letter-spacing: 0.02em;
 
-  &--self { color: var(--gold); justify-self: end; }
+  &--self { color: var(--gold-on-surface); justify-self: end; }
   // Cohérent avec `.timeline-bar__popover-lp-opp` (LP opp = cyan). La palette
   // démarre à `--cyan-300` ; pas de cyan-50/100/200 dans `_tokens.scss`.
   &--opp  { color: var(--cyan-300); justify-self: start; }

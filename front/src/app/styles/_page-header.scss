@@ -24,7 +24,7 @@
 
 .page-header__icon {
   @include icon-size(38px);
-  color: var(--gold);
+  color: var(--gold-on-surface);
   filter: drop-shadow(0 0 14px var(--gold-soft-50));
 }
 

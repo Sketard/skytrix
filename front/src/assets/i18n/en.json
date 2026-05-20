@@ -682,6 +682,16 @@
   "preferences": {
     "pageTitle": "Preferences",
     "pageSubtitle": "Personalize how the app looks and behaves.",
+    "appearance": {
+      "title": "Appearance",
+      "description": "Choose the app's light or dark theme. The duel board and replays always stay in dark mode.",
+      "auto": "Automatic",
+      "autoDesc": "Follows your system setting.",
+      "light": "Light",
+      "lightDesc": "Bright, light interface.",
+      "dark": "Dark",
+      "darkDesc": "Dark interface — Skytrix's default."
+    },
     "theme": {
       "title": "Board theme",
       "description": "Pick the visual mood of your duel board. The theme also applies in replay mode.",

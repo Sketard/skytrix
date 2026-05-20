@@ -156,7 +156,7 @@
     opacity: 1;
     background: var(--gold-soft-30);
     border-color: var(--gold-soft-50);
-    color: var(--gold);
+    color: var(--gold-on-surface);
   }
 
   &:focus-visible {
@@ -186,7 +186,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--scrim-medium);
+  background: var(--surface-badge);
   border: 1px solid var(--gold-soft-30);
   color: var(--text-secondary);
   opacity: 0.85;
