@@ -33,11 +33,10 @@
   </div>
 
   <div class="replay-end-overlay__actions">
-    <button
-      type="button"
-      class="btn btn--primary btn--lg btn--cta"
+    <app-button
+      variant="primary" size="lg" cta
       (click)="replay.emit()">
       {{ 'replay.viewer.endOverlay.replay' | translate }}
-    </button>
+    </app-button>
   </div>
 </div>

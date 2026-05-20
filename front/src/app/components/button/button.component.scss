@@ -1,0 +1,173 @@
+// =============================================================================
+// <app-button> — DS button, encapsulated.
+// Migrated from the former global `.btn` SCSS class family (`_buttons.scss`).
+//
+// The host carries variant/size classes (set via `host: { '[class]' }`) and IS
+// the layout box — size (`min-height`) lives on `:host` so a parent SCSS rule
+// targeting an external class (`.deck-list__cta` etc.) on the host can override
+// height the same way it did on the old bare `<button>`. The inner `.btn__el`
+// is the real interactive `<button>` / `<a>` and stretches to fill the host
+// (`width/height: 100%`), so it always inherits the host's resolved box.
+//
+// `!important` for `.btn--flash`: documented exception — overrides another
+// variant's background/border/color during a transient JS toggle.
+// =============================================================================
+
+:host {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+:host(.btn--full) {
+  display: flex;
+}
+
+.btn__el {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--transition-fast) var(--ease-out),
+              filter    var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out),
+              box-shadow var(--transition-fast) var(--ease-out);
+  text-decoration: none; // pour <a>
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+// --- Variants ----------------------------------------------------------------
+:host(.btn--primary) .btn__el {
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse);
+  box-shadow: 0 4px 12px var(--gold-soft-25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+  &:hover:not(:disabled):not([aria-disabled='true']) {
+    filter: brightness(1.08);
+    box-shadow: 0 6px 16px var(--gold-soft-40),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+:host(.btn--secondary) .btn__el {
+  background: var(--cyan-soft-15);
+  border: 1px solid var(--cyan-soft-40);
+  color: var(--cyan-300);
+
+  &:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cyan-soft-25);
+    border-color: var(--cyan-soft-50);
+  }
+}
+
+:host(.btn--ghost) .btn__el {
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+
+  &:hover:not(:disabled):not([aria-disabled='true']) {
+    color: var(--gold);
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-08);
+  }
+}
+
+:host(.btn--danger) .btn__el {
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: var(--danger-strong);
+
+  &:hover:not(:disabled):not([aria-disabled='true']) {
+    background: rgba(255, 82, 82, 0.25);
+    border-color: var(--danger-strong);
+  }
+}
+
+// --- Sizes -------------------------------------------------------------------
+// `min-height` on :host so a parent rule overriding height on an external
+// class lands on the same box. `padding`/`font-size` stay on `.btn__el`.
+:host(.btn--sm) { min-height: 32px; }
+:host(.btn--md) { min-height: var(--touch-target-min); }
+:host(.btn--lg) { min-height: 48px; }
+
+:host(.btn--sm) .btn__el { padding: 6px 12px;  font-size: var(--text-xs); }
+:host(.btn--md) .btn__el { padding: 10px 16px; font-size: var(--text-sm); }
+:host(.btn--lg) .btn__el { padding: 12px 22px; font-size: var(--text-md); }
+
+// --- Modifiers ---------------------------------------------------------------
+:host(.btn--cta) .btn__el {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+// Icon-only — square box driven off the size's min-height.
+:host(.btn--icon-only) {
+  aspect-ratio: 1;
+}
+
+:host(.btn--icon-only) .btn__el {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+// Shimmer overlay for "wow" CTAs (lobby Create Room, Hub empty Play PvP).
+:host(.btn--shimmer) .btn__el::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.4), transparent 70%);
+  background-size: 200% 200%;
+  animation: ds-cta-shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+// Transient success feedback (JS toggle 1.5-2s after copy/save).
+// !important: overrides the active variant's background/border/color.
+:host(.btn--flash) .btn__el {
+  background: var(--success-soft) !important;
+  border-color: var(--success-soft-70) !important;
+  color: var(--success-light) !important;
+}
+
+// --- Loading -----------------------------------------------------------------
+.btn__spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: ds-button-spin 0.6s linear infinite;
+}
+
+@keyframes ds-button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn__spinner { animation-duration: 1.4s; }
+  :host(.btn--shimmer) .btn__el::before { animation: none; }
+}

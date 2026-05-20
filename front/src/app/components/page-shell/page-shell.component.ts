@@ -3,6 +3,7 @@ import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { IconWrapComponent, IconWrapPalette } from '../icon-wrap/icon-wrap.component';
+import { ButtonComponent } from '../button/button.component';
 
 /**
  * Standard page chrome shared by every Track B index page: the decorative
@@ -22,7 +23,7 @@ import { IconWrapComponent, IconWrapPalette } from '../icon-wrap/icon-wrap.compo
 @Component({
   selector: 'app-page-shell',
   standalone: true,
-  imports: [MatIcon, RouterLink, TranslatePipe, IconWrapComponent],
+  imports: [MatIcon, TranslatePipe, IconWrapComponent, ButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './page-shell.component.html',
   styleUrl: './page-shell.component.scss',

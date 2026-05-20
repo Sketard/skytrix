@@ -21,6 +21,7 @@ import { MatIcon } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CreateUserDTO } from '../../core/model/account/create-user-dto';
 import { OwnedCardService } from '../../services/owned-card.service';
+import { ButtonComponent } from '../../components/button/button.component';
 
 enum LoginMode {
   LOGIN = 'LOGIN',
@@ -54,7 +55,7 @@ const cardUrl = (passcode: number): string => `/api/documents/small/code/${passc
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, MatIcon, TranslatePipe],
+  imports: [ReactiveFormsModule, MatIcon, TranslatePipe, ButtonComponent],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
   standalone: true,
@@ -67,6 +68,10 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   public hidePassword = true;
   public modes = LoginMode;
   public mode = signal<LoginMode>(this.modes.LOGIN);
+
+  // Inline submit state — the login page is excluded from the global loader
+  // (see loader-interceptor `isSilent`), so the button owns its own spinner.
+  public submitting = signal<boolean>(false);
 
   // ANIMATION
   public directions = AnimationDirection;
@@ -105,18 +110,28 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   }
 
   public createAccount(): void {
+    if (this.submitting()) return;
+    this.submitting.set(true);
     this.authService.createAccount(this.createAccountForm.getRawValue()).subscribe({
       next: () => {
+        this.submitting.set(false);
         this.notify.success('success.ACCOUNT_CREATED');
         this.mode.set(LoginMode.LOGIN);
       },
-      error: (error: HttpErrorResponse) => this.notify.error(error),
+      error: (error: HttpErrorResponse) => {
+        this.submitting.set(false);
+        this.notify.error(error);
+      },
     });
   }
 
   public connect(): void {
+    if (this.submitting()) return;
+    this.submitting.set(true);
     this.authService.login(this.loginForm.getRawValue()).subscribe({
       next: (res: HttpResponse<UserDTO>) => {
+        // Keep `submitting` true through navigation — the button stays
+        // disabled until the route swap unmounts this component.
         this.authService.setUser(res.body!);
         localStorage.removeItem('accessToken');
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(res.body));
@@ -127,7 +142,10 @@ export class LoginPageComponent implements OnInit, OnDestroy {
           this.router.navigate(['decks']);
         }
       },
-      error: (error: HttpErrorResponse) => this.notify.error(error),
+      error: (error: HttpErrorResponse) => {
+        this.submitting.set(false);
+        this.notify.error(error);
+      },
     });
   }
 

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, inject, inp
 import { A11yModule } from '@angular/cdk/a11y';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import type { ReplayOutcome } from '../replay-outcome.util';
+import { ButtonComponent } from '../../../../components/button/button.component';
 
 // End-of-replay slide-in panel. Receives the pre-derived outcome (see
 // `deriveOutcome` in `replay-outcome.util.ts` — D19) and exposes a single
@@ -18,7 +19,7 @@ import type { ReplayOutcome } from '../replay-outcome.util';
   selector: 'app-replay-end-overlay',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, A11yModule],
+  imports: [TranslateModule, A11yModule, ButtonComponent],
   templateUrl: './replay-end-overlay.component.html',
   styleUrl: './replay-end-overlay.component.scss',
   host: {

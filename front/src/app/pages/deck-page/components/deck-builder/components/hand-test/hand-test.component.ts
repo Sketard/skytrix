@@ -7,10 +7,11 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
+import { ButtonComponent } from '../../../../../../components/button/button.component';
 
 @Component({
   selector: 'app-hand-test',
-  imports: [CardComponent, MatSlideToggle, FormsModule, MatIcon, TranslatePipe],
+  imports: [CardComponent, MatSlideToggle, FormsModule, MatIcon, TranslatePipe, ButtonComponent],
   templateUrl: './hand-test.component.html',
   styleUrl: './hand-test.component.scss',
   standalone: true,

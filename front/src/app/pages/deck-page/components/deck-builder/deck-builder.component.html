@@ -56,30 +56,30 @@
     </div>
 
     <div class="deck-builder-header__actions">
-      <button type="button" class="btn btn--ghost btn--sm"
+      <app-button variant="ghost" size="sm"
         [disabled]="deckBuildService.deckEmpty()"
         (click)="toggleTestHand()">
         <mat-icon>back_hand</mat-icon>
         <span class="deck-builder-header__btn-label">{{ 'deckBuilder.testHand' | translate }}</span>
-      </button>
-      <button type="button" class="btn btn--ghost btn--sm"
+      </app-button>
+      <app-button variant="ghost" size="sm"
         [disabled]="!deckBuildService.deck().id || deckBuildService.deckEmpty()"
         (click)="navigateToPvp()">
         <mat-icon>sports_kabaddi</mat-icon>
         <span class="deck-builder-header__btn-label">{{ 'deckBuilder.pvpDuel' | translate }}</span>
-      </button>
-      <button type="button" class="btn btn--ghost btn--sm btn--icon"
+      </app-button>
+      <app-button variant="ghost" size="sm" iconOnly
         [matMenuTriggerFor]="actionsMenu"
-        [attr.aria-label]="'deckBuilder.actions' | translate">
+        [ariaLabel]="'deckBuilder.actions' | translate">
         <mat-icon>more_vert</mat-icon>
-      </button>
-      <button type="button" class="btn btn--primary btn--sm"
+      </app-button>
+      <app-button variant="primary" size="sm"
         [disabled]="deckBuildService.deckEmpty()"
         (click)="save()"
-        [attr.aria-label]="'common.save' | translate">
+        [ariaLabel]="'common.save' | translate">
         <mat-icon>save</mat-icon>
         <span class="deck-builder-header__btn-label">{{ 'deckBuilder.save' | translate }}</span>
-      </button>
+      </app-button>
       <mat-menu #actionsMenu="matMenu">
         <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="createProxies()">
           <mat-icon>print</mat-icon>

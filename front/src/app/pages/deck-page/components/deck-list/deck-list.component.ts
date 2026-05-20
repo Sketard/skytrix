@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { RouterLink } from '@angular/router';
+import { ButtonComponent } from '../../../../components/button/button.component';
 
 import {
   ConfirmDialogComponent,
@@ -44,7 +44,7 @@ import { DeckListStore, DeckSortMode } from './deck-list-store';
     IconWrapComponent,
     TranslatePipe,
     ReactiveFormsModule,
-    RouterLink,
+    ButtonComponent,
   ],
   templateUrl: './deck-list.component.html',
   styleUrl: './deck-list.component.scss',

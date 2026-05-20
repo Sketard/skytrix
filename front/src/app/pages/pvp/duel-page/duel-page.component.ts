@@ -63,6 +63,7 @@ import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.
 import { PvpDiceArenaComponent } from './pvp-dice-arena/pvp-dice-arena.component';
 import { PvpBoardSkeletonComponent } from './pvp-board-skeleton/pvp-board-skeleton.component';
 import { SystemOverlayComponent } from '../../../components/system-overlay/system-overlay.component';
+import { ButtonComponent } from '../../../components/button/button.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { WaitingRoomSkeletonComponent } from '../../../shared/skel';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -98,6 +99,7 @@ import { environment } from '../../../../environments/environment';
     OrientationLockComponent,
     AvatarComponent, WaitingRoomSkeletonComponent,
     TranslatePipe,
+    ButtonComponent,
   ],
 })
 export class DuelPageComponent implements OnInit, OnDestroy {
@@ -907,7 +909,9 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger'],
       // Wave 3: Cancel button autofocus (anti-mistap). The Surrender button
       // is first in DOM (tab order) but Cancel is the visual/anti-action default.
-      autoFocus: '.btn--primary',
+      // The Cancel CTA is an <app-button variant="primary"> — focus its inner
+      // interactive element (`.btn__el`), the host itself is not focusable.
+      autoFocus: '.btn--primary .btn__el',
       disableClose: false,
     });
     return dialogRef.afterClosed().pipe(

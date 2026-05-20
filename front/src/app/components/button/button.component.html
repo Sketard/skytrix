@@ -1,0 +1,38 @@
+@if (isLink()) {
+  @if (link(); as routerPath) {
+    <a
+      class="btn__el"
+      [routerLink]="routerPath"
+      [attr.aria-label]="ariaLabel()"
+      [attr.aria-disabled]="isDisabled() || null"
+      [attr.aria-busy]="loading() || null">
+      <ng-container [ngTemplateOutlet]="content" />
+    </a>
+  } @else {
+    <a
+      class="btn__el"
+      [href]="href()"
+      [attr.aria-label]="ariaLabel()"
+      [attr.aria-disabled]="isDisabled() || null"
+      [attr.aria-busy]="loading() || null">
+      <ng-container [ngTemplateOutlet]="content" />
+    </a>
+  }
+} @else {
+  <button
+    class="btn__el"
+    [type]="type()"
+    [disabled]="isDisabled()"
+    [attr.autofocus]="autofocus() || null"
+    [attr.aria-label]="ariaLabel()"
+    [attr.aria-busy]="loading() || null">
+    <ng-container [ngTemplateOutlet]="content" />
+  </button>
+}
+
+<ng-template #content>
+  @if (loading()) {
+    <span class="btn__spinner" aria-hidden="true"></span>
+  }
+  <ng-content />
+</ng-template>

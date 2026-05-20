@@ -9,6 +9,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Subscription, timer } from 'rxjs';
 import { TaskState } from '../../core/model/sync-status';
+import { ButtonComponent } from '../../components/button/button.component';
 
 type JobKey = 'cards' | 'images' | 'tcgImages' | 'banlist' | 'duelData';
 
@@ -63,7 +64,7 @@ const SECTIONS: readonly Section[] = [
 
 @Component({
   selector: 'app-parameter-page',
-  imports: [MatIconModule, MatTooltip, TranslatePipe],
+  imports: [MatIconModule, MatTooltip, TranslatePipe, ButtonComponent],
   templateUrl: './parameter-page.component.html',
   styleUrl: './parameter-page.component.scss',
   standalone: true,

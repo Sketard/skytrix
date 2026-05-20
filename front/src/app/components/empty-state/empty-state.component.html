@@ -7,18 +7,20 @@
     <p class="empty-state__desc">{{ descKey()! | translate }}</p>
   }
   @if (ctaLink() && ctaLabelKey() && !ctaDisabled()) {
-    <a [class]="ctaButtonClass()" [routerLink]="ctaLink()">
+    <app-button [variant]="ctaVariant()" [size]="ctaSize()" [cta]="isPrimaryCta()" [link]="ctaLink()!">
       @if (ctaIcon()) {
         <mat-icon>{{ ctaIcon() }}</mat-icon>
       }
       {{ ctaLabelKey()! | translate }}
-    </a>
+    </app-button>
   } @else if (ctaLabelKey()) {
-    <button type="button" [class]="ctaButtonClass()" [disabled]="ctaDisabled()" (click)="ctaAction.emit()">
+    <app-button
+      [variant]="ctaVariant()" [size]="ctaSize()" [cta]="isPrimaryCta()"
+      [disabled]="ctaDisabled()" (click)="ctaAction.emit()">
       @if (ctaIcon()) {
         <mat-icon>{{ ctaIcon() }}</mat-icon>
       }
       {{ ctaLabelKey()! | translate }}
-    </button>
+    </app-button>
   }
 </div>

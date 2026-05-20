@@ -37,10 +37,10 @@
         [form]="searchControl"
         [showFilters]="false">
       </search-bar>
-      <a class="btn btn--primary btn--md deck-list__cta" routerLink="/decks/builder">
+      <app-button variant="primary" size="md" class="deck-list__cta" link="/decks/builder">
         <mat-icon>add</mat-icon>
         <span>{{ 'deckList.newDeck' | translate }}</span>
-      </a>
+      </app-button>
     </div>
   </header>
 
@@ -65,13 +65,12 @@
         titleKey="deckList.list.title"
         [count]="firstLoad ? null : store.filteredDecks().length"
         countKey="deckList.list.count">
-        <button type="button"
-                class="btn btn--ghost btn--sm"
-                [attr.aria-label]="'deckList.sort.label' | translate"
+        <app-button variant="ghost" size="sm"
+                [ariaLabel]="'deckList.sort.label' | translate"
                 [matMenuTriggerFor]="sortMenu">
           <mat-icon>sort</mat-icon>
           <span class="deck-list__sort-label">{{ sortLabelKey() | translate }}</span>
-        </button>
+        </app-button>
         <mat-menu #sortMenu="matMenu" xPosition="before">
           @for (mode of store.sortModes; track mode) {
             <button mat-menu-item type="button"

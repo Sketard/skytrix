@@ -77,11 +77,12 @@
                 <mat-icon [fontIcon]="hidePassword ? 'visibility' : 'visibility_off'"></mat-icon>
               </button>
             </div>
-            <button class="btn btn--primary btn--lg btn--cta btn--cta-shimmer btn--full"
+            <app-button variant="primary" size="lg" cta shimmer full
                     type="submit"
+                    [loading]="submitting()"
                     [disabled]="!loginForm.valid">
               {{ 'login.signIn' | translate }}
-            </button>
+            </app-button>
           </form>
         }
         @case (modes.CREATE_ACCOUNT) {
@@ -125,11 +126,12 @@
                 <span class="field-error">{{ 'login.passwordMismatch' | translate }}</span>
               }
             </div>
-            <button class="btn btn--primary btn--lg btn--cta btn--cta-shimmer btn--full"
+            <app-button variant="primary" size="lg" cta shimmer full
                     type="submit"
+                    [loading]="submitting()"
                     [disabled]="!createAccountForm.valid">
               {{ 'login.createButton' | translate }}
-            </button>
+            </app-button>
           </form>
         }
       }

@@ -1,13 +1,13 @@
 <header class="page-header page-header--compact page-header--bordered">
   <!-- LEFT: back button -->
-  <button
-    type="button"
-    class="btn btn--ghost btn--sm btn--icon-leading replay-topbar__back"
-    [attr.aria-label]="'replay.hub.back' | translate"
+  <app-button
+    variant="ghost" size="sm"
+    class="replay-topbar__back"
+    [ariaLabel]="'replay.hub.back' | translate"
     (click)="back.emit()">
     <mat-icon aria-hidden="true">arrow_back</mat-icon>
     <span class="replay-topbar__back-label">{{ 'replay.hub.back' | translate }}</span>
-  </button>
+  </app-button>
 
   <!-- CENTER: match summary -->
   @if (metadata(); as meta) {

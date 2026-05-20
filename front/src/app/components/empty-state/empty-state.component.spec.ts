@@ -64,7 +64,7 @@ describe('EmptyStateComponent', () => {
     fixture.componentRef.setInput('ctaLink', '/decks/builder');
     fixture.detectChanges();
 
-    const link = root().querySelector('a.btn');
+    const link = root().querySelector('app-button a.btn__el');
     expect(link).not.toBeNull();
     expect(link?.getAttribute('href')).toBe('/decks/builder');
     expect(link?.textContent).toContain('cta.create');
@@ -75,7 +75,7 @@ describe('EmptyStateComponent', () => {
     fixture.componentRef.setInput('ctaLabelKey', 'cta.retry');
     fixture.detectChanges();
 
-    const btn = root().querySelector('button.btn') as HTMLButtonElement;
+    const btn = root().querySelector('app-button button.btn__el') as HTMLButtonElement;
     expect(btn).not.toBeNull();
 
     let emitted = false;
@@ -84,15 +84,15 @@ describe('EmptyStateComponent', () => {
     expect(emitted).toBeTrue();
   });
 
-  it('uses secondary class when ctaVariant=secondary', () => {
+  it('uses secondary variant when ctaVariant=secondary', () => {
     fixture.componentRef.setInput('titleKey', 'empty.title');
     fixture.componentRef.setInput('ctaLabelKey', 'cta.retry');
     fixture.componentRef.setInput('ctaVariant', 'secondary');
     fixture.detectChanges();
 
-    const btn = root().querySelector('button');
-    expect(btn?.classList.contains('btn--secondary')).toBeTrue();
-    expect(btn?.classList.contains('btn--primary')).toBeFalse();
+    const appButton = root().querySelector('app-button');
+    expect(appButton?.classList.contains('btn--secondary')).toBeTrue();
+    expect(appButton?.classList.contains('btn--primary')).toBeFalse();
   });
 
   it('disables the CTA button when ctaDisabled=true', () => {

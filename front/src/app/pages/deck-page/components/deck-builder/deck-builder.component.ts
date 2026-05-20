@@ -34,6 +34,7 @@ import { firstValueFrom } from 'rxjs';
 import { RoomApiService } from '../../../pvp/room-api.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TranslatePipe } from '@ngx-translate/core';
+import { ButtonComponent } from '../../../../components/button/button.component';
 
 @Component({
   selector: 'app-deck-builder',
@@ -55,6 +56,7 @@ import { TranslatePipe } from '@ngx-translate/core';
     BottomSheetComponent,
     MatProgressSpinner,
     TranslatePipe,
+    ButtonComponent,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',

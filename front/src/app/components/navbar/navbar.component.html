@@ -73,8 +73,7 @@
           @if (!collapsed()) {
             <span class="user-pseudo">{{ user()?.pseudo }}</span>
           }
-          <button class="btn btn--ghost btn--sm btn--full user-logout"
-                  type="button"
+          <app-button variant="ghost" size="sm" full class="user-logout"
                   (click)="logout()"
                   [matTooltip]="'nav.logout' | translate"
                   [matTooltipDisabled]="!collapsed()">
@@ -82,7 +81,7 @@
             @if (!collapsed()) {
               <span>{{ 'nav.logout' | translate }}</span>
             }
-          </button>
+          </app-button>
         </div>
       </div>
     </div>
@@ -189,10 +188,10 @@
 
       <div class="user-section">
         <span class="user-pseudo">{{ user()?.pseudo }}</span>
-        <button class="btn btn--ghost btn--sm btn--full user-logout" type="button" (click)="logout()">
+        <app-button variant="ghost" size="sm" full class="user-logout" (click)="logout()">
           <mat-icon fontIcon="logout"></mat-icon>
           <span>{{ 'nav.logout' | translate }}</span>
-        </button>
+        </app-button>
       </div>
     </div>
   </nav>

@@ -93,16 +93,16 @@
       </span>
       <mat-icon aria-hidden="true">swap_horiz</mat-icon>
     </button>
-    <button
-      type="button"
-      class="btn btn--secondary btn--sm btn--cta transport-bar__fork"
-      [attr.aria-label]="'replay.transport.fork' | translate"
+    <app-button
+      variant="secondary" size="sm" cta
+      class="transport-bar__fork"
+      [ariaLabel]="'replay.transport.fork' | translate"
       [title]="'replay.transport.fork' | translate"
       [disabled]="forking()"
       (click)="fork.emit()">
       <mat-icon aria-hidden="true">fork_right</mat-icon>
       <span class="transport-bar__fork-label">{{ 'replay.transport.forkShort' | translate }}</span>
-    </button>
+    </app-button>
     <button
       type="button"
       class="icon-btn icon-btn--md transport-bar__cheat"

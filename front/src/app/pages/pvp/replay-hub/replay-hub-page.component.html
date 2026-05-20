@@ -56,13 +56,12 @@
     titleKey="replay.hub.list.title"
     [count]="(!store.loading() && !store.error()) ? store.filteredReplays().length : null"
     countKey="replay.hub.list.count">
-    <button type="button"
-            class="btn btn--ghost btn--sm"
-            [attr.aria-label]="sortLabelKey() | translate"
+    <app-button variant="ghost" size="sm"
+            [ariaLabel]="sortLabelKey() | translate"
             [matMenuTriggerFor]="sortMenu">
       <mat-icon>sort</mat-icon>
       <span>{{ sortLabelKey() | translate }}</span>
-    </button>
+    </app-button>
     <mat-menu #sortMenu="matMenu" xPosition="before">
       @for (mode of sortModes; track mode) {
         <button mat-menu-item type="button"
@@ -169,12 +168,11 @@
             </div>
             <div class="replay-card__actions">
               <!-- Mockup §replay-open-cta — gold pill that slides in on hover.
-                   Decorative only (the whole card is a routerLink, so we don't
-                   wire a click here — `pointer-events: none` in SCSS).
-                   Composition DS: `.btn .btn--primary .btn--sm .btn--cta` pour le
-                   gradient gold + shadow + uppercase ; `.replay-card__open-cta`
-                   ne porte plus que l'animation slide-in au hover du card. -->
-              <span class="btn btn--primary btn--sm btn--cta replay-card__open-cta" aria-hidden="true">
+                   Decorative only (the whole card is a routerLink, so this is
+                   NOT an interactive button — a nested <button>/<a> inside the
+                   card's <a> would be invalid HTML). The gold gradient chrome
+                   lives entirely in `.replay-card__open-cta` (SCSS). -->
+              <span class="replay-card__open-cta" aria-hidden="true">
                 <span>{{ 'replay.hub.card.open' | translate }}</span>
                 <mat-icon>arrow_forward</mat-icon>
               </span>

@@ -55,8 +55,13 @@ describe('PageShellComponent', () => {
   function header(): HTMLElement {
     return fixture.nativeElement.querySelector('.page-header');
   }
-  function backEl(): HTMLAnchorElement | HTMLButtonElement | null {
+  /** The <app-button> host carrying `.page-shell__back`, or null. */
+  function backHost(): HTMLElement | null {
     return fixture.nativeElement.querySelector('.page-shell__back');
+  }
+  /** The real interactive <a>/<button> rendered inside <app-button>. */
+  function backEl(): HTMLAnchorElement | HTMLButtonElement | null {
+    return backHost()?.querySelector('.btn__el') ?? null;
   }
 
   it('renders the title and decorative screen-bg', () => {

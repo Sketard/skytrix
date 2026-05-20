@@ -42,27 +42,25 @@
             </div>
             <div class="job-actions">
               @if (isTracked(job.key)) {
-                <button class="btn btn--ghost btn--md btn--icon-only"
-                        type="button"
+                <app-button variant="ghost" size="md" iconOnly
                         (click)="togglePause(job.key)"
                         [matTooltip]="(isPaused(job.key) ? 'settings.resume' : 'settings.pause') | translate"
-                        [attr.aria-label]="(isPaused(job.key) ? 'settings.resume' : 'settings.pause') | translate">
+                        [ariaLabel]="(isPaused(job.key) ? 'settings.resume' : 'settings.pause') | translate">
                   <mat-icon [fontIcon]="isPaused(job.key) ? 'play_arrow' : 'pause'"></mat-icon>
-                </button>
+                </app-button>
               }
-              <button class="btn btn--primary btn--md"
-                      type="button"
+              <app-button variant="primary" size="md"
                       (click)="trigger(job.key)"
+                      [loading]="loading()[job.key] && !isTracked(job.key)"
                       [disabled]="loading()[job.key]">
                 @if (hasError(job.key)) {
                   {{ 'common.retry' | translate }}
                 } @else if (loading()[job.key] && !isTracked(job.key)) {
-                  <span class="btn-spinner" aria-hidden="true"></span>
                   {{ 'settings.updating' | translate }}
                 } @else {
                   {{ 'common.update' | translate }}
                 }
-              </button>
+              </app-button>
             </div>
           </div>
 

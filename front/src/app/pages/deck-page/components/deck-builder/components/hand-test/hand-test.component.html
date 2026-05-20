@@ -1,9 +1,9 @@
 <div class="hand-test">
   <div class="hand-test-header">
-    <button type="button" class="btn btn--ghost" (click)="retry()">
+    <app-button variant="ghost" (click)="retry()">
       <mat-icon>shuffle</mat-icon>
       <span>{{ 'deckBuilder.handTest.shuffle' | translate }}</span>
-    </button>
+    </app-button>
     <mat-slide-toggle color="primary" [(ngModel)]="goSecond">
       {{ 'deckBuilder.handTest.goSecond' | translate }}
     </mat-slide-toggle>

@@ -235,9 +235,10 @@
 // + `pointer-events: none` + caché sur mobile (cascade ≤760).
 //
 // Composition DS dans le template : `.btn .btn--primary .btn--sm .btn--cta`.
-// Ce sélecteur ne porte plus que (a) l'animation slide-in au hover du card
-// parent, (b) l'icône mat-icon à 16px, (c) le `pointer-events: none`. Le
-// gradient gold + shadow + uppercase viennent désormais 100% de `_buttons.scss`.
+// Decorative gold pill (NOT a real button — see template comment). Carries
+// (a) the slide-in animation on card hover, (b) the gold-gradient CTA chrome
+// (formerly composed from the global `.btn` class, now inlined since the
+// `.btn` class was replaced by `<app-button>`).
 .replay-card__open-cta {
   pointer-events: none;
   opacity: 0;
@@ -245,10 +246,27 @@
   transition: opacity var(--transition-fast) var(--ease-out),
               transform var(--transition-fast) var(--ease-out);
 
+  // Gold CTA chrome (was `.btn .btn--primary .btn--sm .btn--cta`).
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-family: 'Inter', sans-serif;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--gold-100), var(--gold), var(--gold-700));
+  color: var(--text-inverse);
+  box-shadow: 0 4px 12px var(--gold-soft-25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
   mat-icon {
     font-size: 16px;
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
   }
 }
 

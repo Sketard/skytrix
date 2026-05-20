@@ -20,19 +20,19 @@
   </div>
 
   @if (hasBackRoute()) {
-    <a class="btn btn--ghost btn--sm page-shell__back"
-       [routerLink]="backRoute()"
-       [attr.aria-label]="(backAriaLabelKey() ?? backLabelKey()) | translate">
+    <app-button variant="ghost" size="sm" class="page-shell__back"
+       [link]="backRoute()!"
+       [ariaLabel]="(backAriaLabelKey() ?? backLabelKey()) | translate">
       <mat-icon>arrow_back</mat-icon>
       <span>{{ backLabelKey() | translate }}</span>
-    </a>
+    </app-button>
   } @else if (hasBackAction()) {
-    <button type="button" class="btn btn--ghost btn--sm page-shell__back"
+    <app-button variant="ghost" size="sm" class="page-shell__back"
             (click)="backAction.emit()"
-            [attr.aria-label]="(backAriaLabelKey() ?? backLabelKey()) | translate">
+            [ariaLabel]="(backAriaLabelKey() ?? backLabelKey()) | translate">
       <mat-icon>arrow_back</mat-icon>
       <span>{{ backLabelKey() | translate }}</span>
-    </button>
+    </app-button>
   }
 
   <ng-content select="[header-actions]"></ng-content>

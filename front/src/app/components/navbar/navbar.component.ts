@@ -9,6 +9,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { filter } from 'rxjs';
 
 import { Role } from '../../core/model/account/user';
+import { ButtonComponent } from '../button/button.component';
 
 class Tab {
   name: string;
@@ -37,7 +38,7 @@ const LANG_OPTIONS: readonly LangOption[] = [
 
 @Component({
   selector: 'navbar',
-  imports: [MatIconModule, RouterLinkActive, RouterLink, A11yModule, MatTooltip, TranslatePipe],
+  imports: [MatIconModule, RouterLinkActive, RouterLink, A11yModule, MatTooltip, TranslatePipe, ButtonComponent],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.scss',
   standalone: true,

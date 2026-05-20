@@ -20,6 +20,7 @@ import { PageShellComponent } from '../../../components/page-shell/page-shell.co
 import { SectionHeaderComponent } from '../../../components/section-header/section-header.component';
 import { StatsStripComponent, StatItem } from '../../../components/stats-strip/stats-strip.component';
 import { ReplayHubStore, ReplayFilter, ReplaySortMode } from './replay-hub-store';
+import { ButtonComponent } from '../../../components/button/button.component';
 
 interface ResultMeta {
   variant: 'gold' | 'cyan' | 'neutral' | 'warning' | 'danger';
@@ -68,6 +69,7 @@ type DisplayedItem =
     PageShellComponent,
     SectionHeaderComponent,
     StatsStripComponent,
+    ButtonComponent,
   ],
   providers: [ReplayHubStore],
   templateUrl: './replay-hub-page.component.html',

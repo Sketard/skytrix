@@ -19,32 +19,29 @@
   </header>
 
   <div class="cta-row">
-    <button type="button"
-            class="btn btn--primary btn--lg btn--cta btn--cta-shimmer"
-            [attr.aria-label]="'a11y.createRoom' | translate"
+    <app-button variant="primary" size="lg" cta shimmer
+            [ariaLabel]="'a11y.createRoom' | translate"
             [disabled]="creatingRoom()"
             (click)="createRoom()">
       <mat-icon>add_circle</mat-icon>
       <span>{{ 'lobby.createRoom' | translate }}</span>
-    </button>
-    <button type="button"
-            class="btn btn--secondary btn--lg btn--cta"
-            [attr.aria-label]="'a11y.sandbox' | translate"
+    </app-button>
+    <app-button variant="secondary" size="lg" cta
+            [ariaLabel]="'a11y.sandbox' | translate"
             [disabled]="creatingRoom()"
             (click)="quickDuel()">
       <mat-icon>bolt</mat-icon>
       <span>{{ 'lobby.sandbox' | translate }}</span>
-    </button>
+    </app-button>
   </div>
 
   <app-section-header titleKey="lobby.openRooms" [count]="roomsCount()" countKey="lobby.roomsCount">
-    <button type="button"
-            class="btn btn--ghost btn--sm"
-            [attr.aria-label]="'lobby.sort.label' | translate"
+    <app-button variant="ghost" size="sm"
+            [ariaLabel]="'lobby.sort.label' | translate"
             [matMenuTriggerFor]="sortMenu">
       <mat-icon>sort</mat-icon>
       <span>{{ sortLabelKey() | translate }}</span>
-    </button>
+    </app-button>
     <mat-menu #sortMenu="matMenu" xPosition="before">
       @for (mode of sortModes; track mode) {
         <button mat-menu-item type="button"
@@ -163,19 +160,15 @@
             }
           </button>
         }
-        <button type="button"
-                class="btn btn--sm room-join-btn"
+        <app-button size="sm" class="room-join-btn"
+                [loading]="joiningRoomCode() === room.roomCode"
                 [disabled]="joiningRoomCode() !== null"
                 (click)="joinRoom(room)">
-          @if (joiningRoomCode() === room.roomCode) {
-            <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
-          } @else {
-            <span class="room-join-label">
-              {{ 'lobby.join' | translate }}
-              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
-            </span>
-          }
-        </button>
+          <span class="room-join-label">
+            {{ 'lobby.join' | translate }}
+            <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+          </span>
+        </app-button>
       </div>
     </cdk-virtual-scroll-viewport>
   }
