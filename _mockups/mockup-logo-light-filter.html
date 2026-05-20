@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skytrix — logo light mode · test filtres CSS</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0a0a14;
+    color: #EAEAEA;
+    padding: 32px 24px 80px;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 6px; color: #C9A84C; }
+  .intro { color: #9E9E9E; font-size: 0.9rem; max-width: 720px; margin-bottom: 28px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+    max-width: 1200px;
+  }
+
+  /* Chaque cellule = le vrai fond crème du light mode (--surface-base) */
+  .cell {
+    background: #F4F2ED;
+    border-radius: 14px;
+    padding: 22px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .cell.on-white  { background: #FFFFFF; }
+  .cell.on-nav    { background: #FAF8F3; }
+  .cell.on-bg     { background: #ECEAE3; }
+
+  .logo {
+    width: 150px;
+    height: auto;
+    display: block;
+  }
+
+  .tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6B655C;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tag .name { display: block; color: #1F1B16; font-size: 0.78rem; margin-bottom: 3px; }
+  .recommended .tag .name::after { content: ' ★'; color: #B08D2E; }
+  .recommended { outline: 2px solid #C9A84C; outline-offset: -2px; }
+
+  .section-title {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #79b8ff;
+    margin-top: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 6px;
+  }
+
+  /* ===== Les filtres testés ===== */
+  /* A — référence : aucun filtre (le problème actuel) */
+  .f-none { }
+
+  /* B — invert + hue-rotate : l'astuce classique */
+  .f-invert      { filter: invert(1) hue-rotate(180deg); }
+  .f-invert-soft { filter: invert(1) hue-rotate(180deg) brightness(0.82) saturate(1.35); }
+  .f-invert-deep { filter: invert(1) hue-rotate(180deg) brightness(0.62) saturate(1.6); }
+  .f-invert-mute { filter: invert(1) hue-rotate(180deg) brightness(0.9) saturate(0.7); }
+
+  /* C — assombrissement sans inversion de teinte (brightness pur) */
+  .f-dark        { filter: brightness(0.35) saturate(1.4); }
+  .f-dark-contr  { filter: brightness(0.3) contrast(1.4) saturate(1.5); }
+
+  /* D — grayscale puis assombri (logo monochrome sombre) */
+  .f-mono        { filter: grayscale(1) brightness(0.35) contrast(1.3); }
+
+  /* E — drop-shadow seul (détourer sans recolorer) */
+  .f-shadow      { filter: drop-shadow(0 0 1px rgba(20,18,14,.9)) drop-shadow(0 2px 6px rgba(20,18,14,.4)); }
+</style>
+</head>
+<body>
+
+<h1>Logo skytrix — test recoloration CSS pour light mode</h1>
+<p class="intro">
+  Le logo est un PNG en tons clairs froids. Chaque vignette applique un filtre CSS
+  différent sur le vrai asset, posé sur le vrai fond crème du light mode
+  (<code>#F4F2ED</code>). Compare et dis-moi lequel rend le mieux — c'est le filtre
+  qui sera appliqué dans la navbar.
+</p>
+
+<div class="grid">
+
+  <div class="section-title">Référence</div>
+  <div class="cell">
+    <img class="logo f-none" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">A · Aucun filtre</span>le problème actuel</div>
+  </div>
+
+  <div class="section-title">B · invert + hue-rotate (préserve les teintes)</div>
+  <div class="cell">
+    <img class="logo f-invert" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">B1 · invert brut</span>invert(1) hue-rotate(180deg)</div>
+  </div>
+  <div class="cell recommended">
+    <img class="logo f-invert-soft" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">B2 · invert équilibré</span>+ brightness .82 saturate 1.35<br>(actuellement dans le code)</div>
+  </div>
+  <div class="cell">
+    <img class="logo f-invert-deep" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">B3 · invert profond</span>+ brightness .62 saturate 1.6</div>
+  </div>
+  <div class="cell">
+    <img class="logo f-invert-mute" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">B4 · invert désaturé</span>+ brightness .9 saturate .7</div>
+  </div>
+
+  <div class="section-title">C · assombrissement direct (teintes décalées)</div>
+  <div class="cell">
+    <img class="logo f-dark" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">C1 · brightness pur</span>brightness .35 saturate 1.4</div>
+  </div>
+  <div class="cell">
+    <img class="logo f-dark-contr" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">C2 · + contraste</span>brightness .3 contrast 1.4</div>
+  </div>
+
+  <div class="section-title">D · monochrome sombre</div>
+  <div class="cell">
+    <img class="logo f-mono" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">D · grayscale + dark</span>grayscale(1) brightness .35</div>
+  </div>
+
+  <div class="section-title">E · détourage seul (pas de recoloration)</div>
+  <div class="cell">
+    <img class="logo f-shadow" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">E · double drop-shadow</span>contour sombre, logo inchangé</div>
+  </div>
+
+  <div class="section-title">Le candidat retenu (B2) sur les 4 fonds réels</div>
+  <div class="cell">
+    <img class="logo f-invert-soft" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">--surface-base</span>#F4F2ED</div>
+  </div>
+  <div class="cell on-white">
+    <img class="logo f-invert-soft" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">--surface-card</span>#FFFFFF</div>
+  </div>
+  <div class="cell on-nav">
+    <img class="logo f-invert-soft" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">--surface-nav</span>#FAF8F3</div>
+  </div>
+  <div class="cell on-bg">
+    <img class="logo f-invert-soft" src="assets/logo-full.png" alt="">
+    <div class="tag"><span class="name">--surface-bg</span>#ECEAE3</div>
+  </div>
+
+</div>
+
+</body>
+</html>

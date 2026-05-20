@@ -305,7 +305,7 @@
   .field-input:not(:placeholder-shown) + & {
     top: 14px;
     font-size: var(--text-xs);
-    color: var(--gold);
+    color: var(--gold-on-surface);
     letter-spacing: 0.05em;
     text-transform: uppercase;
     font-weight: var(--weight-semibold);
@@ -331,7 +331,7 @@
               background var(--transition-fast) var(--ease-out);
 
   &:hover {
-    color: var(--gold);
+    color: var(--gold-on-surface);
     background: var(--gold-soft-08);
   }
 

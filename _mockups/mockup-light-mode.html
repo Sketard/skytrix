@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skytrix — Light Mode · proposition de palette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<style>
+/* =============================================================================
+   skytrix Light Mode — proposition de palette
+   -----------------------------------------------------------------------------
+   Périmètre : pages "app" uniquement (login, lobby, deck-page, card-search,
+   parameters, preferences, replay-hub, navbar). Le PvP (duel-page, replay
+   viewer) reste TOUJOURS en dark — non concerné par ce mock.
+
+   Ce fichier reproduit fidèlement les vrais tokens de _tokens.scss et propose
+   leur équivalent light. Les composants ci-dessous (.btn, .surface-card,
+   .chip, navbar, form-field) sont des répliques 1:1 du DS skytrix.
+   ============================================================================= */
+
+/* ---------- DARK : valeurs réelles de _tokens.scss ------------------------- */
+:root,
+.theme-dark {
+  --surface-base:    #121212;
+  --surface-card:    #1E1E1E;
+  --surface-elevated:#1E293B;
+  --surface-nav:     #161616;
+  --surface-hover:   rgba(255,255,255,0.06);
+  --surface-overlay: rgba(255,255,255,0.04);
+
+  --text-primary:    #EAEAEA;
+  --text-secondary:  #9E9E9E;
+  --text-muted:      #9E9E9E;
+  --text-disabled:   #6E6E6E;
+  --text-inverse:    #1a1208;
+
+  --border-subtle:   rgba(255,255,255,0.30);
+  --border-soft:     rgba(255,255,255,0.10);
+  --border-medium:   rgba(255,255,255,0.18);
+
+  --gold:            #C9A84C;
+  --gold-50:         #ffe9a8;
+  --gold-100:        #d4b25a;
+  --gold-700:        #a8862e;
+  --gold-soft-08:    rgba(201,168,76,0.08);
+  --gold-soft-12:    rgba(201,168,76,0.12);
+  --gold-soft-25:    rgba(201,168,76,0.25);
+  --gold-soft-40:    rgba(201,168,76,0.40);
+  --gold-soft-50:    rgba(201,168,76,0.50);
+
+  --cyan-300:        #79b8ff;
+  --cyan-500:        #4a90d9;
+  --cyan-soft-15:    rgba(74,144,217,0.15);
+  --cyan-soft-50:    rgba(74,144,217,0.50);
+
+  --success:         #4caf50;
+  --warning:         #ffc107;
+  --danger-strong:   #ff5252;
+
+  --elevation-1:     0 2px 8px rgba(0,0,0,0.25);
+  --elevation-2:     0 4px 16px rgba(0,0,0,0.30);
+  --elevation-3:     0 8px 24px rgba(0,0,0,0.40);
+
+  --gradient-card-ds: linear-gradient(135deg, rgba(30,30,46,0.85) 0%, rgba(22,22,36,0.85) 100%);
+  --gradient-arena-radial: radial-gradient(ellipse at top, #1a1a2e 0%, #0f0f1c 65%, #0a0a14 100%);
+
+  --scrim:           rgba(5,5,10,0.5);
+  --chip-neutral-active: rgba(255,255,255,0.08);
+
+  --code-block-tint: #ddd;
+}
+
+/* ---------- LIGHT : PROPOSITION ------------------------------------------- */
+.theme-light {
+  /* Surfaces — gris très clairs, échelonnés pour conserver la hiérarchie.
+     surface-base reste le plus "fond", card légèrement plus claire et
+     posée dessus, nav crème neutre. */
+  --surface-base:    #F4F2ED;   /* fond page — crème neutre chaud, repos oculaire */
+  --surface-card:    #FFFFFF;   /* cartes / form-fields — blanc franc */
+  --surface-elevated:#FFFFFF;   /* panneaux élevés */
+  --surface-nav:     #FAF8F3;   /* navbar — crème légèrement plus chaud que card */
+  --surface-hover:   rgba(0,0,0,0.05);   /* INVERSÉ : assombrit au survol */
+  --surface-overlay: rgba(0,0,0,0.035);  /* INVERSÉ : voile sombre subtil */
+
+  /* Texte — ancré sur un gris très sombre (pas noir pur, moins agressif).
+     Hiérarchie primaire / secondaire / disabled conservée. */
+  --text-primary:    #1F1B16;   /* contraste 14:1 sur card blanc — AAA */
+  --text-secondary:  #6B655C;   /* contraste 5.1:1 — AA */
+  --text-muted:      #8A847A;   /* metadata — AA sur card */
+  --text-disabled:   #B3ADA3;
+  --text-inverse:    #2A2008;   /* texte ENCRE sur fond gold clair (bouton primary) */
+
+  /* Borders — INVERSÉS en rgba noir. Subtle reste le plus marqué. */
+  --border-subtle:   rgba(0,0,0,0.16);
+  --border-soft:     rgba(0,0,0,0.08);
+  --border-medium:   rgba(0,0,0,0.14);
+
+  /* Gold — DOCTRINE "gold clair ancre" (décision Axel) :
+     --gold reste CLAIR et lumineux (#E4BE54) → c'est l'ancre des FONDS
+     (bouton primary, badges) sur lesquels on pose du texte encre. Le
+     texte doré sur fond clair (libellés, icônes) utilise --gold-text,
+     sombre, car #E4BE54 en texte sur blanc = illisible (1.7:1). */
+  --gold:            #E4BE54;   /* gold clair lumineux — FOND de CTA, texte encre dessus */
+  --gold-100:        #D4AC3E;   /* gold-clair survol / bordure du primary */
+  --gold-text:       #8A6A20;   /* gold pour TEXTE/icône sur clair — 4.8:1, AA */
+  --gold-50:         #6B541F;   /* "gold clair" du dark → gold sombre en light (libellé chip actif) */
+  --gold-700:        #8A6A20;
+  --gold-soft-08:    rgba(176,141,46,0.08);
+  --gold-soft-12:    rgba(176,141,46,0.14);   /* légèrement renforcé — l'alpha rend moins sur clair */
+  --gold-soft-25:    rgba(176,141,46,0.28);
+  --gold-soft-40:    rgba(176,141,46,0.45);
+  --gold-soft-50:    rgba(176,141,46,0.55);
+
+  /* Cyan — accent secondaire assombri pour rester lisible en texte sur clair. */
+  --cyan-300:        #1E6FB8;   /* "cyan clair" du dark → cyan profond en light (texte) */
+  --cyan-500:        #2C7DC4;
+  --cyan-soft-15:    rgba(44,125,196,0.14);
+  --cyan-soft-50:    rgba(44,125,196,0.45);
+
+  /* Sémantiques — versions assombries (les couleurs vives du dark
+     "bavent" sur fond clair). */
+  --success:         #2E7D32;   /* vert assombri — AA sur blanc */
+  --warning:         #B8860B;   /* ambre assombri — lisible */
+  --danger-strong:   #C62828;   /* rouge assombri — AA sur blanc */
+
+  /* Élévation — ombres beaucoup plus douces sur fond clair
+     (une ombre dark-mode 0.4 alpha noircirait trop). */
+  --elevation-1:     0 1px 3px rgba(31,27,22,0.10);
+  --elevation-2:     0 3px 10px rgba(31,27,22,0.12);
+  --elevation-3:     0 8px 24px rgba(31,27,22,0.16);
+
+  /* Gradients — l'ambiance "holo-arena" sombre n'a aucun sens en light.
+     On NEUTRALISE : la carte devient un blanc franc subtilement dégradé. */
+  --gradient-card-ds: linear-gradient(135deg, #FFFFFF 0%, #FBF9F4 100%);
+  --gradient-arena-radial: radial-gradient(ellipse at top, #FBFAF6 0%, #F4F2ED 60%, #ECE9E1 100%);
+
+  /* Scrim — voile de backdrop reste sombre (assombrir derrière une modale). */
+  --scrim:           rgba(20,18,14,0.45);
+  --chip-neutral-active: rgba(0,0,0,0.07);
+
+  --code-block-tint: #3A352D;
+}
+
+/* ============================ Layout du mock ============================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0a0a14;
+  color: #EAEAEA;
+  line-height: 1.5;
+  padding: 32px 24px 80px;
+}
+.mock-head {
+  max-width: 1240px; margin: 0 auto 28px;
+}
+.mock-head h1 {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 2rem; letter-spacing: 0.02em;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.mock-head p { color: #9E9E9E; max-width: 720px; margin-top: 6px; font-size: 0.92rem; }
+.mock-head .scope {
+  margin-top: 12px; display: inline-flex; gap: 8px; flex-wrap: wrap;
+}
+.mock-head .scope span {
+  font-size: 0.72rem; font-weight: 600; padding: 4px 10px;
+  border-radius: 999px;
+}
+.scope .in  { background: rgba(74,144,217,0.18); color: #79b8ff; border: 1px solid rgba(74,144,217,0.4); }
+.scope .out { background: rgba(255,82,82,0.14);  color: #ff8a80; border: 1px solid rgba(255,82,82,0.35); }
+
+/* Grille comparative côte-à-côte */
+.compare {
+  max-width: 1240px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+@media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+
+.pane {
+  border-radius: 16px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.pane-label {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 10px 18px;
+}
+.pane-label.dark  { background: #1E1E1E; color: #9E9E9E; }
+.pane-label.light { background: #1E1E1E; color: #C9A84C; }
+
+/* Le conteneur thémé — tout à l'intérieur consomme les var(--…) */
+.themed {
+  background: var(--surface-base);
+  color: var(--text-primary);
+  padding: 0;
+}
+
+/* ===================== Composants DS répliqués ============================ */
+
+/* --- Navbar ------------------------------------------------------------- */
+.nav {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--surface-nav);
+  border-bottom: 1px solid var(--border-soft);
+  padding: 10px 16px;
+}
+.nav .brand {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 1.15rem; color: var(--gold); letter-spacing: 0.04em;
+  margin-right: 12px;
+}
+.nav a {
+  font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);
+  padding: 7px 12px; border-radius: 8px; text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.nav a:hover { background: var(--surface-hover); color: var(--text-primary); }
+.nav a.active {
+  color: var(--gold-50); background: var(--gold-soft-12);
+}
+.nav .spacer { flex: 1; }
+.nav .nav-dot {
+  width: 8px; height: 8px; border-radius: 999px; background: var(--success);
+}
+
+/* --- Section interne ---------------------------------------------------- */
+.body-pad { padding: 22px 20px; display: flex; flex-direction: column; gap: 22px; }
+
+.section-title {
+  font-family: 'Rajdhani', sans-serif; font-weight: 600;
+  font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-soft);
+}
+
+/* --- Boutons (_buttons.scss) ------------------------------------------- */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn {
+  font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.82rem;
+  padding: 9px 18px; border-radius: 10px; cursor: pointer;
+  border: 1px solid transparent; display: inline-flex; align-items: center; gap: 6px;
+  transition: all .15s;
+}
+.btn--primary {
+  background: var(--gold); color: var(--text-inverse);
+  border-color: var(--gold);
+}
+.btn--primary:hover { background: var(--gold-100); }
+.btn--ghost {
+  background: transparent; color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+.btn--ghost:hover { background: var(--surface-hover); border-color: var(--gold-soft-40); }
+.btn--danger {
+  background: transparent; color: var(--danger-strong);
+  border-color: var(--danger-strong);
+}
+.btn--danger:hover { background: var(--danger-strong); color: #fff; }
+.btn--disabled {
+  background: var(--surface-overlay); color: var(--text-disabled);
+  border-color: var(--border-soft); cursor: not-allowed;
+}
+
+/* --- surface-card (_card-surface.scss) --------------------------------- */
+.card-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+@media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+.surface-card {
+  position: relative; overflow: hidden;
+  background: var(--gradient-card-ds);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: var(--elevation-1);
+  padding: 16px;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+.surface-card.interactive { cursor: pointer; }
+.surface-card.interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold-soft-40);
+  box-shadow: var(--elevation-3);
+}
+.surface-card .accent {
+  position: absolute; left: 0; top: 14%; bottom: 14%; width: 3px;
+  background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+}
+.surface-card h4 {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem;
+  color: var(--text-primary); margin-bottom: 4px; padding-left: 8px;
+}
+.surface-card p { font-size: 0.8rem; color: var(--text-secondary); padding-left: 8px; }
+.surface-card .meta {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+  color: var(--text-muted); padding-left: 8px; margin-top: 8px;
+}
+
+/* --- Chips (_chips.scss) ----------------------------------------------- */
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 999px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font-weight: 600; font-size: 0.72rem; cursor: pointer;
+  transition: all .15s;
+}
+.chip:hover { color: var(--text-primary); border-color: var(--border-medium); }
+.chip.active {
+  background: var(--gold-soft-12); border-color: var(--gold-soft-50);
+  color: var(--gold-50);
+}
+.chip.active.cyan {
+  background: var(--cyan-soft-15); border-color: var(--cyan-soft-50);
+  color: var(--cyan-300);
+}
+.chip.active.neutral {
+  background: var(--chip-neutral-active); border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+/* --- Form field (login / paramètres) ----------------------------------- */
+.field { display: flex; flex-direction: column; gap: 6px; max-width: 320px; }
+.field label {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.field input {
+  background: var(--surface-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 10px; padding: 10px 12px;
+  color: var(--text-primary); font-family: 'Inter', sans-serif;
+  font-size: 0.85rem; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.field input::placeholder { color: var(--text-disabled); }
+.field input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft-25);
+}
+
+/* --- Pills statut (paramètres) ----------------------------------------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em;
+}
+.pill--neutral { background: var(--surface-overlay); color: var(--text-muted); border: 1px solid var(--border-soft); }
+.pill--cyan    { background: var(--cyan-soft-15); color: var(--cyan-300); border: 1px solid var(--cyan-soft-50); }
+.pill--success { background: rgba(46,125,50,0.14); color: var(--success); border: 1px solid var(--success); }
+.theme-dark .pill--success { background: rgba(76,175,80,0.15); }
+.pill--warning { background: rgba(255,193,7,0.14); color: var(--warning); border: 1px solid var(--warning); }
+
+/* --- Code / token sample ----------------------------------------------- */
+.code {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  color: var(--code-block-tint);
+}
+
+/* --- Skeleton (skytrix convention) ------------------------------------- */
+.skel {
+  border-radius: 8px; height: 14px;
+  background: linear-gradient(90deg,
+    var(--surface-overlay) 25%,
+    var(--surface-hover) 50%,
+    var(--surface-overlay) 75%);
+  background-size: 200% 100%;
+  animation: sweep 1.4s ease-in-out infinite;
+}
+@keyframes sweep { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ===================== Table de tokens comparative ======================= */
+.token-table {
+  max-width: 1240px; margin: 36px auto 0;
+  background: #141420; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; overflow: hidden;
+}
+.token-table h2 {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.1rem;
+  color: #C9A84C; padding: 16px 20px 4px;
+}
+.token-table > p { color: #9E9E9E; font-size: 0.82rem; padding: 0 20px 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+th {
+  text-align: left; padding: 8px 14px; color: #79b8ff;
+  font-family: 'JetBrains Mono', monospace; font-weight: 500;
+  border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.72rem;
+}
+td { padding: 7px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+td.tok { font-family: 'JetBrains Mono', monospace; color: #EAEAEA; }
+td.note { color: #9E9E9E; font-size: 0.73rem; }
+.swatch {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #cfcfcf;
+}
+.sw {
+  width: 30px; height: 18px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;
+}
+.cat-row td {
+  background: rgba(201,168,76,0.06); color: #C9A84C;
+  font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  letter-spacing: 0.06em; font-size: 0.78rem;
+}
+.badge-inv {
+  font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+  background: rgba(255,82,82,0.18); color: #ff8a80; margin-left: 6px;
+}
+.badge-keep {
+  font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+  background: rgba(76,175,80,0.18); color: #81c784; margin-left: 6px;
+}
+
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded'; font-size: 18px;
+  vertical-align: middle;
+}
+
+/* ===================== Labo bouton primary =============================== */
+.primary-lab {
+  max-width: 1240px; margin: 36px auto 0;
+  background: #141420; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 16px 20px 22px;
+}
+.primary-lab h2 {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.1rem;
+  color: #C9A84C; margin-bottom: 4px;
+}
+.primary-lab > p { color: #9E9E9E; font-size: 0.82rem; margin-bottom: 16px; max-width: 760px; }
+.lab-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+.lab-cell {
+  background: #F4F2ED;            /* le vrai --surface-base light */
+  border-radius: 12px; padding: 18px 16px;
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+  border: 2px solid transparent;
+}
+.lab-cell.chosen   { border-color: #C9A84C; box-shadow: 0 0 0 4px rgba(201,168,76,0.12); }
+.lab-cell.rejected { opacity: 0.5; }
+.lab-tag {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 0.72rem; letter-spacing: 0.05em;
+  color: #6B655C; text-transform: uppercase;
+}
+.lab-tag.rec { color: #8A6A20; }
+.pb {
+  font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.82rem;
+  padding: 9px 18px; border-radius: 10px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: filter .15s, transform .12s;
+}
+.pb:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.pb.sm { font-size: 0.78rem; padding: 8px 14px; }
+.lab-note { font-size: 0.73rem; color: #6B655C; line-height: 1.45; }
+.lab-mini {
+  margin-top: 18px; padding: 16px;
+  background: #F4F2ED; border-radius: 12px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.lab-mini > span {
+  font-size: 0.76rem; font-weight: 600; color: #6B655C;
+}
+.lab-ctx { display: flex; gap: 10px; flex-wrap: wrap; }
+
+footer {
+  max-width: 1240px; margin: 32px auto 0; color: #6E6E6E;
+  font-size: 0.76rem; text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="mock-head">
+  <h1>skytrix · Light Mode — proposition de palette</h1>
+  <p>
+    Comparatif avant / après et aperçus en condition réelle. La colonne de
+    gauche reproduit les tokens dark actuels de <code>_tokens.scss</code> ;
+    celle de droite applique la palette light proposée. Les composants sont
+    des répliques fidèles du DS (<code>.btn</code>, <code>.surface-card</code>,
+    <code>.chip</code>, navbar, form-field, pills).
+  </p>
+  <div class="scope">
+    <span class="in">✓ Thémé : login · lobby · deck-page · card-search · parameters · preferences · replay-hub · navbar</span>
+    <span class="out">✗ Reste dark : duel-page · replay viewer (ambiance arène)</span>
+  </div>
+</div>
+
+<!-- ====================== APERÇU 1 — Navbar + cartes ====================== -->
+<div class="compare">
+
+  <!-- DARK -->
+  <div class="pane">
+    <div class="pane-label dark">● Avant — Dark (actuel)</div>
+    <div class="themed theme-dark">
+      <div class="nav">
+        <span class="brand">SKYTRIX</span>
+        <a class="active">Decks</a>
+        <a>Cartes</a>
+        <a>Duel</a>
+        <a>Replays</a>
+        <span class="spacer"></span>
+        <span class="nav-dot"></span>
+      </div>
+      <div class="body-pad">
+        <div class="section-title">Mes decks</div>
+        <div class="card-grid">
+          <div class="surface-card interactive">
+            <span class="accent"></span>
+            <h4>Snake-Eye Fire King</h4>
+            <p>40 cartes · Main 40 / Extra 15</p>
+            <div class="meta">modifié il y a 2 h</div>
+          </div>
+          <div class="surface-card interactive">
+            <span class="accent"></span>
+            <h4>Tearlaments</h4>
+            <p>41 cartes · Main 41 / Extra 14</p>
+            <div class="meta">modifié hier</div>
+          </div>
+        </div>
+        <div class="section-title">Filtres</div>
+        <div class="chip-row">
+          <span class="chip active">Tous</span>
+          <span class="chip">Monstre</span>
+          <span class="chip">Magie</span>
+          <span class="chip active cyan">Piège</span>
+          <span class="chip">Extra Deck</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHT -->
+  <div class="pane">
+    <div class="pane-label light">○ Après — Light (proposition)</div>
+    <div class="themed theme-light">
+      <div class="nav">
+        <span class="brand">SKYTRIX</span>
+        <a class="active">Decks</a>
+        <a>Cartes</a>
+        <a>Duel</a>
+        <a>Replays</a>
+        <span class="spacer"></span>
+        <span class="nav-dot"></span>
+      </div>
+      <div class="body-pad">
+        <div class="section-title">Mes decks</div>
+        <div class="card-grid">
+          <div class="surface-card interactive">
+            <span class="accent"></span>
+            <h4>Snake-Eye Fire King</h4>
+            <p>40 cartes · Main 40 / Extra 15</p>
+            <div class="meta">modifié il y a 2 h</div>
+          </div>
+          <div class="surface-card interactive">
+            <span class="accent"></span>
+            <h4>Tearlaments</h4>
+            <p>41 cartes · Main 41 / Extra 14</p>
+            <div class="meta">modifié hier</div>
+          </div>
+        </div>
+        <div class="section-title">Filtres</div>
+        <div class="chip-row">
+          <span class="chip active">Tous</span>
+          <span class="chip">Monstre</span>
+          <span class="chip">Magie</span>
+          <span class="chip active cyan">Piège</span>
+          <span class="chip">Extra Deck</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ====================== APERÇU 2 — Boutons + formulaire + statuts ======= -->
+<div class="compare" style="margin-top:20px;">
+
+  <!-- DARK -->
+  <div class="pane">
+    <div class="pane-label dark">● Avant — Dark (actuel)</div>
+    <div class="themed theme-dark">
+      <div class="body-pad">
+        <div class="section-title">Boutons</div>
+        <div class="btn-row">
+          <button class="btn btn--primary"><span class="material-symbols-rounded">add</span>Créer un deck</button>
+          <button class="btn btn--ghost">Importer</button>
+          <button class="btn btn--danger">Supprimer</button>
+          <button class="btn btn--disabled">Indisponible</button>
+        </div>
+
+        <div class="section-title">Champ de saisie</div>
+        <div class="field">
+          <label>Pseudo</label>
+          <input type="text" placeholder="ton pseudo de duelliste" value="Axel">
+        </div>
+
+        <div class="section-title">Statuts de synchro (paramètres)</div>
+        <div class="chip-row">
+          <span class="pill pill--neutral">● Inactif</span>
+          <span class="pill pill--cyan">● En cours</span>
+          <span class="pill pill--success">✓ Terminé</span>
+          <span class="pill pill--warning">⏸ En pause</span>
+        </div>
+
+        <div class="section-title">Chargement (skeleton)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:280px;">
+          <div class="skel" style="width:70%;"></div>
+          <div class="skel" style="width:90%;"></div>
+          <div class="skel" style="width:55%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHT -->
+  <div class="pane">
+    <div class="pane-label light">○ Après — Light (proposition)</div>
+    <div class="themed theme-light">
+      <div class="body-pad">
+        <div class="section-title">Boutons</div>
+        <div class="btn-row">
+          <button class="btn btn--primary"><span class="material-symbols-rounded">add</span>Créer un deck</button>
+          <button class="btn btn--ghost">Importer</button>
+          <button class="btn btn--danger">Supprimer</button>
+          <button class="btn btn--disabled">Indisponible</button>
+        </div>
+
+        <div class="section-title">Champ de saisie</div>
+        <div class="field">
+          <label>Pseudo</label>
+          <input type="text" placeholder="ton pseudo de duelliste" value="Axel">
+        </div>
+
+        <div class="section-title">Statuts de synchro (paramètres)</div>
+        <div class="chip-row">
+          <span class="pill pill--neutral">● Inactif</span>
+          <span class="pill pill--cyan">● En cours</span>
+          <span class="pill pill--success">✓ Terminé</span>
+          <span class="pill pill--warning">⏸ En pause</span>
+        </div>
+
+        <div class="section-title">Chargement (skeleton)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:280px;">
+          <div class="skel" style="width:70%;"></div>
+          <div class="skel" style="width:90%;"></div>
+          <div class="skel" style="width:55%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ====================== BOUTON PRIMARY — variantes ====================== -->
+<div class="primary-lab">
+  <h2>Bouton primary en light mode — décision : « gold clair ancre » (B)</h2>
+  <p>
+    Décision actée : le primary garde un <strong>gold clair lumineux</strong>
+    <code>#E4BE54</code> en fond et pose du <strong>texte encre</strong>
+    <code>#2A2008</code> dessus — exactement la même logique qu'en dark
+    (gold&nbsp;+&nbsp;<code>--text-inverse</code> sombre). Les autres pistes
+    sont gardées ci-dessous pour mémoire.
+  </p>
+
+  <div class="lab-grid">
+
+    <!-- A — rejeté -->
+    <div class="lab-cell rejected">
+      <div class="lab-tag">A · Rejeté</div>
+      <button class="pb" style="background:#B08D2E;color:#fff;border:1px solid #B08D2E;">
+        <span class="material-symbols-rounded">add</span>Créer un deck
+      </button>
+      <div class="lab-note">Gold moyen-sombre + blanc. Terne, manque de relief — le souci signalé.</div>
+    </div>
+
+    <!-- B — RETENU -->
+    <div class="lab-cell chosen">
+      <div class="lab-tag rec">B · Gold clair + encre ✓ RETENU</div>
+      <button class="pb" style="background:#E4BE54;color:#2A2008;border:1px solid #D4AC3E;">
+        <span class="material-symbols-rounded">add</span>Créer un deck
+      </button>
+      <div class="lab-note">Gold lumineux, texte brun très foncé. Contraste 8.5:1, lecture franche, « pop » net. Le plus proche de l'identité skytrix.</div>
+    </div>
+
+    <!-- C — dégradé gold -->
+    <div class="lab-cell">
+      <div class="lab-tag">C · Dégradé gold</div>
+      <button class="pb" style="background:linear-gradient(135deg,#EBC95F 0%,#C9A23C 100%);color:#2A2008;border:1px solid #C9A23C;">
+        <span class="material-symbols-rounded">add</span>Créer un deck
+      </button>
+      <div class="lab-note">Dégradé subtil clair→ambre, texte encre. Effet « médaille », un peu plus riche que B.</div>
+    </div>
+
+    <!-- D — outline doré, fond clair -->
+    <div class="lab-cell">
+      <div class="lab-tag">D · Tinté + bordure</div>
+      <button class="pb" style="background:#FBF1D6;color:#7A5E1C;border:1.5px solid #C9A84C;">
+        <span class="material-symbols-rounded">add</span>Créer un deck
+      </button>
+      <div class="lab-note">CTA discret : fond gold très pâle, texte + bordure dorés. Élégant mais lit moins « action principale ».</div>
+    </div>
+
+    <!-- E — gold + ombre dorée -->
+    <div class="lab-cell">
+      <div class="lab-tag">E · Gold clair + halo</div>
+      <button class="pb" style="background:#E4BE54;color:#2A2008;border:1px solid #D4AC3E;box-shadow:0 4px 14px rgba(201,168,76,0.45);">
+        <span class="material-symbols-rounded">add</span>Créer un deck
+      </button>
+      <div class="lab-note">Variante B + halo doré porté. Donne de la présence sans alourdir la couleur.</div>
+    </div>
+
+  </div>
+
+  <div class="lab-mini">
+    <span>Aperçu en contexte (variante B) :</span>
+    <div class="lab-ctx">
+      <button class="pb sm" style="background:#E4BE54;color:#2A2008;border:1px solid #D4AC3E;">
+        <span class="material-symbols-rounded">add</span>Créer un deck
+      </button>
+      <button class="pb sm" style="background:transparent;color:#1F1B16;border:1px solid rgba(0,0,0,0.14);">Importer</button>
+      <button class="pb sm" style="background:transparent;color:#C62828;border:1px solid #C62828;">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== TABLE DE TOKENS ================================= -->
+<div class="token-table">
+  <h2>Tokens overridés en light mode — ~28 valeurs</h2>
+  <p>
+    Seuls les tokens <strong>neutres et directionnels</strong> sont redéfinis dans
+    un bloc <code>.theme-light { … }</code>, plus un nouveau token
+    <code>--gold-text</code>. Le <code>--gold</code> reste <strong>clair</strong>
+    (doctrine « gold clair ancre ») : il sert de fond, le texte encre se pose
+    dessus. Cyan + sémantiques sont assombris pour la lisibilité du texte. Les
+    ~95 autres tokens du DS (spacing, radius, typo, easings, ratios…) sont
+    theme-agnostiques et ne bougent pas.
+  </p>
+  <table>
+    <thead>
+      <tr><th>Token</th><th>Dark (actuel)</th><th>Light (proposé)</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+
+      <tr class="cat-row"><td colspan="4">Surfaces</td></tr>
+      <tr>
+        <td class="tok">--surface-base</td>
+        <td><span class="swatch"><span class="sw" style="background:#121212"></span>#121212</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#F4F2ED"></span>#F4F2ED</span></td>
+        <td class="note">Fond page — crème neutre chaud, repos oculaire</td>
+      </tr>
+      <tr>
+        <td class="tok">--surface-card</td>
+        <td><span class="swatch"><span class="sw" style="background:#1E1E1E"></span>#1E1E1E</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#FFFFFF"></span>#FFFFFF</span></td>
+        <td class="note">Cartes / form-fields — blanc franc</td>
+      </tr>
+      <tr>
+        <td class="tok">--surface-nav</td>
+        <td><span class="swatch"><span class="sw" style="background:#161616"></span>#161616</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#FAF8F3"></span>#FAF8F3</span></td>
+        <td class="note">Navbar — crème légèrement plus chaud que card</td>
+      </tr>
+      <tr>
+        <td class="tok">--surface-hover</td>
+        <td class="note">rgba(255,255,255,.06)</td>
+        <td class="note">rgba(0,0,0,.05)</td>
+        <td class="note"><span class="badge-inv">INVERSÉ</span> éclaircit → assombrit</td>
+      </tr>
+      <tr>
+        <td class="tok">--surface-overlay</td>
+        <td class="note">rgba(255,255,255,.04)</td>
+        <td class="note">rgba(0,0,0,.035)</td>
+        <td class="note"><span class="badge-inv">INVERSÉ</span> voile clair → voile sombre</td>
+      </tr>
+
+      <tr class="cat-row"><td colspan="4">Texte</td></tr>
+      <tr>
+        <td class="tok">--text-primary</td>
+        <td><span class="swatch"><span class="sw" style="background:#EAEAEA"></span>#EAEAEA</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#1F1B16"></span>#1F1B16</span></td>
+        <td class="note">14:1 sur blanc — AAA</td>
+      </tr>
+      <tr>
+        <td class="tok">--text-secondary</td>
+        <td><span class="swatch"><span class="sw" style="background:#9E9E9E"></span>#9E9E9E</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#6B655C"></span>#6B655C</span></td>
+        <td class="note">5.1:1 sur blanc — AA</td>
+      </tr>
+      <tr>
+        <td class="tok">--text-muted</td>
+        <td><span class="swatch"><span class="sw" style="background:#9E9E9E"></span>#9E9E9E</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#8A847A"></span>#8A847A</span></td>
+        <td class="note">Metadata — AA sur card</td>
+      </tr>
+      <tr>
+        <td class="tok">--text-inverse</td>
+        <td><span class="swatch"><span class="sw" style="background:#1a1208"></span>#1a1208</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#2A2008"></span>#2A2008</span></td>
+        <td class="note"><span class="badge-keep">CONSERVÉ sombre</span> texte encre sur le bouton primary gold clair</td>
+      </tr>
+
+      <tr class="cat-row"><td colspan="4">Bordures</td></tr>
+      <tr>
+        <td class="tok">--border-subtle</td>
+        <td class="note">rgba(255,255,255,.30)</td>
+        <td class="note">rgba(0,0,0,.16)</td>
+        <td class="note"><span class="badge-inv">INVERSÉ</span></td>
+      </tr>
+      <tr>
+        <td class="tok">--border-soft</td>
+        <td class="note">rgba(255,255,255,.10)</td>
+        <td class="note">rgba(0,0,0,.08)</td>
+        <td class="note"><span class="badge-inv">INVERSÉ</span></td>
+      </tr>
+      <tr>
+        <td class="tok">--border-medium</td>
+        <td class="note">rgba(255,255,255,.18)</td>
+        <td class="note">rgba(0,0,0,.14)</td>
+        <td class="note"><span class="badge-inv">INVERSÉ</span></td>
+      </tr>
+
+      <tr class="cat-row"><td colspan="4">Accent gold (Millennium) — doctrine « gold clair ancre »</td></tr>
+      <tr>
+        <td class="tok">--gold</td>
+        <td><span class="swatch"><span class="sw" style="background:#C9A84C"></span>#C9A84C</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#E4BE54"></span>#E4BE54</span></td>
+        <td class="note"><span class="badge-keep">RESTE CLAIR</span> ancre des FONDS (bouton primary, badges). Texte encre dessus</td>
+      </tr>
+      <tr>
+        <td class="tok">--gold-100</td>
+        <td><span class="swatch"><span class="sw" style="background:#d4b25a"></span>#d4b25a</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#D4AC3E"></span>#D4AC3E</span></td>
+        <td class="note">Survol du primary + bordure du CTA gold</td>
+      </tr>
+      <tr>
+        <td class="tok">--gold-text <span class="badge-keep">NOUVEAU</span></td>
+        <td class="note">— (n'existe pas)</td>
+        <td><span class="swatch"><span class="sw" style="background:#8A6A20"></span>#8A6A20</span></td>
+        <td class="note">Gold pour TEXTE/icône sur clair — 4.8:1, AA. Indispensable : un gold clair en texte sur blanc = illisible</td>
+      </tr>
+      <tr>
+        <td class="tok">--gold-50</td>
+        <td><span class="swatch"><span class="sw" style="background:#ffe9a8"></span>#ffe9a8</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#6B541F"></span>#6B541F</span></td>
+        <td class="note">"Gold clair" du dark → gold sombre en light (libellé chip actif)</td>
+      </tr>
+      <tr>
+        <td class="tok">--gold-soft-12</td>
+        <td class="note">rgba(201,168,76,.12)</td>
+        <td class="note">rgba(176,141,46,.14)</td>
+        <td class="note">Fond chip actif — alpha légèrement renforcé (rend moins sur clair)</td>
+      </tr>
+
+      <tr class="cat-row"><td colspan="4">Accent cyan + sémantiques</td></tr>
+      <tr>
+        <td class="tok">--cyan-300</td>
+        <td><span class="swatch"><span class="sw" style="background:#79b8ff"></span>#79b8ff</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#1E6FB8"></span>#1E6FB8</span></td>
+        <td class="note">Cyan clair → cyan profond (texte sur clair)</td>
+      </tr>
+      <tr>
+        <td class="tok">--success</td>
+        <td><span class="swatch"><span class="sw" style="background:#4caf50"></span>#4caf50</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#2E7D32"></span>#2E7D32</span></td>
+        <td class="note">Assombri — AA sur blanc</td>
+      </tr>
+      <tr>
+        <td class="tok">--warning</td>
+        <td><span class="swatch"><span class="sw" style="background:#ffc107"></span>#ffc107</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#B8860B"></span>#B8860B</span></td>
+        <td class="note">Ambre assombri — l'ambre vif est illisible sur blanc</td>
+      </tr>
+      <tr>
+        <td class="tok">--danger-strong</td>
+        <td><span class="swatch"><span class="sw" style="background:#ff5252"></span>#ff5252</span></td>
+        <td><span class="swatch"><span class="sw" style="background:#C62828"></span>#C62828</span></td>
+        <td class="note">Rouge assombri — AA sur blanc</td>
+      </tr>
+
+      <tr class="cat-row"><td colspan="4">Élévation + gradients</td></tr>
+      <tr>
+        <td class="tok">--elevation-1…3</td>
+        <td class="note">alpha noir .25 → .40</td>
+        <td class="note">alpha #1F1B16 .10 → .16</td>
+        <td class="note">Ombres bien plus douces — une ombre dark noircirait trop sur clair</td>
+      </tr>
+      <tr>
+        <td class="tok">--gradient-card-ds</td>
+        <td class="note">navy 30→22 translucide</td>
+        <td class="note">#FFFFFF → #FBF9F4</td>
+        <td class="note"><span class="badge-inv">NEUTRALISÉ</span> l'ambiance holo-arena n'a pas de sens en light</td>
+      </tr>
+      <tr>
+        <td class="tok">--gradient-arena-radial</td>
+        <td class="note">radial #1a1a2e → #0a0a14</td>
+        <td class="note">radial #FBFAF6 → #ECE9E1</td>
+        <td class="note"><span class="badge-inv">NEUTRALISÉ</span> fond de page clair, dégradé crème très doux</td>
+      </tr>
+      <tr>
+        <td class="tok">--scrim</td>
+        <td class="note">rgba(5,5,10,.5)</td>
+        <td class="note">rgba(20,18,14,.45)</td>
+        <td class="note"><span class="badge-keep">CONSERVÉ sombre</span> backdrop assombrit toujours derrière une modale</td>
+      </tr>
+
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  Mock non-fonctionnel · palette indicative à valider · les contrastes WCAG indiqués sont calculés sur #FFFFFF (surface-card)
+</footer>
+
+</body>
+</html>
