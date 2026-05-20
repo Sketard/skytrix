@@ -8,7 +8,7 @@
 }
 
 .error-message {
-  color: var(--mat-warn-color, #f44336);
+  color: var(--danger-strong);
   text-align: center;
   padding: 1rem;
 }
@@ -56,7 +56,7 @@
   }
 
   &.selected {
-    outline: 2px solid var(--mat-primary-color, #3f51b5);
+    outline: 2px solid var(--gold);
     transform: scale(1.05);
     position: relative;
     z-index: 1;
@@ -86,7 +86,7 @@
   padding: 1px 3px;
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.65);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .controls {
@@ -110,7 +110,7 @@
 
 .dfs-hint {
   font-size: 0.75rem;
-  color: var(--mat-warn-color, #f44336);
+  color: var(--danger-strong);
   width: 100%;
 }
 
@@ -171,7 +171,7 @@
 
 .seed-error {
   font-size: 0.75rem;
-  color: var(--mat-warn-color, #f44336);
+  color: var(--danger-strong);
   margin-top: -0.5rem;
 }
 
