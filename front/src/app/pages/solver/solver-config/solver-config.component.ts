@@ -12,18 +12,18 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { Deck } from '../../../core/model/deck';
 import type { SolverState, HandtrapConfig, SolverStartConfig } from '../../../core/model/solver.model';
 import { SolverService } from '../services/solver.service';
 import { onCardImgError } from '../solver-result/card-image-fallback';
+import { InputComponent } from '../../../components/input/input.component';
+import { CheckboxComponent } from '../../../components/checkbox/checkbox.component';
 
 interface DeduplicatedCard {
   cardId: number;
@@ -35,7 +35,7 @@ interface DeduplicatedCard {
 @Component({
   selector: 'app-solver-config',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, MatTooltipModule, TranslatePipe],
+  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, FormsModule, TranslatePipe, InputComponent, CheckboxComponent],
   templateUrl: './solver-config.component.html',
   styleUrl: './solver-config.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,0 +1,13 @@
+<label class="checkbox" [class.checkbox--disabled]="isDisabled()">
+  <input
+    type="checkbox"
+    class="checkbox__native"
+    [checked]="checked()"
+    [disabled]="isDisabled()"
+    [attr.aria-label]="ariaLabel()"
+    (change)="toggle()" />
+  <span class="checkbox__box" aria-hidden="true">
+    <span class="checkbox__check"></span>
+  </span>
+  <span class="checkbox__label"><ng-content /></span>
+</label>

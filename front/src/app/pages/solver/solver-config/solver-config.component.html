@@ -90,11 +90,12 @@
           } @else {
             <div class="handtrap-list" [class.disabled]="isLocked()">
               @for (ht of solverService.handtraps()!; track ht.cardId) {
-                <label class="handtrap-item">
-                  <mat-checkbox
-                    [checked]="selectedHandtraps().includes(ht.cardId)"
-                    (change)="onHandtrapToggle(ht.cardId, $event.checked)">
-                  </mat-checkbox>
+                <div class="handtrap-item">
+                  <app-checkbox
+                    [ngModel]="selectedHandtraps().includes(ht.cardId)"
+                    (ngModelChange)="onHandtrapToggle(ht.cardId, $event)"
+                    [ariaLabel]="ht.cardName">
+                  </app-checkbox>
                   <img [src]="handtrapImageUrl(ht.cardId)"
                     [alt]="ht.cardName"
                     loading="lazy"
@@ -102,7 +103,7 @@
                     class="handtrap-thumb"
                     (error)="onImgError($event)" />
                   <span class="handtrap-name">{{ ht.cardName }}</span>
-                </label>
+                </div>
               }
             </div>
           }
@@ -117,15 +118,15 @@
         <mat-icon [fontIcon]="showAdvanced() ? 'expand_less' : 'expand_more'"></mat-icon>
       </button>
       @if (showAdvanced()) {
-        <mat-form-field appearance="outline">
-          <mat-label>{{ 'solver.config.deckSeed' | translate }}</mat-label>
-          <input #seedInput matInput
-            placeholder="e.g. 123456,789012"
-            [value]="deckSeed()"
-            (input)="deckSeed.set(seedInput.value)"
-            [disabled]="isLocked()"
-            [matTooltip]="'solver.config.deckSeedTooltip' | translate">
-        </mat-form-field>
+        <app-input
+          [label]="'solver.config.deckSeed' | translate"
+          placeholder="e.g. 123456,789012"
+          [ngModel]="deckSeed()"
+          (ngModelChange)="deckSeed.set($event)"
+          [disabled]="isLocked()"
+          [invalid]="!deckSeedValid() && !!deckSeed()"
+          [matTooltip]="'solver.config.deckSeedTooltip' | translate">
+        </app-input>
         @if (!deckSeedValid() && deckSeed()) {
           <span class="seed-error">{{ 'solver.config.deckSeedInvalid' | translate }}</span>
         }

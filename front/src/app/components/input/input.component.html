@@ -1,0 +1,15 @@
+<label class="input" [class.input--disabled]="isDisabled()" [class.input--invalid]="invalid()">
+  @if (label(); as labelText) {
+    <span class="input__label">{{ labelText }}</span>
+  }
+  <input
+    class="input__field"
+    [type]="type()"
+    [value]="value()"
+    [placeholder]="placeholder()"
+    [disabled]="isDisabled()"
+    [attr.aria-label]="ariaLabel()"
+    [attr.aria-invalid]="invalid() || null"
+    (input)="onInput($event)"
+    (blur)="onBlur()" />
+</label>

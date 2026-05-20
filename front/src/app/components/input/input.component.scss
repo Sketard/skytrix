@@ -1,0 +1,61 @@
+// =============================================================================
+// <app-input> — DS text input, encapsulated. ControlValueAccessor.
+//
+// `.input` is the label+field stack; `.input__field` is the real `<input>`.
+// Focus-within border tint mirrors `.search-bar` (DS consistency).
+// =============================================================================
+
+:host {
+  display: block;
+}
+
+.input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  &--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.input__label {
+  font: var(--weight-semibold) var(--text-xs) 'Inter', sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.input__field {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font: var(--weight-normal) var(--text-sm) 'Inter', sans-serif;
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+
+  &::placeholder {
+    color: var(--text-disabled);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--gold-soft-50);
+    background: var(--surface-hover);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.input--invalid .input__field {
+  border-color: var(--danger-strong);
+
+  &:focus {
+    border-color: var(--danger-strong);
+  }
+}

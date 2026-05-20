@@ -1,0 +1,88 @@
+// =============================================================================
+// <app-checkbox> — DS checkbox, encapsulated. ControlValueAccessor.
+//
+// The native `<input>` is visually hidden (kept for focus + a11y); the
+// `.checkbox__box` is the drawn box, `.checkbox__check` the tick.
+//
+// Gold doctrine: checked box uses `background: var(--gold)` + the tick in
+// `--text-inverse` (dark in both themes → legible on gold).
+// =============================================================================
+
+:host {
+  display: inline-flex;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+
+  &--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Native input — hidden but focusable (a11y + keyboard).
+.checkbox__native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.checkbox__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--surface-overlay);
+  transition: background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out);
+}
+
+.checkbox:hover:not(.checkbox--disabled) .checkbox__box {
+  border-color: var(--gold-soft-50);
+}
+
+// Focus ring — driven by the hidden native input's focus state.
+.checkbox__native:focus-visible + .checkbox__box {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+// The tick — a rotated rectangle border, hidden until checked.
+.checkbox__check {
+  width: 5px;
+  height: 9px;
+  border: solid var(--text-inverse);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+  opacity: 0;
+  transition: opacity var(--transition-fast) var(--ease-out);
+}
+
+.checkbox__native:checked + .checkbox__box {
+  background: var(--gold);
+  border-color: var(--gold);
+
+  .checkbox__check { opacity: 1; }
+}
+
+.checkbox__label {
+  font: var(--weight-normal) var(--text-sm) 'Inter', sans-serif;
+  color: var(--text-primary);
+
+  &:empty { display: none; }
+}
