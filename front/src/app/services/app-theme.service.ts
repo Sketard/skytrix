@@ -27,8 +27,8 @@ const LIGHT_CLASS = 'theme-light';
  * localStorage + sync-apply-in-constructor pattern. The class is toggled on
  * `<html>` (documentElement) so the cascade reaches every page.
  *
- * NOT wired yet — instantiate via an `APP_INITIALIZER` in `app.config.ts`
- * (mirroring `initReducedMotion`) to apply the class before first paint.
+ * Instantiated at boot via an `APP_INITIALIZER` in `app.config.ts`
+ * (mirroring `initReducedMotion`) so the class is applied before first paint.
  */
 @Injectable({ providedIn: 'root' })
 export class AppThemeService {

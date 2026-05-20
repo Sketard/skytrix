@@ -6,8 +6,8 @@
 // viewer) reste TOUJOURS dark via un `.theme-dark` local qui re-déclare les
 // tokens sombres — voir `_tokens-dark-scope.scss`.
 //
-// Activé par `AppThemeService` qui pose `html.theme-light`. NON câblé tant
-// que ce partial n'est pas `@use`-é dans `styles.scss` (juste après `tokens`).
+// Activé par `AppThemeService` qui pose `html.theme-light`. `@use`-é dans
+// `styles.scss` juste après `tokens`.
 //
 // Doctrine — seuls les tokens NEUTRES + DIRECTIONNELS sont overridés :
 //   - surfaces / texte / bordures : valeurs claires
@@ -41,6 +41,9 @@ html.theme-light {
   // reste sombre, non concerné par ces valeurs.)
   --surface-bg:      #ECEAE3;
   --surface-bg-deep: #E4E1D8;
+
+  // Fond de slot de carte vide (deck-builder grid) — gris clair discret.
+  --surface-slot: #E4E1D8;
 
   // Pastille/badge sur image — clair translucide en light (cf. _tokens.scss).
   --surface-badge: rgba(255, 255, 255, 0.88);
@@ -93,6 +96,10 @@ html.theme-light {
   --gradient-card-ds: linear-gradient(135deg, #FFFFFF 0%, #FBF9F4 100%);
   --gradient-arena-radial:
     radial-gradient(ellipse at top, #FBFAF6 0%, #F4F2ED 60%, #ECE9E1 100%);
+  // Glows d'arène — fortement atténués sur fond clair (les rgba .55/.45
+  // saturés du dark feraient des taches teintées sur le crème).
+  --gradient-arena-glow-gold: radial-gradient(circle, rgba(201, 168, 76, 0.10), transparent 70%);
+  --gradient-arena-glow-cyan: radial-gradient(circle, rgba(74, 144, 217, 0.08), transparent 70%);
 
   // --- Scrim — reste sombre (un backdrop doit toujours assombrir) -------
   --scrim: rgba(20, 18, 14, 0.45);

@@ -334,10 +334,10 @@
   mat-icon {
     // !important: override mat-icon's default 24px host bind.
     @include icon-size(14px);
-    // Deck name is secondary info (the result pill is the primary visual);
-    // soft-50 gold matches the mockup §replay-meta-line treatment so it
-    // reads quieter than the gold pill icon on the same row.
-    color: var(--gold-soft-50);
+    // Deck name is secondary info (the result pill is the primary visual).
+    // `--gold-on-surface` (themed gold for text/icons) stays legible in
+    // light mode — `--gold-soft-50` (translucent) would wash out on cream.
+    color: var(--gold-on-surface);
   }
 }
 

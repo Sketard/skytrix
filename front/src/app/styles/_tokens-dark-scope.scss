@@ -17,8 +17,8 @@
 // `_tokens-light.scss` doit être ajouté ici aussi, sinon il "fuiterait"
 // clair dans le PvP.
 //
-// NON câblé tant que ce partial n'est pas `@use`-é dans `styles.scss` et que
-// les 2 composants ne portent pas la classe.
+// `@use`-é dans `styles.scss` ; `.theme-dark` portée par duel-page,
+// replay-page et login-page (host class).
 // =============================================================================
 
 .theme-dark {
@@ -33,6 +33,7 @@
   --surface-card-low: rgba(22, 22, 36, 0.85);
   --surface-bg:       #0a0a14;
   --surface-bg-deep:  #0f0f1c;
+  --surface-slot:     #2a2a3e;
   --surface-badge:    rgba(15, 15, 28, 0.82);
 
   // --- Texte ------------------------------------------------------------
@@ -76,6 +77,8 @@
     linear-gradient(135deg, var(--surface-card-ds) 0%, var(--surface-card-low) 100%);
   --gradient-arena-radial:
     radial-gradient(ellipse at top, #1a1a2e 0%, #0f0f1c 65%, #0a0a14 100%);
+  --gradient-arena-glow-gold: radial-gradient(circle, rgba(201, 168, 76, 0.55), transparent 70%);
+  --gradient-arena-glow-cyan: radial-gradient(circle, rgba(74, 144, 217, 0.45), transparent 70%);
 
   // --- Scrim ------------------------------------------------------------
   --scrim: rgba(5, 5, 10, 0.5);

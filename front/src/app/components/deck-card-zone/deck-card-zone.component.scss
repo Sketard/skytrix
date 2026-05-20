@@ -145,7 +145,7 @@ $DECK_CARD_WIDTH: 75px;
       // Background slot grid (cover images only): keep fixed sizes
       &.grid {
         position: relative;
-        border: var(--slot-border-color, var(--white)) solid 1px;
+        border: var(--slot-border-color, var(--border-medium)) solid 1px;
         background-color: var(--surface-slot);
         height: var(--slot-height, #{$DECK_CARD_HEIGHT});
         width: var(--slot-width, #{$DECK_CARD_WIDTH});
