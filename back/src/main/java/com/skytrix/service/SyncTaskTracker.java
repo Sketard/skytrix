@@ -20,9 +20,26 @@ public class SyncTaskTracker {
         private volatile boolean pauseRequested;
 
         public boolean start(int total) {
-            if (this.status != TaskStatus.IDLE) return false;
+            if (this.status != TaskStatus.IDLE && this.status != TaskStatus.RUNNING) return false;
             this.status = TaskStatus.RUNNING;
             this.total = total;
+            this.processed.set(0);
+            this.failed.set(0);
+            this.error = null;
+            this.pauseRequested = false;
+            return true;
+        }
+
+        /**
+         * Marks the task RUNNING synchronously before the async work begins, so
+         * the very first status poll never observes a stale IDLE state (which a
+         * polling UI would read as "task already finished"). The real total is
+         * set later via {@link #start(int)} once it is known.
+         */
+        public boolean markRunning() {
+            if (this.status != TaskStatus.IDLE) return false;
+            this.status = TaskStatus.RUNNING;
+            this.total = 0;
             this.processed.set(0);
             this.failed.set(0);
             this.error = null;

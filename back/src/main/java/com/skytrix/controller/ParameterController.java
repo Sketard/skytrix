@@ -48,6 +48,11 @@ public class ParameterController {
 	@PutMapping("/update/images")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void fetchImages() {
+		// Mark RUNNING synchronously so the first status poll never sees a stale
+		// IDLE state (the polling UI would read it as "task finished, nothing
+		// missing"). The real total is set inside fetchAllMissingImageAndSave
+		// once the flag reconciliation + missing-image query have run.
+		syncTaskTracker.get("images").markRunning();
 		processAsynchronously(() -> yugiproApiService.fetchAllMissingImageAndSave());
 	}
 
