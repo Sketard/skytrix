@@ -121,10 +121,11 @@
   padding: 0;
   border: none;
   border-bottom: 1px solid var(--gold-soft-20);
-  position: relative;
-  overflow: hidden;
   flex-shrink: 0;
   background: var(--surface-card-low);
+  // Anchors + size-query context for the ban-list ribbon (also sets
+  // position: relative + overflow: hidden).
+  @include ban-ribbon-container;
 
   // Bottom gradient overlay (mockup parity — softens the edge into the body)
   &::after {
@@ -162,6 +163,14 @@
     outline: 2px solid var(--gold-soft-50);
     outline-offset: -2px;
   }
+}
+
+// Ban-list corner ribbon — same pattern as the card-list thumbnail.
+.ban-ribbon {
+  // The banner is wide (~380px) — scale the ribbon down so the band reads
+  // at ~16px instead of the clamped 26px ceiling.
+  --ban-ribbon-scale: 0.62;
+  @include ban-ribbon;
 }
 
 // "Click to enlarge" affordance — bottom-right magnifier pill.

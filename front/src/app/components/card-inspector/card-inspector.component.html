@@ -147,6 +147,13 @@
                  [alt]="c | cardName"
                  class="inspector-image"
                  (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+            @if (c.banInfo < 3) {
+              <div class="ban-ribbon" [attr.data-ban]="c.banInfo"
+                   role="img"
+                   [attr.aria-label]="'banlist.label_' + c.banInfo | translate">
+                <span class="ban-ribbon__icon"></span>
+              </div>
+            }
             <span class="inspector-zoom-badge" aria-hidden="true">
               <mat-icon>zoom_in</mat-icon>
             </span>
@@ -176,6 +183,13 @@
              [alt]="c | cardName"
              class="inspector-image"
              (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+        @if (c.banInfo < 3) {
+          <div class="ban-ribbon" [attr.data-ban]="c.banInfo"
+               role="img"
+               [attr.aria-label]="'banlist.label_' + c.banInfo | translate">
+            <span class="ban-ribbon__icon"></span>
+          </div>
+        }
         <span class="inspector-zoom-badge" aria-hidden="true">
           <mat-icon>zoom_in</mat-icon>
         </span>

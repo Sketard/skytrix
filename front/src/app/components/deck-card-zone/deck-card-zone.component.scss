@@ -101,8 +101,11 @@ $DECK_CARD_WIDTH: 75px;
       box-sizing: border-box;
 
       &.card {
-        position: relative;
         padding: 3px;
+        // Anchors + size-query context for the ban-list ribbon (also sets
+        // position: relative + overflow: hidden — the latter clips the
+        // ribbon's diagonal ends).
+        @include ban-ribbon-container;
 
         app-card {
           --card-border-radius: 2px;
@@ -115,7 +118,7 @@ $DECK_CARD_WIDTH: 75px;
         // hide the content of the original draggable when the CDK clones it.
         &.cdk-drag-placeholder {
           app-card,
-          .ban-badge {
+          .ban-ribbon {
             visibility: hidden;
           }
 
@@ -152,8 +155,8 @@ $DECK_CARD_WIDTH: 75px;
   }
 }
 
-.ban-badge {
-  @include ban-info;
+.ban-ribbon {
+  @include ban-ribbon;
 }
 
 @keyframes card-pop-in {

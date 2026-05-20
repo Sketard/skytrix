@@ -16,6 +16,7 @@ export const CARD_BACK_PLACEHOLDER: SharedCardInspectorData = {
   displayDef: '',
   description: '',
   images: [],
+  banInfo: 3,
 };
 
 export const UNKNOWN_CARD_PLACEHOLDER: SharedCardInspectorData = {
@@ -28,6 +29,7 @@ export const UNKNOWN_CARD_PLACEHOLDER: SharedCardInspectorData = {
   displayDef: '',
   description: '',
   images: [],
+  banInfo: 3,
 };
 
 @Injectable()

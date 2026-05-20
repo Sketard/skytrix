@@ -39,6 +39,8 @@ export interface SharedCardInspectorData extends SharedCardData {
   readonly images: ReadonlyArray<CardImageDTO>;
   readonly selectedImageId?: number;
   readonly liveOverlay?: CardLiveOverlay;
+  /** Ban-list status: 0 forbidden, 1 limited, 2 semi-limited, 3 unrestricted. */
+  readonly banInfo: number;
 }
 
 export function resolveCardImage(cd: CardDetail, selectedImageId?: number): CardImageDTO | undefined {
@@ -77,5 +79,6 @@ export function toSharedCardInspectorData(cd: CardDetail, selectedImageId?: numb
     description: c.description ?? '',
     images: cd.images,
     selectedImageId,
+    banInfo: c.banInfo,
   };
 }

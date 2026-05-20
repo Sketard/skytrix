@@ -36,8 +36,10 @@
             (click)="onCardClick(cardDetail)">
           </app-card>
           @if (cardDetail.card.card.banInfo < 3) {
-            <div class="ban-badge" [attr.data-ban]="cardDetail.card.card.banInfo">
-              <div>{{ 'card_ban.' + cardDetail.card.card.banInfo | translate }}</div>
+            <div class="ban-ribbon" [attr.data-ban]="cardDetail.card.card.banInfo"
+                 role="img"
+                 [attr.aria-label]="'banlist.label_' + cardDetail.card.card.banInfo | translate">
+              <span class="ban-ribbon__icon"></span>
             </div>
           }
         }

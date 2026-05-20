@@ -109,15 +109,16 @@
 }
 
 .card-image-container {
-  position: relative;
   width: 100%;
   aspect-ratio: 59 / 86;
   border-radius: 2px;
-  overflow: hidden;
+  // Anchors + size-query context for the ban-list ribbon (also sets
+  // position: relative + overflow: hidden).
+  @include ban-ribbon-container;
 }
 
-.ban-badge {
-  @include ban-info;
+.ban-ribbon {
+  @include ban-ribbon;
 }
 
 .owned-count {

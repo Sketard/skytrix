@@ -69,6 +69,11 @@
     "1": "1",
     "2": "2"
   },
+  "banlist": {
+    "label_0": "Interdite",
+    "label_1": "Limitée",
+    "label_2": "Semi-limitée"
+  },
   "common": {
     "cancel": "Annuler",
     "confirm": "Confirmer",

@@ -44,58 +44,117 @@
 }
 
 // =============================================================================
-// ban-info — DS-conform ban-list badge for Yu-Gi-Oh! cards
+// ban-ribbon — DS-conform ban-list corner ribbon for Yu-Gi-Oh! cards
 // =============================================================================
 //
-// Variants are driven by `data-ban="0|1|2"` on the badge container, or by
-// the `--ban-{forbidden|limited|semi-limited}` modifier classes.
+// A diagonal corner ribbon. The DS variant colour fills the band; a white
+// "punched-out" status icon (assets/icons/banlist/*) sits centered on top, so
+// the band colour shows through the icon's holes — same convention as the
+// official YGO ban-list banners. Variant is driven by `data-ban="0|1|2"`.
 // 0 = forbidden (danger), 1 = limited (warning), 2 = semi-limited (gold).
+//
+// The ribbon scales with its CONTAINER, not in fixed pixels — card thumbnails
+// range from ~55px (deck slots) to ~380px (inspector banner). The container
+// MUST opt in with `@include ban-ribbon-container` (sets `position: relative`,
+// `overflow: hidden`, `container-type: inline-size`); the ribbon then sizes
+// every dimension in `cqw` (1cqw = 1% of the container width) so it stays
+// proportional at any thumbnail size. `--ban-ribbon-scale` fine-tunes it.
+//
+// Markup: a `.ban-ribbon[data-ban]` element with a single child icon span,
+// inside a `@include ban-ribbon-container` element.
 // =============================================================================
-@mixin ban-info {
-  position: absolute;
-  z-index: 1;
-  top: 4px;
-  left: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-pill);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-family: var(--font-display);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  line-height: 1;
-  border: 1px solid var(--danger-strong);
-  background: var(--danger-strong);
-  color: var(--text-primary);
-  box-shadow: var(--elevation-2);
 
-  div {
-    line-height: 1;
+// Container opt-in: anchors the ribbon and establishes the size-query context.
+@mixin ban-ribbon-container {
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+@mixin ban-ribbon {
+  // Band height tracks the container width (cqw) but is clamped: a pure
+  // linear cqw makes the icon illegible on tiny deck slots (~55px) and
+  // oversized on the inspector banner. The 13px floor keeps small thumbs
+  // readable; the 26px ceiling stops it ballooning. `--ban-ribbon-scale`
+  // fine-tunes per context (e.g. the wide inspector banner).
+  --_band: calc(clamp(13px, 15cqw, 26px) * var(--ban-ribbon-scale, 1));
+  // Offset (centre distance from the corner) must keep the band fully past
+  // the corner on both edges — d ≈ band·1.7 (see geometry note below).
+  --_offset: calc(var(--_band) * 1.7);
+  // Band width: very wide so both ends overshoot the corner and get clipped;
+  // only the symmetric middle segment shows.
+  --_width: calc(var(--_band) * 11);
+
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--_width);
+  height: var(--_band);
+  background: var(--danger-strong);
+  box-shadow: var(--elevation-2);
+  pointer-events: none;
+  // Corner ribbon geometry. The band's centre is invariant under rotation;
+  // we put it on the top-left corner's 45° bisector at distance d (`--_offset`)
+  // from the corner: centre = (d, d). Since centre = (left + W/2, top + H/2):
+  // left = d - W/2, top = d - H/2. d must keep the band's full height clear
+  // of the corner on both edges, else the visible shape becomes an asymmetric
+  // pentagon instead of a straight band.
+  top: calc(var(--_offset) - var(--_band) / 2);
+  left: calc(var(--_offset) - var(--_width) / 2);
+  transform: rotate(-45deg);
+  transform-origin: center;
+
+  // White status glyph — the asset is white with transparent "holes" so the
+  // band colour shows through. No counter-rotation: the icon inherits the
+  // band's -45° tilt so it runs along the ribbon's diagonal.
+  //
+  // The three assets have DIFFERENT native ratios, so the box width is the
+  // icon height × each asset's GLYPH ratio (`--ban-ribbon-ratio`, set per
+  // variant) — a single square box would letterbox them. The PNG assets
+  // also carry transparent side-padding around the glyph; `background-size`
+  // scales by HEIGHT (keeping the file's own ratio) and `overflow: hidden`
+  // clips the padding so the glyph fills the box edge to edge.
+  &__icon {
+    height: calc(var(--_band) * 0.78);
+    width: calc(var(--_band) * 0.78 * var(--ban-ribbon-ratio, 1));
+    overflow: hidden;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: auto 100%;
   }
 
-  // 0 = forbidden (default — kept as the strongest visual)
+  // 0 = forbidden — glyph bbox 96×40 → ratio 2.4
   &[data-ban='0'],
   &.ban--forbidden {
     background: var(--danger-strong);
-    border-color: var(--danger-strong);
-    color: var(--text-primary);
+
+    .ban-ribbon__icon {
+      --ban-ribbon-ratio: 2.4;
+      background-image: url('/assets/icons/banlist/forbidden.png');
+    }
   }
 
-  // 1 = limited
+  // 1 = limited — SVG viewBox 24×32 → ratio 0.75
   &[data-ban='1'],
   &.ban--limited {
     background: var(--warning);
-    border-color: var(--warning);
-    color: var(--surface-bg);
+
+    .ban-ribbon__icon {
+      --ban-ribbon-ratio: 0.75;
+      background-image: url('/assets/icons/banlist/limited.svg');
+    }
   }
 
-  // 2 = semi-limited
+  // 2 = semi-limited — glyph bbox 96×40 → ratio 2.4
   &[data-ban='2'],
   &.ban--semi-limited {
     background: var(--gold);
-    border-color: var(--gold);
-    color: var(--surface-bg);
+
+    .ban-ribbon__icon {
+      --ban-ribbon-ratio: 2.4;
+      background-image: url('/assets/icons/banlist/semi-limited.png');
+    }
   }
 }
