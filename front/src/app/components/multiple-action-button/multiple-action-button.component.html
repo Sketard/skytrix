@@ -1,5 +1,6 @@
 <div class="multipleActionButtons">
-  <button mat-icon-button class="mat-elevation-z0" [matMenuTriggerFor]="menu">
+  <button mat-icon-button class="mat-elevation-z0" [matMenuTriggerFor]="menu"
+          [attr.aria-label]="ariaLabelKey() | translate">
     <mat-icon>{{ icon() }}</mat-icon>
     <mat-icon class="multipleActionButtons-dots">keyboard_control</mat-icon>
   </button>

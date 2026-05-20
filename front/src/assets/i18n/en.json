@@ -185,7 +185,8 @@
   },
   "cardSearchPage": {
     "title": "Card search",
-    "subtitle": "Full database"
+    "subtitle": "Full database",
+    "results": "Search results"
   },
   "duel": {
     "leaveRoom": "Leave Room",
@@ -454,6 +455,7 @@
     "confirmPassword": "Confirm password",
     "createAccount": "Create an account",
     "signIn": "Sign in",
+    "modeTablist": "Login mode selection",
     "passwordMismatch": "Passwords do not match.",
     "back": "Back",
     "createButton": "Create account",
@@ -654,7 +656,11 @@
     "loadingDecks": "Loading decks",
     "loadingReplays": "Loading replays",
     "loadingWaitingRoom": "Loading waiting room",
-    "loadingDuelBoard": "Loading duel board"
+    "loadingDuelBoard": "Loading duel board",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "goToImage": "Go to image {{index}}",
+    "moreActions": "More actions"
   },
   "preferences": {
     "pageTitle": "Preferences",

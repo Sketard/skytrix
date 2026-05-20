@@ -13,7 +13,7 @@
   <div class="screen-bg-constellation__overlay"></div>
 </div>
 
-<main class="login-page">
+<div class="login-page">
   <!-- Logo — official brand assets. Gold halo drop-shadow connects the
        cool-tone asset to the warm DS ambient (see memory note 2026-05-16). -->
   <div class="login-logo">
@@ -25,11 +25,13 @@
     <h1 id="auth-title" class="sr-only">{{ 'login.signIn' | translate }}</h1>
 
     <!-- Mode tabs -->
-    <div class="mode-tabs" [attr.data-mode]="mode().toLowerCase()" role="tablist">
+    <div class="mode-tabs" [attr.data-mode]="mode().toLowerCase()" role="tablist"
+         [attr.aria-label]="'login.modeTablist' | translate">
       <button class="mode-tab"
               [class.is-active]="mode() === modes.LOGIN"
               type="button"
               role="tab"
+              aria-controls="login-form-stage"
               [attr.aria-selected]="mode() === modes.LOGIN"
               (click)="changeMode(modes.LOGIN, directions.RL)">
         {{ 'login.signIn' | translate }}
@@ -38,13 +40,14 @@
               [class.is-active]="mode() === modes.CREATE_ACCOUNT"
               type="button"
               role="tab"
+              aria-controls="login-form-stage"
               [attr.aria-selected]="mode() === modes.CREATE_ACCOUNT"
               (click)="changeMode(modes.CREATE_ACCOUNT, directions.LR)">
         {{ 'login.createAccount' | translate }}
       </button>
     </div>
 
-    <div class="form-stage">
+    <div class="form-stage" id="login-form-stage" role="tabpanel">
       @switch (mode()) {
         @case (modes.LOGIN) {
           <form class="form-panel" [formGroup]="loginForm" (ngSubmit)="connect()" autocomplete="on">
@@ -132,4 +135,4 @@
       }
     </div>
   </section>
-</main>
+</div>

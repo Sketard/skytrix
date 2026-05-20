@@ -36,7 +36,8 @@
   </button>
 
   @if (isOpen()) {
-    <div class="token-select__panel" role="listbox" [attr.aria-multiselectable]="true">
+    <div class="token-select__panel" role="listbox" [attr.aria-multiselectable]="true"
+         [attr.aria-label]="inputLabel() | translate">
       <div class="token-select__search">
         <mat-icon class="token-select__search-icon">search</mat-icon>
         <input

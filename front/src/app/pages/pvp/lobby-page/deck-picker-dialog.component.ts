@@ -38,11 +38,17 @@ interface DeckPickerDialogData {
  *  drives both via media queries, so the modal reacts live to viewport
  *  changes (devtools responsive toggle, device rotation) instead of being
  *  frozen to whatever the breakpoint was at `dialog.open()` time. */
+// Fixed id linking the dialog container's accessible name to the visible
+// <h2> title (axe `aria-dialog-name`). A single deck-picker is open at a
+// time, so a constant id cannot collide.
+const DECK_PICKER_TITLE_ID = 'deck-picker-title';
+
 export function deckPickerDialogConfig() {
   return {
     panelClass: 'holo-modal-panel',
     backdropClass: 'holo-modal-backdrop',
     maxWidth: '100vw',
+    ariaLabelledBy: DECK_PICKER_TITLE_ID,
   };
 }
 
@@ -141,7 +147,7 @@ export class DeckPickerDialogComponent implements OnInit {
   // dropped that directive to keep title/subtitle alignment under our own
   // control (Material's default title padding doesn't apply to the sibling
   // subtitle, so the two text blocks would drift apart).
-  readonly titleElementId = `deck-picker-title-${Math.random().toString(36).slice(2, 10)}`;
+  readonly titleElementId = DECK_PICKER_TITLE_ID;
 
   readonly decks = signal<ShortDeck[]>([]);
   readonly loading = signal(true);

@@ -80,7 +80,10 @@
       <app-card-filters [searchService]="cardSearchService"></app-card-filters>
     </aside>
 
-    <main class="card-search-page__main">
+    <!-- Plain <div>, not <section>/<main>: this is a layout column, not a
+         landmark. A labelled <section> would nest the card-inspector's
+         `complementary` landmark and break `landmark-complementary-is-top-level`. -->
+    <div class="card-search-page__main">
       <app-active-filters-bar [searchService]="cardSearchService"></app-active-filters-bar>
 
       @if (!isMobile()) {
@@ -89,7 +92,8 @@
         </div>
       }
 
-      <div class="card-search-page__results">
+      <div class="card-search-page__results" tabindex="0"
+           [attr.aria-label]="'cardSearchPage.results' | translate">
         <card-list
           [displayMode]="cardSearchService.displayMode()"
           [searchService]="cardSearchService"
@@ -107,7 +111,7 @@
         (favoriteChange)="onFavoriteChange()"
         (dismissed)="dismissInspector()">
       </app-card-inspector>
-    </main>
+    </div>
   </div>
 
   <!-- MOBILE FAB: open the search+filters bottom-sheet -->

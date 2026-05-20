@@ -81,19 +81,26 @@
 <ng-template #artSwitcher>
   @if (imageCount() > 1) {
     <div class="art-switcher">
-      <button mat-icon-button class="art-switcher-arrow" (click)="navigateImage(-1); $event.stopPropagation()">
+      <button mat-icon-button class="art-switcher-arrow"
+              [attr.aria-label]="'a11y.previousImage' | translate"
+              (click)="navigateImage(-1); $event.stopPropagation()">
         <mat-icon>chevron_left</mat-icon>
       </button>
       @if (imageCount() <= DOT_THRESHOLD) {
         <div class="art-switcher-dots">
           @for (img of card()!.images; track img.id; let idx = $index) {
-            <button class="art-switcher-dot" [class.active]="idx === currentImageIndex()" (click)="goToImage(idx); $event.stopPropagation()"></button>
+            <button class="art-switcher-dot" [class.active]="idx === currentImageIndex()"
+                    [attr.aria-label]="'a11y.goToImage' | translate:{ index: idx + 1 }"
+                    [attr.aria-current]="idx === currentImageIndex() ? 'true' : null"
+                    (click)="goToImage(idx); $event.stopPropagation()"></button>
           }
         </div>
       } @else {
         <span class="art-switcher-counter">{{ currentImageIndex() + 1 }} / {{ imageCount() }}</span>
       }
-      <button mat-icon-button class="art-switcher-arrow" (click)="navigateImage(1); $event.stopPropagation()">
+      <button mat-icon-button class="art-switcher-arrow"
+              [attr.aria-label]="'a11y.nextImage' | translate"
+              (click)="navigateImage(1); $event.stopPropagation()">
         <mat-icon>chevron_right</mat-icon>
       </button>
     </div>
