@@ -33,6 +33,9 @@ public class ParameterController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void fetchCards() {
 		var task = syncTaskTracker.get("cards");
+		// RUNNING set synchronously — see fetchImages() for the rationale
+		// (the first status poll must never observe a stale IDLE state).
+		task.markRunning();
 		processAsynchronously(() -> {
 			task.start(1);
 			try {
@@ -60,6 +63,7 @@ public class ParameterController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void fetcBanList() {
 		var task = syncTaskTracker.get("banlist");
+		task.markRunning();
 		processAsynchronously(() -> {
 			task.start(1);
 			try {
@@ -75,6 +79,7 @@ public class ParameterController {
 	@PutMapping("/update/images/tcg")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void updateTcgImages() {
+		syncTaskTracker.get("tcgImages").markRunning();
 		processAsynchronously(() -> yugiproApiService.updateTcgImages());
 	}
 
@@ -82,6 +87,7 @@ public class ParameterController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void updateDuelData() {
 		var task = syncTaskTracker.get("duelData");
+		task.markRunning();
 		processAsynchronously(() -> {
 			task.start(1);
 			try {
