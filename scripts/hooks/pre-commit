@@ -1,0 +1,25 @@
+#!/bin/sh
+# Pre-commit hook — lint des fichiers stagés du front.
+#
+# Garde-fou Design System (étape 1, 2026-05-20) : stylelint + ESLint via
+# lint-staged ne tournent QUE sur les fichiers stagés. Le code nouveau ou
+# modifié doit être propre ; la dette existante non touchée n'est pas bloquée.
+#
+# Activation : git config core.hooksPath scripts/hooks
+# (fait par scripts/setup-hooks.sh — à lancer une fois après le clone).
+#
+# Bypass ponctuel si nécessaire : git commit --no-verify
+
+# Ne rien faire si aucun fichier front n'est stagé.
+if ! git diff --cached --name-only | grep -q '^front/'; then
+  exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)/front" || exit 1
+
+if [ ! -d node_modules ]; then
+  echo "pre-commit: front/node_modules absent — npm install d'abord. Skip lint."
+  exit 0
+fi
+
+npx --no-install lint-staged --cwd .

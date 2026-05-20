@@ -1,0 +1,81 @@
+{
+  "extends": "stylelint-config-standard-scss",
+  "ignoreFiles": [
+    "**/node_modules/**",
+    "dist/**",
+    "coverage/**",
+    "src/app/test/**"
+  ],
+  "rules": {
+    "color-no-hex": null,
+    "scss/dollar-variable-pattern": null,
+    "scss/at-mixin-pattern": null,
+    "scss/at-function-pattern": null,
+    "scss/operator-no-newline-after": null,
+    "scss/comment-no-empty": null,
+    "selector-class-pattern": null,
+    "custom-property-pattern": null,
+    "keyframes-name-pattern": null,
+    "no-descending-specificity": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "shorthand-property-no-redundant-values": null,
+    "media-feature-range-notation": null,
+    "alpha-value-notation": null,
+    "color-function-notation": null,
+    "value-keyword-case": null,
+    "declaration-empty-line-before": null,
+    "comment-empty-line-before": null,
+    "scss/double-slash-comment-empty-line-before": null,
+    "rule-empty-line-before": null,
+    "at-rule-empty-line-before": null,
+    "scss/dollar-variable-empty-line-before": null,
+    "number-max-precision": null,
+    "property-no-vendor-prefix": null,
+    "value-no-vendor-prefix": null,
+    "declaration-block-single-line-max-declarations": null,
+    "selector-pseudo-element-no-unknown": [true, { "ignorePseudoElements": ["ng-deep"] }],
+    "scss/operator-no-unspaced": null,
+    "scss/dollar-variable-colon-space-after": null,
+    "no-duplicate-selectors": null,
+    "font-family-no-missing-generic-family-keyword": null,
+    "declaration-property-value-no-unknown": null,
+    "font-family-name-quotes": null,
+    "custom-property-empty-line-before": null,
+    "length-zero-no-unit": null,
+    "selector-pseudo-element-colon-notation": null,
+    "scss/no-global-function-names": null,
+    "declaration-block-no-shorthand-property-overrides": null,
+    "selector-not-notation": null,
+    "scss/at-mixin-argumentless-call-parentheses": null,
+    "color-hex-length": null,
+    "block-no-empty": null,
+    "no-invalid-position-at-import-rule": null,
+    "import-notation": null,
+    "declaration-block-no-duplicate-properties": null
+  },
+  "overrides": [
+    {
+      "comment": "Garde-fous DS appliqués partout — anti-ng-deep + no-hex.",
+      "files": ["src/**/*.scss"],
+      "rules": {
+        "color-no-hex": [true, {
+          "message": "DS: pas de couleur hex hors styles/ — utilise un token var(--…). Voir ds-token-doctrine."
+        }],
+        "selector-disallowed-list": [
+          ["/::ng-deep/"],
+          {
+            "message": "DS: ::ng-deep est déprécié par Angular — préfère un sélecteur global (styles.scss) ou ViewEncapsulation.",
+            "severity": "warning"
+          }
+        ]
+      }
+    },
+    {
+      "comment": "styles/ DÉFINIT les tokens — les couleurs littérales y sont légitimes.",
+      "files": ["**/styles/**/*.scss", "**/_sim-tokens.scss"],
+      "rules": {
+        "color-no-hex": null
+      }
+    }
+  ]
+}
