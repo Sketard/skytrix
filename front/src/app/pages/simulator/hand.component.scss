@@ -35,6 +35,8 @@
     translate: calc(-50% + var(--fan-x, 0px)) $sim-hand-hover-lift;
     rotate: 0deg;
     scale: $sim-hand-hover-scale;
+    // !important : chaque carte du fan porte un z-index inline (ordre de
+    // recouvrement) — seul `!important` bat un style inline.
     z-index: 100 !important;
     transition-duration: 150ms;
   }

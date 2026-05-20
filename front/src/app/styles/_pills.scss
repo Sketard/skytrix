@@ -34,8 +34,7 @@
   // flex parent reserves 24px of vertical space and the 14px glyph drifts
   // off-center. We pin all three dims so `align-items: center` lands the
   // icon on the same baseline as the pill text (line-height: 1, ~0.7rem).
-  @include icon-size(14px);
-  line-height: 14px !important;
+  @include icon-size(14px, 14px);
   display: inline-flex;
   align-items: center;
   justify-content: center;

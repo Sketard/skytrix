@@ -39,8 +39,7 @@
   // font-size alone leaves the glyph floating inside the 24px box. Pin
   // all three dims so `align-items: center` of the parent lands the
   // icon on the same baseline as the chip text.
-  @include icon-size(14px);
-  line-height: 14px !important;
+  @include icon-size(14px, 14px);
   display: inline-flex;
   align-items: center;
   justify-content: center;

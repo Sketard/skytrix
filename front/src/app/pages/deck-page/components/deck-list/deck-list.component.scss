@@ -44,6 +44,8 @@
 .deck-list__cta {
   flex-shrink: 0;
   white-space: nowrap;
+  // !important : la CTA est plus compacte (36px) que `.btn--md` (44px) ;
+  // l'override d'une seule classe doit battre la combo `.btn.btn--primary.btn--md`.
   min-height: var(--cta-inline-height) !important;
   height: var(--cta-inline-height);
 }

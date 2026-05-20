@@ -5,6 +5,9 @@
   @include icon-as-button;
 
   &-dots {
+    // !important : remplace le `transform: scale(0.8)` que le mixin
+    // `icon-as-button` applique à `.mdc-icon-button mat-icon` (0-1-1,
+    // spécificité supérieure à `.multipleActionButtons-dots`).
     transform: rotate(90deg) !important;
     font-size: 0.8em;
     position: absolute;

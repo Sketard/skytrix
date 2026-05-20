@@ -741,6 +741,9 @@
 
   // Mobile: compact buttons, Confirm takes the remaining room so the CTA
   // stays visually dominant. Desktop: both shrink to their content.
+  // !important : `.btn-primary`/`.btn-secondary` sont définis globalement
+  // par `.holo-modal-panel .btn-*` (_holo-modal.scss) à spécificité égale —
+  // l'ordre de cascade n'est pas garanti, d'où l'override défensif.
   .btn-secondary,
   .btn-primary {
     min-height: 40px !important;

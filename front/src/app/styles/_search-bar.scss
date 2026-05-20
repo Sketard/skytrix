@@ -28,8 +28,7 @@
 
 .search-bar__icon {
   color: var(--text-muted);
-  @include icon-size(18px);
-  line-height: 18px !important;
+  @include icon-size(18px, 18px);
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;

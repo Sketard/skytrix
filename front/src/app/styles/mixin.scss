@@ -12,11 +12,19 @@
 // dans chaque composant qui redimensionne une icône.
 //
 // Usage :  mat-icon { @include icon-size(18px); }
+//
+// $line-height (optionnel) : aligne l'icône sur la baseline du texte
+// voisin (chips, pills, search-bar). Material force aussi `line-height:
+// 24px`, d'où le `!important` ici aussi.
+//   Usage :  mat-icon { @include icon-size(14px, 14px); }
 // =============================================================================
-@mixin icon-size($size) {
+@mixin icon-size($size, $line-height: null) {
   font-size: $size !important;
   width: $size !important;
   height: $size !important;
+  @if $line-height {
+    line-height: $line-height !important;
+  }
 }
 
 @mixin icon-as-button {
