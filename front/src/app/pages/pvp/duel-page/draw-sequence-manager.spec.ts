@@ -1,5 +1,5 @@
 import { signal, WritableSignal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, flush } from '@angular/core/testing';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { CardTravelEngine } from './card-travel-engine.service';
@@ -92,10 +92,14 @@ describe('DrawSequenceManager', () => {
     };
 
     const mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
-      'getZoneElement', 'toAbsoluteUrl',
+      'getZoneElement', 'toAbsoluteUrl', 'travel',
     ]);
     mockCardTravel.getZoneElement.and.returnValue(null);
     mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
+    // travel is reached when fakeAsync flush() drains a fire-and-forget
+    // draw coroutine to completion — stub it so the drained run resolves
+    // cleanly instead of throwing "travel is not a function".
+    mockCardTravel.travel.and.returnValue(Promise.resolve());
 
     const mockFloatRegistry = jasmine.createSpyObj<FloatRegistryService>('FloatRegistryService', [
       'clearLandedTravels', 'clearLandedByDstPrefix', 'getLandedFloatsByDstPrefix',
@@ -176,12 +180,16 @@ describe('DrawSequenceManager', () => {
       expect(manager.handExpansionSlots()).toEqual([0, 5]);
     });
 
-    it('beginHandBatch throws (duelAssert) when an initial draw is in flight', async () => {
+    it('beginHandBatch throws (duelAssert) when an initial draw is in flight', fakeAsync(() => {
       // Trigger an initial draw to populate _drawsInFlight without awaiting it.
       // launchInitialDraw is fire-and-forget from processDrawEvent.
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
       expect(() => manager.beginHandBatch(0, 1)).toThrowError(/handExpansionSlots would double-book/);
-    });
+      // Drain the fire-and-forget launchInitialDraw coroutine inside virtual
+      // time so its parked setTimeout/afterNextRender don't fire against the
+      // destroyed injector at teardown (NG0205 leak).
+      flush();
+    }));
   });
 
   // ---------------------------------------------------------------------------
@@ -204,13 +212,14 @@ describe('DrawSequenceManager', () => {
       expect(result).toBe(0);
     });
 
-    it('first draw for a player returns "async" and marks initial draw done', () => {
+    it('first draw for a player returns "async" and marks initial draw done', fakeAsync(() => {
       const result = manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
       expect(result).toBe('async');
       expect(manager.hasDrawsInFlight).toBeTrue();
-    });
+      flush(); // drain the fire-and-forget launchInitialDraw coroutine
+    }));
 
-    it('second draw for the same player returns "async" via mid-game path', () => {
+    it('second draw for the same player returns "async" via mid-game path', fakeAsync(() => {
       // First draw consumed → _initialDrawDone[0] = true
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
       // Reset draws-in-flight to simulate first sequence having completed
@@ -223,7 +232,8 @@ describe('DrawSequenceManager', () => {
       // _drawsInFlight grows again on the 2nd call without resetting.
       const r2 = manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
       expect(r2).toBe('async');
-    });
+      flush(); // drain both fire-and-forget draw coroutines
+    }));
   });
 
   // ---------------------------------------------------------------------------
@@ -235,11 +245,12 @@ describe('DrawSequenceManager', () => {
       expect(manager.awaitDrawsComplete()).toBeNull();
     });
 
-    it('returns a Promise when draws are in flight', () => {
+    it('returns a Promise when draws are in flight', fakeAsync(() => {
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
       const p = manager.awaitDrawsComplete();
       expect(p).toBeInstanceOf(Promise);
-    });
+      flush(); // drain the fire-and-forget launchInitialDraw coroutine
+    }));
   });
 
   // ---------------------------------------------------------------------------
@@ -299,7 +310,7 @@ describe('DrawSequenceManager', () => {
   // ---------------------------------------------------------------------------
 
   describe('reset', () => {
-    it('clears handExpansionSlots, drawsInFlight, and initialDrawDone', () => {
+    it('clears handExpansionSlots, drawsInFlight, and initialDrawDone', fakeAsync(() => {
       manager.beginHandBatch(0, 3);
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
       expect(manager.hasDrawsInFlight).toBeTrue();
@@ -308,17 +319,19 @@ describe('DrawSequenceManager', () => {
       manager.reset();
       expect(manager.hasDrawsInFlight).toBeFalse();
       expect(manager.handExpansionSlots()).toEqual([0, 0]);
-    });
+      flush(); // drain the fire-and-forget launchInitialDraw coroutine
+    }));
   });
 
   describe('resetHandAnimationState', () => {
-    it('only resets handExpansionSlots, leaves draw state untouched', () => {
+    it('only resets handExpansionSlots, leaves draw state untouched', fakeAsync(() => {
       manager.beginHandBatch(0, 2);
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
       manager.resetHandAnimationState();
       expect(manager.handExpansionSlots()).toEqual([0, 0]);
       expect(manager.hasDrawsInFlight).toBeTrue(); // not touched
-    });
+      flush(); // drain the fire-and-forget launchInitialDraw coroutine
+    }));
   });
 
   describe('clearTimeouts', () => {
