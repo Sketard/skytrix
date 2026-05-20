@@ -1,5 +1,5 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, DragDropModule } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, computed, HostListener, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 import { NgClass } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
@@ -33,8 +33,7 @@ export class DeckCardZoneComponent {
   readonly staticDeckZone = StaticDeckZone;
   readonly toSharedCardData = toSharedCardData;
 
-  @HostListener('contextmenu', ['$event'])
-  onRightClick(event: any, zone: DeckZone | undefined, index: number) {
+  onRightClick(event: MouseEvent, zone: DeckZone | undefined, index: number) {
     event.preventDefault();
     event.stopPropagation();
     if (!zone) {
