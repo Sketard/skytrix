@@ -6,52 +6,40 @@ When writing or modifying code, always apply the `clean-code` and `code-principl
 
 ## Design System & Styling Conventions
 
-The front-end has a custom Design System. Styling rules are enforced by
-`stylelint` + a pre-commit hook (`scripts/hooks/`, activated via
-`core.hooksPath`). Full reference: `front/LINTING.md`.
+The front-end has a custom Design System. **Before writing ANY UI, read
+`front/DESIGN-SYSTEM.md`** — it is the canonical component catalogue
+(triage of the 36 `components/`, per-component API, usage rules). Styling
+rules are enforced by `stylelint` + ESLint + a pre-commit hook
+(`scripts/hooks/`, activated via `core.hooksPath`); full lint reference:
+`front/LINTING.md`.
 
-- **Colors** → always a token `var(--…)`. Literal hex is allowed only in
+Non-negotiable rules (full detail in `DESIGN-SYSTEM.md`):
+
+- **Use DS components, never ad-hoc HTML/SCSS.** Buttons / pills / chips /
+  toggles / form controls are Angular components (`<app-button>`,
+  `<app-icon-button>`, `<app-pill>`, `<app-chip>`, `<app-seg-button>`,
+  `<app-input>`, `<app-checkbox>`, `<app-toggle-switch>`, …), NOT global
+  SCSS classes. Never `<button class="…">`, never `mat-*-button` /
+  `<mat-chip>` (MDC layer). `.badge` stays a global class (`_badge.scss`,
+  single consumer).
+- **Colors** → always a token `var(--…)`. Literal hex only in
   token-defining files (`front/src/app/styles/**`, `_sim-tokens.scss`,
-  `simulator-page.component.scss`).
+  `simulator-page.component.scss`). `--gold` = background/accent/border/
+  glow; `--gold-on-surface` = gold text/icon `color:`.
 - **`mat-icon` sizing** → `@include icon-size($size, $line-height?)` from
   `styles/mixin.scss`. Never re-write the `font-size/width/height
-  !important` trio by hand — the `!important` (required by Material) is
-  centralized in that mixin.
-- **`::ng-deep`** → forbidden in components. Style non-encapsulated
-  CDK/Material elements via `styles/_cdk-overrides.scss`; style a child
-  component via a variant `input` (e.g. `embedded` on `pvp-timer-badge`).
-- **DS components** → buttons / pills / chips / toggles / form controls
-  are Angular components, NOT global SCSS classes (componentisation
-  2026-05-20):
-  - `<app-button>` (`components/button/`) — variants primary/secondary/
-    ghost/danger × sm/md/lg, modifiers cta/shimmer/full/iconOnly/flash/
-    loading; polymorphic host (`link`/`href` → `<a>`, else `<button>`).
-  - `<app-icon-button>` (`components/icon-button/`) — icon-only;
-    `ariaLabel` is `input.required`.
-  - `<app-pill>` (`components/pill/`) — non-interactive status label;
-    typed variants or arbitrary `color`/`textColor` for data-driven tags.
-  - `<app-chip>` (`components/chip/`) — interactive filter toggle
-    (renders `aria-pressed`).
-  - `<app-seg-button>` (`components/seg-button/`) — segmented view toggle.
-  - `<app-input>` / `<app-checkbox>` (`components/input|checkbox/`) —
-    `ControlValueAccessor` form controls (work with `[(ngModel)]` +
-    reactive forms).
-  The button/pill/chip/seg components have a host wrapper carrying the
-  variant classes + an inner `.btn__el` / `.icon-btn__el` / `.chip__el`
-  / `.seg-btn__el` element. A parent SCSS override of chrome (padding,
-  bg, hover, `:disabled`) MUST target the inner element; size contracts
-  (`min-height`, `width`) stay on the host. Never combine with
-  `mat-*-button` / `mat-chip` (MDC layer). NO Material `<mat-chip>` left.
-  `.badge` stays a global class (`_badge.scss`, single consumer).
-  Material kept intentionally for `<mat-autocomplete>`-coupled inputs.
-- **`!important`** → structural cases only (Material/CDK override,
-  `prefers-reduced-motion`, state vs higher-specificity `:hover`, inline
-  style). Any `!important` outside the mixin needs a `// !important: why`
-  comment.
-- **Gold tokens** → `--gold` for background/accent/border/glow,
-  `--gold-on-surface` for gold text/icon `color:` (light-mode doctrine —
-  aliased to `--gold` in dark).
-- **Radius** → single scale `--radius-{sm,md,lg,xl,pill}`.
+  !important` trio by hand.
+- **`::ng-deep`** → forbidden in components. Non-encapsulated CDK/Material
+  → `styles/_cdk-overrides.scss`; child component → a variant `input`.
+- **Host-wrapper contract** (button/pill/chip/seg/input/checkbox) — a
+  parent SCSS override of chrome (padding, bg, hover, `:disabled`) MUST
+  target the inner `.btn__el` / `.icon-btn__el` / etc.; size contracts
+  (`min-height`, `width`) stay on the host.
+- **`!important`** → structural cases only; any `!important` outside the
+  mixin needs a `// !important: why` comment.
+
+Maintenance: any new component added under `components/` MUST be added to
+`front/DESIGN-SYSTEM.md` (category + API) — there is no sync script.
 
 ## Animation Parity Rule
 

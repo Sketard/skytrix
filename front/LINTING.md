@@ -61,6 +61,9 @@ Angular) vivent regroupés dans `src/app/styles/_cdk-overrides.scss`.
 
 ## Conventions DS issues du chantier (2026-05-20)
 
+> Catalogue complet des composants DS + API : [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md).
+> Ce fichier-ci ne couvre que les règles de **lint/styling**.
+
 Le chantier d'assainissement (étapes 1-3 + SCSS legacy + `!important`)
 a posé ces conventions — à respecter pour tout nouveau style :
 
