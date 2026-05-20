@@ -1,6 +1,6 @@
 # Architecture — Frontend (Angular SPA)
 
-> Angular 20.3 single-page app. Standalone components everywhere. Signals as the canonical state primitive. OnPush change detection. Hosts four major features behind one shell: deck management, solo simulator, PvP duels, replay viewer, and combo path solver.
+> Angular 21.2 single-page app. Standalone components everywhere. Signals as the canonical state primitive. OnPush change detection. Hosts four major features behind one shell: deck management, solo simulator, PvP duels, replay viewer, and combo path solver.
 
 ## Executive summary
 
@@ -14,8 +14,8 @@ The **PvP/Replay/Solver** pages are the architectural centerpieces. Each has its
 
 | Concern | Tech | Notes |
 |---|---|---|
-| Framework | Angular 20.3 | standalone components, signal-based I/O |
-| UI kit | Angular Material 20.2 + CDK | DragDrop, dialog, snackbar, paginator |
+| Framework | Angular 21.2 | standalone components, signal-based I/O |
+| UI kit | Angular Material 21.2 + CDK | DragDrop, dialog, snackbar, paginator |
 | Language | TypeScript 5.9 | `strict: true`, `noImplicitReturns`, `strictTemplates: true` |
 | Reactivity | Angular signals (primary) + RxJS 7.8.0 (auth refresh, HTTP) | |
 | HTTP | functional interceptors (`authInterceptor`, `loaderInterceptor`) | never class-based |

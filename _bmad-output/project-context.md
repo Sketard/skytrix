@@ -21,7 +21,7 @@ _Critical rules and patterns AI agents must follow when implementing code. Focus
 | Part | Path | Stack |
 |---|---|---|
 | Backend | `back/` | Spring Boot 3.4.2 / Java 21 |
-| Frontend | `front/` | Angular 20.3 SPA |
+| Frontend | `front/` | Angular 21.2 SPA |
 | Duel server | `duel-server/` | Node 24 + ocgcore-wasm |
 
 Docker stack: `db` (postgres) ↔ `back` ↔ `duel-server` ↔ `front` (Nginx). Two networks: `skytrix-internal` (bridge), `skytrix-data` (`internal: true`, only back+db).
@@ -38,8 +38,8 @@ Features shipped:
 ## Technology Stack & Versions
 
 ### Frontend (`front/`)
-- Angular 20.3 (standalone components, signals, OnPush)
-- Angular Material 20.2 + CDK DragDrop
+- Angular 21.2 (standalone components, signals, OnPush)
+- Angular Material 21.2 + CDK DragDrop
 - TypeScript 5.9 (strict, target ES2022)
 - RxJS 7.8.0 (sparse — auth refresh, deck list)
 - ngx-translate 16.0.4 (FR default, EN supported)

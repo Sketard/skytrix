@@ -21,7 +21,7 @@ This is a **multi-part monorepo** with three deployable artifacts plus shared pl
 ```
 skytrix/
 ├── back/                   # Spring Boot 3.4.2 + Java 21 (REST API, PostgreSQL, JWT auth)
-├── front/                  # Angular 20.3 (SPA: deck mgmt + simulator + PvP + replay + solver)
+├── front/                  # Angular 21.2 (SPA: deck mgmt + simulator + PvP + replay + solver)
 ├── duel-server/            # Node + ocgcore (WebSocket: PvP duels, replay precompute, solver pool)
 ├── docs/                   # Generated documentation (this directory)
 ├── _bmad/                  # BMAD config + scripts
@@ -42,7 +42,7 @@ skytrix/
 
 | Layer | Technology |
 |---|---|
-| Frontend | Angular 20.3, Material 20.2, CDK DragDrop, TypeScript 5.9 strict, RxJS 7.8.0, ngx-translate 16.0.4, Karma+Jasmine, Playwright (e2e) |
+| Frontend | Angular 21.2, Material 21.2, CDK DragDrop, TypeScript 5.9 strict, RxJS 7.8.0, ngx-translate 16.0.4, Karma+Jasmine, Playwright (e2e) |
 | Backend | Java 21, Spring Boot 3.4.2, Spring Security + JWT (JJWT 0.12.6), Spring Data JPA, PostgreSQL 16, Flyway 11.2.0, Lombok, MapStruct 1.5.5 |
 | Duel Server | Node 24, TypeScript ES2022 strict, `ws`, `@n1xx1/ocgcore-wasm`, `better-sqlite3`, `piscina` (worker pool), `vitest`, `zod` |
 | Infra | Docker Compose, Nginx (Let's Encrypt via Certbot), JSON-file logs (50 MB × 5 rotated) |

@@ -21,7 +21,7 @@
 
 ### front (Angular SPA)
 - **Type:** web
-- **Stack:** Angular 20.3, Material 20.2 + CDK, TypeScript 5.9 strict, RxJS 7.8.0, ngx-translate 16.0.4 (FR default), jspdf, SCSS, Karma+Jasmine, Playwright
+- **Stack:** Angular 21.2, Material 21.2 + CDK, TypeScript 5.9 strict, RxJS 7.8.0, ngx-translate 16.0.4 (FR default), jspdf, SCSS, Karma+Jasmine, Playwright
 - **Root:** [front/](../front/)
 - **Port:** 80 / 443 (Nginx)
 - **Architecture:** [architecture-front.md](./architecture-front.md)
