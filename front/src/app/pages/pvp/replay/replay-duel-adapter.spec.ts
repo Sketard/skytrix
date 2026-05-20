@@ -148,6 +148,44 @@ describe('ReplayDuelAdapter', () => {
       adapter.feedTransition(precomputed(), precomputed({ events: [], boardState: bs }));
       expect(adapter.boardStateView.renderedState().turnPlayer).toBe(1);
     });
+
+    // Regression: the per-event `boardStateAfter` snapshot (attached server-side
+    // to BOARD_CHANGING events during chain resolution) must also be relativized.
+    // Left un-swapped, perspective=1 replays render the board flipped for one
+    // frame when the orchestrator calls updateLogical(event.boardStateAfter).
+    it('should swap per-event boardStateAfter when perspectiveIndex is 1', () => {
+      adapter.perspectiveIndex.set(1);
+      const snapshot = boardState({
+        turnPlayer: 0,
+        players: [
+          { lp: 5000, deckCount: 30, extraCount: 10, zones: [] },
+          { lp: 7000, deckCount: 35, extraCount: 12, zones: [] },
+        ],
+      });
+      const move = { ...msgMove(), boardStateAfter: snapshot } as ServerMessage;
+      adapter.feedTransition(precomputed(), precomputed({ events: [move] }));
+      const queued = adapter.animationQueue()[0] as { boardStateAfter?: BoardStatePayload };
+      expect(queued.boardStateAfter).toBeDefined();
+      expect(queued.boardStateAfter!.players[0].lp).toBe(7000);
+      expect(queued.boardStateAfter!.players[1].lp).toBe(5000);
+      expect(queued.boardStateAfter!.turnPlayer).toBe(1);
+    });
+
+    it('should leave per-event boardStateAfter untouched when perspectiveIndex is 0', () => {
+      adapter.perspectiveIndex.set(0);
+      const snapshot = boardState({
+        turnPlayer: 0,
+        players: [
+          { lp: 5000, deckCount: 30, extraCount: 10, zones: [] },
+          { lp: 7000, deckCount: 35, extraCount: 12, zones: [] },
+        ],
+      });
+      const move = { ...msgMove(), boardStateAfter: snapshot } as ServerMessage;
+      adapter.feedTransition(precomputed(), precomputed({ events: [move] }));
+      const queued = adapter.animationQueue()[0] as { boardStateAfter?: BoardStatePayload };
+      expect(queued.boardStateAfter!.players[0].lp).toBe(5000);
+      expect(queued.boardStateAfter!.turnPlayer).toBe(0);
+    });
   });
 
   describe('feedTransitionPhased (with decisions)', () => {

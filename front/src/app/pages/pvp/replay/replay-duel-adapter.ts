@@ -88,6 +88,30 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     };
   }
 
+  /**
+   * Relativize the per-event `boardStateAfter` snapshot (attached server-side
+   * to BOARD_CHANGING events during chain resolution — see CLAUDE.md
+   * "Per-event boardStateAfter snapshot"). `swapBoardState` only covers the
+   * step/transition-level `boardState`; the snapshot buried on each event is
+   * consumed directly by `AnimationOrchestratorService.processEvent()` via
+   * `rbs.updateLogical(event.boardStateAfter)`. Left un-swapped, perspective=1
+   * replays render the board with absolute server P0 at the bottom for one
+   * frame before the next commit corrects it — the "board briefly flips"
+   * symptom. The orchestrator is shared with PvP and assumes already-relative
+   * data, so the swap MUST happen here in the replay adapter.
+   *
+   * Returns the events untouched for perspective 0, and a shallow-cloned
+   * array (only events carrying a snapshot are cloned) for perspective 1.
+   */
+  private swapEventBoardStates(events: ServerMessage[]): ServerMessage[] {
+    if (this.perspectiveIndex() === 0) return events;
+    return events.map(e => {
+      const snapshot = (e as { boardStateAfter?: BoardStatePayload }).boardStateAfter;
+      if (!snapshot) return e;
+      return { ...e, boardStateAfter: this.swapBoardState(snapshot) };
+    });
+  }
+
   // ══════════════════════════════════════════════════
   //  Replay-specific API — Step Queue + Decision State
   // ══════════════════════════════════════════════════
@@ -121,7 +145,7 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     this.rbs.syncRendered();
 
     this.resetProcessorForTransition();
-    for (const event of next.events) {
+    for (const event of this.swapEventBoardStates(next.events)) {
       this.processor.processMessage(event);
     }
 
@@ -152,7 +176,8 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     this.rbs.syncRendered();
 
     this.resetProcessorForTransition();
-    this._steps = this.buildSteps(next.events, next.decisions, this.swapBoardState(next.boardState));
+    this._steps = this.buildSteps(
+      this.swapEventBoardStates(next.events), next.decisions, this.swapBoardState(next.boardState));
     this.logger.log(DuelLogCategory.REPLAY, 'feedPhased steps=%o', this._steps.map(s => s.kind));
     this.advanceStep();
     return this._activeDecision() ? 'prompt' : 'done';

@@ -200,6 +200,50 @@ describe('PvpBoardContainerComponent — field zones + EMZ (C4.1)', () => {
 
     expect(component.absoluteTurnPlayer()).toBe(0);
   });
+
+  // Regression: `LinkedCardRef.controller` is an absolute OCGCore index
+  // (message-filter.ts swaps players[] but NOT per-card `controller`). The
+  // linkedZoneMap target key MUST relativize it via ownPlayerIndex — else
+  // Equip/target lines point at the wrong board half for the J2 / perspective-1
+  // viewer.
+  it('linkedZoneMap relativizes link.controller against ownPlayerIndex', () => {
+    const linkSpell = makeCard({
+      cardCode: 50001, name: 'Equip Spell',
+      // Equip spell sits in S1, points at a monster controlled by absolute
+      // player 1 in M3.
+      linkedCards: [{ kind: 'equip', controller: 1, location: LOCATION.MZONE, sequence: 2 }],
+    });
+    const state = makeState([makeZone('S1', [linkSpell])]);
+
+    // Viewer is absolute player 1 → the controller-1 monster is the viewer's
+    // OWN side → its zone key must use relative 0, not absolute 1.
+    fixture.componentRef.setInput('duelState', state);
+    fixture.componentRef.setInput('ownPlayerIndex', 1);
+    fixture.detectChanges();
+
+    const map = (component as unknown as { linkedZoneMap: () => Map<string, string[]> }).linkedZoneMap();
+    expect(map.get('S1-0')).toEqual(['M3-0']);
+    expect(map.get('M3-0')).toEqual(['S1-0']);
+    expect(map.has('M3-1')).toBeFalse();
+  });
+
+  it('linkedZoneMap keeps controller absolute-matching when ownPlayerIndex is 0', () => {
+    const linkSpell = makeCard({
+      cardCode: 50002, name: 'Equip Spell',
+      linkedCards: [{ kind: 'equip', controller: 1, location: LOCATION.MZONE, sequence: 2 }],
+    });
+    const state = makeState([makeZone('S1', [linkSpell])]);
+
+    // Viewer is absolute player 0 → controller-1 monster is the opponent →
+    // relative 1.
+    fixture.componentRef.setInput('duelState', state);
+    fixture.componentRef.setInput('ownPlayerIndex', 0);
+    fixture.detectChanges();
+
+    const map = (component as unknown as { linkedZoneMap: () => Map<string, string[]> }).linkedZoneMap();
+    expect(map.get('S1-0')).toEqual(['M3-1']);
+    expect(map.get('M3-1')).toEqual(['S1-0']);
+  });
 });
 
 // =============================================================================

@@ -112,6 +112,19 @@ Key rules:
    optional: `filterMessage` sanitizes the snapshot per-player (opponent
    hand/deck hidden unless omniscient) to prevent info leak.
 
+   **Replay perspective swap** — `boardStateAfter` arrives in absolute
+   server P0 order (replay precompute is perspective-agnostic). The
+   orchestrator is shared with PvP and assumes already-relative data, so
+   `ReplayDuelAdapter` MUST relativize the per-event snapshot for
+   `perspectiveIndex === 1` — `swapEventBoardStates()` rewrites
+   `event.boardStateAfter` via `swapBoardState()` at the `feedTransition`
+   / `feedTransitionPhased` entry points (before `buildSteps` / processor
+   feeding). `swapBoardState()` alone is NOT enough — it only covers the
+   step/transition-level `boardState`, not the snapshot buried on each
+   event. Skip the swap and perspective-1 replays render the board
+   flipped for one frame when the orchestrator calls
+   `updateLogical(event.boardStateAfter)`.
+
 ### Chain State Machine Rules
 
 1. **`ChainResolutionManager.isResolving`** is a **pure observer** of
@@ -156,6 +169,54 @@ Key rules:
    be in the next step, and polling would deadlock. Poll ceiling force-resets
    chain state as a safety net. During `building` phase, `commitMode` is
    `'per-event'` — queue-empty finalizes normally.
+
+## Perspective Convention (absolute vs relative player index)
+
+Two player-index referentials coexist — mixing them is a recurring bug
+class ("the board briefly flips", "Equip line points at the wrong half"):
+
+- **Absolute** — raw OCGCore index (server player 0 / 1). What the duel
+  worker emits.
+- **Relative** — `0` = the viewer ("me", bottom of board), `1` = the
+  opponent (top). What the animation pipeline + DOM zone keys
+  (`${zoneId}-${relPlayer}`) assume.
+
+**Server-side relativization is partial.** `message-filter.ts`
+`sanitizeBoardState` swaps `players[]` and `turnPlayer` to relative — but
+NOT the `player` / `controller` fields buried inside cards, zones, prompt
+entries, or chain links (see the Story 4.2 TODO at `message-filter.ts`).
+Those stay **absolute** in both PvP and Replay.
+
+**Replay-side swap is also partial by construction.** `ReplayDuelAdapter`
+precompute data arrives in absolute server order; `swapBoardState()` swaps
+`players[]` + `turnPlayer`, and `swapEventBoardStates()` swaps the
+per-event `boardStateAfter`. Anything else absolute stays absolute.
+
+**Rules:**
+
+1. Any index used to build a DOM zone key `${zoneId}-${X}` MUST be
+   relative. Convert an absolute index with the canonical idiom
+   `const rel = absolute === ownPlayerIndex ? 0 : 1` (PvP/board) or
+   `=== perspectiveIndex` (replay-page), or `ctx.relativePlayer(absolute)`
+   inside the orchestrator/managers.
+2. `DuelContext.ownPlayerIndex()` and `pvp-board-container`'s
+   `ownPlayerIndex` input are **absolute** — so `absolute === ownIdx`
+   comparisons are valid. In replay, `ownPlayerIndex` is fed
+   `perspectiveIndex()`.
+3. The prompt pipeline (`pvp-prompt-dialog` + sub-components) runs
+   **fully absolute end-to-end**: `CardInfo.player`, `PlaceOption.player`,
+   and the `ownPlayerIndex` it receives (`activePlayer()` = `decision.player`
+   in replay) are all absolute. Do NOT relativize `activePlayer` — it would
+   desync against the absolute `card.player`. Internal keys like
+   `confirmedCardKeys` (`${location}-${player}-${sequence}`) are absolute on
+   both sides and never hit the DOM zone registry.
+4. `HintContext.player` is currently dead (never read by any renderer) —
+   leave it absolute; do not build new logic on it without relativizing.
+
+**Known-correct relativizers** (reference idiom): `chainBadges` +
+`linkedZoneMap` (pvp-board-container), `target-indicator-manager`,
+`prompt-derivation.service`, `replayHighlightedZones`/`replayChosenZone`
+(replay-page), all `ctx.relativePlayer()` callers in the orchestrator.
 
 ## Orchestrator Decomposition
 

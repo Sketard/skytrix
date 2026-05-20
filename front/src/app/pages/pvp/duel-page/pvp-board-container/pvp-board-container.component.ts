@@ -301,6 +301,13 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   protected readonly linkedZoneMap = computed(() => {
     const map = new Map<string, string[]>();
     const state = this.duelState();
+    // `LinkedCardRef.controller` is an absolute OCGCore index — `sanitizeBoardState`
+    // swaps players[] + turnPlayer but NOT the per-card `controller` field (see the
+    // Story 4.2 TODO in message-filter.ts). DOM zone keys are relative (0 = own /
+    // bottom, 1 = opponent / top), so we must relativize `controller` via
+    // `ownPlayerIndex` — same idiom as `chainBadges`. Skip it and Equip/target
+    // lines point at the wrong half of the board for the J2 / perspective-1 viewer.
+    const ownIdx = this.ownPlayerIndex();
     for (let relPlayer = 0; relPlayer < 2; relPlayer++) {
       const player = state.players[relPlayer];
       if (!player) continue;
@@ -311,7 +318,8 @@ export class PvpBoardContainerComponent implements AfterViewInit {
         for (const link of card.linkedCards) {
           const targetZoneId = locationToZoneId(link.location, link.sequence);
           if (!targetZoneId) continue;
-          const targetKey = `${targetZoneId}-${link.controller}`;
+          const relController = link.controller === ownIdx ? 0 : 1;
+          const targetKey = `${targetZoneId}-${relController}`;
           const sArr = map.get(sourceKey);
           if (sArr) sArr.push(targetKey); else map.set(sourceKey, [targetKey]);
           const tArr = map.get(targetKey);
