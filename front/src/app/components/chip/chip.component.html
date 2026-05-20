@@ -1,0 +1,11 @@
+<button
+  class="chip__el"
+  [type]="type()"
+  [disabled]="disabled()"
+  [attr.aria-pressed]="active()"
+  [attr.aria-label]="ariaLabel()">
+  @if (icon(); as iconName) {
+    <mat-icon class="chip__icon" aria-hidden="true">{{ iconName }}</mat-icon>
+  }
+  <ng-content />
+</button>

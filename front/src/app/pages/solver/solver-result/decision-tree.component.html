@@ -70,11 +70,12 @@
     @if (node.breakdownChips) {
       <span class="tree-breakdown-chips">
         @for (chip of node.breakdownChips; track chip.label) {
-          <mat-chip
-            [style.--mat-chip-elevated-container-color]="chip.color"
-            [style.--mat-chip-label-text-color]="chip.isAmber ? '#121212' : '#fff'">
+          <app-pill
+            size="xs"
+            [color]="chip.color"
+            [textColor]="chip.isAmber ? '#121212' : '#fff'">
             {{ chip.label }} ×{{ chip.count }}
-          </mat-chip>
+          </app-pill>
         }
       </span>
     }

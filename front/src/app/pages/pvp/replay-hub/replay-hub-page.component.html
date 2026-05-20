@@ -37,15 +37,13 @@
 
     <div class="chip-row" role="group" [attr.aria-label]="'replay.hub.filter.all' | translate">
       @for (f of filterModes; track f.id) {
-        <button type="button"
-                class="chip"
-                [class.chip--active]="store.activeFilter() === f.id"
+        <app-chip
+                [active]="store.activeFilter() === f.id"
                 [disabled]="f.needsDeck && !store.hasDecks()"
-                [attr.aria-pressed]="store.activeFilter() === f.id"
+                [icon]="f.icon"
                 (click)="setActiveFilter(f.id)">
-          @if (f.icon) { <mat-icon class="chip__icon">{{ f.icon }}</mat-icon> }
           <span>{{ 'replay.hub.filter.' + f.id | translate }}</span>
-        </button>
+        </app-chip>
       }
     </div>
   </div>

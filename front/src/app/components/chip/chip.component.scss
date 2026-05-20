@@ -1,0 +1,81 @@
+// =============================================================================
+// <app-chip> — DS filter chip, encapsulated.
+// Migrated from the former global `.chip` SCSS class (`_chips.scss` removed).
+//
+// INTERACTIVE: the host carries the variant classes + is the layout box; the
+// inner `.chip__el` is the real `<button>` and fills the host.
+//
+// `variant` only tints the ACTIVE state. Gold doctrine: `--gold-on-surface`
+// for the active icon colour, `--gold-soft-*` for tints.
+// =============================================================================
+
+@use '../../styles/mixin' as *;
+
+:host {
+  display: inline-flex;
+}
+
+.chip__el {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font: var(--weight-semibold) var(--text-xs) / 1 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: color var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out);
+
+  &:hover:not(:disabled) {
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.chip__icon {
+  // mat-icon ships with `width/height/line-height: 24px`; pin all three so
+  // `align-items: center` lands the 14px glyph on the chip's text baseline.
+  @include icon-size(14px, 14px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// --- Sizes ------------------------------------------------------------------
+:host(.chip--sm) .chip__el { padding: 6px 10px; font-size: 0.65rem; }
+
+// --- Active state (variant-tinted) ------------------------------------------
+// Default active → gold.
+:host(.chip--active) .chip__el {
+  background: var(--gold-soft-12);
+  border-color: var(--gold-soft-50);
+  color: var(--gold-50);
+
+  .chip__icon { color: var(--gold-on-surface); }
+}
+
+:host(.chip--active.chip--cyan) .chip__el {
+  background: var(--cyan-soft-15);
+  border-color: var(--cyan-soft-50);
+  color: var(--cyan-300);
+}
+
+:host(.chip--active.chip--neutral) .chip__el {
+  background: var(--surface-hover);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}

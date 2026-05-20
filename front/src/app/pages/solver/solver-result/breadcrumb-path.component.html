@@ -11,7 +11,7 @@
         [alt]="crumb.action.cardName"
         (error)="onImgError($event)"
         loading="lazy" />
-      <mat-chip>{{ crumb.action.cardName }}</mat-chip>
+      <app-pill variant="neutral">{{ crumb.action.cardName }}</app-pill>
     </div>
 
     <ng-template cdkConnectedOverlay

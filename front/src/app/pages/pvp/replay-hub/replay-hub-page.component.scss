@@ -3,8 +3,9 @@
 
 // =============================================================================
 // Replay Hub — page-local layout + replay-card grid.
-// Consumes DS Wave 1 partials: .page-header / .search-bar / .chip / .section-header
-// / .badge / .pill / .icon-btn / .surface-card / .empty-state / .btn.
+// DS: .page-header / .search-bar / .section-header / .badge / .surface-card
+// partials + <app-button> / <app-icon-button> / <app-pill> / <app-chip>
+// components.
 // Only PAGE-SPECIFIC styles live here (layout, replay-card grid template).
 // =============================================================================
 
@@ -218,11 +219,11 @@
 // contrôles plutôt que la composition `search | chips` côte-à-côte).
 //
 // Le fallback mobile (flex-wrap: nowrap + overflow-x: auto + fade-right) est
-// fourni par `_chips.scss @container chip-row (max-width: 480px)`. Le container
-// est déclaré sur `.hub-filters` (largeur stable = colonne parent) et NON sur
-// `.chip-row` lui-même — sinon le row mesure sa propre largeur après wrap,
-// donc tant que les chips tiennent il reste large > 480px et la query ne se
-// déclenche jamais (le rail scrollable disparaît silencieusement).
+// porté par le `@container chip-row (max-width: 480px)` ci-dessous. Le
+// container est déclaré sur `.hub-filters` (largeur stable = colonne parent)
+// et NON sur `.chip-row` lui-même — sinon le row mesure sa propre largeur
+// après wrap, donc tant que les chips tiennent il reste large > 480px et la
+// query ne se déclenche jamais (le rail scrollable disparaît silencieusement).
 .hub-filters {
   display: flex;
   flex-direction: column;
@@ -234,6 +235,24 @@
   .chip-row {
     flex: 0 0 auto;
     max-width: 100%;
+  }
+}
+
+// `.chip-row` — conteneur du rail de filtres `<app-chip>` (ex-`_chips.scss`,
+// retiré à la composantisation `.chip` → `<app-chip>` ; un seul consommateur).
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+
+  // Mobile / parent étroit — bascule en scroll horizontal avec fade-right.
+  // `black` = canal alpha du mask uniquement (la teinte est indifférente),
+  // pas une couleur visible → pas de token DS requis.
+  @container chip-row (max-width: 480px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-mask-image: linear-gradient(to right, black 0%, black calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(to right, black 0%, black calc(100% - 24px), transparent 100%);
   }
 }
 

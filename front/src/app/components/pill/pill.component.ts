@@ -16,6 +16,10 @@ export type PillSize = 'xs' | 'sm' | 'md' | 'lg';
  * Optional `icon` renders a `<mat-icon class="pill__icon">` before the
  * projected label. `live` adds the integrated pulse-dot.
  *
+ * For a data-driven arbitrary colour (not a DS variant — e.g. solver
+ * interruption tags), set `color` (+ optional `textColor`); the host
+ * applies them inline and the variant tint is bypassed.
+ *
  * Host carries the variant/size classes via discrete `[class.x]` bindings.
  */
 @Component({
@@ -27,6 +31,9 @@ export type PillSize = 'xs' | 'sm' | 'md' | 'lg';
   styleUrl: './pill.component.scss',
   host: {
     'class': 'pill',
+    '[class.pill--custom]': 'color() != null',
+    '[style.background]': 'color() ?? null',
+    '[style.color]': 'textColor() ?? null',
     '[class.pill--gold]': "variant() === 'gold'",
     '[class.pill--cyan]': "variant() === 'cyan'",
     '[class.pill--neutral]': "variant() === 'neutral'",
@@ -54,4 +61,12 @@ export class PillComponent {
 
   /** Optional leading `mat-icon` name. */
   readonly icon = input<string>();
+
+  /**
+   * Arbitrary background colour for data-driven tags (bypasses the variant
+   * tint). Any CSS colour. Pair with `textColor` for legibility.
+   */
+  readonly color = input<string>();
+  /** Text/foreground colour when `color` is set. */
+  readonly textColor = input<string>();
 }

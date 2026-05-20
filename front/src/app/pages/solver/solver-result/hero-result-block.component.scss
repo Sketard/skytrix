@@ -90,10 +90,6 @@
   white-space: nowrap;
 }
 
-.partial-badge {
-  margin-left: 0.5rem;
-}
-
 .fast-hint-icon {
   color: var(--mat-sys-on-surface-variant);
   font-size: 18px;
@@ -109,16 +105,6 @@
   font-size: 18px;
 }
 
-.verified-chip {
-  margin-left: 0.5rem;
-  --mat-chip-elevated-container-color: var(--mat-sys-tertiary);
-  --mat-chip-label-text-color: var(--mat-sys-on-tertiary);
-
-  &.failed {
-    --mat-chip-elevated-container-color: var(--mat-sys-error);
-    --mat-chip-label-text-color: var(--mat-sys-on-error);
-  }
-}
 
 .card-popup {
   display: flex;

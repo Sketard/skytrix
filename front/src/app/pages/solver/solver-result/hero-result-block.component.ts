@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { TranslatePipe } from '@ngx-translate/core';
+import { PillComponent } from '../../../components/pill/pill.component';
 
 import type { SolverResult, EndBoardCard } from '../../../core/model/solver.model';
 import {
@@ -50,7 +50,7 @@ interface EndBoardCardDisplay {
 @Component({
   selector: 'app-hero-result-block',
   standalone: true,
-  imports: [MatChipsModule, MatIconModule, MatTooltipModule, CdkConnectedOverlay, CdkOverlayOrigin, TranslatePipe],
+  imports: [MatIconModule, MatTooltipModule, CdkConnectedOverlay, CdkOverlayOrigin, TranslatePipe, PillComponent],
   templateUrl: './hero-result-block.component.html',
   styleUrl: './hero-result-block.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

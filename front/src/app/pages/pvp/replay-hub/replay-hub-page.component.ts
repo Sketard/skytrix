@@ -23,6 +23,7 @@ import { ReplayHubStore, ReplayFilter, ReplaySortMode } from './replay-hub-store
 import { ButtonComponent } from '../../../components/button/button.component';
 import { IconButtonComponent } from '../../../components/icon-button/icon-button.component';
 import { PillComponent } from '../../../components/pill/pill.component';
+import { ChipComponent } from '../../../components/chip/chip.component';
 
 interface ResultMeta {
   variant: 'gold' | 'cyan' | 'neutral' | 'warning' | 'danger';
@@ -74,6 +75,7 @@ type DisplayedItem =
     ButtonComponent,
     IconButtonComponent,
     PillComponent,
+    ChipComponent,
   ],
   providers: [ReplayHubStore],
   templateUrl: './replay-hub-page.component.html',

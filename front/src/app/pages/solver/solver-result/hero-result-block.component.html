@@ -7,13 +7,13 @@
       <span class="mat-headline-4"
         [matTooltip]="'solver.result.interruptionScoreHint' | translate">{{ 'solver.result.interruptionScoreLabel' | translate }} {{ result().score }} — {{ totalInterruptions() }} {{ 'solver.result.interruptions' | translate }}</span>
       @if (isPartial()) {
-        <mat-chip class="partial-badge" highlighted>{{ 'solver.result.partial' | translate }}</mat-chip>
+        <app-pill variant="warning">{{ 'solver.result.partial' | translate }}</app-pill>
       }
       @if (verifiedStatus() === 'verified') {
-        <mat-chip class="verified-chip">{{ 'solver.verify.verified' | translate }}</mat-chip>
+        <app-pill variant="success">{{ 'solver.verify.verified' | translate }}</app-pill>
       }
       @if (verifiedStatus() === 'failed') {
-        <mat-chip class="verified-chip failed">{{ 'solver.verify.failed' | translate }}</mat-chip>
+        <app-pill variant="danger">{{ 'solver.verify.failed' | translate }}</app-pill>
       }
       @if (hasFallbackCards()) {
         <mat-icon class="fallback-icon"
@@ -32,11 +32,11 @@
 
     <div class="chips-row">
       @for (chip of interruptionChips(); track chip.label) {
-        <mat-chip
-          [style.--mat-chip-elevated-container-color]="chip.color"
-          [style.--mat-chip-label-text-color]="chip.isAmber ? '#121212' : '#fff'">
+        <app-pill
+          [color]="chip.color"
+          [textColor]="chip.isAmber ? '#121212' : '#fff'">
           {{ chip.label }} ×{{ chip.count }}
-        </mat-chip>
+        </app-pill>
       }
     </div>
   </div>

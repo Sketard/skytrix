@@ -16,8 +16,8 @@ import { CdkTreeModule } from '@angular/cdk/tree';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { PillComponent } from '../../../components/pill/pill.component';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import type { DecisionNode, SolverAction } from '../../../core/model/solver.model';
@@ -60,7 +60,7 @@ interface FlatTreeNode {
 @Component({
   selector: 'app-decision-tree',
   standalone: true,
-  imports: [CdkTreeModule, CdkConnectedOverlay, CdkOverlayOrigin, MatIconModule, MatButtonModule, MatChipsModule, MatTooltipModule, TranslatePipe],
+  imports: [CdkTreeModule, CdkConnectedOverlay, CdkOverlayOrigin, MatIconModule, MatButtonModule, MatTooltipModule, TranslatePipe, PillComponent],
   templateUrl: './decision-tree.component.html',
   styleUrl: './decision-tree.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

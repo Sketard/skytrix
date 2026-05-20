@@ -91,11 +91,6 @@
   display: flex;
   gap: 2px;
   flex-shrink: 0;
-
-  mat-chip {
-    --mat-chip-container-height: 20px;
-    font-size: 0.65rem;
-  }
 }
 
 .truncated-icon {

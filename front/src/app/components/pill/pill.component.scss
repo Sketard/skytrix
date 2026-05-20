@@ -77,6 +77,13 @@
   color: var(--success);
 }
 
+// --- Custom colour (data-driven tag) ----------------------------------------
+// `background`/`color` come from host `[style]` bindings; here we just drop
+// the variant border so the inline colour reads cleanly.
+:host(.pill--custom) {
+  border: 1px solid transparent;
+}
+
 // --- Sizes ------------------------------------------------------------------
 :host(.pill--xs) { padding: 3px 8px;  font-size: 0.62rem; }
 :host(.pill--sm) { padding: 4px 10px; font-size: 0.7rem; }  // default

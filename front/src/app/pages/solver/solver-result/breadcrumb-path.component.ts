@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, output } from '@angular/core';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
+import { PillComponent } from '../../../components/pill/pill.component';
 
 import type { SolverAction, AdversarialTiming } from '../../../core/model/solver.model';
 import { onCardImgError } from './card-image-fallback';
@@ -16,7 +16,7 @@ interface BreadcrumbItem {
 @Component({
   selector: 'app-breadcrumb-path',
   standalone: true,
-  imports: [MatChipsModule, MatIconModule, CdkConnectedOverlay, CdkOverlayOrigin],
+  imports: [MatIconModule, CdkConnectedOverlay, CdkOverlayOrigin, PillComponent],
   templateUrl: './breadcrumb-path.component.html',
   styleUrl: './breadcrumb-path.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
