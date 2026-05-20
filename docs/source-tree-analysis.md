@@ -7,7 +7,7 @@ Annotated directory layout. Sub-trees pruned to the **load-bearing** files only 
 ```
 skytrix/
 ├── back/                       # Spring Boot 3.4.2 backend (Java 21)
-├── front/                      # Angular 19.1.3 SPA
+├── front/                      # Angular 20.3 SPA
 ├── duel-server/                # Node + ocgcore-wasm WebSocket server
 ├── docs/                       # Generated documentation (this directory)
 ├── _bmad/                      # BMAD config (config.toml, custom overrides, scripts)
@@ -81,7 +81,7 @@ back/
 
 ```
 front/
-├── package.json                           # Angular 19, ngx-translate, jspdf, @angular/material
+├── package.json                           # Angular 20, ngx-translate, jspdf, @angular/material
 ├── angular.json                           # Project config (build/serve/test/extract-i18n targets)
 ├── tsconfig.json, tsconfig.app.json, tsconfig.spec.json
 ├── proxy.conf.json                        # /api → http://localhost:8080 (dev only)

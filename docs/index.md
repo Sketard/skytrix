@@ -6,7 +6,7 @@
 
 - **Type:** multi-part monorepo, 3 deployable artifacts
 - **Domain:** Yu-Gi-Oh! deck management + solo simulator + online PvP duels (replays) + automated combo solver
-- **Primary languages:** Java 21 (back), TypeScript 5.5.4 (front + duel-server)
+- **Primary languages:** Java 21 (back), TypeScript 5.9 (front), TypeScript 5.5.4 (duel-server)
 - **Architecture:** layered REST (back) ↔ standalone Angular SPA (front) ↔ event-driven WebSocket worker server (duel-server)
 - **Status:** all 4 features shipped (simulator v1, PvP v1, replay v1, solver v1 — solver R&D paused 2026-05-05)
 
@@ -21,7 +21,7 @@
 
 ### front (Angular SPA)
 - **Type:** web
-- **Stack:** Angular 19.1.3, Material 19.1.1 + CDK, TypeScript 5.5.4 strict, RxJS 7.8.0, ngx-translate 16.0.4 (FR default), jspdf, SCSS, Karma+Jasmine, Playwright
+- **Stack:** Angular 20.3, Material 20.2 + CDK, TypeScript 5.9 strict, RxJS 7.8.0, ngx-translate 16.0.4 (FR default), jspdf, SCSS, Karma+Jasmine, Playwright
 - **Root:** [front/](../front/)
 - **Port:** 80 / 443 (Nginx)
 - **Architecture:** [architecture-front.md](./architecture-front.md)
