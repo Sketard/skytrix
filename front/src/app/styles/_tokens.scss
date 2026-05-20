@@ -299,6 +299,11 @@
   --gradient-arena-glow-gold: radial-gradient(circle, rgba(201, 168, 76, 0.55), transparent 70%);
   --gradient-arena-glow-cyan: radial-gradient(circle, rgba(74, 144, 217, 0.45), transparent 70%);
 
+  // --- Masks — fondu alpha (mask-image), pas une couleur. Indice de
+  // scrollabilité : le bas du viewport s'estompe. Consommé par lobby +
+  // replay-hub via -webkit-mask-image / mask-image.
+  --mask-fade-bottom: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+
   // --- Text — DS extended scale (legacy --text-primary/--text-secondary above) ---
   --text-muted:    #9e9e9e;
   --text-disabled: #6e6e6e;

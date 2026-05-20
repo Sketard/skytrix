@@ -97,7 +97,7 @@ body {
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #252525 inset;
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-card) inset;
   -webkit-text-fill-color: v.$white;
 }
 

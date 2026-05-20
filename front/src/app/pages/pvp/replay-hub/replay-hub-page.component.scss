@@ -71,8 +71,8 @@
   overscroll-behavior: contain;
   padding-right: var(--space-1);
   // Fade bottom hint of scrollability.
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
-  mask-image:         linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+  -webkit-mask-image: var(--mask-fade-bottom);
+  mask-image:         var(--mask-fade-bottom);
 
   ::ng-deep .cdk-virtual-scroll-content-wrapper {
     width: 100%;

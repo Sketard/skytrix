@@ -100,8 +100,8 @@
   padding-right: 4px;
   // Fade scroll: mask the bottom of the viewport to hint scrollability.
   // Top is left clear so the search bar above stays crisp.
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
-  mask-image:         linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+  -webkit-mask-image: var(--mask-fade-bottom);
+  mask-image:         var(--mask-fade-bottom);
 
   // Scrollbar = Ghost global (cf. _scrollbar.scss). Pas d'override ici.
 
