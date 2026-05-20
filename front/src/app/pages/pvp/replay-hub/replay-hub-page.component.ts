@@ -22,6 +22,7 @@ import { StatsStripComponent, StatItem } from '../../../components/stats-strip/s
 import { ReplayHubStore, ReplayFilter, ReplaySortMode } from './replay-hub-store';
 import { ButtonComponent } from '../../../components/button/button.component';
 import { IconButtonComponent } from '../../../components/icon-button/icon-button.component';
+import { PillComponent } from '../../../components/pill/pill.component';
 
 interface ResultMeta {
   variant: 'gold' | 'cyan' | 'neutral' | 'warning' | 'danger';
@@ -72,6 +73,7 @@ type DisplayedItem =
     StatsStripComponent,
     ButtonComponent,
     IconButtonComponent,
+    PillComponent,
   ],
   providers: [ReplayHubStore],
   templateUrl: './replay-hub-page.component.html',

@@ -37,26 +37,24 @@
       </div>
 
       <div class="deck-builder-header__counts">
-        <span class="pill"
-          [class.pill--valid]="deckBuildService.mainCardNumber() >= 40 && deckBuildService.mainCardNumber() <= 60"
-          [class.pill--invalid]="deckBuildService.mainCardNumber() > 60">
+        <app-pill
+          [variant]="deckBuildService.mainCardNumber() > 60 ? 'invalid'
+            : (deckBuildService.mainCardNumber() >= 40 ? 'valid' : 'neutral')">
           {{ 'deckBuilder.viewer.main' | translate }} {{ deckBuildService.mainCardNumber() }}&nbsp;/&nbsp;60
-        </span>
-        <span class="pill"
-          [class.pill--gold]="deckBuildService.extraCardNumber() > 0 && deckBuildService.extraCardNumber() <= 15"
-          [class.pill--invalid]="deckBuildService.extraCardNumber() > 15">
+        </app-pill>
+        <app-pill
+          [variant]="deckBuildService.extraCardNumber() > 15 ? 'invalid'
+            : (deckBuildService.extraCardNumber() > 0 ? 'gold' : 'neutral')">
           {{ 'deckBuilder.viewer.extra' | translate }} {{ deckBuildService.extraCardNumber() }}&nbsp;/&nbsp;15
-        </span>
-        <span class="pill"
-          [class.pill--neutral]="deckBuildService.sideCardNumber() <= 15"
-          [class.pill--invalid]="deckBuildService.sideCardNumber() > 15">
+        </app-pill>
+        <app-pill
+          [variant]="deckBuildService.sideCardNumber() > 15 ? 'invalid' : 'neutral'">
           {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}&nbsp;/&nbsp;15
-        </span>
+        </app-pill>
         @if (deckBuildService.banlistViolations().length > 0) {
-          <span class="pill pill--warning" [title]="banlistTooltip()">
-            <mat-icon class="pill__icon">gavel</mat-icon>
+          <app-pill variant="warning" icon="gavel" [title]="banlistTooltip()">
             {{ 'deckBuilder.viewer.banlist' | translate:{ count: deckBuildService.banlistViolations().length } }}
-          </span>
+          </app-pill>
         }
       </div>
     </div>

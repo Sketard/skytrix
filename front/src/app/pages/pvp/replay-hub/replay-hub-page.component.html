@@ -147,15 +147,11 @@
                 }
               </div>
             </div>
-            <span class="pill pill--md"
-                  [class.pill--gold]="resultMeta(replay).variant === 'gold'"
-                  [class.pill--cyan]="resultMeta(replay).variant === 'cyan'"
-                  [class.pill--neutral]="resultMeta(replay).variant === 'neutral'"
-                  [class.pill--warning]="resultMeta(replay).variant === 'warning'"
-                  [class.pill--danger]="resultMeta(replay).variant === 'danger'">
-              <mat-icon class="pill__icon">{{ resultMeta(replay).icon }}</mat-icon>
+            <app-pill size="md"
+                  [variant]="resultMeta(replay).variant"
+                  [icon]="resultMeta(replay).icon">
               <span>{{ resultMeta(replay).i18nKey | translate }}</span>
-            </span>
+            </app-pill>
             <div class="replay-card__times">
               <span class="replay-card__date">{{ replay.createdAt | date: 'dd/MM · HH:mm' }}</span>
               <span class="replay-card__turns">

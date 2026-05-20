@@ -1,9 +1,9 @@
-<span class="pill pill--gold pill--sm context-pill__turn">{{ turnLabel() }}</span>
+<app-pill variant="gold" size="sm" class="context-pill__turn">{{ turnLabel() }}</app-pill>
 @if (hasPhase()) {
-  <span class="pill pill--neutral pill--xs context-pill__phase">
+  <app-pill variant="neutral" size="xs" class="context-pill__phase">
     <span class="context-pill__phase-bolt" aria-hidden="true">⚡</span>
     {{ phase() }}
-  </span>
+  </app-pill>
 }
 @if (hasEvent()) {
   <span class="text-eyebrow context-pill__event">{{ eventLabel() }}</span>

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { SkelComponent } from '../../../../shared/skel/skel.component';
+import { PillComponent } from '../../../../components/pill/pill.component';
 
 // Wireframe shown while the replay loads — replaces the legacy `<mat-progress-spinner>`
 // plein écran (D10). Layout: topbar skel + board skel + timeline skel + transport
@@ -13,7 +14,7 @@ import { SkelComponent } from '../../../../shared/skel/skel.component';
   selector: 'app-replay-loading-skeleton',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule, SkelComponent],
+  imports: [TranslateModule, SkelComponent, PillComponent],
   templateUrl: './replay-loading-skeleton.component.html',
   styleUrl: './replay-loading-skeleton.component.scss',
   host: {

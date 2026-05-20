@@ -90,7 +90,7 @@ describe('TransportBarComponent — F3 refonte 3 zones', () => {
     bind({ zoomLevel: 1 });
     const spy = spyOn(fixture.componentInstance.zoomLevelChange, 'emit');
     // Find the 2× pill button inside the zoom-control and click it.
-    const buttons = el.querySelectorAll('app-timeline-zoom-control button.pill');
+    const buttons = el.querySelectorAll('app-timeline-zoom-control button.timeline-zoom-control__btn');
     expect(buttons.length).toBe(3);
     (buttons[2] as HTMLButtonElement).click();
     expect(spy).toHaveBeenCalledOnceWith(3);

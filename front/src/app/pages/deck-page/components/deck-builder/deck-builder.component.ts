@@ -36,6 +36,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ButtonComponent } from '../../../../components/button/button.component';
 import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
+import { PillComponent } from '../../../../components/pill/pill.component';
 
 @Component({
   selector: 'app-deck-builder',
@@ -59,6 +60,7 @@ import { IconButtonComponent } from '../../../../components/icon-button/icon-but
     TranslatePipe,
     ButtonComponent,
     IconButtonComponent,
+    PillComponent,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',

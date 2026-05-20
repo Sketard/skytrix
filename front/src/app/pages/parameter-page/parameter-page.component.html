@@ -30,9 +30,9 @@
             <div class="job-info">
               <div class="job-title-row">
                 <span class="job-title">{{ job.titleKey | translate }}</span>
-                <span [class]="statusPillClass(job.key)">
+                <app-pill [variant]="statusPillVariant(job.key)" [live]="statusPillLive(job.key)">
                   {{ statusLabelKey(job.key) | translate }}
-                </span>
+                </app-pill>
               </div>
               <span class="job-desc">{{ job.descKey | translate }}</span>
               <span class="job-meta">

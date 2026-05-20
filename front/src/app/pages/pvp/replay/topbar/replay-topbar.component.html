@@ -19,23 +19,21 @@
           <span class="replay-topbar__chip-deck text-eyebrow">{{ selfDeck() }}</span>
         </div>
         @if (selfResultTag(); as tag) {
-          <span
-            class="pill pill--xs replay-topbar__result-pill"
-            [class.pill--gold]="tag === 'win'"
-            [class.pill--neutral]="tag === 'loss'">
+          <app-pill
+            size="xs" class="replay-topbar__result-pill"
+            [variant]="tag === 'win' ? 'gold' : 'neutral'">
             {{ ('replay.viewer.topbar.resultShort.' + tag) | translate }}
-          </span>
+          </app-pill>
         }
       </div>
       <span class="text-eyebrow replay-topbar__vs">{{ 'replay.viewer.endOverlay.vs' | translate }}</span>
       <div class="replay-topbar__chip">
         @if (oppResultTag(); as tag) {
-          <span
-            class="pill pill--xs replay-topbar__result-pill"
-            [class.pill--gold]="tag === 'win'"
-            [class.pill--neutral]="tag === 'loss'">
+          <app-pill
+            size="xs" class="replay-topbar__result-pill"
+            [variant]="tag === 'win' ? 'gold' : 'neutral'">
             {{ ('replay.viewer.topbar.resultShort.' + tag) | translate }}
-          </span>
+          </app-pill>
         }
         <div class="replay-topbar__chip-meta">
           <span class="replay-topbar__chip-name">{{ oppName() }}</span>
@@ -49,10 +47,10 @@
   <!-- RIGHT: meta pills + actions -->
   <div class="replay-topbar__right">
     @if (durationLabel(); as dur) {
-      <span class="pill pill--neutral pill--xs replay-topbar__meta">
+      <app-pill variant="neutral" size="xs" class="replay-topbar__meta">
         <mat-icon aria-hidden="true" class="replay-topbar__meta-icon">schedule</mat-icon>
         <span class="text-mono">{{ dur }}</span>
-      </span>
+      </app-pill>
     }
     <app-icon-button
       size="md"

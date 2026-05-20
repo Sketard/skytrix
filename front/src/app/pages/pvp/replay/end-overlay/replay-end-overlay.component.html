@@ -1,12 +1,8 @@
 <div class="replay-end-overlay__panel surface-card surface-card--flat">
   <header class="replay-end-overlay__header">
-    <span
-      class="pill pill--lg pill--celebrated"
-      [class.pill--gold]="pillVariant() === 'gold'"
-      [class.pill--neutral]="pillVariant() === 'neutral'"
-      [class.pill--cyan]="pillVariant() === 'cyan'">
+    <app-pill size="lg" celebrated [variant]="pillVariant()">
       {{ outcomeI18n() | translate }}
-    </span>
+    </app-pill>
     @if (metaLine(); as meta) {
       <p class="text-eyebrow replay-end-overlay__meta">{{ meta }}</p>
     }

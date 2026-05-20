@@ -4,10 +4,11 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ShortDeck } from '../../core/model/short-deck';
 import { DeckSilhouetteComponent } from '../deck-silhouette/deck-silhouette.component';
+import { PillComponent } from '../pill/pill.component';
 
 @Component({
   selector: 'deck-box',
-  imports: [MatIconModule, RouterLink, TranslatePipe, DeckSilhouetteComponent],
+  imports: [MatIconModule, RouterLink, TranslatePipe, DeckSilhouetteComponent, PillComponent],
   templateUrl: './deck-box.component.html',
   styleUrl: './deck-box.component.scss',
   standalone: true,

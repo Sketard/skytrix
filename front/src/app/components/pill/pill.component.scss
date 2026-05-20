@@ -1,0 +1,106 @@
+// =============================================================================
+// <app-pill> — DS status pill, encapsulated.
+// Migrated from the former global `.pill` SCSS class (`_pills.scss` removed).
+//
+// NON-INTERACTIVE. The host IS the pill (no inner wrapper — a pill has no
+// interactive element). Variant/size classes are set via `host: { '[class.x]' }`.
+//
+// Gold doctrine: `.pill__icon` uses `--gold-on-surface` (icon color);
+// `--gold-soft-*` for background/border tints.
+// =============================================================================
+
+@use '../../styles/mixin' as *;
+
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-weight: var(--weight-bold);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.pill__icon {
+  // mat-icon ships with `width/height/font-size: 24px`; pin all three dims
+  // so `align-items: center` lands the 14px glyph on the pill's text baseline.
+  @include icon-size(14px, 14px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// --- Variants tonals --------------------------------------------------------
+:host(.pill--gold) {
+  background: var(--gold-soft-12);
+  border: 1px solid var(--gold-soft-25);
+  color: var(--gold-50);
+
+  .pill__icon { color: var(--gold-on-surface); }
+}
+
+:host(.pill--cyan) {
+  background: var(--cyan-soft-15);
+  border: 1px solid var(--cyan-soft-25);
+  color: var(--cyan-300);
+}
+
+:host(.pill--neutral) {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+}
+
+:host(.pill--warning) {
+  background: var(--warning-soft);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: var(--warning);
+}
+
+:host(.pill--danger),
+:host(.pill--invalid) {
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: var(--danger-strong);
+}
+
+:host(.pill--success),
+:host(.pill--valid) {
+  background: var(--success-soft);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: var(--success);
+}
+
+// --- Sizes ------------------------------------------------------------------
+:host(.pill--xs) { padding: 3px 8px;  font-size: 0.62rem; }
+:host(.pill--sm) { padding: 4px 10px; font-size: 0.7rem; }  // default
+:host(.pill--md) { padding: 7px 14px; font-size: 0.75rem; }
+:host(.pill--lg) { padding: 8px 16px; font-size: 0.85rem; }
+
+// --- Modifiers --------------------------------------------------------------
+// Celebrated (winner pill end-overlay) — wider spacing + text-shadow.
+:host(.pill--celebrated) {
+  letter-spacing: 0.18em;
+}
+:host(.pill--celebrated.pill--gold)    { text-shadow: 0 0 12px var(--gold-soft-50); }
+:host(.pill--celebrated.pill--cyan)    { text-shadow: 0 0 12px var(--cyan-soft-50); }
+:host(.pill--celebrated.pill--success) { text-shadow: 0 0 12px rgba(76, 175, 80, 0.4); }
+
+// Live — integrated pulse-dot via `::before`, colour inherits via currentColor.
+:host(.pill--live)::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  position: relative;
+  flex-shrink: 0;
+  animation: ds-pulse-dot 1.6s ease-in-out infinite;
+}

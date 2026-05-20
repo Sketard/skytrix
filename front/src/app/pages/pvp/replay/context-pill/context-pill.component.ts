@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
+import { PillComponent } from '../../../../components/pill/pill.component';
 
 // Composite of DS Wave 1 pills + text-eyebrow for the transport-bar context
 // zone (turn pill + phase chip + event label). Single host is responsible
@@ -17,7 +18,7 @@ import { TranslateModule } from '@ngx-translate/core';
   selector: 'app-context-pill',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslateModule],
+  imports: [TranslateModule, PillComponent],
   templateUrl: './context-pill.component.html',
   styleUrl: './context-pill.component.scss',
 })

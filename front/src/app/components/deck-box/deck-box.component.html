@@ -31,16 +31,13 @@
 
     <div class="deck-box__meta">
       @if (statusPill(); as pill) {
-        <span class="pill"
-          [class.pill--valid]="pill.variant === 'valid'"
-          [class.pill--invalid]="pill.variant === 'invalid'"
-          [class.pill--warning]="pill.variant === 'warning'">
+        <app-pill [variant]="pill.variant">
           {{ pill.key | translate }}
-        </span>
+        </app-pill>
       }
-      <span class="pill pill--gold">
+      <app-pill variant="gold">
         {{ 'deckBox.mainCount' | translate:{ count: deck()?.mainDeckCount ?? 0 } }}
-      </span>
+      </app-pill>
     </div>
   }
 </div>

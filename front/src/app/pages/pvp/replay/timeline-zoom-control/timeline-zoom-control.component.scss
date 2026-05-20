@@ -1,4 +1,7 @@
-// Layout-only — pills come from DS Wave 1.
+// Zoom level buttons — pill-shaped toggles (role="radio"). NOT `<app-pill>`:
+// `<app-pill>` is a non-interactive status label, these are real buttons.
+// The pill-xs chrome is inlined here (was the `.pill .pill--xs` DS class).
+//
 // Caché sous 920px (spec D7): the control is a power-user-only feature and the
 // transport-bar cluster needs the space for the More button + perspective.
 :host {
@@ -14,20 +17,41 @@
   color: var(--text-muted);
 }
 
-button.pill {
+.timeline-zoom-control__btn {
+  // pill-xs geometry (was `.pill .pill--xs`).
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-weight: var(--weight-bold);
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition: transform var(--transition-fast) var(--ease-out);
-
-  &.pill--gold {
-    // Active level — extra ring to distinguish from hover state.
-    box-shadow: 0 0 0 1px var(--gold-soft-40);
-  }
+  // neutral state (was `.pill--neutral`).
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+  transition: transform var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out),
+              border-color var(--transition-fast) var(--ease-out),
+              color var(--transition-fast) var(--ease-out);
 
   // Tactile press feedback — same pattern as `.timeline-stepper__pill`.
   &:active {
     transform: scale(0.96);
   }
+}
+
+// Active level — gold tint (was `.pill--gold`) + extra ring.
+.timeline-zoom-control__btn--active {
+  background: var(--gold-soft-12);
+  border-color: var(--gold-soft-25);
+  color: var(--gold-50);
+  box-shadow: 0 0 0 1px var(--gold-soft-40);
 }
 
 // Same component-local 920px breakpoint as transport-bar's cascade — the zoom

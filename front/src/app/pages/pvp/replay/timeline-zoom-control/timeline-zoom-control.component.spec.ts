@@ -25,24 +25,24 @@ describe('TimelineZoomControlComponent', () => {
 
   it('renders 3 level buttons (1× 2× 3×)', () => {
     bind(1);
-    const buttons = el.querySelectorAll('button.pill');
+    const buttons = el.querySelectorAll('button.timeline-zoom-control__btn');
     expect(buttons.length).toBe(3);
     expect(buttons[0].textContent?.trim()).toBe('1×');
     expect(buttons[1].textContent?.trim()).toBe('2×');
     expect(buttons[2].textContent?.trim()).toBe('3×');
   });
 
-  it('applies pill--gold on the active level and pill--neutral elsewhere', () => {
+  it('marks the active level button with the --active modifier', () => {
     bind(2);
-    const buttons = el.querySelectorAll('button.pill');
-    expect(buttons[0].classList.contains('pill--neutral')).toBe(true);
-    expect(buttons[1].classList.contains('pill--gold')).toBe(true);
-    expect(buttons[2].classList.contains('pill--neutral')).toBe(true);
+    const buttons = el.querySelectorAll('button.timeline-zoom-control__btn');
+    expect(buttons[0].classList.contains('timeline-zoom-control__btn--active')).toBe(false);
+    expect(buttons[1].classList.contains('timeline-zoom-control__btn--active')).toBe(true);
+    expect(buttons[2].classList.contains('timeline-zoom-control__btn--active')).toBe(false);
   });
 
   it('sets aria-checked on the active button only', () => {
     bind(3);
-    const buttons = el.querySelectorAll('button.pill');
+    const buttons = el.querySelectorAll('button.timeline-zoom-control__btn');
     expect(buttons[0].getAttribute('aria-checked')).toBe('false');
     expect(buttons[1].getAttribute('aria-checked')).toBe('false');
     expect(buttons[2].getAttribute('aria-checked')).toBe('true');
@@ -51,14 +51,14 @@ describe('TimelineZoomControlComponent', () => {
   it('emits levelChange when clicking a different level', () => {
     bind(1);
     const spy = spyOn(fixture.componentInstance.levelChange, 'emit');
-    (el.querySelectorAll('button.pill')[2] as HTMLButtonElement).click();
+    (el.querySelectorAll('button.timeline-zoom-control__btn')[2] as HTMLButtonElement).click();
     expect(spy).toHaveBeenCalledOnceWith(3);
   });
 
   it('does NOT emit levelChange when clicking the already-active level', () => {
     bind(2);
     const spy = spyOn(fixture.componentInstance.levelChange, 'emit');
-    (el.querySelectorAll('button.pill')[1] as HTMLButtonElement).click();
+    (el.querySelectorAll('button.timeline-zoom-control__btn')[1] as HTMLButtonElement).click();
     expect(spy).not.toHaveBeenCalled();
   });
 

@@ -5,10 +5,11 @@ import { DeckCardZoneComponent } from '../../../../../../components/deck-card-zo
 import { IndexedCardDetail } from '../../../../../../core/model/card-detail';
 import { DeckZoneSkeletonComponent } from '../../../../../../shared/skel';
 import { TranslatePipe } from '@ngx-translate/core';
+import { PillComponent } from '../../../../../../components/pill/pill.component';
 
 @Component({
   selector: 'deck-viewer',
-  imports: [DragDropModule, DeckCardZoneComponent, DeckZoneSkeletonComponent, TranslatePipe],
+  imports: [DragDropModule, DeckCardZoneComponent, DeckZoneSkeletonComponent, TranslatePipe, PillComponent],
   templateUrl: './deck-viewer.component.html',
   styleUrl: './deck-viewer.component.scss',
   standalone: true,

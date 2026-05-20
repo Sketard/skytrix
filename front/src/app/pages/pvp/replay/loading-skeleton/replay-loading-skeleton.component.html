@@ -49,8 +49,8 @@
      of the skeleton shimmer it duplicates. -->
 @if (hasProgress()) {
   <div class="replay-loading-skeleton__progress">
-    <span class="pill pill--gold pill--md pill--live">
+    <app-pill variant="gold" size="md" live>
       {{ 'replay.viewer.loadingProgressDetailed' | translate: progressParams() }}
-    </span>
+    </app-pill>
   </div>
 }

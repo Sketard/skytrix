@@ -5,7 +5,7 @@
 // Order is critical:
 //   1. Foundations (tokens MUST come first — a11y/motion/typography rely on it)
 //   2. Background / surfaces / scroll
-//   3. Building blocks (composables: card-surface, pills, chips)
+//   3. Building blocks (composables: card-surface, badge, chips)
 //   4. Composites (search-bar, page-header, section-header, empty-state,
 //      holo-modal)
 //   5. Legacy (long-press — frozen, do not extend)
@@ -29,7 +29,7 @@
 // 3. Building blocks
 @use 'app/styles/card-surface';
 @use 'app/styles/segmented';
-@use 'app/styles/pills';
+@use 'app/styles/badge';
 @use 'app/styles/chips';
 
 // 4. Composites

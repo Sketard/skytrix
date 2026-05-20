@@ -1,0 +1,39 @@
+// =============================================================================
+// Badge — numeric counter / indicator. NON-INTERACTIVE.
+// Distinct from a pill: less rounded, Inter font, no uppercase/letter-spacing.
+//
+// Kept as a global class (not componentised): a single consumer
+// (`section-header`) — below the rule-of-three threshold. The `.pill` family
+// it used to share `_pills.scss` with became `<app-pill>` (DS componentisation
+// 2026-05-20); this file is the badge remainder.
+// =============================================================================
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: var(--gold-soft-12);
+  border: 1px solid var(--gold-soft-25);
+  color: var(--gold-on-surface);
+  font: var(--weight-bold) 0.7rem / 1 'Inter', sans-serif;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.badge--gold {
+  // Default (already applied via `.badge`)
+}
+
+.badge--cyan {
+  background: var(--cyan-soft-15);
+  border-color: var(--cyan-soft-25);
+  color: var(--cyan-300);
+}
+
+.badge--neutral {
+  background: var(--surface-overlay);
+  border-color: var(--border-soft);
+  color: var(--text-muted);
+}

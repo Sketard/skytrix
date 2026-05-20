@@ -10,6 +10,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Subscription, timer } from 'rxjs';
 import { TaskState } from '../../core/model/sync-status';
 import { ButtonComponent } from '../../components/button/button.component';
+import { PillComponent, PillVariant } from '../../components/pill/pill.component';
 
 type JobKey = 'cards' | 'images' | 'tcgImages' | 'banlist' | 'duelData';
 
@@ -64,7 +65,7 @@ const SECTIONS: readonly Section[] = [
 
 @Component({
   selector: 'app-parameter-page',
-  imports: [MatIconModule, MatTooltip, TranslatePipe, ButtonComponent],
+  imports: [MatIconModule, MatTooltip, TranslatePipe, ButtonComponent, PillComponent],
   templateUrl: './parameter-page.component.html',
   styleUrl: './parameter-page.component.scss',
   standalone: true,
@@ -238,11 +239,16 @@ export class ParameterPageComponent implements OnDestroy {
     return `${state.processed + state.failed} / ${state.total}`;
   }
 
-  statusPillClass(key: string): string {
-    if (this.hasError(key))     return 'pill pill--danger';
-    if (this.isPaused(key))     return 'pill pill--warning';
-    if (this.isTracked(key))    return 'pill pill--cyan pill--live';
-    return 'pill pill--neutral';
+  statusPillVariant(key: string): PillVariant {
+    if (this.hasError(key))  return 'danger';
+    if (this.isPaused(key))  return 'warning';
+    if (this.isTracked(key)) return 'cyan';
+    return 'neutral';
+  }
+
+  /** The "tracked / running" status pill animates a live pulse-dot. */
+  statusPillLive(key: string): boolean {
+    return this.isTracked(key) && !this.hasError(key) && !this.isPaused(key);
   }
 
   statusLabelKey(key: string): string {
