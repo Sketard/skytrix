@@ -53,6 +53,9 @@ export class DeckBuildService extends SearchServiceCore {
   readonly mainCardNumber = computed(() => this.deck().mainCardNumber);
   readonly extraCardNumber = computed(() => this.deck().extraCardNumber);
   readonly sideCardNumber = computed(() => this.deck().sideCardNumber);
+  // Cards exceeding their ban-list copy limit (counted globally across all
+  // zones). Empty = the deck is ban-list legal.
+  readonly banlistViolations = computed(() => this.deck().banlistViolations());
   private readonly handTestOpenedState = signal<boolean>(false);
   readonly handTestOpened = this.handTestOpenedState.asReadonly();
   private readonly _isDirty = signal(false);

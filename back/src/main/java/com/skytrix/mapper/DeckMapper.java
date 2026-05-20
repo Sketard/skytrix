@@ -23,6 +23,7 @@ import com.skytrix.model.entity.CardImage;
 import com.skytrix.model.entity.Deck;
 import com.skytrix.model.entity.ImageIndex;
 import com.skytrix.model.enums.DeckKeyword;
+import com.skytrix.utils.BanlistValidator;
 import com.skytrix.utils.RouteUtils;
 
 @Mapper(componentModel = "spring")
@@ -98,6 +99,10 @@ public abstract class DeckMapper {
 				&& extraCount <= EXTRA.getMaxSize()
 				&& sideCount <= SIDE.getMaxSize()
 		);
+		// Ban-list legality — global copy counts across all three zones.
+		// Independent from `valid` so the picker can tell "incomplete" from
+		// "ban-list illegal" (see BanlistValidator).
+		target.setBanlistLegal(BanlistValidator.isLegal(source.getCardsIndexed()));
 		target.setUpdatedAt(source.getUpdatedAt());
 		return target;
 	}

@@ -111,8 +111,7 @@ export class Deck {
 
   public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false, selectedImageId?: number): Deck {
     const correctedZone = this.getCorrectZone(card, zone);
-    const numberOfCopyReached = this._isMaxNumberOfCopyReached(card, correctedZone);
-    if (numberOfCopyReached) {
+    if (this._isMaxNumberOfCopyReached(card)) {
       return this;
     }
     const firstAvailableSlot = this[correctedZone].findIndex(e => e.index === -1);
@@ -170,13 +169,46 @@ export class Deck {
   }
 
   public isMaxNumberOfCopyReached(card: CardDetail): boolean {
-    const zone = this.getDefaultZone(card);
-    return this._isMaxNumberOfCopyReached(card, zone);
+    return this._isMaxNumberOfCopyReached(card);
   }
 
   public numberOfCopy(card: CardDetail): number {
-    const zone = this.getDefaultZone(card);
-    return this._numberOfCopy(card, zone);
+    return this._numberOfCopy(card);
+  }
+
+  /**
+   * Ban-list violations — cards whose total copy count across main + side +
+   * extra exceeds their `banInfo` limit (0 forbidden, 1 limited, 2 semi,
+   * 3/undefined unlimited). Counted globally per the official TCG/OCG rule.
+   * Returns one `{ card, count }` entry per offending card id.
+   */
+  public banlistViolations(): Array<{ card: CardDetail; count: number }> {
+    const counts = new Map<number, { card: CardDetail; count: number }>();
+    for (const slot of [...this.mainDeck, ...this.sideDeck, ...this.extraDeck]) {
+      const id = slot.card.card.id;
+      if (slot.index === -1 || id == null) {
+        continue;
+      }
+      const entry = counts.get(id);
+      if (entry) {
+        entry.count++;
+      } else {
+        counts.set(id, { card: slot.card, count: 1 });
+      }
+    }
+    return Array.from(counts.values()).filter(
+      ({ card, count }) => count > Deck.allowedCopies(card)
+    );
+  }
+
+  public get isBanlistLegal(): boolean {
+    return this.banlistViolations().length === 0;
+  }
+
+  /** Allowed copies for a card — a missing/undefined `banInfo` means unlimited. */
+  private static allowedCopies(card: CardDetail): number {
+    const banInfo = card.card.banInfo;
+    return banInfo == null ? Deck.MAX_CARD_COPY : banInfo;
   }
 
   private getDefaultZone(card: CardDetail): DeckZone {
@@ -194,22 +226,18 @@ export class Deck {
     return copy;
   }
 
-  private _isMaxNumberOfCopyReached(card: CardDetail, zone: DeckZone): boolean {
-    return this._numberOfCopy(card, zone) === card.card.banInfo;
+  private _isMaxNumberOfCopyReached(card: CardDetail): boolean {
+    return this._numberOfCopy(card) >= Deck.allowedCopies(card);
   }
 
-  private _numberOfCopy(card: CardDetail, zone: DeckZone): number {
-    const part = this[zone];
-    return part.reduce((acc, addedCard) => {
+  /** Total copies of a card across main + side + extra (ban-list counts globally). */
+  private _numberOfCopy(card: CardDetail): number {
+    return [...this.mainDeck, ...this.sideDeck, ...this.extraDeck].reduce((acc, addedCard) => {
       const addedCardId = addedCard.card.card.id;
       if (!addedCardId) {
         return acc;
       }
-      if (card.card.id === addedCard.card.card.id) {
-        return acc + 1;
-      } else {
-        return acc;
-      }
+      return card.card.id === addedCardId ? acc + 1 : acc;
     }, 0);
   }
 

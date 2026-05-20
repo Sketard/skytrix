@@ -17,11 +17,18 @@ export class DeckBoxComponent {
   readonly deck = input<ShortDeck>();
   readonly add = input<boolean>(false);
 
-  readonly statusPill = computed<{ key: string; variant: 'valid' | 'invalid' } | null>(() => {
+  // Tripartite legality: count-incomplete (red) takes priority over a
+  // ban-list breach (orange); only a count-valid AND ban-list-legal deck
+  // shows the green "legal" pill.
+  readonly statusPill = computed<{ key: string; variant: 'valid' | 'invalid' | 'warning' } | null>(() => {
     const d = this.deck();
     if (!d) return null;
-    return d.valid
-      ? { key: 'deckBox.legal', variant: 'valid' }
-      : { key: 'deckBox.incomplete', variant: 'invalid' };
+    if (!d.valid) {
+      return { key: 'deckBox.incomplete', variant: 'invalid' };
+    }
+    if (!d.banlistLegal) {
+      return { key: 'deckBox.banlistIllegal', variant: 'warning' };
+    }
+    return { key: 'deckBox.legal', variant: 'valid' };
   });
 }

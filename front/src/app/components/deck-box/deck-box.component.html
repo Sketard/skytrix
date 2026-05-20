@@ -31,7 +31,10 @@
 
     <div class="deck-box__meta">
       @if (statusPill(); as pill) {
-        <span class="pill" [class.pill--valid]="pill.variant === 'valid'" [class.pill--invalid]="pill.variant === 'invalid'">
+        <span class="pill"
+          [class.pill--valid]="pill.variant === 'valid'"
+          [class.pill--invalid]="pill.variant === 'invalid'"
+          [class.pill--warning]="pill.variant === 'warning'">
           {{ pill.key | translate }}
         </span>
       }

@@ -14,6 +14,7 @@ function makeDeck(overrides: Partial<ShortDeck>): ShortDeck {
     urls: [],
     mainDeckCount: 40,
     valid: true,
+    banlistLegal: true,
     updatedAt: '2026-05-18T12:00:00Z',
     ...overrides,
   };
@@ -91,6 +92,18 @@ describe('DeckListStore', () => {
     ]);
   });
 
+  it('ranks ban-list-illegal decks between legal and incomplete', () => {
+    deckSubject.next([
+      makeDeck({ id: 1, name: 'Incomplete', valid: false, banlistLegal: true }),
+      makeDeck({ id: 2, name: 'Legal',      valid: true,  banlistLegal: true }),
+      makeDeck({ id: 3, name: 'Banlist',    valid: true,  banlistLegal: false }),
+    ]);
+    store.setSortMode('legality');
+    expect(store.filteredDecks().map(d => d.name)).toEqual([
+      'Legal', 'Banlist', 'Incomplete',
+    ]);
+  });
+
   it('filters by searchQuery (accent-insensitive)', () => {
     deckSubject.next([
       makeDeck({ id: 1, name: 'Élemental Hero' }),
@@ -117,6 +130,15 @@ describe('DeckListStore', () => {
     expect(stats[1].value).toBe(7); // 3 + 4 from the owned stub
     expect(stats[2].labelKey).toBe('deckStats.legalDecks');
     expect(stats[2].value).toBe(2);
+  });
+
+  it('excludes ban-list-illegal decks from the legalDecks stat', () => {
+    deckSubject.next([
+      makeDeck({ id: 1, valid: true,  banlistLegal: true }),
+      makeDeck({ id: 2, valid: true,  banlistLegal: false }),
+      makeDeck({ id: 3, valid: false, banlistLegal: true }),
+    ]);
+    expect(store.stats()[2].value).toBe(1);
   });
 
   // ─── view guards ────────────────────────────────────────────────────────────

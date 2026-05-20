@@ -16,7 +16,7 @@
  * Things a future refactor would silently break.
  */
 
-import { Component, signal, WritableSignal } from '@angular/core';
+import { Component, computed, signal, WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
@@ -39,18 +39,33 @@ import { ExportMode } from '../../../../core/enums/export.mode.enum';
 // =============================================================================
 
 /** Build a CardDetail with the given id and `extraCard` flag. The id lives
- *  on `card.card.id` (CardDetail wraps a Card which extends CardDTO). */
-function makeCardDetail(id: number, opts: { extraCard?: boolean; favorite?: boolean } = {}): CardDetail {
+ *  on `card.card.id` (CardDetail wraps a Card which extends CardDTO).
+ *  `banInfo` is left undefined unless set — Deck treats that as unlimited. */
+function makeCardDetail(
+  id: number,
+  opts: { extraCard?: boolean; favorite?: boolean; banInfo?: number } = {},
+): CardDetail {
   const cd = new CardDetail();
   cd.card.id = id;
   cd.card.extraCard = opts.extraCard ?? false;
   cd.favorite = opts.favorite ?? false;
+  if (opts.banInfo !== undefined) {
+    cd.card.banInfo = opts.banInfo;
+  }
   return cd;
 }
 
 /** Build an IndexedCardDetail wrapping a CardDetail at a given slot index. */
-function makeIndexedCard(id: number, slotIndex: number, opts: { extraCard?: boolean; selectedImageId?: number } = {}): IndexedCardDetail {
-  return new IndexedCardDetail(makeCardDetail(id, { extraCard: opts.extraCard }), slotIndex, opts.selectedImageId);
+function makeIndexedCard(
+  id: number,
+  slotIndex: number,
+  opts: { extraCard?: boolean; selectedImageId?: number; banInfo?: number } = {},
+): IndexedCardDetail {
+  return new IndexedCardDetail(
+    makeCardDetail(id, { extraCard: opts.extraCard, banInfo: opts.banInfo }),
+    slotIndex,
+    opts.selectedImageId,
+  );
 }
 
 /** Build an empty Deck and inject N filled slots into the named zone. */
@@ -89,6 +104,10 @@ class StubDeckBuildService {
   readonly handTestOpened = signal(false).asReadonly();
   readonly cardDragActive = signal(false).asReadonly();
   readonly isDirty = signal(false).asReadonly();
+  // Ban-list violations — mirrors the real service's computed (delegates to
+  // `deck().banlistViolations()`) so `banlistTooltip` resolves and tracks
+  // `setDeck` calls.
+  readonly banlistViolations = computed(() => this._deck().banlistViolations());
 
   // Spies for the mutators the component calls.
   resetDeck = jasmine.createSpy('resetDeck');
@@ -342,12 +361,14 @@ describe('DeckBuilderComponent — navigateToPvp guards', () => {
 
   /** Build a deck with a stable id and N main / E extra / S side filled
    *  slots. Pads zones so `filter(s => s.index !== -1)` yields exactly the
-   *  intended counts (Deck ctor caps at 60/15/15 with -1 placeholders). */
+   *  intended counts (Deck ctor caps at 60/15/15 with -1 placeholders).
+   *  Each slot gets a unique card id so the deck stays ban-list legal — the
+   *  count guards are tested in isolation from the ban-list guard. */
   function makeDeckWithCounts(main: number, extra: number, side: number, id: number = 42): Deck {
     return makeDeck({
-      main: Array.from({ length: main }, (_, i) => makeIndexedCard(1, i)),
-      extra: Array.from({ length: extra }, (_, i) => makeIndexedCard(2, i, { extraCard: true })),
-      side: Array.from({ length: side }, (_, i) => makeIndexedCard(3, i)),
+      main: Array.from({ length: main }, (_, i) => makeIndexedCard(1000 + i, i)),
+      extra: Array.from({ length: extra }, (_, i) => makeIndexedCard(2000 + i, i, { extraCard: true })),
+      side: Array.from({ length: side }, (_, i) => makeIndexedCard(3000 + i, i)),
     }, id);
   }
 
@@ -386,6 +407,35 @@ describe('DeckBuilderComponent — navigateToPvp guards', () => {
     deckSvc.setDeck(d);
     component.navigateToPvp();
     expect(notify.error).toHaveBeenCalledWith('error.DECK_SIDE_INVALID', { count: 16, max: 15 });
+    expect(roomApi.createRoom).not.toHaveBeenCalled();
+  });
+
+  it('rejects a ban-list-illegal deck (count-valid but over the copy limit)', () => {
+    // 40 main cards: 2 copies of a limited card (banInfo=1) + 38 unique
+    // unlimited cards. Count is valid, but the limited card is over its cap.
+    const main = [
+      makeIndexedCard(7777, 0, { banInfo: 1 }),
+      makeIndexedCard(7777, 1, { banInfo: 1 }),
+      ...Array.from({ length: 38 }, (_, i) => makeIndexedCard(1000 + i, i + 2)),
+    ];
+    deckSvc.setDeck(makeDeck({ main }, 42));
+    component.navigateToPvp();
+    expect(notify.error).toHaveBeenCalledWith('error.DECK_BANLIST_ILLEGAL', jasmine.any(Object));
+    expect(roomApi.createRoom).not.toHaveBeenCalled();
+    expect(component.pvpLoading()).toBe(false);
+  });
+
+  it('counts ban-list copies globally across main + side (cross-zone)', () => {
+    // A limited card (banInfo=1) with 1 copy in main and 1 in side — legal
+    // per zone, illegal globally. The guard must catch this.
+    const main = [
+      makeIndexedCard(8888, 0, { banInfo: 1 }),
+      ...Array.from({ length: 39 }, (_, i) => makeIndexedCard(1000 + i, i + 1)),
+    ];
+    const side = [makeIndexedCard(8888, 0, { banInfo: 1 })];
+    deckSvc.setDeck(makeDeck({ main, side }, 42));
+    component.navigateToPvp();
+    expect(notify.error).toHaveBeenCalledWith('error.DECK_BANLIST_ILLEGAL', jasmine.any(Object));
     expect(roomApi.createRoom).not.toHaveBeenCalled();
   });
 

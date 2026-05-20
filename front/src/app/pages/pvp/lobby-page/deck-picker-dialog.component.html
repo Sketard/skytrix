@@ -105,12 +105,12 @@
           class="deck-card"
           role="option"
           [class.selected]="activeSelectedId() === deck.id"
-          [class.invalid]="!deck.valid"
+          [class.invalid]="!isDeckPlayable(deck)"
           [attr.aria-selected]="activeSelectedId() === deck.id"
-          [attr.aria-disabled]="!deck.valid"
-          [attr.data-invalid-reason]="deck.valid ? null : invalidReason(deck)"
-          [disabled]="!deck.valid"
-          [attr.title]="deck.valid ? null : invalidReason(deck)"
+          [attr.aria-disabled]="!isDeckPlayable(deck)"
+          [attr.data-invalid-reason]="isDeckPlayable(deck) ? null : invalidReason(deck)"
+          [disabled]="!isDeckPlayable(deck)"
+          [attr.title]="isDeckPlayable(deck) ? null : invalidReason(deck)"
           (click)="selectDeck(deck.id)">
           <div class="deck-thumb">
             <img

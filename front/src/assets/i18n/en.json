@@ -123,6 +123,7 @@
     "DECK_MAIN_INVALID": "Invalid Main Deck: {{count}} cards ({{min}}–{{max}} required)",
     "DECK_EXTRA_INVALID": "Invalid Extra Deck: {{count}} cards ({{max}} max)",
     "DECK_SIDE_INVALID": "Invalid Side Deck: {{count}} cards ({{max}} max)",
+    "DECK_BANLIST_ILLEGAL": "Illegal deck: too many copies of {{name}}",
     "DECK_LOAD_FAILED": "Unable to load decks",
     "REPLAY_WATCHDOG_TIMEOUT": "Replay engine timed out",
     "REPLAY_INIT_FAILED": "Failed to initialize replay",
@@ -443,6 +444,7 @@
     "invalidReason": {
       "mainTooSmall": "Incomplete deck: {{count}}/{{min}} cards required",
       "mainTooLarge": "Deck too large: {{count}}/{{max}} cards maximum",
+      "banlist": "Illegal deck: a card exceeds its ban-list copy limit",
       "generic": "Invalid deck"
     },
     "goToDeckBuilder": "Go to Deck Builder"
@@ -539,8 +541,10 @@
       "main": "MAIN",
       "extra": "EXTRA",
       "side": "SIDE",
+      "banlist": "ILLEGAL {{count}}",
       "dropHint": "Drag or double-click to add"
-    }
+    },
+    "banlistViolation": "{{name}}: {{count}} copies (max {{max}})"
   },
   "nav": {
     "alphaWarning": "Feature in alpha — bugs possible",
@@ -613,6 +617,7 @@
     "newDeck": "New deck",
     "legal": "Legal",
     "incomplete": "Incomplete",
+    "banlistIllegal": "Illegal",
     "mainCount": "Main {{count}}"
   },
   "simulator": {

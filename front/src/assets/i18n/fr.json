@@ -123,6 +123,7 @@
     "DECK_MAIN_INVALID": "Main Deck invalide : {{count}} cartes ({{min}}–{{max}} requises)",
     "DECK_EXTRA_INVALID": "Extra Deck invalide : {{count}} cartes ({{max}} max)",
     "DECK_SIDE_INVALID": "Side Deck invalide : {{count}} cartes ({{max}} max)",
+    "DECK_BANLIST_ILLEGAL": "Deck illégal : trop d'exemplaires de {{name}}",
     "DECK_LOAD_FAILED": "Impossible de charger les decks",
     "REPLAY_WATCHDOG_TIMEOUT": "Le moteur de replay a expiré",
     "REPLAY_INIT_FAILED": "Échec d'initialisation du replay",
@@ -443,6 +444,7 @@
     "invalidReason": {
       "mainTooSmall": "Deck incomplet : {{count}}/{{min}} cartes minimum",
       "mainTooLarge": "Deck trop grand : {{count}}/{{max}} cartes maximum",
+      "banlist": "Deck illégal : une carte dépasse sa limite d'exemplaires (banlist)",
       "generic": "Deck invalide"
     },
     "goToDeckBuilder": "Aller au Deck Builder"
@@ -539,8 +541,10 @@
       "main": "MAIN",
       "extra": "EXTRA",
       "side": "SIDE",
+      "banlist": "ILLÉGAL {{count}}",
       "dropHint": "Glissez ou double-cliquez pour ajouter"
-    }
+    },
+    "banlistViolation": "{{name}} : {{count}} exemplaires (max {{max}})"
   },
   "nav": {
     "alphaWarning": "Fonctionnalité en alpha — bugs possibles",
@@ -613,6 +617,7 @@
     "newDeck": "Nouveau deck",
     "legal": "Légal",
     "incomplete": "Incomplet",
+    "banlistIllegal": "Illégal",
     "mainCount": "Main {{count}}"
   },
   "simulator": {

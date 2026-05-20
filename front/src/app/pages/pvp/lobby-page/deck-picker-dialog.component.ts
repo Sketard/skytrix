@@ -254,13 +254,18 @@ export class DeckPickerDialogComponent implements OnInit {
     this.activeSlot.set(slot);
   }
 
+  /** A deck is duel-ready only when count-valid AND ban-list legal. */
+  isDeckPlayable(deck: ShortDeck): boolean {
+    return deck.valid && deck.banlistLegal;
+  }
+
   selectDeck(id: number): void {
-    // Defense-in-depth: the button is `[disabled]` when !deck.valid so click
-    // shouldn't fire, but if a caller bypasses the disabled state (e.g.
-    // assistive tech, keyboard `Enter` on a focused-but-disabled button in
-    // some browsers) we drop the selection.
+    // Defense-in-depth: the button is `[disabled]` for non-playable decks so
+    // click shouldn't fire, but if a caller bypasses the disabled state
+    // (e.g. assistive tech, keyboard `Enter` on a focused-but-disabled
+    // button in some browsers) we drop the selection.
     const deck = this.decks().find(d => d.id === id);
-    if (!deck || !deck.valid) return;
+    if (!deck || !this.isDeckPlayable(deck)) return;
 
     if (this.activeSlot() === 'p1') {
       this.selectedId.set(id);
@@ -270,11 +275,11 @@ export class DeckPickerDialogComponent implements OnInit {
     }
   }
 
-  // Human-readable reason for an invalid deck, used as the click-blocked
-  // tooltip in the picker grid. Today the back only flags valid:boolean
-  // without a reason string, so we infer from mainDeckCount (the most common
-  // case: "deck incomplet : N/40 cartes minimum"). If multiple rules fail at
-  // once, we report the main count one — it's the user-actionable signal.
+  // Human-readable reason a deck can't be picked, used as the click-blocked
+  // tooltip in the picker grid. Count rules are inferred from mainDeckCount
+  // (the back flags valid:boolean without a reason string); a count-valid
+  // deck that is still non-playable failed the ban-list. Count problems are
+  // reported first — they're the more fundamental blocker.
   invalidReason(deck: ShortDeck): string {
     if (deck.mainDeckCount < MAIN_DECK_MIN_SIZE) {
       return this.translate.instant('deckPicker.invalidReason.mainTooSmall', {
@@ -287,6 +292,12 @@ export class DeckPickerDialogComponent implements OnInit {
         count: deck.mainDeckCount,
         max: MAIN_DECK_MAX_SIZE,
       });
+    }
+    if (!deck.valid) {
+      return this.translate.instant('deckPicker.invalidReason.generic');
+    }
+    if (!deck.banlistLegal) {
+      return this.translate.instant('deckPicker.invalidReason.banlist');
     }
     return this.translate.instant('deckPicker.invalidReason.generic');
   }

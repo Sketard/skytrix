@@ -33,7 +33,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { RoomApiService } from '../../../pvp/room-api.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ButtonComponent } from '../../../../components/button/button.component';
 
 @Component({
@@ -124,6 +124,7 @@ export class DeckBuilderComponent implements OnDestroy {
   readonly isCardDragActive = this.deckBuildService.cardDragActive;
   readonly isDirty = this.deckBuildService.isDirty;
   private readonly notify = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
   private readonly ownedCardService = inject(OwnedCardService);
   private readonly roomApiService = inject(RoomApiService);
   readonly pvpLoading = signal(false);
@@ -133,6 +134,23 @@ export class DeckBuilderComponent implements OnDestroy {
     const cd = this.selectedCardDetail();
     if (!cd || cd.card.id == null) return undefined;
     return this.ownedCardService.ownedMap().get(cd.card.id) ?? 0;
+  });
+
+  // Tooltip listing each ban-list-offending card with its over-the-limit
+  // copy count, e.g. "Ash Blossom: 3 copies (max 1)".
+  readonly banlistTooltip = computed(() => {
+    const violations = this.deckBuildService.banlistViolations();
+    if (violations.length === 0) return '';
+    const max = (banInfo: number | undefined) => (banInfo == null ? 3 : banInfo);
+    return violations
+      .map(({ card, count }) =>
+        this.translate.instant('deckBuilder.banlistViolation', {
+          name: card.card.name ?? '',
+          count,
+          max: max(card.card.banInfo),
+        }),
+      )
+      .join('\n');
   });
 
   constructor(
@@ -424,6 +442,11 @@ export class DeckBuilderComponent implements OnDestroy {
     }
     if (sideCount > 15) {
       this.notify.error('error.DECK_SIDE_INVALID', { count: sideCount, max: 15 });
+      return;
+    }
+    const violations = deck.banlistViolations();
+    if (violations.length > 0) {
+      this.notify.error('error.DECK_BANLIST_ILLEGAL', { name: violations[0].card.card.name ?? '' });
       return;
     }
 

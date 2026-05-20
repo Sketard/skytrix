@@ -68,7 +68,7 @@ export class DeckListStore extends ListStore<ShortDeck, DeckSortMode> {
       },
       {
         labelKey: 'deckStats.legalDecks',
-        value: all.filter(d => d.valid).length,
+        value: all.filter(d => d.valid && d.banlistLegal).length,
         icon: 'check_circle',
         iconVariant: 'gold',
         valueVariant: 'gold',
@@ -158,11 +158,15 @@ export class DeckListStore extends ListStore<ShortDeck, DeckSortMode> {
         return items.sort((a, b) =>
           a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
         );
-      case 'legality':
+      case 'legality': {
+        // Rank: 2 = duel-ready, 1 = count-valid but ban-list illegal,
+        // 0 = incomplete. Higher first, name asc on tie.
+        const rank = (d: ShortDeck) => (d.valid ? (d.banlistLegal ? 2 : 1) : 0);
         return items.sort((a, b) => {
-          const cmp = Number(b.valid) - Number(a.valid);
+          const cmp = rank(b) - rank(a);
           return cmp !== 0 ? cmp : a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
         });
+      }
     }
   }
 }

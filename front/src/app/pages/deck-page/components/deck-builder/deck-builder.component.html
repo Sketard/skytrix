@@ -52,6 +52,12 @@
           [class.pill--invalid]="deckBuildService.sideCardNumber() > 15">
           {{ 'deckBuilder.viewer.side' | translate }} {{ deckBuildService.sideCardNumber() }}&nbsp;/&nbsp;15
         </span>
+        @if (deckBuildService.banlistViolations().length > 0) {
+          <span class="pill pill--warning" [title]="banlistTooltip()">
+            <mat-icon class="pill__icon">gavel</mat-icon>
+            {{ 'deckBuilder.viewer.banlist' | translate:{ count: deckBuildService.banlistViolations().length } }}
+          </span>
+        }
       </div>
     </div>
 

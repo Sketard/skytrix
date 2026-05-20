@@ -32,6 +32,7 @@ import com.skytrix.repository.CardRepository;
 import com.skytrix.repository.DeckRepository;
 import com.skytrix.repository.RoomRepository;
 import com.skytrix.security.AuthService;
+import com.skytrix.utils.BanlistValidator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -479,6 +480,12 @@ public class RoomService {
                     "Side Deck must have " + DeckKeyword.SIDE.getMinSize() + "-" + DeckKeyword.SIDE.getMaxSize()
                             + " cards (has " + sideCount + ")");
         }
+
+        // Ban-list: copy limits counted globally across main + extra + side.
+        BanlistValidator.firstViolation(deckCards).ifPresent(card -> {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Deck violates the ban-list: too many copies of " + card.getName());
+        });
 
         return deckCards;
     }
