@@ -4,31 +4,35 @@ import { EMPTY, Subscription, catchError, filter, interval, switchMap } from 'rx
 import { RoomApiService, LobbyEvent } from '../room-api.service';
 import { RoomDTO } from '../room.types';
 import { NEW_ROOM_FLASH_MS, POLL_FALLBACK_INTERVAL_MS } from '../pvp-timings';
+import { ListStore } from '../../../core/store/list-store';
 
 /**
  * Owns the lobby's room-list state machine: initial REST snapshot, SSE diff
  * stream, polling fallback, and the one-shot --new flash bookkeeping.
  *
- * Extracted from `LobbyPageComponent` so the component reads as a thin
- * presentation layer (dialogs + navigation only). Lives at the lobby route
- * scope — provided in `LobbyPageComponent` rather than `providedIn:'root'`
- * so the SSE subscription tears down on navigation away.
+ * Extends `ListStore<RoomDTO>` for the shared items/loading/error contract
+ * (the lobby has no search/sort/filter, so the three hooks are no-ops — the
+ * room list is always rendered in server order). Extracted from
+ * `LobbyPageComponent` so the component reads as a thin presentation layer
+ * (dialogs + navigation only). Lives at the lobby route scope — provided in
+ * `LobbyPageComponent` rather than `providedIn:'root'` so the SSE
+ * subscription tears down on navigation away.
  *
- * Public API used by the component:
- *   - `rooms()`, `loading()`, `error()` — display state.
+ * Public API used by the component (in addition to the ListStore base):
+ *   - `rooms()` — alias of `items()`. `loading()` / `error()` from the base.
  *   - `liveSyncAvailable()` / `showLiveSyncBanner()` — connection banner.
  *   - `isNewRoom(code)` — drives the `.room-card--new` flash class.
  *   - `fetchSnapshot()` — retry trigger from the error empty-state.
  *   - `start()` — wires REST + SSE. Called from the component's ngOnInit.
  */
 @Injectable()
-export class LobbyRoomsStore {
+export class LobbyRoomsStore extends ListStore<RoomDTO> {
   private readonly api = inject(RoomApiService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly rooms = signal<RoomDTO[]>([]);
-  readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
+  /** Domain-named alias of `items()` — clearer at call sites. */
+  readonly rooms = this.items;
+
   readonly liveSyncAvailable = signal(false);
 
   // Latches on the first successful SSE `connected` so the banner can
@@ -49,6 +53,10 @@ export class LobbyRoomsStore {
   private pollFallbackSubscription: Subscription | null = null;
   private readonly suppressPollFallback = signal(false);
 
+  constructor() {
+    super('default', 'all');
+  }
+
   start(): void {
     this.fetchSnapshot();
     this.startLobbyStream();
@@ -61,15 +69,15 @@ export class LobbyRoomsStore {
   }
 
   fetchSnapshot(): void {
-    this.loading.set(true);
+    this.setLoading(true);
     this.error.set(null);
     this.api.getRooms().subscribe({
       next: rooms => {
         this.applySnapshot(rooms);
-        this.loading.set(false);
+        this.setLoading(false);
       },
       error: () => {
-        this.loading.set(false);
+        this.setLoading(false);
         if (this.rooms().length === 0) {
           this.error.set('error.ROOM_LOAD_FAILED');
         }
@@ -84,7 +92,7 @@ export class LobbyRoomsStore {
   /** Optimistic local removal — used when the back rejects a join with 409
    *  (room already full) so the row disappears immediately. */
   removeRoom(code: string): void {
-    this.rooms.update(list => list.filter(r => r.roomCode !== code));
+    this.items.update(list => list.filter(r => r.roomCode !== code));
   }
 
   private startLobbyStream(): void {
@@ -110,10 +118,10 @@ export class LobbyRoomsStore {
         this.addRoom(event.room);
         break;
       case 'removed':
-        this.rooms.update(list => list.filter(r => r.roomCode !== event.roomCode));
+        this.items.update(list => list.filter(r => r.roomCode !== event.roomCode));
         break;
       case 'updated':
-        this.rooms.update(list => list.map(r =>
+        this.items.update(list => list.map(r =>
           r.roomCode === event.room.roomCode ? event.room : r,
         ));
         break;
@@ -145,13 +153,13 @@ export class LobbyRoomsStore {
       }
     }
     this.hasFetchedOnce = true;
-    this.rooms.set([...next]);
+    this.items.set([...next]);
     if (appearedCodes.size > 0) this.armNewRoomFlash(appearedCodes);
   }
 
   private addRoom(room: RoomDTO): void {
     if (this.rooms().some(r => r.roomCode === room.roomCode)) return;
-    this.rooms.update(list => [room, ...list]);
+    this.items.update(list => [room, ...list]);
     if (this.hasFetchedOnce) this.armNewRoomFlash(new Set([room.roomCode]));
   }
 
@@ -169,5 +177,20 @@ export class LobbyRoomsStore {
         return next;
       });
     }, NEW_ROOM_FLASH_MS);
+  }
+
+  // ─── ListStore hooks ──────────────────────────────────────────────────────
+  // The lobby renders rooms in server order with no search/sort/filter UI.
+
+  protected searchMatches(): boolean {
+    return true;
+  }
+
+  protected passesFilter(): boolean {
+    return true;
+  }
+
+  protected sortItems(items: RoomDTO[]): RoomDTO[] {
+    return items;
   }
 }

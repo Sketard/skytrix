@@ -9,44 +9,47 @@ import { NotificationService } from '../../../core/services/notification.service
 import { ReplayDTO } from '../../../core/model/dto/replay-dto';
 import { ReplayStatsDTO } from '../../../core/model/dto/replay-stats-dto';
 import { DuelResult } from '../../../core/enums/duel-result.enum';
+import { ListStore } from '../../../core/store/list-store';
 
 const PAGE_SIZE = 20;
 const NEXT_PAGE_TRIGGER_OFFSET = 5;
+const LAST_7_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type ReplaySortMode = 'newest' | 'oldest' | 'mostTurns';
 export type ReplayFilter = 'all' | 'wins' | 'losses' | 'myDeck' | 'last7days';
 
 /**
- * Owns the Replay Hub state machine: REST pagination, search/filter/sort
- * derivation, and optimistic delete with rollback. Lives at the
- * `ReplayHubPageComponent` route scope (provided in the component) so the
- * subscription teardown is scoped to navigation away.
+ * Owns the Replay Hub state machine. Extends `ListStore<ReplayDTO>` for the
+ * cross-cutting items/loading/error/search/sort/filter plumbing; adds the
+ * replay-specific REST pagination, stats fetch, and optimistic delete with
+ * rollback on top. Lives at the `ReplayHubPageComponent` route scope
+ * (provided in the component) so the subscription teardown is scoped to
+ * navigation away.
  *
- * Public API:
- *   - `replays()`, `stats()`, `loading()`, `error()` — display state.
- *   - `filteredReplays()` — computed product of search + filter + sort.
+ * Public API (in addition to the ListStore base):
+ *   - `replays()` — alias of `items()`. `filteredReplays()` — alias of
+ *     `filteredItems()`. Domain-named for the template + computeds.
+ *   - `stats()` — win/loss aggregate; null until fetched / on fetch error.
  *   - `hasMore()` — paginate guard for the scroll-driven loadNextPage.
+ *   - `fetchingMore()` — drives the inline pagination skeleton.
  *   - `start()` — wires initial fetch (snapshot + stats). Called from ngOnInit.
  *   - `fetchSnapshot()`, `loadNextPage()` — pagination drivers.
- *   - `setSearchQuery`, `setSortMode`, `setActiveFilter` — UI bindings.
  *   - `deleteReplay(id)` — optimistic delete with rollback on error.
  */
 @Injectable()
-export class ReplayHubStore {
+export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayFilter> {
   private readonly replayService = inject(ReplayService);
   private readonly authService = inject(AuthService);
   private readonly deckBuildService = inject(DeckBuildService);
   private readonly notify = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly replays = signal<ReplayDTO[]>([]);
-  readonly stats = signal<ReplayStatsDTO | null>(null);
-  readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
+  /** Domain-named alias of `items()` — clearer at call sites. */
+  readonly replays = this.items;
+  /** Domain-named alias of `filteredItems()`. */
+  readonly filteredReplays = this.filteredItems;
 
-  readonly searchQuery = signal('');
-  readonly sortMode = signal<ReplaySortMode>('newest');
-  readonly activeFilter = signal<ReplayFilter>('all');
+  readonly stats = signal<ReplayStatsDTO | null>(null);
 
   private readonly currentOffset = signal(0);
   private readonly totalElements = signal<number | null>(null);
@@ -69,74 +72,9 @@ export class ReplayHubStore {
 
   readonly hasDecks = computed(() => this.defaultDeckName().length > 0);
 
-  /**
-   * Filtered + sorted product of the source list. Search matches against
-   * opponent username + opposing deck name (case-insensitive contains).
-   */
-  readonly filteredReplays = computed(() => {
-    const userId = this.authService.user()?.id ?? -1;
-    const query = this.searchQuery().toLowerCase().trim();
-    const filter = this.activeFilter();
-    const sort = this.sortMode();
-    const defaultDeck = this.defaultDeckName();
-    const now = Date.now();
-    const last7Cutoff = now - 7 * 24 * 60 * 60 * 1000;
-
-    const filtered = this.replays().filter(r => {
-      const isP1 = r.player1Id === userId;
-      const mySide = isP1 ? 0 : 1;
-      const oppSide = isP1 ? 1 : 0;
-
-      // Search
-      if (query) {
-        const oppName = (r.metadata.playerUsernames[oppSide] ?? '').toLowerCase();
-        const oppDeck = (r.metadata.deckNames[oppSide] ?? '').toLowerCase();
-        const myDeck = (r.metadata.deckNames[mySide] ?? '').toLowerCase();
-        if (!oppName.includes(query) && !oppDeck.includes(query) && !myDeck.includes(query)) {
-          return false;
-        }
-      }
-
-      // Active filter
-      const result = r.metadata.result;
-      switch (filter) {
-        case 'wins':
-          if (!isWin(result)) return false;
-          break;
-        case 'losses':
-          if (!isLoss(result)) return false;
-          break;
-        case 'myDeck':
-          if (defaultDeck && r.metadata.deckNames[mySide] !== defaultDeck) return false;
-          break;
-        case 'last7days':
-          if (new Date(r.createdAt).getTime() < last7Cutoff) return false;
-          break;
-        case 'all':
-        default:
-          break;
-      }
-
-      return true;
-    });
-
-    // Sort
-    switch (sort) {
-      case 'oldest':
-        return filtered.slice().sort((a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        );
-      case 'mostTurns':
-        return filtered.slice().sort((a, b) =>
-          b.metadata.turnCount - a.metadata.turnCount,
-        );
-      case 'newest':
-      default:
-        return filtered.slice().sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-    }
-  });
+  constructor() {
+    super('newest', 'all');
+  }
 
   start(): void {
     this.subscribeToDeckList();
@@ -146,23 +84,23 @@ export class ReplayHubStore {
 
   /** Re-fetches the entire first page (clears the list). */
   fetchSnapshot(): void {
-    this.loading.set(true);
+    this.setLoading(true);
     this.error.set(null);
     this.currentOffset.set(0);
     this.replayService.getMatchHistory(0, PAGE_SIZE).subscribe({
       next: page => {
-        this.replays.set(page.elements);
+        this.items.set(page.elements);
         this.totalElements.set(page.size);
         // `currentOffset` tracks the Spring page index (0-based). After page 0
         // landed, the next page to request is index 1. See `loadNextPage` for
         // the protocol — the back's `offset` query param is actually a page
         // index, not a row offset (see ReplayController.java:50).
         this.currentOffset.set(1);
-        this.loading.set(false);
+        this.setLoading(false);
       },
       error: err => {
         this.error.set(err?.message ?? 'Failed to load replays');
-        this.loading.set(false);
+        this.setLoading(false);
       },
     });
   }
@@ -186,7 +124,7 @@ export class ReplayHubStore {
     const pageIndex = this.currentOffset();
     this.replayService.getMatchHistory(pageIndex, PAGE_SIZE).subscribe({
       next: page => {
-        this.replays.update(prev => [...prev, ...page.elements]);
+        this.items.update(prev => [...prev, ...page.elements]);
         this.currentOffset.set(pageIndex + 1);
         // Refresh totalElements in case rows landed mid-scroll.
         this.totalElements.set(page.size);
@@ -213,29 +151,20 @@ export class ReplayHubStore {
       && !this.loading();
   }
 
-  setSearchQuery(q: string): void { this.searchQuery.set(q); }
-  setSortMode(m: ReplaySortMode): void { this.sortMode.set(m); }
-  setActiveFilter(f: ReplayFilter): void { this.activeFilter.set(f); }
-  clearSearch(): void { this.searchQuery.set(''); }
-  clearFilters(): void {
-    this.searchQuery.set('');
-    this.activeFilter.set('all');
-  }
-
   /**
    * Optimistic delete: remove from list immediately, rollback on backend
    * error. Stats are refreshed asynchronously since the totals shift.
    */
   async deleteReplay(id: string): Promise<void> {
     const snapshot = this.replays();
-    this.replays.update(list => list.filter(r => r.id !== id));
+    this.items.update(list => list.filter(r => r.id !== id));
     this.totalElements.update(n => (n === null ? null : Math.max(0, n - 1)));
     try {
       await firstValueFrom(this.replayService.deleteReplay(id));
       this.fetchStats();
     } catch (err) {
       // Rollback
-      this.replays.set(snapshot);
+      this.items.set(snapshot);
       this.totalElements.update(n => (n === null ? null : n + 1));
       this.notify.error(err instanceof HttpErrorResponse ? err : String(err));
     }
@@ -250,6 +179,63 @@ export class ReplayHubStore {
       .subscribe(decks => {
         this.defaultDeckName.set(decks?.[0]?.name ?? '');
       });
+  }
+
+  // ─── ListStore hooks ──────────────────────────────────────────────────────
+
+  /** Search matches against the opponent username + both deck names
+   *  (case-insensitive contains). `query` is already trimmed + lowercased. */
+  protected searchMatches(r: ReplayDTO, query: string): boolean {
+    const { oppSide, mySide } = this.sides(r);
+    const oppName = (r.metadata.playerUsernames[oppSide] ?? '').toLowerCase();
+    const oppDeck = (r.metadata.deckNames[oppSide] ?? '').toLowerCase();
+    const myDeck = (r.metadata.deckNames[mySide] ?? '').toLowerCase();
+    return oppName.includes(query) || oppDeck.includes(query) || myDeck.includes(query);
+  }
+
+  protected passesFilter(r: ReplayDTO, mode: ReplayFilter): boolean {
+    const result = r.metadata.result;
+    switch (mode) {
+      case 'wins':
+        return isWin(result);
+      case 'losses':
+        return isLoss(result);
+      case 'myDeck': {
+        const defaultDeck = this.defaultDeckName();
+        // No default deck → filter is a no-op (chip disabled in the template).
+        if (!defaultDeck) return true;
+        return r.metadata.deckNames[this.sides(r).mySide] === defaultDeck;
+      }
+      case 'last7days':
+        return new Date(r.createdAt).getTime() >= Date.now() - LAST_7_DAYS_MS;
+      case 'all':
+      default:
+        return true;
+    }
+  }
+
+  protected sortItems(items: ReplayDTO[], mode: ReplaySortMode): ReplayDTO[] {
+    switch (mode) {
+      case 'oldest':
+        return items.sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
+      case 'mostTurns':
+        return items.sort((a, b) => b.metadata.turnCount - a.metadata.turnCount);
+      case 'newest':
+      default:
+        return items.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+    }
+  }
+
+  /** Resolve which metadata index (0/1) is the current user vs the opponent.
+   *  The user is `player1` when their id matches `player1Id`, else `player2`. */
+  private sides(r: ReplayDTO): { mySide: 0 | 1; oppSide: 0 | 1 } {
+    const userId = this.authService.user()?.id ?? -1;
+    const isP1 = r.player1Id === userId;
+    return isP1 ? { mySide: 0, oppSide: 1 } : { mySide: 1, oppSide: 0 };
   }
 }
 
