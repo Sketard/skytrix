@@ -4,7 +4,8 @@
     "**/node_modules/**",
     "dist/**",
     "coverage/**",
-    "src/app/test/**"
+    "src/app/test/**",
+    "**/debug-log-panel/**"
   ],
   "rules": {
     "color-no-hex": null,
