@@ -24,13 +24,14 @@
         <div class="zone-group__cards">
           @for (entry of group.entries; track entry.originalIndex) {
             <button class="card-slot"
-                    #slot
+                    cdkOverlayOrigin
+                    #slotOrigin="cdkOverlayOrigin"
                     [class.card-slot--selected]="isSelected(entry.originalIndex)"
                     (click)="toggleCard(entry.originalIndex)"
                     (dblclick)="dblclickCard(entry.originalIndex)"
-                    (mouseenter)="onCardHover(entry.originalIndex, slot)"
+                    (mouseenter)="onCardHover(entry.originalIndex)"
                     (mouseleave)="onCardLeave()"
-                    (focus)="onCardHover(entry.originalIndex, slot)"
+                    (focus)="onCardHover(entry.originalIndex)"
                     (blur)="onCardLeave()"
                     [disabled]="answered && !readOnly"
                     type="button"
@@ -56,6 +57,13 @@
                   <span class="card-slot__effect-caption">{{ effectTitle(entry.card) }}</span>
                 }
               }
+              <ng-template cdkConnectedOverlay
+                           [cdkConnectedOverlayOrigin]="slotOrigin"
+                           [cdkConnectedOverlayOpen]="hoverIndex() === entry.originalIndex"
+                           [cdkConnectedOverlayPositions]="hoverPositions"
+                           cdkConnectedOverlayPanelClass="effect-hover-pane">
+                <div class="effect-hover" role="presentation">{{ hoverText() }}</div>
+              </ng-template>
             </button>
           }
         </div>
@@ -63,16 +71,6 @@
     }
     </div>
   </div>
-
-  @if (hoverEffect(); as hover) {
-    <div class="effect-hover"
-         [class.effect-hover--flip]="hover.flip"
-         [style.left.px]="hover.left"
-         [style.top.px]="hover.top"
-         role="presentation">
-      {{ hover.text }}
-    </div>
-  }
 
   <div class="actions">
     @if (promptData?.type === 'SELECT_SUM') {

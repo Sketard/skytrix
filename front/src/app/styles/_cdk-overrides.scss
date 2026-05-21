@@ -58,6 +58,12 @@
   width: 100%;
 }
 
+// --- prompt chain effect hover : le panneau ne doit jamais intercepter la
+// souris, sinon le `mouseleave` de la carte se déclenche → flicker du hover.
+.effect-hover-pane {
+  pointer-events: none;
+}
+
 .replay-list-viewport .cdk-virtual-scroll-content-wrapper {
   width: 100%;
   // Marge en haut pour que le hover-lift de la première carte

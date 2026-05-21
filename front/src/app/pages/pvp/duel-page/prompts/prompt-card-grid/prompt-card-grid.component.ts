@@ -16,6 +16,7 @@ import { isFaceUp } from '../../../pvp-card.utils';
 import { DuelCardArtService } from '../../duel-card-art.service';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 import { PillComponent } from '../../../../../components/pill/pill.component';
+import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
 
@@ -45,7 +46,7 @@ function cardKey(c: CardInfo): string {
   styleUrl: './prompt-card-grid.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, CardNamePipe, PillComponent],
+  imports: [TranslatePipe, CardNamePipe, PillComponent, CdkOverlayOrigin, CdkConnectedOverlay],
 })
 export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt> {
   private readonly artService = inject(DuelCardArtService);
@@ -328,33 +329,34 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   }
 
   /**
-   * Effect hover panel state for SELECT_CHAIN duplicates. `position: fixed`
-   * because the card strip is `overflow-x: auto`, which would clip an
-   * absolutely-positioned panel. `flip` is true when the panel would overrun
-   * the viewport top and must render below the card instead.
+   * `originalIndex` of the chain entry whose effect hover panel is open, or
+   * null. The panel uses a CDK connected overlay (`cdkConnectedOverlay`) so it
+   * escapes both the `overflow-x: auto` card strip AND the `transform` on the
+   * prompt dialog — a plain `position: fixed` re-anchors to the transformed
+   * ancestor and lands off-screen.
    */
-  readonly hoverEffect = signal<{ text: string; left: number; top: number; flip: boolean } | null>(null);
+  readonly hoverIndex = signal<number | null>(null);
 
-  private static readonly HOVER_PANEL_EST_HEIGHT = 120;
-  private static readonly HOVER_PANEL_GAP = 8;
+  /** Above-the-origin first, flipping below when there is no room (CDK handles the choice). */
+  readonly hoverPositions: ConnectedPosition[] = [
+    { originX: 'center', originY: 'top', overlayX: 'center', overlayY: 'bottom', offsetY: -8 },
+    { originX: 'center', originY: 'bottom', overlayX: 'center', overlayY: 'top', offsetY: 8 },
+  ];
 
-  onCardHover(originalIndex: number, slot: HTMLElement): void {
+  /** Effect text of the currently hovered entry, or null. */
+  hoverText(): string | null {
+    const idx = this.hoverIndex();
+    return idx == null ? null : this.effectTitle(this.cards[idx]);
+  }
+
+  onCardHover(originalIndex: number): void {
     if (this.effectBadge(originalIndex) === null) return;
-    const text = this.effectTitle(this.cards[originalIndex]);
-    if (!text) return;
-    const rect = slot.getBoundingClientRect();
-    const gap = PromptCardGridComponent.HOVER_PANEL_GAP;
-    const flip = rect.top < PromptCardGridComponent.HOVER_PANEL_EST_HEIGHT + gap;
-    this.hoverEffect.set({
-      text,
-      left: rect.left + rect.width / 2,
-      top: flip ? rect.bottom + gap : rect.top - gap,
-      flip,
-    });
+    if (!this.effectTitle(this.cards[originalIndex])) return;
+    this.hoverIndex.set(originalIndex);
   }
 
   onCardLeave(): void {
-    this.hoverEffect.set(null);
+    this.hoverIndex.set(null);
   }
 
   isSelected(index: number): boolean {
