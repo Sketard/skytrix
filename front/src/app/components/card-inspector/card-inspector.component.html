@@ -108,7 +108,10 @@
   }
 </ng-template>
 
-@if (lightboxOpen()) {
+<!-- Full-screen image lightbox — rendered through a CDK overlay (mounted on
+     the body) so it escapes any transformed ancestor that would otherwise
+     trap its `position: fixed` and crop the card. -->
+<ng-template #lightboxTpl>
   @if (card(); as c) {
     <div class="image-lightbox" (click)="closeLightbox()" role="dialog" [attr.aria-label]="c | cardName">
       <button type="button" class="image-lightbox__close"
@@ -116,12 +119,18 @@
               (click)="closeLightbox(); $event.stopPropagation()">
         <mat-icon>close</mat-icon>
       </button>
+      <!-- Drag to pan when zoomed past the viewport; a click without
+           meaningful travel cycles the zoom (handled in pointerup).
+           The (click) handler only swallows the synthetic click so it
+           doesn't bubble to the scrim and close the lightbox. -->
       <img [src]="currentImageUrlFull()"
            [alt]="c | cardName"
            class="image-lightbox__img"
-           [style.transform]="'scale(' + lightboxZoom() + ')'"
-           [style.cursor]="lightboxZoom() < 4 ? 'zoom-in' : 'zoom-out'"
-           (click)="onLightboxImgClick($event)"
+           [class.is-dragging]="lightboxDragging()"
+           [style.transform]="lightboxTransform()"
+           [style.cursor]="lightboxCursor()"
+           (pointerdown)="onLightboxPointerDown($event)"
+           (click)="$event.stopPropagation()"
            (error)="$any($event.target).src='assets/images/card_back.jpg'" />
       @if (lightboxZoom() > 1) {
         <div class="image-lightbox__zoom-level" aria-hidden="true">
@@ -133,7 +142,7 @@
       </div>
     </div>
   }
-}
+</ng-template>
 
 @if (mode() === 'click') {
   <!-- Click mode: full-screen backdrop + centered panel (favorite in owned footer) -->

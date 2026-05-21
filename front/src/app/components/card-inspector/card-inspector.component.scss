@@ -542,9 +542,14 @@
     touch-action: none;
     animation: lightbox-img-in var(--transition-normal) var(--ease-out);
 
+    // While a pan drag is in progress the transform must track the pointer
+    // 1:1 — a transition would lag the card behind the cursor.
+    &.is-dragging {
+      transition: none;
+    }
+
     @media (max-width: 480px) {
       max-width: 90vw;
-      max-height: 80dvh;
       border-radius: var(--radius-sm);
     }
   }

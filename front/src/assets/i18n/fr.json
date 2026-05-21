@@ -604,7 +604,7 @@
   "cardInspector": {
     "owned": "Possédées",
     "zoomHint": "Cliquez pour agrandir",
-    "lightboxHint": "Molette ou pincement pour zoomer · Échap pour fermer",
+    "lightboxHint": "Molette ou pincement pour zoomer · Glisser pour déplacer · Échap pour fermer",
     "zoomLevel": "Zoom {{level}}×"
   },
   "cardList": {
