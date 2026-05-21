@@ -368,6 +368,54 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     this.hoverIndex.set(null);
   }
 
+  // --- Touch long-press → effect panel ---------------------------------------
+  // Touch devices have no hover. A ~500ms press opens the same effect panel;
+  // releasing closes it. The press must not also select the card, so the
+  // synthetic click that follows pointerup is suppressed once a long press fired.
+  private static readonly LONG_PRESS_MS = 500;
+  private static readonly LONG_PRESS_MOVE_TOLERANCE = 12;
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private longPressFired = false;
+  private longPressStartX = 0;
+  private longPressStartY = 0;
+
+  onCardPointerDown(originalIndex: number, event: PointerEvent): void {
+    if (event.pointerType === 'mouse') return; // mouse path uses mouseenter/leave
+    this.longPressFired = false;
+    this.longPressStartX = event.clientX;
+    this.longPressStartY = event.clientY;
+    this.clearLongPressTimer();
+    this.longPressTimer = setTimeout(() => {
+      this.longPressFired = true;
+      this.onCardHover(originalIndex);
+    }, PromptCardGridComponent.LONG_PRESS_MS);
+  }
+
+  onCardPointerMove(event: PointerEvent): void {
+    if (this.longPressTimer === null) return;
+    const moved = Math.hypot(event.clientX - this.longPressStartX, event.clientY - this.longPressStartY);
+    if (moved > PromptCardGridComponent.LONG_PRESS_MOVE_TOLERANCE) this.clearLongPressTimer();
+  }
+
+  onCardPointerUp(): void {
+    this.clearLongPressTimer();
+    if (this.longPressFired) this.onCardLeave();
+  }
+
+  /** True right after a long press — `toggleCard` checks this to skip selection. */
+  consumeLongPress(): boolean {
+    if (!this.longPressFired) return false;
+    this.longPressFired = false;
+    return true;
+  }
+
+  private clearLongPressTimer(): void {
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  }
+
   isSelected(index: number): boolean {
     if (this.promptData?.type === 'SELECT_SUM') return this.selectedCardAmounts().has(index);
     return this.selectedIndices().has(index);
@@ -393,6 +441,8 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   toggleCard(index: number): void {
     if (this.answered) return;
+    // A long press opened the effect panel — the trailing click must not select.
+    if (this.consumeLongPress()) return;
 
     const cardCode = this.cards[index]?.cardCode;
     if (cardCode) {

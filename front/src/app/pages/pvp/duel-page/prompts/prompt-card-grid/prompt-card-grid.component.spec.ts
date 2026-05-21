@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { TranslateModule } from '@ngx-translate/core';
 import { PromptCardGridComponent } from './prompt-card-grid.component';
 import { DuelCardArtService } from '../../duel-card-art.service';
@@ -111,6 +111,40 @@ describe('PromptCardGridComponent — effect discriminator', () => {
     c.onCardHover(1);
     expect(c.hoverIndex()).toBeNull();
   });
+
+  it('opens the panel on touch long-press and closes it on release', fakeAsync(() => {
+    const c = make(selectChain([chainCard(100, 0, 'Fusion Summon'), chainCard(100, 0, 'Search')]));
+    c.onCardPointerDown(0, { pointerType: 'touch', clientX: 50, clientY: 50 } as PointerEvent);
+    expect(c.hoverIndex()).toBeNull(); // not yet — timer pending
+    tick(500);
+    expect(c.hoverIndex()).toBe(0);
+    c.onCardPointerUp();
+    expect(c.hoverIndex()).toBeNull();
+  }));
+
+  it('a fired long-press suppresses the trailing toggleCard selection', fakeAsync(() => {
+    const c = make(selectChain([chainCard(100, 0, 'A'), chainCard(100, 0, 'B')]));
+    c.onCardPointerDown(0, { pointerType: 'touch', clientX: 0, clientY: 0 } as PointerEvent);
+    tick(500);
+    c.onCardPointerUp();
+    c.toggleCard(0); // the synthetic click after the long press
+    expect(c.selectedIndices().size).toBe(0); // selection suppressed
+  }));
+
+  it('a mouse pointerdown does not arm the long-press timer', fakeAsync(() => {
+    const c = make(selectChain([chainCard(100, 0, 'A'), chainCard(100, 0, 'B')]));
+    c.onCardPointerDown(0, { pointerType: 'mouse', clientX: 0, clientY: 0 } as PointerEvent);
+    tick(500);
+    expect(c.hoverIndex()).toBeNull();
+  }));
+
+  it('movement beyond tolerance cancels the long-press', fakeAsync(() => {
+    const c = make(selectChain([chainCard(100, 0, 'A'), chainCard(100, 0, 'B')]));
+    c.onCardPointerDown(0, { pointerType: 'touch', clientX: 0, clientY: 0 } as PointerEvent);
+    c.onCardPointerMove({ clientX: 40, clientY: 0 } as PointerEvent); // 40px > tolerance
+    tick(500);
+    expect(c.hoverIndex()).toBeNull();
+  }));
 
   it('returns null for non-SELECT_CHAIN prompts', () => {
     const c = make(selectChain([chainCard(100, 0, 'A'), chainCard(100, 0, 'B')]));

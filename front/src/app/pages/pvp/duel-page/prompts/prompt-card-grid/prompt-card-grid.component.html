@@ -33,6 +33,10 @@
                     (mouseleave)="onCardLeave()"
                     (focus)="onCardHover(entry.originalIndex)"
                     (blur)="onCardLeave()"
+                    (pointerdown)="onCardPointerDown(entry.originalIndex, $event)"
+                    (pointermove)="onCardPointerMove($event)"
+                    (pointerup)="onCardPointerUp()"
+                    (pointercancel)="onCardPointerUp()"
                     [disabled]="answered && !readOnly"
                     type="button"
                     [attr.aria-label]="effectBadge(entry.originalIndex) !== null
