@@ -17,7 +17,17 @@ export interface MoveMsg {
   type: 'MSG_MOVE';
   cardCode: number;
   cardName: string;
+  /** Controller of the SOURCE location (OCGCore `from.controller`). */
   player: Player;
+  /**
+   * Controller of the DESTINATION location (OCGCore `to.controller`). For a
+   * pile destination (GRAVE / BANISHED / EXTRA) this is the card's OWNER —
+   * OCGCore routes a card to its owner's pile. The client MUST resolve the
+   * destination zone key from `toPlayer`, not `player`: a card you took
+   * control of, then lost (e.g. it was destroyed), goes to ITS OWNER's
+   * graveyard, not yours.
+   */
+  toPlayer: Player;
   fromLocation: CardLocation;
   fromSequence: number;
   fromPosition: Position;

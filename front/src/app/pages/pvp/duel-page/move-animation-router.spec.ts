@@ -29,11 +29,12 @@ const ALL_BRANCHES = [
 ] as const;
 
 function buildMove(overrides: Partial<MoveMsg>): MoveMsg {
-  return {
+  const base: MoveMsg = {
     type: 'MSG_MOVE',
     cardCode: 12345,
     cardName: 'Test Card',
     player: 0 as Player,
+    toPlayer: 0 as Player,
     fromLocation: LOCATION.HAND,
     fromSequence: 0,
     fromPosition: POSITION.FACEUP_ATTACK,
@@ -44,6 +45,10 @@ function buildMove(overrides: Partial<MoveMsg>): MoveMsg {
     reason: 0,
     ...overrides,
   };
+  // Default: a move stays on the same side — `toPlayer` follows `player`
+  // unless the test explicitly overrides it (controlled-card scenarios).
+  if (overrides.toPlayer === undefined) base.toPlayer = base.player;
+  return base;
 }
 
 describe('MoveAnimationRouter', () => {
@@ -341,6 +346,40 @@ describe('MoveAnimationRouter', () => {
       router.preLockQueuedSources([move]);
       expect(mockRbs.lockZone).toHaveBeenCalledWith('M2-0');
       expect(mockRbs.lockZone).toHaveBeenCalledWith('GY-0');
+    });
+
+    it('a controlled card destroyed (player=0, toPlayer=1) pre-locks the OWNER\'s GY, not the controller\'s', () => {
+      // I stole an opponent monster; it sits on MY field (M1-0) but is OWNED
+      // by player 1. When destroyed, OCGCore routes it to player 1's GY, so
+      // the destination pre-lock must target GY-1, not GY-0.
+      const move = buildMove({
+        player: 0 as Player, toPlayer: 1 as Player,
+        fromLocation: LOCATION.MZONE, fromSequence: 0,
+        toLocation: LOCATION.GRAVE, toSequence: 0,
+      });
+      router.preLockQueuedSources([move]);
+      expect(mockRbs.lockZone).toHaveBeenCalledWith('M1-0');   // source — my field
+      expect(mockRbs.lockZone).toHaveBeenCalledWith('GY-1');   // dest — owner's GY
+      expect(mockRbs.lockZone).not.toHaveBeenCalledWith('GY-0');
+    });
+
+    it('a MSG_MOVE missing toPlayer (pre-toPlayer replay) falls back to player — discard pre-locks GY-0 not GY-1', () => {
+      // Regression: replays precomputed before the toPlayer field existed
+      // omit it. relativePlayer(undefined) collapses to 1, so a player-0
+      // discard (HAND→GY) would pre-lock GY-1, leak the lock and freeze the
+      // replay on a lock safety timeout. moveToPlayer() must fall back to
+      // `player` so a same-side move stays same-side. Build the message
+      // WITHOUT toPlayer (the buildMove helper would otherwise backfill it).
+      const move = buildMove({
+        player: 0 as Player,
+        fromLocation: LOCATION.HAND, fromSequence: 3,
+        toLocation: LOCATION.GRAVE, toSequence: 0,
+      });
+      delete (move as Partial<MoveMsg>).toPlayer;
+      router.preLockQueuedSources([move]);
+      expect(mockRbs.lockZone).toHaveBeenCalledWith('HAND-0');
+      expect(mockRbs.lockZone).toHaveBeenCalledWith('GY-0');
+      expect(mockRbs.lockZone).not.toHaveBeenCalledWith('GY-1');
     });
 
     it('skips queue directives', () => {

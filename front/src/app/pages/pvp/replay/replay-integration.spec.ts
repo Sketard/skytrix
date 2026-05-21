@@ -143,7 +143,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
     });
 
     const moveMsg: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card100', player: 0 as Player,
+      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card100', player: 0 as Player, toPlayer: 0 as Player,
       fromLocation: LOCATION.HAND, fromSequence: 0, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.MZONE, toSequence: 2, toPosition: POSITION.FACEUP_ATTACK,
       isToken: false, reason: 0,
@@ -206,7 +206,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
     };
     const solving1: ChainSolvingMsg = { type: 'MSG_CHAIN_SOLVING', chainIndex: 1 };
     const moveDestroy: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 500, cardName: 'Spell', player: 1 as Player,
+      type: 'MSG_MOVE', cardCode: 500, cardName: 'Spell', player: 1 as Player, toPlayer: 1 as Player,
       fromLocation: LOCATION.SZONE, fromSequence: 1, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.GRAVE, toSequence: 0, toPosition: POSITION.FACEUP_ATTACK,
       isToken: false, reason: 0,
@@ -272,7 +272,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       defenderPlayer: 1 as Player, defenderSequence: 1, defenderDamage: 500,
     };
     const destroy: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 200, cardName: 'Card200', player: 1 as Player,
+      type: 'MSG_MOVE', cardCode: 200, cardName: 'Card200', player: 1 as Player, toPlayer: 1 as Player,
       fromLocation: LOCATION.MZONE, fromSequence: 1, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.GRAVE, toSequence: 0, toPosition: POSITION.FACEUP_ATTACK,
       isToken: false, reason: 1,
@@ -327,7 +327,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
 
   describe('Scenario: Set Spell face-down', () => {
     const setMsg: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 300, cardName: 'Trap Card', player: 0 as Player,
+      type: 'MSG_MOVE', cardCode: 300, cardName: 'Trap Card', player: 0 as Player, toPlayer: 0 as Player,
       fromLocation: LOCATION.HAND, fromSequence: 1, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.SZONE, toSequence: 0, toPosition: POSITION.FACEDOWN_DEFENSE,
       isToken: false, reason: 0,
@@ -466,13 +466,13 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
     });
 
     const move1: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card A', player: 0 as Player,
+      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card A', player: 0 as Player, toPlayer: 0 as Player,
       fromLocation: LOCATION.HAND, fromSequence: 0, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.MZONE, toSequence: 0, toPosition: POSITION.FACEUP_ATTACK,
       isToken: false, reason: 0,
     };
     const move2: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 200, cardName: 'Card B', player: 0 as Player,
+      type: 'MSG_MOVE', cardCode: 200, cardName: 'Card B', player: 0 as Player, toPlayer: 0 as Player,
       fromLocation: LOCATION.HAND, fromSequence: 0, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.SZONE, toSequence: 0, toPosition: POSITION.FACEDOWN_DEFENSE,
       isToken: false, reason: 0,
@@ -517,7 +517,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
 
   describe('Scenario: Bounce (field to hand)', () => {
     const bounce: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card100', player: 1 as Player,
+      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card100', player: 1 as Player, toPlayer: 1 as Player,
       fromLocation: LOCATION.MZONE, fromSequence: 2, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.HAND, toSequence: 3, toPosition: POSITION.FACEUP_ATTACK,
       isToken: false, reason: 0,
@@ -591,7 +591,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
 
     it('should auto-skip all empty SELECT_CHAIN decisions without hanging', () => {
       const move: MoveMsg = {
-        type: 'MSG_MOVE', cardCode: 100, cardName: 'Card', player: 0 as Player,
+        type: 'MSG_MOVE', cardCode: 100, cardName: 'Card', player: 0 as Player, toPlayer: 0 as Player,
         fromLocation: LOCATION.HAND, fromSequence: 0, fromPosition: POSITION.FACEUP_ATTACK,
         toLocation: LOCATION.MZONE, toSequence: 0, toPosition: POSITION.FACEUP_ATTACK,
         isToken: false, reason: 0,
@@ -649,7 +649,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
   describe('Scenario: Decision count mismatch fallback', () => {
     it('should fall back to non-phased when SELECT count != decisions count', () => {
       const move: MoveMsg = {
-        type: 'MSG_MOVE', cardCode: 100, cardName: 'Card', player: 0 as Player,
+        type: 'MSG_MOVE', cardCode: 100, cardName: 'Card', player: 0 as Player, toPlayer: 0 as Player,
         fromLocation: LOCATION.HAND, fromSequence: 0, fromPosition: POSITION.FACEUP_ATTACK,
         toLocation: LOCATION.MZONE, toSequence: 0, toPosition: POSITION.FACEUP_ATTACK,
         isToken: false, reason: 0,
@@ -777,7 +777,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       player: 0 as Player, location: LOCATION.SZONE, sequence: 2, position: POSITION.FACEDOWN_DEFENSE,
     };
     const moveToField: MoveMsg = {
-      type: 'MSG_MOVE', cardCode: 400, cardName: 'Trap Card', player: 0 as Player,
+      type: 'MSG_MOVE', cardCode: 400, cardName: 'Trap Card', player: 0 as Player, toPlayer: 0 as Player,
       fromLocation: LOCATION.HAND, fromSequence: 1, fromPosition: POSITION.FACEUP_ATTACK,
       toLocation: LOCATION.SZONE, toSequence: 2, toPosition: POSITION.FACEDOWN_DEFENSE,
       isToken: false, reason: 0,
@@ -817,7 +817,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
     it('should accumulate board changes across 2 transitions', () => {
       // Transition 1: Summon
       const summon: MoveMsg = {
-        type: 'MSG_MOVE', cardCode: 100, cardName: 'Card100', player: 0 as Player,
+        type: 'MSG_MOVE', cardCode: 100, cardName: 'Card100', player: 0 as Player, toPlayer: 0 as Player,
         fromLocation: LOCATION.HAND, fromSequence: 0, fromPosition: POSITION.FACEUP_ATTACK,
         toLocation: LOCATION.MZONE, toSequence: 0, toPosition: POSITION.FACEUP_ATTACK,
         isToken: false, reason: 0,

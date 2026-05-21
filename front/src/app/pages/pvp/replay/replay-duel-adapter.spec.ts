@@ -26,7 +26,7 @@ function precomputed(overrides?: Partial<PreComputedState>): PreComputedState {
 }
 
 const msgMove = (): MoveMsg => ({
-  type: 'MSG_MOVE', cardCode: 100, cardName: 'Card', player: 0 as Player,
+  type: 'MSG_MOVE', cardCode: 100, cardName: 'Card', player: 0 as Player, toPlayer: 0 as Player,
   fromLocation: LOCATION.DECK, fromSequence: 0, fromPosition: POSITION.FACEUP_ATTACK,
   toLocation: LOCATION.HAND, toSequence: 0, toPosition: POSITION.FACEUP_ATTACK,
   isToken: false, reason: 0,

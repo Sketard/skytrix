@@ -8,7 +8,7 @@ import { DrawSequenceManager } from './draw-sequence-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import { LpAnimationTracker } from './lp-animation-tracker';
-import { MoveAnimationRouter } from './move-animation-router';
+import { MoveAnimationRouter, moveToPlayer } from './move-animation-router';
 
 /**
  * Set of event types known to be safe to replay from the chain buffer.
@@ -126,12 +126,19 @@ export class BufferReplayBuilder {
     for (const e of interleaved) {
       if (e.type !== 'MSG_MOVE') continue;
       const mm = e as MoveMsg;
-      const touchesHand = mm.toLocation === LOCATION.HAND || mm.fromLocation === LOCATION.HAND;
-      if (!touchesHand) continue;
-      const rp = this.ctx.relativePlayer(mm.player);
-      handInvolvedRelPlayers.add(rp);
+      // A MOVE→HAND lands in the DESTINATION controller's hand (= the card's
+      // owner); a MOVE-FROM-HAND leaves the SOURCE controller's hand. The
+      // expansion-slot batch must be keyed on the SAME relPlayer that
+      // `move-animation-router` later passes to `consumeHandBatchSlot`
+      // (`relDstPlayer` for a MOVE→HAND) — otherwise the slot is reserved on
+      // one player and consumed on the other (controlled-card bounce).
       if (mm.toLocation === LOCATION.HAND) {
-        handMoveCountByRelPlayer.set(rp, (handMoveCountByRelPlayer.get(rp) ?? 0) + 1);
+        const rpDst = this.ctx.relativePlayer(moveToPlayer(mm));
+        handInvolvedRelPlayers.add(rpDst);
+        handMoveCountByRelPlayer.set(rpDst, (handMoveCountByRelPlayer.get(rpDst) ?? 0) + 1);
+      }
+      if (mm.fromLocation === LOCATION.HAND) {
+        handInvolvedRelPlayers.add(this.ctx.relativePlayer(mm.player));
       }
     }
     for (const rp of handInvolvedRelPlayers) {

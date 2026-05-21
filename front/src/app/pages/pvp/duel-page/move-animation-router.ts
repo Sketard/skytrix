@@ -18,7 +18,14 @@ interface MoveContext {
   msg: MoveMsg;
   from: number;
   to: number;
+  /** Relative index of the SOURCE controller — drives `srcKey`. */
   relPlayer: 0 | 1;
+  /**
+   * Relative index of the DESTINATION controller — drives `dstKey` and any
+   * HAND-destination branch. For a pile destination this is the card OWNER.
+   * Equals `relPlayer` for the common same-side move.
+   */
+  relDstPlayer: 0 | 1;
   srcKey: string;
   dstKey: string;
   resolvedCardCode: number;
@@ -43,6 +50,18 @@ const GLOW_NEUTRAL = 'rgba(180,180,220,0.5)';
 const GLOW_DISCARD = 'rgba(255,200,50,0.5)';
 
 const isPile = (loc: number) => loc === LOCATION.GRAVE || loc === LOCATION.BANISHED || loc === LOCATION.EXTRA;
+
+/**
+ * Absolute controller of a MSG_MOVE's destination. `toPlayer` was added to
+ * the protocol for the owner-aware GY routing fix — replays precomputed
+ * before that change (and any other producer that predates the field) omit
+ * it. Fall back to `player` (source controller): a move that stays on the
+ * same side has `toPlayer === player`, which is the overwhelming majority
+ * and the only safe assumption when the field is missing. Without this
+ * fallback, `relativePlayer(undefined)` collapses to 1 for every move and
+ * the destination zone key (and its pre-lock) leaks onto the wrong side.
+ */
+export const moveToPlayer = (msg: MoveMsg): number => msg.toPlayer ?? msg.player;
 
 /**
  * Routes MSG_MOVE events to 15 named branch methods and handles
@@ -213,7 +232,12 @@ export class MoveAnimationRouter {
       }
       if (event.type !== 'MSG_MOVE') continue;
       const msg = event as MoveMsg;
+      // Source zone uses the SOURCE controller; destination uses the
+      // DESTINATION controller — they differ for a controlled card leaving
+      // your side (must pre-lock the OWNER's pile, not yours). Mirror of
+      // buildMoveContext's relPlayer / relDstPlayer split.
       const relPlayer = this.ctx.relativePlayer(msg.player);
+      const relDstPlayer = this.ctx.relativePlayer(moveToPlayer(msg));
 
       const from = msg.fromLocation;
       const srcKey = locationToZoneKey(from, msg.fromSequence, relPlayer);
@@ -225,7 +249,7 @@ export class MoveAnimationRouter {
       }
 
       const to = msg.toLocation;
-      const dstKey = locationToZoneKey(to, msg.toSequence, relPlayer);
+      const dstKey = locationToZoneKey(to, msg.toSequence, relDstPlayer);
       if (dstKey && !this._preLocks.has(dstKey)
         && (to === LOCATION.MZONE || to === LOCATION.SZONE
           || to === LOCATION.GRAVE || to === LOCATION.BANISHED || to === LOCATION.EXTRA
@@ -268,8 +292,15 @@ export class MoveAnimationRouter {
   private buildMoveContext(msg: MoveMsg): MoveContext | null {
     const from = msg.fromLocation;
     const to = msg.toLocation;
+    // `relPlayer` follows the SOURCE controller; `relDstPlayer` the DESTINATION
+    // controller. They differ when a controlled card leaves your side — e.g.
+    // an opponent-owned monster you stole gets destroyed: it travels FROM your
+    // field but lands in the OWNER's graveyard. Resolving the destination zone
+    // from `toPlayer` makes the animation land in the correct GY instead of
+    // teleport-correcting once the post-event BOARD_STATE arrives.
     const relPlayer = this.ctx.relativePlayer(msg.player);
-    const dstKey = locationToZoneKey(to, msg.toSequence, relPlayer);
+    const relDstPlayer = this.ctx.relativePlayer(moveToPlayer(msg));
+    const dstKey = locationToZoneKey(to, msg.toSequence, relDstPlayer);
     const srcKey = locationToZoneKey(from, msg.fromSequence, relPlayer);
     const fromPos = msg.fromPosition;
     const toPos = msg.toPosition;
@@ -288,11 +319,13 @@ export class MoveAnimationRouter {
       srcKey, dstKey);
     const _boardZoneId = (loc: number, seq: number) =>
       loc === LOCATION.GRAVE ? 'GY' : loc === LOCATION.BANISHED ? 'BANISHED' : loc === LOCATION.EXTRA ? 'EXTRA' : locationToZoneId(loc, seq);
-    const _pZones = this.rbs.logicalState().players[relPlayer]?.zones ?? [];
-    const _srcZone = _pZones.find(z => z.zoneId === _boardZoneId(from, msg.fromSequence));
-    const _dstZone = _pZones.find(z => z.zoneId === _boardZoneId(to, msg.toSequence));
-    this.logger.log(DuelLogCategory.MOVE, 'relPlayer=%d | src=%s cards=%o | dst=%s cards=%o',
-      relPlayer,
+    const _players = this.rbs.logicalState().players;
+    const _srcZone = (_players[relPlayer]?.zones ?? [])
+      .find(z => z.zoneId === _boardZoneId(from, msg.fromSequence));
+    const _dstZone = (_players[relDstPlayer]?.zones ?? [])
+      .find(z => z.zoneId === _boardZoneId(to, msg.toSequence));
+    this.logger.log(DuelLogCategory.MOVE, 'relPlayer=%d relDstPlayer=%d | src=%s cards=%o | dst=%s cards=%o',
+      relPlayer, relDstPlayer,
       srcKey, (_srcZone?.cards ?? []).map(c => c.cardCode ?? 0),
       dstKey, (_dstZone?.cards ?? []).map(c => c.cardCode ?? 0));
     const resolvedCardCode = msg.cardCode || (_dstZone?.cards.at(-1)?.cardCode ?? 0);
@@ -312,7 +345,7 @@ export class MoveAnimationRouter {
       : srcKey;
 
     return {
-      msg, from, to, relPlayer, srcKey, dstKey, resolvedCardCode, cardImage,
+      msg, from, to, relPlayer, relDstPlayer, srcKey, dstKey, resolvedCardCode, cardImage,
       isFaceUpFrom, isDefenseFrom, isFaceUpTo, isDefenseTo,
       isFaceDown, isBanishFaceDown, baseRotateZ, travelDuration,
       preSrcLock, preDstLock, src,
@@ -395,13 +428,19 @@ export class MoveAnimationRouter {
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
     return preEffect.then(async () => {
+      // GY/BANISHED piles have no orientation of their own — a defense-position
+      // card must keep its -90° rotation through the whole travel. Without
+      // destRotateZ, the landing keyframes omit rotateZ and the card eases
+      // back to 0° mid-flight (visible spin).
+      const fromDefenseRot = mc.isDefenseFrom ? -90 : undefined;
       const p = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
         duration: mc.travelDuration,
         showBack: mc.isFaceDown,
         flipDuringTravel: mc.isBanishFaceDown,
         impactGlowColor: impactGlow,
         landingStyle: mc.to === LOCATION.BANISHED ? 'banish' : 'soft',
-        srcRotateZ: mc.isDefenseFrom ? -90 : undefined,
+        srcRotateZ: fromDefenseRot,
+        destRotateZ: fromDefenseRot,
         baseRotateZ: mc.baseRotateZ,
       });
       srcLock.commit();
@@ -416,13 +455,17 @@ export class MoveAnimationRouter {
     this.ctx.announceEvent('Card sent off field', mc.msg.player);
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
+    // GY/BANISHED piles have no orientation — keep the source defense rotation
+    // through landing so the card doesn't visibly spin back to 0° mid-flight.
+    const fromDefenseRot = mc.isDefenseFrom ? -90 : undefined;
     const travelP = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration,
       showBack: mc.isFaceDown,
       flipDuringTravel: mc.isBanishFaceDown,
       impactGlowColor: impactGlow,
       landingStyle: mc.to === LOCATION.BANISHED ? 'banish' : 'soft',
-      srcRotateZ: mc.isDefenseFrom ? -90 : undefined,
+      srcRotateZ: fromDefenseRot,
+      destRotateZ: fromDefenseRot,
       baseRotateZ: mc.baseRotateZ,
     });
     srcLock.commit();
@@ -437,8 +480,9 @@ export class MoveAnimationRouter {
     srcLock.commit();
     // Reuse preDstLock as travelToHand's handLock — releasing here would drop
     // HAND ref-count to 0 and flash the bounced card before animation starts.
-    const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relPlayer);
-    return this.drawManager.travelToHand(mc.srcKey, mc.relPlayer, mc.cardImage, {
+    // relDstPlayer: a bounced controlled card returns to its OWNER's hand.
+    const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relDstPlayer);
+    return this.drawManager.travelToHand(mc.srcKey, mc.relDstPlayer, mc.cardImage, {
       duration: mc.travelDuration, srcRotateZ: mc.isDefenseFrom ? -90 : undefined, baseRotateZ: mc.baseRotateZ,
     }, batchIdx, mc.preDstLock, mc.resolvedCardCode);
   }
@@ -523,8 +567,9 @@ export class MoveAnimationRouter {
     mc.preSrcLock?.commit();
     // Reuse preDstLock as travelToHand's handLock — releasing here would drop
     // HAND ref-count to 0 and flash the searched card before animation starts.
-    const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relPlayer);
-    return this.drawManager.travelToHand(mc.srcKey, mc.relPlayer, mc.cardImage, {
+    // relDstPlayer: the card lands in its OWNER's hand.
+    const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relDstPlayer);
+    return this.drawManager.travelToHand(mc.srcKey, mc.relDstPlayer, mc.cardImage, {
       duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ,
     }, batchIdx, mc.preDstLock, mc.resolvedCardCode);
   }
@@ -561,8 +606,9 @@ export class MoveAnimationRouter {
       mc.preSrcLock?.commit();
       // Reuse preDstLock as travelToHand's handLock — releasing here would drop
       // HAND ref-count to 0 and flash the tutored card before animation starts.
-      const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relPlayer);
-      return this.drawManager.travelToHand(mc.src, mc.relPlayer, mc.cardImage, {
+      // relDstPlayer: the card lands in its OWNER's hand.
+      const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relDstPlayer);
+      return this.drawManager.travelToHand(mc.src, mc.relDstPlayer, mc.cardImage, {
         duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ,
       }, batchIdx, mc.preDstLock, mc.resolvedCardCode);
     }

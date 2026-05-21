@@ -150,6 +150,17 @@ describe('buildTravelKeyframes', () => {
     expect(transformOf(pickKeyframe(kfs, 1))).not.toContain('rotateZ');
   });
 
+  it('destroy of a defense-position card (src=dest=-90) keeps -90deg through EVERY keyframe — no spin to 0', () => {
+    // Regression: a defense monster destroyed to GY/BANISHED must not visibly
+    // rotate. srcRotateZ alone leaves the landing keyframes without rotateZ,
+    // so the card eased back to 0°. Passing destRotateZ (4th positional arg,
+    // forwarded from options.destRotateZ by card-travel-engine) pins it flat.
+    const kfs = buildTravelKeyframes(from, to, { srcRotateZ: -90, landingStyle: 'soft' }, -90);
+    for (const k of kfs) {
+      expect(transformOf(k)).toContain('rotateZ(-90deg)');
+    }
+  });
+
   it('scale fs is destRect.width / fromRect.width', () => {
     const small = r(0, 0, 50, 72);
     const big = r(0, 0, 200, 290);

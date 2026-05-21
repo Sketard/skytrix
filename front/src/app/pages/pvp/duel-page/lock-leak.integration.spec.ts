@@ -44,11 +44,12 @@ function defer<T>(): Deferred<T> {
 }
 
 function buildMove(overrides: Partial<MoveMsg>): MoveMsg {
-  return {
+  const base: MoveMsg = {
     type: 'MSG_MOVE',
     cardCode: 12345,
     cardName: 'Test Card',
     player: 0 as Player,
+    toPlayer: 0 as Player,
     fromLocation: LOCATION.HAND,
     fromSequence: 0,
     fromPosition: POSITION.FACEUP_ATTACK,
@@ -59,6 +60,10 @@ function buildMove(overrides: Partial<MoveMsg>): MoveMsg {
     reason: 0,
     ...overrides,
   };
+  // Default: a move stays on the same side — `toPlayer` follows `player`
+  // unless the test explicitly overrides it (controlled-card scenarios).
+  if (overrides.toPlayer === undefined) base.toPlayer = base.player;
+  return base;
 }
 
 describe('lock-leak integration — MoveAnimationRouter handlers must not orphan locks', () => {

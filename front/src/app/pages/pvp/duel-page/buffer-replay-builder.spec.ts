@@ -13,11 +13,12 @@ import type { ConfirmCardsMsg, MoveMsg, Player } from '../duel-ws.types';
 import type { GameEvent } from '../types';
 
 function move(overrides: Partial<MoveMsg>): MoveMsg {
-  return {
+  const base: MoveMsg = {
     type: 'MSG_MOVE',
     cardCode: 1,
     cardName: '',
     player: 0 as Player,
+    toPlayer: 0 as Player,
     fromLocation: LOCATION.DECK,
     fromSequence: 0,
     fromPosition: POSITION.FACEUP_ATTACK,
@@ -28,6 +29,10 @@ function move(overrides: Partial<MoveMsg>): MoveMsg {
     reason: 0,
     ...overrides,
   };
+  // Default: a move stays on the same side — `toPlayer` follows `player`
+  // unless the test explicitly overrides it (controlled-card scenarios).
+  if (overrides.toPlayer === undefined) base.toPlayer = base.player;
+  return base;
 }
 
 function confirmCards(cards: Array<{ cardCode: number; player: Player }>): ConfirmCardsMsg {
