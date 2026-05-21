@@ -27,7 +27,8 @@ public abstract class ReplayMapper {
                     meta.date(),
                     meta.scriptsHash(),
                     meta.ocgcoreVersion(),
-                    meta.durationSec()
+                    meta.durationSec(),
+                    meta.deckOrder()
             ));
         }
         return dto;

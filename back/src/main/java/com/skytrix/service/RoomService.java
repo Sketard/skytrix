@@ -1,6 +1,7 @@
 package com.skytrix.service;
 
 import java.security.SecureRandom;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -491,16 +492,23 @@ public class RoomService {
     }
 
     private DuelDeckDTO extractDeck(List<CardDeckIndex> cards) {
-        // Yu-Gi-Oh passcodes fit in int range (max ~100M), so intValue() is safe
-        var main = cards.stream()
-                .filter(c -> c.getType() == DeckKeyword.MAIN)
-                .mapToInt(c -> c.getCard().getPasscode().intValue())
-                .toArray();
-        var extra = cards.stream()
-                .filter(c -> c.getType() == DeckKeyword.EXTRA)
-                .mapToInt(c -> c.getCard().getPasscode().intValue())
-                .toArray();
+        // Yu-Gi-Oh passcodes fit in int range (max ~100M), so intValue() is safe.
+        // findByDeckId returns rows in PK order (insertion order), NOT decklist
+        // order — sort by `index` so the emitted passcode array matches the
+        // order the user arranged in the Deck Builder. This makes the "no
+        // shuffle" duel option deterministic: the first 5 decklist lines
+        // become the opening hand (see duel-server loadDeckToOcg).
+        var main = extractByType(cards, DeckKeyword.MAIN);
+        var extra = extractByType(cards, DeckKeyword.EXTRA);
         return new DuelDeckDTO(main, extra);
+    }
+
+    private int[] extractByType(List<CardDeckIndex> cards, DeckKeyword type) {
+        return cards.stream()
+                .filter(c -> c.getType() == type)
+                .sorted(Comparator.comparingInt(c -> c.getIndex() == null ? Integer.MAX_VALUE : c.getIndex()))
+                .mapToInt(c -> c.getCard().getPasscode().intValue())
+                .toArray();
     }
 
     /**

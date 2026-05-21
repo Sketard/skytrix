@@ -48,6 +48,16 @@ class ReplayMapperTest {
         assertNull(dto.getMetadata().durationSec());
     }
 
+    @Test
+    void preservesDeckOrderWhenFlippingForPlayer2() {
+        Replay replay = buildReplay(872);
+
+        ReplayDTO dto = mapper.toDto(replay, 2L);
+
+        assertEquals("verbatim", dto.getMetadata().deckOrder(),
+                "deckOrder must survive the player2 perspective flip");
+    }
+
     private Replay buildReplay(Integer durationSec) {
         User p1 = new User();
         p1.setId(1L);
@@ -62,7 +72,8 @@ class ReplayMapperTest {
                 "2026-05-14T10:00:00Z",
                 "abc",
                 "1.2.3",
-                durationSec
+                durationSec,
+                "verbatim"
         );
 
         Replay replay = new Replay();

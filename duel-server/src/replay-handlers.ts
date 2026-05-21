@@ -503,6 +503,7 @@ function createForkWorker(
     expectedState,
     scriptsHash: getScriptsHash(),
     ocgcoreVersion: getOcgcoreVersion(),
+    deckOrder: replayData.metadata.deckOrder,
   });
 }
 

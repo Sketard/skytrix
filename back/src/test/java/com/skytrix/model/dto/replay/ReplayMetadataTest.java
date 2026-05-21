@@ -52,4 +52,47 @@ class ReplayMetadataTest {
 
         assertEquals(872, meta.durationSec());
     }
+
+    @Test
+    void deserializesLegacyMetadataWithoutDeckOrder() throws Exception {
+        String legacyJson = """
+                {
+                  "playerUsernames": ["alice", "bob"],
+                  "deckNames": ["deck-a", "deck-b"],
+                  "turnCount": 7,
+                  "result": "VICTORY",
+                  "date": "2026-01-15T10:00:00Z",
+                  "scriptsHash": "abc",
+                  "ocgcoreVersion": "1.2.3"
+                }
+                """;
+
+        ReplayMetadata meta = mapper.readValue(legacyJson, ReplayMetadata.class);
+
+        assertNull(meta.deckOrder(), "Legacy replay must deserialize with null deckOrder");
+    }
+
+    @Test
+    void roundTripsDeckOrderVerbatim() throws Exception {
+        String newJson = """
+                {
+                  "playerUsernames": ["alice", "bob"],
+                  "deckNames": ["deck-a", "deck-b"],
+                  "turnCount": 11,
+                  "result": "VICTORY",
+                  "date": "2026-05-21T10:00:00Z",
+                  "scriptsHash": "abc",
+                  "ocgcoreVersion": "1.2.3",
+                  "durationSec": 100,
+                  "deckOrder": "verbatim"
+                }
+                """;
+
+        ReplayMetadata meta = mapper.readValue(newJson, ReplayMetadata.class);
+        assertEquals("verbatim", meta.deckOrder());
+
+        // Persist round-trip: serialize then re-read must keep the field.
+        ReplayMetadata reparsed = mapper.readValue(mapper.writeValueAsString(meta), ReplayMetadata.class);
+        assertEquals("verbatim", reparsed.deckOrder(), "deckOrder must survive a JSON round-trip");
+    }
 }

@@ -144,6 +144,8 @@ export interface InitForkMessage {
   expectedState: ForkSanityFields;
   scriptsHash: string;
   ocgcoreVersion: string;
+  /** Deck-order convention of `decks` — absent on legacy replays. */
+  deckOrder?: DeckOrderConvention;
 }
 
 export interface ForkResumeMessage {
@@ -191,6 +193,17 @@ export interface CapturedResponse {
   timestamp?: string;
 }
 
+/**
+ * Identifies how `WorkerReplayPayload.decks` is ordered relative to the
+ * live OCGCore pile:
+ *  - `'verbatim'` — decks[].main[0] is the deck TOP. Current convention.
+ *  - absent       — legacy replays captured before the convention was
+ *    fixed; their decks were stored reversed vs. the live pile (two
+ *    cancelling reversals in the old loadDeckToOcg). The replay worker
+ *    must re-reverse them to reproduce the original duel.
+ */
+export type DeckOrderConvention = 'verbatim';
+
 export interface ReplayMetadata {
   playerUsernames: [string, string];
   deckNames: [string, string];
@@ -201,6 +214,8 @@ export interface ReplayMetadata {
   ocgcoreVersion: string;
   /** Null on legacy replays persisted before the field was added. */
   durationSec: number | null;
+  /** Absent on legacy replays — treat absence as the pre-fix reversed order. */
+  deckOrder?: DeckOrderConvention;
 }
 
 export interface WorkerReplayPayload {

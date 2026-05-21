@@ -24,6 +24,7 @@ import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, In
 import { filterMessage } from './message-filter.js';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
 import { CardDbCache } from './card-db-cache.js';
+import { resolveDeckLoadOrder, normalizeReplayDeck } from './deck-load-order.js';
 import { runReplayPreComputation, SELECT_MESSAGE_TYPES } from './replay-precompute.js';
 import type {
   ServerMessage,
@@ -349,17 +350,6 @@ function generateSeed(): [bigint, bigint, bigint, bigint] {
   ];
 }
 
-function shuffleArray<T>(arr: T[]): T[] {
-  const result = [...arr];
-  // Fisher-Yates with crypto randomness
-  const buf = randomBytes(result.length * 4);
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = buf.readUInt32LE(i * 4) % (i + 1);
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 // =============================================================================
 // OcgMessage → ServerMessage Transformation
 // =============================================================================
@@ -394,7 +384,13 @@ function transformMove(msg: any): ServerMessage {
     reason = reasonInfo?.reason ?? 0;
   }
   return {
-    type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card), player: msg.from.controller,
+    type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card),
+    player: msg.from.controller,
+    // Destination controller — OCGCore routes a card to its owner's pile, so
+    // for GRAVE/BANISHED/EXTRA this is the card's owner. The client resolves
+    // the destination zone from this, not `player` (controlled-card-destroyed
+    // → owner's GY, not controller's GY).
+    toPlayer: msg.to.controller,
     fromLocation: msg.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
     fromSequence: msg.from.sequence,
     fromPosition: msg.from.position as number as Position,
@@ -1190,6 +1186,9 @@ function emitReplayData(): void {
         scriptsHash: getScriptsHash(),
         ocgcoreVersion: getOcgcoreVersion(),
         durationSec: Math.round((Date.now() - duelStartMs) / 1000),
+        // capturedDecks is the live top→bottom pile order (loadDeckToOcg
+        // returns it verbatim since the back-to-front sequence:0 fix).
+        deckOrder: 'verbatim',
       },
     },
   });
@@ -1416,20 +1415,26 @@ async function initOcgEngine(
 }
 
 function loadDeckToOcg(c: OcgCoreSync, d: OcgDuelHandle, deck: Deck, team: 0 | 1, shuffle: boolean): Deck {
-  const mainCards = shuffle ? shuffleArray(deck.main) : deck.main;
-  for (const code of mainCards) {
+  const ordered = resolveDeckLoadOrder(deck, shuffle);
+
+  // duelNewCard with `sequence: 0` inserts the card on TOP, so each insertion
+  // lands above the previous one. To end up with `ordered.main[0]` on top we
+  // must insert it LAST → iterate the array back-to-front.
+  for (let i = ordered.main.length - 1; i >= 0; i--) {
     c.duelNewCard(d, {
-      code, team, duelist: 0, controller: team,
+      code: ordered.main[i], team, duelist: 0, controller: team,
       location: OcgLocation.DECK, sequence: 0, position: OcgPosition.FACEDOWN_ATTACK,
     });
   }
-  for (const code of deck.extra) {
+  for (const code of ordered.extra) {
     c.duelNewCard(d, {
       code, team, duelist: 0, controller: team,
       location: OcgLocation.EXTRA, sequence: 0, position: OcgPosition.FACEDOWN_ATTACK,
     });
   }
-  return { main: [...mainCards], extra: [...deck.extra] };
+  // Return the top→bottom order actually loaded so the replay/fork path
+  // rebuilds the exact same pile via resolveDeckLoadOrder(captured, false).
+  return ordered;
 }
 
 function resetDuelState(): void {
@@ -1543,8 +1548,12 @@ async function initReplay(msg: InitReplayMessage): Promise<void> {
   cardDb = result.db;
   systemStrings = result.strings;
 
-  loadDeckToOcg(core, duel, msg.decks[0], 0, false);
-  loadDeckToOcg(core, duel, msg.decks[1], 1, false);
+  // Legacy replays stored their decks reversed vs. the live pile — normalise
+  // to the current 'verbatim' convention before the shuffle-off load so the
+  // pile matches the original duel and the captured responses still apply.
+  const replayConvention = msg.metadata.deckOrder;
+  loadDeckToOcg(core, duel, normalizeReplayDeck(msg.decks[0], replayConvention), 0, false);
+  loadDeckToOcg(core, duel, normalizeReplayDeck(msg.decks[1], replayConvention), 1, false);
 
   resetDuelState();
   core.startDuel(duel);
@@ -1583,8 +1592,10 @@ async function initFork(msg: InitForkMessage): Promise<void> {
   cardDb = result.db;
   systemStrings = result.strings;
 
-  loadDeckToOcg(core, duel, msg.decks[0], 0, false);
-  loadDeckToOcg(core, duel, msg.decks[1], 1, false);
+  // Same legacy normalisation as the replay path (see initReplay).
+  const forkConvention = msg.deckOrder;
+  loadDeckToOcg(core, duel, normalizeReplayDeck(msg.decks[0], forkConvention), 0, false);
+  loadDeckToOcg(core, duel, normalizeReplayDeck(msg.decks[1], forkConvention), 1, false);
 
   resetDuelState();
   core.startDuel(duel);

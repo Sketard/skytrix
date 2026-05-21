@@ -135,7 +135,8 @@ class ReplayRepositoryStatsIT {
                 "2026-05-14T10:00:00Z",
                 "h",
                 "v",
-                300
+                300,
+                "verbatim"
         );
         ReplayDeck deck = new ReplayDeck(List.of(), List.of());
         ReplayData data = new ReplayData(
