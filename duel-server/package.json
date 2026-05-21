@@ -6,6 +6,7 @@
   "scripts": {
     "poc": "tsx src/test-core.ts",
     "solver-poc": "tsx src/solver-poc.ts",
+    "game-log": "tsx src/tools/game-log-builder-cli.ts",
     "prebuild": "node ../scripts/check-ws-protocol-sync.mjs",
     "build": "tsc",
     "start": "node dist/server.js",

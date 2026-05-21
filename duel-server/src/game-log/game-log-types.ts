@@ -1,0 +1,194 @@
+// =============================================================================
+// game-log-types.ts — Game Log entry model (pure types, zero behavior)
+// -----------------------------------------------------------------------------
+// The five-block grammar from the game-log chantier (§4.2). Consumed by
+// GameLogBuilder (producer), the Markdown renderer, and the HTML renderer.
+//
+// PURITY: this file imports ONLY protocol types. No replay/duel-worker/ws/fs.
+// =============================================================================
+
+import type { Player, ZoneId } from '../ws-protocol-shared.js';
+
+/** Relative player index: 0 = the viewer ("you"), 1 = the opponent. */
+export type RelPlayer = 0 | 1;
+
+/**
+ * A card thumbnail reference inside a log entry. `revealed: false` means
+ * OCGCore did not disclose the identity (opponent draw, face-down banish);
+ * the renderer shows a card back + "Carte non révélée". The builder NEVER
+ * infers a hidden identity — `cardCode`/`cardName` stay null in that case.
+ */
+export interface LogCardRef {
+  revealed: boolean;
+  cardCode: number | null;
+  cardName: string | null;
+}
+
+/** One displaced card inside a move-row body: card + verb + destination. */
+export interface MovedCard {
+  card: LogCardRef;
+  /** French verb naming the displacement (`Pioche`, `Ajout`, `Défausse`, …). */
+  verb: string;
+  /** Destination zone label for a pile target (`MAIN`, `GY`, `BANNIE`, …). */
+  destZone?: string;
+  /**
+   * On-field destination cell, when the card lands on the board. Encodes the
+   * absolute owner + monster/spell row + sequence so the renderer can paint
+   * the full mini-board grid. Absent for pile destinations.
+   */
+  destCell?: BoardCell;
+  /** True when this moved card is an Extra-Deck summon material. */
+  isMaterial?: boolean;
+}
+
+/** A single field cell reference for the mini-board grid renderer. */
+export interface BoardCell {
+  /** Relative owner of the cell (0 = your half, 1 = opponent half). */
+  player: RelPlayer;
+  /**
+   * 'M' = monster row, 'S' = spell/trap row, 'EMZ' = shared Extra zone,
+   * 'FIELD' = the single Field Spell cell (SZONE sequence 5, out of the
+   * 5-slot spell/trap row).
+   */
+  row: 'M' | 'S' | 'EMZ' | 'FIELD';
+  /** 0-based sequence within the row. 0 for the singleton 'FIELD' cell. */
+  sequence: number;
+}
+
+// =============================================================================
+// Block kind 1 — Separators
+// =============================================================================
+
+export type SeparatorKind =
+  | 'decision'   // pre-duel: "X a choisi de jouer en premier/second"
+  | 'turn'       // turn boundary, both players' LP
+  | 'phase'      // phase boundary
+  | 'chain-start'
+  | 'chain-resolve'
+  | 'chain-end'
+  | 'duel-over';
+
+export interface SeparatorEntry {
+  block: 'separator';
+  kind: SeparatorKind;
+  /** Display text (turn label, phase name, decision sentence, winner line). */
+  label: string;
+  /** Turn separator only — both players' LP, in relative order [you, opp]. */
+  lp?: [number, number];
+  /** Turn separator only — the turn number. */
+  turnNumber?: number;
+  /** `duel-over` separator only — the win-reason line, shown under `label`. */
+  reason?: string;
+}
+
+// =============================================================================
+// Shared row head — every non-separator row carries it
+// =============================================================================
+
+/**
+ * The universal 3-part row anatomy: a source-card header, an effect
+ * description, and a type-specific body. The source card is the card that
+ * ACTIVATED the effect — always revealed (an activation is public). It is
+ * `null` only for rows with no originating card (the mandatory Draw-Phase
+ * draw, the initial 5-card hand).
+ */
+export interface RowHead {
+  /** Relative player who owns/controls the acting card. */
+  player: RelPlayer;
+  /** Turn number this row belongs to (for turn grouping). */
+  turnNumber: number;
+  /** The activating card. Null = no originating card (rule-driven draw). */
+  source: LogCardRef | null;
+  /** Resolved effect text. Null when there is no source. */
+  description: string | null;
+  /** 1-based chain link number when the row is part of a chain. */
+  chainLink?: number;
+  /** True when MSG_CHAIN_NEGATED marked this link. */
+  negated?: boolean;
+}
+
+// =============================================================================
+// Block kind 2 — Move rows
+// =============================================================================
+
+export interface MoveEntry extends RowHead {
+  block: 'move';
+  /** The displaced cards. Empty for the initial-hand / draw-phase variants. */
+  movedCards: MovedCard[];
+  /**
+   * Special variant flags. `initial-hand` = the opening 5 cards (no head).
+   * `draw-phase` = the mandatory turn draw (no head). Absent = normal move.
+   */
+  variant?: 'initial-hand' | 'draw-phase';
+}
+
+// =============================================================================
+// Block kind 3 — RNG rows
+// =============================================================================
+
+export interface RngEntry extends RowHead {
+  block: 'rng';
+  rng: 'coin' | 'dice';
+  /** Coin: 'Face' | 'Pile' per toss. Dice: '1'..'6' per roll. */
+  results: string[];
+}
+
+// =============================================================================
+// Block kind 4 — Combat rows
+// =============================================================================
+
+export interface CombatSide {
+  card: LogCardRef;
+  /** Pre-formatted stat line, e.g. "ATK 2400" / "DEF 1900". */
+  stat?: string;
+  /** Post-battle outcome, e.g. "détruit" / "0". */
+  outcome?: string;
+}
+
+export interface CombatEntry extends RowHead {
+  block: 'combat';
+  combat: 'attack' | 'battle';
+  attacker: CombatSide;
+  /** Absent = direct attack. */
+  defender?: CombatSide;
+  /** Direct-attack damage line, e.g. "▶ Joueur · −1800 LP". */
+  directLabel?: string;
+}
+
+// =============================================================================
+// Block kind 5 — Action rows
+// =============================================================================
+
+export interface ActionEntry extends RowHead {
+  block: 'action';
+  action:
+    | 'counter-add'
+    | 'counter-remove'
+    | 'equip'
+    | 'target'
+    | 'gy-deck-swap'
+    | 'shuffle'
+    | 'swap';
+  /** French label naming the action ("Compteur", "Équipé à", "Cible", …). */
+  label: string;
+  /** Counter rows — the signed badge text, e.g. "+2" / "−1". */
+  counterBadge?: string;
+  /** Counter rows — counter type detail, e.g. "Compteur Magie". */
+  detail?: string;
+  /** Equip / target rows — the affected card thumbnails. */
+  targets?: LogCardRef[];
+}
+
+// =============================================================================
+// The discriminated union
+// =============================================================================
+
+export type GameLogEntry =
+  | SeparatorEntry
+  | MoveEntry
+  | RngEntry
+  | CombatEntry
+  | ActionEntry;
+
+/** Re-export for renderers that need the board zone vocabulary. */
+export type { Player, ZoneId };
