@@ -394,7 +394,7 @@ export class BoardEffectsService implements OnDestroy {
       left: ${rect.left - 8}px; top: ${rect.top - 8}px;
       width: ${rect.width + 16}px; height: ${rect.height + 16}px;
       border-radius: 8px; opacity: 0;
-      box-shadow: 0 0 18px 6px var(--gold, rgba(255,200,80,0.85));
+      box-shadow: 0 0 18px 6px var(--gold-soft-80, rgba(201,168,76,0.8));
     `;
     this.cardTravel.getContainer().appendChild(glowEl);
     this._overlayEls.add(glowEl);

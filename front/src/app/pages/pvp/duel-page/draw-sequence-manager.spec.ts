@@ -116,7 +116,6 @@ describe('DrawSequenceManager', () => {
     ]);
     mockBoardEffects.revealCardOnDeck.and.returnValue(Promise.resolve());
     mockBoardEffects.revealCardOnField.and.returnValue(Promise.resolve());
-    mockBoardEffects.revealCardOnDeck.and.returnValue(Promise.resolve());
 
     const mockLogger = jasmine.createSpyObj<DuelLogger>('DuelLogger', ['log', 'warn']);
 
@@ -336,6 +335,17 @@ describe('DrawSequenceManager', () => {
       await Promise.resolve(manager.processConfirmCardsEvent(confirm([card(LOCATION.DECK)])));
       expect(mockBoardEffects.revealCardOnDeck).toHaveBeenCalled();
       expect(mockBoardEffects.revealCardOnField).not.toHaveBeenCalled();
+    });
+
+    it('routes a GRAVE confirm to the pile reveal (revealCardOnDeck overlay)', async () => {
+      await Promise.resolve(manager.processConfirmCardsEvent(confirm([card(LOCATION.GRAVE)])));
+      expect(mockBoardEffects.revealCardOnDeck).toHaveBeenCalled();
+      expect(mockBoardEffects.revealCardOnField).not.toHaveBeenCalled();
+    });
+
+    it('routes a BANISHED confirm to the pile reveal', async () => {
+      await Promise.resolve(manager.processConfirmCardsEvent(confirm([card(LOCATION.BANISHED)])));
+      expect(mockBoardEffects.revealCardOnDeck).toHaveBeenCalled();
     });
 
     it('returns 0 (no-op) for an empty confirm', () => {

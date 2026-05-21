@@ -1123,18 +1123,32 @@ export class AnimationOrchestratorService {
         // can read it, then play the activation flash on the detached card.
         // The player's own activation keeps the in-place flash (no reveal
         // needed — the player already knows their card).
+        // `handEl` is a REAL `.hand-card` node, not a disposable overlay — the
+        // imperative zIndex MUST be reset in a `finally` so a cancelled /
+        // rejected reveal animation (queue reset during a seek) does not leave
+        // the card stranded above the fan.
         if (relPlayer === 1) {
           const cardImage = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(msg.cardCode));
           const detachMs = this.ctx.scaledDuration(HAND_REVEAL_DETACH_MS, HAND_REVEAL_DETACH_MIN_MS);
           handEl.style.zIndex = '1100';
-          return this.boardEffects.revealOpponentHandCard(handEl, cardImage, detachMs)
-            .then(() => { handEl.style.zIndex = ''; })
-            .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
+          return (async () => {
+            try {
+              await this.boardEffects.revealOpponentHandCard(handEl, cardImage, detachMs);
+              await new Promise<void>(r => setTimeout(r, holdMs));
+            } finally {
+              handEl.style.zIndex = '';
+            }
+          })();
         }
         handEl.style.zIndex = '500';
-        return this.boardEffects.activateEffect(handEl, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
-          .then(() => { handEl.style.zIndex = ''; })
-          .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
+        return (async () => {
+          try {
+            await this.boardEffects.activateEffect(handEl, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS));
+            await new Promise<void>(r => setTimeout(r, holdMs));
+          } finally {
+            handEl.style.zIndex = '';
+          }
+        })();
       }
     }
     return CHAIN_ACTIVATE_FALLBACK_MS;

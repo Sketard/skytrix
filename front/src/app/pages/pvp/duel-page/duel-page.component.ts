@@ -914,6 +914,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     // a newly opened zone browser.
     if (openId != null && this.zoneBrowserState()?.openId !== openId) return;
     this.zoneBrowserState.set(null);
+    // Drop the retained opening-click reference — it pins the click's target
+    // DOM subtree for the component lifetime otherwise. Safe once the browser
+    // is closed: the guard in onDocumentClick early-returns when there is no
+    // zoneBrowserState anyway.
+    this._zoneBrowserOpeningClick = null;
   }
 
   onZoneBrowserAction(event: { cardCode: number; sequence: number; element: HTMLElement }): void {

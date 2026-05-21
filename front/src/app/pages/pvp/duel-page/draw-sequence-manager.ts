@@ -669,17 +669,25 @@ export class DrawSequenceManager {
     const fieldCards = msg.cards.filter(
       c => c.location === LOCATION.MZONE || c.location === LOCATION.SZONE,
     );
+    // Cards confirmed inside a pile zone (GY / Banished) — e.g. an effect that
+    // reveals cards from the graveyard to prove a cost or condition. Pile
+    // zones only render their top card, so the reveal needs a lift-out
+    // overlay, same shape as the deck-top reveal.
+    const pileCards = msg.cards.filter(
+      c => c.location === LOCATION.GRAVE || c.location === LOCATION.BANISHED,
+    );
     // Sequence: DECK reveal first (card is shown then hidden again, no logical
     // state change), THEN HAND reveal (player materialization). Running both
     // in parallel would overlap visually; the deck reveal sets context for
     // any hand reveal that follows in the same MSG_CONFIRM_CARDS batch.
-    // FIELD reveal runs last — the card is already on the board, the reveal
-    // is a brief flip-up/flip-down overlay.
-    if (deckCards.length || handCards.length || fieldCards.length) {
+    // FIELD then PILE reveals run last — the card is already in place, the
+    // reveal is a brief lift/flip overlay.
+    if (deckCards.length || handCards.length || fieldCards.length || pileCards.length) {
       return (async () => {
         if (deckCards.length) await this.confirmCardsOnDeck(deckCards);
         if (handCards.length) await this.confirmCardsInHand(handCards);
         if (fieldCards.length) await this.confirmCardsOnField(fieldCards);
+        if (pileCards.length) await this.confirmCardsOnPile(pileCards);
       })();
     }
     return 0;
@@ -790,6 +798,43 @@ export class DrawSequenceManager {
       const zoneKey = locationToZoneKey(card.location, card.sequence, relPlayer);
       const cardFaceUrl = this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
       await this.boardEffects.revealCardOnField(zoneKey, cardFaceUrl, cardBackUrl, durations);
+    }
+  }
+
+  /**
+   * Reveal cards confirmed inside a pile zone (MSG_CONFIRM_CARDS with
+   * `location === GRAVE | BANISHED`) — e.g. an effect that reveals cards from
+   * the graveyard to prove a cost or condition. Pile zones render only their
+   * top card, so the reveal lifts a card-shaped overlay out of the pile,
+   * shows the face, then fades — same lift/hold/fade shape as the deck-top
+   * reveal, just anchored on the GY / Banished zone. A `cardCode` of 0 is
+   * skipped (no face to show).
+   */
+  async confirmCardsOnPile(
+    cards: readonly { cardCode: number; player: number; location: CardLocation }[],
+  ): Promise<void> {
+    const durations = {
+      lift: this.ctx.scaledDuration(250, 125),
+      hold: this.ctx.scaledDuration(800, 400),
+      fade: this.ctx.scaledDuration(200, 100),
+    };
+    const highlightDuration = this.ctx.scaledDuration(600, 300);
+
+    for (const card of cards) {
+      if (!card.cardCode) continue;
+      const relPlayer = this.ctx.relativePlayer(card.player);
+      const zoneKey = locationToZoneKey(card.location, 0, relPlayer);
+      const cardFaceUrl = this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
+      // Own piles sit at the bottom (lift toward centre = negative Y);
+      // opponent piles at the top (positive Y) — mirrors confirmCardsOnDeck.
+      const liftY = relPlayer === 0 ? -60 : 60;
+      await this.boardEffects.revealCardOnDeck(
+        zoneKey,
+        cardFaceUrl,
+        liftY,
+        durations,
+        (el) => this.highlightDrawnCard(el, highlightDuration, relPlayer === 1),
+      );
     }
   }
 

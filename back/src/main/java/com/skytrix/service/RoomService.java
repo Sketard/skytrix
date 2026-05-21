@@ -504,9 +504,20 @@ public class RoomService {
     }
 
     private int[] extractByType(List<CardDeckIndex> cards, DeckKeyword type) {
-        return cards.stream()
+        var typed = cards.stream()
                 .filter(c -> c.getType() == type)
-                .sorted(Comparator.comparingInt(c -> c.getIndex() == null ? Integer.MAX_VALUE : c.getIndex()))
+                .toList();
+        // All-or-nothing index guard: a partially-migrated deck (some rows
+        // indexed, some null) must NOT be reordered — comparingInt with a
+        // MAX_VALUE null-fallback would shove every null-index card to the
+        // tail regardless of its decklist position, silently corrupting the
+        // deterministic "no shuffle" opening hand. Sort only when the whole
+        // deck is indexed; otherwise keep PK (insertion) order untouched.
+        boolean fullyIndexed = typed.stream().allMatch(c -> c.getIndex() != null);
+        var ordered = fullyIndexed
+                ? typed.stream().sorted(Comparator.comparingInt(CardDeckIndex::getIndex)).toList()
+                : typed;
+        return ordered.stream()
                 .mapToInt(c -> c.getCard().getPasscode().intValue())
                 .toArray();
     }
