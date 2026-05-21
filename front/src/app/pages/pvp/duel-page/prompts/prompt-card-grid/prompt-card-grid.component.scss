@@ -123,6 +123,8 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 1;
+  // Lift the opaque gold pill off the card art so it reads as floating.
+  box-shadow: var(--elevation-1);
   pointer-events: none;
 }
 
