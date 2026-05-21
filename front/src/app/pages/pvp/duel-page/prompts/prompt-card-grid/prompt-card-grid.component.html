@@ -29,7 +29,12 @@
                     (dblclick)="dblclickCard(entry.originalIndex)"
                     [disabled]="answered && !readOnly"
                     type="button"
-                    [attr.aria-label]="entry.card | cardName"
+                    [attr.title]="effectTitle(entry.card)"
+                    [attr.aria-label]="effectBadge(entry.originalIndex) !== null
+                      ? ((entry.card | cardName)
+                          + ' — ' + ('duel.prompt.effectBadge' | translate:{ n: effectBadge(entry.originalIndex) })
+                          + (effectTitle(entry.card) ? ' : ' + effectTitle(entry.card) : ''))
+                      : (entry.card | cardName)"
                     [attr.aria-pressed]="isSelected(entry.originalIndex)">
               <img class="card-img"
                    [src]="getCardImageUrl(entry.card)"
@@ -37,6 +42,9 @@
                    width="99" height="144" />
               @if (promptData?.type === 'SELECT_SUM' && isSelected(entry.originalIndex) && isDualAmount(entry.card)) {
                 <span class="card-slot__amount-badge">×{{ getSelectedAmount(entry.originalIndex) }}</span>
+              }
+              @if (effectBadge(entry.originalIndex) !== null) {
+                <span class="card-slot__effect-badge">{{ 'duel.prompt.effectBadge' | translate:{ n: effectBadge(entry.originalIndex) } }}</span>
               }
             </button>
           }

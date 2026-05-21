@@ -357,7 +357,8 @@
       "searching": "Recherche...",
       "typeAtLeast": "Tapez au moins 2 caractères",
       "waitingResponse": "En attente de votre réponse...",
-      "sending": "Envoi..."
+      "sending": "Envoi...",
+      "effectBadge": "Effet {{n}}"
     },
     "zoneBrowser": {
       "collapse": "Réduire",

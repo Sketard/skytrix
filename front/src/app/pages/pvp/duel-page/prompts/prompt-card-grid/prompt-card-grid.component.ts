@@ -282,6 +282,50 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return this.artService.resolveUrl(card.cardCode);
   }
 
+  /**
+   * Memoised effectBadge map, keyed by originalIndex. `promptData` and
+   * `excludedCards` are both immutable for the component's lifetime (the dialog
+   * swaps the whole component on a new prompt), so caching on `promptData`
+   * identity is sufficient — the getter is otherwise O(n) per template call.
+   */
+  private _effectBadgeCache: { prompt: CardGridPrompt; map: Map<number, number> } | null = null;
+
+  /**
+   * For SELECT_CHAIN: maps each `originalIndex` whose cardCode appears 2+ times
+   * among the *displayed* entries to its 1-based ordinal. Built over
+   * `displayEntries` (not raw `cards`) so an excluded duplicate does not leave a
+   * gap in the numbering; the reduce preserves OCGCore prompt order.
+   */
+  private get effectBadgeMap(): Map<number, number> {
+    const prompt = this.promptData;
+    if (prompt?.type !== 'SELECT_CHAIN') return new Map();
+    if (this._effectBadgeCache?.prompt === prompt) return this._effectBadgeCache.map;
+    const entries = this.displayEntries;
+    const counts = new Map<number, number>();
+    for (const e of entries) counts.set(e.card.cardCode, (counts.get(e.card.cardCode) ?? 0) + 1);
+    const seen = new Map<number, number>();
+    const map = new Map<number, number>();
+    for (const e of entries) {
+      const code = e.card.cardCode;
+      if ((counts.get(code) ?? 0) < 2) continue;
+      const ordinal = (seen.get(code) ?? 0) + 1;
+      seen.set(code, ordinal);
+      map.set(e.originalIndex, ordinal);
+    }
+    this._effectBadgeCache = { prompt, map };
+    return map;
+  }
+
+  /** The 1-based effect ordinal for a chain entry, or null when it has no duplicate. */
+  effectBadge(originalIndex: number): number | null {
+    return this.effectBadgeMap.get(originalIndex) ?? null;
+  }
+
+  /** Effect text for the native tooltip, or null when unavailable (empty / unresolved). */
+  effectTitle(card: CardInfo): string | null {
+    return card.description ? card.description : null;
+  }
+
   isSelected(index: number): boolean {
     if (this.promptData?.type === 'SELECT_SUM') return this.selectedCardAmounts().has(index);
     return this.selectedIndices().has(index);

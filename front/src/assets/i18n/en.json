@@ -357,7 +357,8 @@
       "searching": "Searching...",
       "typeAtLeast": "Type at least 2 characters",
       "waitingResponse": "Waiting for your response...",
-      "sending": "Sending..."
+      "sending": "Sending...",
+      "effectBadge": "Effect {{n}}"
     },
     "zoneBrowser": {
       "collapse": "Collapse",

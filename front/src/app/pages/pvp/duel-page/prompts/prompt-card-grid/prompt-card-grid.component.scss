@@ -114,6 +114,26 @@
   pointer-events: none;
 }
 
+// Effect discriminator for SELECT_CHAIN duplicate-cardCode entries.
+// Bottom-left so it never collides with the SELECT_SUM amount badge.
+.card-slot__effect-badge {
+  position: absolute;
+  bottom: var(--space-1);
+  left: var(--space-1);
+  max-width: calc(100% - var(--space-2) * 2);
+  background: var(--gold);
+  color: var(--text-inverse);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  padding: 2px var(--space-1);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
 .card-img {
   @include card.card-img;
 }

@@ -502,7 +502,7 @@ function transformSelectChain(msg: any): ServerMessage {
   const timingLabel = systemStrings.get(TIMING_STRING_ID[timing] ?? 0) ?? '';
   return {
     type: 'SELECT_CHAIN', player: msg.player as Player,
-    cards: msg.selects.map((c: any) => toCardInfo(c)),
+    cards: msg.selects.map((c: any) => ({ ...toCardInfo(c), description: resolvedDescOrEmpty(getOptionDesc(c.description)) })),
     forced: msg.forced,
     hintTiming: timing,
     hintTimingLabel: timingLabel,

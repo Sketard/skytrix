@@ -1,10 +1,11 @@
 // DEV ONLY — to be removed before final ship.
 // Prompt fixtures for the Prompts dev hub tab. Cf duel-prompts-refresh-spec §9.5.
 //
-// Coverage : 10 prompt variants live via fixtures.
+// Coverage : 11 prompt variants live via fixtures.
 //   - Yes/No, Option List, Card Grid Target, Numeric Counter (Sprint 1)
 //   - Card Grid Sum, Sort Card, Position Select, Numeric Multi,
 //     Numeric Declare, Announce Card (this commit)
+//   - Chain (Duplicate Effect) — SELECT_CHAIN with a duplicated cardCode
 //
 // NOT shipped as fixtures (deliberate):
 //   - Zone Highlight    — uses Pattern A (floating overlay), not the sheet
@@ -132,6 +133,42 @@ export const FIXTURE_ANNOUNCE_CARD: Prompt = {
   opcodes: [],
 };
 
+// SELECT_CHAIN where the same card appears twice — two of its effects can
+// activate at the same chain timing. Albion the Branded Dragon (87746184)
+// has a Fusion effect and a "Branded" search effect; OCGCore offers both
+// as distinct chain entries with identical cardCode/location/sequence.
+// The 3rd entry omits `description` to exercise the badge-only fallback
+// (no tooltip when the effect text is unavailable).
+export const FIXTURE_CHAIN_DUPLICATE: Prompt = {
+  type: 'SELECT_CHAIN',
+  player: 0,
+  forced: false,
+  hintTiming: 0x80,
+  hintTimingLabel: 'Main Phase',
+  cards: [
+    makeMockCard({
+      cardCode: 87746184,
+      name: 'Albion the Branded Dragon',
+      location: LOCATION.MZONE,
+      sequence: 0,
+      description: 'Fusion Summon 1 Level 8 or lower Fusion Monster',
+    }),
+    makeMockCard({
+      cardCode: 87746184,
+      name: 'Albion the Branded Dragon',
+      location: LOCATION.MZONE,
+      sequence: 0,
+      description: 'Add to your hand or Set 1 "Branded" Spell/Trap from your Deck',
+    }),
+    makeMockCard({
+      cardCode: 12345,
+      name: 'Branded Fusion',
+      location: LOCATION.SZONE,
+      sequence: 1,
+    }),
+  ],
+};
+
 // =============================================================================
 // Public registry — order matters (drives the hub UI list).
 // =============================================================================
@@ -147,4 +184,5 @@ export const PROMPT_FIXTURES: ReadonlyArray<{ key: string; label: string; value:
   { key: 'numeric-multi',    label: 'Numeric Multi',      value: FIXTURE_NUMERIC_MULTI },
   { key: 'numeric-declare',  label: 'Numeric Declare',    value: FIXTURE_NUMERIC_DECLARE },
   { key: 'announce-card',    label: 'Announce Card',      value: FIXTURE_ANNOUNCE_CARD },
+  { key: 'chain-duplicate',  label: 'Chain (Duplicate Effect)', value: FIXTURE_CHAIN_DUPLICATE },
 ];
