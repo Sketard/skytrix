@@ -457,12 +457,13 @@ describe('PvpBoardContainerComponent — action dispatch + clicks (C4.2)', () =>
   it('onZonePillClick emits zonePillRequest unconditionally (readOnly + live)', () => {
     fixture.detectChanges();
 
-    const events: Array<{ zoneId: ZoneId; playerIndex: number }> = [];
+    const events: Array<{ zoneId: ZoneId; playerIndex: number; sourceEvent: MouseEvent }> = [];
     component.zonePillRequest.subscribe(e => events.push(e));
 
-    component.onZonePillClick({ currentTarget: document.createElement('button') } as unknown as MouseEvent, 'GY', 1);
+    const sourceEvent = { currentTarget: document.createElement('button') } as unknown as MouseEvent;
+    component.onZonePillClick(sourceEvent, 'GY', 1);
 
-    expect(events).toEqual([{ zoneId: 'GY', playerIndex: 1 }]);
+    expect(events).toEqual([{ zoneId: 'GY', playerIndex: 1, sourceEvent }]);
   });
 });
 

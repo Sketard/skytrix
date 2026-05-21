@@ -459,8 +459,14 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   @ViewChild('surrenderDialog') surrenderDialogTpl!: TemplateRef<void>;
   @ViewChild('playerHandRow') private playerHandRow?: PvpHandRowComponent;
 
-  /** Guard prevents the click that opens the browser from immediately closing it. */
-  private _zoneBrowserClickGuard = false;
+  /**
+   * The `click` event that opened the zone browser. `onDocumentClick` (which
+   * fires later, as the same event bubbles to `document`) skips this exact
+   * event so the opening click doesn't immediately close the browser.
+   * Reference identity — not a time window — so it survives Zone.js draining
+   * microtasks between the pill's listener and the document listener.
+   */
+  private _zoneBrowserOpeningClick: MouseEvent | null = null;
 
   // Story 3.1 — duelResult as observable (created in injection context for toObservable)
   private readonly duelResult$ = toObservable(this.wsService.duelResult);
@@ -723,7 +729,9 @@ export class DuelPageComponent implements OnInit, OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (this._zoneBrowserClickGuard || !this.zoneBrowserState()) return;
+    // The click that opened the browser is still bubbling to `document` here —
+    // skip it. Identified by reference: the very event passed to onZonePillRequest.
+    if (event === this._zoneBrowserOpeningClick || !this.zoneBrowserState()) return;
     const zoneEl = document.querySelector('app-pvp-zone-browser-overlay');
     if (!zoneEl || !zoneEl.contains(event.target as Node)) {
       zoneEl?.querySelector('.zone-browser')?.classList.add('zone-browser--closing');
@@ -793,11 +801,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     this.openCardActionMenu(event.element, event.actions, prompt.type);
   }
 
-  onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number }): void {
+  onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number; sourceEvent: MouseEvent }): void {
     const player = this.logicalState().players[event.playerIndex];
     if (!player) return;
-    this._zoneBrowserClickGuard = true;
-    queueMicrotask(() => this._zoneBrowserClickGuard = false);
+    // Tag the originating click so onDocumentClick skips it as it keeps bubbling.
+    this._zoneBrowserOpeningClick = event.sourceEvent;
     const isPile = event.zoneId === 'GY' || event.zoneId === 'BANISHED' || event.zoneId === 'EXTRA';
     this.zoneBrowserState.set({
       zoneId: event.zoneId,

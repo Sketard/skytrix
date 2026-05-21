@@ -177,7 +177,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly zoneSelected = output<string>();
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
-  readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number }>();
+  readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number; sourceEvent: MouseEvent }>();
   readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField }>();
   readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
@@ -378,7 +378,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   }
 
   onZonePillClick(event: MouseEvent, zoneId: ZoneId, playerIndex: number): void {
-    this.zonePillRequest.emit({ zoneId, playerIndex });
+    this.zonePillRequest.emit({ zoneId, playerIndex, sourceEvent: event });
     if (this.effectiveReadOnly()) return;
     // If player's own pile has actionable cards, also open the action menu
     if (playerIndex === 0) {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, inject, input, output, signal, untracked } from '@angular/core';
 import { CardOnField, ZoneId } from '../../duel-ws.types';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -57,20 +57,25 @@ export class PvpZoneBrowserOverlayComponent {
 
     // When the parent switches zone (new openId) on the same component instance,
     // cancel any pending close and reset state so the overlay stays visible.
+    // Only `openId` is tracked — `isClosing` is read untracked, otherwise
+    // `close()` setting `isClosing = true` would re-trigger this effect and
+    // cancel the very close it just started (the overlay would never close).
+    let seenOpenId = untracked(() => this.openId());
     effect(() => {
-      this.openId(); // track
-      if (this.isClosing()) {
-        if (this.closeTimeout) {
-          clearTimeout(this.closeTimeout);
-          this.closeTimeout = null;
-        }
-        this.isClosing.set(false);
-        this.visible.set(true);
-        this.expanded.set(false);
-        // Re-register click-outside since the old one was torn down by close()
-        this.removeOutsideListener();
-        this.removeOutsideListener = setupClickOutsideListener(this.el, this.destroyRef, () => this.close());
+      const id = this.openId();
+      if (id === seenOpenId) return; // first run, or no real zone switch
+      seenOpenId = id;
+      if (!untracked(() => this.isClosing())) return; // already visible, nothing to revive
+      if (this.closeTimeout) {
+        clearTimeout(this.closeTimeout);
+        this.closeTimeout = null;
       }
+      this.isClosing.set(false);
+      this.visible.set(true);
+      this.expanded.set(false);
+      // Re-register click-outside since the old one was torn down by close()
+      this.removeOutsideListener();
+      this.removeOutsideListener = setupClickOutsideListener(this.el, this.destroyRef, () => this.close());
     });
   }
 
