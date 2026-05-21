@@ -114,9 +114,8 @@
   pointer-events: none;
 }
 
-// Effect discriminator for SELECT_CHAIN duplicate-cardCode entries.
-// Ordinal pill floats top-centre; effect text rides a scrim band at the
-// bottom of the art so the card-slot height stays uniform across the row.
+// Effect discriminator pill for SELECT_CHAIN duplicate-cardCode entries.
+// Ordinal pill floats top-centre over the card art.
 .card-slot__effect-pill {
   position: absolute;
   top: var(--space-1);
@@ -128,36 +127,18 @@
   pointer-events: none;
 }
 
-.card-slot__effect-caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
-  background: var(--scrim-strong);
-  color: var(--text-primary);
-  font-size: var(--text-xs);
-  line-height: 1.3;
-  padding: var(--space-1);
-  border-bottom-left-radius: var(--radius-sm);
-  border-bottom-right-radius: var(--radius-sm);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-}
-
-// Custom hover panel — full effect text. Rendered via a CDK connected
-// overlay (positioning handled by the CDK), so this rule only carries
-// the DS-themed appearance. The overlay escapes both the
-// `overflow-x: auto` card strip and the `transform` on the prompt dialog.
+// Custom hover panel — full effect text, shown for every SELECT_CHAIN
+// entry. Rendered via a CDK connected overlay (positioning handled by
+// the CDK), so this rule carries only the appearance. Styled to read as
+// an extension of the prompt dialog frame: same surface gradient, same
+// gold liseré + halo as `--pvp-prompt-frame-*`.
 .effect-hover {
   width: 220px;
   padding: var(--space-2) var(--space-3);
-  background: var(--surface-elevated);
-  border: var(--border-width-thin) solid var(--gold-soft-25);
+  background: var(--pvp-prompt-dialog-bg);
+  border: var(--pvp-prompt-frame-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--elevation-3);
+  box-shadow: var(--pvp-prompt-frame-shadow);
   color: var(--text-primary);
   font-size: var(--text-sm);
   line-height: 1.4;

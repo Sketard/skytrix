@@ -53,9 +53,6 @@
                           color="var(--gold)" textColor="var(--text-inverse)">
                   {{ 'duel.prompt.effectBadge' | translate:{ n: effectBadge(entry.originalIndex) } }}
                 </app-pill>
-                @if (effectTitle(entry.card)) {
-                  <span class="card-slot__effect-caption">{{ effectTitle(entry.card) }}</span>
-                }
               }
               <ng-template cdkConnectedOverlay
                            [cdkConnectedOverlayOrigin]="slotOrigin"

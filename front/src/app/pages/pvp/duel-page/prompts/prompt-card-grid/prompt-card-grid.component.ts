@@ -350,7 +350,9 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   }
 
   onCardHover(originalIndex: number): void {
-    if (this.effectBadge(originalIndex) === null) return;
+    // Hover applies to every SELECT_CHAIN entry with effect text — not only
+    // duplicates. The pill stays duplicate-only; the hover is general reading aid.
+    if (this.promptData?.type !== 'SELECT_CHAIN') return;
     if (!this.effectTitle(this.cards[originalIndex])) return;
     this.hoverIndex.set(originalIndex);
   }

@@ -79,7 +79,7 @@ describe('PromptCardGridComponent — effect discriminator', () => {
     expect(c.effectBadge(1)).toBeNull(); // dupB now single-occurrence among displayed
   });
 
-  it('opens the hover panel with the effect text for a duplicate entry', () => {
+  it('opens the hover panel with the effect text for any chain entry', () => {
     const c = make(selectChain([chainCard(100, 0, 'Fusion Summon'), chainCard(100, 0, 'Search')]));
     c.onCardHover(0);
     expect(c.hoverIndex()).toBe(0);
@@ -89,14 +89,15 @@ describe('PromptCardGridComponent — effect discriminator', () => {
     expect(c.hoverText()).toBeNull();
   });
 
-  it('does not open the hover panel for a single-occurrence card', () => {
+  it('opens the hover panel for a single-occurrence chain card (not duplicate-only)', () => {
     const c = make(selectChain([chainCard(100, 0, 'A'), chainCard(100, 0, 'B'), chainCard(200, 1, 'Solo')]));
     c.onCardHover(2);
-    expect(c.hoverIndex()).toBeNull();
+    expect(c.hoverIndex()).toBe(2);
+    expect(c.hoverText()).toBe('Solo');
   });
 
-  it('does not open the hover panel for a duplicate with no effect text', () => {
-    const c = make(selectChain([chainCard(100, 0, 'A'), chainCard(100, 0, undefined)]));
+  it('does not open the hover panel for a chain entry with no effect text', () => {
+    const c = make(selectChain([chainCard(100, 0, 'A'), chainCard(200, 1, undefined)]));
     c.onCardHover(1);
     expect(c.hoverIndex()).toBeNull();
   });
