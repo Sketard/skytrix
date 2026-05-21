@@ -15,6 +15,7 @@ import { CardNamePipe } from '../../../../../core/pipes/card-i18n.pipe';
 import { isFaceUp } from '../../../pvp-card.utils';
 import { DuelCardArtService } from '../../duel-card-art.service';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
+import { PillComponent } from '../../../../../components/pill/pill.component';
 
 type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
 
@@ -44,7 +45,7 @@ function cardKey(c: CardInfo): string {
   styleUrl: './prompt-card-grid.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, CardNamePipe],
+  imports: [TranslatePipe, CardNamePipe, PillComponent],
 })
 export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt> {
   private readonly artService = inject(DuelCardArtService);

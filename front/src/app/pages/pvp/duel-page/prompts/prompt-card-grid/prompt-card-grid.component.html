@@ -44,7 +44,12 @@
                 <span class="card-slot__amount-badge">×{{ getSelectedAmount(entry.originalIndex) }}</span>
               }
               @if (effectBadge(entry.originalIndex) !== null) {
-                <span class="card-slot__effect-badge">{{ 'duel.prompt.effectBadge' | translate:{ n: effectBadge(entry.originalIndex) } }}</span>
+                <app-pill class="card-slot__effect-pill" variant="gold" size="xs">
+                  {{ 'duel.prompt.effectBadge' | translate:{ n: effectBadge(entry.originalIndex) } }}
+                </app-pill>
+                @if (effectTitle(entry.card)) {
+                  <span class="card-slot__effect-caption">{{ effectTitle(entry.card) }}</span>
+                }
               }
             </button>
           }
