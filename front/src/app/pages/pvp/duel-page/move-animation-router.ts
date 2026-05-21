@@ -84,6 +84,29 @@ export class MoveAnimationRouter {
   /** Pre-acquired ZoneLock handles (src + dst) from preLockQueuedSources. */
   private readonly _preLocks = new Map<string, ZoneLock>();
 
+  /** Set once a pile-bound MSG_MOVE missing `toPlayer` is seen — keeps the
+   *  fallback warning to one line per session instead of one per move. */
+  private _warnedMissingToPlayer = false;
+
+  /**
+   * Surface a MSG_MOVE that reaches a pile (GY/Banished/Extra) without a
+   * `toPlayer` field. `moveToPlayer` then falls back to the source controller
+   * — correct for pre-fix legacy replays, but a real regression for live PvP
+   * where the field is always emitted. A pile is the only destination where
+   * `toPlayer` can legitimately differ from `player` (owner-aware routing),
+   * so a same-side move with a missing field is silent (the fallback is exact).
+   */
+  private warnIfToPlayerMissing(msg: MoveMsg): void {
+    if (msg.toPlayer == null && isPile(msg.toLocation) && !this._warnedMissingToPlayer) {
+      this._warnedMissingToPlayer = true;
+      this.logger.warn(
+        'MSG_MOVE to a pile is missing `toPlayer` — falling back to the source '
+          + 'controller for destination routing. Expected for pre-fix legacy '
+          + 'replays; a regression if this is a live PvP duel.',
+      );
+    }
+  }
+
   /**
    * Tracked timeouts (e.g., overlay detach slide-out). The value is a
    * cleanup thunk that MUST: (a) revert any DOM side-effects applied before
@@ -237,6 +260,7 @@ export class MoveAnimationRouter {
       // your side (must pre-lock the OWNER's pile, not yours). Mirror of
       // buildMoveContext's relPlayer / relDstPlayer split.
       const relPlayer = this.ctx.relativePlayer(msg.player);
+      this.warnIfToPlayerMissing(msg);
       const relDstPlayer = this.ctx.relativePlayer(moveToPlayer(msg));
 
       const from = msg.fromLocation;
@@ -299,6 +323,7 @@ export class MoveAnimationRouter {
     // from `toPlayer` makes the animation land in the correct GY instead of
     // teleport-correcting once the post-event BOARD_STATE arrives.
     const relPlayer = this.ctx.relativePlayer(msg.player);
+    this.warnIfToPlayerMissing(msg);
     const relDstPlayer = this.ctx.relativePlayer(moveToPlayer(msg));
     const dstKey = locationToZoneKey(to, msg.toSequence, relDstPlayer);
     const srcKey = locationToZoneKey(from, msg.fromSequence, relPlayer);
