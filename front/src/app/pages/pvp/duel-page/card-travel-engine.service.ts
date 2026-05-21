@@ -3,6 +3,7 @@ import { toCardRect, buildTravelKeyframes } from './card-travel-helpers';
 import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
 import { DuelLogger } from './duel-logger';
+import { ReducedMotionService } from '../../../services/reduced-motion.service';
 import {
   TRAVEL_FLIP_MIDPOINT_FRACTION,
   TRAVEL_DEPARTURE_GLOW_FRACTION,
@@ -62,10 +63,12 @@ export class CardTravelEngine implements OnDestroy {
   private _zoneResolver: ((zoneKey: string) => HTMLElement | null) | null = null;
   private _container: HTMLElement = document.body;
   private readonly _timers = new Set<number>();
-  private readonly _reducedMotion: boolean;
+  private readonly _reducedMotionSvc = inject(ReducedMotionService);
 
-  constructor() {
-    this._reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Centralised reduced-motion state (Preferences toggle OR OS preference) —
+   *  read live so a mid-session Preferences change takes effect immediately. */
+  private get _reducedMotion(): boolean {
+    return this._reducedMotionSvc.enabled();
   }
 
   private get boardEffects(): BoardEffectsService {

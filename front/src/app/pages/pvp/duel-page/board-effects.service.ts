@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { CardTravelEngine } from './card-travel-engine.service';
 import { toCardRect, buildCrackPaths } from './card-travel-helpers';
+import { ReducedMotionService } from '../../../services/reduced-motion.service';
 
 /**
  * Visual effects anchored to a board zone or DOM element. Split from
@@ -19,10 +20,12 @@ export class BoardEffectsService implements OnDestroy {
   private readonly cardTravel = inject(CardTravelEngine);
   private readonly _overlayEls = new Set<HTMLElement>();
   private readonly _timers = new Set<number>();
-  private readonly _reducedMotion: boolean;
+  private readonly _reducedMotionSvc = inject(ReducedMotionService);
 
-  constructor() {
-    this._reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Centralised reduced-motion state (Preferences toggle OR OS preference) —
+   *  read live so a mid-session Preferences change takes effect immediately. */
+  private get _reducedMotion(): boolean {
+    return this._reducedMotionSvc.enabled();
   }
 
   /** Radial glow contraction + dark sink overlay — shared by GY absorption and banish rift. */

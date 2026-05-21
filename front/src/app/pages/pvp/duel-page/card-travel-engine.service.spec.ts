@@ -53,9 +53,10 @@ describe('CardTravelEngine', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
 
-    // Force prefers-reduced-motion: no-preference so the constructor captures
-    // _reducedMotion=false. The constant is read once at construction, so the
-    // patch must be installed BEFORE TestBed.inject(CardTravelEngine).
+    // Force prefers-reduced-motion: no-preference so ReducedMotionService
+    // resolves `enabled()` to false. `_reducedMotion` now reads that service
+    // live, so the matchMedia patch + a clean localStorage key keep it false.
+    localStorage.removeItem('pref-reduced-motion');
     origMatchMedia = window.matchMedia;
     window.matchMedia = ((q: string) => ({
       matches: false,

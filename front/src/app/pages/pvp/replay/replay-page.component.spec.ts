@@ -19,7 +19,7 @@
  * concurrency guard. Things a future refactor would silently break.
  */
 
-import { signal, WritableSignal } from '@angular/core';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
@@ -53,6 +53,7 @@ import { TargetIndicatorManager } from '../duel-page/target-indicator-manager';
 import { BufferReplayBuilder } from '../duel-page/buffer-replay-builder';
 import { ANIMATION_DATA_SOURCE } from '../duel-page/animation-data-source';
 import { AuthService } from '../../../services/auth.service';
+import { ReducedMotionService } from '../../../services/reduced-motion.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
 import { EMPTY_DUEL_STATE } from '../types';
@@ -320,8 +321,10 @@ function forkOf(fixture: ComponentFixture<ReplayPageComponent>): StubReplayFork 
 
 // localStorage shim — Karma runs in a real browser, so localStorage exists.
 // We clear it per-test to keep each spec independent and predictable.
+// `pref-reduced-motion` is the centralised animation toggle — the replay
+// `animationsEnabled` default is derived from it, so it must be reset too.
 function clearReplayPrefs(): void {
-  localStorage.removeItem('replay.animationsEnabled');
+  localStorage.removeItem('pref-reduced-motion');
   localStorage.removeItem('replay.promptMode');
   localStorage.removeItem('replay.perspectiveIndex');
 }
@@ -597,17 +600,20 @@ describe('ReplayPageComponent — toggle handlers', () => {
     expect(adapter.collapseRemainingSteps).not.toHaveBeenCalled();
   });
 
-  it('onToggleAnimations flips, persists, jumpToState, and restarts only when isPlaying', () => {
+  it('onToggleAnimations flips (session-only), jumpToState, and restarts only when isPlaying', () => {
     const state = makePrecomputed(1);
     conn.boardStates.set([state]);
     transport.currentIndex.set(0);
 
-    expect(component.animationsEnabled()).toBe(false);
+    // Default is the inverse of the centralised reduced-motion state — capture
+    // it rather than assuming, so the test is independent of the CI OS MQ.
+    const initial = component.animationsEnabled();
 
     // Not playing: no restart.
     component.onToggleAnimations();
-    expect(component.animationsEnabled()).toBe(true);
-    expect(localStorage.getItem('replay.animationsEnabled')).toBe('true');
+    expect(component.animationsEnabled()).toBe(!initial);
+    // Not persisted — the replay toggle is a session-only override.
+    expect(localStorage.getItem('replay.animationsEnabled')).toBeNull();
     expect(adapter.jumpToState).toHaveBeenCalledWith(state);
     expect(transport.restart).not.toHaveBeenCalled();
 
@@ -615,8 +621,14 @@ describe('ReplayPageComponent — toggle handlers', () => {
     transport.isPlaying.set(true);
     adapter.jumpToState.calls.reset();
     component.onToggleAnimations();
-    expect(component.animationsEnabled()).toBe(false);
+    expect(component.animationsEnabled()).toBe(initial);
     expect(transport.restart).toHaveBeenCalled();
+  });
+
+  it('animationsEnabled defaults from ReducedMotionService (Preferences value)', () => {
+    const motion = TestBed.inject(ReducedMotionService);
+    // Inverse relationship: reduced-motion ON => animations OFF.
+    expect(component.animationsEnabled()).toBe(!motion.enabled());
   });
 });
 
@@ -935,10 +947,13 @@ describe('ReplayPageComponent — F4 wiring', () => {
 
   // ── hasNonDefaultOption ───────────────────────────────────────────────────
   it('hasNonDefaultOption flags any non-default visionnage option', () => {
+    // Default state — every option at its centralised default.
     expect(component.hasNonDefaultOption()).toBe(false);
-    component.animationsEnabled.set(true);
+    // Flipping animations away from the Preferences default flags it.
+    component.animationsEnabled.set(!component.animationsEnabled());
     expect(component.hasNonDefaultOption()).toBe(true);
-    component.animationsEnabled.set(false);
+    // Back to default, then a non-default prompt mode also flags it.
+    component.animationsEnabled.set(!component.animationsEnabled());
     component.promptMode.set('result');
     expect(component.hasNonDefaultOption()).toBe(true);
   });

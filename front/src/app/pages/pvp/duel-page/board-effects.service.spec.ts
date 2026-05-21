@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { BoardEffectsService } from './board-effects.service';
 import { CardTravelEngine } from './card-travel-engine.service';
+import { ReducedMotionService } from '../../../services/reduced-motion.service';
 
 /**
  * Override `Element.animate` so `.finished` resolves immediately and the
@@ -53,13 +54,13 @@ describe('BoardEffectsService', () => {
       providers: [
         BoardEffectsService,
         { provide: CardTravelEngine, useValue: mockCardTravel },
+        // Headless browser may report reduced-motion = true depending on env.
+        // Stub `enabled()` to false so the visual paths actually run (otherwise
+        // every method early-returns and the specs become trivially green).
+        { provide: ReducedMotionService, useValue: { enabled: () => false } },
       ],
     });
     service = TestBed.inject(BoardEffectsService);
-    // Headless browser may report reduced-motion = true depending on env.
-    // Force false so the visual paths actually run (otherwise every method
-    // early-returns and the specs become trivially green).
-    (service as unknown as { _reducedMotion: boolean })._reducedMotion = false;
   });
 
   afterEach(() => {

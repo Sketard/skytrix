@@ -30,6 +30,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { OrientationLockComponent } from '../../../shared/orientation-lock/orientation-lock.component';
 import { BackFabComponent } from '../../../components/back-fab/back-fab.component';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
+import { ReducedMotionService } from '../../../services/reduced-motion.service';
 import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import type { DuelState } from '../types';
@@ -38,7 +39,7 @@ import { DebugLogPanelComponent } from '../duel-page/debug-log-panel/debug-log-p
 import { buildReplayLogEntries } from '../duel-page/debug-log-formatter';
 import type { CardOnField, SelectPlaceMsg, SelectDisfieldMsg, PlaceOption, ZoneId } from '../duel-ws.types';
 import { buildFaceDownZoneKeys, preloadCardImages } from '../pvp-card.utils';
-import { buildHandChainBadges, buildOpponentHandChainData } from '../duel-page/chain-badge.utils';
+import { buildHandChainBadges, buildHandRevealedCards, buildOpponentHandChainData } from '../duel-page/chain-badge.utils';
 import type { Player } from '../duel-ws.types';
 import { locationToZoneId, getZonePillCards } from '../pvp-zone.utils';
 import { PvpBoardContainerComponent } from '../duel-page/pvp-board-container/pvp-board-container.component';
@@ -118,6 +119,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly loaderService = inject(LoaderService);
   private readonly navbarCollapse = inject(NavbarCollapseService);
+  private readonly reducedMotion = inject(ReducedMotionService);
   private readonly translate = inject(TranslateService);
   private readonly cardDataCache = inject(CardDataCacheService);
   private readonly cardInspection = inject(CardInspectionService);
@@ -155,12 +157,18 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     localStorage.getItem(ReplayPageComponent.PREF_PERSPECTIVE) === '1' ? 1 : 0,
   );
 
-  private static readonly PREF_ANIMATIONS = 'replay.animationsEnabled';
   private static readonly PREF_PROMPT_MODE = 'replay.promptMode';
   private static readonly PREF_PERSPECTIVE = 'replay.perspectiveIndex';
   private static readonly PREF_ZOOM_LEVEL  = 'replay.zoomLevel';
   private static readonly NARROW_BREAKPOINT_PX = 760; // D1
-  readonly animationsEnabled = signal(localStorage.getItem(ReplayPageComponent.PREF_ANIMATIONS) === 'true');
+  /**
+   * Replay animation toggle. Seeded from the centralised `ReducedMotionService`
+   * on every page entry (Preferences is the default), then overridable for the
+   * current viewing session via `onToggleAnimations`. NOT persisted — leaving
+   * the page resets it to the Preferences value, so the two toggles can never
+   * silently drift apart.
+   */
+  readonly animationsEnabled = signal(!this.reducedMotion.enabled());
 
   // F4 overlay + bottom-sheet open state (uniquely managed at the page level
   // so the keyboard handler + swipe directive can stay in sync).
@@ -337,9 +345,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly eventLabel = computed<string | null>(() => this.currentState()?.label ?? null);
 
   /** Drives the gold dot indicator on the mobile `⋯ More` button — true when
-   *  any visionnage option is set to a non-default value. */
+   *  any visionnage option is set to a non-default value. The animation
+   *  default is the centralised Preferences value (inverse of reduced-motion). */
   readonly hasNonDefaultOption = computed<boolean>(() =>
-    this.animationsEnabled() !== false
+    this.animationsEnabled() !== !this.reducedMotion.enabled()
     || this.promptMode() !== 'decision'
     || this.perspectiveIndex() !== 0,
   );
@@ -432,6 +441,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   readonly playerHandChainBadges = computed(() =>
     buildHandChainBadges(this.adapter.activeChainLinks(), this.perspectiveIndex(), this.adapter.chainPhase(), this.playerHand()),
+  );
+
+  /**
+   * Player's own hand cards in a chain link (no ≥2-link threshold) — raises
+   * their z-index above fan neighbours while activated. See the PvP twin in
+   * `duel-page.component.ts`.
+   */
+  readonly playerHandRevealedCards = computed(() =>
+    buildHandRevealedCards(this.adapter.activeChainLinks(), this.perspectiveIndex(), this.playerHand()),
   );
   private readonly opponentHandChainData = computed(() =>
     buildOpponentHandChainData(this.adapter.activeChainLinks(), this.perspectiveIndex(), this.adapter.chainPhase(), this.opponentHand()),
@@ -729,9 +747,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   onToggleAnimations(): void {
     this.abortAndClean();
-    const next = !this.animationsEnabled();
-    this.animationsEnabled.set(next);
-    localStorage.setItem(ReplayPageComponent.PREF_ANIMATIONS, String(next));
+    // Session-only override of the Preferences default — not persisted.
+    this.animationsEnabled.set(!this.animationsEnabled());
     const state = this.boardStates()[this.currentIndex()];
     if (state) this.adapter.jumpToState(state);
     if (this.isPlaying()) this.transport.restart();

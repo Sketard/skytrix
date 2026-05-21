@@ -1,6 +1,7 @@
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { duelAssert } from '../../../core/utilities/duel-assert';
+import { ReducedMotionService } from '../../../services/reduced-motion.service';
 
 /**
  * Component-level context for the animation pipeline.
@@ -19,14 +20,12 @@ export class DuelContext {
   private _speedMultiplier: () => number = () => { this.assertConfigured(); return 1; };
   private _isBoardActive: () => boolean = () => { this.assertConfigured(); return false; };
 
-  readonly reducedMotion = signal(matchMedia('(prefers-reduced-motion: reduce)').matches);
-
-  constructor() {
-    const mql = matchMedia('(prefers-reduced-motion: reduce)');
-    const handler = (e: MediaQueryListEvent) => this.reducedMotion.set(e.matches);
-    mql.addEventListener('change', handler);
-    inject(DestroyRef).onDestroy(() => mql.removeEventListener('change', handler));
-  }
+  /**
+   * Resolved reduced-motion state — the user Preferences toggle OR the OS
+   * `prefers-reduced-motion` media query. Centralised in `ReducedMotionService`
+   * so PvP, Replay and the Preferences page all share one source of truth.
+   */
+  readonly reducedMotion = inject(ReducedMotionService).enabled;
 
   ownPlayerIndex(): number { return this._ownPlayerIndex(); }
   speedMultiplier(): number { return this._speedMultiplier(); }
