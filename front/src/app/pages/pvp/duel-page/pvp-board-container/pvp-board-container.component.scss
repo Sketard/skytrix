@@ -227,11 +227,14 @@
 // danger-light loss). Voir mockup `_mockups/mockup-alteration-indicators.html`
 // variant D pour la référence visuelle.
 
-// Always-on ATK/DEF stats — pill obsidian sous-carte (bottom: -8px).
+// Always-on ATK/DEF stats — pill obsidian intégralement sous la carte.
+// `top: 100%` ancre le bord HAUT de la pill au bord bas de la carte : la
+// pill ne recouvre plus le coin bas-droit où vit `.xyz-indicator` (le
+// compteur de matériels XYZ), quelle que soit la hauteur de la pill.
 // Plus de text-stroke ni text-shadow : la chip elle-même porte le contraste.
 .monster-stats {
   position: absolute;
-  bottom: -8px;
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
   pointer-events: none;
@@ -256,8 +259,8 @@
   &--dim { color: var(--text-secondary); opacity: 0.65; }
 
   &--opponent {
-    bottom: auto;
-    top: -8px;
+    top: auto;
+    bottom: 100%;
   }
 
   &__sep {
