@@ -87,7 +87,7 @@ const TURN_TIME_MIN_SECS = 30;
 const TURN_TIME_MAX_SECS = 3600;
 const TURN_TIME_STEP_SECS = 30;
 // Preset shortcuts (in seconds). Order matches the visual ticks under the slider.
-const TURN_TIME_PRESETS_SECS: readonly number[] = [60, 180, 300, 600, 1800, 3600];
+const TURN_TIME_PRESETS_SECS: readonly number[] = [60, 180, 300, 600, 1200, 1800, 3600];
 const CARD_BACK_FALLBACK = 'assets/images/card_back.jpg';
 
 interface TurnTimeLabel {
@@ -157,7 +157,7 @@ export class DeckPickerDialogComponent implements OnInit {
   readonly activeSlot = signal<'p1' | 'p2'>('p1');
   readonly firstPlayer = signal<'p1' | 'p2'>('p1');
   readonly randomHand = signal(false);
-  readonly turnTimeSecs = signal(300);
+  readonly turnTimeSecs = signal(1200);
   readonly searchQuery = signal('');
 
   // Sandbox-only: P2 starts in "mirror" mode (uses P1's deck). The mirror

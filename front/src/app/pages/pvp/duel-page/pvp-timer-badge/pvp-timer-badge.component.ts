@@ -11,7 +11,7 @@ type TimerUrgency = 'normal' | 'soon' | 'urgent';
 
 const SOON_SECONDS = 120;   // ≤ 2 min  → yellow
 const URGENT_SECONDS = 30;  // ≤ 30 sec → red
-const TOTAL_TURN_MS = 300_000; // 5 min — used for bar-fill progress fallback.
+const TOTAL_TURN_MS = 1_200_000; // 20 min — used for bar-fill progress fallback.
 
 @Component({
   selector: 'app-pvp-timer-badge',
