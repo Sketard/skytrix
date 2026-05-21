@@ -228,6 +228,27 @@ describe('filterMessage', () => {
       } as any;
       expect((filterMessage(msg, 1) as any).cardCode).toBe(100);
     });
+
+    it('should reveal a FACE-UP Pendulum monster moved INTO the Extra Deck', () => {
+      // A face-up Pendulum monster going to the Extra Deck (destroyed from the
+      // field) is public under MR5 — BOARD_STATE shows it face-up, so the
+      // MSG_MOVE must carry the real cardCode for the opponent too.
+      const msg = {
+        type: 'MSG_MOVE', player: 0, cardCode: 100, cardName: 'Pendulum',
+        fromLocation: LOCATION.MZONE, toLocation: LOCATION.EXTRA,
+        toPosition: POSITION.FACEUP_ATTACK,
+      } as any;
+      expect((filterMessage(msg, 1) as any).cardCode).toBe(100);
+    });
+
+    it('should still HIDE a face-down card moved into the Extra Deck', () => {
+      const msg = {
+        type: 'MSG_MOVE', player: 0, cardCode: 100, cardName: 'Monster',
+        fromLocation: LOCATION.MZONE, toLocation: LOCATION.EXTRA,
+        toPosition: POSITION.FACEDOWN_ATTACK,
+      } as any;
+      expect((filterMessage(msg, 1) as any).cardCode).toBe(0);
+    });
   });
 
   // === SELECT_* and routed messages ===

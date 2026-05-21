@@ -77,15 +77,26 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
     case 'MSG_MOVE': {
       const isFromPrivate = PRIVATE_LOCATIONS.has(message.fromLocation);
       const isToPrivate = PRIVATE_LOCATIONS.has(message.toLocation);
-      // A card landing FACE-UP on a field zone (MZONE/SZONE) is public info
-      // — even when it came from the deck/extra/hand. Both players know what
-      // was just placed, so the opponent must receive the real cardCode to
-      // animate the deck→field reveal (parity with the tutor reveal). Only
-      // a face-down Set stays hidden.
-      const landsFaceUpOnField =
-        (message.toLocation === LOCATION.MZONE || message.toLocation === LOCATION.SZONE) &&
+      // A card landing FACE-UP is public info even when the destination is a
+      // private location:
+      //  - MZONE/SZONE: both players see what was just placed (parity with
+      //    the tutor reveal — the opponent needs the real cardCode for the
+      //    deck→field reveal animation).
+      //  - EXTRA: a face-up Pendulum monster in the Extra Deck is public
+      //    under Master Rule 5. `sanitizeOpponentBoard` already passes it
+      //    through in BOARD_STATE, so the MSG_MOVE that put it there MUST
+      //    carry the real cardCode too — otherwise the move animates a card
+      //    back into a slot the very next board state reveals face-up.
+      // Only a face-down Set / a face-down card sent to the Extra Deck stays
+      // hidden.
+      const landsFaceUp =
         (message.toPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
-      if (!omniscient && (isFromPrivate || isToPrivate) && !landsFaceUpOnField
+      const landsPublic =
+        landsFaceUp &&
+        (message.toLocation === LOCATION.MZONE ||
+          message.toLocation === LOCATION.SZONE ||
+          message.toLocation === LOCATION.EXTRA);
+      if (!omniscient && (isFromPrivate || isToPrivate) && !landsPublic
           && forPlayer !== message.player) {
         return { ...message, cardCode: 0, cardName: '' };
       }
