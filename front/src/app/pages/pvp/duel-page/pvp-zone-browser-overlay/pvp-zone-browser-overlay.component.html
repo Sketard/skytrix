@@ -21,27 +21,28 @@
       <span class="zone-browser__title">{{ zoneLabel }} ({{ cards().length }})</span>
     </div>
 
-    @if (isOpponentExtra()) {
-      <div class="zone-browser__facedown-count">
-        {{ 'duel.zoneBrowser.cardCount' | translate:{count: cards().length} }}
-      </div>
-    } @else {
-      <div class="zone-browser__grid scrollbar-visible">
-        @for (card of cards(); track $index) {
-          <button class="zone-browser__card"
-                  type="button"
-                  (click)="onCardClick(card)">
-            <img [src]="getCardImageUrlByCode(card.cardCode ?? 0)"
+    <div class="zone-browser__grid scrollbar-visible">
+      @for (card of cards(); track $index) {
+        <button class="zone-browser__card"
+                type="button"
+                (click)="onCardClick(card)">
+          @if (card.cardCode) {
+            <img [src]="getCardImageUrlByCode(card.cardCode)"
                  [alt]="card.name ?? 'Card'"
                  class="zone-browser__card-art"
                  (error)="$any($event.target).src='assets/images/card_back.jpg'">
-          </button>
-        }
-        @if (cards().length === 0) {
-          <div class="zone-browser__empty">{{ 'duel.zoneBrowser.empty' | translate }}</div>
-        }
-      </div>
-    }
+          } @else {
+            <!-- Face-down card (e.g. opponent Extra Deck non-Pendulum) —
+                 identity hidden, shown as a card back. -->
+            <img src="assets/images/card_back.jpg" alt="Face-down card"
+                 class="zone-browser__card-art">
+          }
+        </button>
+      }
+      @if (cards().length === 0) {
+        <div class="zone-browser__empty">{{ 'duel.zoneBrowser.empty' | translate }}</div>
+      }
+    </div>
 
   </div>
 }

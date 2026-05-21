@@ -39,7 +39,8 @@ function boardState(): BoardStatePayload {
         zones: [
           zone('HAND', [card(900), card(1000)]),
           zone('DECK', [card(1100)]),
-          zone('EXTRA', [card(1200)]),
+          // EXTRA: a face-down Extra Deck card + a face-up Pendulum monster.
+          zone('EXTRA', [card(1200, POSITION.FACEDOWN_ATTACK), card(1250, POSITION.FACEUP_ATTACK)]),
           zone('M2', [card(1300)]),
           zone('S2', [card(1400, POSITION.FACEDOWN_DEFENSE)]),
           zone('GY', [card(1500)]),
@@ -339,13 +340,34 @@ describe('filterMessage', () => {
       expect(ownHand.cards[0].cardCode).toBe(100);
     });
 
-    it('should empty opponent DECK and EXTRA zones', () => {
+    it('should empty the opponent DECK zone', () => {
       const msg = { type: 'BOARD_STATE', data: boardState() } as any;
       const result = filterMessage(msg, 0) as any;
       const oppDeck = result.data.players[1].zones.find((z: any) => z.zoneId === 'DECK');
-      const oppExtra = result.data.players[1].zones.find((z: any) => z.zoneId === 'EXTRA');
       expect(oppDeck.cards).toEqual([]);
-      expect(oppExtra.cards).toEqual([]);
+    });
+
+    it('should keep the opponent EXTRA zone count but mask face-down card identities', () => {
+      const msg = { type: 'BOARD_STATE', data: boardState() } as any;
+      const result = filterMessage(msg, 0) as any;
+      const oppExtra = result.data.players[1].zones.find((z: any) => z.zoneId === 'EXTRA');
+      // Count preserved — the opponent sees the Extra Deck as a face-down pile.
+      expect(oppExtra.cards.length).toBe(2);
+      // Face-down Extra Deck card → identity masked.
+      const faceDown = oppExtra.cards[0];
+      expect(faceDown.position).toBe(POSITION.FACEDOWN_ATTACK);
+      expect(faceDown.cardCode).toBeNull();
+      expect(faceDown.name).toBeNull();
+    });
+
+    it('should reveal opponent FACE-UP Pendulum monsters in the EXTRA zone (public info)', () => {
+      const msg = { type: 'BOARD_STATE', data: boardState() } as any;
+      const result = filterMessage(msg, 0) as any;
+      const oppExtra = result.data.players[1].zones.find((z: any) => z.zoneId === 'EXTRA');
+      const faceUp = oppExtra.cards[1];
+      expect(faceUp.position).toBe(POSITION.FACEUP_ATTACK);
+      expect(faceUp.cardCode).toBe(1250);
+      expect(faceUp.name).toBe('Card 1250');
     });
 
     it('should sanitize opponent face-down field cards', () => {

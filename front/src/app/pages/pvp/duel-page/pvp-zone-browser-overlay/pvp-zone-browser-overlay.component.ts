@@ -34,6 +34,9 @@ export class PvpZoneBrowserOverlayComponent {
 
   readonly zoneId = input.required<ZoneId>();
   readonly cards = input<CardOnField[]>([]);
+  /** Relative owner of the browsed zone (0 = viewer, 1 = opponent). Kept for
+   *  callers; the browser renders every zone uniformly (face-down cards show
+   *  a card back) so it no longer branches on it. */
   readonly playerIndex = input<number>(0);
   readonly openId = input<number>(0);
 
@@ -85,10 +88,6 @@ export class PvpZoneBrowserOverlayComponent {
 
   get zoneIconPath(): string | null {
     return ZONE_ICON_PATHS[this.zoneId()] ?? null;
-  }
-
-  isOpponentExtra(): boolean {
-    return this.zoneId() === 'EXTRA' && this.playerIndex() === 1;
   }
 
   onCardClick(card: CardOnField): void {

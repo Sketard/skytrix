@@ -243,9 +243,16 @@ function sanitizeOpponentBoard(board: PlayerBoardState): PlayerBoardState {
             cards: zone.cards.map(c => ({ ...c, cardCode: null, name: null, overlayMaterials: [], counters: {} })),
           };
 
-        // Extra deck: empty array (count available via extraCount)
+        // Extra deck: visible as a face-down pile (the same way the player
+        // already sees the opponent's main Deck). The count is real. Face-up
+        // Pendulum monsters in the Extra Deck are PUBLIC info under Master
+        // Rule 5 — both players see them — so they pass through intact;
+        // face-down Extra Deck cards are identity-masked like a hand card.
         case 'EXTRA':
-          return { zoneId: zone.zoneId, cards: [] };
+          return {
+            zoneId: zone.zoneId,
+            cards: zone.cards.map(sanitizeFaceDownCard),
+          };
 
         // Deck: always empty (count available via deckCount)
         case 'DECK':
