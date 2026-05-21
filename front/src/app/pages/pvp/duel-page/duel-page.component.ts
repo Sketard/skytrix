@@ -631,6 +631,18 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     // Story 3.3 — Connection effects (extracted to DuelConnectionEffectsService)
     this.connEffects.initEffects();
 
+    // Rematch (PvP only) — re-enter the pre-duel dice flow. REMATCH_STARTING
+    // pulls the room back to `connecting` so the board+hands hide and the
+    // dice arena (mounted across active|connecting) shows the fresh
+    // DICE_ROLL prompt, exactly like the first duel. The server re-runs
+    // startFirstPlayerPhase. Solo mode has no dice flow — its rematch keeps
+    // the same starting player and never shows the arena, so it must NOT be
+    // pulled back to `connecting`.
+    effect(() => {
+      if (this.wsService.rematchStarting() && !this.isSoloMode()) {
+        untracked(() => this.roomService.forceState('connecting'));
+      }
+    });
 
   }
 

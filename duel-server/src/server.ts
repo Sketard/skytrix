@@ -544,14 +544,14 @@ function startRematch(session: ActiveDuelSession): void {
   // Remove old worker handlers to prevent cleanupDuelSession on exit
   safeTerminateWorker(session);
 
-  const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
-    workerData: { dataDir: DATA_DIR },
-  });
-
-  session.phase = 'DUELING';
+  // Reset all per-duel session state. The worker is NOT spawned here —
+  // a rematch re-runs the full pre-duel dice flow (startFirstPlayerPhase)
+  // so the players re-roll for turn order, exactly like a fresh duel.
+  // The worker is spawned later by startDuelWithOrder once the dice
+  // coordinator resolves the first player.
   disposeFirstPlayer(session);
-  session.worker = worker;
-  session.workerTerminated = false;
+  session.worker = null;
+  session.workerTerminated = true;
   session.awaitingResponse = [false, false];
   session.lastBoardState = null;
   session.lastSentPrompt = [null, null];
@@ -570,17 +570,19 @@ function startRematch(session: ActiveDuelSession): void {
 
   clearAllDuelTimers(session);
 
-  attachWorkerHandlers(session);
+  if (session.soloMode) {
+    // Solo mode has no dice flow — the first duel skips it too (see the
+    // WAITING_PLAYERS branch). A solo rematch keeps the same starting
+    // player: `players[]` is already ordered so index 0 leads, so spawn
+    // the worker directly via startDuelWithOrder(0).
+    startDuelWithOrder(session, 0);
+    return;
+  }
 
-  worker.postMessage({
-    type: 'INIT_DUEL',
-    duelId: session.duelId,
-    decks: session.decks,
-    playerUsernames: session.playerUsernames,
-    deckNames: session.deckNames,
-    skipRps: true,
-    skipShuffle: session.skipShuffle,
-  });
+  // Re-enter the pre-duel dice coordinator — sends DICE_ROLL to both
+  // players, resolves a winner, lets them pick who starts, then bridges
+  // into startDuelWithOrder (which spawns the worker with skipRps: true).
+  startFirstPlayerPhase(session);
 }
 
 function rematchExpired(session: ActiveDuelSession): void {

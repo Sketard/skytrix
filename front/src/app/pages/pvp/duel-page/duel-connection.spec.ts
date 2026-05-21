@@ -267,6 +267,18 @@ describe('DuelConnection — handleMessage: dice', () => {
     expect(conn.diceInProgress()).toBeFalse();
     expect(conn.diceResult()).toBe(result as never);
   });
+
+  it('DICE_ROLL clears rematchStarting (the dice arena takes over from the "Starting…" modal)', () => {
+    // A rematch re-runs the pre-duel dice flow. rematchStarting stays true
+    // from REMATCH_STARTING until the new duel's BOARD_STATE (~6s later) —
+    // the first DICE_ROLL must clear it so the "Starting new duel…" modal
+    // does not sit on top of, and block, the dice arena.
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    dispatch(conn, { type: 'REMATCH_STARTING' } as unknown as ServerMessage);
+    expect(conn.rematchStarting()).toBeTrue();
+    dispatch(conn, { type: 'DICE_ROLL', player: 0 } as unknown as ServerMessage);
+    expect(conn.rematchStarting()).toBeFalse();
+  });
 });
 
 // =============================================================================

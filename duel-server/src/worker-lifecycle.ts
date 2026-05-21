@@ -93,12 +93,13 @@ export function safeTerminateWorker(session: ActiveDuelSession): void {
 }
 
 /**
- * Wire the 3 worker event listeners. Called once after worker creation
- * (initial duel start) and once again after rematch (the rematch path
- * spawns a fresh worker — see `startRematch`). Safe to call on a
- * session whose worker was just replaced; existing listeners are NOT
- * removed by this function (the caller is responsible for tearing down
- * the old worker via `safeTerminateWorker` before re-attaching).
+ * Wire the 3 worker event listeners. Called by `startDuelWithOrder` right
+ * after each worker spawn — both for the initial duel and for a rematch
+ * (a rematch re-enters the pre-duel dice flow, which bridges back into
+ * `startDuelWithOrder`; `startRematch` itself no longer spawns a worker).
+ * Safe to call on a session whose worker was just replaced; existing
+ * listeners are NOT removed by this function (the caller tears down the
+ * old worker via `safeTerminateWorker` before re-attaching).
  *
  * The `exit` handler distinguishes:
  *  - Natural end (session.endedAt !== null) → keep the session alive

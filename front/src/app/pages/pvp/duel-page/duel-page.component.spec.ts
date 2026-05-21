@@ -1039,3 +1039,33 @@ describe('DuelPageComponent — dice-arena wrapper bindings (C1.6)', () => {
     }
   });
 });
+
+describe('DuelPageComponent — rematch re-enters the dice flow (C1.7)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let component: DuelPageComponent;
+  let ws: StubWsService;
+  let room: StubRoomStateMachine;
+
+  beforeEach(() => {
+    setupTestBed();
+    fixture = TestBed.createComponent(DuelPageComponent);
+    component = fixture.componentInstance;
+    ws = wsOf(fixture);
+    room = fixture.componentRef.injector.get(RoomStateMachineService) as unknown as StubRoomStateMachine;
+    fixture.detectChanges(); // flush constructor effects once
+    room.forceState.calls.reset();
+  });
+
+  it('PvP: REMATCH_STARTING pulls the room back to connecting (dice arena shows)', () => {
+    ws.rematchStarting.set(true);
+    fixture.detectChanges();
+    expect(room.forceState).toHaveBeenCalledWith('connecting');
+  });
+
+  it('Solo: REMATCH_STARTING does NOT pull the room to connecting (no dice flow)', () => {
+    (component.isSoloMode as WritableSignal<boolean>).set(true);
+    ws.rematchStarting.set(true);
+    fixture.detectChanges();
+    expect(room.forceState).not.toHaveBeenCalledWith('connecting');
+  });
+});

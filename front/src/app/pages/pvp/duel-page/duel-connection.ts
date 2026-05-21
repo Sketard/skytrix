@@ -634,6 +634,12 @@ export class DuelConnection {
         // sends its response (see sendResponse). Receiving DICE_ROLL is the
         // signal to enter the `'ready'` stage of the dice arena (intro text +
         // auto-roll countdown).
+        // A rematch re-runs the pre-duel dice flow: the first DICE_ROLL means
+        // the dice arena now owns the screen, so clear `rematchStarting` here
+        // (it would otherwise stay true until the new duel's BOARD_STATE, ~6s
+        // later, leaving the "Starting new duel…" modal on top of — and
+        // blocking — the dice arena).
+        this._rematchStarting.set(false);
         this._diceResult.set(null);
         this._diceInProgress.set(false);
         this._pendingPrompt.set(message);
