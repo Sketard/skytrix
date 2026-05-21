@@ -200,8 +200,8 @@ describe('DuelConnection — handleMessage: opponent state', () => {
 describe('DuelConnection — handleMessage: TIMER_STATE', () => {
   it('updates timerState (latest) AND timerStatePerPlayer (per-player slot)', () => {
     const { conn } = makeConn();
-    const t0: TimerStateMsg = { type: 'TIMER_STATE', player: 0 as Player, remainingMs: 100_000 };
-    const t1: TimerStateMsg = { type: 'TIMER_STATE', player: 1 as Player, remainingMs: 90_000 };
+    const t0: TimerStateMsg = { type: 'TIMER_STATE', player: 0 as Player, remainingMs: 100_000, totalMs: 1_200_000 };
+    const t1: TimerStateMsg = { type: 'TIMER_STATE', player: 1 as Player, remainingMs: 90_000, totalMs: 1_200_000 };
     dispatch(conn, t0 as unknown as ServerMessage);
     expect(conn.timerState()).toBe(t0);
     expect(conn.timerStatePerPlayer()).toEqual([t0, null]);

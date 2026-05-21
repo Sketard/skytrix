@@ -35,6 +35,10 @@ export interface TimerStateMsg {
   type: 'TIMER_STATE';
   player: Player;
   remainingMs: number;
+  /** The full turn-time pool in ms (turnTimeSecs × 1000). Lets the client
+   *  render the progress bar against the real configured pool instead of a
+   *  hard-coded fallback that miscalibrates short timers. */
+  totalMs: number;
 }
 
 // =============================================================================

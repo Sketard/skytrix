@@ -11,7 +11,10 @@ type TimerUrgency = 'normal' | 'soon' | 'urgent';
 
 const SOON_SECONDS = 120;   // ≤ 2 min  → yellow
 const URGENT_SECONDS = 30;  // ≤ 30 sec → red
-const TOTAL_TURN_MS = 1_200_000; // 20 min — used for bar-fill progress fallback.
+// Bar-fill denominator fallback — used only until the first TIMER_STATE
+// arrives (which carries the real `totalMs`). 20 min matches the current
+// default turn-time pool so the very first frame is not wildly off.
+const TOTAL_TURN_MS_FALLBACK = 1_200_000;
 
 @Component({
   selector: 'app-pvp-timer-badge',
@@ -68,11 +71,15 @@ export class PvpTimerBadgeComponent {
     return 'normal';
   });
 
-  /** Bar-fill width 0..100 (% of TOTAL_TURN_MS). Bound as CSS custom property `--p`. */
+  /** Bar-fill width 0..100 (% of the real turn-time pool). Bound as CSS
+   *  custom property `--p`. Uses the server-provided `totalMs` so a short
+   *  (e.g. 60 s) turn timer fills the bar correctly; falls back to the
+   *  default-pool constant only before the first TIMER_STATE arrives. */
   readonly progressPercent = computed(() => {
     const ms = this.effectiveRemainingMs();
     if (ms == null) return 100;
-    return Math.max(0, Math.min(100, (ms / TOTAL_TURN_MS) * 100));
+    const totalMs = this.timerState()?.totalMs ?? TOTAL_TURN_MS_FALLBACK;
+    return Math.max(0, Math.min(100, (ms / totalMs) * 100));
   });
 
   /** True when this badge represents the active turn player. */

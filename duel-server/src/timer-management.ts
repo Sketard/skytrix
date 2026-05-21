@@ -58,8 +58,9 @@ export function sendTimerStateToAll(session: ActiveDuelSession): void {
   const ctx = session.timerContext;
   if (!ctx) return;
   const c = getCfg();
-  const timer0: ServerMessage = { type: 'TIMER_STATE', player: 0, remainingMs: Math.max(0, ctx.pools[0]) };
-  const timer1: ServerMessage = { type: 'TIMER_STATE', player: 1, remainingMs: Math.max(0, ctx.pools[1]) };
+  const totalMs = session.turnTimeSecs * 1000;
+  const timer0: ServerMessage = { type: 'TIMER_STATE', player: 0, remainingMs: Math.max(0, ctx.pools[0]), totalMs };
+  const timer1: ServerMessage = { type: 'TIMER_STATE', player: 1, remainingMs: Math.max(0, ctx.pools[1]), totalMs };
   for (const client of [0, 1] as const) {
     c.sendToPlayer(session, client, timer0);
     c.sendToPlayer(session, client, timer1);
@@ -70,8 +71,9 @@ export function sendTimerStateToPlayer(session: ActiveDuelSession, targetPlayer:
   const ctx = session.timerContext;
   if (!ctx) return;
   const c = getCfg();
+  const totalMs = session.turnTimeSecs * 1000;
   for (const p of [0, 1] as const) {
-    c.sendToPlayer(session, targetPlayer, { type: 'TIMER_STATE', player: p, remainingMs: Math.max(0, ctx.pools[p]) });
+    c.sendToPlayer(session, targetPlayer, { type: 'TIMER_STATE', player: p, remainingMs: Math.max(0, ctx.pools[p]), totalMs });
   }
 }
 
@@ -110,6 +112,7 @@ export function startTurnTimer(session: ActiveDuelSession): void {
       type: 'TIMER_STATE',
       player: ctx.activePlayer,
       remainingMs: Math.max(0, ctx.pools[ctx.activePlayer]),
+      totalMs: session.turnTimeSecs * 1000,
     };
     c.sendToPlayer(session, 0, timerMsg);
     c.sendToPlayer(session, 1, timerMsg);
@@ -157,6 +160,7 @@ export function pauseTurnTimer(session: ActiveDuelSession): void {
     type: 'TIMER_STATE',
     player: ctx.activePlayer,
     remainingMs: Math.max(0, ctx.pools[ctx.activePlayer]),
+    totalMs: session.turnTimeSecs * 1000,
   };
   c.sendToPlayer(session, 0, timerMsg);
   c.sendToPlayer(session, 1, timerMsg);

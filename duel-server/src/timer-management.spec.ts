@@ -232,7 +232,9 @@ describe('timer-management', () => {
       const ticks = timerStateMessages(spy);
       // 1 tick = 1 message broadcast to both clients = 2 entries
       expect(ticks).toHaveLength(2);
-      expect(ticks[0].message).toMatchObject({ type: 'TIMER_STATE', player: 0 });
+      // totalMs carries the full pool (turnTimeSecs 300 × 1000) so the client
+      // can calibrate the progress bar without a hard-coded fallback.
+      expect(ticks[0].message).toMatchObject({ type: 'TIMER_STATE', player: 0, totalMs: 300_000 });
       const m = ticks[0].message as { remainingMs: number };
       expect(m.remainingMs).toBeLessThanOrEqual(300_000);
       expect(m.remainingMs).toBeGreaterThanOrEqual(299_500); // ~250ms elapsed
