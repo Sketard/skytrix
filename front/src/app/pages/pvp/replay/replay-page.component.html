@@ -113,6 +113,7 @@
                          [cards]="playerHand()"
                          [expansionSlots]="drawManager.handExpansionSlots()[0]"
                          [chainBadges]="playerHandChainBadges()"
+                         [revealedCardCodes]="playerHandRevealedCards()"
                          (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Chain Overlay -->

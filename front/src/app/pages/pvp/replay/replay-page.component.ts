@@ -439,8 +439,19 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.getHandCards(this.activeDuelState(), 1)
   );
 
+  /**
+   * Active chain links + the not-yet-committed pending entry — see the PvP
+   * twin in `duel-page.component.ts`. Keeps a just-activated hand card
+   * registered (z-index + badge) before the deferred commit lands.
+   */
+  private readonly chainLinksWithPending = computed(() => {
+    const links = this.adapter.activeChainLinks();
+    const pending = this.adapter.pendingChainEntry();
+    return pending ? [...links, pending] : links;
+  });
+
   readonly playerHandChainBadges = computed(() =>
-    buildHandChainBadges(this.adapter.activeChainLinks(), this.perspectiveIndex(), this.adapter.chainPhase(), this.playerHand()),
+    buildHandChainBadges(this.chainLinksWithPending(), this.perspectiveIndex(), this.adapter.chainPhase(), this.playerHand()),
   );
 
   /**
@@ -449,10 +460,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
    * `duel-page.component.ts`.
    */
   readonly playerHandRevealedCards = computed(() =>
-    buildHandRevealedCards(this.adapter.activeChainLinks(), this.perspectiveIndex(), this.playerHand()),
+    buildHandRevealedCards(this.chainLinksWithPending(), this.perspectiveIndex(), this.playerHand()),
   );
   private readonly opponentHandChainData = computed(() =>
-    buildOpponentHandChainData(this.adapter.activeChainLinks(), this.perspectiveIndex(), this.adapter.chainPhase(), this.opponentHand()),
+    buildOpponentHandChainData(this.chainLinksWithPending(), this.perspectiveIndex(), this.adapter.chainPhase(), this.opponentHand()),
   );
   readonly opponentHandChainBadges = computed(() => this.opponentHandChainData().badges);
 

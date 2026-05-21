@@ -10,7 +10,8 @@ import { DuelLogger } from './duel-logger';
 import { MoveAnimationRouter } from './move-animation-router';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
 import { EMPTY_DUEL_STATE, type DuelState } from '../types';
-import type { DrawMsg } from '../duel-ws.types';
+import type { DrawMsg, ConfirmCardsMsg } from '../duel-ws.types';
+import { LOCATION } from '../duel-ws.types';
 
 /** Build a DuelState whose own player (rel=0) has `handCardsCount` cards in HAND. */
 function stateWithHandCount(handCardsCount: number): DuelState {
@@ -38,6 +39,7 @@ describe('DrawSequenceManager', () => {
   let mockDataSource: AnimationDataSource;
   let mockMoveRouter: jasmine.SpyObj<MoveAnimationRouter>;
   let mockChainManager: { hasActiveReplayTimeouts: boolean };
+  let mockBoardEffects: jasmine.SpyObj<BoardEffectsService>;
 
   // Per-test toggles for DuelContext
   let isBoardActive = true;
@@ -107,10 +109,13 @@ describe('DrawSequenceManager', () => {
     ]);
     mockFloatRegistry.getLandedFloatsByDstPrefix.and.returnValue([]);
 
-    // Only revealCardOnDeck is invoked by DrawSequenceManager (during reveal-on-deck draws).
-    const mockBoardEffects = jasmine.createSpyObj<BoardEffectsService>('BoardEffectsService', [
-      'revealCardOnDeck',
+    // revealCardOnDeck — reveal-on-deck draws; revealCardOnField — confirm of
+    // a card Set face-down on the field from the deck (deck→field reveal).
+    mockBoardEffects = jasmine.createSpyObj<BoardEffectsService>('BoardEffectsService', [
+      'revealCardOnDeck', 'revealCardOnField',
     ]);
+    mockBoardEffects.revealCardOnDeck.and.returnValue(Promise.resolve());
+    mockBoardEffects.revealCardOnField.and.returnValue(Promise.resolve());
     mockBoardEffects.revealCardOnDeck.and.returnValue(Promise.resolve());
 
     const mockLogger = jasmine.createSpyObj<DuelLogger>('DuelLogger', ['log', 'warn']);
@@ -302,6 +307,39 @@ describe('DrawSequenceManager', () => {
 
     it('returns the zoneKey string when zone element is missing', () => {
       expect(manager.resolveHandTarget('HAND-1', 'last')).toBe('HAND-1');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // processConfirmCardsEvent — routing by card location
+  // ---------------------------------------------------------------------------
+
+  describe('processConfirmCardsEvent', () => {
+    const card = (location: number, cardCode = 100) => ({
+      cardCode, name: 'Card', player: 0, location, sequence: 0,
+    });
+    const confirm = (cards: ReturnType<typeof card>[]): ConfirmCardsMsg =>
+      ({ type: 'MSG_CONFIRM_CARDS', player: 0, cards } as unknown as ConfirmCardsMsg);
+
+    it('routes a FIELD-zone confirm (deck→field Set reveal) to revealCardOnField', async () => {
+      await Promise.resolve(manager.processConfirmCardsEvent(confirm([card(LOCATION.SZONE)])));
+      expect(mockBoardEffects.revealCardOnField).toHaveBeenCalled();
+      expect(mockBoardEffects.revealCardOnDeck).not.toHaveBeenCalled();
+    });
+
+    it('routes a MZONE confirm to revealCardOnField too', async () => {
+      await Promise.resolve(manager.processConfirmCardsEvent(confirm([card(LOCATION.MZONE)])));
+      expect(mockBoardEffects.revealCardOnField).toHaveBeenCalled();
+    });
+
+    it('routes a DECK-only confirm to revealCardOnDeck, not revealCardOnField', async () => {
+      await Promise.resolve(manager.processConfirmCardsEvent(confirm([card(LOCATION.DECK)])));
+      expect(mockBoardEffects.revealCardOnDeck).toHaveBeenCalled();
+      expect(mockBoardEffects.revealCardOnField).not.toHaveBeenCalled();
+    });
+
+    it('returns 0 (no-op) for an empty confirm', () => {
+      expect(manager.processConfirmCardsEvent(confirm([]))).toBe(0);
     });
   });
 

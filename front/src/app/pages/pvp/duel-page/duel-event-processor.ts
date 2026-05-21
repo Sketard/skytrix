@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ChainLinkState, GameEvent } from '../types';
 import type { ChainingMsg, ChainNegatedMsg, ChainSolvingMsg, ChainSolvedMsg, ServerMessage } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
@@ -33,13 +33,18 @@ export class DuelEventProcessor {
   private _activeChainLinks = signal<ChainLinkState[]>([]);
   private _chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   private _animationQueue = signal<QueueEntry[]>([]);
-  private _hasPendingChainEntry = signal(false);
-  private _pendingChainEntry: ChainLinkState | null = null;
+  // The chain link from the latest MSG_CHAINING — held here until the next
+  // chain message commits it into `_activeChainLinks` (deferred so cards
+  // that need cost payment finish their move animation first). Exposed so the
+  // hand row can already mark a just-activated card as revealed (z-index +
+  // chain badge) before the commit lands.
+  private _pendingChainEntry = signal<ChainLinkState | null>(null);
 
   readonly activeChainLinks = this._activeChainLinks.asReadonly();
   readonly chainPhase = this._chainPhase.asReadonly();
   readonly animationQueue = this._animationQueue.asReadonly();
-  readonly hasPendingChainEntry = this._hasPendingChainEntry.asReadonly();
+  readonly pendingChainEntry = this._pendingChainEntry.asReadonly();
+  readonly hasPendingChainEntry = computed(() => this._pendingChainEntry() !== null);
 
   // Enqueue only if `msg` is a known GameEvent — runtime guard via
   // GAME_EVENT_TYPES set lets us narrow the discriminated union without an
@@ -54,10 +59,9 @@ export class DuelEventProcessor {
   }
 
   private commitPendingChainEntry(): void {
-    if (this._pendingChainEntry) {
-      const entry = this._pendingChainEntry;
-      this._pendingChainEntry = null;
-      this._hasPendingChainEntry.set(false);
+    const entry = this._pendingChainEntry();
+    if (entry) {
+      this._pendingChainEntry.set(null);
       this._activeChainLinks.update(links => [...links, entry]);
     }
   }
@@ -98,16 +102,16 @@ export class DuelEventProcessor {
           this._chainPhase.set('building');
         }
         this.commitPendingChainEntry();
-        this._pendingChainEntry = this.buildChainLinkState(chainingMsg);
-        this._hasPendingChainEntry.set(true);
+        this._pendingChainEntry.set(this.buildChainLinkState(chainingMsg));
         this.enqueue(msg);
         break;
       }
       case 'MSG_CHAIN_NEGATED': {
         const negMsg = msg as ChainNegatedMsg;
         this.logger?.log(DuelLogCategory.PROC, 'MSG_CHAIN_NEGATED chainIndex=%d', negMsg.chainIndex);
-        if (this._pendingChainEntry?.chainIndex === negMsg.chainIndex) {
-          this._pendingChainEntry = { ...this._pendingChainEntry, negated: true };
+        const pending = this._pendingChainEntry();
+        if (pending?.chainIndex === negMsg.chainIndex) {
+          this._pendingChainEntry.set({ ...pending, negated: true });
         }
         this._activeChainLinks.update(links =>
           links.map(l => l.chainIndex === negMsg.chainIndex ? { ...l, negated: true } : l),
@@ -191,8 +195,7 @@ export class DuelEventProcessor {
   restoreChainState(links: ChainLinkState[], phase: 'idle' | 'building' | 'resolving'): void {
     this._activeChainLinks.set(links);
     this._chainPhase.set(phase);
-    this._pendingChainEntry = null;
-    this._hasPendingChainEntry.set(false);
+    this._pendingChainEntry.set(null);
   }
 
   /** Clear only the animation queue — preserves chain state for cross-transition chains. */
@@ -204,7 +207,6 @@ export class DuelEventProcessor {
     this._animationQueue.set([]);
     this._activeChainLinks.set([]);
     this._chainPhase.set('idle');
-    this._pendingChainEntry = null;
-    this._hasPendingChainEntry.set(false);
+    this._pendingChainEntry.set(null);
   }
 }

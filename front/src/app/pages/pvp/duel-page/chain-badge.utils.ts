@@ -49,6 +49,29 @@ export function buildHandChainBadges(
 }
 
 /**
+ * Build a Map<handIndex, cardCode> for the player's OWN hand cards that are
+ * part of any chain link — i.e. cards the player activated from hand and that
+ * are now revealed to the opponent. Unlike {@link buildHandChainBadges} this
+ * has NO ≥2-link threshold: a single-link chain (a lone hand-trap / spell)
+ * must still flag its card so the template can raise its z-index above the
+ * fan neighbours while it is shown.
+ */
+export function buildHandRevealedCards(
+  links: readonly ChainLinkState[], playerIndex: number,
+  handCards: readonly { cardCode: number | null }[],
+): Map<number, number> {
+  const revealed = new Map<number, number>();
+  const used = new Set<number>();
+  for (const link of links) {
+    if (link.location !== LOCATION.HAND || link.player !== playerIndex) continue;
+    const idx = findCurrentIndex(link.cardCode, link.sequence, handCards, used);
+    if (idx === -1) continue;
+    if (link.cardCode) revealed.set(idx, link.cardCode);
+  }
+  return revealed;
+}
+
+/**
  * Build badges + revealed card codes for opponent hand cards in chain.
  * Matches chain links to current hand positions by cardCode to survive hand reflow.
  */

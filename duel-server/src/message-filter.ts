@@ -77,7 +77,16 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
     case 'MSG_MOVE': {
       const isFromPrivate = PRIVATE_LOCATIONS.has(message.fromLocation);
       const isToPrivate = PRIVATE_LOCATIONS.has(message.toLocation);
-      if (!omniscient && (isFromPrivate || isToPrivate) && forPlayer !== message.player) {
+      // A card landing FACE-UP on a field zone (MZONE/SZONE) is public info
+      // — even when it came from the deck/extra/hand. Both players know what
+      // was just placed, so the opponent must receive the real cardCode to
+      // animate the deck→field reveal (parity with the tutor reveal). Only
+      // a face-down Set stays hidden.
+      const landsFaceUpOnField =
+        (message.toLocation === LOCATION.MZONE || message.toLocation === LOCATION.SZONE) &&
+        (message.toPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
+      if (!omniscient && (isFromPrivate || isToPrivate) && !landsFaceUpOnField
+          && forPlayer !== message.player) {
         return { ...message, cardCode: 0, cardName: '' };
       }
       return message;

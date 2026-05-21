@@ -1,6 +1,7 @@
 import { afterNextRender, inject, Injectable, Injector, signal } from '@angular/core';
-import type { DrawMsg, MoveMsg, ShuffleHandMsg, ConfirmCardsMsg } from '../duel-ws.types';
+import type { DrawMsg, MoveMsg, ShuffleHandMsg, ConfirmCardsMsg, CardLocation } from '../duel-ws.types';
 import { LOCATION } from '../duel-ws.types';
+import { locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, peekAndDequeueMatching } from './animation-data-source';
 import { MoveAnimationRouter } from './move-animation-router';
 import { CardTravelEngine, type TravelOptions } from './card-travel-engine.service';
@@ -11,7 +12,13 @@ import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import type { ZoneLock } from './rendered-board-state.service';
 import { duelAssert } from '../../../core/utilities/duel-assert';
-import { INITIAL_DRAW_PAIRING_ATTEMPTS, INITIAL_DRAW_PAIRING_POLL_MS } from './animation-constants';
+import {
+  INITIAL_DRAW_PAIRING_ATTEMPTS, INITIAL_DRAW_PAIRING_POLL_MS,
+  FIELD_REVEAL_FLIP_MS, FIELD_REVEAL_FLIP_MIN_MS,
+  FIELD_REVEAL_LIFT_MS, FIELD_REVEAL_LIFT_MIN_MS,
+  FIELD_REVEAL_GLOW_MS, FIELD_REVEAL_GLOW_MIN_MS,
+  FIELD_REVEAL_HOLD_MS, FIELD_REVEAL_HOLD_MIN_MS,
+} from './animation-constants';
 
 /**
  * Manages draw sequences: initial parallel draw, mid-game draws,
@@ -656,18 +663,26 @@ export class DrawSequenceManager {
     this.ctx.announceEvent('Cards revealed', msg.player);
     const handCards = msg.cards.filter(c => c.location === LOCATION.HAND);
     const deckCards = msg.cards.filter(c => c.location === LOCATION.DECK);
+    // Cards confirmed at a field zone (e.g. a card Set face-down from the
+    // deck — public info both players may see). location is the post-Set
+    // position, so it's MZONE/SZONE rather than the source DECK.
+    const fieldCards = msg.cards.filter(
+      c => c.location === LOCATION.MZONE || c.location === LOCATION.SZONE,
+    );
     // Sequence: DECK reveal first (card is shown then hidden again, no logical
     // state change), THEN HAND reveal (player materialization). Running both
     // in parallel would overlap visually; the deck reveal sets context for
     // any hand reveal that follows in the same MSG_CONFIRM_CARDS batch.
-    if (deckCards.length && handCards.length) {
+    // FIELD reveal runs last — the card is already on the board, the reveal
+    // is a brief flip-up/flip-down overlay.
+    if (deckCards.length || handCards.length || fieldCards.length) {
       return (async () => {
-        await this.confirmCardsOnDeck(deckCards);
-        await this.confirmCardsInHand(handCards);
+        if (deckCards.length) await this.confirmCardsOnDeck(deckCards);
+        if (handCards.length) await this.confirmCardsInHand(handCards);
+        if (fieldCards.length) await this.confirmCardsOnField(fieldCards);
       })();
     }
-    if (deckCards.length) return this.confirmCardsOnDeck(deckCards);
-    return this.confirmCardsInHand(handCards);
+    return 0;
   }
 
   async confirmCardsInHand(cards: readonly { cardCode: number; player: number; sequence: number }[]): Promise<void> {
@@ -747,6 +762,34 @@ export class DrawSequenceManager {
         durations,
         (el) => this.highlightDrawnCard(el, highlightDuration, relPlayer === 1),
       );
+    }
+  }
+
+  /**
+   * Reveal cards confirmed at a field zone (MSG_CONFIRM_CARDS with
+   * `location === MZONE | SZONE`) — e.g. a card Set face-down on the field
+   * from the deck, which is public info both players may see. The card is
+   * already on the board face-down; `revealCardOnField` overlays a brief
+   * flip-up → glow ×2 → flip-down animation on the zone. A `cardCode` of 0
+   * (should not happen for a public reveal) is skipped — no face to show.
+   */
+  async confirmCardsOnField(
+    cards: readonly { cardCode: number; player: number; location: CardLocation; sequence: number }[],
+  ): Promise<void> {
+    const durations = {
+      flip: this.ctx.scaledDuration(FIELD_REVEAL_FLIP_MS, FIELD_REVEAL_FLIP_MIN_MS),
+      lift: this.ctx.scaledDuration(FIELD_REVEAL_LIFT_MS, FIELD_REVEAL_LIFT_MIN_MS),
+      glow: this.ctx.scaledDuration(FIELD_REVEAL_GLOW_MS, FIELD_REVEAL_GLOW_MIN_MS),
+      hold: this.ctx.scaledDuration(FIELD_REVEAL_HOLD_MS, FIELD_REVEAL_HOLD_MIN_MS),
+    };
+    const cardBackUrl = this.cardTravelEngine.toAbsoluteUrl('assets/images/card_back.jpg');
+
+    for (const card of cards) {
+      if (!card.cardCode) continue;
+      const relPlayer = this.ctx.relativePlayer(card.player);
+      const zoneKey = locationToZoneKey(card.location, card.sequence, relPlayer);
+      const cardFaceUrl = this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
+      await this.boardEffects.revealCardOnField(zoneKey, cardFaceUrl, cardBackUrl, durations);
     }
   }
 

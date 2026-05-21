@@ -108,6 +108,7 @@ class StubReplayDuelAdapter {
   readonly activeResponse = signal<unknown>(null);
   readonly animationQueue = signal<readonly unknown[]>([]);
   readonly activeChainLinks = signal<readonly unknown[]>([]);
+  readonly pendingChainEntry = signal<unknown>(null);
   readonly chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   private readonly _rendered = signal<DuelState>(structuredClone(EMPTY_DUEL_STATE));
   setRendered(s: DuelState): void { this._rendered.set(s); }

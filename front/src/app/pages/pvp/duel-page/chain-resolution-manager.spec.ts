@@ -247,13 +247,20 @@ describe('ChainResolutionManager', () => {
         expect(mgr.hasBufferedEvents).toBeTrue();
       });
 
-      it('should buffer when all confirmed cards are in another non-HAND zone (e.g. GRAVE)', () => {
-        // Skip is strictly for HAND-absent confirms — but the current rule
-        // checks "every location !== HAND" so any non-HAND mix skips. This
-        // documents the actual behavior so future refactors notice if it
-        // diverges from intent.
+      it('should buffer a confirm for cards in a non-DECK zone (e.g. GRAVE)', () => {
+        // Skip-buffer is strictly for pure deck-top reveals (every card on
+        // DECK). A confirm for cards anywhere else — GRAVE, or a FIELD zone
+        // (a card Set face-down from the deck) — MUST stay buffered so it
+        // replays AFTER its own MSG_MOVE travel.
         enterResolving(0);
-        expect(mgr.bufferIfResolving(confirmCards([LOCATION.GRAVE]))).toBeFalse();
+        expect(mgr.bufferIfResolving(confirmCards([LOCATION.GRAVE]))).toBeTrue();
+        expect(mgr.hasBufferedEvents).toBeTrue();
+      });
+
+      it('should buffer a confirm for a card on a FIELD zone (deck→field Set)', () => {
+        enterResolving(0);
+        expect(mgr.bufferIfResolving(confirmCards([LOCATION.SZONE]))).toBeTrue();
+        expect(mgr.hasBufferedEvents).toBeTrue();
       });
     });
   });

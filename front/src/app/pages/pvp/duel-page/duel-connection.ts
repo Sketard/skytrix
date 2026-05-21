@@ -165,6 +165,7 @@ export class DuelConnection {
   }
 
   readonly hasPendingChainEntry = this.processor.hasPendingChainEntry;
+  readonly pendingChainEntry = this.processor.pendingChainEntry;
 
   // --- Hint consumed flag ---
   // Set after a prompt response is sent. Prevents stale cardName from a previous

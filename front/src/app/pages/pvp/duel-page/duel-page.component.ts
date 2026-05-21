@@ -27,7 +27,7 @@ import { PvpCardInspectorWrapperComponent } from './pvp-card-inspector-wrapper/p
 import { ActivationMode, PvpActivationToggleComponent } from './pvp-activation-toggle/pvp-activation-toggle.component';
 import { CardActionMenuService } from './card-action-menu.service';
 import { PromptDerivationService } from './prompt-derivation.service';
-import { buildHandChainBadges, buildOpponentHandChainData } from './chain-badge.utils';
+import { buildHandChainBadges, buildHandRevealedCards, buildOpponentHandChainData } from './chain-badge.utils';
 import { PhaseAnnouncementService } from './phase-announcement.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
@@ -346,14 +346,39 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     return this.wsService.ocgPlayerIndex() ?? 0;
   });
 
+  /**
+   * Active chain links PLUS the not-yet-committed pending entry from the
+   * latest MSG_CHAINING. MSG_CHAINING defers committing its link into
+   * `activeChainLinks` until the next chain message, so a card the moment it
+   * is activated would otherwise be invisible to the hand-reveal builders
+   * (z-index drop, missing chain badge between activation and commit).
+   * Including the pending entry makes the just-activated card register
+   * immediately and stay revealed.
+   */
+  private readonly chainLinksWithPending = computed(() => {
+    const links = this.wsService.activeChainLinks();
+    const pending = this.wsService.pendingChainEntry();
+    return pending ? [...links, pending] : links;
+  });
+
   /** Chain badges for hand cards: hand index → chain link number (player side). */
   readonly playerHandChainBadges = computed(() =>
-    buildHandChainBadges(this.wsService.activeChainLinks(), this.ownPlayerIndex(), this.wsService.chainPhase(), this.playerHand()),
+    buildHandChainBadges(this.chainLinksWithPending(), this.ownPlayerIndex(), this.wsService.chainPhase(), this.playerHand()),
+  );
+
+  /**
+   * Player's own hand cards that are part of a chain link (no ≥2-link
+   * threshold). Feeds `[revealedCardCodes]` on the player hand row so a card
+   * activated from hand — even a lone single-link chain — gets its z-index
+   * raised above the fan neighbours instead of staying hidden behind them.
+   */
+  readonly playerHandRevealedCards = computed(() =>
+    buildHandRevealedCards(this.chainLinksWithPending(), this.ownPlayerIndex(), this.playerHand()),
   );
 
   /** Chain badges + revealed card codes for opponent hand cards in chain. Single pass over links. */
   private readonly opponentHandChainData = computed(() =>
-    buildOpponentHandChainData(this.wsService.activeChainLinks(), this.ownPlayerIndex(), this.wsService.chainPhase(), this.opponentHand()),
+    buildOpponentHandChainData(this.chainLinksWithPending(), this.ownPlayerIndex(), this.wsService.chainPhase(), this.opponentHand()),
   );
   readonly opponentHandChainBadges = computed(() => this.opponentHandChainData().badges);
   readonly opponentHandRevealedCards = computed<Map<number, number>>(() => {

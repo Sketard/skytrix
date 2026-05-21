@@ -140,14 +140,18 @@ export class ChainResolutionManager {
   /** Buffer a board-changing event during chain resolution. Returns true if buffered. */
   bufferIfResolving(event: GameEvent): boolean {
     if (this.shouldBufferDuringChain && BOARD_CHANGING_EVENT_TYPES.has(event.type)) {
-      // Deck-top reveals (CONFIRM_DECKTOP → MSG_CONFIRM_CARDS with DECK location) precede
-      // mid-effect prompts (e.g., SelectYesNo for fusion). Buffering them delays the reveal
-      // animation until after the chain overlay closes — i.e., after the player already
-      // answered the prompt. Skip buffering when all cards are non-HAND so the reveal
-      // plays immediately before the player makes their decision.
+      // Deck-top reveals (CONFIRM_DECKTOP → MSG_CONFIRM_CARDS with every card
+      // still on the DECK) precede mid-effect prompts (e.g. SelectYesNo for
+      // fusion). Buffering them would delay the reveal until after the chain
+      // overlay closes — i.e. after the player already answered. Skip
+      // buffering ONLY for pure deck-top reveals so they play before the
+      // decision. A CONFIRM for a card already moved to a FIELD zone (e.g.
+      // a card Set face-down from the deck) MUST stay buffered — otherwise
+      // it plays before its own MSG_MOVE travel, which is also buffered, and
+      // the reveal animates on an empty zone before the card arrives.
       if (event.type === 'MSG_CONFIRM_CARDS') {
         const msg = event as ConfirmCardsMsg;
-        if (msg.cards.every(c => c.location !== LOCATION.HAND)) return false;
+        if (msg.cards.every(c => c.location === LOCATION.DECK)) return false;
       }
       this._bufferedBoardEvents.push(event);
       return true;

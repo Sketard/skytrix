@@ -65,6 +65,29 @@ export const GROUP_STAGGER_MS = 50;
 /** MSG_FLIP_SUMMONING + MSG_CHANGE_POS face-down→face-up zone flip pulse. */
 export const POSITION_FLIP_MS = 300;
 
+// --- Field-confirm reveal (MSG_CONFIRM_CARDS for a card Set face-down on the
+//     field from the deck — public info, shown briefly to both players) ---
+/** Each rotateY flip (face-down→up, then up→down) of the reveal overlay. */
+export const FIELD_REVEAL_FLIP_MS = 320;
+export const FIELD_REVEAL_FLIP_MIN_MS = 160;
+/** Rise/settle of the reveal overlay above the board zone. */
+export const FIELD_REVEAL_LIFT_MS = 220;
+export const FIELD_REVEAL_LIFT_MIN_MS = 110;
+/** One glow pulse — two are played back-to-back while the card is face-up. */
+export const FIELD_REVEAL_GLOW_MS = 360;
+export const FIELD_REVEAL_GLOW_MIN_MS = 180;
+/** Hold on the fully-revealed face-up card before flipping back down. */
+export const FIELD_REVEAL_HOLD_MS = 260;
+export const FIELD_REVEAL_HOLD_MIN_MS = 130;
+
+// --- Opponent hand-card reveal (MSG_CHAINING for a card the opponent
+//     activates from their hand) — the card flips face-up while easing out
+//     of the fan so the viewer can read it, then eases back (staying
+//     face-up). The activation flash plays while it is detached + readable.
+/** Flip face-up + detach-from-fan ease-out, and the ease-back. */
+export const HAND_REVEAL_DETACH_MS = 280;
+export const HAND_REVEAL_DETACH_MIN_MS = 140;
+
 /** MSG_BECOME_TARGET zone outline pulse (handler returns this directly + uses
  *  it for the unset-targeted-keys timer). Not scaled by `scaledDuration`. */
 export const BECOME_TARGET_PULSE_MS = 800;

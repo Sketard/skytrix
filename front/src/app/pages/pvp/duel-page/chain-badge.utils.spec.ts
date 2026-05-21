@@ -1,6 +1,6 @@
 import { LOCATION, type CardLocation } from '../duel-ws.types';
 import type { ChainLinkState } from '../types';
-import { buildHandChainBadges, buildOpponentHandChainData } from './chain-badge.utils';
+import { buildHandChainBadges, buildHandRevealedCards, buildOpponentHandChainData } from './chain-badge.utils';
 
 const makeLink = (chainIndex: number, cardCode: number, player: number, sequence: number, location: CardLocation = LOCATION.HAND): ChainLinkState => ({
   chainIndex, cardCode, cardName: `Card ${cardCode}`, player,
@@ -66,6 +66,39 @@ describe('chain-badge.utils', () => {
       // First link claims index 0 by cardCode match; second link has no remaining match
       expect(result.get(0)).toBe(1);
       expect(result.size).toBe(1);
+    });
+  });
+
+  describe('buildHandRevealedCards', () => {
+    it('reveals an own hand card on a SINGLE-link chain (no ≥2-link threshold)', () => {
+      const links = [makeLink(0, 100, 0, 0)];
+      const result = buildHandRevealedCards(links, 0, handCards([100]));
+      expect(result.get(0)).toBe(100);
+    });
+
+    it('reveals multiple own hand cards across links', () => {
+      const links = [makeLink(0, 100, 0, 0), makeLink(1, 200, 0, 1)];
+      const result = buildHandRevealedCards(links, 0, handCards([100, 200]));
+      expect(result.get(0)).toBe(100);
+      expect(result.get(1)).toBe(200);
+    });
+
+    it('excludes opponent links', () => {
+      const links = [makeLink(0, 100, 1, 0)];
+      const result = buildHandRevealedCards(links, 0, handCards([100]));
+      expect(result.size).toBe(0);
+    });
+
+    it('ignores non-HAND locations', () => {
+      const links = [makeLink(0, 100, 0, 0, LOCATION.MZONE)];
+      const result = buildHandRevealedCards(links, 0, handCards([100]));
+      expect(result.size).toBe(0);
+    });
+
+    it('does not reveal cards with cardCode 0', () => {
+      const links = [makeLink(0, 0, 0, 0)];
+      const result = buildHandRevealedCards(links, 0, handCards([null]));
+      expect(result.size).toBe(0);
     });
   });
 

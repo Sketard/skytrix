@@ -103,6 +103,7 @@ class StubWsService {
   readonly opponentDisconnected = signal(false);
   readonly disconnectGraceSec = signal(0);
   readonly activeChainLinks = signal<readonly unknown[]>([]);
+  readonly pendingChainEntry = signal<unknown>(null);
   readonly chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   readonly duelResult = signal<{ winner: number | null; reason: string } | null>(null);
   readonly diceResult = signal<unknown>(null);

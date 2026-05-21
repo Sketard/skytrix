@@ -160,6 +160,28 @@ describe('filterMessage', () => {
       expect(result.cardName).toBe('');
     });
 
+    it('should reveal a card placed FACE-UP on a field zone from the DECK (public info)', () => {
+      // e.g. an effect that Special Summons a monster directly from the deck.
+      const msg = {
+        type: 'MSG_MOVE', player: 0, cardCode: 100, cardName: 'Monster',
+        fromLocation: LOCATION.DECK, toLocation: LOCATION.MZONE,
+        toPosition: POSITION.FACEUP_ATTACK,
+      } as any;
+      const result = filterMessage(msg, 1) as any;
+      expect(result.cardCode).toBe(100);
+      expect(result.cardName).toBe('Monster');
+    });
+
+    it('should still HIDE a card SET face-down on a field zone from the DECK', () => {
+      const msg = {
+        type: 'MSG_MOVE', player: 0, cardCode: 100, cardName: 'Monster',
+        fromLocation: LOCATION.DECK, toLocation: LOCATION.SZONE,
+        toPosition: POSITION.FACEDOWN_DEFENSE,
+      } as any;
+      const result = filterMessage(msg, 1) as any;
+      expect(result.cardCode).toBe(0);
+    });
+
     it('should hide card moving TO private zone (HAND) from opponent', () => {
       const msg = {
         type: 'MSG_MOVE', player: 0, cardCode: 100, cardName: 'Monster',
@@ -187,12 +209,24 @@ describe('filterMessage', () => {
       expect(result.cardCode).toBe(100);
     });
 
-    it('should treat EXTRA as private', () => {
+    it('should treat EXTRA as private when the destination is not a face-up field zone', () => {
+      // EXTRA → HAND (e.g. a card returned to the Extra Deck then drawn-like
+      // effect) keeps the card hidden — destination is private.
+      const msg = {
+        type: 'MSG_MOVE', player: 0, cardCode: 100, cardName: 'Monster',
+        fromLocation: LOCATION.EXTRA, toLocation: LOCATION.HAND,
+      } as any;
+      expect((filterMessage(msg, 1) as any).cardCode).toBe(0);
+    });
+
+    it('should reveal an Extra Deck monster Summoned FACE-UP to a field zone', () => {
+      // A Synchro/Xyz/Fusion/Link Summon is public — the opponent sees it.
       const msg = {
         type: 'MSG_MOVE', player: 0, cardCode: 100, cardName: 'Monster',
         fromLocation: LOCATION.EXTRA, toLocation: LOCATION.MZONE,
+        toPosition: POSITION.FACEUP_ATTACK,
       } as any;
-      expect((filterMessage(msg, 1) as any).cardCode).toBe(0);
+      expect((filterMessage(msg, 1) as any).cardCode).toBe(100);
     });
   });
 

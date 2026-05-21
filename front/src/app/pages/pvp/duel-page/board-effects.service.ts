@@ -127,8 +127,20 @@ export class BoardEffectsService implements OnDestroy {
     `;
     const img = document.createElement('img');
     const srcInner = srcEl.querySelector<HTMLElement>('.card-inner');
-    const srcRotation = srcInner ? getComputedStyle(srcInner).transform : '';
-    const imgTransform = (srcRotation && srcRotation !== 'none') ? `transform:${srcRotation};` : '';
+    // Mirror the board card's orientation onto the pre-destroy overlay.
+    // `.card-inner` carries the opponent-side flip via the INDIVIDUAL
+    // `rotate` CSS property (`.opponent-field .card-inner { rotate: 180deg }`),
+    // NOT `transform` — so reading only `transform` here returned `none` and
+    // the overlay rendered un-flipped (card faced the wrong player while the
+    // destruction effect played). Read both and combine them.
+    const cs = srcInner ? getComputedStyle(srcInner) : null;
+    const srcTransform = cs && cs.transform !== 'none' ? cs.transform : '';
+    const srcRotate = cs && cs.rotate !== 'none' ? cs.rotate : '';
+    const transformParts = [
+      srcTransform,
+      srcRotate ? `rotate(${srcRotate})` : '',
+    ].filter(Boolean);
+    const imgTransform = transformParts.length ? `transform:${transformParts.join(' ')};` : '';
     img.style.cssText = `width:100%;height:100%;object-fit:cover;display:block;${imgTransform}`;
     img.src = cardImageUrl ?? this.cardTravel.toAbsoluteUrl('assets/images/card_back.jpg');
     overlay.appendChild(img);
@@ -324,6 +336,204 @@ export class BoardEffectsService implements OnDestroy {
         div.remove();
         this._overlayEls.delete(div);
       }
+    }
+  }
+
+  /**
+   * Field-confirm reveal (MSG_CONFIRM_CARDS for a card just Set face-down on
+   * a field zone from the deck — public info shown to both players). The card
+   * is already on the board face-down; this overlays a card-shaped float on
+   * the zone and plays: rise → flip face-up → glow ×2 → flip face-down →
+   * settle + fade. The real board card underneath is untouched.
+   *
+   * Reduced-motion / missing zone → no-op. Durations are passed pre-scaled.
+   */
+  async revealCardOnField(
+    zoneKey: string,
+    cardImageUrl: string,
+    cardBackUrl: string,
+    durations: { flip: number; lift: number; glow: number; hold: number },
+  ): Promise<void> {
+    if (this._reducedMotion) return;
+    const zoneEl = this.cardTravel.getZoneElement(zoneKey);
+    if (!zoneEl) return;
+    const rect = toCardRect(zoneEl.getBoundingClientRect());
+    if (rect.width === 0) return;
+
+    // Hide the real board card for the whole reveal so the flipping overlay
+    // doesn't double up with the card sitting underneath. `.zone-card` is the
+    // card element inside the zone container — hiding it (not the container)
+    // keeps the empty zone frame visible. Restored in the `finally` block.
+    const boardCard = zoneEl.querySelector<HTMLElement>('.zone-card');
+    const prevVisibility = boardCard?.style.visibility ?? '';
+    if (boardCard) boardCard.style.visibility = 'hidden';
+
+    const div = document.createElement('div');
+    div.style.cssText = `
+      position: fixed; pointer-events: none;
+      z-index: 900;
+      left: ${rect.left}px; top: ${rect.top}px;
+      width: ${rect.width}px; height: ${rect.height}px;
+      border-radius: 4px; overflow: hidden;
+      will-change: transform, opacity;
+    `;
+    // Single face — the rotateY flip swaps `img.src` at the 90° edge-on
+    // midpoint (visually invisible). This avoids relying on a 3D
+    // `perspective` context for backface-visibility, which the float
+    // container does not provide (both faces would otherwise show at once).
+    const img = document.createElement('img');
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    img.src = cardBackUrl;
+    div.appendChild(img);
+    this.cardTravel.getContainer().appendChild(div);
+    this._overlayEls.add(div);
+
+    const glowEl = document.createElement('div');
+    glowEl.style.cssText = `
+      position: fixed; pointer-events: none; z-index: 899;
+      left: ${rect.left - 8}px; top: ${rect.top - 8}px;
+      width: ${rect.width + 16}px; height: ${rect.height + 16}px;
+      border-radius: 8px; opacity: 0;
+      box-shadow: 0 0 18px 6px var(--gold, rgba(255,200,80,0.85));
+    `;
+    this.cardTravel.getContainer().appendChild(glowEl);
+    this._overlayEls.add(glowEl);
+
+    const wait = (ms: number) => new Promise<void>(resolve => {
+      const tid = window.setTimeout(() => { this._timers.delete(tid); resolve(); }, ms);
+      this._timers.add(tid);
+    });
+    const swapSrcAt = (delay: number, src: string) => {
+      const tid = window.setTimeout(() => { this._timers.delete(tid); img.src = src; }, delay);
+      this._timers.add(tid);
+    };
+
+    try {
+      // 1. Rise from the board, face-down. The overlay sits at rotateY(180deg)
+      //    showing the card back — the back art is ~symmetric so the mirror at
+      //    180° is imperceptible. Starting here lets the reveal flip land at
+      //    rotateY(0deg) where the face is NOT mirrored (readable).
+      await div.animate([
+        { transform: 'translateY(0) scale(1) rotateY(180deg)' },
+        { transform: 'translateY(-14px) scale(1.12) rotateY(180deg)' },
+      ], { duration: durations.lift, easing: 'ease-out', fill: 'forwards' }).finished;
+
+      // 2. Flip face-up: rotateY 180 → 0 lands the card readable. Swap
+      //    back→face at the 90° edge-on midpoint (visually invisible).
+      swapSrcAt(durations.flip * 0.5, cardImageUrl);
+      await div.animate([
+        { transform: 'translateY(-14px) scale(1.12) rotateY(180deg)' },
+        { transform: 'translateY(-14px) scale(1.12) rotateY(0deg)' },
+      ], { duration: durations.flip, easing: 'ease-in-out', fill: 'forwards' }).finished;
+
+      // 3. Glow twice while the card is readable.
+      for (let i = 0; i < 2; i++) {
+        await glowEl.animate([
+          { opacity: 0 }, { opacity: 1, offset: 0.5 }, { opacity: 0 },
+        ], { duration: durations.glow, easing: 'ease-in-out' }).finished;
+      }
+      await wait(durations.hold);
+
+      // 4. Flip back face-down (rotateY 0 → 180) and settle onto the board.
+      swapSrcAt(durations.flip * 0.5, cardBackUrl);
+      await div.animate([
+        { transform: 'translateY(-14px) scale(1.12) rotateY(0deg)' },
+        { transform: 'translateY(-14px) scale(1.12) rotateY(180deg)' },
+      ], { duration: durations.flip, easing: 'ease-in-out', fill: 'forwards' }).finished;
+      await div.animate([
+        { transform: 'translateY(-14px) scale(1.12) rotateY(180deg)', opacity: 1 },
+        { transform: 'translateY(0) scale(1) rotateY(180deg)', opacity: 0 },
+      ], { duration: durations.lift, easing: 'ease-in', fill: 'forwards' }).finished;
+    } catch {
+      // Animation cancelled (reset / destroy) — cleanup below still runs.
+      return;
+    } finally {
+      for (const el of [div, glowEl]) {
+        if (this._overlayEls.has(el)) { el.remove(); this._overlayEls.delete(el); }
+      }
+      // Restore the real board card — even on cancel, so a reset / seek mid
+      // reveal never leaves the card permanently hidden.
+      if (boardCard) boardCard.style.visibility = prevVisibility;
+    }
+  }
+
+  /**
+   * Opponent hand-card reveal (MSG_CHAINING for a card the opponent activates
+   * from their hand). An overlay flips face-up while easing slightly toward
+   * the viewer to detach the card from the fan, the activation flash plays on
+   * it, then it eases back. The real `.hand-card` is hidden for the whole
+   * reveal so the two never double up — once the reveal ends, the hand row
+   * itself shows the card face-up (the chain-link reveal signal) so the
+   * overlay can simply fade.
+   *
+   * `detachMs` is the (pre-scaled) flip + ease-out / ease-in duration.
+   * Reduced-motion / missing element → no-op.
+   */
+  async revealOpponentHandCard(handEl: HTMLElement, cardImageUrl: string, detachMs: number): Promise<void> {
+    if (this._reducedMotion) return;
+    const rect = toCardRect(handEl.getBoundingClientRect());
+    if (rect.width === 0) return;
+
+    // Hide the real hand card for the whole reveal so the flipping overlay
+    // doesn't double up with the card behind it.
+    const prevVisibility = handEl.style.visibility;
+    handEl.style.visibility = 'hidden';
+
+    // Detach toward the viewer: the opponent fan is at the top, so a small
+    // downward nudge pulls the card clear of its neighbours without a big
+    // travel ("petit décalage de détachement").
+    const detachY = rect.height * 0.5;
+
+    const div = document.createElement('div');
+    div.style.cssText = `
+      position: fixed; pointer-events: none;
+      z-index: 1100;
+      left: ${rect.left}px; top: ${rect.top}px;
+      width: ${rect.width}px; height: ${rect.height}px;
+      border-radius: 4px; overflow: hidden;
+      will-change: transform, opacity;
+    `;
+    // Single face — the rotateY flip swaps `img.src` at the 90° edge-on
+    // midpoint. Starts on the card back (the opponent's hand is hidden),
+    // lands on the face, readable for the viewer (rotateY 0, not mirrored).
+    const img = document.createElement('img');
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    img.src = this.cardTravel.toAbsoluteUrl('assets/images/card_back.jpg');
+    div.appendChild(img);
+    this.cardTravel.getContainer().appendChild(div);
+    this._overlayEls.add(div);
+
+    const swapSrcAt = (delay: number, src: string) => {
+      const tid = window.setTimeout(() => { this._timers.delete(tid); img.src = src; }, delay);
+      this._timers.add(tid);
+    };
+
+    try {
+      // 1. Flip face-up + ease out of the fan, simultaneously.
+      swapSrcAt(detachMs * 0.5, cardImageUrl);
+      await div.animate([
+        { transform: 'translateY(0) scale(1) rotateY(180deg)' },
+        { transform: `translateY(${detachY}px) scale(1.15) rotateY(0deg)` },
+      ], { duration: detachMs, easing: 'ease-out', fill: 'forwards' }).finished;
+
+      // 2. Activation flash on the detached, readable card (same effect as
+      //    the player's own activation).
+      await this.activateEffect(div);
+
+      // 3. Ease back to the fan position. Stays face-up — the hand row shows
+      //    the card face-up after the chain link is registered, so the
+      //    overlay just needs to return and fade.
+      await div.animate([
+        { transform: `translateY(${detachY}px) scale(1.15) rotateY(0deg)`, opacity: 1 },
+        { transform: 'translateY(0) scale(1) rotateY(0deg)', opacity: 0 },
+      ], { duration: detachMs, easing: 'ease-in', fill: 'forwards' }).finished;
+    } catch {
+      // Animation cancelled (reset / destroy) — cleanup below still runs.
+      return;
+    } finally {
+      if (this._overlayEls.has(div)) { div.remove(); this._overlayEls.delete(div); }
+      // Restore the real hand card even on cancel.
+      handEl.style.visibility = prevVisibility;
     }
   }
 

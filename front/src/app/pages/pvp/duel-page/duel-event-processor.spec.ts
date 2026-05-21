@@ -52,6 +52,19 @@ describe('DuelEventProcessor', () => {
       expect(proc.hasPendingChainEntry()).toBeTrue();
     });
 
+    it('exposes the pending chain link via pendingChainEntry before it is committed', () => {
+      // The hand-reveal builders read `pendingChainEntry` so a just-activated
+      // card registers (z-index + badge) before the deferred commit lands.
+      expect(proc.pendingChainEntry()).toBeNull();
+      proc.processMessage(chaining(0, 12345));
+      const pending = proc.pendingChainEntry();
+      expect(pending).not.toBeNull();
+      expect(pending!.cardCode).toBe(12345);
+      expect(pending!.chainIndex).toBe(0);
+      // Still NOT in activeChainLinks — only the pending slot holds it.
+      expect(proc.activeChainLinks().length).toBe(0);
+    });
+
     it('should commit pending entry and replace it on consecutive MSG_CHAINING', () => {
       proc.processMessage(chaining(0, 100));
       proc.processMessage(chaining(1, 200));

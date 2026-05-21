@@ -12,6 +12,7 @@ import {
   BOARD_BREATHE_MS, BOARD_BREATHE_MIN_MS,
   POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS, TARGET_PILE_FLOAT_STAGGER_MS, TARGET_PILE_FLOAT_FADE_OUT_MS,
   CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
+  HAND_REVEAL_DETACH_MS, HAND_REVEAL_DETACH_MIN_MS,
   CHAIN_BANNER_PAUSE_MS, CHAIN_BANNER_DEFERRED_BUDGET_MS,
   CHAIN_END_SETTLE_MS, CHAIN_SOLVING_TAIL_MS,
   TOSS_TOAST_MS, COUNTER_PULSE_MS,
@@ -1117,6 +1118,19 @@ export class AnimationOrchestratorService {
     if (msg.location === LOCATION.HAND) {
       const handEl = this.drawManager.resolveHandTarget(`HAND-${relPlayer}`, msg.sequence);
       if (handEl instanceof HTMLElement) {
+        // Opponent activation (relPlayer 1): the card is hidden in their fan,
+        // so flip it face-up + ease it clear of the neighbours so the viewer
+        // can read it, then play the activation flash on the detached card.
+        // The player's own activation keeps the in-place flash (no reveal
+        // needed — the player already knows their card).
+        if (relPlayer === 1) {
+          const cardImage = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(msg.cardCode));
+          const detachMs = this.ctx.scaledDuration(HAND_REVEAL_DETACH_MS, HAND_REVEAL_DETACH_MIN_MS);
+          handEl.style.zIndex = '1100';
+          return this.boardEffects.revealOpponentHandCard(handEl, cardImage, detachMs)
+            .then(() => { handEl.style.zIndex = ''; })
+            .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
+        }
         handEl.style.zIndex = '500';
         return this.boardEffects.activateEffect(handEl, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
           .then(() => { handEl.style.zIndex = ''; })

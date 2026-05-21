@@ -138,6 +138,61 @@ describe('BoardEffectsService', () => {
       void service.preDestroyEffect(el, null, 100);
       expect(mockCardTravel.toAbsoluteUrl).toHaveBeenCalledWith('assets/images/card_back.jpg');
     });
+
+    it('mirrors the .card-inner orientation onto the overlay img — including the individual `rotate` property', () => {
+      // Opponent-side cards carry the 180° flip via the CSS `rotate` property
+      // (not `transform`). Reading only `transform` left the destruction
+      // overlay un-flipped (card faced the wrong player). The overlay img
+      // must reproduce the rotation so the effect plays at the right angle.
+      const el = document.createElement('div');
+      Object.defineProperty(el, 'getBoundingClientRect', {
+        value: () => new DOMRect(0, 0, 50, 70),
+      });
+      const inner = document.createElement('div');
+      inner.className = 'card-inner';
+      inner.style.rotate = '180deg';
+      el.appendChild(inner);
+      document.body.appendChild(el); // getComputedStyle needs an attached node
+
+      void service.preDestroyEffect(el, '/img/foo.jpg', 100);
+      const overlayImg = container.querySelector('img')!;
+      expect(overlayImg.style.transform).toContain('rotate(180deg)');
+
+      el.remove();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // revealOpponentHandCard
+  // -------------------------------------------------------------------------
+
+  describe('revealOpponentHandCard', () => {
+    it('hides the real hand card during the reveal and restores it afterward', async () => {
+      const handEl = document.createElement('div');
+      Object.defineProperty(handEl, 'getBoundingClientRect', {
+        value: () => new DOMRect(0, 0, 50, 70),
+      });
+      document.body.appendChild(handEl);
+
+      const p = service.revealOpponentHandCard(handEl, '/img/x.jpg', 100);
+      // Synchronously hidden the moment the reveal starts.
+      expect(handEl.style.visibility).toBe('hidden');
+      await p;
+      // Restored once the reveal finishes (animate() is stubbed → resolves now).
+      expect(handEl.style.visibility).toBe('');
+
+      handEl.remove();
+    });
+
+    it('returns immediately when the hand element has zero size (no overlay)', async () => {
+      const handEl = document.createElement('div');
+      Object.defineProperty(handEl, 'getBoundingClientRect', {
+        value: () => new DOMRect(0, 0, 0, 0),
+      });
+      const before = container.children.length;
+      await service.revealOpponentHandCard(handEl, '/img/x.jpg', 100);
+      expect(container.children.length).toBe(before);
+    });
   });
 
   // -------------------------------------------------------------------------
