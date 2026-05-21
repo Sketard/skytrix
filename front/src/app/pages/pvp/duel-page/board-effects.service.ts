@@ -20,6 +20,18 @@ export class BoardEffectsService implements OnDestroy {
   private readonly cardTravel = inject(CardTravelEngine);
   private readonly _overlayEls = new Set<HTMLElement>();
   private readonly _timers = new Set<number>();
+  /**
+   * Ref-counted visibility hides for the reveal overlays. A card-reveal hides
+   * the real element underneath its flipping overlay; two concurrent reveals
+   * on the SAME element (e.g. a confirm overlapping a move re-render, or two
+   * chain links on the same hand card) would otherwise each capture-and-
+   * restore independently — the second captures `'hidden'` set by the first
+   * and restores it permanently. This map shares one hide: `original` is
+   * frozen by the first caller, and the real visibility is restored only
+   * when the LAST reveal ends.
+   */
+  private readonly _hiddenForReveal =
+    new Map<HTMLElement, { count: number; original: string }>();
   private readonly _reducedMotionSvc = inject(ReducedMotionService);
 
   /** Centralised reduced-motion state (Preferences toggle OR OS preference) —
@@ -340,6 +352,31 @@ export class BoardEffectsService implements OnDestroy {
   }
 
   /**
+   * Hide an element under a reveal overlay, ref-counted. Concurrent reveals
+   * on the same element share one hide; the first caller's pre-hide
+   * `visibility` is the value `restoreAfterReveal` will eventually restore.
+   */
+  private hideForReveal(el: HTMLElement): void {
+    const entry = this._hiddenForReveal.get(el);
+    if (entry) { entry.count++; return; }
+    this._hiddenForReveal.set(el, { count: 1, original: el.style.visibility });
+    el.style.visibility = 'hidden';
+  }
+
+  /**
+   * Counterpart to `hideForReveal` — decrements the ref-count and restores the
+   * real `visibility` only when the last concurrent reveal releases it.
+   * Safe to call for an element that was never hidden (no-op).
+   */
+  private restoreAfterReveal(el: HTMLElement): void {
+    const entry = this._hiddenForReveal.get(el);
+    if (!entry) return;
+    if (--entry.count > 0) return;
+    el.style.visibility = entry.original;
+    this._hiddenForReveal.delete(el);
+  }
+
+  /**
    * Field-confirm reveal (MSG_CONFIRM_CARDS for a card just Set face-down on
    * a field zone from the deck — public info shown to both players). The card
    * is already on the board face-down; this overlays a card-shaped float on
@@ -363,10 +400,10 @@ export class BoardEffectsService implements OnDestroy {
     // Hide the real board card for the whole reveal so the flipping overlay
     // doesn't double up with the card sitting underneath. `.zone-card` is the
     // card element inside the zone container — hiding it (not the container)
-    // keeps the empty zone frame visible. Restored in the `finally` block.
+    // keeps the empty zone frame visible. Ref-counted so a concurrent reveal
+    // on the same zone does not restore it early; released in `finally`.
     const boardCard = zoneEl.querySelector<HTMLElement>('.zone-card');
-    const prevVisibility = boardCard?.style.visibility ?? '';
-    if (boardCard) boardCard.style.visibility = 'hidden';
+    if (boardCard) this.hideForReveal(boardCard);
 
     const div = document.createElement('div');
     div.style.cssText = `
@@ -453,7 +490,7 @@ export class BoardEffectsService implements OnDestroy {
       }
       // Restore the real board card — even on cancel, so a reset / seek mid
       // reveal never leaves the card permanently hidden.
-      if (boardCard) boardCard.style.visibility = prevVisibility;
+      if (boardCard) this.restoreAfterReveal(boardCard);
     }
   }
 
@@ -475,9 +512,9 @@ export class BoardEffectsService implements OnDestroy {
     if (rect.width === 0) return;
 
     // Hide the real hand card for the whole reveal so the flipping overlay
-    // doesn't double up with the card behind it.
-    const prevVisibility = handEl.style.visibility;
-    handEl.style.visibility = 'hidden';
+    // doesn't double up with the card behind it. Ref-counted so two chain
+    // links on the same hand card do not restore it between reveals.
+    this.hideForReveal(handEl);
 
     // Detach toward the viewer: the opponent fan is at the top, so a small
     // downward nudge pulls the card clear of its neighbours without a big
@@ -533,7 +570,7 @@ export class BoardEffectsService implements OnDestroy {
     } finally {
       if (this._overlayEls.has(div)) { div.remove(); this._overlayEls.delete(div); }
       // Restore the real hand card even on cancel.
-      handEl.style.visibility = prevVisibility;
+      this.restoreAfterReveal(handEl);
     }
   }
 
@@ -605,6 +642,10 @@ export class BoardEffectsService implements OnDestroy {
     this._timers.clear();
     for (const el of this._overlayEls) el.remove();
     this._overlayEls.clear();
+    // Restore any element still hidden by an in-flight reveal, then drop the
+    // map so it does not retain detached DOM nodes past teardown.
+    for (const [el, entry] of this._hiddenForReveal) el.style.visibility = entry.original;
+    this._hiddenForReveal.clear();
   }
 
   private trackOverlay(el: HTMLElement, animation: Animation): void {

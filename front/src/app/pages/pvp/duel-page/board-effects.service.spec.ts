@@ -193,6 +193,27 @@ describe('BoardEffectsService', () => {
       await service.revealOpponentHandCard(handEl, '/img/x.jpg', 100);
       expect(container.children.length).toBe(before);
     });
+
+    it('two concurrent reveals on the same element restore visibility only once', async () => {
+      const handEl = document.createElement('div');
+      Object.defineProperty(handEl, 'getBoundingClientRect', {
+        value: () => new DOMRect(0, 0, 50, 70),
+      });
+      document.body.appendChild(handEl);
+
+      // Both reveals start before either finishes — the ref-count must keep
+      // the element hidden until the LAST one releases, not flip it back when
+      // the first completes (the capture-and-restore re-entrancy bug).
+      const a = service.revealOpponentHandCard(handEl, '/img/a.jpg', 100);
+      const b = service.revealOpponentHandCard(handEl, '/img/b.jpg', 100);
+      expect(handEl.style.visibility).toBe('hidden');
+
+      await a;
+      await b;
+      expect(handEl.style.visibility).toBe('');
+
+      handEl.remove();
+    });
   });
 
   // -------------------------------------------------------------------------
