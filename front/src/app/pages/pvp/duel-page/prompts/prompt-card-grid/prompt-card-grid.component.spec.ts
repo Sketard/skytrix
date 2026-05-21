@@ -59,6 +59,16 @@ describe('PromptCardGridComponent — effect discriminator', () => {
     expect([c.effectBadge(0), c.effectBadge(1), c.effectBadge(2)]).toEqual([1, 2, 3]);
   });
 
+  it('does NOT badge two physical copies of the same card (same cardCode, different zone)', () => {
+    // One copy in hand, one on the field — same cardCode but distinct cards,
+    // each with a single effect. They must not read as "Effet 1 / Effet 2".
+    const inHand: CardInfo = { cardCode: 100, name: 'Card 100', player: 0, location: LOCATION.HAND, sequence: 0, description: 'A' };
+    const onField: CardInfo = { cardCode: 100, name: 'Card 100', player: 0, location: LOCATION.MZONE, sequence: 2, description: 'A' };
+    const c = make(selectChain([inHand, onField]));
+    expect(c.effectBadge(0)).toBeNull();
+    expect(c.effectBadge(1)).toBeNull();
+  });
+
   it('exposes effect text via effectTitle, null when empty', () => {
     const c = make(selectChain([
       chainCard(100, 0, 'Fusion Summon'),

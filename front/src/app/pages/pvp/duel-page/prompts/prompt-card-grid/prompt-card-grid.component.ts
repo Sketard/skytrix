@@ -293,25 +293,32 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   private _effectBadgeCache: { prompt: CardGridPrompt; map: Map<number, number> } | null = null;
 
   /**
-   * For SELECT_CHAIN: maps each `originalIndex` whose cardCode appears 2+ times
-   * among the *displayed* entries to its 1-based ordinal. Built over
-   * `displayEntries` (not raw `cards`) so an excluded duplicate does not leave a
-   * gap in the numbering; the reduce preserves OCGCore prompt order.
+   * For SELECT_CHAIN: maps each `originalIndex` of a card listed 2+ times to its
+   * 1-based ordinal. Grouped by *physical card identity* (`cardKey` —
+   * player+location+sequence+cardCode), NOT cardCode alone: a second copy of
+   * the same card elsewhere on the board (e.g. one in hand, one on field)
+   * shares the cardCode but is a distinct card with a single effect — it must
+   * NOT get a badge. Only the same physical card offering multiple chainable
+   * effects is a real duplicate. Built over `displayEntries` so an excluded
+   * entry does not leave a numbering gap; the loop preserves OCGCore order.
    */
   private get effectBadgeMap(): Map<number, number> {
     const prompt = this.promptData;
     if (prompt?.type !== 'SELECT_CHAIN') return new Map();
     if (this._effectBadgeCache?.prompt === prompt) return this._effectBadgeCache.map;
     const entries = this.displayEntries;
-    const counts = new Map<number, number>();
-    for (const e of entries) counts.set(e.card.cardCode, (counts.get(e.card.cardCode) ?? 0) + 1);
-    const seen = new Map<number, number>();
+    const counts = new Map<string, number>();
+    for (const e of entries) {
+      const k = cardKey(e.card);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const seen = new Map<string, number>();
     const map = new Map<number, number>();
     for (const e of entries) {
-      const code = e.card.cardCode;
-      if ((counts.get(code) ?? 0) < 2) continue;
-      const ordinal = (seen.get(code) ?? 0) + 1;
-      seen.set(code, ordinal);
+      const k = cardKey(e.card);
+      if ((counts.get(k) ?? 0) < 2) continue;
+      const ordinal = (seen.get(k) ?? 0) + 1;
+      seen.set(k, ordinal);
       map.set(e.originalIndex, ordinal);
     }
     this._effectBadgeCache = { prompt, map };
