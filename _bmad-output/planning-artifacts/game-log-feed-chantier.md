@@ -205,7 +205,13 @@ verb above the arrow already names the action.
 2. **Move rows** — every card displacement; one uniform anatomy.
 3. **RNG rows** — coin toss, dice roll.
 4. **Combat rows** — attack declaration, battle calculation.
-5. **Action rows** — counter +/−, equip, become-target, GY↔Deck swap.
+5. **Action rows** — counter +/−, equip, GY↔Deck swap, shuffle.
+
+> **Targeting is NOT a row.** `MSG_BECOME_TARGET` is a *property of the
+> effect that caused it*, not a standalone event. It is rendered as a
+> discreet `▸ cible : …` annotation under the effect description of the
+> activation/resolution row that targeted (revised 2026-05-21 — was
+> previously an action row). See "Targeting annotation" below.
 
 **Universal row anatomy — three parts.** Every non-separator row has
 exactly the same three-part structure. Two distinct card roles must
@@ -322,14 +328,27 @@ from O3, which is about the *effect description text* sourced from
 | Attack | `MSG_ATTACK` | attacker card + ATK vs defender card + ATK/DEF; or "direct attack" |
 | Battle calculation | `MSG_BATTLE` | per-side damage / "détruit" outcome |
 
-**Action rows** (icon + label + target chips / counter badge):
+**Action rows** (icon + label + equip chips / counter badge):
 
 | Event | Source | Renders |
 |-------|--------|---------|
 | Add / Remove counter | `MSG_ADD_COUNTER` / `MSG_REMOVE_COUNTER` | counter type + `+N` / `−N` badge |
 | Equip | `MSG_EQUIP` | equip card → target card |
-| Become target | `MSG_BECOME_TARGET` | the targeted card thumbnails |
 | GY ↔ Deck swap | `MSG_SWAP_GRAVE_DECK` | player label, no card |
+| Shuffle | `MSG_SHUFFLE_HAND` / `MSG_SHUFFLE_DECK` / `MSG_SHUFFLE_SET_CARD` | "Mélange …" label |
+
+**Targeting annotation** (not a row — an annotation of the effect row):
+
+`MSG_BECOME_TARGET` carries only field positions (`player` + `location`
++ `sequence`), never card identities. The builder resolves each target
+in two passes — (1) the state's board snapshot, (2) the `SELECT_CARD`
+candidate list that immediately precedes the targeting (it carries
+`cardCode` + `name`) — then folds the resolved cards onto the active
+chain row as a `targets` field, rendered `▸ cible : Carte A, Carte B`
+under the effect description. An unresolvable target renders as
+"Carte non révélée"; the CLI reports a resolution rate so the fallback
+policy ("N carte(s)" vs omission) can be decided on real data — on the
+`a8859c98` reference replay the rate is 5/5 (100%).
 
 Every non-separator row carries a **player band colour** (blue / red),
 relativized from the absolute event player (see §5.5).
@@ -393,7 +412,7 @@ is a full game log, not a card-action-only log.
 | `MSG_ATTACK` / `MSG_BATTLE` | Combat row |
 | `MSG_EQUIP` | Action row (equip) |
 | `MSG_ADD_COUNTER` / `MSG_REMOVE_COUNTER` | Action row (counter +/−) |
-| `MSG_BECOME_TARGET` | Action row (targeting) |
+| `MSG_BECOME_TARGET` | not a row — `▸ cible :` annotation on the effect row |
 | `MSG_DAMAGE` / `MSG_RECOVER` / `MSG_PAY_LPCOST` | not a row — net LP shown on turn separators + combat rows (O1) |
 | `MSG_WIN` / `DUEL_END` | Duel-over separator |
 
@@ -647,6 +666,22 @@ For the prototype the CLI resolves `descriptionText` itself via
 `descriptionText` to `ChainingMsg` (§5.1) is the *production* wiring,
 done after the grammar is validated. Validate first, wire the protocol
 cleanly second.
+
+### 8.5 Visual references — prototype output vs mockup
+
+Two visual artefacts coexist, with distinct roles:
+
+- **`game-log-html.ts` prototype output** (e.g.
+  `_bmad-output/game-log/a8859c98.html`) — the **primary** reference:
+  the real grammar driven by a real replay. Always current with the
+  builder.
+- **`_mockups/mockup-game-log.html`** — kept as a **case catalogue**:
+  it shows event kinds that a given replay may not contain (position
+  change, coin toss, dice roll, equip, counter — all absent from the
+  `a8859c98` reference replay). It is no longer the design baseline,
+  only a hand-built illustration of the rare cases. Keep it minimally
+  in sync (ATK/DEF distinction, `▸ cible` annotation) so it does not
+  contradict the implemented grammar.
 
 ## 9. Suggested Delivery Sequence (one block, internal order)
 

@@ -19,6 +19,8 @@
 //   --perspective   0 | 1 — the viewer the log is rendered from (default 0)
 //   --output        output .md path; the .html sibling is written alongside
 //   --duelServerUrl ws base (default ws://localhost:3001)
+//   --springBootUrl Spring Boot base for HTML card artwork
+//                   (default http://localhost:8080/api)
 //   --userId        participant user id for the replay JWT (default 1)
 //   --from-file     read a captured states JSON instead of the live WS
 //   --capture       also write the raw states JSON next to the output
@@ -35,7 +37,7 @@ import type { ServerMessage } from '../ws-protocol.js';
 import type { CardDB } from '../types.js';
 import { loadSystemStrings } from '../ocg-scripts.js';
 import { resolveDescription } from '../game-log/effect-desc-resolver.js';
-import { buildGameLog } from '../game-log/game-log-builder.js';
+import { buildGameLogWithStats } from '../game-log/game-log-builder.js';
 import { renderMarkdown } from '../game-log/game-log-markdown.js';
 import { renderHtml } from '../game-log/game-log-html.js';
 
@@ -51,6 +53,8 @@ interface CliArgs {
   perspective: 0 | 1;
   output: string;
   duelServerUrl: string;
+  /** Spring Boot base — backs the card-artwork URLs in the HTML preview. */
+  springBootUrl: string;
   userId: string;
   fromFile?: string;
   capture: boolean;
@@ -79,6 +83,8 @@ function parseArgs(argv: string[]): CliArgs {
     perspective,
     output,
     duelServerUrl: get('duelServerUrl') ?? 'ws://localhost:3001',
+    springBootUrl: (get('springBootUrl') ?? 'http://localhost:8080/api')
+      .replace(/\/$/, ''),
     userId: get('userId') ?? '1',
     fromFile,
     capture: has('capture'),
@@ -248,7 +254,7 @@ function writeOutputs(
   const descriptionResolver = buildDescriptionResolver(cardDb, systemStrings);
   const nameResolver = buildNameResolver(cardDb);
 
-  const entries = buildGameLog({
+  const { entries, targetStats } = buildGameLogWithStats({
     states,
     perspective: args.perspective,
     resolveDescription: descriptionResolver,
@@ -262,8 +268,17 @@ function writeOutputs(
 
   writeFileSync(mdPath, renderMarkdown(entries, title), 'utf-8');
 
+  // The HTML preview points card thumbnails at the same Spring Boot artwork
+  // endpoint the front-end uses (`/documents/small/code/{code}`). Absolute
+  // URL so the standalone file resolves images when opened in a browser.
   const css = extractMockupCss();
-  writeFileSync(htmlPath, renderHtml(entries, title, css), 'utf-8');
+  const cardImageUrl = (code: number): string =>
+    `${args.springBootUrl}/documents/small/code/${code}`;
+  writeFileSync(
+    htmlPath,
+    renderHtml(entries, title, css, cardImageUrl),
+    'utf-8',
+  );
 
   if (args.capture) {
     const statesPath = mdPath.replace(/\.md$/i, '') + '.states.json';
@@ -274,6 +289,16 @@ function writeOutputs(
   console.log(`✔ ${entries.length} log entries`);
   console.log(`  markdown → ${mdPath}`);
   console.log(`  html     → ${htmlPath}`);
+  // Target-resolution telemetry — informs the fallback policy for
+  // unresolvable MSG_BECOME_TARGET identities (chantier §4.2).
+  const { total, unresolved } = targetStats;
+  if (total > 0) {
+    const pct = Math.round(((total - unresolved) / total) * 100);
+    console.log(
+      `  cibles   → ${total - unresolved}/${total} résolues (${pct}%)` +
+        (unresolved > 0 ? ` · ${unresolved} non résolue(s)` : ''),
+    );
+  }
 }
 
 /** Extract the `<style>` body from the approved mockup for the HTML preview. */

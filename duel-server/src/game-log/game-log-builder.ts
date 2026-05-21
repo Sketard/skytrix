@@ -10,7 +10,11 @@
 // The CLI (impure) resolves effect descriptions and feeds them in.
 // =============================================================================
 
-import type { Player } from '../ws-protocol-shared.js';
+import type {
+  Player,
+  BoardStatePayload,
+  ZoneId,
+} from '../ws-protocol-shared.js';
 import { LOCATION, POSITION } from '../ws-protocol-shared.js';
 import type { PreComputedState } from '../ws-protocol-replay.js';
 import type {
@@ -24,13 +28,13 @@ import type {
   RelPlayer,
   RowHead,
   MoveEntry,
+  PostureKind,
 } from './game-log-types.js';
 
 // -----------------------------------------------------------------------------
 // MSG_MOVE `reason` bitmask — mirrors replay-precompute.ts (kept local to
 // preserve purity; values are OCGCore card_data.h reason flags).
 // -----------------------------------------------------------------------------
-const REASON_DESTROY = 0x1;
 const REASON_RELEASE = 0x2;
 const REASON_FUSION = 0x8;
 const REASON_RITUAL = 0x10;
@@ -44,6 +48,55 @@ const REASON_MATERIAL = 0x10000;
 
 const EXTRA_DECK_SUMMON =
   REASON_FUSION | REASON_SYNCHRO | REASON_XYZ | REASON_LINK;
+
+/**
+ * A card candidate from a `SELECT_CARD` prompt — the secondary source for
+ * resolving `MSG_BECOME_TARGET` identities. Subset of `CardInfo`: the fields
+ * needed to match a targeted field position to a named card.
+ */
+interface TargetCandidate {
+  cardCode: number;
+  name: string;
+  player: Player;
+  location: number;
+  sequence: number;
+}
+
+/** Telemetry on how well `MSG_BECOME_TARGET` identities resolved. */
+export interface TargetResolutionStats {
+  total: number;
+  unresolved: number;
+}
+
+// -----------------------------------------------------------------------------
+// LOCATION bitmask → board ZoneId(s). Used to resolve a card identity from a
+// board snapshot by (location, sequence) for events that carry only a field
+// position (MSG_BECOME_TARGET, …). MZONE/SZONE map to the ordered list of
+// physical zones; the `sequence` selects within it for piles, index 0 for
+// field zones.
+// -----------------------------------------------------------------------------
+const LOCATION_TO_ZONE_IDS: Readonly<Record<number, readonly ZoneId[]>> = {
+  [LOCATION.MZONE]: ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R'],
+  [LOCATION.SZONE]: ['S1', 'S2', 'S3', 'S4', 'S5', 'FIELD'],
+  [LOCATION.GRAVE]: ['GY'],
+  [LOCATION.BANISHED]: ['BANISHED'],
+  [LOCATION.EXTRA]: ['EXTRA'],
+  [LOCATION.DECK]: ['DECK'],
+  [LOCATION.HAND]: ['HAND'],
+};
+
+/** Pile zones index their `cards` array by sequence; field zones hold one. */
+const PILE_ZONE_IDS: ReadonlySet<ZoneId> = new Set<ZoneId>([
+  'GY',
+  'BANISHED',
+  'EXTRA',
+  'DECK',
+  'HAND',
+]);
+
+function isPileZone(zoneId: ZoneId): boolean {
+  return PILE_ZONE_IDS.has(zoneId);
+}
 
 /** SZONE sequence reserved for the single Field Spell zone (out of the
  *  5-slot spell/trap row 0..4). */
@@ -137,6 +190,18 @@ const WIN_REASON: Record<number, string> = {
  * @returns the ordered GameLogEntry[] (five-block grammar)
  */
 export function buildGameLog(input: BuildInput): GameLogEntry[] {
+  return buildGameLogWithStats(input).entries;
+}
+
+/** Result of a build — the log entries plus target-resolution telemetry. */
+export interface GameLogBuildResult {
+  entries: GameLogEntry[];
+  targetStats: TargetResolutionStats;
+}
+
+/** Build the game log AND return target-resolution telemetry — the CLI uses
+ *  the stats to report how many `MSG_BECOME_TARGET` identities resolved. */
+export function buildGameLogWithStats(input: BuildInput): GameLogBuildResult {
   const builder = new GameLogBuilder(
     input.perspective,
     input.resolveDescription,
@@ -146,7 +211,10 @@ export function buildGameLog(input: BuildInput): GameLogEntry[] {
     builder.ingestState(state);
   }
   builder.finish();
-  return builder.entries;
+  return {
+    entries: builder.entries,
+    targetStats: builder.getTargetResolutionStats(),
+  };
 }
 
 /**
@@ -184,6 +252,16 @@ export class GameLogBuilder {
    * an opening hand — robust to a one-sided opening draw (no per-count flag).
    */
   private openingWindowClosed = false;
+  /**
+   * The most recent `SELECT_CARD` candidate list — the secondary source for
+   * resolving `MSG_BECOME_TARGET` identities when the board snapshot has
+   * already lost the card (a SELECT_CARD immediately precedes the targeting).
+   */
+  private lastSelectCardCandidates: readonly TargetCandidate[] = [];
+  /** Target-resolution telemetry — total targets seen and how many stayed
+   *  unresolved (for the human to judge the fallback policy). */
+  private targetTotal = 0;
+  private targetUnresolved = 0;
 
   constructor(
     private readonly perspective: Player,
@@ -292,7 +370,7 @@ export class GameLogBuilder {
         this.onCounter(event, false);
         break;
       case 'MSG_BECOME_TARGET':
-        this.onBecomeTarget(event);
+        this.onBecomeTarget(event, state);
         break;
       case 'MSG_SWAP_GRAVE_DECK':
         this.onGyDeckSwap(event);
@@ -311,6 +389,11 @@ export class GameLogBuilder {
         break;
       case 'MSG_WIN':
         this.onWin(event);
+        break;
+      // Not a log row itself, but its candidate list is the secondary
+      // source for resolving the MSG_BECOME_TARGET that immediately follows.
+      case 'SELECT_CARD':
+        this.lastSelectCardCandidates = event.cards;
         break;
       // Silent events — no log row (per §4.3 audit + O1).
       case 'MSG_DAMAGE':
@@ -421,7 +504,12 @@ export class GameLogBuilder {
     const { reason, toLocation, fromLocation, toPlayer, toSequence } = e;
 
     if (toLocation === LOCATION.MZONE) {
-      const verb = summonVerb(reason);
+      // A summon that lands while a chain is RESOLVING is always a Special
+      // Summon — a Normal Summon can never occur mid-chain. OCGCore reuses
+      // the `REASON_SUMMON` bit (0x800) for "Special Summon in attack
+      // position", so the `reason` bitmask alone mislabels it; the chain
+      // phase is the authoritative signal.
+      const verb = summonVerb(reason, this.resolvingLink !== null);
       return {
         card,
         verb,
@@ -509,14 +597,19 @@ export class GameLogBuilder {
     previousPosition: number;
     currentPosition: number;
   }): void {
-    // Position change → a move row whose verb encodes the before→after states.
+    // Position change → a move row carrying a structured posture transition,
+    // so the renderer can give ATK and DEF their distinct visual identity.
     this.entries.push({
       block: 'move',
       ...this.rowHead(e.player, this.cardRef(e.cardCode, e.cardName), null),
       movedCards: [
         {
           card: this.cardRef(e.cardCode, e.cardName),
-          verb: `Position : ${posLabel(e.previousPosition)} → ${posLabel(e.currentPosition)}`,
+          verb: 'Changement de position',
+          posChange: {
+            from: postureKind(e.previousPosition),
+            to: postureKind(e.currentPosition),
+          },
         },
       ],
     });
@@ -737,7 +830,9 @@ export class GameLogBuilder {
       ...this.rowHead(e.equipPlayer, null, null),
       action: 'equip',
       label: 'Équipé à',
-      targets: [{ revealed: true, cardCode: null, cardName: 'Monstre équipé' }],
+      equipTargets: [
+        { revealed: true, cardCode: null, cardName: 'Monstre équipé' },
+      ],
     });
   }
 
@@ -755,21 +850,59 @@ export class GameLogBuilder {
     });
   }
 
-  private onBecomeTarget(e: {
-    cards: { player: Player; location: number; sequence: number }[];
-  }): void {
-    const owner = (e.cards[0]?.player ?? this.perspective) as Player;
-    this.entries.push({
-      block: 'action',
-      ...this.rowHead(owner, null, null),
-      action: 'target',
-      label: 'Cible',
-      targets: e.cards.map(() => ({
-        revealed: true,
-        cardCode: null,
-        cardName: 'Cible',
-      })),
+  /**
+   * A targeting is a PROPERTY of the effect that caused it, not a standalone
+   * log row. Fold the resolved target cards onto the active chain row (the
+   * activation or resolution row in flight) as a `targets` annotation.
+   *
+   * Identity resolution runs two passes per target position:
+   *   1. the state's board snapshot (`resolveBoardCard`);
+   *   2. the most recent `SELECT_CARD` candidate list — it carries
+   *      `cardCode` + `name` and immediately precedes the targeting.
+   */
+  private onBecomeTarget(
+    e: { cards: { player: Player; location: number; sequence: number }[] },
+    state: PreComputedState,
+  ): void {
+    const resolved = e.cards.map(c => {
+      this.targetTotal++;
+      const fromBoard = this.resolveBoardCard(
+        state.boardState,
+        c.player,
+        c.location,
+        c.sequence,
+      );
+      if (fromBoard.revealed) return fromBoard;
+      const fromSelect = this.resolveFromSelectCard(c.location, c.sequence);
+      if (fromSelect) return fromSelect;
+      this.targetUnresolved++;
+      return { revealed: false, cardCode: null, cardName: null } as LogCardRef;
     });
+    // Attach to the effect's row. If no chain row is in flight, the targeting
+    // has no host — drop it silently rather than emit an orphan row.
+    const row = this.activeChainRow();
+    if (row) {
+      row.targets = [...(row.targets ?? []), ...resolved];
+    }
+  }
+
+  /** Secondary target resolution — match a field position against the last
+   *  `SELECT_CARD` candidate list. Returns null when no candidate matches. */
+  private resolveFromSelectCard(
+    location: number,
+    sequence: number,
+  ): LogCardRef | null {
+    const match = this.lastSelectCardCandidates.find(
+      c => c.location === location && c.sequence === sequence,
+    );
+    return match
+      ? { revealed: true, cardCode: match.cardCode, cardName: match.name }
+      : null;
+  }
+
+  /** Target-resolution telemetry for the CLI to report. */
+  getTargetResolutionStats(): TargetResolutionStats {
+    return { total: this.targetTotal, unresolved: this.targetUnresolved };
   }
 
   private onGyDeckSwap(e: { player: Player }): void {
@@ -850,6 +983,45 @@ export class GameLogBuilder {
     return { revealed: true, cardCode: code, cardName: resolved };
   }
 
+  /**
+   * Resolve a card identity from a board snapshot by `(player, location,
+   * sequence)`. Events like `MSG_BECOME_TARGET` / `MSG_ATTACK` carry only a
+   * field position, not a `cardCode` — the board state holds the identity.
+   * Returns a hidden `LogCardRef` when the slot can't be resolved.
+   */
+  private resolveBoardCard(
+    board: BoardStatePayload,
+    absolute: Player,
+    location: number,
+    sequence: number,
+  ): LogCardRef {
+    const zoneIds = LOCATION_TO_ZONE_IDS[location];
+    const player = board.players[absolute];
+    if (zoneIds && player) {
+      const first = zoneIds[0];
+      // A pile location is a single zone whose `cards` array is indexed by
+      // sequence. A field location (MZONE/SZONE) is a LIST of zones — the
+      // sequence selects which one, and that zone holds a single card.
+      if (first && isPileZone(first)) {
+        const zone = player.zones.find(z => z.zoneId === first);
+        const card = zone?.cards[sequence];
+        if (card?.cardCode) {
+          return { revealed: true, cardCode: card.cardCode, cardName: card.name };
+        }
+      } else {
+        const zoneId = zoneIds[sequence];
+        const zone = zoneId
+          ? player.zones.find(z => z.zoneId === zoneId)
+          : undefined;
+        const card = zone?.cards[0];
+        if (card?.cardCode) {
+          return { revealed: true, cardCode: card.cardCode, cardName: card.name };
+        }
+      }
+    }
+    return { revealed: false, cardCode: null, cardName: null };
+  }
+
   private fieldCell(absolute: Player, row: 'M' | 'S', sequence: number): BoardCell {
     const player = this.rel(absolute);
     // EMZ sequences (5,6) map to the shared Extra Monster Zone band.
@@ -887,15 +1059,27 @@ export class GameLogBuilder {
 // Pure local helpers
 // =============================================================================
 
-/** Map a MSG_MOVE-to-MZONE `reason` bitmask to the French summon verb. */
-function summonVerb(reason: number): string {
-  if (reason & REASON_SUMMON) return VERB.normalSummon;
+/**
+ * Map a MSG_MOVE-to-MZONE `reason` bitmask to the French summon verb.
+ *
+ * @param reason         the OCGCore `reason` bitmask
+ * @param duringChainRes true when the move lands while a chain link is
+ *                       resolving — then a `REASON_SUMMON` move is really a
+ *                       Special Summon (a Normal Summon never occurs
+ *                       mid-chain; OCGCore reuses the 0x800 bit).
+ */
+function summonVerb(reason: number, duringChainRes: boolean): string {
+  // Method-specific bits are unambiguous — check them first.
   if (reason & REASON_FUSION) return VERB.fusionSummon;
   if (reason & REASON_RITUAL) return VERB.ritualSummon;
   if (reason & REASON_SYNCHRO) return VERB.synchroSummon;
   if (reason & REASON_XYZ) return VERB.xyzSummon;
   if (reason & REASON_LINK) return VERB.linkSummon;
   if (reason & REASON_SPSUMMON) return VERB.specialSummon;
+  if (reason & REASON_SUMMON) {
+    // 0x800 mid-chain = Special Summon; otherwise a true Normal Summon.
+    return duringChainRes ? VERB.specialSummon : VERB.normalSummon;
+  }
   // No summon bit set at all — this is a plain relocation onto MZONE
   // (control swap, return from temporary banish), NOT a special summon.
   return VERB.move;
@@ -906,18 +1090,14 @@ export function isExtraDeckSummon(reason: number): boolean {
   return (reason & EXTRA_DECK_SUMMON) !== 0;
 }
 
-/** Human label for a POSITION bitmask value. */
-function posLabel(position: number): string {
+/** Battle posture (ATK / DEF) of a POSITION bitmask value — drives the
+ *  ATK/DEF visual distinction. Defaults to ATK for unknown values. */
+function postureKind(position: number): PostureKind {
   switch (position) {
-    case POSITION.FACEUP_ATTACK:
-      return 'ATK';
-    case POSITION.FACEDOWN_ATTACK:
-      return 'ATK (face cachée)';
     case POSITION.FACEUP_DEFENSE:
-      return 'DEF';
     case POSITION.FACEDOWN_DEFENSE:
-      return 'DEF (face cachée)';
+      return 'DEF';
     default:
-      return `Position ${position}`;
+      return 'ATK';
   }
 }

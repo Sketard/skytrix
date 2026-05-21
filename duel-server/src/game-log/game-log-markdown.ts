@@ -94,6 +94,10 @@ function renderMove(e: MoveEntry): string[] {
 }
 
 function renderMovedCard(m: MovedCard): string {
+  // A position change shows the posture transition rather than a flow arrow.
+  if (m.posChange) {
+    return `${card(m.card)} — ${m.verb} : ${m.posChange.from} → ${m.posChange.to}`;
+  }
   const dest = m.destCell
     ? `[${m.destCell.player === 0 ? 'Toi' : 'Adv'} ${m.destCell.row}${m.destCell.sequence + 1}]`
     : m.destZone
@@ -148,8 +152,8 @@ function renderAction(e: ActionEntry): string[] {
   const parts = [`**${e.label}**`];
   if (e.detail) parts.push(e.detail);
   if (e.counterBadge) parts.push(`\`${e.counterBadge}\``);
-  if (e.targets?.length) {
-    parts.push('→ ' + e.targets.map(card).join(', '));
+  if (e.equipTargets?.length) {
+    parts.push('→ ' + e.equipTargets.map(card).join(', '));
   }
   out.push(`    - ${parts.join(' ')}`);
   out.push('');
@@ -157,7 +161,7 @@ function renderAction(e: ActionEntry): string[] {
 }
 
 // -----------------------------------------------------------------------------
-// Shared head rendering (source card + description + chain badge)
+// Shared head rendering (source card + description + chain badge + targets)
 // -----------------------------------------------------------------------------
 function renderHead(e: RowHead): string[] {
   const out: string[] = [];
@@ -167,6 +171,10 @@ function renderHead(e: RowHead): string[] {
   out.push(`- ${side(e)}${badge ? badge + ' ' : ''}${head}${negated}`);
   if (e.description) {
     out.push(`    > « ${e.description.trim()} »`);
+  }
+  // Targeting is an annotation of the effect, not its own row.
+  if (e.targets?.length) {
+    out.push(`    ▸ cible : ${e.targets.map(card).join(', ')}`);
   }
   return out;
 }

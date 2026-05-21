@@ -39,7 +39,17 @@ export interface MovedCard {
   destCell?: BoardCell;
   /** True when this moved card is an Extra-Deck summon material. */
   isMaterial?: boolean;
+  /**
+   * Position change (`MSG_CHANGE_POS`) — the before/after battle posture.
+   * Each side is 'ATK' or 'DEF' so the renderer can give each its distinct
+   * visual identity (offensive vs defensive). When set, the renderer shows a
+   * posture transition instead of a plain verb.
+   */
+  posChange?: { from: PostureKind; to: PostureKind };
 }
+
+/** A monster's battle posture — drives the ATK/DEF visual distinction. */
+export type PostureKind = 'ATK' | 'DEF';
 
 /** A single field cell reference for the mini-board grid renderer. */
 export interface BoardCell {
@@ -105,6 +115,13 @@ export interface RowHead {
   chainLink?: number;
   /** True when MSG_CHAIN_NEGATED marked this link. */
   negated?: boolean;
+  /**
+   * Cards this effect targets (`MSG_BECOME_TARGET`). Rendered as a discreet
+   * "▸ cible : …" annotation under the effect description — a targeting is a
+   * property of the effect, not a standalone log row. An unresolvable target
+   * appears as a hidden `LogCardRef`.
+   */
+  targets?: LogCardRef[];
 }
 
 // =============================================================================
@@ -165,18 +182,17 @@ export interface ActionEntry extends RowHead {
     | 'counter-add'
     | 'counter-remove'
     | 'equip'
-    | 'target'
     | 'gy-deck-swap'
     | 'shuffle'
     | 'swap';
-  /** French label naming the action ("Compteur", "Équipé à", "Cible", …). */
+  /** French label naming the action ("Compteur", "Équipé à", …). */
   label: string;
   /** Counter rows — the signed badge text, e.g. "+2" / "−1". */
   counterBadge?: string;
   /** Counter rows — counter type detail, e.g. "Compteur Magie". */
   detail?: string;
-  /** Equip / target rows — the affected card thumbnails. */
-  targets?: LogCardRef[];
+  /** Equip rows — the affected card thumbnails. */
+  equipTargets?: LogCardRef[];
 }
 
 // =============================================================================

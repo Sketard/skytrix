@@ -21,11 +21,10 @@ import type {
   ActionEntry,
   LogCardRef,
   MovedCard,
+  BoardCell,
   RowHead,
   RelPlayer,
 } from './game-log-types.js';
-
-const CHAIN_BADGES = '①②③④⑤⑥⑦⑧⑨⑩';
 
 /** HTML-escape a string for safe text interpolation. */
 function esc(value: string): string {
@@ -37,18 +36,35 @@ function esc(value: string): string {
 }
 
 /**
+ * Resolves a card code to an artwork URL. Injected by the caller so the
+ * renderer stays pure (it never knows the backend host). Return `null` to
+ * fall back to the text-placeholder thumbnail.
+ */
+export type CardImageResolver = (cardCode: number) => string | null;
+
+/** Module-scoped per-render image resolver — set for the duration of one
+ *  `renderHtml` call so the leaf `thumb()` helper can reach it without
+ *  threading the resolver through every render function's signature. */
+let activeImageResolver: CardImageResolver | null = null;
+
+/**
  * Render a full standalone HTML document.
  *
- * @param entries the built game log
- * @param title   document title (replay id / metadata)
- * @param css     the `<style>` body extracted from mockup-game-log.html
+ * @param entries        the built game log
+ * @param title          document title (replay id / metadata)
+ * @param css            the `<style>` body extracted from mockup-game-log.html
+ * @param cardImageUrl   optional card-code → artwork URL resolver. When given,
+ *                       revealed thumbnails render the real artwork.
  */
 export function renderHtml(
   entries: GameLogEntry[],
   title: string,
   css: string,
+  cardImageUrl?: CardImageResolver,
 ): string {
+  activeImageResolver = cardImageUrl ?? null;
   const rows = entries.map(renderEntry).join('\n');
+  activeImageResolver = null;
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -60,6 +76,46 @@ export function renderHtml(
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <style>
 ${css}
+/* real-artwork thumbnails (game-log prototype — injected by renderHtml) */
+.lg-thumb--art { padding: 0; overflow: hidden; }
+.lg-thumb--art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* FIELD-spell cell — appears only when an on-field move targets the Field zone */
+.lg-board__field { display: flex; justify-content: center; margin-top: 2px; }
+.lg-board__field .lg-cell { width: 13px; }
+/* ATK / DEF visual identity — ATK = ambre (offensif), DEF = bleu acier
+   (défensif), each with its own pictogram so a stat reads at a glance. */
+.lg-combat__stat { display: inline-flex; align-items: center; gap: 2px; }
+.lg-combat__stat .material-icons-round { font-size: 9px; }
+.lg-combat__def { color: #5fa8d8; }
+/* battle-posture pills — the change-position transition (ATK ⇄ DEF) */
+.lg-posture {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 1px 5px;
+  border-radius: var(--pvp-radius-sm, 2px);
+  border: 1px solid currentColor;
+  font-family: var(--font-mono); font-size: 8px; font-weight: 700;
+}
+.lg-posture .material-icons-round { font-size: 10px; color: inherit; }
+.lg-posture--atk { color: #e8a23d; }
+.lg-posture--def { color: #5fa8d8; }
+.lg-posture--before { opacity: .45; }
+/* targeting annotation — discreet line under the effect description */
+.lg-targets {
+  margin: 2px 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--gold-on-surface);
+  opacity: .85;
+}
+/* per-row zone tag (M / M/P / EMZ) so monster vs spell rows read apart */
+.lg-board__line { display: flex; align-items: center; gap: 3px; }
+.lg-board__line .lg-board__row,
+.lg-board__line .lg-board__emz { flex: 1; }
+.lg-board__rowtag {
+  width: 22px; flex: none;
+  font-family: var(--font-mono); font-size: 6px;
+  letter-spacing: .04em; text-align: right;
+  color: var(--text-muted); opacity: .75;
+}
 </style>
 </head>
 <body>
@@ -171,12 +227,18 @@ function renderHead(e: RowHead): string {
   const desc = e.description
     ? `\n          <div class="lg-desc">${esc(e.description.trim())}</div>`
     : '';
+  // Targeting is a discreet annotation of the effect row, not its own row.
+  const targetLine = e.targets?.length
+    ? `\n          <div class="lg-targets">▸ cible : ${e.targets
+        .map(cardName)
+        .join(', ')}</div>`
+    : '';
   return `          <div class="lg-src">
             ${badge}
             ${thumb(e.source, 'lg-thumb--src')}
             <span class="lg-src__name">${cardName(e.source)}</span>
             ${negTag}
-          </div>${desc}`;
+          </div>${desc}${targetLine}`;
 }
 
 // -----------------------------------------------------------------------------
@@ -206,28 +268,113 @@ ${body}
 }
 
 function renderMovedCard(m: MovedCard): string {
+  // A position change renders a posture transition (ATK ⇄ DEF) instead of
+  // the plain verb + destination flow.
+  const flow = m.posChange
+    ? `<span class="lg-moved__verb">${esc(m.verb)}</span>
+                ${posturePill(m.posChange.from, true)}
+                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
+                ${posturePill(m.posChange.to, false)}`
+    : `<span class="lg-moved__verb">${esc(m.verb)}</span>
+                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
+                ${destChip(m)}`;
   return `            <div class="lg-moved">
               <div class="lg-moved__card">
                 ${thumb(m.card, '')}
                 ${cardLabel(m.card)}
               </div>
               <div class="lg-moved__flow">
-                <span class="lg-moved__verb">${esc(m.verb)}</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                ${destChip(m)}
+                ${flow}
               </div>
             </div>`;
 }
 
+/**
+ * A battle-posture pill — ATK = ambre + cible, DEF = bleu acier + bouclier.
+ * `before` dims the pill (the posture being left).
+ */
+function posturePill(kind: 'ATK' | 'DEF', before: boolean): string {
+  const variant = kind === 'ATK' ? 'lg-posture--atk' : 'lg-posture--def';
+  const icon = kind === 'ATK' ? 'crisis_alert' : 'shield';
+  const dim = before ? ' lg-posture--before' : '';
+  return `<span class="lg-posture ${variant}${dim}"><span class="material-icons-round">${icon}</span>${kind}</span>`;
+}
+
 function destChip(m: MovedCard): string {
+  // An on-field destination renders the FULL mini-board (both players' M+S
+  // rows + the shared EMZ band) with the target cell highlighted — per the
+  // standardised field-grid rule (chantier §4.2): some effects place cards
+  // on the opponent's side, so a half-grid can't represent every position.
   if (m.destCell) {
-    const owner = m.destCell.player === 0 ? 'Toi' : 'Adv';
-    return `<div class="lg-dest"><small>${owner} ${esc(m.destCell.row)}${m.destCell.sequence + 1}</small></div>`;
+    return renderMiniBoard(m.destCell);
   }
   if (m.destZone) {
     return `<div class="lg-dest"><small>${esc(m.destZone)}</small></div>`;
   }
   return '';
+}
+
+/**
+ * Render the full two-halves mini-board with one cell highlighted.
+ * Layout top→bottom: opponent M row, opponent S row, shared EMZ band,
+ * your S row, your M row — mirroring the skytrix board.
+ */
+function renderMiniBoard(target: BoardCell): string {
+  // Each row is prefixed by its zone tag (M = monster, S = spell/trap) so a
+  // reader can tell the rows apart — the dashed border on S cells alone is
+  // too subtle at this size.
+  const row = (
+    rel: RelPlayer,
+    kind: 'M' | 'S',
+    cellClass: string,
+  ): string => {
+    const cells: string[] = [];
+    for (let seq = 0; seq < 5; seq++) {
+      const hit =
+        target.player === rel && target.row === kind && target.sequence === seq;
+      cells.push(`<div class="lg-cell${cellClass}${hit ? ' lg-cell--target' : ''}"></div>`);
+    }
+    const tag = kind === 'M' ? 'M' : 'M/P';
+    return `<div class="lg-board__line"><span class="lg-board__rowtag">${tag}</span><div class="lg-board__row">${cells.join('')}</div></div>`;
+  };
+  // EMZ band — a 5-column grid aligned with the M/S rows. The two shared
+  // Extra Monster Zones sit at columns 1 and 3 (the layout a real board
+  // uses); columns 0/2/4 are empty spacers so the band lines up vertically
+  // with the monster zones above and below it.
+  const emz = (): string => {
+    const EMZ_COLUMNS = [1, 3]; // grid columns that hold an EMZ cell
+    const cells: string[] = [];
+    for (let col = 0; col < 5; col++) {
+      const emzSlot = EMZ_COLUMNS.indexOf(col); // -1 = spacer, else 0|1
+      if (emzSlot < 0) {
+        cells.push('<div class="lg-cell"></div>');
+        continue;
+      }
+      const hit = target.row === 'EMZ' && target.sequence === emzSlot;
+      cells.push(`<div class="lg-cell lg-cell--emz${hit ? ' lg-cell--target' : ''}"></div>`);
+    }
+    // Wrapped in the same line/tag layout as the M and S rows so the EMZ
+    // band stays column-aligned with them.
+    return `<div class="lg-board__line"><span class="lg-board__rowtag">EMZ</span><div class="lg-board__emz">${cells.join('')}</div></div>`;
+  };
+  // FIELD spell cell — a single standalone cell.
+  const fieldHit = target.row === 'FIELD';
+  const fieldNote = fieldHit
+    ? `<div class="lg-board__field"><div class="lg-cell lg-cell--target"></div></div>`
+    : '';
+  // Row order mirrors a real board around the central EMZ band: each side's
+  // Monster row borders the EMZ, the Spell/Trap row sits on the outside.
+  //   Adv. S · Adv. M · EMZ · Toi M · Toi S
+  return `<div class="lg-board" title="terrain complet — case ciblée">
+                  <div class="lg-board__label lg-board__label--opp"><span>Adv.</span></div>
+                  ${row(1, 'S', ' lg-cell--st')}
+                  ${row(1, 'M', '')}
+                  ${emz()}
+                  ${row(0, 'M', '')}
+                  ${row(0, 'S', ' lg-cell--st')}
+                  <div class="lg-board__label lg-board__label--self"><span>Toi</span></div>
+                  ${fieldNote}
+                </div>`;
 }
 
 // -----------------------------------------------------------------------------
@@ -275,7 +422,23 @@ ${renderHead(e)}
 function combatThumb(s: CombatEntry['attacker']): string {
   const stat = s.stat ?? s.outcome ?? '';
   return `${thumb(s.card, 'lg-combat__thumb')}
-                <span class="lg-combat__stat">${esc(stat)}</span>`;
+                ${statBadge(stat)}`;
+}
+
+/**
+ * Render a combat stat line with its ATK/DEF identity. ATK = ambre + cible,
+ * DEF = bleu acier + bouclier. A non-ATK/DEF string (a damage outcome like
+ * "détruit" / "0") keeps the neutral damage style.
+ */
+function statBadge(stat: string): string {
+  const trimmed = stat.trim();
+  if (/^ATK\b/i.test(trimmed)) {
+    return `<span class="lg-combat__stat lg-combat__atk"><span class="material-icons-round">crisis_alert</span>${esc(trimmed)}</span>`;
+  }
+  if (/^DEF\b/i.test(trimmed)) {
+    return `<span class="lg-combat__stat lg-combat__def"><span class="material-icons-round">shield</span>${esc(trimmed)}</span>`;
+  }
+  return `<span class="lg-combat__stat lg-combat__dmg">${esc(trimmed)}</span>`;
 }
 
 // -----------------------------------------------------------------------------
@@ -288,8 +451,8 @@ function renderAction(e: ActionEntry): string {
   const detail = e.detail
     ? `<span class="lg-action__detail">${esc(e.detail)}</span>`
     : '';
-  const targets = e.targets?.length
-    ? `<div class="lg-action__targets">${e.targets.map(t => thumb(t, '')).join('')}</div>`
+  const targets = e.equipTargets?.length
+    ? `<div class="lg-action__targets">${e.equipTargets.map(t => thumb(t, '')).join('')}</div>`
     : '';
   return `        <div class="${rowClass(e)}">
 ${renderHead(e)}
@@ -310,6 +473,16 @@ ${renderHead(e)}
 // -----------------------------------------------------------------------------
 function thumb(ref: LogCardRef, extra: string): string {
   const cls = `lg-thumb${extra ? ' ' + extra : ''}${ref.revealed ? '' : ' lg-thumb--back'}`;
+  // Revealed card with a resolvable artwork → render the real image; the
+  // card name stays as alt text (and as a visible fallback if the image
+  // 404s). Otherwise fall back to the text-placeholder thumbnail.
+  if (ref.revealed && ref.cardCode != null) {
+    const url = activeImageResolver?.(ref.cardCode) ?? null;
+    if (url) {
+      const alt = esc(shortName(ref));
+      return `<div class="${cls} lg-thumb--art"><img src="${esc(url)}" alt="${alt}" loading="lazy"></div>`;
+    }
+  }
   const inner = ref.revealed ? esc(shortName(ref)) : '';
   return `<div class="${cls}">${inner}</div>`;
 }
