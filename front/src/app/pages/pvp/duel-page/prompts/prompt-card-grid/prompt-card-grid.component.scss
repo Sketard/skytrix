@@ -147,6 +147,36 @@
   pointer-events: none;
 }
 
+// Custom hover panel — full effect text. `fixed` so it escapes the
+// `overflow-x: auto` clipping of `.card-strip__inner`; the component
+// supplies viewport coordinates. Centred on the slot, above it by
+// default, flipped below when it would overrun the viewport top.
+.effect-hover {
+  position: fixed;
+  z-index: 2;
+  width: 220px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-elevated);
+  border: var(--border-width-thin) solid var(--gold-soft-25);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-3);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  animation: effect-hover-in var(--transition-fast) var(--ease-out);
+
+  &--flip {
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes effect-hover-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .card-img {
   @include card.card-img;
 }
@@ -221,4 +251,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   @include card.card-slot-reduced-motion;
+
+  .effect-hover {
+    animation: none;
+  }
 }

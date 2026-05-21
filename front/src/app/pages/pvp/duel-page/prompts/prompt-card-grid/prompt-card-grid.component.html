@@ -24,12 +24,16 @@
         <div class="zone-group__cards">
           @for (entry of group.entries; track entry.originalIndex) {
             <button class="card-slot"
+                    #slot
                     [class.card-slot--selected]="isSelected(entry.originalIndex)"
                     (click)="toggleCard(entry.originalIndex)"
                     (dblclick)="dblclickCard(entry.originalIndex)"
+                    (mouseenter)="onCardHover(entry.originalIndex, slot)"
+                    (mouseleave)="onCardLeave()"
+                    (focus)="onCardHover(entry.originalIndex, slot)"
+                    (blur)="onCardLeave()"
                     [disabled]="answered && !readOnly"
                     type="button"
-                    [attr.title]="effectTitle(entry.card)"
                     [attr.aria-label]="effectBadge(entry.originalIndex) !== null
                       ? ((entry.card | cardName)
                           + ' — ' + ('duel.prompt.effectBadge' | translate:{ n: effectBadge(entry.originalIndex) })
@@ -59,6 +63,16 @@
     }
     </div>
   </div>
+
+  @if (hoverEffect(); as hover) {
+    <div class="effect-hover"
+         [class.effect-hover--flip]="hover.flip"
+         [style.left.px]="hover.left"
+         [style.top.px]="hover.top"
+         role="presentation">
+      {{ hover.text }}
+    </div>
+  }
 
   <div class="actions">
     @if (promptData?.type === 'SELECT_SUM') {

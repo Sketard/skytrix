@@ -322,9 +322,39 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return this.effectBadgeMap.get(originalIndex) ?? null;
   }
 
-  /** Effect text for the native tooltip, or null when unavailable (empty / unresolved). */
+  /** Effect text for the hover panel, or null when unavailable (empty / unresolved). */
   effectTitle(card: CardInfo): string | null {
     return card.description ? card.description : null;
+  }
+
+  /**
+   * Effect hover panel state for SELECT_CHAIN duplicates. `position: fixed`
+   * because the card strip is `overflow-x: auto`, which would clip an
+   * absolutely-positioned panel. `flip` is true when the panel would overrun
+   * the viewport top and must render below the card instead.
+   */
+  readonly hoverEffect = signal<{ text: string; left: number; top: number; flip: boolean } | null>(null);
+
+  private static readonly HOVER_PANEL_EST_HEIGHT = 120;
+  private static readonly HOVER_PANEL_GAP = 8;
+
+  onCardHover(originalIndex: number, slot: HTMLElement): void {
+    if (this.effectBadge(originalIndex) === null) return;
+    const text = this.effectTitle(this.cards[originalIndex]);
+    if (!text) return;
+    const rect = slot.getBoundingClientRect();
+    const gap = PromptCardGridComponent.HOVER_PANEL_GAP;
+    const flip = rect.top < PromptCardGridComponent.HOVER_PANEL_EST_HEIGHT + gap;
+    this.hoverEffect.set({
+      text,
+      left: rect.left + rect.width / 2,
+      top: flip ? rect.bottom + gap : rect.top - gap,
+      flip,
+    });
+  }
+
+  onCardLeave(): void {
+    this.hoverEffect.set(null);
   }
 
   isSelected(index: number): boolean {
