@@ -2,6 +2,9 @@ import { computed, DestroyRef, ElementRef, inject, Injectable, signal } from '@a
 import type { Player, SelectCardMsg } from '../duel-ws.types';
 import { type CardAction, groupMenuActions } from './idle-action-codes';
 import { setupClickOutsideListener } from './click-outside.utils';
+import { DuelSystemStringsService } from '../duel-system-strings.service';
+import { CardDataCacheService } from './card-data-cache.service';
+import { resolveDescription } from '../duel-description.util';
 
 type ResponderPromptType = 'SELECT_IDLECMD' | 'SELECT_BATTLECMD';
 
@@ -32,10 +35,20 @@ export class CardActionMenuService {
   static readonly MENU_HEIGHT_WITH_PADDING = 204;
 
   private readonly destroyRef = inject(DestroyRef);
+  private readonly systemStrings = inject(DuelSystemStringsService);
+  private readonly cardDataCache = inject(CardDataCacheService);
 
   readonly menuState = signal<MenuState | null>(null);
   readonly effectSubMenu = signal<CardAction[] | null>(null);
   readonly pilePrompt = signal<SelectCardMsg | null>(null);
+
+  /**
+   * Localized effect-description text for the open effect sub-menu, keyed by
+   * the child action's index. `CardAction.description` carries the raw 64-bit
+   * OCGCore code; resolution is client-side (FR/EN). Card-text descriptions
+   * resolve asynchronously, so this is a signal the template re-reads.
+   */
+  readonly effectSubMenuLabels = signal<ReadonlyMap<number, string>>(new Map());
 
   readonly menuDisplayActions = computed(() => {
     const menu = this.menuState();
@@ -101,8 +114,38 @@ export class CardActionMenuService {
   close(): void {
     this.menuState.set(null);
     this.effectSubMenu.set(null);
+    this.effectSubMenuLabels.set(new Map());
     this.teardownMenuListener();
     this.onCloseHook();
+  }
+
+  /**
+   * Opens the effect sub-menu and kicks off client-side resolution of each
+   * child action's `description` code into localized text. System strings
+   * resolve synchronously; card-text descriptions resolve via the Spring Boot
+   * card-data path (the card's localized name).
+   */
+  private openEffectSubMenu(children: CardAction[]): void {
+    this.effectSubMenu.set(children);
+    this.effectSubMenuLabels.set(new Map());
+    void this.resolveEffectLabels(children);
+  }
+
+  private async resolveEffectLabels(children: CardAction[]): Promise<void> {
+    const deps = { resolveSystemString: (i: number) => this.systemStrings.resolveSystemString(i) };
+    await this.systemStrings.preload();
+    const entries = await Promise.all(
+      children.map(async (child, index): Promise<[number, string]> => {
+        if (child.description == null) return [index, ''];
+        const result = resolveDescription(child.description, deps);
+        if (result.kind === 'system') return [index, result.text];
+        const card = await this.cardDataCache.getCardData(result.cardCode);
+        return [index, card.name ?? ''];
+      }),
+    );
+    // Drop the result if the sub-menu was swapped/closed mid-fetch.
+    if (this.effectSubMenu() !== children) return;
+    this.effectSubMenuLabels.set(new Map(entries.filter(([, text]) => text)));
   }
 
   /**
@@ -141,7 +184,7 @@ export class CardActionMenuService {
         return;
       }
       event?.stopPropagation();
-      this.effectSubMenu.set(action.children);
+      this.openEffectSubMenu(action.children);
       return;
     }
     const menu = this.menuState();

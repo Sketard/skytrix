@@ -31,6 +31,9 @@ import {
 import { Prompt, HintContext } from '../../../types';
 import { CardInfo, LOCATION } from '../../../duel-ws.types';
 import { PromptActionListReadonlyComponent } from '../prompt-action-list-readonly/prompt-action-list-readonly.component';
+import { DuelSystemStringsService } from '../../../duel-system-strings.service';
+import { decodeDescription, resolveDescription } from '../../../duel-description.util';
+import { CardDataCacheService } from '../../card-data-cache.service';
 import '../prompt-registry'; // side-effect: populates PROMPT_COMPONENT_MAP
 
 function isExcavatedCard(c: CardInfo): boolean {
@@ -89,6 +92,8 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private readonly injector = inject(Injector);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly translate = inject(TranslateService);
+  private readonly systemStrings = inject(DuelSystemStringsService);
+  private readonly cardDataCache = inject(CardDataCacheService);
 
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
@@ -122,6 +127,10 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private preTargetSubscription: { unsubscribe(): void } | null = null;
 
   constructor() {
+    // Warm the FR/EN system-string tables so prompt descriptions resolve
+    // synchronously when the first SELECT_* prompt arrives.
+    void this.systemStrings.preload();
+
     // Consolidated dialog lifecycle: reacts to prompt, passiveMessage, and
     // pre-duel dice-in-progress changes. Single effect avoids ordering
     // issues when multiple signals change simultaneously.
@@ -305,8 +314,11 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       || prompt.type === 'SELECT_UNSELECT_CARD' || prompt.type === 'SELECT_COUNTER';
     const hintAction = hasHint && (hint.hintType !== 3 || isCardSelectionPrompt) ? hint.hintAction : '';
     const hintTimingLabel = prompt.type === 'SELECT_CHAIN' ? (prompt as { hintTimingLabel: string }).hintTimingLabel : '';
-    const descriptionText = 'descriptionText' in prompt ? (prompt as { descriptionText?: string }).descriptionText ?? '' : '';
+    // SELECT_EFFECTYN / SELECT_YESNO carry a numeric `description` reference
+    // code — resolve it client-side (FR/EN) instead of reading server text.
+    const descriptionText = this.resolveSystemDescription(prompt);
     this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel, descriptionText));
+    void this.resolveDescriptionAsync(prompt, cardName, hintAction, hintTimingLabel);
 
     if (this.portalOutlet) {
       this.swapComponent(prompt, componentType);
@@ -401,87 +413,155 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     this.dialogState.set('closed');
   }
 
-  // Yu-Gi-Oh game mechanic keywords highlighted à la Master Duel.
-  // Sorted longest-first so multi-word terms match before their substrings.
-  private static readonly HINT_KEYWORDS = [
-    'Tribute Summon', 'Normal Summon', 'Pendulum Summon', 'Special Summon', 'Flip Summon',
-    'Fusion Material', 'Synchro Material', 'Xyz Material', 'Link Material',
-    'Pendulum Spell',
-    'Attack Position', 'Defense Position',
-    'Tribute', 'discard', 'destroy', 'banish', 'equip', 'detach',
-    'activate', 'negate', 'target', 'reveal', 'Set',
-    'send to the GY', 'return to the hand', 'return to the Deck',
-    'return to the GY', 'add to your hand', 'place on the field',
-    'attach as material', 'change control',
-    'face-up', 'face-down',
-    'Chain',
-  ];
+  /**
+   * Yu-Gi-Oh game mechanic keywords highlighted à la Master Duel, compiled
+   * into a regex from the language-specific `duel.prompt.hint.keywords` list
+   * (`|`-separated). Cached per language so the regex is built once.
+   */
+  private hintKeywordRe: { lang: string; re: RegExp } | null = null;
 
-  private static readonly HINT_KEYWORD_RE = new RegExp(
-    `(${PvpPromptDialogComponent.HINT_KEYWORDS.map(k => k.replace(/[-/]/g, '\\$&')).join('|')})`,
-    'gi',
-  );
+  private hintKeywordRegex(): RegExp {
+    const lang = this.translate.currentLang;
+    if (this.hintKeywordRe?.lang === lang) return this.hintKeywordRe.re;
+    const list = this.translate.instant('duel.prompt.hint.keywords');
+    // Sorted longest-first in the i18n source so multi-word terms match first.
+    const keywords = (typeof list === 'string' ? list : '')
+      .split('|')
+      .filter(Boolean)
+      .map(k => k.replace(/[-/]/g, '\\$&'));
+    const re = new RegExp(`(${keywords.join('|')})`, 'gi');
+    this.hintKeywordRe = { lang, re };
+    return re;
+  }
 
   /** Wraps Yu-Gi-Oh keywords in <span class="hint-action"> for gold highlighting. */
   private highlightKeywords(text: string): string {
+    const keywords = this.translate.instant('duel.prompt.hint.keywords');
+    if (typeof keywords !== 'string' || !keywords) return text;
     return text.replace(
-      PvpPromptDialogComponent.HINT_KEYWORD_RE,
+      this.hintKeywordRegex(),
       match => `<span class="hint-action">${match}</span>`,
     );
+  }
+
+  /**
+   * Reads the numeric `description` code off a SELECT_EFFECTYN / SELECT_YESNO
+   * prompt and resolves it synchronously when it is a system string
+   * (`cardCode == 0`). Card-text descriptions (`cardCode != 0`) need an async
+   * card-data fetch — they return '' here and are filled in by
+   * `resolveCardDescriptionAsync`.
+   */
+  private resolveSystemDescription(prompt: Prompt): string {
+    const code = this.descriptionCode(prompt);
+    if (code == null) return '';
+    const result = resolveDescription(code, {
+      resolveSystemString: i => this.systemStrings.resolveSystemString(i),
+    });
+    return result.kind === 'system' ? result.text : '';
+  }
+
+  /**
+   * Resolves the prompt's `description` code once async data is available:
+   * the FR/EN system-string table (in case the sync attempt raced its load)
+   * for `cardCode == 0`, or the localized card name for `cardCode != 0`.
+   * Rebuilds the hint text and guards against a stale resolve by re-checking
+   * the active prompt before committing.
+   */
+  private async resolveDescriptionAsync(prompt: Prompt, cardName: string, hintAction: string, hintTimingLabel: string): Promise<void> {
+    const code = this.descriptionCode(prompt);
+    if (code == null) return;
+
+    const deps = { resolveSystemString: (i: number) => this.systemStrings.resolveSystemString(i) };
+    const result = resolveDescription(code, deps);
+    let descriptionText: string;
+    if (result.kind === 'card') {
+      descriptionText = (await this.cardDataCache.getCardData(result.cardCode)).name ?? '';
+    } else {
+      // Re-resolve after the table load resolves, in case the sync attempt raced it.
+      await this.systemStrings.preload();
+      descriptionText = this.systemStrings.resolveSystemString(decodeDescription(code).strIndex);
+    }
+
+    if (this.prompt() !== prompt) return; // prompt changed mid-fetch — drop
+    this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel, descriptionText));
+  }
+
+  /** Extracts the numeric `description` code from prompts that carry one. */
+  private descriptionCode(prompt: Prompt): number | null {
+    if (prompt.type === 'SELECT_EFFECTYN' || prompt.type === 'SELECT_YESNO') {
+      return (prompt as { description: number }).description;
+    }
+    return null;
   }
 
   private buildHintText(promptType: string, cardName: string, hintAction: string, hintTimingLabel = '', descriptionText = ''): string | null {
     const q = cardName ? `<span class="hint-card-name">\u201C${cardName}\u201D</span>` : '';
     const act = hintAction ? this.highlightKeywords(hintAction) : '';
     const a = (verb: string) => `<span class="hint-action">${verb}</span>`;
+    const t = (key: string, params?: Record<string, string>): string =>
+      this.translate.instant(`duel.prompt.hint.${key}`, params);
 
     // hintAction contains full system strings from strings.conf
-    // (e.g. "Select the card(s) to Tribute") — use directly + append card context
-    const withCardContext = act ? (q ? `${act} for ${q}` : act) : null;
+    // (e.g. "Select the card(s) to Tribute") -- use directly + append card context.
+    const withCardContext = act
+      ? (q ? t('actionForCard', { act, card: q }) : act)
+      : null;
 
     switch (promptType) {
       case 'SELECT_CHAIN': {
         const tl = hintTimingLabel ? this.highlightKeywords(hintTimingLabel) : '';
-        const chain = `${a('Chain')} another card or effect?`;
-        if (q) return tl ? `${tl}. ${q} is activated. ${chain}` : `${q} is activated. ${chain}`;
-        return tl ? `${tl}. ${chain}` : chain;
+        const chain = t('chain', { verb: a(t('chainKeyword')) });
+        const activated = q ? t('chainActivated', { card: q, chain }) : chain;
+        return tl ? t('timingPrefix', { timing: tl, rest: activated }) : activated;
       }
       case 'SELECT_EFFECTYN': {
-        const desc = descriptionText ? ` \u2014 ${descriptionText}` : '';
+        // The em-dash separator is part of the dynamic fragment so the
+        // template stays clean when there is no description.
+        const desc = descriptionText ? ` — ${descriptionText}` : '';
         return q
-          ? `${a('Activate')} effect of ${q}${desc}?`
-          : `${a('Activate')} effect${desc}?`;
+          ? t('activateEffectOf', { verb: a(t('activateVerb')), card: q, desc })
+          : t('activateEffect', { verb: a(t('activateVerb')), desc });
       }
       case 'SELECT_CARD':
       case 'SELECT_TRIBUTE':
       case 'SELECT_SUM':
       case 'SELECT_UNSELECT_CARD':
-        return withCardContext ?? (q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} card(s)`);
+        return withCardContext
+          ?? (q ? t('selectCardsForCard', { verb: a(t('selectVerb')), card: q })
+                : t('selectCards', { verb: a(t('selectVerb')) }));
       case 'SELECT_POSITION':
-        return q ? `${a('Choose')} position for ${q}` : `${a('Choose')} position`;
+        return q
+          ? t('choosePositionForCard', { verb: a(t('chooseVerb')), card: q })
+          : t('choosePosition', { verb: a(t('chooseVerb')) });
       case 'SELECT_PLACE':
       case 'SELECT_DISFIELD':
-        return `${a('Choose')} a zone`;
+        return t('chooseZone', { verb: a(t('chooseVerb')) });
       case 'SELECT_OPTION':
-        return withCardContext ?? (q ? `${a('Choose')} an option for ${q}` : `${a('Choose')} an option`);
+        return withCardContext
+          ?? (q ? t('chooseOptionForCard', { verb: a(t('chooseVerb')), card: q })
+                : t('chooseOption', { verb: a(t('chooseVerb')) }));
       case 'SELECT_COUNTER':
-        return `${a('Distribute')} counters`;
+        return t('distributeCounters', { verb: a(t('distributeVerb')) });
       case 'ANNOUNCE_NUMBER':
-        return q ? `${a('Declare')} a number for ${q}` : `${a('Declare')} a number`;
+        return q
+          ? t('declareNumberForCard', { verb: a(t('declareVerb')), card: q })
+          : t('declareNumber', { verb: a(t('declareVerb')) });
       case 'ANNOUNCE_CARD':
-        return q ? `${a('Declare')} a card name for ${q}` : `${a('Declare')} a card name`;
+        return q
+          ? t('declareCardNameForCard', { verb: a(t('declareVerb')), card: q })
+          : t('declareCardName', { verb: a(t('declareVerb')) });
       case 'SORT_CARD':
       case 'SORT_CHAIN':
-        return `${a('Set')} card order`;
+        return t('setCardOrder', { verb: a(t('setVerb')) });
       case 'SELECT_IDLECMD':
       case 'SELECT_BATTLECMD':
-        return act ? `It is the ${act}.` : null;
+        return act ? t('itIsThePhase', { act }) : null;
       case 'SELECT_YESNO':
-        return descriptionText ? (q ? `${q} \u2014 ${descriptionText}` : descriptionText) : q || null;
+        return descriptionText ? (q ? t('cardWithDesc', { card: q, desc: descriptionText }) : descriptionText) : q || null;
       case 'SELECT_FIRST_PLAYER':
-        return `${a('Choose')} who plays first`;
+        return t('chooseFirstPlayer', { verb: a(t('chooseVerb')) });
       case 'DICE_ROLL':
-        return `${a('Roll')} the dice`;
+        return t('rollDice', { verb: a(t('rollVerb')) });
       default:
         return q || null;
     }

@@ -14,6 +14,9 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { CardNamePipe } from '../../../../../core/pipes/card-i18n.pipe';
 import { isFaceUp } from '../../../pvp-card.utils';
 import { DuelCardArtService } from '../../duel-card-art.service';
+import { DuelSystemStringsService } from '../../../duel-system-strings.service';
+import { resolveDescription } from '../../../duel-description.util';
+import { CardDataCacheService } from '../../card-data-cache.service';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 import { PillComponent } from '../../../../../components/pill/pill.component';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
@@ -50,6 +53,8 @@ function cardKey(c: CardInfo): string {
 })
 export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt> {
   private readonly artService = inject(DuelCardArtService);
+  private readonly systemStrings = inject(DuelSystemStringsService);
+  private readonly cardDataCache = inject(CardDataCacheService);
 
   promptData: CardGridPrompt | null = null;
   hintContext: HintContext | null = null;
@@ -73,7 +78,18 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   cancelSelected = false;
   answered = false;
 
+  /**
+   * SELECT_CHAIN effect text, keyed by the entry's `description` code. The
+   * server emits the raw 64-bit code; resolution is client-side (FR/EN).
+   * Card-text descriptions resolve asynchronously via the card-data path,
+   * so this is a signal the template re-reads.
+   */
+  private readonly resolvedDescriptions = signal<ReadonlyMap<number, string>>(new Map());
+
   ngOnInit(): void {
+    if (this.promptData?.type === 'SELECT_CHAIN') {
+      void this.resolveChainDescriptions();
+    }
     if (this.promptData?.type === 'SELECT_TRIBUTE') {
       const p = this.promptData as SelectTributeMsg;
       console.warn('[SELECT_TRIBUTE] cards=%d min=%d max=%d excluded=%d cards=%o',
@@ -330,9 +346,34 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return this.effectBadgeMap.get(originalIndex) ?? null;
   }
 
+  /**
+   * Resolves each SELECT_CHAIN entry's `description` code to localized text.
+   * System strings (`cardCode == 0`) resolve synchronously; card-text
+   * descriptions resolve to the card's localized name via the Spring Boot
+   * card-data path. Keyed by the code so duplicate codes share one entry.
+   */
+  private async resolveChainDescriptions(): Promise<void> {
+    const codes = [...new Set(
+      this.cards.map(c => c.description).filter((d): d is number => !!d),
+    )];
+    if (codes.length === 0) return;
+    const deps = { resolveSystemString: (i: number) => this.systemStrings.resolveSystemString(i) };
+    await this.systemStrings.preload();
+    const entries = await Promise.all(
+      codes.map(async (code): Promise<[number, string]> => {
+        const result = resolveDescription(code, deps);
+        if (result.kind === 'system') return [code, result.text];
+        const card = await this.cardDataCache.getCardData(result.cardCode);
+        return [code, card.name ?? ''];
+      }),
+    );
+    this.resolvedDescriptions.set(new Map(entries.filter(([, text]) => text)));
+  }
+
   /** Effect text for the hover panel, or null when unavailable (empty / unresolved). */
   effectTitle(card: CardInfo): string | null {
-    return card.description ? card.description : null;
+    if (!card.description) return null;
+    return this.resolvedDescriptions().get(card.description) ?? null;
   }
 
   /**

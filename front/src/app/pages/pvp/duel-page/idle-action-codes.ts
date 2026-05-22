@@ -22,7 +22,9 @@ export interface CardAction {
   label: string;
   actionCode: number;
   index: number;
-  description?: string;
+  /** Raw 64-bit OCGCore description code (copied from `CardInfo.description`).
+   *  Resolved to localized text client-side at render time. */
+  description?: number;
   cardName?: string;
   cardCode?: number;
   children?: CardAction[];

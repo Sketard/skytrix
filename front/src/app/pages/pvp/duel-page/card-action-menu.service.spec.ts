@@ -1,6 +1,22 @@
 import { TestBed } from '@angular/core/testing';
 import { CardActionMenuService } from './card-action-menu.service';
+import { DuelSystemStringsService } from '../duel-system-strings.service';
+import { CardDataCacheService } from './card-data-cache.service';
 import type { CardAction } from './idle-action-codes';
+
+/** Stubs for the client-side description-resolution services (effect sub-menu). */
+function descriptionServiceStubs() {
+  return [
+    { provide: DuelSystemStringsService, useValue: {
+      preload: () => Promise.resolve(),
+      resolveSystemString: () => '',
+      resolveWinReason: () => '',
+    } },
+    { provide: CardDataCacheService, useValue: {
+      getCardData: () => Promise.resolve({ name: '' }),
+    } },
+  ];
+}
 
 function leafAction(overrides: Partial<CardAction> = {}): CardAction {
   return { label: 'Summon', actionCode: 1, index: 0, ...overrides };
@@ -36,7 +52,7 @@ describe('CardActionMenuService', () => {
   let onCloseHook: jasmine.Spy;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [CardActionMenuService] });
+    TestBed.configureTestingModule({ providers: [CardActionMenuService, ...descriptionServiceStubs()] });
     service = TestBed.inject(CardActionMenuService);
     sendResponse = jasmine.createSpy('sendResponse');
     onCloseHook = jasmine.createSpy('onCloseHook');

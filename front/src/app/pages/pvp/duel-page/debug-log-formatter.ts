@@ -166,21 +166,16 @@ export function formatServerMessage(msg: ServerMessage): string | null {
       return `${p(msg.player)}${SEP}chain? (${cards(msg.cards.length)}, forced=${msg.forced})`;
     case 'SELECT_EFFECTYN':
       return `${p(msg.player)}${SEP}activate ${cardName(msg.cardName)} effect?`;
-    case 'SELECT_YESNO': {
-      const desc = msg.descriptionText || `desc=${msg.description}`;
-      return `${p(msg.player)}${SEP}yes/no: ${desc}`;
-    }
+    case 'SELECT_YESNO':
+      return `${p(msg.player)}${SEP}yes/no: desc=${msg.description}`;
     case 'SELECT_PLACE':
       return `${p(msg.player)}${SEP}select ${zones(msg.count)}`;
     case 'SELECT_DISFIELD':
       return `${p(msg.player)}${SEP}disable ${zones(msg.count)}`;
     case 'SELECT_POSITION':
       return `${p(msg.player)}${SEP}choose position for ${cardName(msg.cardName)}`;
-    case 'SELECT_OPTION': {
-      const descs = (msg.descriptions as string[])?.filter(Boolean);
-      if (descs?.length) return `${p(msg.player)}${SEP}choose: ${descs.map(d => `"${d}"`).join(' / ')}`;
+    case 'SELECT_OPTION':
       return `${p(msg.player)}${SEP}choose from ${msg.options.length} options`;
-    }
     case 'SELECT_TRIBUTE':
       return `${p(msg.player)}${SEP}tribute ${msg.min}-${msg.max} from ${cards(msg.cards.length)}`;
     case 'SELECT_SUM':

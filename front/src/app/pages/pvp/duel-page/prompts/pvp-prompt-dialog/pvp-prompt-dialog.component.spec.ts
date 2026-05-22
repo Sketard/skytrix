@@ -9,6 +9,8 @@ import {
   PassiveMessage,
 } from './pvp-prompt-dialog.component';
 import { DuelWebSocketService } from '../../duel-web-socket.service';
+import { DuelSystemStringsService } from '../../../duel-system-strings.service';
+import { CardDataCacheService } from '../../card-data-cache.service';
 import { PROMPT_COMPONENT_MAP, PromptSubComponent } from '../prompt.types';
 import { Prompt } from '../../../types';
 import { CardInfo, LOCATION } from '../../../duel-ws.types';
@@ -138,6 +140,20 @@ interface WsStub {
   sendCancelPromptSequence: jasmine.Spy;
 }
 
+/** Stub providers for the client-side description-resolution services. */
+function descriptionServiceStubs() {
+  return [
+    { provide: DuelSystemStringsService, useValue: {
+      preload: () => Promise.resolve(),
+      resolveSystemString: () => '',
+      resolveWinReason: () => '',
+    } },
+    { provide: CardDataCacheService, useValue: {
+      getCardData: () => Promise.resolve({ name: '' }),
+    } },
+  ];
+}
+
 function makeWsStub(): WsStub {
   return {
     hintContext: signal({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' }),
@@ -153,19 +169,21 @@ function makeWsStub(): WsStub {
 }
 
 function makeYesNoPrompt(): Prompt {
+  // `description` is the raw 64-bit OCGCore code (cardCode 0 → strIndex 30) —
+  // the client resolves it to localized text via DuelSystemStringsService.
   return {
     type: 'SELECT_YESNO',
     player: 0,
-    descriptionText: 'Activate effect?',
-    cardName: 'Test Card',
+    description: 30,
   } as unknown as Prompt;
 }
 
 function makeOptionPrompt(): Prompt {
+  // `options` is an array of raw 64-bit description codes (cardCode 0 here).
   return {
     type: 'SELECT_OPTION',
     player: 0,
-    options: [{ description: 'A' }, { description: 'B' }],
+    options: [10, 11],
   } as unknown as Prompt;
 }
 
@@ -218,6 +236,7 @@ describe('PvpPromptDialogComponent — lifecycle (C2.1+2)', () => {
           onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
         } },
         { provide: LiveAnnouncer, useValue: { announce: jasmine.createSpy('announce') } },
+        ...descriptionServiceStubs(),
       ],
     });
 
@@ -384,6 +403,7 @@ describe('PvpPromptDialogComponent — response dispatch (C2.2)', () => {
           onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
         } },
         { provide: LiveAnnouncer, useValue: { announce: jasmine.createSpy('announce') } },
+        ...descriptionServiceStubs(),
       ],
     });
 
@@ -480,6 +500,7 @@ describe('PvpPromptDialogComponent — HostListeners + readOnly (C2.3)', () => {
           onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
         } },
         { provide: LiveAnnouncer, useValue: announcer },
+        ...descriptionServiceStubs(),
       ],
     });
 

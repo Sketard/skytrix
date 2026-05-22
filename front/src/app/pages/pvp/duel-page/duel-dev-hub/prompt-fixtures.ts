@@ -50,19 +50,15 @@ const MOCK_FIELD_CARDS: CardInfo[] = [
 export const FIXTURE_YES_NO: Prompt = {
   type: 'SELECT_YESNO',
   player: 0,
-  description: 0,
-  descriptionText: 'Activate Branded Fusion?',
+  // System-string code 94 — "Activate this card's effect now?" (cardCode 0).
+  description: 94,
 };
 
 export const FIXTURE_OPTION_LIST: Prompt = {
   type: 'SELECT_OPTION',
   player: 0,
-  options: [1, 2, 3],
-  descriptions: [
-    'Discard 1 card from your hand',
-    'Banish 1 monster from your GY',
-    'Negate the activation',
-  ],
+  // System-string codes (cardCode 0): 1100/1101/1116 — resolved client-side.
+  options: [1100, 1101, 1116],
 };
 
 export const FIXTURE_CARD_GRID_TARGET: Prompt = {
@@ -151,14 +147,16 @@ export const FIXTURE_CHAIN_DUPLICATE: Prompt = {
       name: 'Albion the Branded Dragon',
       location: LOCATION.MZONE,
       sequence: 0,
-      description: 'Fusion Summon 1 Level 8 or lower Fusion Monster',
+      // 64-bit description code: cardCode 87746184, strIndex 0 (first effect).
+      description: 87746184 * 0x100000 + 0,
     }),
     makeMockCard({
       cardCode: 87746184,
       name: 'Albion the Branded Dragon',
       location: LOCATION.MZONE,
       sequence: 0,
-      description: 'Add to your hand or Set 1 "Branded" Spell/Trap from your Deck',
+      // 64-bit description code: cardCode 87746184, strIndex 1 (second effect).
+      description: 87746184 * 0x100000 + 1,
     }),
     makeMockCard({
       cardCode: 12345,

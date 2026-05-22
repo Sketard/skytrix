@@ -29,6 +29,11 @@ export interface DuelEndMsg {
   type: 'DUEL_END';
   winner: Player | null;
   reason: DuelEndReason;
+  /** Raw OCGCore `!victory` reason code from MSG_WIN, when the duel ended
+   *  naturally in the engine (LP=0, deck-out, Exodia). Resolved to a
+   *  localized label client-side; absent for non-engine ends (surrender,
+   *  timeout, disconnect) where `reason` drives the `duel.reason.*` path. */
+  winReasonCode?: number;
 }
 
 export interface TimerStateMsg {

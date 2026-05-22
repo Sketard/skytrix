@@ -253,22 +253,6 @@ function isTokenCard(code: number): boolean {
   return cached ? (cached.cardType & TYPE_TOKEN) !== 0 : false;
 }
 
-function getOptionDesc(optionCode: bigint): string {
-  const cardCode = Number(optionCode >> 20n);
-  const strIndex = Number(optionCode & 0xFFFFFn);
-  if (!cardCode) {
-    // System string (cardCode=0) — look up in strings.conf
-    return systemStrings.get(strIndex) ?? '';
-  }
-  if (!cardDb) return '';
-  const row = cardDb.descStmt.get(cardCode) as Record<string, string> | undefined;
-  if (!row) return '';
-  return row[`str${strIndex + 1}`] || '';
-}
-
-/** Returns the description text if fully resolved, or empty string if it still contains unresolved '%' placeholders. */
-function resolvedDescOrEmpty(desc: string): string { return desc.includes('%') ? '' : desc; }
-
 function toCardInfo(c: OcgCardLoc | OcgCardLocPos): CardInfo {
   const info: CardInfo = { cardCode: c.code, name: getCardName(c.code), player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
   if ('position' in c) info.position = c.position as number;
@@ -491,7 +475,7 @@ function transformSelectIdleCmd(msg: any): ServerMessage {
     specialSummons: msg.special_summons.map(toCardInfo),
     repositions: msg.pos_changes.map(toCardInfo),
     setMonsters: msg.monster_sets.map(toCardInfo),
-    activations: msg.activates.map((c: any) => ({ ...toCardInfo(c), description: getOptionDesc(c.description) })),
+    activations: msg.activates.map((c: any) => ({ ...toCardInfo(c), description: Number(c.description) })),
     setSpellTraps: msg.spell_sets.map(toCardInfo),
     canBattlePhase: msg.to_bp, canEndPhase: msg.to_ep,
   };
@@ -502,7 +486,7 @@ function transformSelectChain(msg: any): ServerMessage {
   const timingLabel = systemStrings.get(TIMING_STRING_ID[timing] ?? 0) ?? '';
   return {
     type: 'SELECT_CHAIN', player: msg.player as Player,
-    cards: msg.selects.map((c: any) => ({ ...toCardInfo(c), description: resolvedDescOrEmpty(getOptionDesc(c.description)) })),
+    cards: msg.selects.map((c: any) => ({ ...toCardInfo(c), description: Number(c.description) })),
     forced: msg.forced,
     hintTiming: timing,
     hintTimingLabel: timingLabel,
@@ -510,21 +494,20 @@ function transformSelectChain(msg: any): ServerMessage {
 }
 
 function transformSelectEffectYn(msg: any): ServerMessage {
-  const effectDesc = getOptionDesc(msg.description as bigint);
+  // The description code is emitted raw — the client localizes it (FR/EN).
   return {
     type: 'SELECT_EFFECTYN', player: msg.player as Player,
     cardCode: msg.code, cardName: getCardName(msg.code), description: Number(msg.description),
-    descriptionText: resolvedDescOrEmpty(effectDesc),
   };
 }
 
 function transformSelectOption(msg: any): ServerMessage {
+  // `options` carries the raw 64-bit description codes — the client localizes each.
   const rawOptions = msg.options.map(Number);
-  const descriptions = msg.options.map((o: any) => getOptionDesc(BigInt(o)));
-  dlog.debug('SELECT_OPTION', { raw: msg.options.map(String), decoded: rawOptions.map((o: number) => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF })), descriptions });
+  dlog.debug('SELECT_OPTION', { raw: msg.options.map(String), decoded: rawOptions.map((o: number) => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF })) });
   return {
     type: 'SELECT_OPTION', player: msg.player as Player,
-    options: rawOptions, descriptions,
+    options: rawOptions,
   };
 }
 
@@ -708,7 +691,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return {
         type: 'SELECT_BATTLECMD', player: msg.player as Player,
         attacks: msg.attacks.map(c => toCardInfo(c)),
-        activations: msg.chains.map(c => ({ ...toCardInfo(c), description: getOptionDesc(c.description) })),
+        activations: msg.chains.map(c => ({ ...toCardInfo(c), description: Number(c.description) })),
         canMainPhase2: msg.to_m2, canEndPhase: msg.to_ep,
       };
 
@@ -727,9 +710,8 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return transformSelectEffectYn(msg);
 
     case OcgMessageType.SELECT_YESNO: {
-      const desc = Number(msg.description);
-      const yesNoDesc = getOptionDesc(BigInt(desc));
-      return { type: 'SELECT_YESNO', player: msg.player as Player, description: desc, descriptionText: resolvedDescOrEmpty(yesNoDesc) };
+      // The description code is emitted raw — the client localizes it (FR/EN).
+      return { type: 'SELECT_YESNO', player: msg.player as Player, description: Number(msg.description) };
     }
 
     case OcgMessageType.SELECT_PLACE:

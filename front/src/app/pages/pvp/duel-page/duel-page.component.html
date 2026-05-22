@@ -307,8 +307,8 @@
                 } @else {
                   <span class="card-action-menu__effect-num">{{ 'duel.misc.effect' | translate : { n: $index + 1 } }}</span>
                 }
-                @if (action.description) {
-                  <span class="card-action-menu__effect-desc">{{ action.description }}</span>
+                @if (effectSubMenuLabel($index); as desc) {
+                  <span class="card-action-menu__effect-desc">{{ desc }}</span>
                 }
               </button>
             }

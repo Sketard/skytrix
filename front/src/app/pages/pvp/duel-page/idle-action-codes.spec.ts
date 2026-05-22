@@ -141,8 +141,8 @@ describe('idle-action-codes', () => {
     it('should group multiple activate effects into children', () => {
       const actions: CardAction[] = [
         { label: 'Normal Summon', actionCode: 0, index: 0 },
-        { label: 'Activate Effect', actionCode: 5, index: 0, description: 'Effect A' },
-        { label: 'Activate Effect', actionCode: 5, index: 1, description: 'Effect B' },
+        { label: 'Activate Effect', actionCode: 5, index: 0, description: 0x101 },
+        { label: 'Activate Effect', actionCode: 5, index: 1, description: 0x102 },
         { label: 'Set', actionCode: 3, index: 0 },
       ];
       const result = groupMenuActions(actions);
@@ -151,8 +151,8 @@ describe('idle-action-codes', () => {
       expect(result[1].label).toBe('Activate Effect');
       expect(result[1].children!.length).toBe(2);
       expect(result[1].index).toBe(-1);
-      expect(result[1].children![0].description).toBe('Effect A');
-      expect(result[1].children![1].description).toBe('Effect B');
+      expect(result[1].children![0].description).toBe(0x101);
+      expect(result[1].children![1].description).toBe(0x102);
       expect(result[2].label).toBe('Set');
     });
   });

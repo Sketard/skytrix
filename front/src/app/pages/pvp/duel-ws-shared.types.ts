@@ -171,7 +171,11 @@ export interface CardInfo {
   location: CardLocation;
   sequence: number;
   position?: number;
-  description?: string;
+  /** 64-bit OCGCore description code (high 20 bits = cardCode, low 20 =
+   *  strIndex) for an activation-list entry. Resolved to localized text
+   *  client-side (see duel-description.util.ts). Absent for prompt entries
+   *  that carry no effect description. */
+  description?: number;
   amount?: number;
   /**
    * Tribute "release_param" value for SELECT_TRIBUTE entries — encodes the

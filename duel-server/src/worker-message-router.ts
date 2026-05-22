@@ -218,7 +218,11 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
   // Natural game end via MSG_WIN — generate DUEL_END for clients.
   // The worker sends MSG_WIN (not DUEL_END) for LP=0, deck-out, Exodia.
   if (message.type === 'MSG_WIN') {
-    const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
+    // Carry the raw OCGCore `!victory` code so the client localizes the
+    // exact win reason (LP=0 vs deck-out vs Exodia) instead of a generic label.
+    const endMsg: ServerMessage = {
+      type: 'DUEL_END', winner: message.player, reason: 'win', winReasonCode: message.reason,
+    };
     logger.log('DUEL_END', { duelId: session.duelId, winner: message.player, reason: 'win' });
     send(session, 0, endMsg);
     send(session, 1, endMsg);

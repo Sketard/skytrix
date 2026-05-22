@@ -57,15 +57,17 @@ export interface SelectEffectYnMsg {
   player: Player;
   cardCode: number;
   cardName: string;
+  /** 64-bit OCGCore description code: high 20 bits = cardCode, low 20 = strIndex.
+   *  Resolved to localized text client-side (see duel-description.util.ts). */
   description: number;
-  descriptionText?: string;
 }
 
 export interface SelectYesNoMsg {
   type: 'SELECT_YESNO';
   player: Player;
+  /** 64-bit OCGCore description code: high 20 bits = cardCode, low 20 = strIndex.
+   *  Resolved to localized text client-side (see duel-description.util.ts). */
   description: number;
-  descriptionText?: string;
 }
 
 export interface SelectPlaceMsg {
@@ -93,8 +95,9 @@ export interface SelectPositionMsg {
 export interface SelectOptionMsg {
   type: 'SELECT_OPTION';
   player: Player;
+  /** Each entry is a 64-bit OCGCore description code (high 20 bits = cardCode,
+   *  low 20 = strIndex). Resolved to localized labels client-side. */
   options: number[];
-  descriptions: string[];
 }
 
 export interface SelectTributeMsg {

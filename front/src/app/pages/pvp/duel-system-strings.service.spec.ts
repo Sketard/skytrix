@@ -1,0 +1,109 @@
+import { TestBed } from '@angular/core/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { TranslateService } from '@ngx-translate/core';
+import { DuelSystemStringsService } from './duel-system-strings.service';
+
+// Minimal stand-ins for the bundled assets/duel-strings/{fr,en}.json tables.
+// FR intentionally omits index 999 + victory 0x99 so the EN-fallback path is
+// exercised.
+const EN_TABLE = {
+  system: { '500': 'Select the card(s) to Tribute', '999': 'EN-only string' },
+  victory: { '0x1': 'LP reached 0', '0x99': 'EN-only victory' },
+};
+const FR_TABLE = {
+  system: { '500': 'Sélectionnez la/les carte(s) à Sacrifier' },
+  victory: { '0x1': 'Points de Vie réduits à 0' },
+};
+
+describe('DuelSystemStringsService', () => {
+  let service: DuelSystemStringsService;
+  let httpMock: HttpTestingController;
+  let translate: { currentLang: string };
+
+  function makeService(lang: string): void {
+    translate = { currentLang: lang };
+    TestBed.configureTestingModule({
+      providers: [
+        DuelSystemStringsService,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TranslateService, useValue: translate },
+      ],
+    });
+    service = TestBed.inject(DuelSystemStringsService);
+    httpMock = TestBed.inject(HttpTestingController);
+  }
+
+  /** Resolves the FR + EN table HTTP requests issued by `preload()`. */
+  async function preloadWithTables(): Promise<void> {
+    const promise = service.preload();
+    // Flush whichever tables `preload()` requested (order is not guaranteed).
+    for (const req of httpMock.match(() => true)) {
+      if (req.request.url.endsWith('fr.json')) req.flush(FR_TABLE);
+      else if (req.request.url.endsWith('en.json')) req.flush(EN_TABLE);
+    }
+    await promise;
+  }
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+
+  it('resolves a system string in French when lang=fr', async () => {
+    makeService('fr');
+    await preloadWithTables();
+    expect(service.resolveSystemString(500)).toBe('Sélectionnez la/les carte(s) à Sacrifier');
+  });
+
+  it('resolves a system string in English when lang=en', async () => {
+    makeService('en');
+    await preloadWithTables();
+    expect(service.resolveSystemString(500)).toBe('Select the card(s) to Tribute');
+  });
+
+  it('falls back to the EN table when the FR table lacks the index', async () => {
+    makeService('fr');
+    await preloadWithTables();
+    expect(service.resolveSystemString(999)).toBe('EN-only string');
+  });
+
+  it('returns an empty string for an index absent from both tables', async () => {
+    makeService('fr');
+    await preloadWithTables();
+    expect(service.resolveSystemString(123456)).toBe('');
+  });
+
+  it('resolves a win reason in French when lang=fr', async () => {
+    makeService('fr');
+    await preloadWithTables();
+    expect(service.resolveWinReason(0x1)).toBe('Points de Vie réduits à 0');
+  });
+
+  it('resolves a win reason in English when lang=en', async () => {
+    makeService('en');
+    await preloadWithTables();
+    expect(service.resolveWinReason(0x1)).toBe('LP reached 0');
+  });
+
+  it('falls back to the EN table for a win reason missing in FR', async () => {
+    makeService('fr');
+    await preloadWithTables();
+    expect(service.resolveWinReason(0x99)).toBe('EN-only victory');
+  });
+
+  it('returns an empty string for an unknown win-reason code', async () => {
+    makeService('fr');
+    await preloadWithTables();
+    expect(service.resolveWinReason(0xabc)).toBe('');
+  });
+
+  it('treats an unsupported language as the EN fallback', async () => {
+    makeService('de');
+    // `de` is not a known table — `preload()` loads EN twice (current + fallback).
+    const promise = service.preload();
+    for (const req of httpMock.match(() => true)) req.flush(EN_TABLE);
+    await promise;
+    expect(service.resolveSystemString(500)).toBe('Select the card(s) to Tribute');
+  });
+});

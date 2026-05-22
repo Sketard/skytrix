@@ -18,6 +18,7 @@ import { buildFaceDownZoneKeys } from '../pvp-card.utils';
 import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey, getZonePillCards } from '../pvp-zone.utils';
 import { CardDataCacheService } from './card-data-cache.service';
+import { DuelSystemStringsService } from '../duel-system-strings.service';
 import { PvpBoardContainerComponent } from './pvp-board-container/pvp-board-container.component';
 import { PvpHandRowComponent } from './pvp-hand-row/pvp-hand-row.component';
 import { PvpPromptDialogComponent } from './prompts/pvp-prompt-dialog/pvp-prompt-dialog.component';
@@ -116,6 +117,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   private readonly navbarCollapse = inject(NavbarCollapseService);
   private readonly dialog = inject(MatDialog);
   private readonly cardDataCache = inject(CardDataCacheService);
+  private readonly systemStrings = inject(DuelSystemStringsService);
   readonly tabGuard = inject(DuelTabGuardService);
   readonly debugLog = inject(DebugLogService);
   private readonly debugService = inject(DuelDebugService);
@@ -300,6 +302,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   readonly pilePrompt = this.cardMenu.pilePrompt;
   readonly menuDisplayActions = this.cardMenu.menuDisplayActions;
 
+  /** Localized effect-description text for the effect sub-menu child at `index`, or '' when none. */
+  effectSubMenuLabel(index: number): string {
+    return this.cardMenu.effectSubMenuLabels().get(index) ?? '';
+  }
+
   // Logic merge (pile prompt wins over the visible prompt drained by anim queue).
   private readonly mergedPrompt = computed(() => this.pilePrompt() ?? this.visiblePrompt());
 
@@ -401,11 +408,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     if (!result) return null;
     const cause = result.reason;
     if (result.winner === null) {
-      return { outcome: 'draw' as const, reason: this.mapDuelEndReason(result.reason, false) || 'Draw', cause };
+      return { outcome: 'draw' as const, reason: this.mapDuelEndReason(result, false) || 'Draw', cause };
     }
     const isWinner = result.winner === this.ownPlayerIndex();
     const outcome = isWinner ? 'victory' as const : 'defeat' as const;
-    const reason = this.mapDuelEndReason(result.reason, isWinner);
+    const reason = this.mapDuelEndReason(result, isWinner);
     return { outcome, reason, cause };
   });
 
@@ -1067,9 +1074,20 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     return handZone?.cards ?? [];
   }
 
-  private mapDuelEndReason(reason: string, isWinner: boolean): string {
+  /**
+   * Localizes the duel-end reason. When the engine ended the duel naturally
+   * (MSG_WIN), `winReasonCode` carries the raw OCGCore `!victory` code — that
+   * resolves to the exact reason (LP=0 / deck-out / Exodia) via the bundled
+   * FR/EN tables. Otherwise (or when the code has no table entry) it falls
+   * back to the `duel.reason.*` i18n path keyed off the coarse `reason`.
+   */
+  private mapDuelEndReason(result: { reason: string; winReasonCode?: number }, isWinner: boolean): string {
+    if (result.winReasonCode != null) {
+      const resolved = this.systemStrings.resolveWinReason(result.winReasonCode);
+      if (resolved) return resolved;
+    }
     const side = isWinner ? 'winner' : 'loser';
-    const key = `duel.reason.${reason}.${side}`;
+    const key = `duel.reason.${result.reason}.${side}`;
     const translated = this.translate.instant(key);
     return translated !== key ? translated : this.translate.instant('duel.reason.unknown');
   }
