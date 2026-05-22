@@ -1,7 +1,6 @@
 package com.skytrix.service;
 
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 
 import static com.skytrix.utils.CoreUtils.mapToList;
 
@@ -14,6 +13,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.skytrix.mapper.CardMapper;
@@ -47,6 +47,11 @@ public class CardService {
     @Inject
     private CardMapper cardMapper;
 
+    // readOnly tx: Card.sets/images/translations are LAZY — the mapper walks
+    // them after the repository call, so a persistence context must stay open
+    // for the mapping. Without this, the call works only under open-in-view
+    // (which the perf audit B-M1 plans to disable) → LazyInitializationException.
+    @Transactional(readOnly = true)
     public CardDetailedDTO getCardByCode(long cardCode) {
         var card = cardRepository.findByPasscode(cardCode);
         if (card == null) {
@@ -55,6 +60,9 @@ public class CardService {
         return cardMapper.toCardDetailedDTO(card);
     }
 
+    // readOnly tx: same LAZY-collection reason as getCardByCode — the mapper
+    // runs inside the CustomPageable lambda, walking Card.sets/images.
+    @Transactional(readOnly = true)
     public CustomPageable<CardDetailedDTO> search(CardFilterDTO filter, int offset, int quantity) {
         var page = cardRepository.findAll(filterService.cardSpecification(filter), PageRequest.of(offset, quantity));
         // Load every favorited id for the page in ONE query (perf-audit B-M6 —

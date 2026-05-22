@@ -13,7 +13,7 @@
   <section class="gamelog"
            [class.gamelog--closing]="isClosing()"
            role="dialog"
-           aria-label="Journal de partie"
+           [attr.aria-label]="'gameLog.panel.ariaLabel' | translate"
            (keydown)="onKeydown($event)">
     <header class="gamelog__head">
       <div class="gamelog__title">
@@ -138,16 +138,16 @@
         </div>
         <div class="lg-turn__players">
           <div class="lg-turn__p">
-            <app-avatar [pseudo]="playerNames()[0]" size="sm" />
+            <app-avatar [pseudo]="displayNames()[0]" size="sm" />
             <div class="lg-turn__meta">
-              <span class="lg-turn__name">{{ playerNames()[0] }}</span>
+              <span class="lg-turn__name">{{ displayNames()[0] }}</span>
               <span class="lg-turn__lp">{{ turnLp(e)[0] }}</span>
             </div>
           </div>
           <div class="lg-turn__p lg-turn__p--opp">
-            <app-avatar [pseudo]="playerNames()[1]" size="sm" />
+            <app-avatar [pseudo]="displayNames()[1]" size="sm" />
             <div class="lg-turn__meta">
-              <span class="lg-turn__name">{{ playerNames()[1] }}</span>
+              <span class="lg-turn__name">{{ displayNames()[1] }}</span>
               <span class="lg-turn__lp">{{ turnLp(e)[1] }}</span>
             </div>
           </div>
@@ -160,8 +160,14 @@
     @case ('duel-over') {
       <div class="lg-end">
         <div class="lg-end__title">
-          🏆
-          {{ (e.winnerSide === 0 ? 'gameLog.panel.youWin' : 'gameLog.panel.oppWin') | translate }}
+          {{ e.winnerSide === 'draw' ? '🤝' : '🏆' }}
+          {{
+            (e.winnerSide === 'draw'
+              ? 'gameLog.panel.draw'
+              : e.winnerSide === 0
+                ? 'gameLog.panel.youWin'
+                : 'gameLog.panel.oppWin') | translate
+          }}
         </div>
         @if (e.reasonKey) {
           <div class="lg-end__reason">{{ e.reasonKey | translate }}</div>
@@ -345,8 +351,8 @@
   highlighted. Top→bottom: opponent S, opponent M, shared EMZ, your M, your S.
 ============================================================================ -->
 <ng-template #miniBoardTpl let-cell="cell">
-  <div class="lg-board" title="terrain complet — case ciblée">
-    <div class="lg-board__label lg-board__label--opp"><span>Adv.</span></div>
+  <div class="lg-board" [attr.title]="'gameLog.panel.boardTitle' | translate">
+    <div class="lg-board__label lg-board__label--opp"><span>{{ 'gameLog.panel.boardSideOpp' | translate }}</span></div>
     <ng-container
       [ngTemplateOutlet]="boardLineTpl"
       [ngTemplateOutletContext]="{ tag: 'M/P', cells: boardRow(cell, 1, 'S'), grid: 'row' }" />
@@ -362,7 +368,7 @@
     <ng-container
       [ngTemplateOutlet]="boardLineTpl"
       [ngTemplateOutletContext]="{ tag: 'M/P', cells: boardRow(cell, 0, 'S'), grid: 'row' }" />
-    <div class="lg-board__label lg-board__label--self"><span>Toi</span></div>
+    <div class="lg-board__label lg-board__label--self"><span>{{ 'gameLog.panel.boardSideSelf' | translate }}</span></div>
     @if (isFieldTarget(cell)) {
       <div class="lg-board__field"><div class="lg-cell lg-cell--target"></div></div>
     }
@@ -465,7 +471,7 @@
               <span class="lg-lploss__who">
                 {{ (l.player === 0 ? 'gameLog.panel.you' : 'gameLog.panel.opponent') | translate }}
               </span>
-              <span class="lg-lploss__amt">−{{ l.amount }} PV</span>
+              <span class="lg-lploss__amt">−{{ l.amount }} {{ 'gameLog.panel.lpLossSuffix' | translate }}</span>
             </span>
           }
         </div>

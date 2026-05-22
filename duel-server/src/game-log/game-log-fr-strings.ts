@@ -83,9 +83,11 @@ export const KEY_TO_FR: Readonly<Record<string, string>> = {
   // --- Action row labels (ActionEntry.labelKey) ------------------------------
   'gameLog.action.equip': 'Équipé à',
   'gameLog.action.counter': 'Compteur',
-  // Counter-type fallback — the builder only knows the numeric type. The `{n}`
-  // placeholder is filled with `ActionEntry.counterType` by the renderer.
-  'gameLog.action.counterType': 'Type {n}',
+  // Counter-type fallback — the builder only knows the numeric type. The
+  // `{{n}}` placeholder is filled with `ActionEntry.counterType` by the
+  // renderer (ngx-translate interpolation syntax — keeps this table a true
+  // mirror of the front-end `fr.json` `gameLog.*` keys).
+  'gameLog.action.counterType': 'Type {{n}}',
   'gameLog.action.gyDeckSwap': 'Échange GY ↔ Deck',
   'gameLog.action.shuffleHand': 'Mélange de la main',
   'gameLog.action.shuffleDeck': 'Mélange du Deck',

@@ -14,6 +14,7 @@ import type {
   Player,
   BoardStatePayload,
   ZoneId,
+  CardInfo,
 } from '../ws-protocol-shared.js';
 import { LOCATION, POSITION } from '../ws-protocol-shared.js';
 import type { PreComputedState } from '../ws-protocol-replay.js';
@@ -1029,11 +1030,14 @@ export class GameLogBuilder {
     });
   }
 
-  /** MSG_SWAP — two cards exchange controllers/zones (§4.3). */
-  private onSwap(_e: { card1: unknown; card2: unknown }): void {
+  /** MSG_SWAP — two cards exchange controllers/zones (§4.3). The row is
+   *  attributed to the controller of `card1` (the swap initiator's card), not
+   *  the viewer — an opponent-initiated control swap must render on the
+   *  opponent's side. */
+  private onSwap(e: { card1: CardInfo; card2: CardInfo }): void {
     this.entries.push({
       block: 'action',
-      ...this.rowHead(this.perspective, null, null),
+      ...this.rowHead(this.rel(e.card1.player), null, null),
       action: 'swap',
       labelKey: ACTION_KEY.swap,
     });
@@ -1060,10 +1064,15 @@ export class GameLogBuilder {
     // pure key cannot carry it. Emit `winnerSide` (relative) + a `reasonKey`;
     // the renderer composes "🏆 Toi/Adversaire — Victoire" + the reason line.
     // An unmapped reason code passes through as its own key (loud fallback).
+    // OCGCore emits `player === 2` for a draw (double-KO / simultaneous
+    // deck-out) — `rel(2)` would resolve to side 1 and mislabel it an
+    // opponent victory, so map any non-{0,1} player to `'draw'`.
+    const winnerSide: RelPlayer | 'draw' =
+      e.player === 0 || e.player === 1 ? this.rel(e.player) : 'draw';
     this.entries.push({
       block: 'separator',
       kind: 'duel-over',
-      winnerSide: this.rel(e.player),
+      winnerSide,
       reasonKey: WIN_REASON[e.reason] ?? `gameLog.winReason.${e.reason}`,
     });
   }

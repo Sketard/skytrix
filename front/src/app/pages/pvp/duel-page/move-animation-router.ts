@@ -294,6 +294,11 @@ export class MoveAnimationRouter {
       cleanup();
     }
     this._pendingTimeouts.clear();
+    // Re-arm the one-shot missing-`toPlayer` warning for the next duel — the
+    // router is reused across a rematch (R8, no ngOnDestroy), so a warning
+    // tripped by a legacy replay must not silence a genuine live-PvP
+    // regression in the duel that follows.
+    this._warnedMissingToPlayer = false;
   }
 
   /** Release only pre-locks for specific source keys. */

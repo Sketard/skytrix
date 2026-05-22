@@ -18,6 +18,13 @@ import {
   FIELD_REVEAL_LIFT_MS, FIELD_REVEAL_LIFT_MIN_MS,
   FIELD_REVEAL_GLOW_MS, FIELD_REVEAL_GLOW_MIN_MS,
   FIELD_REVEAL_HOLD_MS, FIELD_REVEAL_HOLD_MIN_MS,
+  PILE_REVEAL_LIFT_MS, PILE_REVEAL_LIFT_MIN_MS,
+  PILE_REVEAL_HOLD_MS, PILE_REVEAL_HOLD_MIN_MS,
+  PILE_REVEAL_FADE_MS, PILE_REVEAL_FADE_MIN_MS,
+  PILE_REVEAL_HIGHLIGHT_MS, PILE_REVEAL_HIGHLIGHT_MIN_MS,
+  PILE_REVEAL_LIFT_OFFSET_PX,
+  HAND_CONFIRM_FLIP_MS, HAND_CONFIRM_FLIP_MIN_MS,
+  HAND_CONFIRM_HOLD_MS, HAND_CONFIRM_HOLD_MIN_MS,
 } from './animation-constants';
 
 /**
@@ -690,13 +697,31 @@ export class DrawSequenceManager {
         if (pileCards.length) await this.confirmCardsOnPile(pileCards);
       })();
     }
+    // No card matched a known bucket (HAND/DECK/MZONE/SZONE/GRAVE/BANISHED) —
+    // an EXTRA/OVERLAY confirm or a protocol drift. Surface it instead of
+    // silently dropping the reveal.
+    this.logger.warn(
+      'processConfirmCardsEvent — %d card(s) in unhandled location(s): %o',
+      msg.cards.length,
+      msg.cards.map(c => c.location),
+    );
     return 0;
   }
 
+  /** Scaled lift/hold/fade durations shared by the deck-top and pile reveals
+   *  (`confirmCardsOnDeck` / `confirmCardsOnPile` — identical lift overlay). */
+  private pileRevealDurations(): { lift: number; hold: number; fade: number } {
+    return {
+      lift: this.ctx.scaledDuration(PILE_REVEAL_LIFT_MS, PILE_REVEAL_LIFT_MIN_MS),
+      hold: this.ctx.scaledDuration(PILE_REVEAL_HOLD_MS, PILE_REVEAL_HOLD_MIN_MS),
+      fade: this.ctx.scaledDuration(PILE_REVEAL_FADE_MS, PILE_REVEAL_FADE_MIN_MS),
+    };
+  }
+
   async confirmCardsInHand(cards: readonly { cardCode: number; player: number; sequence: number }[]): Promise<void> {
-    const flipDuration = this.ctx.scaledDuration(300, 150);
-    const highlightDuration = this.ctx.scaledDuration(600, 300);
-    const holdDuration = this.ctx.scaledDuration(200, 100);
+    const flipDuration = this.ctx.scaledDuration(HAND_CONFIRM_FLIP_MS, HAND_CONFIRM_FLIP_MIN_MS);
+    const highlightDuration = this.ctx.scaledDuration(PILE_REVEAL_HIGHLIGHT_MS, PILE_REVEAL_HIGHLIGHT_MIN_MS);
+    const holdDuration = this.ctx.scaledDuration(HAND_CONFIRM_HOLD_MS, HAND_CONFIRM_HOLD_MIN_MS);
     let animatedCount = 0;
 
     for (const card of cards) {
@@ -750,19 +775,15 @@ export class DrawSequenceManager {
    *  Lifecycle delegated to `BoardEffectsService.revealCardOnDeck` — the float is tracked as an overlay so
    *  reset / disconnect / destroy clears it (no DOM leak). */
   async confirmCardsOnDeck(cards: readonly { cardCode: number; player: number }[]): Promise<void> {
-    const durations = {
-      lift: this.ctx.scaledDuration(250, 125),
-      hold: this.ctx.scaledDuration(800, 400),
-      fade: this.ctx.scaledDuration(200, 100),
-    };
-    const highlightDuration = this.ctx.scaledDuration(600, 300);
+    const durations = this.pileRevealDurations();
+    const highlightDuration = this.ctx.scaledDuration(PILE_REVEAL_HIGHLIGHT_MS, PILE_REVEAL_HIGHLIGHT_MIN_MS);
 
     for (const card of cards) {
       const relPlayer = this.ctx.relativePlayer(card.player);
       const deckKey = `DECK-${relPlayer}`;
       const cardFaceUrl = this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
       // Own deck is at the bottom (negative Y lifts toward center); opponent deck at top (positive Y).
-      const liftY = relPlayer === 0 ? -60 : 60;
+      const liftY = relPlayer === 0 ? -PILE_REVEAL_LIFT_OFFSET_PX : PILE_REVEAL_LIFT_OFFSET_PX;
       await this.boardEffects.revealCardOnDeck(
         deckKey,
         cardFaceUrl,
@@ -813,12 +834,8 @@ export class DrawSequenceManager {
   async confirmCardsOnPile(
     cards: readonly { cardCode: number; player: number; location: CardLocation }[],
   ): Promise<void> {
-    const durations = {
-      lift: this.ctx.scaledDuration(250, 125),
-      hold: this.ctx.scaledDuration(800, 400),
-      fade: this.ctx.scaledDuration(200, 100),
-    };
-    const highlightDuration = this.ctx.scaledDuration(600, 300);
+    const durations = this.pileRevealDurations();
+    const highlightDuration = this.ctx.scaledDuration(PILE_REVEAL_HIGHLIGHT_MS, PILE_REVEAL_HIGHLIGHT_MIN_MS);
 
     for (const card of cards) {
       if (!card.cardCode) continue;
@@ -827,7 +844,7 @@ export class DrawSequenceManager {
       const cardFaceUrl = this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
       // Own piles sit at the bottom (lift toward centre = negative Y);
       // opponent piles at the top (positive Y) — mirrors confirmCardsOnDeck.
-      const liftY = relPlayer === 0 ? -60 : 60;
+      const liftY = relPlayer === 0 ? -PILE_REVEAL_LIFT_OFFSET_PX : PILE_REVEAL_LIFT_OFFSET_PX;
       await this.boardEffects.revealCardOnDeck(
         zoneKey,
         cardFaceUrl,

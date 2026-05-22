@@ -208,8 +208,10 @@ function renderStream(entries: GameLogEntry[]): string {
     if (entry.block === 'separator' && entry.kind === 'chain-start') {
       const end = chainGroupEnd(entries, i);
       out.push(renderChainGroup(entries.slice(i + 1, end)));
-      // Skip past the consumed chain-end separator (if present).
-      i = end < entries.length ? end + 1 : end;
+      // Skip the closing `chain-end` marker (renders nothing), but NOT a `turn`
+      // separator that closed an unclosed chain — that one is a real entry.
+      const closer = entries[end];
+      i = closer?.block === 'separator' && closer.kind === 'chain-end' ? end + 1 : end;
       continue;
     }
     out.push(renderEntry(entry, false));
@@ -337,11 +339,16 @@ function renderSeparator(e: SeparatorEntry): string {
       // STRUCTURED kind — compose the winner line + reason from the side and
       // the win-reason key.
       const winner =
-        e.winnerSide === 0 ? 'Toi — Victoire' : 'Adversaire — Victoire';
+        e.winnerSide === 'draw'
+          ? 'Match nul'
+          : e.winnerSide === 0
+            ? 'Toi — Victoire'
+            : 'Adversaire — Victoire';
+      const icon = e.winnerSide === 'draw' ? '🤝' : '🏆';
       const reason = e.reasonKey
         ? `<div class="lg-end__reason">${esc(frString(e.reasonKey))}</div>`
         : '';
-      return `        <div class="lg-end"><div class="lg-end__title">🏆 ${esc(winner)}</div>${reason}</div>`;
+      return `        <div class="lg-end"><div class="lg-end__title">${icon} ${esc(winner)}</div>${reason}</div>`;
     }
   }
 }
@@ -740,7 +747,7 @@ function renderAction(e: ActionEntry, isResolution: boolean): string {
     e.counterType !== undefined
       ? `<span class="lg-action__detail">${esc(
           frString('gameLog.action.counterType').replace(
-            '{n}',
+            '{{n}}',
             String(e.counterType),
           ),
         )}</span>`

@@ -1086,6 +1086,7 @@
       "turn": "Tour",
       "youWin": "Victoire",
       "oppWin": "Défaite",
+      "draw": "Match nul",
       "negated": "annulé",
       "targets": "Cibles",
       "openingHand": "Main de départ",
@@ -1094,7 +1095,13 @@
       "diceRoll": "Lancer de dé",
       "you": "Vous",
       "opponent": "Adversaire",
-      "counterType": "Type"
+      "counterType": "Type",
+      "ariaLabel": "Journal de partie",
+      "boardTitle": "terrain complet — case ciblée",
+      "boardSideOpp": "Adv.",
+      "boardSideSelf": "Toi",
+      "lpLossSuffix": "PV",
+      "cardFallback": "Carte"
     },
     "verb": {
       "draw": "Pioche",

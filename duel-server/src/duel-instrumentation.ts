@@ -127,8 +127,12 @@ export function time<T>(bucket: DuelBucket, fn: () => T): T {
 }
 
 function nsToMs(ns: bigint): number {
-  // bigint -> float ms, keeping 3 decimals via a µs-scaled division.
-  return Number(ns / 1000n) / 1000;
+  // bigint -> float ms. Convert to Number FIRST, then divide — the old
+  // `Number(ns / 1000n) / 1000` floored any sub-microsecond span to 0ms via
+  // the integer bigint division, which zeroed the mean/total of fast hot
+  // paths (e.g. a memoized getCardName cache hit). Number(bigint) is exact
+  // up to 2^53 ns (~104 days) — far beyond any measured span here.
+  return Number(ns) / 1_000_000;
 }
 
 export function snapshot(): DuelInstrumentationSnapshot {

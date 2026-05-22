@@ -117,8 +117,9 @@ export interface SeparatorEntry {
   lp?: [number, number];
   /** Turn separator only — the turn number (the renderer composes "Tour N"). */
   turnNumber?: number;
-  /** `duel-over` separator only — the relative side that won the duel. */
-  winnerSide?: RelPlayer;
+  /** `duel-over` separator only — the relative side that won the duel, or
+   *  `'draw'` for a double-KO / simultaneous deck-out (OCGCore `player === 2`). */
+  winnerSide?: RelPlayer | 'draw';
   /** `duel-over` separator only — i18n key of the win-reason line. */
   reasonKey?: string;
 }

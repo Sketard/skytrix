@@ -129,8 +129,20 @@ export class GameLogPanelComponent {
 
   /** Player pseudos in relative order `[you, opp]` — drives the turn-header
    *  avatars. PROVISIONAL default for Lot 4b; the page feeds the real pair
-   *  alongside the trigger wiring (Lot 4f). */
-  readonly playerNames = input<[string, string]>(['Toi', 'Adversaire']);
+   *  alongside the trigger wiring (Lot 4f). The default is i18n keys resolved
+   *  by `displayNames` — a real pseudo passed in stays verbatim. */
+  readonly playerNames = input<[string, string]>([
+    'gameLog.panel.you',
+    'gameLog.panel.opponent',
+  ]);
+
+  /** `playerNames` with the i18n-key default resolved — the `gameLog.` prefix
+   *  is the discriminator (only the default carries it, no real pseudo does),
+   *  same convention as `displayName` for builder card names. */
+  readonly displayNames = computed<[string, string]>(() => {
+    const [you, opp] = this.playerNames();
+    return [this.displayName(you), this.displayName(opp)];
+  });
 
   /** Emitted when a journal row carrying a `cardCode` is clicked — the page
    *  opens the card-inspector (Lot 4e, `inspectCard` pattern from
@@ -342,7 +354,11 @@ export class GameLogPanelComponent {
       if (entry.block === 'separator' && entry.kind === 'chain-start') {
         const end = this.chainGroupEnd(entries, i);
         out.push(this.buildChainNode(entries.slice(i + 1, end)));
-        i = end < entries.length ? end + 1 : end;
+        // Skip the closing `chain-end` marker (it renders nothing), but NOT a
+        // `turn` separator that closed an unclosed chain — that one is a real,
+        // visible entry (turn number + LP block) and must be re-processed.
+        const closer = entries[end];
+        i = closer?.block === 'separator' && closer.kind === 'chain-end' ? end + 1 : end;
         continue;
       }
       out.push({ kind: 'entry', entry });
@@ -435,7 +451,9 @@ export class GameLogPanelComponent {
   /** The display name of a card ref — a real name, or a `#code` fallback. */
   cardName(ref: LogCardRef): string {
     if (ref.cardName != null) return this.displayName(ref.cardName);
-    return ref.cardCode != null ? `#${ref.cardCode}` : 'Carte';
+    return ref.cardCode != null
+      ? `#${ref.cardCode}`
+      : this.translate.instant('gameLog.panel.cardFallback');
   }
 
   /** First two words of a card name — fits the small thumbnail box. */
@@ -445,7 +463,7 @@ export class GameLogPanelComponent {
         ? this.displayName(ref.cardName)
         : ref.cardCode != null
           ? `#${ref.cardCode}`
-          : 'carte';
+          : this.translate.instant('gameLog.panel.cardFallback');
     return name.split(/\s+/).slice(0, 2).join(' ');
   }
 

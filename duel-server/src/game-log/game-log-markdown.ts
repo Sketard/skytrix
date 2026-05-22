@@ -90,9 +90,15 @@ function renderSeparator(e: SeparatorEntry): string[] {
     case 'duel-over': {
       // STRUCTURED kind — compose the winner line + reason from the side and
       // the win-reason key.
-      const winner = e.winnerSide === 0 ? 'Toi — Victoire' : 'Adversaire — Victoire';
+      const winner =
+        e.winnerSide === 'draw'
+          ? 'Match nul'
+          : e.winnerSide === 0
+            ? 'Toi — Victoire'
+            : 'Adversaire — Victoire';
+      const icon = e.winnerSide === 'draw' ? '🤝' : '🏆';
       const reason = e.reasonKey ? ` (${frString(e.reasonKey)})` : '';
-      return [`> **🏆 ${winner}${reason}**`, ''];
+      return [`> **${icon} ${winner}${reason}**`, ''];
     }
   }
 }
@@ -204,7 +210,7 @@ function renderAction(e: ActionEntry, isResolution: boolean): string[] {
   const parts = [`**${frString(e.labelKey)}**`];
   // Counter rows carry a numeric type — compose "Type N" from the i18n key.
   if (e.counterType !== undefined) {
-    parts.push(frString('gameLog.action.counterType').replace('{n}', String(e.counterType)));
+    parts.push(frString('gameLog.action.counterType').replace('{{n}}', String(e.counterType)));
   }
   if (e.counterBadge) parts.push(`\`${e.counterBadge}\``);
   if (e.equipTargets?.length) {

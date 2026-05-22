@@ -1086,6 +1086,7 @@
       "turn": "Turn",
       "youWin": "Victory",
       "oppWin": "Defeat",
+      "draw": "Draw",
       "negated": "negated",
       "targets": "Targets",
       "openingHand": "Opening hand",
@@ -1094,7 +1095,13 @@
       "diceRoll": "Dice roll",
       "you": "You",
       "opponent": "Opponent",
-      "counterType": "Type"
+      "counterType": "Type",
+      "ariaLabel": "Game log",
+      "boardTitle": "full board — targeted cell",
+      "boardSideOpp": "Opp.",
+      "boardSideSelf": "You",
+      "lpLossSuffix": "LP",
+      "cardFallback": "Card"
     },
     "verb": {
       "draw": "Draw",

@@ -80,6 +80,28 @@ export const FIELD_REVEAL_GLOW_MIN_MS = 180;
 export const FIELD_REVEAL_HOLD_MS = 260;
 export const FIELD_REVEAL_HOLD_MIN_MS = 130;
 
+// --- Pile-confirm reveal (MSG_CONFIRM_CARDS for a card revealed from a pile
+//     zone — deck top, GY or Banished — to prove a cost / condition). Pile
+//     zones render only their top card, so a card-shaped overlay lifts out of
+//     the pile, shows the face, then fades. Shared by `confirmCardsOnDeck`
+//     and `confirmCardsOnPile`. ---
+/** Rise of the reveal overlay out of the pile. */
+export const PILE_REVEAL_LIFT_MS = 250;
+export const PILE_REVEAL_LIFT_MIN_MS = 125;
+/** Hold on the lifted, face-up card before it fades. */
+export const PILE_REVEAL_HOLD_MS = 800;
+export const PILE_REVEAL_HOLD_MIN_MS = 400;
+/** Fade-out of the overlay back into the pile. */
+export const PILE_REVEAL_FADE_MS = 200;
+export const PILE_REVEAL_FADE_MIN_MS = 100;
+/** Highlight glow applied to the lifted card while it is readable. */
+export const PILE_REVEAL_HIGHLIGHT_MS = 600;
+export const PILE_REVEAL_HIGHLIGHT_MIN_MS = 300;
+/** Vertical lift distance (px). The sign is applied per side at the call
+ *  site — own piles sit at the bottom (lift up = negative), opponent piles
+ *  at the top (lift down = positive). */
+export const PILE_REVEAL_LIFT_OFFSET_PX = 60;
+
 // --- Opponent hand-card reveal (MSG_CHAINING for a card the opponent
 //     activates from their hand) — the card flips face-up while easing out
 //     of the fan so the viewer can read it, then eases back (staying
@@ -87,6 +109,15 @@ export const FIELD_REVEAL_HOLD_MIN_MS = 130;
 /** Flip face-up + detach-from-fan ease-out, and the ease-back. */
 export const HAND_REVEAL_DETACH_MS = 280;
 export const HAND_REVEAL_DETACH_MIN_MS = 140;
+
+// --- Hand-confirm reveal (MSG_CONFIRM_CARDS for a card confirmed in hand —
+//     opponent-perspective floats flip face-up so the viewer can read them). ---
+/** rotateY flip of an opponent-perspective hand float to its face. */
+export const HAND_CONFIRM_FLIP_MS = 300;
+export const HAND_CONFIRM_FLIP_MIN_MS = 150;
+/** Hold on the revealed hand float before it returns to the fan. */
+export const HAND_CONFIRM_HOLD_MS = 200;
+export const HAND_CONFIRM_HOLD_MIN_MS = 100;
 
 /** MSG_BECOME_TARGET zone outline pulse (handler returns this directly + uses
  *  it for the unset-targeted-keys timer). Not scaled by `scaledDuration`. */

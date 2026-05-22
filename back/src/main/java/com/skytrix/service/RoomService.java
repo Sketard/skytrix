@@ -251,9 +251,15 @@ public class RoomService {
         var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
         var joinerDto = roomMapper.toRoomDTO(room, room.getPlayer2().getId());
         var roomCodeForBroadcast = room.getRoomCode();
+        // Capture the player IDs into locals — afterCommit runs once the
+        // persistence context is closed, so dereferencing the LAZY
+        // room.getPlayerN() proxies inside the lambda would risk a
+        // LazyInitializationException.
+        var player1Id = room.getPlayer1().getId();
+        var player2Id = room.getPlayer2().getId();
         afterCommit(() -> roomEventService.sendRoomReady(roomCodeForBroadcast,
-                room.getPlayer1().getId(), creatorDto,
-                room.getPlayer2().getId(), joinerDto));
+                player1Id, creatorDto,
+                player2Id, joinerDto));
 
         log.info("Room {} started — duel {}", room.getRoomCode(), room.getDuelServerId());
         return creatorDto;
