@@ -22,6 +22,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -57,13 +58,24 @@ public class Card {
     private Short banInfo;
     private Integer genesysPoint;
 
-    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    // sets / images / translations were FetchType.EAGER — each list triggered
+    // a JOIN, producing a cartesian product (a 30-card page = ~1500 rows) AND
+    // an N+1 across every card-serving endpoint (/cards/search of 30 cards ran
+    // 122 SQL queries — perf-audit chantier finding B-C1). Now LAZY + @BatchSize:
+    // Hibernate loads each collection for the whole page in one
+    // `... WHERE card_id IN (?, ?, …)` — 3 batched queries instead of ~90.
+    // @BatchSize is used (not JOIN FETCH) because three List collections cannot
+    // be join-fetched together — that throws MultipleBagFetchException.
+    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @BatchSize(size = 100)
     private List<CardSet> sets = new ArrayList<>();
 
-    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @BatchSize(size = 100)
     private List<CardImage> images = new ArrayList<>();
 
-    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @BatchSize(size = 100)
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     private List<Translation> translations = new ArrayList<>();

@@ -19,6 +19,15 @@ public interface CardRepository extends CrudRepository<Card, Long>, JpaSpecifica
 
 	boolean existsByIdAndFavoritedById(Long cardId, Long userId);
 
+	/**
+	 * Returns, among the given card ids, those the user has favorited — in a
+	 * single query. Replaces the per-card existsByIdAndFavoritedById call
+	 * (perf-audit finding B-M6: one EXISTS per mapped card).
+	 */
+	@Query("SELECT c.id FROM Card c JOIN c.favoritedBy u " +
+		   "WHERE u.id = :userId AND c.id IN :cardIds")
+	List<Long> findFavoritedCardIds(@Param("userId") Long userId, @Param("cardIds") List<Long> cardIds);
+
 	@Query(value = "SELECT DISTINCT ON (c.passcode) c.passcode, t.name " +
 		   "FROM card c JOIN translation t ON c.id = t.card_id " +
 		   "WHERE LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%')) " +

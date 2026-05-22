@@ -57,6 +57,17 @@ public class RoomService {
     private final RoomEventService roomEventService;
     private final RoomLobbyEventService roomLobbyEventService;
 
+    // Self-injection — lets startDuel() call its own @Transactional phase
+    // methods THROUGH the Spring proxy (a plain `this.prepareDuelStart()` would
+    // bypass the proxy via self-invocation, making @Transactional a no-op).
+    // Injected by field, NOT constructor: @Lazy on a Lombok-generated
+    // constructor param is not honoured, so it would form an unbreakable
+    // self-cycle at boot. Field injection + @Lazy breaks the cycle cleanly.
+    // See startDuel / perf-audit finding B-M3.
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private RoomService self;
+
     @Transactional
     public RoomDTO createRoom(CreateRoomDTO dto) {
         var user = authService.getConnectedUser();
@@ -142,11 +153,54 @@ public class RoomService {
      * Failures roll the room back to WAITING (joiner is dropped) so the
      * creator can wait for someone else.
      */
-    // TODO [H3 review]: pessimistic lock held during duelServerClient.createDuel() external HTTP call.
-    // Post-MVP: split into claim (short tx) -> external call -> activate/rollback (short tx)
-    // to avoid holding DB connection/lock during external IO.
-    @Transactional
+    /**
+     * Data carried from the claim phase to the activate phase — the room is
+     * fetched fresh in each transaction, so only plain values cross the gap.
+     */
+    private record DuelStartContext(Long player1Id, String player1Pseudo, String deck1Name, DuelDeckDTO deck1,
+                                    Long player2Id, String player2Pseudo, String deck2Name, DuelDeckDTO deck2) {}
+
+    /**
+     * Creator-only: bridge a READY room to ACTIVE by spinning up an OCGCore
+     * duel on the duel-server. This is the "Lancer la partie" button.
+     *
+     * B-M3 (perf-audit chantier): split into three steps so the pessimistic
+     * row lock + DB connection are NOT held across the duel-server HTTP call
+     * (OCGCore creation takes seconds):
+     *   1. prepareDuelStart — short tx: lock, validate, claim status
+     *      CREATING_DUEL, commit (lock released here).
+     *   2. duelServerClient.createDuel — external HTTP, NO transaction.
+     *   3. finalizeDuelStart / rollbackDuelStart — short tx: apply ACTIVE +
+     *      tokens, or roll back to WAITING.
+     * The CREATING_DUEL status is the guard between steps — another request
+     * sees the room is mid-creation. Called through `self` so each phase
+     * crosses the Spring proxy and gets its own transaction.
+     */
     public RoomDTO startDuel(String roomCode) {
+        var ctx = self.prepareDuelStart(roomCode);
+        DuelCreationResponse response;
+        try {
+            // soloMode=false: duel-server handles RPS at app layer before starting OCGCore.
+            response = duelServerClient.createDuel(
+                    ctx.player1Id().toString(), ctx.player1Pseudo(), ctx.deck1Name(), ctx.deck1(),
+                    ctx.player2Id().toString(), ctx.player2Pseudo(), ctx.deck2Name(), ctx.deck2(),
+                    false, false, null);
+            validateDuelResponse(response);
+        } catch (RestClientException | ResponseStatusException e) {
+            self.rollbackDuelStart(roomCode);
+            if (e instanceof ResponseStatusException rse) throw rse;
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Duel server unavailable", e);
+        }
+        return self.finalizeDuelStart(roomCode, response);
+    }
+
+    /**
+     * Step 1 — claim the room (short tx). Locks the row, checks the creator
+     * and READY state, validates both decks, flips status to CREATING_DUEL,
+     * commits. The lock + connection are released when this returns.
+     */
+    @Transactional
+    public DuelStartContext prepareDuelStart(String roomCode) {
         var user = authService.getConnectedUser();
         var room = roomRepository.findByRoomCodeForUpdate(roomCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
@@ -174,48 +228,50 @@ public class RoomService {
         room.setStatus(RoomStatus.CREATING_DUEL);
         roomRepository.save(room);
 
-        try {
-            // soloMode=false: duel-server handles RPS at app layer before starting OCGCore
-            var response = duelServerClient.createDuel(
-                    room.getPlayer1().getId().toString(),
-                    room.getPlayer1().getPseudo(),
-                    deck1Name,
-                    deck1,
-                    room.getPlayer2().getId().toString(),
-                    room.getPlayer2().getPseudo(),
-                    deck2Name,
-                    deck2,
-                    false,
-                    false,
-                    null
-            );
+        return new DuelStartContext(
+                room.getPlayer1().getId(), room.getPlayer1().getPseudo(), deck1Name, deck1,
+                room.getPlayer2().getId(), room.getPlayer2().getPseudo(), deck2Name, deck2);
+    }
 
-            validateDuelResponse(response);
+    /**
+     * Step 3a — apply the duel-server result to the room (short tx). Moves
+     * the room CREATING_DUEL → ACTIVE and stores the WS tokens.
+     */
+    @Transactional
+    public RoomDTO finalizeDuelStart(String roomCode, DuelCreationResponse response) {
+        var room = roomRepository.findByRoomCodeForUpdate(roomCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
 
-            room.setDuelServerId(response.getDuelId());
-            room.setWsToken1(response.getWsTokens()[0]);
-            room.setWsToken2(response.getWsTokens()[1]);
-            room.setStatus(RoomStatus.ACTIVE);
-            roomRepository.save(room);
+        room.setDuelServerId(response.getDuelId());
+        room.setWsToken1(response.getWsTokens()[0]);
+        room.setWsToken2(response.getWsTokens()[1]);
+        room.setStatus(RoomStatus.ACTIVE);
+        roomRepository.save(room);
 
-            var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
-            var joinerDto = roomMapper.toRoomDTO(room, room.getPlayer2().getId());
-            var roomCodeForBroadcast = room.getRoomCode();
-            afterCommit(() -> roomEventService.sendRoomReady(roomCodeForBroadcast,
-                    room.getPlayer1().getId(), creatorDto,
-                    room.getPlayer2().getId(), joinerDto));
+        var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
+        var joinerDto = roomMapper.toRoomDTO(room, room.getPlayer2().getId());
+        var roomCodeForBroadcast = room.getRoomCode();
+        afterCommit(() -> roomEventService.sendRoomReady(roomCodeForBroadcast,
+                room.getPlayer1().getId(), creatorDto,
+                room.getPlayer2().getId(), joinerDto));
 
-            log.info("Room {} started by user {} — duel {}", room.getRoomCode(), user.getPseudo(), room.getDuelServerId());
-            return creatorDto;
-        } catch (RestClientException e) {
-            // Roll back to WAITING and drop the joiner — let the creator
-            // wait for someone else rather than leave them stranded in READY.
-            room.setStatus(RoomStatus.WAITING);
-            room.setPlayer2(null);
-            room.setPlayer2DecklistId(null);
-            roomRepository.save(room);
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Duel server unavailable", e);
-        }
+        log.info("Room {} started — duel {}", room.getRoomCode(), room.getDuelServerId());
+        return creatorDto;
+    }
+
+    /**
+     * Step 3b — duel-server failed: roll the room back to WAITING and drop
+     * the joiner (short tx), so the creator can wait for someone else rather
+     * than be stranded in CREATING_DUEL.
+     */
+    @Transactional
+    public void rollbackDuelStart(String roomCode) {
+        var room = roomRepository.findByRoomCodeForUpdate(roomCode).orElse(null);
+        if (room == null) return;
+        room.setStatus(RoomStatus.WAITING);
+        room.setPlayer2(null);
+        room.setPlayer2DecklistId(null);
+        roomRepository.save(room);
     }
 
     /**

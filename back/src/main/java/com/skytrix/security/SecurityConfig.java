@@ -77,7 +77,12 @@ public class SecurityConfig {
 				new AntPathRequestMatcher("/documents/small/code/{\\d+}", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/documents/sample", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/client-logs", HttpMethod.POST.name()),
-				new AntPathRequestMatcher("/actuator/health"),
+				// Actuator runs on the separate management port 8081 (see
+				// application.properties — internal-only, never proxied
+				// publicly). Permitting /actuator/** here exposes health +
+				// metrics on that internal port; the perf-audit chantier
+				// (Phase 0a) reads http.server.requests / hibernate.* from it.
+				new AntPathRequestMatcher("/actuator/**"),
 				new AntPathRequestMatcher("/replays", HttpMethod.POST.name()),
 				new AntPathRequestMatcher("/internal/replays/**")
 		);

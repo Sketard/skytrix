@@ -8,6 +8,7 @@ import static com.skytrix.utils.CoreUtils.mapToList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.skytrix.mapper.CardMapper;
 import com.skytrix.model.dto.card.CardDetailedDTO;
 import com.skytrix.model.dto.card.CardFilterDTO;
+import com.skytrix.model.entity.Card;
 import com.skytrix.model.entity.CardUserPossessed;
 import com.skytrix.repository.CardRepository;
 import com.skytrix.repository.CardUserPossessedRepository;
@@ -54,9 +56,16 @@ public class CardService {
     }
 
     public CustomPageable<CardDetailedDTO> search(CardFilterDTO filter, int offset, int quantity) {
+        var page = cardRepository.findAll(filterService.cardSpecification(filter), PageRequest.of(offset, quantity));
+        // Load every favorited id for the page in ONE query (perf-audit B-M6 —
+        // was one EXISTS per card). Empty page → empty set, no query.
+        var cardIds = mapToList(page.getContent(), Card::getId);
+        var favoritedIds = cardIds.isEmpty()
+            ? Set.<Long>of()
+            : Set.copyOf(cardRepository.findFavoritedCardIds(authService.getConnectedUserId(), cardIds));
         return new CustomPageable<>(
-            () -> cardRepository.findAll(filterService.cardSpecification(filter), PageRequest.of(offset, quantity)),
-            cardMapper::toCardDetailedDTO
+            () -> page,
+            card -> cardMapper.toCardDetailedDTO(card, favoritedIds)
         );
     }
 

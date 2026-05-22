@@ -10,6 +10,7 @@ import com.skytrix.requester.YugiproRequester;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +60,8 @@ public class YugiproApiService {
     @Value("${document.folder.image.big}")
     private String bigImageFolder;
 
+    // Evict the cardSetNames cache (B-C5) — a full sync may add/rename sets.
+    @CacheEvict(value = "cardSetNames", allEntries = true)
     @Transactional
     public void fetchAll() {
         var fetchedCardsEn = requester.fetchAll(EN);

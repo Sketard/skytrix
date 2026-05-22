@@ -94,15 +94,33 @@ public class DeckService {
         // timestamp always reflects the user's last meaningful action.
         deck.setUpdatedAt(Instant.now());
         deckRepository.save(deck);
-        return deckMapper.toDeckDTO(deck);
+        return deckMapper.toDeckDTO(deck, loadFavoritedIds(deck));
     }
 
+    @Transactional(readOnly = true)
     public DeckDTO getById(Long id) {
-        return deckMapper.toDeckDTO(deckRepository.findById(id).orElseThrow());
+        var deck = deckRepository.findById(id).orElseThrow();
+        return deckMapper.toDeckDTO(deck, loadFavoritedIds(deck));
     }
 
     public List<ShortDeckDTO> getAll() {
         return mapToList(deckRepository.findAllByUserId(authService.getConnectedUserId()), deck -> deckMapper.toShortDeckDTO(deck));
+    }
+
+    /**
+     * Loads — in a single query — which of the deck's cards the connected user
+     * has favorited (perf-audit finding B-M6: was one EXISTS per card).
+     */
+    private java.util.Set<Long> loadFavoritedIds(Deck deck) {
+        var cardIds = deck.getCardsIndexed().stream()
+                .map(cid -> cid.getCard().getId())
+                .distinct()
+                .toList();
+        if (cardIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return java.util.Set.copyOf(
+                cardRepository.findFavoritedCardIds(authService.getConnectedUserId(), cardIds));
     }
 
     public void deleteById(Long id) {

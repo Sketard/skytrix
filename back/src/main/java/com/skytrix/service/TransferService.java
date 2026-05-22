@@ -51,7 +51,9 @@ public class TransferService {
 
 
 	public DeckDTO importDeckFromFile(byte[] content) {
-		return deckMapper.toDeckDTO(importDeck(content));
+		// Empty favorites set — an imported deck preview has no favorite state
+		// to show (the deck is not yet persisted; the user just uploaded it).
+		return deckMapper.toDeckDTO(importDeck(content), java.util.Set.of());
 	}
 
 	private Deck importDeck(byte[] content) {

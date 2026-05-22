@@ -111,9 +111,35 @@ public abstract class CardMapper {
         return target;
     }
 
+    /**
+     * Variant that takes a pre-loaded set of favorited card ids instead of
+     * issuing one EXISTS query per card (perf-audit finding B-M6). The caller
+     * (e.g. CardService.search / DeckService) loads all favorites for the page
+     * in a single query and passes the set here.
+     */
+    public CardDetailedDTO toCardDetailedDTO(Card source, java.util.Set<Long> favoritedCardIds) {
+        var target = new CardDetailedDTO();
+        target.setSets(mapToList(source.getSets(), this::toCardSetDTO));
+        target.setImages(mapToList(source.getImages(), this::toCardImageDTO));
+        target.setCard(toCardDTO(source));
+        target.setFavorite(favoritedCardIds.contains(source.getId()));
+        return target;
+    }
+
     public IndexedCardDetailDTO toIndexedCardDetailDTO(CardDeckIndex source) {
         var target = new IndexedCardDetailDTO();
         target.setCard(toCardDetailedDTO(source.getCard()));
+        target.setIndex(source.getIndex());
+        if (source.getSelectedImage() != null) {
+            target.setSelectedImageId(source.getSelectedImage().getId());
+        }
+        return target;
+    }
+
+    /** Favorite-aware variant — see toCardDetailedDTO(Card, Set) / B-M6. */
+    public IndexedCardDetailDTO toIndexedCardDetailDTO(CardDeckIndex source, java.util.Set<Long> favoritedCardIds) {
+        var target = new IndexedCardDetailDTO();
+        target.setCard(toCardDetailedDTO(source.getCard(), favoritedCardIds));
         target.setIndex(source.getIndex());
         if (source.getSelectedImage() != null) {
             target.setSelectedImageId(source.getSelectedImage().getId());

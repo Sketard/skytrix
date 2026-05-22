@@ -63,14 +63,19 @@ public abstract class DeckMapper {
 	@Mapping(target = "selectedImage", source = "selectedImage")
 	public abstract CardDeckIndex toCardDeckIndex(Card card, int index, DeckKeyword type, Deck deck, CardImage selectedImage);
 
-	public DeckDTO toDeckDTO(Deck source) {
+	/**
+	 * @param favoritedCardIds ids the connected user has favorited, pre-loaded
+	 *        by the caller in a single query (perf-audit finding B-M6 — avoids
+	 *        one EXISTS per card of the deck).
+	 */
+	public DeckDTO toDeckDTO(Deck source, java.util.Set<Long> favoritedCardIds) {
 		var target = new DeckDTO();
 		target.setId(source.getId());
 		target.setImages(mapToList(source.getImages(), cardMapper::toIndexedCardImageDTO));
 		target.setName(source.getName());
-		target.setMainDeck(mapToList(source.getMainDeckIndexed(), cardMapper::toIndexedCardDetailDTO));
-		target.setExtraDeck(mapToList(source.getExtraDeckIndexed(), cardMapper::toIndexedCardDetailDTO));
-		target.setSideDeck(mapToList(source.getSideDeckIndexed(), cardMapper::toIndexedCardDetailDTO));
+		target.setMainDeck(mapToList(source.getMainDeckIndexed(), cid -> cardMapper.toIndexedCardDetailDTO(cid, favoritedCardIds)));
+		target.setExtraDeck(mapToList(source.getExtraDeckIndexed(), cid -> cardMapper.toIndexedCardDetailDTO(cid, favoritedCardIds)));
+		target.setSideDeck(mapToList(source.getSideDeckIndexed(), cid -> cardMapper.toIndexedCardDetailDTO(cid, favoritedCardIds)));
 		return target;
 	}
 

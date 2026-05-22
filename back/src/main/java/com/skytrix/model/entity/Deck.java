@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -37,10 +38,17 @@ public class Deck {
 
     private String name;
 
+    // @BatchSize: when getAll() loads M decks, each lazy collection is fetched
+    // for all decks in one `... WHERE deck_id IN (?, ?, …)` instead of M
+    // queries (perf-audit finding B-M7). cardsIndexed is additionally
+    // join-fetched via @EntityGraph on the repository (one bag — images stays
+    // batched, two join-fetched bags would throw MultipleBagFetchException).
     @OneToMany(mappedBy = "deck", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<ImageIndex> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "deck", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<CardDeckIndex> cardsIndexed = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
