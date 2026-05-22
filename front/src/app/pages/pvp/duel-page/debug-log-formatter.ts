@@ -123,7 +123,7 @@ export function formatServerMessage(msg: ServerMessage): string | null {
       return 'Chain resolved completely';
     case 'MSG_HINT': {
       const prefix = HINT_PREFIX[msg.hintType] ?? `hint(${msg.hintType})`;
-      const detail = msg.cardName || msg.hintAction || `value=${msg.value}`;
+      const detail = msg.cardName || `value=${msg.value}`;
       return `${p(msg.player)}${SEP}${prefix}: ${detail}`;
     }
     case 'MSG_CONFIRM_CARDS': {

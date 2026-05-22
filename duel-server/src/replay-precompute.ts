@@ -278,7 +278,7 @@ export function runReplayPreComputation(
   let turnStates: PreComputedState[] = [];
   let events: ServerMessage[] = [];
   let currentDecisions: DecisionMoment[] = [];
-  let lastHint: { hintType: number; value: number; cardName: string; hintAction: string } | null = null;
+  let lastHint: { hintType: number; value: number; cardName: string } | null = null;
   let lastConfirmedCards: CardInfo[] | null = null;
   let hasWinOrDraw = false;
   let activeChainIndex: number | null = null; // Track current chain link depth
@@ -366,7 +366,7 @@ export function runReplayPreComputation(
 
           // Track hint/confirmedCards accumulators (metadata, not pushed to events)
           if (filtered.type === 'MSG_HINT') {
-            lastHint = { hintType: filtered.hintType, value: filtered.value, cardName: filtered.cardName, hintAction: filtered.hintAction };
+            lastHint = { hintType: filtered.hintType, value: filtered.value, cardName: filtered.cardName };
           } else if (filtered.type === 'MSG_CONFIRM_CARDS') {
             lastConfirmedCards = filtered.cards;
             events.push(filtered); // Also push to events so the front-end can animate the reveal

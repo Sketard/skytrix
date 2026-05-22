@@ -110,7 +110,6 @@ export interface HintMsg {
   player: Player;
   value: number;
   cardName: string;
-  hintAction: string;
 }
 
 export interface ConfirmCardsMsg {

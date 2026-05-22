@@ -16,12 +16,12 @@ const PRIVATE_LOCATIONS: Set<number> = new Set([LOCATION.DECK, LOCATION.HAND, LO
  * Public hintTypes — payload is a system string ID, bitmask label, or number.
  * Never carries a card code, safe to broadcast to both players.
  *
- * See `duel-worker.ts:transformMessage HINT case` for the produced shape:
- * - 1 = HINT_EVENT     (sysStr ID → hintAction)
- * - 2 = HINT_MESSAGE   (sysStr ID → hintAction)
- * - 6 = HINT_RACE      (race bitmask → label)
- * - 7 = HINT_ATTRIB    (attr bitmask → label)
- * - 9 = HINT_NUMBER    (raw number → string)
+ * See `duel-worker.ts:transformHint` for the produced shape — `value` carries:
+ * - 1 = HINT_EVENT     (system string ID)
+ * - 2 = HINT_MESSAGE   (system string ID)
+ * - 6 = HINT_RACE      (race bitmask)
+ * - 7 = HINT_ATTRIB    (attribute bitmask)
+ * - 9 = HINT_NUMBER    (raw number)
  *
  * Every other hintType (3, 4, 5, 8, 10, 13, 15 + any future/unknown value)
  * may carry a card code (cardName populated) and is routed to the deciding

@@ -131,7 +131,7 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   readonly activeHint           = computed<HintContext | null>(() => {
     const d = this._activeDecision();
     const h = d?.hint;
-    return h ? { hintType: h.hintType, player: d!.player, value: h.value, cardName: h.cardName, hintAction: h.hintAction } : null;
+    return h ? { hintType: h.hintType, player: d!.player, value: h.value, cardName: h.cardName } : null;
   });
   readonly activeConfirmedCards = computed<CardInfo[] | null>(() => this._activeDecision()?.confirmedCards ?? null);
   readonly activeTimestamp      = computed(() => this._activeDecision()?.response.timestamp ?? null);

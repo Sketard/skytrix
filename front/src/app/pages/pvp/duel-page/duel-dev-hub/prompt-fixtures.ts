@@ -140,7 +140,6 @@ export const FIXTURE_CHAIN_DUPLICATE: Prompt = {
   player: 0,
   forced: false,
   hintTiming: 0x80,
-  hintTimingLabel: 'Main Phase',
   cards: [
     makeMockCard({
       cardCode: 87746184,

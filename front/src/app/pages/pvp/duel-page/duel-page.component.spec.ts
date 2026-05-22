@@ -94,7 +94,7 @@ class StubWsService {
 
   // Direct signal surface read by the component + by PromptDerivationService.
   readonly pendingPrompt = signal<unknown>(null);
-  readonly hintContext = signal({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
+  readonly hintContext = signal({ hintType: 0, player: 0, value: 0, cardName: '' });
   readonly animationQueue = signal<readonly unknown[]>([]);
   readonly timerState = signal<TimerStateMsg | null>(null);
   readonly timerStatePerPlayer = signal<readonly [TimerStateMsg | null, TimerStateMsg | null]>([null, null]);

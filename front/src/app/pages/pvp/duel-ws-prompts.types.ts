@@ -49,7 +49,6 @@ export interface SelectChainMsg {
   cards: CardInfo[];
   forced: boolean;
   hintTiming: number;
-  hintTimingLabel: string;
 }
 
 export interface SelectEffectYnMsg {

@@ -20,7 +20,7 @@ export interface DecisionMoment {
   prompt: ServerMessage;
   response: { data: unknown; timestamp?: string };
   player: Player;
-  hint?: { hintType: number; value: number; cardName: string; hintAction: string };
+  hint?: { hintType: number; value: number; cardName: string };
   confirmedCards?: CardInfo[];
   /** Board state snapshot taken before the player's response was fed.
    *  Matches the BOARD_STATE the live PvP client would have received. */

@@ -129,7 +129,7 @@ class StubOptionComponent implements PromptSubComponent {
 }
 
 interface WsStub {
-  hintContext: WritableSignal<{ hintType: number; player: number; value: number; cardName: string; hintAction: string }>;
+  hintContext: WritableSignal<{ hintType: number; player: number; value: number; cardName: string }>;
   activeChainLinks: WritableSignal<Array<{ chainIndex: number; resolving: boolean; negated: boolean; cardCode: number; cardName: string; player: number; zoneId: string; location: number; sequence: number }>>;
   diceInProgress: WritableSignal<boolean>;
   firstPlayerResponseSent: WritableSignal<boolean>;
@@ -156,7 +156,7 @@ function descriptionServiceStubs() {
 
 function makeWsStub(): WsStub {
   return {
-    hintContext: signal({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' }),
+    hintContext: signal({ hintType: 0, player: 0, value: 0, cardName: '' }),
     activeChainLinks: signal([] as WsStub['activeChainLinks'] extends WritableSignal<infer T> ? T : never),
     diceInProgress: signal(false),
     firstPlayerResponseSent: signal(false),

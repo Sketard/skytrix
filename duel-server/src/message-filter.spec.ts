@@ -304,7 +304,7 @@ describe('filterMessage', () => {
     // Public hintTypes — broadcast safe (no card code in payload).
     for (const hintType of [1, 2, 6, 7, 9]) {
       it(`should pass hintType ${hintType} (public) to both players`, () => {
-        const msg = { type: 'MSG_HINT', hintType, player: 0, value: 1, cardName: '', hintAction: 'a' } as any;
+        const msg = { type: 'MSG_HINT', hintType, player: 0, value: 1, cardName: '' } as any;
         expect(filterMessage(msg, 0)).toBe(msg);
         expect(filterMessage(msg, 1)).toBe(msg);
       });

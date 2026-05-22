@@ -199,16 +199,6 @@ function setLastIdleSnapshot(snap: WorkerSnapshot | null): void {
 // Constants & Helpers
 // =============================================================================
 
-// Maps OCGCore hint_timing bitmask values to strings.conf system string indices.
-const TIMING_STRING_ID: Record<number, number> = {
-  0x01: 20, // Draw Phase
-  0x02: 21, // Standby Phase
-  0x04: 23, // Attempting to end the Main Phase
-  0x08: 80, // Entering the Battle Phase
-  0x10: 25, // End of the Battle Phase
-  0x20: 81, // Entering the End Phase
-};
-
 const PHASE_MAP: Record<number, Phase> = {
   1: 'DRAW', 2: 'STANDBY', 4: 'MAIN1', 8: 'BATTLE_START',
   16: 'BATTLE_STEP', 32: 'DAMAGE', 64: 'DAMAGE_CALC',
@@ -217,20 +207,6 @@ const PHASE_MAP: Record<number, Phase> = {
 
 const MZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5'];
 const SZONE_IDS: ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
-
-const RACE_LABELS: Record<number, string> = {
-  1: 'Warrior', 2: 'Spellcaster', 4: 'Fairy', 8: 'Fiend', 16: 'Zombie',
-  32: 'Machine', 64: 'Aqua', 128: 'Pyro', 256: 'Rock', 512: 'Winged Beast',
-  1024: 'Plant', 2048: 'Insect', 4096: 'Thunder', 8192: 'Dragon', 16384: 'Beast',
-  32768: 'Beast-Warrior', 65536: 'Dinosaur', 131072: 'Fish', 262144: 'Sea Serpent',
-  524288: 'Reptile', 1048576: 'Psychic', 2097152: 'Divine-Beast', 4194304: 'Creator God',
-  8388608: 'Wyrm', 16777216: 'Cyberse',
-};
-
-const ATTRIB_LABELS: Record<number, string> = {
-  1: 'EARTH', 2: 'WATER', 4: 'FIRE', 8: 'WIND', 16: 'LIGHT', 32: 'DARK', 64: 'DIVINE',
-};
-
 
 function getCardName(code: number): string {
   if (!cardDb || !code) return '';
@@ -389,33 +365,22 @@ function transformMove(msg: any): ServerMessage {
 function transformHint(msg: any): ServerMessage {
   const hintType = msg.hint_type as number;
   const value = Number(msg.hint);
+  // Only the card identity is resolved server-side — it is a card name, not a
+  // system string, and the front-end already carries card data. Everything
+  // else (system strings, race/attribute labels, numbers) is resolved
+  // client-side from the raw `hintType` + `value` (see duel-hint.util.ts).
   let cardName = '';
-  let hintAction = '';
   if (hintType === 5 || hintType === 8 || hintType === 10 || hintType === 13 || hintType === 15) {
     // HINT_EFFECT / HINT_CODE / HINT_CARD: value is a card code
     cardName = getCardName(value);
-  } else if (hintType === 1 || hintType === 2) {
-    // HINT_EVENT / HINT_MESSAGE: value is a system string ID
-    hintAction = systemStrings.get(value) ?? '';
   } else if (hintType === 3 || hintType === 4) {
-    // HINT_SELECTMSG / HINT_OPSELECTED: value is a system string ID or a card code
-    const sysStr = systemStrings.get(value);
-    if (sysStr) {
-      hintAction = sysStr;
-    } else {
+    // HINT_SELECTMSG / HINT_OPSELECTED: value is a system string ID or a card
+    // code — resolve the card name only when it is not a system string.
+    if (!systemStrings.get(value)) {
       cardName = getCardName(value);
     }
-  } else if (hintType === 6) {
-    // HINT_RACE: value is a race bitmask
-    hintAction = RACE_LABELS[value] ?? `race:0x${value.toString(16)}`;
-  } else if (hintType === 7) {
-    // HINT_ATTRIB: value is an attribute bitmask
-    hintAction = ATTRIB_LABELS[value] ?? `attr:0x${value.toString(16)}`;
-  } else if (hintType === 9) {
-    // HINT_NUMBER: value is a number
-    hintAction = String(value);
   }
-  return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName, hintAction };
+  return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName };
 }
 
 function transformBattle(msg: any): ServerMessage | null {
@@ -482,14 +447,13 @@ function transformSelectIdleCmd(msg: any): ServerMessage {
 }
 
 function transformSelectChain(msg: any): ServerMessage {
-  const timing = msg.hint_timing as number;
-  const timingLabel = systemStrings.get(TIMING_STRING_ID[timing] ?? 0) ?? '';
+  // `hintTiming` ships raw — the client resolves the timing label from it
+  // (see duel-hint.util.ts `resolveHintTimingLabel`).
   return {
     type: 'SELECT_CHAIN', player: msg.player as Player,
     cards: msg.selects.map((c: any) => ({ ...toCardInfo(c), description: Number(c.description) })),
     forced: msg.forced,
-    hintTiming: timing,
-    hintTimingLabel: timingLabel,
+    hintTiming: msg.hint_timing as number,
   };
 }
 

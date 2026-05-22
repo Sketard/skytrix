@@ -33,6 +33,13 @@ import { CardInfo, LOCATION } from '../../../duel-ws.types';
 import { PromptActionListReadonlyComponent } from '../prompt-action-list-readonly/prompt-action-list-readonly.component';
 import { DuelSystemStringsService } from '../../../duel-system-strings.service';
 import { decodeDescription, resolveDescription } from '../../../duel-description.util';
+import {
+  HintResolveDeps,
+  KNOWN_HINT_TYPES,
+  resolveHintAction,
+  resolveHintTimingLabel,
+} from '../../../duel-hint.util';
+import { getAttributeName, getRaceName } from '../../../pvp-alteration.utils';
 import { CardDataCacheService } from '../../card-data-cache.service';
 import '../prompt-registry'; // side-effect: populates PROMPT_COMPONENT_MAP
 
@@ -125,11 +132,19 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private responseSubscription: { unsubscribe(): void } | null = null;
   private longPressSubscription: { unsubscribe(): void } | null = null;
   private preTargetSubscription: { unsubscribe(): void } | null = null;
+  private langChangeSubscription: { unsubscribe(): void } | null = null;
 
   constructor() {
     // Warm the FR/EN system-string tables so prompt descriptions resolve
     // synchronously when the first SELECT_* prompt arrives.
     void this.systemStrings.preload();
+
+    // Re-localize the hint banner of an open prompt when the UI language
+    // changes — the hint action / timing label are resolved client-side.
+    this.langChangeSubscription = this.translate.onLangChange.subscribe(() => {
+      const prompt = this.prompt();
+      if (prompt && this.dialogState() !== 'closed') this.refreshHintText(prompt);
+    });
 
     // Consolidated dialog lifecycle: reacts to prompt, passiveMessage, and
     // pre-duel dice-in-progress changes. Single effect avoids ordering
@@ -254,6 +269,8 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.detachComponent();
+    this.langChangeSubscription?.unsubscribe();
+    this.langChangeSubscription = null;
   }
 
   // --- Private ---
@@ -289,10 +306,29 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   }
 
   private openForPrompt(prompt: Prompt, componentType: Type<PromptSubComponent>): void {
+    this.isSending.set(false);
+    this.refreshHintText(prompt);
+
+    if (this.portalOutlet) {
+      this.swapComponent(prompt, componentType);
+      this.dialogState.set('open');
+    } else {
+      // Defer visibility until ngAfterViewInit attaches the content
+      this.pendingAttach = { prompt, componentType };
+    }
+  }
+
+  /**
+   * Builds the localized hint banner for `prompt` and commits it to
+   * `hintText`. The hint `action` and the SELECT_CHAIN timing label are
+   * resolved client-side from the raw `hintType` / `value` / `hintTiming`
+   * codes (see `duel-hint.util.ts`) — keyed off the current UI language.
+   * Re-run on a language change so an open prompt re-localizes in place.
+   */
+  private refreshHintText(prompt: Prompt): void {
     const hint = this.hintContext() ?? this.wsService.hintContext();
     const hasHint = hint.hintType !== 0;
 
-    this.isSending.set(false);
     // For SELECT_CHAIN, only show "X is activated" if there's actually an active chain.
     // Otherwise the hint cardName is leftover from a summon/effect, not an activation.
     const chainHasActivation = prompt.type === 'SELECT_CHAIN' && this.wsService.activeChainLinks().length === 0;
@@ -312,21 +348,54 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     const isCardSelectionPrompt = prompt.type === 'SELECT_CARD' || prompt.type === 'SELECT_CHAIN'
       || prompt.type === 'SELECT_TRIBUTE' || prompt.type === 'SELECT_SUM'
       || prompt.type === 'SELECT_UNSELECT_CARD' || prompt.type === 'SELECT_COUNTER';
-    const hintAction = hasHint && (hint.hintType !== 3 || isCardSelectionPrompt) ? hint.hintAction : '';
-    const hintTimingLabel = prompt.type === 'SELECT_CHAIN' ? (prompt as { hintTimingLabel: string }).hintTimingLabel : '';
+    const hintAction = hasHint && (hint.hintType !== 3 || isCardSelectionPrompt)
+      ? this.resolveHintAction(hint)
+      : '';
+    const hintTimingLabel = prompt.type === 'SELECT_CHAIN'
+      ? resolveHintTimingLabel((prompt as { hintTiming: number }).hintTiming, this.hintDeps(hint))
+      : '';
     // SELECT_EFFECTYN / SELECT_YESNO carry a numeric `description` reference
     // code — resolve it client-side (FR/EN) instead of reading server text.
     const descriptionText = this.resolveSystemDescription(prompt);
     this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel, descriptionText));
     void this.resolveDescriptionAsync(prompt, cardName, hintAction, hintTimingLabel);
+  }
 
-    if (this.portalOutlet) {
-      this.swapComponent(prompt, componentType);
-      this.dialogState.set('open');
-    } else {
-      // Defer visibility until ngAfterViewInit attaches the content
-      this.pendingAttach = { prompt, componentType };
+  /**
+   * Resolves the hint action text from the raw `hintType` + `value`. An
+   * unanticipated `hintType` yields '' (the util's default) — logged here
+   * rather than rendering a raw number to the player.
+   */
+  private resolveHintAction(hint: HintContext): string {
+    const action = resolveHintAction(hint.hintType, hint.value, this.hintDeps(hint));
+    // Warn ONLY for a genuinely unknown hintType — a known card-code type
+    // that yields '' (empty card name) is benign, not a missing handler.
+    if (!action && !KNOWN_HINT_TYPES.has(hint.hintType)) {
+      console.warn(`[PROMPT] unresolved hint — hintType=${hint.hintType} value=${hint.value}`);
     }
+    return action;
+  }
+
+  /**
+   * Builds the `duel-hint.util` dependency bundle. System strings resolve via
+   * `DuelSystemStringsService`; race/attribute bitmasks via the shared
+   * `card_race.*` / `card_attribute.*` i18n keys; card codes via the
+   * server-stamped `cardName` carried on the same hint (still a card
+   * identity, not a system string).
+   */
+  private hintDeps(hint: HintContext): HintResolveDeps {
+    return {
+      resolveSystemString: i => this.systemStrings.resolveSystemString(i),
+      resolveCardName: () => hint.cardName,
+      resolveRace: bitmask => {
+        const key = getRaceName(bitmask);
+        return key ? this.translate.instant(`card_race.${key}`) : '';
+      },
+      resolveAttribute: bitmask => {
+        const key = getAttributeName(bitmask);
+        return key ? this.translate.instant(`card_attribute.${key}`) : '';
+      },
+    };
   }
 
   private swapComponent(prompt: Prompt, componentType: Type<PromptSubComponent>): void {

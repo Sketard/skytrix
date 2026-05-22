@@ -582,7 +582,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
   describe('Scenario: Consecutive empty SELECT_CHAIN auto-skip', () => {
     const emptyChain = (): SelectChainMsg => ({
       type: 'SELECT_CHAIN', player: 0 as Player, cards: [], forced: false,
-      hintTiming: 0, hintTimingLabel: '',
+      hintTiming: 0,
     });
 
     const dec = (prompt: SelectChainMsg | SelectCardMsg) => ({
@@ -618,7 +618,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       const chainWithCards = (): SelectChainMsg => ({
         type: 'SELECT_CHAIN', player: 0 as Player, forced: false,
         cards: [{ cardCode: 500, name: 'Trap', player: 0 as Player, location: LOCATION.SZONE, sequence: 0 }],
-        hintTiming: 0, hintTimingLabel: '',
+        hintTiming: 0,
       });
 
       const events: ServerMessage[] = [emptyChain(), chainWithCards(), emptyChain()];
@@ -659,7 +659,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       };
       const sch: SelectChainMsg = {
         type: 'SELECT_CHAIN', player: 0 as Player, cards: [], forced: false,
-        hintTiming: 0, hintTimingLabel: '',
+        hintTiming: 0,
       };
 
       // 2 SELECT_* events but only 1 decision → mismatch

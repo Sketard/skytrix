@@ -47,7 +47,7 @@ export type ResponseData = Record<string, unknown>;
 export class DuelConnection {
   // --- Signals (13 pairs) ---
   private _pendingPrompt = signal<Prompt | null>(null);
-  private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
+  private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '' });
   private logger?: DuelLogger;
   /** Optional art service for JIT prefetch of revealed card images. Wired from
    *  DuelWebSocketService / SoloDuelOrchestratorService at construction time so
@@ -558,7 +558,7 @@ export class DuelConnection {
         this.processor.reset();
         // Clear stale prompt + hint: server will re-send them in order (hint first, then prompt)
         this._pendingPrompt.set(null);
-        this._hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
+        this._hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
         // Suppress auto-respond until the game resumes (first BOARD_STATE after reconnect)
         this._justReconnected.set(true);
         this.onStateSync?.();
@@ -691,9 +691,8 @@ export class DuelConnection {
           player: message.player,
           value: message.value,
           cardName: message.cardName || (canInherit ? prev.cardName : ''),
-          hintAction: message.hintAction || (canInherit ? prev.hintAction : ''),
         };
-        this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o', { hintType: message.hintType, cardName: message.cardName, hintAction: message.hintAction, isSelectMsg, canInherit }, merged);
+        this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o', { hintType: message.hintType, cardName: message.cardName, value: message.value, isSelectMsg, canInherit }, merged);
         this._hintContext.set(merged);
         break;
       }

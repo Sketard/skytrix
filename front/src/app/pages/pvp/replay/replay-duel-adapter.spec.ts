@@ -44,13 +44,13 @@ const selectCard = (): SelectCardMsg => ({
 
 const selectChainEmpty = (): SelectChainMsg => ({
   type: 'SELECT_CHAIN', player: 0 as Player, cards: [], forced: false,
-  hintTiming: 0, hintTimingLabel: '',
+  hintTiming: 0,
 });
 
 const selectChainWithCards = (): SelectChainMsg => ({
   type: 'SELECT_CHAIN', player: 0 as Player, cards: [
     { cardCode: 200, name: 'Trap', player: 0 as Player, location: LOCATION.SZONE, sequence: 0 },
-  ], forced: false, hintTiming: 0, hintTimingLabel: '',
+  ], forced: false, hintTiming: 0,
 });
 
 const decision = (prompt: ServerMessage, bs?: BoardStatePayload): DecisionMoment => ({
@@ -433,7 +433,7 @@ describe('ReplayDuelAdapter', () => {
       const prompt = selectCard();
       const dec: DecisionMoment = {
         prompt, response: { data: [0], timestamp: '2026-01-01T00:00:00Z' }, player: 1 as Player,
-        hint: { hintType: 1, value: 42, cardName: 'Hint Card', hintAction: 'activate' },
+        hint: { hintType: 1, value: 42, cardName: 'Hint Card' },
         confirmedCards: [{ cardCode: 100, name: 'Card', player: 0, location: LOCATION.HAND, sequence: 0 }],
       };
 

@@ -15,7 +15,7 @@ function chainCard(cardCode: number, sequence: number, description?: number): Ca
 }
 
 function selectChain(cards: CardInfo[]): SelectChainMsg {
-  return { type: 'SELECT_CHAIN', player: 0, cards, forced: false, hintTiming: 0, hintTimingLabel: '' };
+  return { type: 'SELECT_CHAIN', player: 0, cards, forced: false, hintTiming: 0 };
 }
 
 /** System-string stub: echoes a label per strIndex so resolution is testable. */
