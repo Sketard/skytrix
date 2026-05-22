@@ -463,4 +463,20 @@
 </div>
 </div>
 
+<!-- Game Log trigger (Lot 4f) — replaces the former on-screen dev-hub button.
+     Toggles the game-log panel via the shared `DuelGameLogService`. The dev
+     hub itself stays reachable via Ctrl+Shift+D. Skipped in preview
+     embeddings (timeline thumbnails) where the service is absent. -->
+@if (!preview() && gameLog; as gl) {
+  <app-icon-button class="game-log-trigger"
+                   variant="framed"
+                   size="md"
+                   round
+                   [active]="gl.panelOpen()"
+                   ariaLabel="{{ 'gameLog.panel.toggle' | translate }}"
+                   (click)="gl.togglePanel()">
+    <mat-icon>history_edu</mat-icon>
+  </app-icon-button>
+}
+
 @if (devMode) { <app-duel-dev-hub /> }

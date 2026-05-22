@@ -13,10 +13,14 @@ import { CardTravelEngine } from '../card-travel-engine.service';
 import { formatStat, getAttributeName, getRaceName, totalCounters } from '../../pvp-alteration.utils';
 import { locationToZoneId, locationToZoneKey } from '../../pvp-zone.utils';
 import { NgTemplateOutlet } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
 import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 import { DuelThemeService } from '../duel-theme.service';
+import { DuelGameLogService } from '../duel-game-log.service';
+import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -77,11 +81,21 @@ function applyMockAlterations(card: CardOnField, withXyz: boolean): CardOnField 
   styleUrl: './pvp-board-container.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PvpPlayerCardComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe, DuelDevHubComponent],
+  imports: [
+    PvpPlayerCardComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe,
+    DuelDevHubComponent, IconButtonComponent, MatIcon, TranslatePipe,
+  ],
 })
 export class PvpBoardContainerComponent implements AfterViewInit {
   /** Dev-only hub gate. Tree-shaken from production builds via Angular's `isDevMode()`. */
   protected readonly devMode = isDevMode();
+
+  /** Game-log panel state — the trigger button (Lot 4f) toggles it. Optional:
+   *  the duel + replay pages provide it at component level, but the preview
+   *  embeddings (replay timeline thumbnails, bottom-sheets) render
+   *  `pvp-board-container` outside that injector scope. `null` there → the
+   *  trigger button is not rendered (it is also gated on `!preview()`). */
+  protected readonly gameLog = inject(DuelGameLogService, { optional: true });
 
   /** Active duel theme — drives `.board-host[data-theme]` cascade. Wave 3 Sprint 2. */
   protected readonly theme = inject(DuelThemeService).currentTheme;

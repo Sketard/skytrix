@@ -50,6 +50,12 @@ export interface OpponentActivation {
  * Drives the Game Log from the orchestrator's event stream. One hook, both
  * modes — the orchestrator is the single shared instance PvP and Replay both
  * feed, so the service inherits PvP↔Replay parity by construction.
+ *
+ * The service also owns the panel's OPEN STATE (`panelOpen` / `panelClosing`)
+ * — Surface 1's chrome (Lot 4c). The state lives here, not on the panel
+ * component, because the trigger button (Lot 4f, mounted in
+ * `pvp-board-container`) and the panel (mounted in the page templates) are
+ * sibling components: a shared service is the only handle both can reach.
  */
 @Injectable()
 export class DuelGameLogService {
@@ -57,11 +63,17 @@ export class DuelGameLogService {
   readonly gameLogEntries: Signal<GameLogEntry[]>;
   /** The latest opponent activation — drives the bubble (Surface 2). */
   readonly lastOpponentActivation: Signal<OpponentActivation | null>;
+  /** Panel open gate (Lot 4c). `false` = the panel renders no DOM (R5). */
+  readonly panelOpen: Signal<boolean>;
+  /** Panel close-in-progress flag — drives the exit transition (Lot 4c). */
+  readonly panelClosing: Signal<boolean>;
 
   private readonly _entries = signal<GameLogEntry[]>([]);
   private readonly _lastOpponentActivation = signal<OpponentActivation | null>(
     null,
   );
+  private readonly _panelOpen = signal(false);
+  private readonly _panelClosing = signal(false);
 
   /**
    * Absolute index of the viewer (the player the log is rendered FROM). The
@@ -95,6 +107,43 @@ export class DuelGameLogService {
   constructor() {
     this.gameLogEntries = this._entries.asReadonly();
     this.lastOpponentActivation = this._lastOpponentActivation.asReadonly();
+    this.panelOpen = this._panelOpen.asReadonly();
+    this.panelClosing = this._panelClosing.asReadonly();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Panel open state (Lot 4c) — the trigger button toggles it, the panel
+  // component drives the timed close. Kept here so the two sibling components
+  // share one source of truth.
+  // ---------------------------------------------------------------------------
+
+  /** Toggle the panel — opens it, or starts a close if already open. The
+   *  trigger button (Lot 4f) calls this. */
+  togglePanel(): void {
+    if (this._panelOpen() && !this._panelClosing()) {
+      this.beginPanelClose();
+      return;
+    }
+    this.openPanel();
+  }
+
+  /** Open the panel immediately, cancelling any in-progress close. */
+  openPanel(): void {
+    this._panelClosing.set(false);
+    this._panelOpen.set(true);
+  }
+
+  /** Mark the panel as closing — the panel component plays the exit
+   *  transition, then calls `finishPanelClose()`. */
+  beginPanelClose(): void {
+    if (!this._panelOpen() || this._panelClosing()) return;
+    this._panelClosing.set(true);
+  }
+
+  /** Tear the panel DOM down — called by the panel after the exit transition. */
+  finishPanelClose(): void {
+    this._panelOpen.set(false);
+    this._panelClosing.set(false);
   }
 
   /**
@@ -158,6 +207,8 @@ export class DuelGameLogService {
     this.tappedEvents.length = 0;
     this._entries.set([]);
     this._lastOpponentActivation.set(null);
+    this._panelOpen.set(false);
+    this._panelClosing.set(false);
   }
 
   // ---------------------------------------------------------------------------

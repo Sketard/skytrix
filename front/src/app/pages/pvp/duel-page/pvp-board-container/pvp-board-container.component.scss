@@ -1018,3 +1018,16 @@
     color: CanvasText;
   }
 }
+// ============================================================
+// Game Log trigger button (Lot 4f)
+// ============================================================
+// Floating button bottom-right, replacing the former on-screen dev-hub
+// toolbar button. Sits below the game-log panel ($z-pvp-floating-instruction
+// = 60) so the panel covers it when open; the `[active]` state on the
+// `<app-icon-button>` still reads through as a gold tint underneath.
+.game-log-trigger {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: z.$z-pvp-mini-toolbar;
+}

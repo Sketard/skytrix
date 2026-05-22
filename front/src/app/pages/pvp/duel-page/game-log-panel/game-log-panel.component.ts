@@ -22,9 +22,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  ElementRef,
   computed,
+  effect,
   inject,
   input,
+  output,
+  signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
@@ -33,6 +40,8 @@ import { DuelGameLogService } from '../duel-game-log.service';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { AvatarComponent } from '../../../../shared/avatar/avatar.component';
 import { IconButtonComponent } from '../../../../components/icon-button/icon-button.component';
+import { PillComponent } from '../../../../components/pill/pill.component';
+import { setupClickOutsideListener } from '../click-outside.utils';
 import type {
   GameLogEntry,
   LogCardRef,
@@ -40,6 +49,17 @@ import type {
   RelPlayer,
   SeparatorEntry,
 } from '../../game-log/game-log-types';
+
+/** Exit-transition budget — kept in sync with `.gamelog--closing` in the SCSS.
+ *  Mirrors the 150ms used by `pvp-zone-browser-overlay`. */
+const CLOSE_TRANSITION_MS = 150;
+
+/** "Already scrolled to the bottom?" tolerance, in px. `scrollTop +
+ *  clientHeight` rarely equals `scrollHeight` exactly — sub-pixel layout and
+ *  fractional scroll positions leave a few px of slack. Without this margin
+ *  the auto-scroll wrongly reads "scrolled up" while the user is visually at
+ *  the bottom, and shows the "new entries" pill when it should not. */
+const SCROLL_BOTTOM_TOLERANCE_PX = 24;
 
 /**
  * A node of the render tree the template walks. The flat `GameLogEntry[]` is
@@ -84,27 +104,93 @@ interface BoardGridCell {
     TranslatePipe,
     AvatarComponent,
     IconButtonComponent,
+    PillComponent,
   ],
 })
 export class GameLogPanelComponent {
   private readonly gameLog = inject(DuelGameLogService);
   private readonly cardArt = inject(DuelCardArtService);
+  private readonly hostEl = inject(ElementRef<HTMLElement>);
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
-   * Open gate (R5). PROVISIONAL for Lot 4a/4b — wired hard to `true` by the
-   * page templates so the panel is visible during development. The real
-   * trigger button + click-outside/Escape chrome are Lot 4c/4f; `open` will
-   * then be driven by panel state.
+   * Open gate (R5). Driven by `DuelGameLogService.panelOpen` — the trigger
+   * button (Lot 4f) toggles the service signal, the panel renders DOM only
+   * while it is `true`.
    */
-  readonly open = input<boolean>(true);
+  readonly open = this.gameLog.panelOpen;
+
+  /** True while the exit transition plays — drives `.gamelog--closing`. */
+  readonly isClosing = this.gameLog.panelClosing;
 
   /** Player pseudos in relative order `[you, opp]` — drives the turn-header
    *  avatars. PROVISIONAL default for Lot 4b; the page feeds the real pair
    *  alongside the trigger wiring (Lot 4f). */
   readonly playerNames = input<[string, string]>(['Toi', 'Adversaire']);
 
+  /** Emitted when a journal row carrying a `cardCode` is clicked — the page
+   *  opens the card-inspector (Lot 4e, `inspectCard` pattern from
+   *  `pvp-zone-browser-overlay`). */
+  readonly inspectCard = output<number>();
+
   /** The accumulated journal feed. */
   readonly entries = this.gameLog.gameLogEntries;
+
+  /** The scroll viewport — measured for the G3 auto-scroll bottom check. */
+  private readonly scrollEl =
+    viewChild<ElementRef<HTMLElement>>('scrollBox');
+
+  /** True when there are unseen entries below the fold — drives the
+   *  "↓ nouvelles entrées" pill (G3). */
+  readonly hasNewEntries = signal(false);
+
+  /** Document-level click-outside teardown — re-armed each time the panel
+   *  re-opens (the listener is torn down on close). */
+  private removeOutsideListener: (() => void) | null = null;
+
+  /** Pending DOM-teardown timer for the timed close. */
+  private closeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      if (this.closeTimeout) clearTimeout(this.closeTimeout);
+      this.removeOutsideListener?.();
+    });
+
+    // Arm / disarm the click-outside listener with the open gate. The
+    // listener is created only while the panel is open; closing tears it
+    // down so a click on the (now-absent) panel cannot leak.
+    effect(() => {
+      const open = this.open();
+      untracked(() => {
+        if (open && !this.removeOutsideListener) {
+          this.removeOutsideListener = setupClickOutsideListener(
+            this.hostEl,
+            this.destroyRef,
+            () => this.requestClose(),
+          );
+        } else if (!open) {
+          this.removeOutsideListener?.();
+          this.removeOutsideListener = null;
+        }
+      });
+    });
+
+    // G3 auto-scroll. A new entry appends at the bottom (oldest-at-top order).
+    // If the user is already at the bottom, follow it; if they scrolled up to
+    // read history, do NOT hijack — raise the "new entries" pill instead.
+    effect(() => {
+      const count = this.entries().length;
+      untracked(() => {
+        if (count === 0 || !this.open()) return;
+        if (this.isAtBottom()) {
+          this.scrollToBottom();
+        } else {
+          this.hasNewEntries.set(true);
+        }
+      });
+    });
+  }
 
   /**
    * The render tree — the flat entry list folded into `RenderNode[]`, with
@@ -115,6 +201,73 @@ export class GameLogPanelComponent {
   readonly renderNodes = computed<RenderNode[]>(() =>
     this.buildRenderTree(this.entries()),
   );
+
+  // ---------------------------------------------------------------------------
+  // Panel chrome — close (✕ / click-outside / Escape) + timed teardown
+  // ---------------------------------------------------------------------------
+
+  /** Begin the timed close: play the exit transition, then tear the DOM down.
+   *  Reuses the `isClosing` + delayed-close pattern from
+   *  `pvp-zone-browser-overlay`. Idempotent — a second call while closing is
+   *  a no-op. */
+  requestClose(): void {
+    if (!this.open() || this.isClosing()) return;
+    this.gameLog.beginPanelClose();
+    this.closeTimeout = setTimeout(() => {
+      this.closeTimeout = null;
+      this.gameLog.finishPanelClose();
+    }, CLOSE_TRANSITION_MS);
+  }
+
+  /** Escape closes the panel — mirrors `pvp-zone-browser-overlay.onKeydown`. */
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.requestClose();
+      event.preventDefault();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // G3 auto-scroll — bottom detection + scroll affordance
+  // ---------------------------------------------------------------------------
+
+  /** True when the viewport is scrolled to (within tolerance of) the bottom.
+   *  An exact `scrollTop + clientHeight === scrollHeight` check is unreliable
+   *  — see `SCROLL_BOTTOM_TOLERANCE_PX`. */
+  private isAtBottom(): boolean {
+    const el = this.scrollEl()?.nativeElement;
+    if (!el) return true; // no viewport yet → treat as bottom (don't nag)
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return distance <= SCROLL_BOTTOM_TOLERANCE_PX;
+  }
+
+  /** Scroll the viewport to the newest entry and clear the pill. */
+  scrollToBottom(): void {
+    const el = this.scrollEl()?.nativeElement;
+    if (el) el.scrollTop = el.scrollHeight;
+    this.hasNewEntries.set(false);
+  }
+
+  /** Scroll handler — clears the "new entries" pill once the user reaches the
+   *  bottom on their own. */
+  onScroll(): void {
+    if (this.hasNewEntries() && this.isAtBottom()) {
+      this.hasNewEntries.set(false);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Row interaction — click-to-inspect (Lot 4e)
+  // ---------------------------------------------------------------------------
+
+  /** A row carrying a `cardCode` opens the card-inspector. The source card is
+   *  the natural inspection target (a row is "about" its acting card); a
+   *  source-less bare row has no card to inspect. */
+  onRowClick(entry: GameLogEntry): void {
+    if (entry.block === 'separator') return;
+    const code = entry.source?.cardCode;
+    if (code != null) this.inspectCard.emit(code);
+  }
 
   // ---------------------------------------------------------------------------
   // Render-tree construction — the chain-grouping pass

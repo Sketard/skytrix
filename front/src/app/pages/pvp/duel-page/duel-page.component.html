@@ -374,16 +374,9 @@
               <span class="mini-toolbar__label">{{ 'duel.misc.debug' | translate }}</span>
             </button>
           }
-          @if (devMode) {
-            <button class="mini-toolbar__item"
-                    type="button"
-                    [attr.aria-label]="'a11y.toggleDevHub' | translate"
-                    [attr.aria-expanded]="devState.hubVisible()"
-                    (click)="devState.toggleHub()">
-              <mat-icon class="mini-toolbar__icon">construction</mat-icon>
-              <span class="mini-toolbar__label">{{ 'duel.misc.devHub' | translate }}</span>
-            </button>
-          }
+          <!-- The on-screen dev-hub button was removed (Lot 4f) — its slot is
+               taken by the game-log trigger in `pvp-board-container`. The dev
+               hub itself stays reachable via Ctrl+Shift+D. -->
         </div>
       </div>
 
@@ -443,9 +436,10 @@
          drives its own CDK overlay anchored on the opponent duelist card). -->
     <app-effect-bubble />
 
-    <!-- Game Log — Surface 1: the journal panel. `open` is hard-true here
-         (Lot 4a/4b provisional gate); the real trigger button is Lot 4f. -->
-    <app-game-log-panel />
+    <!-- Game Log — Surface 1: the journal panel. Open state lives on the
+         shared `DuelGameLogService`; the trigger button (Lot 4f) in
+         `pvp-board-container` toggles it. A row click opens the inspector. -->
+    <app-game-log-panel (inspectCard)="inspectCardByCode($event)" />
 
     <!-- Story 3.4 — Rematch Starting Overlay -->
     @if (wsService.rematchStarting()) {

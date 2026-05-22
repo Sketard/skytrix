@@ -123,9 +123,11 @@
            its own CDK overlay anchored on the opponent duelist card). -->
       <app-effect-bubble />
 
-      <!-- Game Log — Surface 1: the journal panel. `open` is hard-true here
-           (Lot 4a/4b provisional gate); the real trigger button is Lot 4f. -->
-      <app-game-log-panel />
+      <!-- Game Log — Surface 1: the journal panel. Open state lives on the
+           shared `DuelGameLogService`; the trigger button (Lot 4f) in
+           `pvp-board-container` toggles it. A row click opens the inspector. -->
+      <app-game-log-panel
+        (inspectCard)="onCardInspectRequest({ cardCode: $event })" />
 
       <!-- Prompt Dialog for Replay Decision Mode -->
       <app-pvp-prompt-dialog [prompt]="promptMode() === 'decision' ? adapter.activePrompt() : null"

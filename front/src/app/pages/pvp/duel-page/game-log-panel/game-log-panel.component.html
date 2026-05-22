@@ -6,24 +6,29 @@
   `@switch` blocks + the helper methods on the component.
 
   R5: the whole panel lives behind `@if (open())` — when closed it renders
-  NO DOM (the builder keeps accumulating regardless).
+  NO DOM (the builder keeps accumulating regardless). `isClosing()` plays the
+  exit transition before the DOM tears down (Lot 4c).
 ============================================================================ -->
 @if (open()) {
-  <section class="gamelog" aria-label="Journal de partie">
+  <section class="gamelog"
+           [class.gamelog--closing]="isClosing()"
+           role="dialog"
+           aria-label="Journal de partie"
+           (keydown)="onKeydown($event)">
     <header class="gamelog__head">
       <div class="gamelog__title">
         <mat-icon aria-hidden="true">history_edu</mat-icon>
         <span>{{ 'gameLog.panel.title' | translate }}</span>
       </div>
-      <!-- Close affordance — DS `<app-icon-button>`. The (click) handler is
-           wired by Lot 4c (panel chrome); for 4a/4b `open` is a hard-true
-           input, so closing is a no-op placeholder. -->
-      <app-icon-button size="sm" ariaLabel="{{ 'gameLog.panel.close' | translate }}">
+      <!-- Close affordance — DS `<app-icon-button>` (Lot 4c chrome). -->
+      <app-icon-button size="sm"
+                       ariaLabel="{{ 'gameLog.panel.close' | translate }}"
+                       (click)="requestClose()">
         <mat-icon>close</mat-icon>
       </app-icon-button>
     </header>
 
-    <div class="gamelog__scroll">
+    <div #scrollBox class="gamelog__scroll" (scroll)="onScroll()">
       @if (renderNodes().length === 0) {
         <p class="gamelog__empty">{{ 'gameLog.panel.empty' | translate }}</p>
       }
@@ -63,6 +68,18 @@
         }
       }
     </div>
+
+    <!-- G3 — "↓ nouvelles entrées" affordance. Shown only when a new entry
+         landed below the fold while the user was scrolled up; a click scrolls
+         to the newest entry. `<app-pill>` is non-interactive, so a `<button>`
+         carries the click + keyboard semantics. -->
+    @if (hasNewEntries()) {
+      <button type="button" class="gamelog__newpill" (click)="scrollToBottom()">
+        <app-pill variant="gold" size="sm" icon="keyboard_arrow_down">
+          {{ 'gameLog.panel.newEntries' | translate }}
+        </app-pill>
+      </button>
+    }
   </section>
 }
 
@@ -210,7 +227,10 @@
          [class.lg-row--negated]="e.negated"
          [class.lg-row--bare]="isBareRow(e)"
          [attr.tabindex]="isBareRow(e) ? null : 0"
-         [attr.role]="isBareRow(e) ? null : 'button'">
+         [attr.role]="isBareRow(e) ? null : 'button'"
+         (click)="isBareRow(e) ? null : onRowClick(e)"
+         (keydown.enter)="isBareRow(e) ? null : onRowClick(e)"
+         (keydown.space)="isBareRow(e) ? null : onRowClick(e); isBareRow(e) ? null : $event.preventDefault()">
       <ng-container
         [ngTemplateOutlet]="rowHeadTpl"
         [ngTemplateOutletContext]="{ e, isResolution }" />
@@ -362,7 +382,10 @@
   <div class="lg-row"
        [class.lg-row--opp]="e.player === 1"
        [class.lg-row--self]="e.player !== 1"
-       tabindex="0" role="button">
+       tabindex="0" role="button"
+       (click)="onRowClick(e)"
+       (keydown.enter)="onRowClick(e)"
+       (keydown.space)="onRowClick(e); $event.preventDefault()">
     <ng-container
       [ngTemplateOutlet]="rowHeadTpl"
       [ngTemplateOutletContext]="{ e, isResolution }" />
@@ -393,7 +416,10 @@
   <div class="lg-row"
        [class.lg-row--opp]="e.player === 1"
        [class.lg-row--self]="e.player !== 1"
-       tabindex="0" role="button">
+       tabindex="0" role="button"
+       (click)="onRowClick(e)"
+       (keydown.enter)="onRowClick(e)"
+       (keydown.space)="onRowClick(e); $event.preventDefault()">
     <ng-container
       [ngTemplateOutlet]="rowHeadTpl"
       [ngTemplateOutletContext]="{ e, isResolution }" />
@@ -468,7 +494,10 @@
   <div class="lg-row"
        [class.lg-row--opp]="e.player === 1"
        [class.lg-row--self]="e.player !== 1"
-       tabindex="0" role="button">
+       tabindex="0" role="button"
+       (click)="onRowClick(e)"
+       (keydown.enter)="onRowClick(e)"
+       (keydown.space)="onRowClick(e); $event.preventDefault()">
     <ng-container
       [ngTemplateOutlet]="rowHeadTpl"
       [ngTemplateOutletContext]="{ e, isResolution }" />

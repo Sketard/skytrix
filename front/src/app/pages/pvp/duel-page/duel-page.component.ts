@@ -330,8 +330,9 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   // 'me' = own turn OR active prompt requires my input (responding to opp chain).
   // 'opp' = waiting on opponent (their turn AND no prompt for me).
   // Dev override lives in DuelDevStateService.forcedActor (no-op in prod via _signal()).
-  // `protected` because the mini-toolbar template reads `devState.hubVisible`
-  // to wire its "Dev hub" button (DEV ONLY, gated by `devMode` below).
+  // `protected` because several template bindings read `devState.forced*`
+  // overrides. The on-screen dev-hub toggle button was removed (Lot 4f) — the
+  // hub stays reachable via Ctrl+Shift+D.
   protected readonly devState = inject(DuelDevStateService);
   protected readonly devMode = isDevMode();
   readonly actor = computed<'me' | 'opp'>(() =>

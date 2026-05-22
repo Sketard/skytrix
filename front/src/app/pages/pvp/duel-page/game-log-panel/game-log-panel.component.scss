@@ -64,7 +64,9 @@
 // ============================================================
 // `position: fixed` (not absolute) so the panel is a full-viewport-height
 // side band without depending on a positioned ancestor — the page templates
-// mount it as a bare sibling. The real open/close chrome is Lot 4c.
+// mount it as a bare sibling. Open/close chrome (Lot 4c) mirrors
+// `pvp-zone-browser-overlay`: a slide-in on mount, a slide-out under
+// `.gamelog--closing` before the DOM tears down.
 .gamelog {
   position: fixed;
   top: 0;
@@ -79,6 +81,42 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: gamelog-slide-in var(--transition-fast) var(--ease-out);
+}
+
+.gamelog--closing {
+  animation: gamelog-slide-out var(--transition-fast) var(--ease-in) forwards;
+}
+
+@keyframes gamelog-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gamelog-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gamelog,
+  .gamelog--closing {
+    animation: none;
+  }
 }
 
 .gamelog__head {
@@ -120,6 +158,27 @@
   text-align: center;
   font-size: var(--gl-text);
   color: var(--text-muted);
+}
+
+// G3 — "↓ nouvelles entrées" pill. A bare button host (transparent chrome —
+// the projected `<app-pill>` carries all the visual style) pinned at the
+// bottom edge of the side band, overlapping the scroll viewport.
+.gamelog__newpill {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  z-index: 4;
+}
+
+.gamelog__newpill:focus-visible {
+  outline: 2px solid var(--gold-soft-40);
+  outline-offset: 2px;
+  border-radius: var(--radius-pill);
 }
 
 // ============================================================
