@@ -439,12 +439,18 @@
   --pvp-lp-font-size: clamp(1rem, 4dvh, 1.5rem);
   --pvp-timer-font-size: clamp(0.875rem, 3dvh, 1.125rem);
   --pvp-phase-badge-font-size: clamp(0.875rem, 3dvh, 1.25rem);
+  // Texte flottant "-XXX / +XXX" affiché à côté des LP lors d'un changement.
+  --pvp-lp-delta-font-size: clamp(1.05rem, 3.6dvh, 1.45rem);
 
   // --- Animation ---
   --pvp-transition-highlight-flash: 200ms ease-in-out;
   --pvp-transition-card-move: 300ms ease-out;
   --pvp-transition-lp-counter: 500ms ease-out;
   --pvp-animation-duration: 300ms;
+  // Indicateur de delta LP — durée totale (entrée + pause de lecture +
+  // envol) découplée du compteur ; distance d'envol vertical final.
+  --pvp-lp-delta-duration: 1500ms;
+  --pvp-lp-delta-rise: 72px;
 
   // --- Prompt Dialog ---
   --pvp-prompt-dialog-width: 50dvw;
@@ -556,6 +562,7 @@
     --pvp-transition-highlight-flash: 0ms;
     --pvp-transition-card-move: 0ms;
     --pvp-transition-lp-counter: 0ms;
+    --pvp-lp-delta-duration: 0ms;
     --pvp-animation-duration: 0ms;
     --pvp-prompt-transition-speed: 0ms;
     --pvp-chain-overlay-transition: 0ms;

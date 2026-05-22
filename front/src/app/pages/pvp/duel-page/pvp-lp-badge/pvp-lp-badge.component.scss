@@ -42,6 +42,14 @@
   left: 4px;
 }
 
+// L'ancre du delta flottant. inline-block pour épouser la largeur du badge :
+// en mode embedded elle est un enfant de flux flex (.pc-body) qui s'étirerait
+// sinon sur toute la largeur, décalant le delta `left: 100%` trop à droite.
+.lp-anchor {
+  position: relative;
+  display: inline-block;
+}
+
 .lp-badge {
   display: inline-flex;
   align-items: center;
@@ -58,6 +66,16 @@
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
+  // Largeur STABLE pendant le décompte animé. Sans ça, le compteur change de
+  // largeur frame par frame (chiffres différents + perte d'un glyphe quand on
+  // passe de 4 à 3 chiffres) => le badge, puis l'ancre, puis le delta ancré en
+  // `100%` tremblent horizontalement. tabular-nums fige la chasse des chiffres,
+  // min-width réserve la place de 4 chiffres (LP de départ = 8000). Un LP > 4
+  // chiffres déborde sereinement le plancher (rare, et statique à ce moment).
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  min-width: 4ch;
+  text-align: center;
 }
 
 .lp-badge--player .lp-value {
@@ -94,9 +112,103 @@
   50% { color: var(--pvp-lp-own); text-shadow: 0 0 8px var(--pvp-lp-own); }
 }
 
+// =============================================================================
+// Floating LP delta indicator "-XXX / +XXX"
+// -----------------------------------------------------------------------------
+// Mouvement 100% TRANSLATION (jamais de scale) : un scale animé sur du texte
+// avec text-shadow provoque un re-raster sous-pixel à chaque frame => shake.
+// Structure en 2 couches :
+//   .lp-delta       — WRAPPER de positionnement. Centrage vertical figé
+//                     (translateY(-50%)) NON animé.
+//   .lp-delta__move — couche animée. translate en `px` PURS (entrée → pause →
+//                     envol) + fade. Promue sur une couche de compositing.
+//   .lp-delta__txt  — purement typographique, aucune animation.
+// =============================================================================
+.lp-delta {
+  position: absolute;
+  left: calc(100% + var(--space-2));   // à droite du badge LP
+  top: 50%;
+  // centrage vertical FIGÉ — hors de toute keyframe, donc stable.
+  transform: translateY(-50%);
+  pointer-events: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+// Variant — delta à gauche du badge (badge adverse, ancré côté droit du board :
+// éviter que le texte sorte de l'écran).
+.lp-delta--left {
+  left: auto;
+  right: calc(100% + var(--space-2));
+}
+
+// Couche animée — translate `px` purs + fade. Promue sur une couche de
+// compositing pour être immunisée contre les reflows du compteur LP.
+.lp-delta__move {
+  display: inline-block;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  opacity: 0;
+}
+
+.lp-delta__txt {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--pvp-lp-delta-font-size);
+  font-weight: var(--weight-black);
+  letter-spacing: 0.02em;
+}
+
+.lp-delta--damage .lp-delta__txt {
+  color: var(--pvp-lp-danger);
+  text-shadow: 0 0 7px var(--pvp-lp-danger), 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.lp-delta--recover .lp-delta__txt {
+  color: var(--pvp-lp-own);
+  text-shadow: 0 0 7px var(--pvp-lp-own), 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+// MOUVEMENT — 3 temps : entrée (0→22%) bas→repos, pause (22→58%) immobile,
+// envol (58→100%) vers le haut. `linear` global + timing-function par keyframe
+// => chaque segment porte sa courbe, la pause est une vraie pause.
+.lp-delta.is-animating .lp-delta__move {
+  animation:
+    lp-delta-move var(--pvp-lp-delta-duration) linear forwards,
+    lp-delta-fade var(--pvp-lp-delta-duration) linear forwards;
+}
+
+@keyframes lp-delta-move {
+  0% {
+    transform: translateY(18px) translateZ(0);
+    animation-timing-function: cubic-bezier(0.16, 0.84, 0.44, 1);
+  }
+  22% { transform: translateY(0) translateZ(0); }
+  58% {
+    transform: translateY(0) translateZ(0);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+  }
+  100% {
+    transform: translateY(calc(-1 * var(--pvp-lp-delta-rise))) translateZ(0);
+  }
+}
+
+@keyframes lp-delta-fade {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  78% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp-flash-damage .lp-value,
   .lp-flash-recover .lp-value {
+    animation: none;
+  }
+
+  // --pvp-lp-delta-duration vaut 0ms sous reduced-motion ; on coupe aussi
+  // la keyframe pour que rien ne s'affiche fugacement.
+  .lp-delta.is-animating .lp-delta__move {
     animation: none;
   }
 }

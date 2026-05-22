@@ -51,6 +51,18 @@ export class DuelDevStateService {
    *  manually when set. */
   readonly forcedPhase = this._signal<Phase | null>(null);
 
+  /** Cat F — LP delta indicator test pulse. One-shot trigger consumed by
+   *  `PvpLpBadgeComponent`: each `pulseLpDelta()` bumps `seq` so the badge
+   *  effect re-fires even for two identical amounts. NOT gated by `_signal()`
+   *  — it's a UI trigger, not a data-flow override, and the hub itself is
+   *  isDevMode()-gated upstream. `amount < 0` damage, `> 0` recover. */
+  readonly devLpPulse = signal<{ amount: number; seq: number } | null>(null);
+
+  pulseLpDelta(amount: number): void {
+    const prev = this.devLpPulse();
+    this.devLpPulse.set({ amount, seq: (prev?.seq ?? 0) + 1 });
+  }
+
   // ─── Onglet Prompts (prompts refresh spec §9) ────────────────
   readonly forcedPrompt = this._signal<Prompt | null>(null);
 
@@ -72,6 +84,7 @@ export class DuelDevStateService {
     this.forcedAlterations.set(null);
     this.forcedXyzMaterials.set(null);
     this.forcedPhase.set(null);
+    this.devLpPulse.set(null);
     this.forcedPrompt.set(null);
     this.forcedResultOutcome.set(null);
     this.forcedRematchState.set(null);

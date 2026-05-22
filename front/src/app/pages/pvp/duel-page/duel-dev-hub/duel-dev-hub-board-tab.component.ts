@@ -8,6 +8,7 @@
 //   D — Mock states (toggles: opponent disconnected, replay readOnly, low LP,
 //       force on-card alterations)
 //   E — Force phase (6 buttons, drives forcedPhase + triggers announcement)
+//   F — LP delta (preset buttons, pulse the floating "-XXX / +XXX" indicator)
 //
 // Categories not yet wired in production data flow (deferred):
 //   - forcedChainPhase = 'resolving' (needs hooking into chain-overlay consumer)
@@ -35,6 +36,16 @@ const PHASE_PRESETS: ReadonlyArray<{ key: Phase; label: string }> = [
   { key: 'END',          label: 'EP' },
 ];
 
+// Cat F — LP delta test presets. Negative = damage, positive = recover.
+const LP_DELTA_PRESETS: ReadonlyArray<{ amount: number; label: string }> = [
+  { amount: -300,  label: '−300' },
+  { amount: -800,  label: '−800' },
+  { amount: -1500, label: '−1500' },
+  { amount: -3000, label: '−3000' },
+  { amount: 500,   label: '+500' },
+  { amount: 800,   label: '+800' },
+];
+
 @Component({
   selector: 'app-duel-dev-hub-board-tab',
   templateUrl: './duel-dev-hub-board-tab.component.html',
@@ -50,6 +61,7 @@ export class DuelDevHubBoardTabComponent {
 
   protected readonly urgencyPresets = URGENCY_PRESETS;
   protected readonly phasePresets = PHASE_PRESETS;
+  protected readonly lpDeltaPresets = LP_DELTA_PRESETS;
 
   /** True while actor is forced to opp — disables the timer urgency buttons
    *  since a player-side timer has no meaning on opponent turns. */
@@ -119,5 +131,11 @@ export class DuelDevHubBoardTabComponent {
 
   protected clearPhase(): void {
     this.devState.forcedPhase.set(null);
+  }
+
+  /** Cat F — fire a one-shot LP delta pulse. The local player badge replays
+   *  the full counter + floating "-XXX / +XXX" animation. */
+  protected pulseLpDelta(amount: number): void {
+    this.devState.pulseLpDelta(amount);
   }
 }

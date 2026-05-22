@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mockup — Indicateur de delta PV (-XXX / +XXX)</title>
+<style>
+  /* ============================================================
+     Tokens repris de front/src/app/styles/_tokens.scss
+     ============================================================ */
+  :root {
+    --pvp-lp-own:        #4CAF50;
+    --pvp-lp-opponent:   #90CAF9;
+    --pvp-lp-danger:     #F44336;
+    --pvp-lp-font-size:  1.5rem;
+    --pvp-transition-lp-counter:      500ms;  /* durée du décompte */
+    --pvp-transition-highlight-flash: 200ms;  /* flash couleur */
+
+    --overlay-strong: rgba(10, 12, 18, 0.78);
+    --text-primary:   #ECEFF4;
+    --text-muted:     #9aa0ac;
+    --gold-on-surface:#E4C770;
+    --bg:             #0d0f15;
+    --surface:        #161a24;
+    --border:         rgba(255,255,255,0.08);
+
+    /* --- tokens réels repris de _tokens.scss (dimensions player-card) --- */
+    --space-1: 4px;  --space-2: 8px;  --space-3: 12px;  --space-4: 16px;
+    --radius-md: 10px;
+    --text-lg: 1.25rem;   /* clamp(1.10,…,1.25) — borne haute desktop */
+    --text-xl: 1.6rem;    /* clamp(1.35,…,1.60) */
+    --weight-bold: 700;   --weight-black: 800;
+    --gold:        #C9A84C;
+    --gold-50:     #ffe9a8;
+    --gold-soft-12: rgba(201,168,76,0.12);
+    --gold-soft-15: rgba(201,168,76,0.15);
+    --gold-soft-30: rgba(201,168,76,0.30);
+    --gold-soft-50: rgba(201,168,76,0.50);
+    --elevation-2: 0 4px 16px rgba(0,0,0,0.30);
+    --elevation-3: 0 8px 28px rgba(0,0,0,0.40);
+    --gradient-dialog-surface: linear-gradient(160deg, #1a1a2e 0%, #14141f 100%);
+
+    /* font réelle = Rajdhani (fallback proche : condensé sans-serif) */
+    --font-display: "Rajdhani", "Oswald", "Segoe UI Semibold", sans-serif;
+
+    /* delta indicator — à droite des PV, durée DÉCOUPLÉE du compteur
+       PV (3 temps : entrée par le bas + pause de lecture + envol). */
+    --lp-delta-rise:      72px;    /* distance d'envol vertical final */
+    --lp-delta-duration:  1500ms;  /* durée totale entrée+pause+envol */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background:
+      radial-gradient(900px 500px at 50% -10%, #1a2030 0%, var(--bg) 60%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 32px 20px 80px;
+  }
+
+  h1 { font-family: var(--font-display); font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--text-muted); font-size: 0.85rem; margin: 0 0 28px; }
+  h2 {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--gold-on-surface); margin: 36px 0 14px; font-weight: 700;
+  }
+
+  .stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  /* ---- une "scène" : un demi-board avec le badge PV --------------- */
+  .stage {
+    position: relative;
+    background:
+      linear-gradient(160deg, #1d2433 0%, #11151e 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    height: 200px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    padding: 14px;
+  }
+  .stage::before {
+    /* faux quadrillage de board */
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 38px 38px;
+    pointer-events: none;
+  }
+  .stage-label {
+    position: absolute; top: 10px; right: 12px;
+    font-size: 0.7rem; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  /* ============================================================
+     LP BADGE (repris de pvp-lp-badge.component.scss)
+     ============================================================ */
+  /* ancre du delta absolu — inline-block pour épouser la largeur du
+     badge LP : sinon (display:block) elle prend toute la largeur du
+     parent .pc-body et le delta en `left:100%` part trop à droite. */
+  .lp-anchor {
+    position: relative;
+    display: inline-block;
+  }
+
+  .lp-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: var(--overlay-strong);
+    backdrop-filter: blur(2px);
+  }
+  .lp-value {
+    font-size: var(--pvp-lp-font-size);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .lp-badge--player   .lp-value { color: var(--pvp-lp-own); }
+  .lp-badge--opponent .lp-value { color: var(--pvp-lp-opponent); }
+  .lp-badge--danger   .lp-value { color: var(--pvp-lp-danger); }
+
+  /* flash couleur existant */
+  .lp-flash-damage  .lp-value { animation: lp-damage-flash  var(--pvp-transition-highlight-flash) ease-in-out; }
+  .lp-flash-recover .lp-value { animation: lp-recover-flash var(--pvp-transition-highlight-flash) ease-in-out; }
+  @keyframes lp-damage-flash {
+    0%,100% { text-shadow: none; }
+    50%     { color: var(--pvp-lp-danger); text-shadow: 0 0 8px var(--pvp-lp-danger); }
+  }
+  @keyframes lp-recover-flash {
+    0%,100% { text-shadow: none; }
+    50%     { color: var(--pvp-lp-own); text-shadow: 0 0 8px var(--pvp-lp-own); }
+  }
+
+  /* ============================================================
+     >>> NOUVEAU : indicateur de delta -XXX / +XXX <<<
+     position: absolute, ancré À DROITE du badge PV.
+     Entre par le bas → pause de lecture → envol vers le haut.
+     ============================================================ */
+  /* --------------------------------------------------------------
+     STRUCTURE EN 2 COUCHES — clé de la fluidité.
+
+     .lp-delta      = WRAPPER. Ancré à droite du badge (left:100%).
+                      translateY animé seul (entrée bas → pause →
+                      envol haut). Trajectoire verticale continue,
+                      aucun palier de vitesse.
+     .lp-delta__txt = ENFANT. pop (scale) + fade, animation
+                      indépendante. Le scale n'interfère plus
+                      avec la translation du wrapper.
+
+     will-change + translateZ(0) => couche de compositing dédiée :
+     l'animation tourne sur le compositor thread, immunisée contre
+     les reflows du compteur PV qui saturent le main thread.
+     -------------------------------------------------------------- */
+  .lp-delta {
+    position: absolute;
+    left: calc(100% + 8px);   /* à DROITE du badge PV, gap 8px */
+    top: 50%;                 /* aligné verticalement au centre des PV */
+    /* translateY(-50%) figé pour le centrage vertical ;
+       le mouvement vertical est appliqué PAR-DESSUS via les keyframes
+       (qui repartent toutes de translateY(-50% + offset)).          */
+    transform: translateY(-50%) translateZ(0);
+    will-change: transform;
+    pointer-events: none;
+    line-height: 1;
+    white-space: nowrap;
+    opacity: 0;
+  }
+  /* variant : delta À GAUCHE du badge (carte adverse, ancrée à droite
+     de l'écran — éviter que le delta sorte du board côté droit). */
+  .lp-delta--left {
+    left: auto;
+    right: calc(100% + 8px);
+  }
+  .lp-delta__txt {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: 1.45rem;          /* agrandi (était 1.05rem) */
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+  }
+  .lp-delta--damage .lp-delta__txt {
+    color: var(--pvp-lp-danger);
+    text-shadow: 0 0 7px rgba(244, 67, 54, 0.7), 0 1px 2px rgba(0,0,0,0.75);
+  }
+  .lp-delta--recover .lp-delta__txt {
+    color: var(--pvp-lp-own);
+    text-shadow: 0 0 7px rgba(76, 175, 80, 0.65), 0 1px 2px rgba(0,0,0,0.75);
+  }
+
+  /* WRAPPER : mouvement en 3 TEMPS (vertical).
+       0%→22%   ENTRÉE  — monte depuis le bas (+18px) jusqu'au repos
+                          (0), easing doux d'arrivée.
+       22%→58%  PAUSE   — immobile : le temps de LIRE le chiffre.
+       58%→100% ENVOL   — part vers le haut (--lp-delta-rise),
+                          easing accélérant.
+     Toutes les keyframes gardent translateY(-50%) (centrage) et
+     ajoutent l'offset d'anim. `linear` global : chaque segment
+     porte sa courbe via les keyframes => vraie pause stable. */
+  .lp-delta.is-animating {
+    animation: lp-delta-move var(--lp-delta-duration) linear forwards,
+               lp-delta-fade var(--lp-delta-duration) linear forwards;
+  }
+  @keyframes lp-delta-move {
+    /* ENTRÉE : arrive du bas (+18px sous la position de repos) */
+    0%   { transform: translateY(calc(-50% + 18px)) translateZ(0);
+           animation-timing-function: cubic-bezier(0.16, 0.84, 0.44, 1); }
+    22%  { transform: translateY(-50%) translateZ(0); }
+    /* PAUSE : Y identique de 22% à 58% => stabilité de lecture */
+    58%  { transform: translateY(-50%) translateZ(0);
+           animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0); }
+    /* ENVOL : accélère vers le haut */
+    100% { transform: translateY(calc(-50% - var(--lp-delta-rise)))
+                      translateZ(0); }
+  }
+
+  /* FADE : apparition rapide à l'entrée, opaque pendant toute la
+     pause, disparition seulement sur la 2e moitié de l'envol. */
+  @keyframes lp-delta-fade {
+    0%   { opacity: 0; }
+    14%  { opacity: 1; }   /* visible avant la fin de l'entrée */
+    78%  { opacity: 1; }   /* tient pendant la pause + début d'envol */
+    100% { opacity: 0; }
+  }
+
+  /* ENFANT : pop d'entrée uniquement (fini avant la pause). */
+  .lp-delta.is-animating .lp-delta__txt {
+    animation: lp-delta-pop var(--lp-delta-duration) ease-out forwards;
+  }
+  @keyframes lp-delta-pop {
+    0%   { transform: scale(0.8)  translateZ(0); }
+    14%  { transform: scale(1.08) translateZ(0); }
+    22%  { transform: scale(1)    translateZ(0); }
+    100% { transform: scale(1)    translateZ(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lp-delta.is-animating,
+    .lp-delta.is-animating .lp-delta__txt { animation: none; }
+  }
+
+  /* ================================================================
+     PLAYER CARD — reproduction fidèle de pvp-player-card.component
+     Dimensions/tokens exacts : padding 8/12, gap 12, min-w 240 /
+     max-w 320, radius 10, avatar md = 44px, body en colonne.
+     ================================================================ */
+  .player-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);                 /* 12px */
+    min-width: 240px;
+    max-width: 320px;
+    padding: var(--space-2) var(--space-3);   /* 8px 12px */
+    background: var(--gradient-dialog-surface);
+    border: 1px solid var(--gold-soft-30);
+    border-radius: var(--radius-md);          /* 10px */
+    box-shadow:
+      var(--elevation-2),
+      0 0 0 1px var(--gold-soft-12),
+      inset 0 1px 0 var(--gold-soft-15);
+  }
+  /* tour actif — halo doré */
+  .player-card--active {
+    border-color: var(--gold);
+    box-shadow:
+      var(--elevation-3),
+      0 0 0 1px var(--gold-soft-30),
+      0 0 24px var(--gold-soft-30),
+      inset 0 1px 0 var(--gold-soft-30);
+  }
+  /* carte adverse inactive — légèrement atténuée */
+  .player-card--opponent:not(.player-card--active) {
+    opacity: 0.92;
+    filter: saturate(0.92);
+  }
+
+  /* avatar md = 44px, cercle (app-avatar size="md") */
+  .pc-avatar {
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid hsl(210, 60%, 55%);
+    background: linear-gradient(135deg, hsl(210,65%,45%), hsl(240,70%,30%));
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    display: inline-flex; align-items: center; justify-content: center;
+    font: var(--weight-bold) 1.1rem/1 var(--font-display);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    user-select: none;
+  }
+
+  /* body — colonne, gap 4px, truncation autorisée */
+  .pc-body {
+    display: flex; flex-direction: column;
+    gap: var(--space-1);                 /* 4px */
+    min-width: 0; flex: 1;
+  }
+
+  /* header — pseudo (gauche) + timer (droite, côté joueur seulement) */
+  .pc-header {
+    display: flex; align-items: baseline;
+    gap: var(--space-3); min-width: 0;
+  }
+  .pc-pseudo {
+    flex: 1; min-width: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);           /* ~1.25rem */
+    font-weight: var(--weight-bold);
+    color: var(--gold-50);
+    letter-spacing: 0.03em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .player-card--active .pc-pseudo {
+    color: var(--gold);
+    text-shadow: 0 0 12px var(--gold-soft-50), 0 1px 2px rgba(0,0,0,0.5);
+  }
+  /* timer embedded — reproduction approx. du pvp-timer-badge embedded */
+  .pc-timer {
+    flex-shrink: 0;
+    font-family: var(--font-display);
+    font-size: 0.95rem; font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* embedded : le .lp-anchor est un item flex de .pc-body (column).
+     align-self:flex-start l'empêche de s'étirer sur toute la largeur
+     => sa largeur = celle du badge, et `left:100%` du delta tombe
+     juste au bord droit du chiffre. */
+  .pc-body .lp-anchor { align-self: flex-start; }
+
+  /* embedded : LP sans chrome, pur typographique (= :host(.embedded)) */
+  .lp-badge--embedded {
+    padding: 0; background: transparent; backdrop-filter: none;
+  }
+  .lp-badge--embedded .lp-value {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);           /* ~1.6rem */
+    font-weight: var(--weight-black);
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 8px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.6);
+  }
+
+  /* ============================================================
+     Panneau de contrôle
+     ============================================================ */
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .controls .group { display: flex; gap: 8px; align-items: center; }
+  .controls .sep { width: 1px; height: 26px; background: var(--border); }
+  button {
+    font-family: inherit; font-size: 0.82rem; font-weight: 600;
+    padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: #222838; color: var(--text-primary);
+    transition: background 120ms, border-color 120ms;
+  }
+  button:hover { background: #2c3346; border-color: rgba(255,255,255,.2); }
+  button.dmg  { border-color: rgba(244,67,54,.5);  color: #ff9a92; }
+  button.heal { border-color: rgba(76,175,80,.5);  color: #9fe0a2; }
+  button.primary { background: var(--gold-on-surface); color: #1a1408; border-color: transparent; }
+  label.ctl { font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 6px; align-items: center; }
+  select, input[type=range] { font-family: inherit; }
+  select {
+    background: #222838; color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px;
+  }
+
+  .note {
+    font-size: 0.8rem; color: var(--text-muted); line-height: 1.55;
+    background: rgba(228,199,112,0.05);
+    border-left: 2px solid var(--gold-on-surface);
+    padding: 10px 14px; border-radius: 0 8px 8px 0;
+    margin-top: 8px;
+  }
+  code {
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 0.78em;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px; border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Indicateur de delta PV — <code>-XXX / +XXX</code></h1>
+<p class="sub">
+  Texte flottant en <code>position:absolute</code> au-dessus du badge PV, qui
+  monte et s'estompe pendant toute la durée du décompte du compteur.
+  Affiché uniquement si le delta ≠ 0. Couleur sémantique (rouge dégât / vert soin).
+</p>
+
+<!-- ===================== CONTRÔLES ===================== -->
+<div class="controls">
+  <div class="group">
+    <button class="dmg"  data-amt="-1500">Dégât −1500</button>
+    <button class="dmg"  data-amt="-3000">Coup massif −3000</button>
+    <button class="dmg"  data-amt="-800">Coût d'effet −800</button>
+    <button class="heal" data-amt="800">Soin +800</button>
+    <button class="dmg"  data-amt="-300">Petit tic −300</button>
+  </div>
+  <div class="sep"></div>
+  <label class="ctl">
+    Compteur PV (vitesse)
+    <select id="speed">
+      <option value="500">×1 — 500ms</option>
+      <option value="1000">×2 lent — 1000ms</option>
+      <option value="250">×0.5 rapide — 250ms</option>
+    </select>
+  </label>
+  <label class="ctl">
+    Delta — durée totale
+    <select id="deltaDur">
+      <option value="1500">1500ms (recommandé)</option>
+      <option value="1200">1200ms — vif</option>
+      <option value="2000">2000ms — pause longue</option>
+    </select>
+  </label>
+  <label class="ctl">
+    Delta — envol
+    <select id="easing">
+      <option value="72">Standard — 72px</option>
+      <option value="100">Ample — 100px</option>
+      <option value="48">Court — 48px</option>
+    </select>
+  </label>
+  <label class="ctl">
+    Compteur PV (easing)
+    <select id="counter">
+      <option value="easeout">ease-out (recommandé)</option>
+      <option value="linear">linéaire</option>
+      <option value="step10">ease-out + pas de 10</option>
+    </select>
+  </label>
+  <div class="sep"></div>
+  <button class="primary" id="reset">↺ Reset 8000</button>
+</div>
+<p class="note">
+  Les 4 scènes ci-dessous partagent le même bouton de déclenchement.
+  Chaque clic applique le delta aux <strong>4 badges simultanément</strong> pour
+  comparer board-badge vs embedded, côté joueur vs adversaire, et le passage
+  en état <em>danger</em> (≤ 2000).
+</p>
+
+<!-- ===================== SCÈNES ===================== -->
+
+<h2>1 · Badge sur board — joueur (bas-gauche)</h2>
+<div class="stage-grid">
+  <div class="stage">
+    <span class="stage-label">player-field</span>
+    <div class="lp-anchor">
+      <div class="lp-delta" data-delta="A"><span class="lp-delta__txt"></span></div>
+      <div class="lp-badge lp-badge--player" data-badge="A">
+        <span class="lp-value">8000</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <span class="stage-label">opponent-field</span>
+    <div class="lp-anchor">
+      <div class="lp-delta" data-delta="B"><span class="lp-delta__txt"></span></div>
+      <div class="lp-badge lp-badge--opponent" data-badge="B">
+        <span class="lp-value">8000</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>2 · Variante embedded — pvp-player-card (dimensions réelles)</h2>
+<p class="sub" style="margin:-6px 0 14px;">
+  Structure exacte du composant : avatar md 44px · body colonne
+  (header pseudo+timer / LP) · padding 8/12 · radius 10 · min-w 240 / max-w 320.
+  Carte joueur = tour actif (halo doré). Carte adverse = inactive (atténuée, sans timer).
+</p>
+<div class="stage-grid">
+  <!-- carte joueur : tour actif + timer -->
+  <div class="player-card player-card--player player-card--active">
+    <span class="pc-avatar">A</span>
+    <div class="pc-body">
+      <div class="pc-header">
+        <span class="pc-pseudo" title="Axel">Axel</span>
+        <span class="pc-timer">2:45</span>
+      </div>
+      <div class="lp-anchor">
+        <div class="lp-delta" data-delta="C"><span class="lp-delta__txt"></span></div>
+        <div class="lp-badge lp-badge--embedded lp-badge--player" data-badge="C">
+          <span class="lp-value">8000</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- carte adverse : inactive, pas de timer -->
+  <div class="player-card player-card--opponent">
+    <span class="pc-avatar" style="border-color:hsl(15,60%,55%);
+          background:linear-gradient(135deg,hsl(15,65%,45%),hsl(45,70%,30%));">O</span>
+    <div class="pc-body">
+      <div class="pc-header">
+        <span class="pc-pseudo" title="Opponent">Opponent</span>
+      </div>
+      <div class="lp-anchor">
+        <div class="lp-delta lp-delta--left" data-delta="D"><span class="lp-delta__txt"></span></div>
+        <div class="lp-badge lp-badge--embedded lp-badge--opponent" data-badge="D">
+          <span class="lp-value">8000</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="note">
+  <strong>Intégration code prévue.</strong> Aucun nouveau service —
+  <code>LpAnimationTracker.processLpEvent()</code> connaît déjà
+  <code>fromLp</code>, <code>toLp</code>, <code>type</code> et
+  <code>durationMs</code>. Le delta = <code>toLp − fromLp</code> est déjà dans
+  <code>LpAnimData</code> implicitement. Il suffit que
+  <code>PvpLpBadgeComponent</code> rende un second élément
+  <code>&lt;span class="lp-delta"&gt;</code> sous l'ancre, déclenché par le même
+  <code>effect()</code> que l'interpolation, et retiré à
+  <code>stopInterpolation()</code>. Skip si <code>delta === 0</code>.
+  Parité PVP↔Replay automatique (passe par <code>AnimationDataSource</code>).
+</p>
+<p class="note" style="border-left-color:var(--pvp-lp-danger);
+   background:rgba(244,67,54,0.06);">
+  <strong>⚠ Deux pièges à l'implémentation.</strong><br>
+  <strong>1 — Sens de l'envol.</strong> Le delta s'envole vers le haut.
+  Sur la <strong>carte joueur</strong> (bas-gauche du board) il monte
+  <em>vers l'intérieur</em> du plateau — OK. Sur la <strong>carte
+  adverse</strong> (haut-droite) il monterait <em>hors de l'écran</em> :
+  <code>PvpLpBadgeComponent</code> doit inverser l'envol selon
+  <code>side()</code> (delta adverse vers le bas — <code>--lp-delta-rise</code>
+  signée ou classe <code>lp-delta--down</code>).<br>
+  <strong>2 — Côté d'ancrage.</strong> Le delta est posé à droite des PV
+  (<code>left: 100%</code>). Vérifier qu'il ne sorte pas du board côté
+  droit ; sinon ancrer à gauche (<code>right: 100%</code>) pour la carte
+  adverse. À tester ci-dessus : les deux scènes reproduisent
+  l'ancrage droite + envol haut, à adapter par côté dans le vrai code.
+</p>
+
+<script>
+  const SPEED   = () => parseInt(document.getElementById('speed').value, 10);
+  const EASING  = () => document.getElementById('easing').value;
+  const COUNTER = () => document.getElementById('counter').value;
+
+  /** Easing appliqué au décompte du compteur PV. */
+  function easeCounter(t) {
+    if (COUNTER() === 'linear') return t;
+    return 1 - (1 - t) * (1 - t);   // ease-out quadratique
+  }
+
+  // état LP courant par badge
+  const lp = { A: 8000, B: 8000, C: 8000, D: 8000 };
+
+  function fmt(v) {
+    v = Math.round(v);
+    return v >= 10000 ? (v/1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(v);
+  }
+
+  function applyDelta(amount) {
+    const counterDur = SPEED();   // durée du décompte PV
+    const root = document.documentElement.style;
+
+    // compteur PV : sa propre durée
+    root.setProperty('--pvp-transition-lp-counter', counterDur + 'ms');
+
+    // delta : durée TOTALE (entrée+pause+envol) découplée du compteur
+    root.setProperty('--lp-delta-duration',
+      document.getElementById('deltaDur').value + 'ms');
+    root.setProperty('--lp-delta-rise', EASING() + 'px');
+
+    ['A','B','C','D'].forEach(id => animateBadge(id, amount, counterDur));
+  }
+
+  function animateBadge(id, amount, dur) {
+    const badge = document.querySelector(`[data-badge="${id}"]`);
+    const valueEl = badge.querySelector('.lp-value');
+    const deltaEl = document.querySelector(`[data-delta="${id}"]`);
+
+    const from = lp[id];
+    const to = Math.max(0, from + amount);
+    const realDelta = to - from;            // peut différer de amount si clamp à 0
+    lp[id] = to;
+
+    // ---- 1. delta indicator : skip si 0 ----
+    if (realDelta !== 0) {
+      const isDmg = realDelta < 0;
+      const txtEl = deltaEl.querySelector('.lp-delta__txt');
+      txtEl.textContent = (realDelta > 0 ? '+' : '−') + Math.abs(realDelta);
+      deltaEl.classList.remove('lp-delta--damage', 'lp-delta--recover', 'is-animating');
+      deltaEl.classList.add(isDmg ? 'lp-delta--damage' : 'lp-delta--recover');
+      // force reflow pour relancer l'anim
+      void deltaEl.offsetWidth;
+      deltaEl.classList.add('is-animating');
+      // l'enfant porte 'lp-delta-pop' — on attend la fin du wrapper (move/fade)
+      deltaEl.addEventListener('animationend', (e) => {
+        if (e.target !== deltaEl) return;          // ignore l'animationend de l'enfant
+        if (e.animationName !== 'lp-delta-move') return;
+        deltaEl.classList.remove('is-animating');
+        txtEl.textContent = '';
+      });
+
+      // ---- 2. flash couleur existant ----
+      const flashCls = isDmg ? 'lp-flash-damage' : 'lp-flash-recover';
+      badge.classList.remove('lp-flash-damage', 'lp-flash-recover');
+      void badge.offsetWidth;
+      badge.classList.add(flashCls);
+      badge.addEventListener('animationend',
+        () => badge.classList.remove(flashCls), { once: true });
+    }
+
+    // ---- 3. décompte interpolé du compteur (rAF) ----
+    const start = performance.now();
+    const step10 = COUNTER() === 'step10';
+    let lastShown = null;
+    function tick(now) {
+      const t = Math.min((now - start) / dur, 1);
+      let cur = from + realDelta * easeCounter(t);
+      if (step10 && t < 1) cur = Math.round(cur / 10) * 10;  // pas régulier assumé
+      const shown = fmt(cur);
+      if (shown !== lastShown) {        // évite le reflow si le texte n'a pas changé
+        valueEl.textContent = shown;
+        lastShown = shown;
+      }
+      badge.classList.toggle('lp-badge--danger', Math.round(cur) <= 2000);
+      if (t < 1) requestAnimationFrame(tick);
+      else { valueEl.textContent = fmt(to); }   // garantit la valeur finale exacte
+    }
+    requestAnimationFrame(tick);
+  }
+
+  document.querySelectorAll('button[data-amt]').forEach(btn => {
+    btn.addEventListener('click',
+      () => applyDelta(parseInt(btn.dataset.amt, 10)));
+  });
+
+  document.getElementById('reset').addEventListener('click', () => {
+    ['A','B','C','D'].forEach(id => {
+      lp[id] = 8000;
+      const badge = document.querySelector(`[data-badge="${id}"]`);
+      badge.querySelector('.lp-value').textContent = '8000';
+      badge.classList.remove('lp-badge--danger');
+      const d = document.querySelector(`[data-delta="${id}"]`);
+      d.classList.remove('is-animating');
+      d.querySelector('.lp-delta__txt').textContent = '';
+    });
+  });
+</script>
+
+</body>
+</html>

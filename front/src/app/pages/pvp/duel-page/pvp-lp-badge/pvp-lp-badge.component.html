@@ -1,10 +1,28 @@
-<div class="lp-badge"
-     [class.lp-badge--player]="side() === 'player'"
-     [class.lp-badge--opponent]="side() === 'opponent'"
-     [class.lp-badge--danger]="isDanger()"
-     [class.lp-flash-damage]="flashType() === 'damage'"
-     [class.lp-flash-recover]="flashType() === 'recover'"
-     role="status"
-     aria-live="polite">
-  <span class="lp-value">{{ formattedLp() }}</span>
+<div class="lp-anchor">
+  <!-- Floating "-XXX / +XXX" delta. The @for over a single-item array keyed
+       by `seq` recreates the DOM node on every change so the CSS keyframes
+       restart cleanly even for two identical deltas. -->
+  @for (d of (deltaState() ? [deltaState()!] : []); track d.seq) {
+    <div class="lp-delta is-animating"
+         [class.lp-delta--damage]="d.kind === 'damage'"
+         [class.lp-delta--recover]="d.kind === 'recover'"
+         [class.lp-delta--left]="deltaOnLeft()"
+         aria-hidden="true">
+      <span class="lp-delta__move"
+            (animationend)="$event.animationName === 'lp-delta-move' && onDeltaAnimationEnd()">
+        <span class="lp-delta__txt">{{ d.text }}</span>
+      </span>
+    </div>
+  }
+
+  <div class="lp-badge"
+       [class.lp-badge--player]="side() === 'player'"
+       [class.lp-badge--opponent]="side() === 'opponent'"
+       [class.lp-badge--danger]="isDanger()"
+       [class.lp-flash-damage]="flashType() === 'damage'"
+       [class.lp-flash-recover]="flashType() === 'recover'"
+       role="status"
+       aria-live="polite">
+    <span class="lp-value">{{ formattedLp() }}</span>
+  </div>
 </div>

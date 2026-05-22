@@ -144,3 +144,19 @@
     }
   </div>
 </section>
+
+<!-- Category F — LP delta indicator -->
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">LP delta</h4>
+  <div class="dev-hub-category__radios"
+       aria-label="Pulse LP delta indicator">
+    @for (p of lpDeltaPresets; track p.amount) {
+      <button type="button"
+              class="dev-hub-radio"
+              (click)="pulseLpDelta(p.amount)">
+        {{ p.label }}
+      </button>
+    }
+  </div>
+  <p class="dev-hub-category__hint">Pulse l'indicateur flottant sur le badge LP joueur.</p>
+</section>
