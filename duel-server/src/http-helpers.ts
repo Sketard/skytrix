@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import type { WebSocket } from 'ws';
 import * as logger from './logger.js';
+import * as duelInstr from './duel-instrumentation.js';
 import { MAX_HTTP_BODY_SIZE } from './types.js';
 
 /**
@@ -27,7 +28,12 @@ export function json(res: ServerResponse, status: number, body: unknown): void {
 export function safeSend(ws: WebSocket | null | undefined, payload: unknown): void {
   if (!ws || ws.readyState !== ws.OPEN) return;
   try {
-    ws.send(JSON.stringify(payload));
+    // Phase 0b instrumentation: the `serialize` bucket covers ALL WS traffic
+    // (duel + replay + solver), not just duel messages — finding D-C3 lives
+    // inside it but is not isolated. time() is a no-op unless
+    // DUEL_INSTRUMENT=1; see duel-instrumentation.ts.
+    const json = duelInstr.time('serialize', () => JSON.stringify(payload));
+    ws.send(json);
   } catch (err) {
     logger.error('safeSend failed', { err: err instanceof Error ? err.message : String(err) });
   }

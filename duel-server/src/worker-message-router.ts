@@ -2,6 +2,7 @@ import type { ActiveDuelSession, WorkerToMainMessage } from './types.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import { filterMessage } from './message-filter.js';
+import * as duelInstr from './duel-instrumentation.js';
 import { applyChainTransition } from './chain-state-tracker.js';
 import {
   handleTurnChange,
@@ -264,8 +265,11 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
   }
 
   // Per-player perspective filter + reconnection caches.
+  // Phase 0b instrumentation: filterMessage runs twice per outbound message
+  // (once per player) — finding D-C3. time() is a no-op unless
+  // DUEL_INSTRUMENT=1; see duel-instrumentation.ts.
   for (const playerIndex of [0, 1] as const) {
-    const filtered = filterMessage(message, playerIndex);
+    const filtered = duelInstr.time('filterMessage', () => filterMessage(message, playerIndex));
     if (filtered) {
       if (isSelectMessage(message) && (message as { player: Player }).player === playerIndex) {
         session.lastSentPrompt[playerIndex] = filtered;

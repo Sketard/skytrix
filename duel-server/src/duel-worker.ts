@@ -27,6 +27,7 @@ import { CardDbCache } from './card-db-cache.js';
 import { resolveDeckLoadOrder, normalizeReplayDeck } from './deck-load-order.js';
 import { runReplayPreComputation, SELECT_MESSAGE_TYPES } from './replay-precompute.js';
 import { resolveDescription } from './game-log/effect-desc-resolver.js';
+import * as duelInstr from './duel-instrumentation.js';
 import type {
   ServerMessage,
   BoardStateMsg,
@@ -211,8 +212,13 @@ const SZONE_IDS: ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
 function getCardName(code: number): string {
   if (!cardDb || !code) return '';
-  const row = cardDb.nameStmt.get(code) as { name: string } | undefined;
-  return row?.name ?? '';
+  // Phase 0b instrumentation: the SQLite name lookup is un-memoized and called
+  // per OCG message (finding D-C1/D-M1). time() is a no-op unless
+  // DUEL_INSTRUMENT=1 — see duel-instrumentation.ts.
+  return duelInstr.time('getCardName', () => {
+    const row = cardDb!.nameStmt.get(code) as { name: string } | undefined;
+    return row?.name ?? '';
+  });
 }
 
 const TYPE_TOKEN = 0x4000;
@@ -1044,8 +1050,12 @@ function buildBoardState(): ServerMessage {
   // each face-up field card requires ~12 individual queries. Tracking avg
   // lets us spot regressions if future zones expand; optimization path is
   // blocked on the WASM bug fix (see `buildBoardState` comments above).
-  buildBoardStateCumulativeMs += performance.now() - perfStart;
+  const elapsedMs = performance.now() - perfStart;
+  buildBoardStateCumulativeMs += elapsedMs;
   buildBoardStateCallCount++;
+  // Phase 0b instrumentation: feed the env-gated bucket so the histogram +
+  // /status aggregation see this call. No-op unless DUEL_INSTRUMENT=1.
+  duelInstr.record('buildBoardState', BigInt(Math.round(elapsedMs * 1_000_000)));
 
   return msg;
 }
@@ -1177,7 +1187,7 @@ function runDuelLoop(): void {
 
     let status: number;
     try {
-      status = core.duelProcess(duel);
+      status = duelInstr.time('duelProcess', () => core!.duelProcess(duel!));
     } catch (err) {
       clearTimeout(watchdog);
       const message = err instanceof Error ? err.message : String(err);
@@ -1320,6 +1330,11 @@ let wasmHookAttempted = false;
 async function initOcgEngine(
   seed: [bigint, bigint, bigint, bigint],
 ): Promise<OcgInitResult | null> {
+  // Phase 0b instrumentation: worker cold-start — WASM instantiate + cdb open
+  // + scripts + strings parse, per duel (finding D-M8). initOcgEngine is async
+  // so duelInstr.time() (sync-only) can't wrap it; we measure with an explicit
+  // hrtime span and feed duelInstr.record(). No-op unless DUEL_INSTRUMENT=1.
+  const coldStartT0 = process.hrtime.bigint();
   const dbPath = join(dataDir, 'cards.cdb');
   const scriptsDir = join(dataDir, 'scripts_full');
 
@@ -1367,6 +1382,7 @@ async function initOcgEngine(
     if (content) newCore.loadScript(handle, name, content);
   }
 
+  duelInstr.record('workerColdStart', process.hrtime.bigint() - coldStartT0);
   return { newCore, handle, db, strings };
 }
 
@@ -1481,6 +1497,14 @@ function cleanup(): void {
   forkMode = false;
   // P0-3bis.4 — release any held rollback snapshot + its TTL timer.
   setLastIdleSnapshot(null);
+  // Phase 0b instrumentation: worker-thread buckets (buildBoardState,
+  // getCardName, duelProcess, workerColdStart) can't reach GET /status in the
+  // main process — log the snapshot at duel end so the debug-replay harness
+  // (and prod logs) capture it. No-op unless DUEL_INSTRUMENT=1.
+  if (duelInstr.instrumentationEnabled()) {
+    dlog.log('duel-instrumentation snapshot', { perf: duelInstr.snapshot() });
+    duelInstr.reset();
+  }
 }
 
 // =============================================================================

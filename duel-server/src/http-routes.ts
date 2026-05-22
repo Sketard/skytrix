@@ -6,6 +6,7 @@ import { updateData } from './data-updater.js';
 import { loadSolverConfig } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import * as logger from './logger.js';
+import * as duelInstr from './duel-instrumentation.js';
 
 /**
  * HTTP route handlers extracted from server.ts (H1-suite phase 1). Each
@@ -63,16 +64,30 @@ export function handleHealth(_req: IncomingMessage, res: ServerResponse): void {
   json(res, 200, { status: 'ok' });
 }
 
-/** GET /status — Server stats (active duels, uptime, RSS memory). */
+/** GET /status — Server stats (active duels, uptime, RSS memory).
+ *
+ * When DUEL_INSTRUMENT=1, also surfaces the perf-instrumentation snapshot
+ * (Phase 0b of the perf-audit chantier). Only the MAIN-process buckets
+ * (filterMessage, serialize) carry data here — the worker-thread buckets
+ * (buildBoardState, getCardName, duelProcess, workerColdStart) live in the
+ * worker and are logged at duel end instead (see duel-worker.ts cleanup).
+ * The snapshot is omitted entirely when instrumentation is off. */
 export function handleStatus(_req: IncomingMessage, res: ServerResponse): void {
   const c = getCfg();
-  json(res, 200, {
+  const body: Record<string, unknown> = {
     activeDuels: c.activeDuelsSize(),
     totalDuelsServed: c.totalDuelsServed(),
     protocolMismatchCount: c.protocolMismatchCount(),
     uptimeMs: Date.now() - c.startTime,
     memoryUsageMb: process.memoryUsage().rss / 1024 / 1024,
-  });
+  };
+  if (duelInstr.instrumentationEnabled()) {
+    body['perfInstrumentation'] = {
+      note: 'main-process buckets only; worker buckets are logged at duel end',
+      ...duelInstr.snapshot(),
+    };
+  }
+  json(res, 200, body);
 }
 
 /**
