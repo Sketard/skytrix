@@ -10,7 +10,7 @@ import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
 import { LOCATION, POSITION } from '../duel-ws.types';
-import type { MoveMsg, DrawMsg, Player } from '../duel-ws.types';
+import type { MoveMsg, DrawMsg, Player, Position } from '../duel-ws.types';
 import { EMPTY_DUEL_STATE } from '../types';
 
 /**
@@ -90,10 +90,11 @@ describe('MoveAnimationRouter', () => {
     };
 
     mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
-      'getZoneElement', 'toAbsoluteUrl',
+      'getZoneElement', 'toAbsoluteUrl', 'travel',
     ]);
     mockCardTravel.getZoneElement.and.returnValue(null);
     mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
+    mockCardTravel.travel.and.returnValue(Promise.resolve());
 
     const mockBoardEffects = jasmine.createSpyObj<BoardEffectsService>('BoardEffectsService', [
       'preDestroyEffect',
@@ -323,6 +324,71 @@ describe('MoveAnimationRouter', () => {
         fromLocation: LOCATION.DECK, toLocation: LOCATION.DECK,
       }));
       expect(spies['fallback']).toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Defense rotation — OCGCore combined SZONE position (0x5/0xA)
+  // ---------------------------------------------------------------------------
+
+  describe('leaveField* defense rotation', () => {
+    /** OCGCore `POS_FACEUP` — the COMBINED form (FACEUP_ATTACK|FACEUP_DEFENSE)
+     *  used for any face-up Spell/Trap, including a Pendulum card in a Scale
+     *  zone. NOT the same as the discrete monster `FACEUP_DEFENSE` (0x4). The
+     *  combined value (0x5) is not a member of the `Position` union — cast it
+     *  to mirror what OCGCore actually sends. */
+    const POS_FACEUP_ST = (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE) as Position; // 0x5
+
+    /** Last TravelOptions passed to cardTravelEngine.travel. */
+    function lastTravelOptions() {
+      const calls = mockCardTravel.travel.calls.all();
+      return calls[calls.length - 1]?.args[3] ?? {};
+    }
+
+    it('SZONE Pendulum card (POS_FACEUP 0x5) → EXTRA — no -90° (the Queen Machinex bug)', async () => {
+      // A face-up Pendulum card in a Scale zone carries OCGCore's combined
+      // position 0x5. The naive `pos & 0xC` defense test trips on it; the
+      // card then travels to the Extra Deck rotated 90° sideways. It is a
+      // Spell/Trap, NOT a defense monster — it must land upright.
+      await router.processMoveEvent(buildMove({
+        fromLocation: LOCATION.SZONE, toLocation: LOCATION.EXTRA, reason: 0x1,
+        fromPosition: POS_FACEUP_ST,
+      }));
+      const opts = lastTravelOptions();
+      expect(opts.srcRotateZ).toBeUndefined();
+      expect(opts.destRotateZ).toBeUndefined();
+    });
+
+    it('SZONE Pendulum card (POS_FACEUP 0x5) → GRAVE — no -90° (S/T is never defense)', async () => {
+      await router.processMoveEvent(buildMove({
+        fromLocation: LOCATION.SZONE, toLocation: LOCATION.GRAVE, reason: 0x1,
+        fromPosition: POS_FACEUP_ST,
+      }));
+      const opts = lastTravelOptions();
+      expect(opts.srcRotateZ).toBeUndefined();
+      expect(opts.destRotateZ).toBeUndefined();
+    });
+
+    it('MZONE defense MONSTER (FACEUP_DEFENSE 0x4) → GRAVE — keeps -90° rotation', async () => {
+      // A genuine defense-position monster (discrete 0x4) still rotates -90°
+      // through the travel into a flat pile.
+      await router.processMoveEvent(buildMove({
+        fromLocation: LOCATION.MZONE, toLocation: LOCATION.GRAVE, reason: 0x1,
+        fromPosition: POSITION.FACEUP_DEFENSE,
+      }));
+      const opts = lastTravelOptions();
+      expect(opts.srcRotateZ).toBe(-90);
+      expect(opts.destRotateZ).toBe(-90);
+    });
+
+    it('MZONE attack MONSTER (FACEUP_ATTACK 0x1) → BANISHED — no rotation', async () => {
+      await router.processMoveEvent(buildMove({
+        fromLocation: LOCATION.MZONE, toLocation: LOCATION.BANISHED, reason: 0,
+        fromPosition: POSITION.FACEUP_ATTACK,
+      }));
+      const opts = lastTravelOptions();
+      expect(opts.srcRotateZ).toBeUndefined();
+      expect(opts.destRotateZ).toBeUndefined();
     });
   });
 

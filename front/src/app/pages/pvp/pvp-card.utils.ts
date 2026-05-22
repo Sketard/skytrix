@@ -5,9 +5,22 @@ export function isFaceUp(pos: number): boolean {
   return (pos & POSITION.FACEUP_ATTACK) !== 0 || (pos & POSITION.FACEUP_DEFENSE) !== 0;
 }
 
-/** Check if card is in defense position (FACEUP_DEFENSE or FACEDOWN_DEFENSE) */
+/**
+ * Check if a card is a MONSTER in a discrete defense position — `position` is
+ * *exactly* `FACEUP_DEFENSE` (0x4) or `FACEDOWN_DEFENSE` (0x8).
+ *
+ * Defense is a monster-only concept. OCGCore reuses the position bitmask for
+ * Spell/Trap (SZONE) cards with the COMBINED forms `POS_FACEUP = 0x5`
+ * (FACEUP_ATTACK|FACEUP_DEFENSE) and `POS_FACEDOWN = 0xA`
+ * (FACEDOWN_ATTACK|FACEDOWN_DEFENSE) — see the `POSITION_MAP` note in
+ * duel-server `ocg-constants.ts`. A naive `pos & (FACEUP_DEFENSE |
+ * FACEDOWN_DEFENSE)` test trips the defense bit for EVERY S/T card (0x5 and
+ * 0xA both contain a defense bit), so a face-up Pendulum card in a Scale zone
+ * would falsely read as "in defense". The exact-match guard is the only
+ * correct test.
+ */
 export function isDefense(pos: number): boolean {
-  return (pos & POSITION.FACEUP_DEFENSE) !== 0 || (pos & POSITION.FACEDOWN_DEFENSE) !== 0;
+  return pos === POSITION.FACEUP_DEFENSE || pos === POSITION.FACEDOWN_DEFENSE;
 }
 
 /** Build zone keys for face-down cards across the given player indices. */

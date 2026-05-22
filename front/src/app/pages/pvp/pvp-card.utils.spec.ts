@@ -37,6 +37,16 @@ describe('pvp-card.utils', () => {
     it('should return false for FACEDOWN_ATTACK', () => {
       expect(isDefense(POSITION.FACEDOWN_ATTACK)).toBeFalse();
     });
+
+    it('should return false for the combined OCGCore POS_FACEUP (0x5) — a face-up Spell/Trap is not defense', () => {
+      // OCGCore reports SZONE cards with FACEUP_ATTACK|FACEUP_DEFENSE. A naive
+      // bitmask test would trip the defense bit; defense is monster-only.
+      expect(isDefense(POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)).toBeFalse();
+    });
+
+    it('should return false for the combined OCGCore POS_FACEDOWN (0xA) — a set Spell/Trap is not defense', () => {
+      expect(isDefense(POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)).toBeFalse();
+    });
   });
 
   describe('getCardImageUrlByCode', () => {

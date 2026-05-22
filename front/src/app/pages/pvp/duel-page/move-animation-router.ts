@@ -3,6 +3,7 @@ import type { GameEvent } from '../types';
 import type { MoveMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
+import { isDefense } from '../pvp-card.utils';
 import { DuelCardArtService } from './duel-card-art.service';
 import { ANIMATION_DATA_SOURCE, type QueueEntry } from './animation-data-source';
 import { CardTravelEngine } from './card-travel-engine.service';
@@ -335,9 +336,12 @@ export class MoveAnimationRouter {
     const fromPos = msg.fromPosition;
     const toPos = msg.toPosition;
     const isFaceUpFrom = (fromPos & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
-    const isDefenseFrom = (fromPos & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0;
+    // `isDefense` is exact-match (monster-only): a face-up Spell/Trap in a
+    // Pendulum Scale zone has the COMBINED OCGCore position 0x5 and MUST NOT
+    // read as defense — see the helper's doc comment.
+    const isDefenseFrom = isDefense(fromPos);
     const isFaceUpTo = (toPos & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
-    const isDefenseTo = (toPos & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0;
+    const isDefenseTo = isDefense(toPos);
 
     const locName = (v: number) => Object.keys(LOCATION).find(k => LOCATION[k as keyof typeof LOCATION] === v) ?? String(v);
     this.logger.log(DuelLogCategory.MOVE, '%s→%s card=%d reason=0x%s relPlayer=%d(msgPlayer=%d/own=%d) fromSeq=%d toSeq=%d | from:%s%s → to:%s%s | src=%s dst=%s',
@@ -413,8 +417,7 @@ export class MoveAnimationRouter {
   }
 
   private summonToField(mc: MoveContext): Promise<void> {
-    const isMonsterDefense = mc.to === LOCATION.MZONE
-      && (mc.msg.toPosition & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0;
+    const isMonsterDefense = mc.to === LOCATION.MZONE && mc.isDefenseTo;
     const isSet = (mc.msg.toPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
     this.ctx.announceEvent('Card summoned', mc.msg.player);
     mc.preSrcLock?.commit();
@@ -459,9 +462,11 @@ export class MoveAnimationRouter {
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
     return preEffect.then(async () => {
       // GY/BANISHED piles have no orientation of their own — a defense-position
-      // card must keep its -90° rotation through the whole travel. Without
+      // MONSTER must keep its -90° rotation through the whole travel. Without
       // destRotateZ, the landing keyframes omit rotateZ and the card eases
-      // back to 0° mid-flight (visible spin).
+      // back to 0° mid-flight (visible spin). `isDefenseFrom` is a monster-only
+      // concept (see isMonsterDefensePos) — a face-up Pendulum card sent from
+      // a Scale zone to the Extra Deck is NOT defense and lands upright.
       const fromDefenseRot = mc.isDefenseFrom ? -90 : undefined;
       const p = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
         duration: mc.travelDuration,
@@ -486,7 +491,9 @@ export class MoveAnimationRouter {
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
     // GY/BANISHED piles have no orientation — keep the source defense rotation
-    // through landing so the card doesn't visibly spin back to 0° mid-flight.
+    // through landing so a defense-position MONSTER doesn't visibly spin back
+    // to 0° mid-flight. `isDefenseFrom` excludes Spell/Trap (SZONE) cards by
+    // construction (see isMonsterDefensePos).
     const fromDefenseRot = mc.isDefenseFrom ? -90 : undefined;
     const travelP = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration,
