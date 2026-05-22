@@ -3,7 +3,8 @@
 // DS Wave 1 (2026-05-14) — `@use` migration + strict import order §1.3 spec.
 //
 // Order is critical:
-//   1. Foundations (tokens MUST come first — a11y/motion/typography rely on it)
+//   1. Foundations (self-hosted fonts + tokens MUST come first —
+//      a11y/motion/typography rely on it)
 //   2. Background / surfaces / scroll
 //   3. Building blocks (composables: card-surface, badge)
 //   4. Composites (search-bar, page-header, section-header, empty-state,
@@ -14,6 +15,7 @@
 // =============================================================================
 
 // 1. Foundations
+@use 'app/styles/fonts';         // Self-hosted web fonts (@font-face) — no network dep
 @use 'app/styles/tokens';
 @use 'app/styles/tokens-light';      // `html.theme-light` overrides — pages "app"
 @use 'app/styles/tokens-dark-scope'; // `.theme-dark` garde-fou — duel + replay viewer

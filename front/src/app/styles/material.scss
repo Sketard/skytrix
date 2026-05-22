@@ -1,5 +1,34 @@
 @use '@angular/material' as mat;
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');
+
+// Roboto — self-hosted (was a remote @import from fonts.googleapis.com).
+// The remote import made `ng build --configuration production` depend on
+// network access at build time (the builder inlines external stylesheets);
+// it broke behind HTTPS-intercepting AV / proxies / offline CI. Self-hosting
+// removes that dependency and is faster at runtime (no extra DNS+TLS hop, no
+// FOUT). woff2 variable fonts cover the 300-500 weight range used by the
+// Material m2 typography below — 2 files (latin + latin-ext) vs 27 remote
+// subset files. Source: Google Fonts Roboto v51.
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: swap;
+  src: url('/assets/fonts/roboto-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: swap;
+  src: url('/assets/fonts/roboto-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
 
 @include mat.elevation-classes();
 @include mat.app-background();

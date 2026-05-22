@@ -1,0 +1,169 @@
+// =============================================================================
+// Skytrix — self-hosted web fonts.
+//
+// All Google Fonts are self-hosted under `/assets/fonts/`. The remote
+// `<link>`/`@import` stylesheets made `ng build --configuration production`
+// depend on network access at build time (the Angular builder inlines
+// external stylesheets) — they broke behind HTTPS-intercepting AV / proxies
+// and on offline CI. Self-hosting removes that dependency entirely, and is
+// faster at runtime (no extra DNS+TLS hop, no FOUT).
+//
+// Subsets: latin + latin-ext only (skytrix UI is FR/EN). cyrillic / greek /
+// vietnamese are dropped.
+//
+// font-display: `swap` for text (show fallback immediately, swap in),
+// `block` for icon fonts (hide the glyph up to 3s rather than render the
+// literal ligature text "tune"/"search" before the WOFF arrives).
+//
+// NOTE: Roboto is self-hosted separately in `material.scss` (it backs the
+// Material m2 typography scale) — not re-declared here.
+//
+// Source: Google Fonts — Inter v20, JetBrains Mono v24, Rajdhani v17,
+// Material Icons v145, Material Icons Round v109.
+// =============================================================================
+
+// -- Inter (variable woff2, covers 400-800) ----------------------------------
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/assets/fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/assets/fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+// -- JetBrains Mono (variable woff2, covers 500-700) -------------------------
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/assets/fonts/jetbrains-mono-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/assets/fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+// -- Rajdhani (static woff2 per weight — 500 / 600 / 700) --------------------
+$rajdhani-latin: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+  U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+  U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+$rajdhani-latin-ext: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+  U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+  U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+  U+A720-A7FF;
+
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/assets/fonts/rajdhani-500-latin.woff2') format('woff2');
+  unicode-range: $rajdhani-latin;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/assets/fonts/rajdhani-500-latin-ext.woff2') format('woff2');
+  unicode-range: $rajdhani-latin-ext;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/assets/fonts/rajdhani-600-latin.woff2') format('woff2');
+  unicode-range: $rajdhani-latin;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/assets/fonts/rajdhani-600-latin-ext.woff2') format('woff2');
+  unicode-range: $rajdhani-latin-ext;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/assets/fonts/rajdhani-700-latin.woff2') format('woff2');
+  unicode-range: $rajdhani-latin;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/assets/fonts/rajdhani-700-latin-ext.woff2') format('woff2');
+  unicode-range: $rajdhani-latin-ext;
+}
+
+// -- Material Icons / Material Icons Round (icon fonts, weight 400) ----------
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/assets/fonts/material-icons.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Material Icons Round';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/assets/fonts/material-icons-round.woff2') format('woff2');
+}
+
+// Icon-font utility classes (copied verbatim from the Google CSS so existing
+// `.material-icons` / `.material-icons-round` consumers keep working).
+.material-icons,
+.material-icons-round {
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+}
+
+.material-icons-round {
+  font-family: 'Material Icons Round';
+}
