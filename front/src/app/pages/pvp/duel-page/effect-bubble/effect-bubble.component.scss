@@ -60,7 +60,7 @@
 
 .effect-bubble__card {
   font-family: var(--font-display);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   color: var(--gold-on-surface);
   // Card names can be long — wrap rather than overflow the head row.
@@ -77,7 +77,9 @@
   max-height: 20vh;
   overflow-y: auto;
 
-  font-size: var(--text-xs);
+  // Bumped a step up (--text-xs → --text-sm): the opponent's effect is an
+  // important read, not fine print.
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--text-secondary);
   white-space: pre-line;
