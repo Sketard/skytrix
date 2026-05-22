@@ -40,6 +40,7 @@ import { TargetIndicatorManager } from './target-indicator-manager';
 import { DuelToastService } from './duel-toast.service';
 import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
 import { PollDropWatchdog } from './poll-drop-watchdog';
+import { DuelGameLogService } from './duel-game-log.service';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
@@ -113,6 +114,14 @@ export class AnimationOrchestratorService {
   private readonly toastService = inject(DuelToastService);
   private readonly artService = inject(DuelCardArtService);
   private readonly bufferReplayBuilder = inject(BufferReplayBuilder);
+  /**
+   * Optional Game Log tap. Injected `{ optional: true }` so the orchestrator's
+   * own spec suite (which does not provide the service) keeps compiling — and
+   * so any future test/page that mounts the orchestrator without the Game Log
+   * still works. The service is provided at the duel-page / replay-page level
+   * (Lot 2d); when absent, `this.gameLog?.notifyGameLog` is a no-op.
+   */
+  private readonly gameLog = inject(DuelGameLogService, { optional: true });
 
   // --- Public read-only signals ---
   private readonly _isAnimating = signal(false);
@@ -1046,6 +1055,18 @@ export class AnimationOrchestratorService {
     // show when the last lock releases. PvP events never carry this field.
     const boardStateAfter = (event as GameEvent & { boardStateAfter?: DuelState }).boardStateAfter;
     if (boardStateAfter) this.rbs.updateLogical(boardStateAfter);
+
+    // Game Log tap — LOAD-BEARING placement, do not move (analysis §2.3):
+    //  - it sits AFTER the `bufferIfResolving` guard (above), so an event
+    //    buffered during a chain returns before this line and is NOT logged at
+    //    park time — it reaches the tap only when `replayBuffer` re-dispatches
+    //    it, i.e. in logical resolution order, exactly once;
+    //  - it sits AFTER `updateLogical(boardStateAfter)`, so `logicalState()` is
+    //    already current for this event when the service reads it inside
+    //    `notifyGameLog` — no board argument needed;
+    //  - it sits BEFORE the dispatch switch: a passive side-effect tap that
+    //    must not influence animation dispatch (it returns nothing usable here).
+    this.gameLog?.notifyGameLog(event);
 
     switch (event.type) {
       case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);
