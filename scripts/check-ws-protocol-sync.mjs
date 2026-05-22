@@ -15,6 +15,15 @@
 // The two index files (ws-protocol.ts on back, duel-ws.types.ts on front) are
 // NOT byte-checked: they have different import paths and slightly different
 // re-export bodies. Their structural correctness is enforced by tsc.
+//
+// The same paired-file discipline extends to the Game Log builder brick
+// (Lot 0d). `game-log-types.ts` and `game-log-builder.ts` live under
+// `game-log/` on the back and `pvp/game-log/` on the front — a finished pure
+// brick physically shared, no shared package (brownfield, no new deps). The
+// game-log files differ from the ws-protocol files in two ways the normalizer
+// must absorb: they sit in a sub-directory so they import the protocol files
+// via `../` (not `./`), and they cross-import each other (`game-log-types` ↔
+// `game-log-builder`). Both are handled by `normalizeGameLog` below.
 
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -39,6 +48,27 @@ function normalize(content) {
     ;
 }
 
+/** Normalize a game-log paired file for cross-side comparison.
+ *
+ *  The game-log files (`game-log-types.ts`, `game-log-builder.ts`) live in a
+ *  sub-directory, so — unlike the ws-protocol split files — they import the
+ *  protocol via `../` and import each other via `./`. The back side keeps the
+ *  `.js` ESM suffix and the `ws-protocol-*` stems; the front side drops the
+ *  suffix and uses the `duel-ws-*.types` stems. This rewrites the back form
+ *  to the front form so the two copies reduce to byte-identical.
+ */
+function normalizeGameLog(content) {
+  return content
+    // protocol split-file imports: '../ws-protocol-shared.js' → '../duel-ws-shared.types'
+    .replace(/from '\.\.\/ws-protocol-(\w+)\.js'/g, "from '../duel-ws-$1.types'")
+    // protocol index import: '../ws-protocol.js' → '../duel-ws.types'
+    .replace(/from '\.\.\/ws-protocol\.js'/g, "from '../duel-ws.types'")
+    // game-log cross-import: './game-log-types.js' → './game-log-types'
+    .replace(/from '\.\/(game-log-\w+)\.js'/g, "from './$1'")
+    // front-side already in target form — idempotent
+    ;
+}
+
 /** Normalize the file header comment that mentions paths/sync notes. The
  *  6 split files reference each other's path in their header comment; we
  *  only care that the type definitions match. */
@@ -50,27 +80,45 @@ function stripHeaderComment(content) {
   return lines.slice(i).join('\n');
 }
 
-const splitFiles = [
-  { back: 'ws-protocol-shared.ts', front: 'duel-ws-shared.types.ts' },
-  { back: 'ws-protocol-game.ts',   front: 'duel-ws-game.types.ts' },
-  { back: 'ws-protocol-prompts.ts', front: 'duel-ws-prompts.types.ts' },
-  { back: 'ws-protocol-system.ts', front: 'duel-ws-system.types.ts' },
-  { back: 'ws-protocol-replay.ts', front: 'duel-ws-replay.types.ts' },
-  { back: 'ws-protocol-solver.ts', front: 'duel-ws-solver.types.ts' },
+// Each paired file declares its own paths (the layouts differ between the two
+// families) and the normalizer that reduces the two sides to a common form.
+const pairedFiles = [
+  // The 6 ws-protocol split files — flat layout, `./` imports.
+  ...[
+    { back: 'ws-protocol-shared.ts', front: 'duel-ws-shared.types.ts' },
+    { back: 'ws-protocol-game.ts',   front: 'duel-ws-game.types.ts' },
+    { back: 'ws-protocol-prompts.ts', front: 'duel-ws-prompts.types.ts' },
+    { back: 'ws-protocol-system.ts', front: 'duel-ws-system.types.ts' },
+    { back: 'ws-protocol-replay.ts', front: 'duel-ws-replay.types.ts' },
+    { back: 'ws-protocol-solver.ts', front: 'duel-ws-solver.types.ts' },
+  ].map(p => ({
+    backPath: 'duel-server/src/' + p.back,
+    frontPath: 'front/src/app/pages/pvp/' + p.front,
+    label: `${p.back} ↔ ${p.front}`,
+    normalizer: normalize,
+  })),
+  // The 2 Game Log builder files — `game-log/` sub-directory, `../` imports.
+  ...[
+    'game-log-types.ts',
+    'game-log-builder.ts',
+  ].map(name => ({
+    backPath: 'duel-server/src/game-log/' + name,
+    frontPath: 'front/src/app/pages/pvp/game-log/' + name,
+    label: `game-log/${name} ↔ pvp/game-log/${name}`,
+    normalizer: normalizeGameLog,
+  })),
 ];
 
 let mismatch = false;
-for (const { back, front } of splitFiles) {
-  const backPath = resolve(root, 'duel-server/src/' + back);
-  const frontPath = resolve(root, 'front/src/app/pages/pvp/' + front);
-  const backRaw = readFileSync(backPath, 'utf-8');
-  const frontRaw = readFileSync(frontPath, 'utf-8');
+for (const { backPath, frontPath, label, normalizer } of pairedFiles) {
+  const backRaw = readFileSync(resolve(root, backPath), 'utf-8');
+  const frontRaw = readFileSync(resolve(root, frontPath), 'utf-8');
 
-  const backNorm = stripHeaderComment(normalize(backRaw));
-  const frontNorm = stripHeaderComment(normalize(frontRaw));
+  const backNorm = stripHeaderComment(normalizer(backRaw));
+  const frontNorm = stripHeaderComment(normalizer(frontRaw));
 
   if (backNorm !== frontNorm) {
-    console.error(`ERROR: ${back} ↔ ${front} are out of sync!`);
+    console.error(`ERROR: ${label} are out of sync!`);
     mismatch = true;
   }
 }
@@ -80,4 +128,7 @@ if (mismatch) {
   process.exit(1);
 }
 
-console.log('OK: 6 ws-protocol split files are in sync (modulo import path normalization).');
+console.log(
+  `OK: ${pairedFiles.length} paired protocol/game-log files are in sync ` +
+  '(modulo import path normalization).',
+);
