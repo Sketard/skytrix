@@ -47,61 +47,7 @@ export interface ConfirmDialogData {
       </mat-dialog-actions>
     </div>
   `,
-  styles: [`
-    .confirm-dialog {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      padding: var(--space-2);
-    }
-
-    .confirm-dialog__icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 56px;
-      height: 56px;
-      margin: 0 auto var(--space-3);
-      border-radius: var(--radius-pill);
-      background: var(--danger-soft);
-      color: var(--danger-strong);
-
-      mat-icon {
-        font-size: 28px;
-        width: 28px;
-        height: 28px;
-        line-height: 28px;
-      }
-    }
-
-    .confirm-dialog__title {
-      font-family: var(--font-display);
-      font-size: var(--text-lg);
-      font-weight: var(--weight-bold);
-      letter-spacing: 0.02em;
-      margin: 0 0 var(--space-2);
-    }
-
-    .confirm-dialog--destructive .confirm-dialog__title {
-      text-align: center;
-    }
-
-    .confirm-dialog__message {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: var(--line-relaxed);
-      padding-bottom: var(--space-4);
-    }
-
-    .confirm-dialog--destructive .confirm-dialog__message {
-      text-align: center;
-    }
-
-    .confirm-dialog__actions {
-      gap: var(--space-2);
-      padding: 0;
-    }
-  `],
+  styleUrl: './confirm-dialog.component.scss',
 })
 export class ConfirmDialogComponent {
   readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);

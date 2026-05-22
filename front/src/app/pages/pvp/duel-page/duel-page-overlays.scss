@@ -108,8 +108,8 @@
 
 // === Surrender Dialog (Wave 3 refresh) ============================================
 // Material container is kept for focus-trap/backdrop/escape; the template is custom.
-// `panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger']` is wired in
-// duel-page.component.ts:confirmSurrender(). Le style du conteneur Material
+// `panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--surrender']` is wired
+// in duel-page.component.ts:confirmSurrender(). Le style du conteneur Material
 // (overlay CDK hors composant) → styles/_cdk-overrides.scss.
 
 .surrender-dialog {

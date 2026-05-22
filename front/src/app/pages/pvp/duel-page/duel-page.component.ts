@@ -988,7 +988,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       role: 'alertdialog',
       ariaLabel: 'Surrender confirmation',
       width: '320px',
-      panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger'],
+      // `--surrender` (not `--danger`): the template paints its own framed
+      // `.surrender-dialog` surface, so the Material container is forced
+      // transparent in `_cdk-overrides.scss`. Generic `--danger` dialogs
+      // (ConfirmDialogComponent) keep the opaque container background.
+      panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--surrender'],
       // Wave 3: Cancel button autofocus (anti-mistap). The Surrender button
       // is first in DOM (tab order) but Cancel is the visual/anti-action default.
       // The Cancel CTA is an <app-button variant="primary"> — focus its inner

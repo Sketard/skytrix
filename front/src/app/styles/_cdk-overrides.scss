@@ -107,9 +107,14 @@
   color: var(--gold-on-surface);
 }
 
-// --- duel surrender dialog : le conteneur Material reçoit la classe
-// `pvp-dialog-panel--danger` via panelClass (overlay CDK hors composant).
-.pvp-dialog-panel--danger .mat-mdc-dialog-container {
+// --- duel surrender dialog : le `<ng-template>` peint sa propre surface
+// encadrée (`.surrender-dialog` — gradient + bordure dorée arrondie), donc
+// le conteneur Material doit rester transparent et sans padding sinon un
+// liseré opaque apparaît autour du cadre. SCOPÉ à `--surrender` : les
+// dialogs `--danger` génériques (ConfirmDialogComponent) ne peignent pas
+// leur fond et gardent le conteneur opaque (`--mat-dialog-container-color`
+// posé par `.pvp-dialog-panel` dans `_holo-modal.scss`).
+.pvp-dialog-panel--surrender .mat-mdc-dialog-container {
   --mat-dialog-container-color: transparent;
   padding: 0;
   box-shadow: var(--elevation-3);
