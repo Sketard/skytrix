@@ -22,11 +22,14 @@ import type { BoardStatePayload } from '../ws-protocol-shared.js';
 // -----------------------------------------------------------------------------
 // Fixture helpers
 // -----------------------------------------------------------------------------
+// O5 / C2 contract: the board snapshot is ALREADY relative-to-viewer — the
+// builder never swaps it. So this fixture builds a RELATIVE board: `players[0]`
+// is "you", `players[1]` is the opponent, regardless of `perspective`.
 function board(
   turnCount: number,
   phase: BoardStatePayload['phase'],
-  lp0 = 8000,
-  lp1 = 8000,
+  lpYou = 8000,
+  lpOpp = 8000,
 ): BoardStatePayload {
   const player = (lp: number): BoardStatePayload['players'][0] => ({
     lp,
@@ -38,7 +41,7 @@ function board(
     turnPlayer: 0,
     turnCount,
     phase,
-    players: [player(lp0), player(lp1)],
+    players: [player(lpYou), player(lpOpp)],
   };
 }
 
@@ -78,12 +81,18 @@ describe('GameLogBuilder — five-block grammar', () => {
     expect(turns[1].lp).toEqual([6000, 7000]);
   });
 
-  it('Turn separator LP is swapped for perspective 1', () => {
-    const states = [state(board(1, 'MAIN1', 8000, 3000), [])];
-    const entries = buildGameLog({ states, perspective: 1 });
-    const turn = separators(entries).find(s => s.kind === 'turn');
-    // perspective 1 → [you, opp] = [player1.lp, player0.lp]
-    expect(turn?.lp).toEqual([3000, 8000]);
+  it('The builder never swaps the board — LP passes through in the order given', () => {
+    // O5 / C2: the board snapshot is relative-to-viewer; the builder takes
+    // `players[]` verbatim. The turn-separator LP is therefore perspective-
+    // INDEPENDENT — that independence IS the fix. Feed the same relative
+    // board for perspective 0 and 1 and assert an identical, verbatim result.
+    for (const perspective of [0, 1] as const) {
+      const states = [state(board(1, 'MAIN1', 8000, 3000), [])];
+      const entries = buildGameLog({ states, perspective });
+      const turn = separators(entries).find(s => s.kind === 'turn');
+      // [lpYou, lpOpp] passed through unchanged — no swap, both perspectives.
+      expect(turn?.lp).toEqual([8000, 3000]);
+    }
   });
 
   it('Phase boundary → a phase separator on phase change', () => {
@@ -340,7 +349,7 @@ describe('GameLogBuilder — five-block grammar', () => {
     expect(attack?.directLabel).toBeDefined();
   });
 
-  it('Combat → battle calc carries per-side outcomes', () => {
+  it('Combat → battle calc reports LP loss for the damaged player only', () => {
     const states = [
       state(board(1, 'BATTLE'), [
         {
@@ -356,7 +365,27 @@ describe('GameLogBuilder — five-block grammar', () => {
     ];
     const entries = buildGameLog({ states, perspective: 0 });
     const battle = combats(entries).find(c => c.combat === 'battle');
-    expect(battle?.defender?.outcome).toBe('−500 LP');
+    // Only the defender lost LP → exactly one lpLoss entry, no '0' entry.
+    expect(battle?.lpLoss).toEqual([{ player: 1, amount: 500 }]);
+  });
+
+  it('Combat → a 0-damage battle reports no LP loss', () => {
+    const states = [
+      state(board(1, 'BATTLE'), [
+        {
+          type: 'MSG_BATTLE',
+          attackerPlayer: 0,
+          attackerSequence: 0,
+          attackerDamage: 0,
+          defenderPlayer: 1,
+          defenderSequence: 0,
+          defenderDamage: 0,
+        },
+      ]),
+    ];
+    const entries = buildGameLog({ states, perspective: 0 });
+    const battle = combats(entries).find(c => c.combat === 'battle');
+    expect(battle?.lpLoss).toEqual([]);
   });
 
   it('Action → add counter row with signed badge', () => {
@@ -544,6 +573,38 @@ describe('GameLogBuilder — five-block grammar', () => {
     expect(swap!.label).toBe('Échange de cartes');
   });
 
+  it('MSG_BECOME_TARGET resolves an opponent-half card under perspective 1 (O5)', () => {
+    // O5 / C2 regression test — the bug this catches: the builder used to
+    // index a relative-to-viewer board with an ABSOLUTE player. Here the
+    // viewer is P1, so the relative board's `players[1]` is the absolute-P0
+    // player. A MSG_BECOME_TARGET at absolute player 0 must relativise to
+    // relative index 1 and resolve the card sitting there.
+    const bs = board(1, 'MAIN1');
+    // Place a card in the opponent's MZONE M1 — relative `players[1]` is the
+    // opponent for a P1 viewer (absolute P0).
+    bs.players[1].zones = [
+      { zoneId: 'M1', cards: [cardOnField(424242, 'Targeted Monster')] },
+    ];
+    const states = [
+      state(bs, [
+        chain(0, 100, 'Targeting Effect'),
+        {
+          type: 'MSG_BECOME_TARGET',
+          cards: [
+            { player: 0, location: LOCATION.MZONE, sequence: 0 },
+          ],
+        },
+      ]),
+    ];
+    const entries = buildGameLog({ states, perspective: 1 });
+    const activation = moves(entries).find(m => m.chainLink === 1);
+    expect(activation?.targets).toBeDefined();
+    expect(activation!.targets).toHaveLength(1);
+    expect(activation!.targets![0].revealed).toBe(true);
+    expect(activation!.targets![0].cardCode).toBe(424242);
+    expect(activation!.targets![0].cardName).toBe('Targeted Monster');
+  });
+
   it('resolveDescription is keyed by the raw description code, not chainIndex', () => {
     const seen: number[] = [];
     const states = [
@@ -581,6 +642,20 @@ describe('GameLogBuilder — five-block grammar', () => {
 // -----------------------------------------------------------------------------
 function openingDraw(player: 0 | 1): ServerMessage {
   return { type: 'MSG_DRAW', player, cards: [1, 2, 3, 4, 5] };
+}
+
+/** A minimal on-field card — only the fields `resolveBoardCard` reads. */
+function cardOnField(
+  cardCode: number,
+  name: string,
+): BoardStatePayload['players'][0]['zones'][0]['cards'][0] {
+  return {
+    cardCode,
+    name,
+    position: 1,
+    overlayMaterials: [],
+    counters: {},
+  };
 }
 
 function chain(

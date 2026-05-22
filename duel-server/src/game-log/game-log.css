@@ -1,0 +1,986 @@
+/* ============================================================
+   game-log.css — SOURCE DE VÉRITÉ UNIQUE du style du Game Log
+   ------------------------------------------------------------
+   Anciennement extrait par regex de `_mockups/mockup-game-log.html`
+   (déprécié 2026-05-22). Ce fichier est désormais lu directement par
+   game-log-builder-cli.ts et injecté tel quel dans le <style> du
+   document HTML standalone — un seul bloc, jamais dupliqué.
+
+   Référence visuelle = Capture1/2/3.PNG (Master Duel game log).
+
+   GRAMMAIRE — une ligne = :
+     [ carte SOURCE de l'effet ]   ← qui a activé, toujours révélée
+       « descriptionText »          ← texte de l'effet, toujours présent
+       [ corps spécifique au type ] ← cartes déplacées / RNG / combat / action
+   Exception : main de départ + pioche de Draw Phase = pas de source.
+
+   Standardisation :
+     - verbes en FRANÇAIS
+     - toute position plateau = mini-plateau complet (M+S/T des 2 joueurs)
+
+   ------------------------------------------------------------
+   RÉVISION DESIGN — 2026-05-22 (Sally) — décisions du chantier §4.2 :
+     D-A  camp adverse = AMBRE (--duel-side-opponent alias --opp-amber),
+          PAS rouge — le rouge reste réservé au danger.
+     D-B  une chaîne = UN bloc groupé : en-tête « Chaîne · N liens »
+          + rail latéral doré ; « Résolution » = sous-marqueur fin
+          inline, pas une barre pleine largeur.
+     D-C  deux poids de ligne : .lg-row pleine (source + description)
+          vs .lg-row--bare (mouvement système sans source — presque
+          une ligne de texte). La résolution NE re-rend PAS la
+          description (identique à l'activation).
+
+   RÈGLE TOKEN — tout littéral hex/rgba vit dans :root sous un nom.
+   Aucune règle ne hardcode une couleur. Tokens :root synchronisés
+   sur front/src/app/styles/_tokens.scss.
+   ============================================================ */
+
+:root {
+  /* --- Typo fluide — copié de _tokens.scss --- */
+  --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
+  --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
+  --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+
+  /* === ÉCHELLE TYPOGRAPHIQUE DU GAME LOG (2026-05-22, Sally) =========
+     Le game log avait 13 tailles ad hoc (6→18px) = rendu « patte de
+     mouche », blocs qui dénotent. Standardisation à 3 NIVEAUX STRICTS.
+     Toute taille de police du log passe par l'un de ces 3 tokens —
+     plus aucun littéral px. Chaque niveau a UNE taille d'icône.
+       · --gl-title  titres   : séparateur de tour, fin, en-tête chaîne,
+                                titre du journal
+       · --gl-text   corps    : nom de carte, description, label de zone,
+                                résultats RNG, LP
+       · --gl-label  légendes : verbe, phase, tag/compteur de chaîne,
+                                rowtag plateau, sous-label
+     ================================================================ */
+  --gl-title:      var(--text-sm);    /* ~13px */
+  --gl-text:       var(--text-xs);    /* ~11px */
+  --gl-label:      0.62rem;           /* ~10px — palier sous --text-xs */
+  --gl-icon-title: 15px;
+  --gl-icon-text:  13px;
+  --gl-icon-label: 11px;
+  /* Échelle PICTOGRAMME — le mini-plateau est une vue terrain
+     miniature, pas du texte de lecture ; ses tags ne suivent pas
+     l'échelle --gl-* (qui les gonflerait). */
+  --gl-pictogram:  6px;
+  --gl-pile-tag:   7px;
+
+  --line-tight: 1.1; --line-normal: 1.4; --line-relaxed: 1.6;
+  --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700; --weight-black: 800;
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* --- Espacement 8px-based — _tokens.scss --- */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px;
+
+  /* --- Radius — échelle DS canonique unique (--pvp-radius-* fusionné 2026-05-20) --- */
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-pill: 999px;
+
+  /* --- Élévation — _tokens.scss --- */
+  --elevation-2: 0 4px 16px rgba(0,0,0,0.30);
+  --elevation-3: 0 8px 24px rgba(0,0,0,0.40);
+  /* glow d'une case ciblée — équivalent local d'une élévation « lueur ».
+     Pas d'ombre en dur dans une règle (§6 DS). */
+  --glow-target: 0 0 5px var(--gold-soft-40);
+
+  /* --- Gold (Millennium accent) — valeurs _tokens.scss --- */
+  --gold:            #C9A84C;
+  --gold-50:         #ffe9a8;
+  --gold-on-surface: #C9A84C;  /* alias de --gold en dark */
+  --gold-soft-06: rgba(201,168,76,0.06);
+  --gold-soft-08: rgba(201,168,76,0.08);
+  --gold-soft-12: rgba(201,168,76,0.12);
+  --gold-soft-15: rgba(201,168,76,0.15);
+  --gold-soft-18: rgba(201,168,76,0.18);
+  --gold-soft-20: rgba(201,168,76,0.20);
+  --gold-soft-25: rgba(201,168,76,0.25);
+  --gold-soft-30: rgba(201,168,76,0.30);
+  --gold-soft-40: rgba(201,168,76,0.40);
+
+  /* --- Camp de duel — D-A : self = --self-blue, opponent = --opp-amber.
+     Aliasés depuis la palette duel-side du replay viewer (_tokens.scss
+     ll.176-186). PAS de rouge ici : le rouge = danger/cible/défaite. --- */
+  --self-blue:      #1e5ac8;
+  --self-blue-soft: rgba(30,90,200,0.30);
+  --self-blue-glow: rgba(96,165,250,0.55);
+  --opp-amber:      #b45309;
+  --opp-amber-soft: rgba(180,83,9,0.34);
+  --opp-amber-glow: rgba(245,158,11,0.55);
+  /* handles sémantiques game-log — alias purs, jamais une teinte nouvelle */
+  --duel-side-self:        var(--self-blue);
+  --duel-side-self-border: var(--self-blue-soft);
+  --duel-side-opp:         var(--opp-amber);
+  --duel-side-opp-border:  var(--opp-amber-soft);
+
+  /* --- Effet nié — gris neutre (cohérent --pvp-chain-glow-negated) --- */
+  --negated: #8a8a8a;
+
+  /* --- Combat — ATK ambre offensif / DEF bleu acier / dégâts rouge --- */
+  --combat-atk: #e8a23d;
+  --combat-def: #5fa8d8;
+  --combat-dmg: #ff6b6b;
+  /* teintes douces dérivées de --combat-dmg (puce PV perdus, fond
+     attaque directe). Dérivées explicites = aucune rgba en dur. */
+  --combat-dmg-soft-10: rgba(255,107,107,0.10);
+  --combat-dmg-soft-22: rgba(255,107,107,0.22);
+  --combat-dmg-soft-06: rgba(255,107,107,0.06);
+
+  /* --- Compteur / action — vert ajout, rouge clair retrait. Sémantique
+     propre au game-log : place/retire un compteur, équipe/déséquipe. --- */
+  --action-add: #6bce6b;
+  --action-rem: #ff8a8a;
+
+  /* --- Surfaces — copié/aligné de _tokens.scss (holo-arena dark) --- */
+  --surface-bg:        #0a0a14;
+  --surface-bg-deep:   #0f0f1c;
+  --surface-card-ds:   rgba(30,30,46,0.85);
+  --surface-card-low:  rgba(22,22,36,0.85);
+  --surface-overlay:   rgba(255,255,255,0.04);
+  --surface-hover:     rgba(255,255,255,0.06);
+  /* surface panneau = --pvp-zone-browser-bg (le panneau PvP voisin) */
+  --pvp-zone-browser-bg: rgba(20,20,40,0.95);
+  /* surface ligne / sous-corps / boîte d'effet — dérivées locales game-log */
+  --surface-row:    rgba(28,28,44,0.70);
+  --surface-effect: rgba(8,8,16,0.85);
+  --surface-sub:    rgba(255,255,255,0.03);
+  --surface-zonecell: rgba(255,255,255,0.05);
+
+  /* --- Dégradés décoratifs de vignette — fond d'une carte sans
+     artwork, dos de carte. Tokenisés pour qu'aucun hex ne vive dans
+     une règle (§6 DS). L'avatar joueur, lui, a un gradient inline
+     dérivé du pseudo (avatarMarkup) — pas un token. --- */
+  --thumb-grad:     linear-gradient(135deg, #3a3550, #211f30);
+  --cardback-grad:  repeating-linear-gradient(45deg, #2a2438 0 6px, #221d30 6px 12px);
+
+  --border-soft:   rgba(255,255,255,0.10);
+  --border-medium: rgba(255,255,255,0.18);
+
+  --text-primary:   #EAEAEA;
+  --text-secondary: #c0c0c0;
+  --text-muted:     #9e9e9e;
+  --text-inverse:   #1a1208;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background:
+    radial-gradient(900px 600px at 75% 25%, var(--self-blue-soft), transparent 60%),
+    radial-gradient(900px 600px at 25% 80%, var(--opp-amber-soft), transparent 60%),
+    var(--surface-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.page-head { text-align: center; max-width: 880px; }
+.page-head h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--gold-on-surface);
+}
+.page-head p { color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-2); }
+
+.stage {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.col { display: flex; flex-direction: column; gap: var(--space-3); }
+.col-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-left: var(--space-1);
+}
+
+/* ============================================================
+   PANEL — bandeau latéral pleine hauteur
+   ============================================================ */
+.gamelog {
+  width: 330px;
+  height: 880px;
+  background: var(--pvp-zone-browser-bg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gamelog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, var(--gold-soft-08), transparent);
+}
+.gamelog__title {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-title);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--gold-on-surface);
+}
+.gamelog__title .material-icons-round { font-size: var(--gl-icon-title); }
+.gamelog__close {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.gamelog__close:hover { background: var(--surface-hover); color: var(--text-primary); }
+.gamelog__close:focus-visible {
+  outline: 2px solid var(--gold-soft-40);
+  outline-offset: 1px;
+}
+.gamelog__close .material-icons-round { font-size: 16px; }
+
+.gamelog__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) 0 var(--space-5);
+  display: flex;
+  flex-direction: column;
+}
+/* Ghost scrollbar — convention skytrix (@include ghost-scroll) */
+.gamelog__scroll::-webkit-scrollbar { width: 6px; }
+.gamelog__scroll::-webkit-scrollbar-thumb { background: var(--gold-soft-08); }
+.gamelog__scroll:hover::-webkit-scrollbar-thumb { background: var(--gold-soft-25); }
+
+.gamelog__newpill {
+  align-self: center;
+  margin: var(--space-2) 0 0;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--gold-soft-20);
+  border: 1px solid var(--gold-soft-40);
+  color: var(--gold-50);
+  font-size: var(--gl-label);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+.gamelog__newpill:focus-visible {
+  outline: 2px solid var(--gold-soft-40);
+  outline-offset: 2px;
+}
+.gamelog__newpill .material-icons-round { font-size: var(--gl-icon-label); }
+
+/* ============================================================
+   SEPARATORS — décision / tour / phase / fin
+   ============================================================ */
+.lg-decision {
+  text-align: center;
+  font-size: var(--gl-text);
+  color: var(--text-secondary);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+.lg-decision b { color: var(--gold-on-surface); font-weight: var(--weight-semibold); }
+
+.lg-turn {
+  position: sticky; top: 0; z-index: 3;
+  margin: var(--space-2) 0;
+  background:
+    linear-gradient(180deg, var(--gold-soft-18), var(--gold-soft-06)),
+    var(--surface-bg-deep);
+  border-top: 1px solid var(--gold-soft-30);
+  border-bottom: 1px solid var(--gold-soft-30);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+}
+.lg-turn__title {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: var(--weight-black);
+  font-size: var(--gl-title);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold-50);
+}
+.lg-turn__players {
+  display: flex; justify-content: space-between;
+  margin-top: var(--space-2); gap: var(--space-3);
+}
+.lg-turn__p { display: flex; align-items: center; gap: var(--space-2); flex: 1; }
+.lg-turn__p--opp { flex-direction: row-reverse; text-align: right; }
+/* Avatar joueur — disque gradient + initiale, miroir de <app-avatar>.
+   Le `background` (gradient djb2) et `border-color` sont posés inline par
+   avatarMarkup() : couleur stable dérivée du pseudo. Le CSS ne fixe que la
+   géométrie + la typo de l'initiale. */
+.lg-turn__avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-title);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  user-select: none;
+}
+.lg-turn__meta { display: flex; flex-direction: column; line-height: 1.15; }
+.lg-turn__name { font-size: var(--gl-label); color: var(--text-muted); font-weight: var(--weight-medium); }
+.lg-turn__lp {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-text);
+  color: var(--text-primary);
+}
+
+.lg-phase {
+  margin: var(--space-1) var(--space-4);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-overlay);
+}
+
+/* ============================================================
+   CHAIN GROUP — D-B : une chaîne = UN bloc groupé.
+   Au lieu de 3 barres (Début / Résolution / Fin), un conteneur
+   .lg-chaingroup qui :
+     - porte un en-tête « Chaîne · N liens »
+     - encadre toutes ses lignes d'un rail latéral gauche doré
+     - intercale « Résolution » comme sous-marqueur fin (pas une barre)
+   Le rail s'arrête tout seul = plus de barre « Fin de chaîne ».
+   ============================================================ */
+.lg-chaingroup {
+  margin: var(--space-3) var(--space-3);
+  border-left: 2px solid var(--gold-soft-30);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: linear-gradient(90deg, var(--gold-soft-06), transparent 60%);
+  padding: 2px 0 var(--space-1) 0;
+}
+.lg-chaingroup__head {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gold-on-surface);
+}
+.lg-chaingroup__head .material-icons-round { font-size: var(--gl-icon-title); }
+.lg-chaingroup__count {
+  margin-left: auto;
+  font-size: var(--gl-label);
+  letter-spacing: .04em;
+  color: var(--text-muted);
+}
+/* sous-marqueur « Résolution » — fin, inline dans le groupe */
+.lg-chainmark {
+  display: flex; align-items: center; gap: var(--space-1);
+  margin: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gold-50);
+}
+.lg-chainmark::before, .lg-chainmark::after {
+  content: ""; height: 1px; flex: 1; background: var(--gold-soft-20);
+}
+.lg-chainmark .material-icons-round { font-size: var(--gl-icon-label); }
+/* lignes À L'INTÉRIEUR d'un groupe — marge gauche réduite (le rail
+   du groupe remplace une partie du chrome de la ligne). */
+.lg-chaingroup .lg-row { margin-left: var(--space-2); margin-right: var(--space-2); }
+.lg-chaingroup .lg-row--bare { margin-left: var(--space-3); }
+
+/* ============================================================
+   LOG ROW — anatomie universelle (ligne PLEINE)
+   ============================================================ */
+.lg-row {
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-row);
+  border-left: 3px solid var(--duel-side-self);
+  cursor: pointer;
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.lg-row:hover { background: var(--surface-hover); }
+/* anneau de focus clavier — seules les lignes PLEINES sont interactives
+   (tabindex="0" posé par le builder). Les .lg-row--bare sont des
+   murmures non-cliquables : pas de tabindex, donc jamais ce :focus. */
+.lg-row:focus-visible {
+  outline: 2px solid var(--gold-soft-40);
+  outline-offset: -1px;
+  background: var(--surface-hover);
+}
+.lg-row--opp { border-left-color: var(--duel-side-opp); }
+/* ligne niée — atténuée, source barrée */
+.lg-row--negated { opacity: .62; border-left-color: var(--negated); }
+
+/* --- D-C : ligne BARE — mouvement système sans carte source.
+   2 POIDS, mais le bare reste LISIBLE : MÊME vignette et MÊME typo que
+   les lignes pleines. Différence avec une ligne pleine : pas de rail
+   latéral, fond léger. « les activations sont des blocs, les mouvements
+   système des murmures » — mais un murmure se lit quand même.
+   ESPACEMENT : marge standard (--space-2), plus le « 1px collé » legacy
+   — chaque mouvement système est un bloc autonome lisible. --- */
+.lg-row--bare {
+  margin: var(--space-2) var(--space-3);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sub);
+  border-left: none;       /* pas de rail — c'est un murmure */
+  cursor: default;
+  gap: 0;
+}
+.lg-row--bare:hover { background: var(--surface-hover); }
+.lg-row--bare .lg-body { flex: 1; min-width: 0; gap: 0; }
+
+/* ============================================================
+   LG-BARE — carte déplacée, LAYOUT DEUX ÉTAGES (2026-05-22).
+   ------------------------------------------------------------
+   Le nom de carte ne flotte plus au-dessus d'un flux de hauteur
+   variable. Il devient un EN-TÊTE pleine largeur ancré en HAUT,
+   indépendant de la hauteur du flux. Sous un filet fin, le CORPS
+   (vignette + flux du trajet) forme le second étage.
+     Étage 1 — .lg-bare__head : nom de la carte (ancrage stable)
+     Étage 2 — .lg-bare__body : vignette + flux source→dest
+   S'applique IDENTIQUEMENT aux moved-cards des lignes pleines ET
+   des bare-rows — la seule différence reste le chrome de .lg-row.
+   ============================================================ */
+.lg-bare {
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+/* dans une LIGNE PLEINE, le corps peut tenir plusieurs moved-cards
+   (Link materials, multi-tribut…) : chacune est une sous-carte
+   encadrée d'un fond léger ; un filet les sépare. */
+.lg-row:not(.lg-row--bare) .lg-bare {
+  background: var(--surface-sub);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.lg-body .lg-bare + .lg-bare { margin-top: var(--space-1); }
+
+/* --- Étage 1 : en-tête — l'ancrage du nom de carte --- */
+.lg-bare__head {
+  display: flex; align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+/* nom de carte = niveau CORPS, poids unifié SEMIBOLD (600) partout */
+.lg-bare__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  line-height: var(--line-tight);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lg-bare__name--hidden { font-style: italic; color: var(--text-muted); }
+
+/* --- Étage 2 : corps — vignette + flux, centrés ensemble --- */
+.lg-bare__body {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2);
+  min-width: 0;
+}
+/* MÊME vignette que les lignes pleines (30×43). Sélecteur doublé pour
+   ne pas dépendre de l'ordre de cascade. */
+.lg-bare .lg-bare__thumb { width: 30px; height: 43px; }
+
+/* --- le flux : zone départ ── verbe/flèche ── destination.
+   .lg-bare__flow centre verticalement TOUS ses enfants. La jambe
+   verbe+flèche, les zones-piles et le mini-plateau tombent donc sur la
+   même médiane. Destination case-terrain → mini-plateau (.lg-board) ;
+   destination pile → case-slot (.lg-bare__pile). --- */
+.lg-bare__flow {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+/* zone PILE = vraie case-slot — un emplacement de carte 30×42, bord
+   pointillé, le nom de pile dedans. C'est la « vraie apparence » d'une
+   zone-pile, pas un chip texte plat. */
+.lg-bare__pile {
+  width: 30px; height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-zonecell);
+  border: 1px dashed var(--border-medium);
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  color: var(--text-muted);
+}
+.lg-bare__pile small {
+  font-family: var(--font-mono); font-size: var(--gl-pile-tag);
+  letter-spacing: .04em; text-transform: uppercase;
+}
+/* la pile DESTINATION est teintée or — c'est le point d'arrivée du trajet */
+.lg-bare__pile--dest {
+  border-color: var(--gold-soft-30);
+  background: var(--gold-soft-08);
+  color: var(--gold-50);
+}
+/* jambe verbe+flèche : COLONNE en flux normal (verbe AU-DESSUS, flèche
+   EN DESSOUS). Le verbe occupe sa hauteur → la jambe a la hauteur du
+   couple, son centre tombe au milieu, aligné sur la médiane des zones.
+   Largeur de la jambe = largeur du verbe (nowrap) ; la flèche dessous
+   fait width:100% → même largeur, jamais plus (pas de débordement). */
+.lg-bare__leg {
+  display: inline-flex; flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 44px;       /* flèche lisible même si le verbe est court */
+}
+/* verbe = niveau LÉGENDE — il étiquette le trajet */
+.lg-bare__verb {
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap; text-align: center; line-height: 1;
+}
+/* flèche = trait extensible (flex:1) + pointe SVG fixe. Le conteneur
+   fait toute la largeur de la jambe ; trajet symétrique d'un bord à
+   l'autre. */
+.lg-bare__arrow {
+  display: flex; align-items: center;
+  color: var(--gold-soft-40);
+  height: 7px;
+}
+.lg-bare__arrow::before {
+  content: ""; flex: 1; height: 1.4px;
+  background: currentColor; border-radius: 1px;
+}
+.lg-bare__arrow svg { display: block; flex: none; }
+/* posture-change variant — pas de flèche, juste verbe + transition */
+.lg-bare__zones {
+  font-family: var(--font-mono);
+  font-size: var(--gl-text);
+  color: var(--text-secondary);
+}
+
+/* --- source-card header --- */
+.lg-src { display: flex; align-items: center; gap: var(--space-2); }
+/* nom de la carte source = niveau CORPS (comme tout nom de carte), la
+   hiérarchie passe par le POIDS (semibold), pas par une taille à part. */
+.lg-src__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.lg-row--negated .lg-src__name { text-decoration: line-through; color: var(--text-muted); }
+.lg-negated-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--negated);
+  border: 1px solid var(--negated);
+  border-radius: var(--radius-sm);
+  padding: 1px var(--space-1);
+}
+.badge-cl {
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--text-inverse);
+  font-size: var(--gl-text);
+  font-weight: var(--weight-black);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.lg-row--negated .badge-cl { background: var(--negated); }
+
+/* --- effect description --- */
+.lg-desc {
+  padding: var(--space-2);
+  background: var(--surface-effect);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--gl-text);
+  line-height: var(--line-normal);
+  color: var(--text-secondary);
+}
+/* rappel d'effet sur une ligne de résolution — D-C : la résolution ne
+   re-rend PAS la description complète, juste un rappel ténu une ligne. */
+.lg-desc--echo {
+  padding: 2px var(--space-2);
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--gold-soft-20);
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* --- targeting annotation — discrète, sous la description --- */
+.lg-targets {
+  margin: 2px 0 0 var(--space-2);
+  font-size: var(--gl-text);
+  color: var(--gold-on-surface);
+  opacity: .85;
+}
+
+/* --- thumbnails --- */
+.lg-thumb {
+  width: 30px; height: 43px;
+  border-radius: var(--radius-sm);
+  background: var(--thumb-grad);
+  border: 1px solid var(--border-medium);
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  font-size: var(--gl-label); color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+}
+.lg-thumb--src { width: 34px; height: 49px; }
+.lg-thumb--back {
+  background: var(--cardback-grad);
+  border-color: var(--gold-soft-20);
+}
+/* vignette artwork réel — l'image remplit la case, le placeholder
+   texte ne s'affiche que si l'image 404. */
+.lg-thumb--art { padding: 0; overflow: hidden; }
+.lg-thumb--art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ============================================================
+   BODY — moved-card sub-rows
+   ============================================================ */
+.lg-body { display: flex; flex-direction: column; gap: var(--space-1); }
+.lg-moved {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-sub);
+  border-radius: var(--radius-sm);
+}
+.lg-moved__card { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.lg-moved__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lg-moved__hidden {
+  font-size: var(--gl-text);
+  font-style: italic;
+  color: var(--text-muted);
+}
+.lg-moved__flow {
+  display: flex; align-items: center; gap: var(--space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.lg-moved__verb {
+  font-size: var(--gl-label);
+  font-family: var(--font-mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.lg-moved__arrow { color: var(--gold-soft-40); display: flex; }
+.lg-moved__arrow .material-icons-round { font-size: var(--gl-icon-text); }
+
+/* sous-section labellisée du corps (ex. « Matériaux ») */
+.lg-sub-label {
+  font-size: var(--gl-label);
+  font-family: var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px var(--space-1) 0;
+}
+
+/* zone destination chip */
+.lg-dest {
+  width: 30px; height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-zonecell);
+  border: 1px dashed var(--border-medium);
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  color: var(--text-muted);
+}
+.lg-dest small { font-size: var(--gl-label); letter-spacing: .03em; }
+.zone-ico { display: inline-block; width: 15px; height: 15px; }
+.zone-ico img {
+  width: 100%; height: 100%;
+  filter: brightness(0) saturate(100%) invert(68%) sepia(8%)
+          saturate(190%) hue-rotate(180deg) brightness(95%);
+}
+
+/* ============================================================
+   FIELD GRID — full mini-board (M + S/T rows, both players)
+   ------------------------------------------------------------
+   Le SEUL composant de position-plateau. Toute position plateau
+   affiche le board entier (certains effets posent côté adverse).
+   Layout par joueur : monstre (5) + magie/piège (5) ; bande EMZ
+   partagée (2 cellules) entre les deux moitiés.
+   ============================================================ */
+.lg-board {
+  display: flex; flex-direction: column; gap: 2px;
+  width: 78px; flex-shrink: 0;
+}
+.lg-board__row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
+.lg-board__emz { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
+/* tag de rangée (M / M/P / EMZ) — synchro game-log-html.ts */
+.lg-board__line { display: flex; align-items: center; gap: 3px; }
+.lg-board__line .lg-board__row,
+.lg-board__line .lg-board__emz { flex: 1; }
+/* rowtag/label du mini-plateau : --gl-pictogram assumé — le mini-plateau
+   est un PICTOGRAMME (vue terrain miniature), pas du texte de lecture ;
+   ses tags ne suivent pas l'échelle --gl-* (qui les gonflerait). */
+.lg-board__rowtag {
+  width: 22px; flex: none;
+  font-family: var(--font-mono); font-size: var(--gl-pictogram);
+  letter-spacing: .04em; text-align: right;
+  color: var(--text-muted); opacity: .75;
+}
+.lg-board__label {
+  font-size: var(--gl-pictogram);
+  font-family: var(--font-mono);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex; justify-content: space-between;
+}
+.lg-board__label--opp  span:first-child { color: var(--duel-side-opp); }
+.lg-board__label--self span:first-child { color: var(--duel-side-self); }
+.lg-cell {
+  aspect-ratio: 1;
+  border-radius: 1px;
+  background: var(--surface-zonecell);
+  border: 1px solid var(--border-soft);
+}
+.lg-cell--st  { border-style: dashed; }
+.lg-cell--emz { border-color: var(--gold-soft-30); background: var(--gold-soft-08); }
+.lg-cell--target {
+  background: var(--gold-soft-30);
+  border-color: var(--gold);
+  box-shadow: var(--glow-target);
+}
+.lg-cell--from {
+  background: var(--opp-amber-soft);
+  border-color: var(--duel-side-opp-border);
+}
+/* FIELD-spell cell */
+.lg-board__field { display: flex; justify-content: center; margin-top: 2px; }
+.lg-board__field .lg-cell { width: 13px; }
+
+/* bande de pioche initiale dans le corps */
+.lg-draw5 { display: flex; gap: 3px; }
+.lg-draw5 .lg-thumb { width: 28px; height: 40px; }
+
+/* ============================================================
+   BODY — RNG / combat / action / position
+   ============================================================ */
+.lg-rng, .lg-combat, .lg-action, .lg-pos {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--surface-sub);
+  border-radius: var(--radius-sm);
+}
+.lg-rng__icon, .lg-action__icon { display: flex; }
+.lg-rng__icon { color: var(--gold-on-surface); }
+.lg-rng__icon .material-icons-round,
+.lg-action__icon .material-icons-round { font-size: var(--gl-icon-text); }
+.lg-rng__label, .lg-action__label {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+.lg-rng__results { display: flex; gap: var(--space-1); margin-left: auto; }
+.lg-rng-die {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-bg-deep);
+  border: 1px solid var(--gold-soft-30);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-text);
+  color: var(--gold-50);
+}
+.lg-rng-coin {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg-deep);
+  border: 1px solid var(--gold-soft-30);
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--gold-50);
+}
+
+.lg-combat__side {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px; flex-shrink: 0;
+}
+.lg-combat__thumb {
+  width: 30px; height: 43px;
+  border-radius: var(--radius-sm);
+  background: var(--thumb-grad);
+  border: 1px solid var(--border-medium);
+  display: grid; place-items: center;
+  font-size: var(--gl-label); color: var(--text-muted); text-align: center;
+}
+.lg-combat__stat {
+  font-family: var(--font-mono); font-size: var(--gl-label); font-weight: var(--weight-bold);
+  display: inline-flex; align-items: center; gap: 2px;
+}
+/* ATK = ambre offensif · DEF = bleu acier défensif — couleur +
+   pictogramme pour qu'une stat se lise d'un coup d'œil. */
+.lg-combat__atk { color: var(--combat-atk); }
+.lg-combat__def { color: var(--combat-def); }
+.lg-combat__dmg { color: var(--combat-dmg); }
+.lg-combat__stat .material-icons-round { font-size: var(--gl-icon-label); }
+.lg-combat__vs {
+  display: flex; flex-direction: column; align-items: center;
+  flex: 1; color: var(--text-muted);
+}
+.lg-combat__vs .material-icons-round { font-size: var(--gl-icon-title); color: var(--combat-dmg); }
+.lg-combat__vs small {
+  font-family: var(--font-mono); font-size: var(--gl-label);
+  letter-spacing: .06em; text-transform: uppercase;
+}
+/* ligne PV PERDUS — sous le combat, une puce par joueur qui perd des
+   PV. RIEN du tout si aucun PV perdu (un clash sans dégâts n'affiche
+   pas de ligne). Icône joueur + nom + montant rouge. */
+.lg-lploss {
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  margin-top: var(--space-2);
+  justify-content: center;
+}
+.lg-lploss__chip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--combat-dmg-soft-10);
+  border: 1px solid var(--combat-dmg);
+}
+.lg-lploss__chip .material-icons-round {
+  font-size: var(--gl-icon-label); color: var(--combat-dmg);
+}
+.lg-lploss__who {
+  font-size: var(--gl-label);
+  color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.lg-lploss__amt {
+  font-family: var(--font-mono); font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  color: var(--combat-dmg);
+}
+
+/* attaque directe — l'attaquant frappe le joueur. Au lieu d'une chaîne
+   rouge à plat, une « cible joueur » : un disque-avatar + un libellé.
+   Lit comme « ça atterrit sur le joueur », symétrique d'une vignette
+   défenseur. */
+.lg-combat__player {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; flex-shrink: 0;
+}
+.lg-combat__player-ico {
+  width: 30px; height: 43px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--combat-dmg-soft-22), var(--combat-dmg-soft-06));
+  border: 1px solid var(--combat-dmg);
+  display: grid; place-items: center;
+  color: var(--combat-dmg);
+}
+.lg-combat__player-ico .material-icons-round { font-size: var(--gl-icon-title); }
+.lg-combat__player-dmg {
+  font-family: var(--font-mono); font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--combat-dmg);
+  white-space: nowrap;
+}
+
+.lg-action--add .lg-action__icon { color: var(--action-add); }
+.lg-action--rem .lg-action__icon { color: var(--action-rem); }
+.lg-action__detail { font-size: var(--gl-text); color: var(--text-muted); }
+.lg-action__targets { display: flex; align-items: center; gap: var(--space-1); margin-left: auto; }
+.lg-action__targets .lg-thumb { width: 22px; height: 31px; }
+.lg-counter-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-text);
+}
+.lg-counter-badge--add { color: var(--action-add); }
+.lg-counter-badge--rem { color: var(--action-rem); }
+
+/* position-change body */
+.lg-pos__icon { color: var(--gold-on-surface); display: flex; }
+.lg-pos__icon .material-icons-round { font-size: var(--gl-icon-text); }
+.lg-pos__states {
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+}
+.lg-pos__states .material-icons-round { font-size: var(--gl-icon-text); color: var(--gold-soft-40); }
+/* Posture pills — même identité ATK/DEF que le combat. « before »
+   atténué (la posture quittée), « after » plein. */
+.lg-posture {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid currentColor;
+  font-family: var(--font-mono); font-size: var(--gl-label); font-weight: var(--weight-bold);
+}
+.lg-posture .material-icons-round { font-size: var(--gl-icon-label); color: inherit; }
+.lg-posture--atk { color: var(--combat-atk); }
+.lg-posture--def { color: var(--combat-def); }
+.lg-posture--before { opacity: .45; }
+
+/* duel-over separator */
+.lg-end {
+  margin: var(--space-3) var(--space-3) var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  text-align: center;
+  background:
+    linear-gradient(180deg, var(--gold-soft-20), var(--gold-soft-08)),
+    var(--surface-bg-deep);
+  border: 1px solid var(--gold-soft-40);
+}
+.lg-end__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-black);
+  font-size: var(--gl-title);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gold-50);
+}
+.lg-end__reason { margin-top: 2px; font-size: var(--gl-text); color: var(--text-secondary); }

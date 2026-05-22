@@ -21,30 +21,41 @@ import type {
 /** Render a full game log to a Markdown string. */
 export function renderMarkdown(entries: GameLogEntry[], title: string): string {
   const lines: string[] = [`# Game Log — ${title}`, ''];
+  // Chain delimiter trio is folded into one grouped block (design decision
+  // D-B, chantier §4.2): `chain-start` opens a "⛓ Chaîne · N liens" heading,
+  // `chain-resolve` becomes a thin "↻ Résolution" sub-marker, `chain-end`
+  // closes silently (no separate bar).
+  let resolution = false;
   for (const entry of entries) {
-    lines.push(...renderEntry(entry));
+    if (entry.block === 'separator' && entry.kind === 'chain-start') {
+      resolution = false;
+    }
+    if (entry.block === 'separator' && entry.kind === 'chain-resolve') {
+      resolution = true;
+    }
+    lines.push(...renderEntry(entry, resolution));
   }
   lines.push('');
   return lines.join('\n');
 }
 
-function renderEntry(entry: GameLogEntry): string[] {
+function renderEntry(entry: GameLogEntry, isResolution: boolean): string[] {
   switch (entry.block) {
     case 'separator':
       return renderSeparator(entry);
     case 'move':
-      return renderMove(entry);
+      return renderMove(entry, isResolution);
     case 'rng':
-      return renderRng(entry);
+      return renderRng(entry, isResolution);
     case 'combat':
-      return renderCombat(entry);
+      return renderCombat(entry, isResolution);
     case 'action':
-      return renderAction(entry);
+      return renderAction(entry, isResolution);
   }
 }
 
 // -----------------------------------------------------------------------------
-// Separators
+// Separators — chain delimiters fold into a grouped heading (D-B).
 // -----------------------------------------------------------------------------
 function renderSeparator(e: SeparatorEntry): string[] {
   switch (e.kind) {
@@ -55,11 +66,16 @@ function renderSeparator(e: SeparatorEntry): string[] {
     case 'phase':
       return [`### — ${e.label} —`, ''];
     case 'chain-start':
-      return ['', `**⛓ ${e.label}**`, ''];
+      // Opens a chain group. The link count is not known at this point
+      // (the activation rows follow), so the heading stays generic — the
+      // HTML renderer, which back-scans, carries the precise count.
+      return ['', `**⛓ Chaîne**`, ''];
     case 'chain-resolve':
-      return ['', `**↻ ${e.label}**`, ''];
+      // Thin inline sub-marker, not a full bar.
+      return [`  ↻ _Résolution_`, ''];
     case 'chain-end':
-      return [`**⛓✕ ${e.label}**`, ''];
+      // The group simply ends — no terminal bar (D-B).
+      return [''];
     case 'decision':
       return [`> ${e.label}`, ''];
     case 'duel-over':
@@ -70,7 +86,7 @@ function renderSeparator(e: SeparatorEntry): string[] {
 // -----------------------------------------------------------------------------
 // Move rows
 // -----------------------------------------------------------------------------
-function renderMove(e: MoveEntry): string[] {
+function renderMove(e: MoveEntry, isResolution: boolean): string[] {
   const out: string[] = [];
   if (e.variant === 'initial-hand') {
     out.push(`- ${side(e)} **Main de départ** (${e.movedCards.length} cartes)`);
@@ -85,7 +101,7 @@ function renderMove(e: MoveEntry): string[] {
     out.push('');
     return out;
   }
-  out.push(...renderHead(e));
+  out.push(...renderHead(e, isResolution));
   for (const m of e.movedCards) {
     out.push(`    - ${renderMovedCard(m)}`);
   }
@@ -104,14 +120,16 @@ function renderMovedCard(m: MovedCard): string {
       ? `[${m.destZone}]`
       : '';
   const mat = m.isMaterial ? ' _(matériau)_' : '';
-  return `${card(m.card)} —${m.verb}→ ${dest}${mat}`;
+  // Origin → destination flow when the source zone is known.
+  const from = m.fromZone ? `[${m.fromZone}] ` : '';
+  return `${card(m.card)} : ${from}—${m.verb}→ ${dest}${mat}`;
 }
 
 // -----------------------------------------------------------------------------
 // RNG rows
 // -----------------------------------------------------------------------------
-function renderRng(e: RngEntry): string[] {
-  const out = renderHead(e);
+function renderRng(e: RngEntry, isResolution: boolean): string[] {
+  const out = renderHead(e, isResolution);
   const icon = e.rng === 'coin' ? '🪙 Lancé de pièce' : '🎲 Lancé de dé';
   out.push(`    - ${icon} : ${e.results.join(', ')}`);
   out.push('');
@@ -121,8 +139,8 @@ function renderRng(e: RngEntry): string[] {
 // -----------------------------------------------------------------------------
 // Combat rows
 // -----------------------------------------------------------------------------
-function renderCombat(e: CombatEntry): string[] {
-  const out = renderHead(e);
+function renderCombat(e: CombatEntry, isResolution: boolean): string[] {
+  const out = renderHead(e, isResolution);
   const verb = e.combat === 'attack' ? '⚔ Attaque' : '🔥 Calcul de combat';
   if (e.directLabel) {
     out.push(`    - ${verb} : ${combatSide(e.attacker)} ${e.directLabel}`);
@@ -132,6 +150,11 @@ function renderCombat(e: CombatEntry): string[] {
     );
   } else {
     out.push(`    - ${verb} : ${combatSide(e.attacker)}`);
+  }
+  // LP loss — one line per damaged player, omitted entirely when none lost.
+  for (const l of e.lpLoss ?? []) {
+    const who = l.player === 0 ? 'Toi' : 'Adversaire';
+    out.push(`      - 💔 ${who} : −${l.amount} PV`);
   }
   out.push('');
   return out;
@@ -147,8 +170,8 @@ function combatSide(s: CombatEntry['attacker']): string {
 // -----------------------------------------------------------------------------
 // Action rows
 // -----------------------------------------------------------------------------
-function renderAction(e: ActionEntry): string[] {
-  const out = renderHead(e);
+function renderAction(e: ActionEntry, isResolution: boolean): string[] {
+  const out = renderHead(e, isResolution);
   const parts = [`**${e.label}**`];
   if (e.detail) parts.push(e.detail);
   if (e.counterBadge) parts.push(`\`${e.counterBadge}\``);
@@ -163,13 +186,16 @@ function renderAction(e: ActionEntry): string[] {
 // -----------------------------------------------------------------------------
 // Shared head rendering (source card + description + chain badge + targets)
 // -----------------------------------------------------------------------------
-function renderHead(e: RowHead): string[] {
+function renderHead(e: RowHead, isResolution: boolean): string[] {
   const out: string[] = [];
   const badge = e.chainLink ? `①②③④⑤⑥⑦⑧⑨⑩`[e.chainLink - 1] ?? `[${e.chainLink}]` : '';
   const negated = e.negated ? ' ~~(NIÉ)~~' : '';
   const head = e.source ? card(e.source) : '_(aucune carte source)_';
   out.push(`- ${side(e)}${badge ? badge + ' ' : ''}${head}${negated}`);
-  if (e.description) {
+  // Design decision D-C: a resolution row does NOT re-print the effect
+  // description — it is identical to the activation row above it in the same
+  // chain group. The activation row owns the description.
+  if (e.description && !isResolution) {
     out.push(`    > « ${e.description.trim()} »`);
   }
   // Targeting is an annotation of the effect, not its own row.
@@ -179,8 +205,10 @@ function renderHead(e: RowHead): string[] {
   return out;
 }
 
+/** Side glyph — blue = you, amber = opponent (design decision D-A: the
+ *  opponent is amber, not red; red is reserved for danger). */
 function side(e: { player: RelPlayer }): string {
-  return e.player === 0 ? '🔵' : '🔴';
+  return e.player === 0 ? '🔵' : '🟠';
 }
 
 function card(ref: LogCardRef): string {

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Game Log — actions hors-chaîne · Option B finale</title>
+<!--
+  ============================================================================
+  MOCKUP — actions hors-chaîne, OPTION B « bare-row élevée » (Sally, 2026-05-22)
+  ----------------------------------------------------------------------------
+  Décisions actées par Axel :
+    1. font-weight des noms de cartes  → unifié à --weight-semibold (600).
+    2. actions hors-chaîne « collées » → OPTION B : chaque action = une ligne
+       pleine LÉGÈRE autonome (petit rail côté joueur, fond léger, espacement
+       standard). Pas de conteneur.
+    3. flux redessiné :
+       · la FLÈCHE fait exactement la largeur du VERBE au-dessus d'elle.
+       · les ZONES ont leur VRAIE apparence — pile = case-slot pointillée
+         (.lg-dest, 30×42, comme un emplacement de carte) ; case de terrain
+         = mini-plateau complet (.lg-board, convention game-log existante).
+       · zone départ · (verbe+flèche) · zone destination sont alignés sur
+         UNE MÊME LIGNE DE BASE VERTICALE — le verbe est une légende posée
+         AU-DESSUS de la flèche, il ne décale plus la rangée.
+  Colonne gauche = ÉTAT ACTUEL (rappel du problème). Colonne droite = Option B.
+  ============================================================================
+-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+:root {
+  --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
+  --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
+  --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+
+  --gl-title:      var(--text-sm);
+  --gl-text:       var(--text-xs);
+  --gl-label:      0.62rem;
+  --gl-icon-title: 15px;
+  --gl-icon-text:  13px;
+  --gl-icon-label: 11px;
+
+  --line-tight: 1.1; --line-normal: 1.4; --line-relaxed: 1.6;
+  --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700; --weight-black: 800;
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px;
+
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-pill: 999px;
+
+  --elevation-2: 0 4px 16px rgba(0,0,0,0.30);
+  --elevation-3: 0 8px 24px rgba(0,0,0,0.40);
+
+  --gold:            #C9A84C;
+  --gold-50:         #ffe9a8;
+  --gold-on-surface: #C9A84C;
+  --gold-soft-06: rgba(201,168,76,0.06);
+  --gold-soft-08: rgba(201,168,76,0.08);
+  --gold-soft-12: rgba(201,168,76,0.12);
+  --gold-soft-15: rgba(201,168,76,0.15);
+  --gold-soft-20: rgba(201,168,76,0.20);
+  --gold-soft-25: rgba(201,168,76,0.25);
+  --gold-soft-30: rgba(201,168,76,0.30);
+  --gold-soft-40: rgba(201,168,76,0.40);
+
+  --self-blue:      #1e5ac8;
+  --self-blue-soft: rgba(30,90,200,0.30);
+  --opp-amber:      #b45309;
+  --opp-amber-soft: rgba(180,83,9,0.34);
+  --duel-side-self: var(--self-blue);
+  --duel-side-opp:  var(--opp-amber);
+  --negated: #8a8a8a;
+
+  --surface-bg:        #0a0a14;
+  --surface-bg-deep:   #0f0f1c;
+  --surface-overlay:   rgba(255,255,255,0.04);
+  --surface-hover:     rgba(255,255,255,0.06);
+  --pvp-zone-browser-bg: rgba(20,20,40,0.95);
+  --surface-row:    rgba(28,28,44,0.70);
+  --surface-effect: rgba(8,8,16,0.85);
+  --surface-sub:    rgba(255,255,255,0.03);
+  --surface-zonecell: rgba(255,255,255,0.05);
+
+  --border-soft:   rgba(255,255,255,0.10);
+  --border-medium: rgba(255,255,255,0.18);
+
+  --text-primary:   #EAEAEA;
+  --text-secondary: #c0c0c0;
+  --text-muted:     #9e9e9e;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background:
+    radial-gradient(900px 600px at 75% 25%, var(--self-blue-soft), transparent 60%),
+    radial-gradient(900px 600px at 25% 80%, var(--opp-amber-soft), transparent 60%),
+    var(--surface-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-6); align-items: center;
+}
+
+.page-head { text-align: center; max-width: 820px; }
+.page-head h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--gold-on-surface);
+}
+.page-head p { color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-2); }
+
+.stage { display: flex; gap: var(--space-6); align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+.col { display: flex; flex-direction: column; gap: var(--space-3); }
+.col-label {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-muted); padding-left: var(--space-1);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.col-label b { font-size: var(--text-sm); letter-spacing: .04em; }
+.col-label--now b { color: var(--text-muted); }
+.col-label--b   b { color: #8ad6a0; }
+.col-label span { text-transform: none; letter-spacing: 0; }
+
+/* panneau */
+.gamelog {
+  width: 348px; height: 980px;
+  background: var(--pvp-zone-browser-bg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-3);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.gamelog__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, var(--gold-soft-08), transparent);
+}
+.gamelog__title {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-title);
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--gold-on-surface);
+}
+.gamelog__title .material-icons-round { font-size: var(--gl-icon-title); }
+.gamelog__scroll {
+  flex: 1; overflow-y: auto;
+  padding: var(--space-2) 0 var(--space-5);
+  display: flex; flex-direction: column;
+}
+.gamelog__scroll::-webkit-scrollbar { width: 6px; }
+.gamelog__scroll::-webkit-scrollbar-thumb { background: var(--gold-soft-08); }
+.gamelog__scroll:hover::-webkit-scrollbar-thumb { background: var(--gold-soft-25); }
+
+/* turn / phase separators */
+.lg-turn {
+  position: sticky; top: 0; z-index: 3;
+  margin: var(--space-2) 0;
+  background:
+    linear-gradient(180deg, var(--gold-soft-15), var(--gold-soft-06)),
+    var(--surface-bg-deep);
+  border-top: 1px solid var(--gold-soft-20);
+  border-bottom: 1px solid var(--gold-soft-20);
+  padding: var(--space-2) var(--space-3);
+}
+.lg-turn__title {
+  font-family: var(--font-display); font-weight: var(--weight-black);
+  font-size: var(--gl-title); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--gold-on-surface); text-align: center;
+}
+.lg-phase {
+  text-align: center; font-family: var(--font-mono);
+  font-size: var(--gl-label); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-muted); padding: var(--space-2) 0 var(--space-1);
+}
+
+/* ---- thumbnails ---- */
+.lg-thumb {
+  width: 30px; height: 43px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #3a3550, #211f30);
+  border: 1px solid var(--border-medium); flex-shrink: 0;
+  display: grid; place-items: center;
+  font-size: var(--gl-label); color: var(--text-muted);
+  text-align: center; overflow: hidden; line-height: 1.05;
+}
+
+/* corps bare partagé */
+.lg-bare { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.lg-bare__thumb { width: 30px; height: 43px; }
+.lg-bare__lines { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+
+/* DÉCISION ACTÉE : tout nom de carte = semibold 600 */
+.lg-bare__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  line-height: var(--line-tight);
+}
+
+/* =====================================================================
+   COLONNE GAUCHE — ÉTAT ACTUEL (rappel du problème)
+   ===================================================================== */
+.lg-row--bare-now {
+  margin: 1px var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: transparent; border-left: none;
+  display: flex;
+}
+.lg-row--bare-now:hover { background: var(--surface-sub); }
+.col-now .lg-bare__name { font-weight: var(--weight-medium); }   /* l'ancien 500 incohérent */
+.lg-bare__flow-now { display: flex; align-items: center; gap: var(--space-2); }
+.lg-bare__zone-now {
+  font-family: var(--font-mono); font-size: var(--gl-text);
+  letter-spacing: .03em; color: var(--text-secondary); flex: none;
+}
+.lg-bare__arrowcol-now {
+  display: flex; flex-direction: column; align-items: center; line-height: 1.05;
+}
+.lg-bare__verb-now {
+  font-family: var(--font-mono); font-size: var(--gl-label);
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-muted); white-space: nowrap;
+}
+.lg-bare__arrow-now {
+  font-family: var(--font-mono); font-size: var(--gl-text);
+  color: var(--gold-soft-40); letter-spacing: -1px;
+}
+
+/* =====================================================================
+   OPTION B — bare-row élevée, layout DEUX ÉTAGES
+   ---------------------------------------------------------------------
+   Le nom de carte ne flotte plus : il est un EN-TÊTE pleine largeur,
+   ancré en HAUT du bloc, indépendant de la hauteur du flux. Sous un
+   filet fin, le CORPS (vignette + flux) forme le second étage.
+     Étage 1 — en-tête : puce de camp + nom de carte
+     Étage 2 — corps   : vignette + flux du trajet
+   La row reste un bloc autonome léger : rail 2px côté joueur, fond
+   léger, espacement standard.
+   ===================================================================== */
+.lg-row--bare-up {
+  margin: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sub);
+  border-left: 2px solid var(--duel-side-self);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.lg-row--bare-up.opp { border-left-color: var(--duel-side-opp); }
+.lg-row--bare-up:hover { background: var(--surface-hover); }
+
+/* --- Étage 1 : en-tête pleine largeur — l'ancrage du nom.
+   Pas de puce de camp : le rail latéral 2px de la row porte déjà
+   l'info de camp, un point ferait doublon. --- */
+.lg-acthead {
+  display: flex; align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+.lg-acthead__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);   /* 600 — unifié */
+  color: var(--text-primary);
+  line-height: var(--line-tight);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* --- Étage 2 : corps — vignette + flux, centrés ensemble --- */
+.lg-actbody {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2);
+  min-width: 0;
+}
+
+/* =====================================================================
+   FLUX REDESSINÉ
+   ---------------------------------------------------------------------
+   .flow est une rangée horizontale dont TOUS les éléments sont centrés
+   verticalement (align-items:center). La FLÈCHE est l'élément-pivot :
+   sa ligne médiane = la médiane de la rangée. Le VERBE est posé en
+   LÉGENDE au-dessus de la flèche via un translateY négatif absolu — il
+   n'ajoute donc PAS de hauteur à la rangée, et zone-départ /
+   zone-destination restent alignées sur la même médiane que la flèche.
+   ===================================================================== */
+/* .flow = rangée horizontale ; align-items:center centre CHAQUE enfant
+   sur la médiane de la rangée. La jambe verbe+flèche est un enfant comme
+   un autre — son centre RÉEL (milieu du bloc verbe+flèche) tombe donc
+   sur la même médiane que les slots-piles. */
+.flow {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+
+/* --- zone PILE = vraie case-slot (reprise de .lg-dest du game log) :
+   un emplacement de carte 30×42, bord pointillé, le nom de pile dedans.
+   C'est la « vraie apparence » d'une zone-pile, pas un chip plat. --- */
+.flow__pile {
+  width: 30px; height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-zonecell);
+  border: 1px dashed var(--border-medium);
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  color: var(--text-muted);
+}
+.flow__pile .material-icons-round { font-size: 14px; }
+.flow__pile small {
+  font-family: var(--font-mono); font-size: 7px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+/* la pile DESTINATION est teintée or — c'est le point d'arrivée du trajet */
+.flow__pile--dest {
+  border-color: var(--gold-soft-30);
+  background: var(--gold-soft-08);
+  color: var(--gold-50);
+}
+
+/* --- la jambe verbe+flèche -----------------------------------------
+   Vraie COLONNE en flux normal : verbe AU-DESSUS, flèche EN DESSOUS.
+   Le verbe occupe donc réellement sa hauteur → la jambe a la hauteur
+   verbe+flèche, et son centre tombe au milieu du couple. Comme .flow
+   centre ses enfants (align-items:center), ce centre s'aligne avec la
+   médiane des slots-piles. Largeur de la jambe = largeur du verbe
+   (nowrap) ; la flèche dessous fait width:100% → même largeur, JAMAIS
+   plus (pas de débordement sur le mini-plateau). --- */
+.flow__leg {
+  display: inline-flex; flex-direction: column;
+  align-items: stretch;           /* verbe ET flèche = pleine largeur de la jambe */
+  gap: 3px;
+  min-width: 44px;                /* flèche lisible même si le verbe est court */
+}
+.flow__verb {
+  font-family: var(--font-mono); font-size: var(--gl-label);
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--text-muted); white-space: nowrap;
+  text-align: center; line-height: 1;
+}
+/* flèche = trait extensible (flex:1) + pointe SVG fixe. Le conteneur
+   fait toute la largeur de la jambe ; le trait commence au bord GAUCHE,
+   l'arrowhead finit au bord DROIT → trajet symétrique d'un bord à
+   l'autre, aucun rembourrage latéral asymétrique. */
+.flow__arrow {
+  display: flex; align-items: center;
+  color: var(--gold-soft-40);
+  height: 7px;
+}
+.flow__arrow::before {
+  content: ""; flex: 1; height: 1.4px;
+  background: currentColor; border-radius: 1px;
+}
+.flow__arrow svg { display: block; flex: none; }
+
+/* --- case de TERRAIN = mini-plateau complet (.lg-board) — convention
+   game-log : toute position-plateau affiche le board entier --- */
+.lg-board {
+  display: flex; flex-direction: column; gap: 2px;
+  width: 76px; flex-shrink: 0;
+}
+.lg-board__line { display: flex; align-items: center; gap: 3px; }
+.lg-board__rowtag {
+  width: 20px; flex: none;
+  font-family: var(--font-mono); font-size: 6px;
+  letter-spacing: .04em; text-align: right;
+  color: var(--text-muted); opacity: .75;
+}
+.lg-board__row, .lg-board__emz {
+  flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+}
+.lg-cell {
+  aspect-ratio: 1; border-radius: 1px;
+  background: var(--surface-zonecell);
+  border: 1px solid var(--border-soft);
+}
+.lg-cell--st  { border-style: dashed; }
+.lg-cell--emz { border-color: var(--gold-soft-30); background: var(--gold-soft-08); }
+.lg-cell--target {
+  background: var(--gold-soft-30);
+  border-color: var(--gold);
+  box-shadow: 0 0 5px var(--gold-soft-40);
+}
+
+/* note pédagogique */
+.note {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: .04em; padding: 2px var(--space-3); opacity: .85;
+}
+.note--good { color: #7fb98a; }
+.note--bad  { color: #c98a8a; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>Game Log — Actions hors-chaîne · Option B</h1>
+  <p>« Bare-row élevée » : chaque action = un bloc autonome léger. Flèche à la largeur du verbe, zones dans leur vraie apparence (pile = case-slot, terrain = mini-plateau), tout aligné sur une même médiane.</p>
+</div>
+
+<div class="stage">
+
+  <!-- ===================== COLONNE GAUCHE — ÉTAT ACTUEL ===================== -->
+  <div class="col col-now">
+    <div class="col-label col-label--now"><b>ÉTAT ACTUEL</b><span>bare-rows à 1px, flèche mono, zones en texte plat</span></div>
+    <div class="gamelog">
+      <div class="gamelog__head">
+        <div class="gamelog__title"><span class="material-icons-round">history_edu</span> Journal</div>
+      </div>
+      <div class="gamelog__scroll">
+        <div class="lg-turn"><div class="lg-turn__title">Tour 3 — Toi</div></div>
+        <div class="lg-phase">Main Phase</div>
+        <div class="note note--bad">↓ collées à 1px · noms en 500 · flèche désalignée</div>
+
+        <div class="lg-row--bare-now">
+          <div class="lg-bare">
+            <div class="lg-thumb lg-bare__thumb">Savant<br>Coper.</div>
+            <div class="lg-bare__lines">
+              <span class="lg-bare__name">D/D Savant Copernicus</span>
+              <div class="lg-bare__flow-now">
+                <span class="lg-bare__arrowcol-now"><span class="lg-bare__verb-now">Retour Extra</span><span class="lg-bare__arrow-now">───▶</span></span>
+                <span class="lg-bare__zone-now">EXTRA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg-row--bare-now">
+          <div class="lg-bare">
+            <div class="lg-thumb lg-bare__thumb">Marks.<br>King</div>
+            <div class="lg-bare__lines">
+              <span class="lg-bare__name">D/D/D Marksman King Tell</span>
+              <div class="lg-bare__flow-now">
+                <span class="lg-bare__zone-now">EXTRA</span>
+                <span class="lg-bare__arrowcol-now"><span class="lg-bare__verb-now">Inv. Normale</span><span class="lg-bare__arrow-now">───▶</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg-row--bare-now">
+          <div class="lg-bare">
+            <div class="lg-thumb lg-bare__thumb">Marks.<br>King</div>
+            <div class="lg-bare__lines">
+              <span class="lg-bare__name">D/D/D Marksman King Tell</span>
+              <div class="lg-bare__flow-now">
+                <span class="lg-bare__arrowcol-now"><span class="lg-bare__verb-now">Envoi GY</span><span class="lg-bare__arrow-now">───▶</span></span>
+                <span class="lg-bare__zone-now">GY</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg-row--bare-now">
+          <div class="lg-bare">
+            <div class="lg-thumb lg-bare__thumb">Savant<br>Kepler</div>
+            <div class="lg-bare__lines">
+              <span class="lg-bare__name">D/D Savant Kepler</span>
+              <div class="lg-bare__flow-now">
+                <span class="lg-bare__arrowcol-now"><span class="lg-bare__verb-now">Retour Extra</span><span class="lg-bare__arrow-now">───▶</span></span>
+                <span class="lg-bare__zone-now">EXTRA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg-row--bare-now">
+          <div class="lg-bare">
+            <div class="lg-thumb lg-bare__thumb">Abyss<br>King</div>
+            <div class="lg-bare__lines">
+              <span class="lg-bare__name">D/D/D Abyss King Gilgamesh</span>
+              <div class="lg-bare__flow-now">
+                <span class="lg-bare__zone-now">EXTRA</span>
+                <span class="lg-bare__arrowcol-now"><span class="lg-bare__verb-now">Inv. Normale</span><span class="lg-bare__arrow-now">───▶</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== COLONNE DROITE — OPTION B ===================== -->
+  <div class="col">
+    <div class="col-label col-label--b"><b>OPTION B — finale</b><span>blocs autonomes · flèche = largeur verbe · zones réelles · alignées</span></div>
+    <div class="gamelog">
+      <div class="gamelog__head">
+        <div class="gamelog__title"><span class="material-icons-round">history_edu</span> Journal</div>
+      </div>
+      <div class="gamelog__scroll">
+        <div class="lg-turn"><div class="lg-turn__title">Tour 3 — Toi</div></div>
+        <div class="lg-phase">Main Phase</div>
+        <div class="note note--good">↓ chaque action = bloc autonome · tout aligné sur la médiane</div>
+
+        <!-- pile → pile : Retour à l'Extra -->
+        <div class="lg-row--bare-up">
+          <div class="lg-acthead">
+            <span class="lg-acthead__name">D/D Savant Copernicus</span>
+          </div>
+          <div class="lg-actbody">
+            <div class="lg-thumb lg-bare__thumb">Savant<br>Coper.</div>
+            <div class="flow">
+              <span class="flow__leg">
+                <span class="flow__verb">Retour Extra</span>
+                <span class="flow__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </span>
+              <span class="flow__pile flow__pile--dest"><span class="material-icons-round">inventory_2</span><small>Extra</small></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- pile → terrain : Invocation Normale (mini-plateau, case EMZ) -->
+        <div class="lg-row--bare-up">
+          <div class="lg-acthead">
+            <span class="lg-acthead__name">D/D/D Marksman King Tell</span>
+          </div>
+          <div class="lg-actbody">
+            <div class="lg-thumb lg-bare__thumb">Marks.<br>King</div>
+            <div class="flow">
+              <span class="flow__pile"><span class="material-icons-round">inventory_2</span><small>Extra</small></span>
+              <span class="flow__leg">
+                <span class="flow__verb">Inv. Normale</span>
+                <span class="flow__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </span>
+              <span class="lg-board" title="terrain — case EMZ ciblée">
+                <span class="lg-board__line"><span class="lg-board__rowtag">M</span><span class="lg-board__row">
+                  <span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span></span></span>
+                <span class="lg-board__line"><span class="lg-board__rowtag">EMZ</span><span class="lg-board__emz">
+                  <span class="lg-cell"></span><span class="lg-cell lg-cell--emz lg-cell--target"></span><span class="lg-cell"></span><span class="lg-cell lg-cell--emz"></span><span class="lg-cell"></span></span></span>
+                <span class="lg-board__line"><span class="lg-board__rowtag">M</span><span class="lg-board__row">
+                  <span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span></span></span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- terrain → pile : Envoi au GY -->
+        <div class="lg-row--bare-up">
+          <div class="lg-acthead">
+            <span class="lg-acthead__name">D/D/D Marksman King Tell</span>
+          </div>
+          <div class="lg-actbody">
+            <div class="lg-thumb lg-bare__thumb">Marks.<br>King</div>
+            <div class="flow">
+              <span class="flow__leg">
+                <span class="flow__verb">Envoi GY</span>
+                <span class="flow__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </span>
+              <span class="flow__pile flow__pile--dest"><span class="material-icons-round">delete_sweep</span><small>GY</small></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- pile → pile : Retour à l'Extra -->
+        <div class="lg-row--bare-up">
+          <div class="lg-acthead">
+            <span class="lg-acthead__name">D/D Savant Kepler</span>
+          </div>
+          <div class="lg-actbody">
+            <div class="lg-thumb lg-bare__thumb">Savant<br>Kepler</div>
+            <div class="flow">
+              <span class="flow__leg">
+                <span class="flow__verb">Retour Extra</span>
+                <span class="flow__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </span>
+              <span class="flow__pile flow__pile--dest"><span class="material-icons-round">inventory_2</span><small>Extra</small></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- pile → pile : Défausse (départ pile aussi) -->
+        <div class="lg-row--bare-up">
+          <div class="lg-acthead">
+            <span class="lg-acthead__name">D/D Savant Copernicus</span>
+          </div>
+          <div class="lg-actbody">
+            <div class="lg-thumb lg-bare__thumb">Savant<br>Coper.</div>
+            <div class="flow">
+              <span class="flow__pile"><span class="material-icons-round">back_hand</span><small>Main</small></span>
+              <span class="flow__leg">
+                <span class="flow__verb">Défausse</span>
+                <span class="flow__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </span>
+              <span class="flow__pile flow__pile--dest"><span class="material-icons-round">delete_sweep</span><small>GY</small></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- pile → terrain : Invocation Normale (Gilgamesh) -->
+        <div class="lg-row--bare-up">
+          <div class="lg-acthead">
+            <span class="lg-acthead__name">D/D/D Abyss King Gilgamesh</span>
+          </div>
+          <div class="lg-actbody">
+            <div class="lg-thumb lg-bare__thumb">Abyss<br>King</div>
+            <div class="flow">
+              <span class="flow__pile"><span class="material-icons-round">inventory_2</span><small>Extra</small></span>
+              <span class="flow__leg">
+                <span class="flow__verb">Inv. Normale</span>
+                <span class="flow__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </span>
+              <span class="lg-board" title="terrain — case EMZ ciblée">
+                <span class="lg-board__line"><span class="lg-board__rowtag">M</span><span class="lg-board__row">
+                  <span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span></span></span>
+                <span class="lg-board__line"><span class="lg-board__rowtag">EMZ</span><span class="lg-board__emz">
+                  <span class="lg-cell"></span><span class="lg-cell lg-cell--emz"></span><span class="lg-cell"></span><span class="lg-cell lg-cell--emz lg-cell--target"></span><span class="lg-cell"></span></span></span>
+                <span class="lg-board__line"><span class="lg-board__rowtag">M</span><span class="lg-board__row">
+                  <span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span><span class="lg-cell"></span></span></span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

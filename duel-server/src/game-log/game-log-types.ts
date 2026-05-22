@@ -29,6 +29,12 @@ export interface MovedCard {
   card: LogCardRef;
   /** French verb naming the displacement (`Pioche`, `Ajout`, `Défausse`, …). */
   verb: string;
+  /**
+   * Short label of the zone the card LEFT (`DECK`, `MAIN`, `GY`, `M3`, …).
+   * Used by the bare-row renderer to draw a `source → dest` flow. Absent when
+   * the origin is unknown / not meaningful (the initial-hand variant).
+   */
+  fromZone?: string;
   /** Destination zone label for a pile target (`MAIN`, `GY`, `BANNIE`, …). */
   destZone?: string;
   /**
@@ -168,8 +174,23 @@ export interface CombatEntry extends RowHead {
   attacker: CombatSide;
   /** Absent = direct attack. */
   defender?: CombatSide;
-  /** Direct-attack damage line, e.g. "▶ Joueur · −1800 LP". */
+  /** Direct-attack label (plain text — the renderer supplies the icon). */
   directLabel?: string;
+  /**
+   * Life-point loss this combat inflicted, one entry per affected player.
+   * Empty/absent = no LP changed hands — the renderer shows NOTHING. A
+   * combat can damage both players at once (e.g. a double-KO), so this is a
+   * list, not a single field.
+   */
+  lpLoss?: LpLoss[];
+}
+
+/** One player's life-point loss from a combat. */
+export interface LpLoss {
+  /** Relative player who lost the LP (0 = you, 1 = opponent). */
+  player: RelPlayer;
+  /** Positive amount of LP lost. */
+  amount: number;
 }
 
 // =============================================================================

@@ -22,57 +22,119 @@
    Standardisation :
      - verbes en FRANÇAIS
      - toute position plateau = mini-plateau complet (M+S/T des 2 joueurs)
+
+   ------------------------------------------------------------
+   RÉVISION DESIGN — 2026-05-22 (Sally) — décisions du chantier §4.2 :
+     D-A  camp adverse = AMBRE (--duel-side-opponent alias --opp-amber),
+          PAS rouge — le rouge reste réservé au danger.
+     D-B  une chaîne = UN bloc groupé : en-tête « Chaîne · N liens »
+          + rail latéral doré ; « Résolution » = sous-marqueur fin
+          inline, pas une barre pleine largeur.
+     D-C  deux poids de ligne : .lg-row pleine (source + description)
+          vs .lg-row--bare (mouvement système sans source — presque
+          une ligne de texte). La résolution NE re-rend PAS la
+          description (identique à l'activation).
+   Tokens :root SYNCHRONISÉS sur front/src/app/styles/_tokens.scss.
    ============================================================ */
 
 :root {
+  /* --- Typo fluide — copié de _tokens.scss --- */
   --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
   --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
   --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
   --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+
+  /* === ÉCHELLE TYPOGRAPHIQUE DU GAME LOG (2026-05-22, Sally) =========
+     Le game log avait 13 tailles ad hoc (6→18px) = rendu « patte de
+     mouche », blocs qui dénotent. Standardisation à 3 NIVEAUX STRICTS.
+     Toute taille de police du log passe par l'un de ces 3 tokens —
+     plus aucun littéral px. Chaque niveau a UNE taille d'icône.
+       · --gl-title  titres   : séparateur de tour, fin, en-tête chaîne,
+                                titre du journal
+       · --gl-text   corps    : nom de carte, description, label de zone,
+                                résultats RNG, LP
+       · --gl-label  légendes : verbe, phase, tag/compteur de chaîne,
+                                rowtag plateau, sous-label
+     ================================================================ */
+  --gl-title:      var(--text-sm);    /* ~13px */
+  --gl-text:       var(--text-xs);    /* ~11px */
+  --gl-label:      0.62rem;           /* ~10px — palier sous --text-xs */
+  --gl-icon-title: 15px;
+  --gl-icon-text:  13px;
+  --gl-icon-label: 11px;
+
   --line-tight: 1.1; --line-normal: 1.4; --line-relaxed: 1.6;
   --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700; --weight-black: 800;
   --font-display: 'Rajdhani', sans-serif;
   --font-body:    'Inter', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
 
+  /* --- Espacement 8px-based — _tokens.scss --- */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-7: 32px;
 
-  --radius-sm: 6px; --radius-md: 10px; --radius-pill: 999px;
-  --pvp-radius-sm: 2px; --pvp-radius-md: 4px; --pvp-radius-lg: 8px;
+  /* --- Radius — échelle DS canonique unique (--pvp-radius-* fusionné 2026-05-20) --- */
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-pill: 999px;
 
+  /* --- Élévation — _tokens.scss --- */
   --elevation-2: 0 4px 16px rgba(0,0,0,0.30);
   --elevation-3: 0 8px 24px rgba(0,0,0,0.40);
 
-  --gold:     #C9A84C;
-  --gold-50:  #ffe9a8;
-  --gold-on-surface: #e3c878;
+  /* --- Gold (Millennium accent) — valeurs _tokens.scss --- */
+  --gold:            #C9A84C;
+  --gold-50:         #ffe9a8;
+  --gold-on-surface: #C9A84C;  /* alias de --gold en dark */
+  --gold-soft-06: rgba(201,168,76,0.06);
   --gold-soft-08: rgba(201,168,76,0.08);
   --gold-soft-12: rgba(201,168,76,0.12);
+  --gold-soft-15: rgba(201,168,76,0.15);
   --gold-soft-20: rgba(201,168,76,0.20);
+  --gold-soft-25: rgba(201,168,76,0.25);
   --gold-soft-30: rgba(201,168,76,0.30);
   --gold-soft-40: rgba(201,168,76,0.40);
 
-  --duel-side-self:        #4a90d9;
-  --duel-side-self-border: rgba(74,144,217,0.45);
-  --duel-side-opp:         #d9534a;
-  --duel-side-opp-border:  rgba(217,83,74,0.45);
+  /* --- Camp de duel — D-A : self = --self-blue, opponent = --opp-amber.
+     Aliasés depuis la palette duel-side du replay viewer (_tokens.scss
+     ll.176-186). PAS de rouge ici : le rouge = danger/cible/défaite. --- */
+  --self-blue:      #1e5ac8;
+  --self-blue-soft: rgba(30,90,200,0.30);
+  --self-blue-glow: rgba(96,165,250,0.55);
+  --opp-amber:      #b45309;
+  --opp-amber-soft: rgba(180,83,9,0.34);
+  --opp-amber-glow: rgba(245,158,11,0.55);
+  /* handles sémantiques game-log — alias purs, jamais une teinte nouvelle */
+  --duel-side-self:        var(--self-blue);
+  --duel-side-self-border: var(--self-blue-soft);
+  --duel-side-opp:         var(--opp-amber);
+  --duel-side-opp-border:  var(--opp-amber-soft);
 
-  --negated:        #8a8a8a;
+  /* --- Effet nié — gris neutre (cohérent --pvp-chain-glow-negated) --- */
+  --negated: #8a8a8a;
 
-  --surface-bg:       #0a0a14;
-  --surface-bg-deep:  #050510;
-  --surface-panel:    rgba(16,16,28,0.97);
-  --surface-row:      rgba(28,28,44,0.70);
-  --surface-effect:   rgba(8,8,16,0.85);
-  --surface-sub:      rgba(255,255,255,0.03);
+  /* --- Combat — ATK ambre offensif / DEF bleu acier / dégâts rouge --- */
+  --combat-atk: #e8a23d;
+  --combat-def: #5fa8d8;
+  --combat-dmg: #ff6b6b;
+
+  /* --- Surfaces — copié/aligné de _tokens.scss (holo-arena dark) --- */
+  --surface-bg:        #0a0a14;
+  --surface-bg-deep:   #0f0f1c;
+  --surface-card-ds:   rgba(30,30,46,0.85);
+  --surface-card-low:  rgba(22,22,36,0.85);
+  --surface-overlay:   rgba(255,255,255,0.04);
+  --surface-hover:     rgba(255,255,255,0.06);
+  /* surface panneau = --pvp-zone-browser-bg (le panneau PvP voisin) */
+  --pvp-zone-browser-bg: rgba(20,20,40,0.95);
+  /* surface ligne / sous-corps / boîte d'effet — dérivées locales game-log */
+  --surface-row:    rgba(28,28,44,0.70);
+  --surface-effect: rgba(8,8,16,0.85);
+  --surface-sub:    rgba(255,255,255,0.03);
   --surface-zonecell: rgba(255,255,255,0.05);
-  --surface-hover:    rgba(255,255,255,0.06);
 
-  --border-soft:   rgba(255,255,255,0.08);
-  --border-medium: rgba(255,255,255,0.16);
+  --border-soft:   rgba(255,255,255,0.10);
+  --border-medium: rgba(255,255,255,0.18);
 
-  --text-primary:   #eaeaea;
+  --text-primary:   #EAEAEA;
   --text-secondary: #c0c0c0;
   --text-muted:     #9e9e9e;
 }
@@ -82,8 +144,8 @@
 body {
   font-family: var(--font-body);
   background:
-    radial-gradient(900px 600px at 75% 25%, rgba(74,144,217,0.06), transparent 60%),
-    radial-gradient(900px 600px at 25% 80%, rgba(217,83,74,0.05), transparent 60%),
+    radial-gradient(900px 600px at 75% 25%, var(--self-blue-soft), transparent 60%),
+    radial-gradient(900px 600px at 25% 80%, var(--opp-amber-soft), transparent 60%),
     var(--surface-bg);
   color: var(--text-primary);
   min-height: 100vh;
@@ -124,14 +186,14 @@ body {
 }
 
 /* ============================================================
-   PANEL
+   PANEL — bandeau latéral pleine hauteur
    ============================================================ */
 .gamelog {
   width: 330px;
   height: 880px;
-  background: var(--surface-panel);
+  background: var(--pvp-zone-browser-bg);
   border: 1px solid var(--border-medium);
-  border-radius: var(--pvp-radius-lg);
+  border-radius: var(--radius-lg);
   box-shadow: var(--elevation-3);
   display: flex;
   flex-direction: column;
@@ -149,16 +211,16 @@ body {
   display: flex; align-items: center; gap: var(--space-2);
   font-family: var(--font-display);
   font-weight: var(--weight-bold);
-  font-size: var(--text-md);
+  font-size: var(--gl-title);
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--gold-on-surface);
 }
-.gamelog__title .material-icons-round { font-size: 18px; }
+.gamelog__title .material-icons-round { font-size: var(--gl-icon-title); }
 .gamelog__close {
   width: 28px; height: 28px;
   display: grid; place-items: center;
-  border-radius: var(--pvp-radius-md);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-soft);
   background: transparent;
   color: var(--text-muted);
@@ -174,9 +236,10 @@ body {
   display: flex;
   flex-direction: column;
 }
+/* Ghost scrollbar — convention skytrix (@include ghost-scroll) */
 .gamelog__scroll::-webkit-scrollbar { width: 6px; }
 .gamelog__scroll::-webkit-scrollbar-thumb { background: var(--gold-soft-08); }
-.gamelog__scroll:hover::-webkit-scrollbar-thumb { background: var(--gold-soft-30); }
+.gamelog__scroll:hover::-webkit-scrollbar-thumb { background: var(--gold-soft-25); }
 
 .gamelog__newpill {
   align-self: center;
@@ -187,18 +250,18 @@ body {
   background: var(--gold-soft-20);
   border: 1px solid var(--gold-soft-40);
   color: var(--gold-50);
-  font-size: var(--text-xs);
+  font-size: var(--gl-label);
   font-weight: var(--weight-semibold);
   cursor: pointer;
 }
-.gamelog__newpill .material-icons-round { font-size: 13px; }
+.gamelog__newpill .material-icons-round { font-size: var(--gl-icon-label); }
 
 /* ============================================================
-   SEPARATORS
+   SEPARATORS — décision / tour / phase / fin
    ============================================================ */
 .lg-decision {
   text-align: center;
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   color: var(--text-secondary);
   padding: var(--space-3) var(--space-4) var(--space-2);
 }
@@ -208,7 +271,7 @@ body {
   position: sticky; top: 0; z-index: 3;
   margin: var(--space-2) 0;
   background:
-    linear-gradient(180deg, rgba(201,168,76,0.18), rgba(201,168,76,0.04)),
+    linear-gradient(180deg, var(--gold-soft-18, rgba(201,168,76,0.18)), var(--gold-soft-06)),
     var(--surface-bg-deep);
   border-top: 1px solid var(--gold-soft-30);
   border-bottom: 1px solid var(--gold-soft-30);
@@ -218,7 +281,7 @@ body {
   text-align: center;
   font-family: var(--font-display);
   font-weight: var(--weight-black);
-  font-size: var(--text-md);
+  font-size: var(--gl-title);
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--gold-50);
@@ -231,7 +294,7 @@ body {
 .lg-turn__p--opp { flex-direction: row-reverse; text-align: right; }
 .lg-turn__avatar {
   width: 30px; height: 30px;
-  border-radius: var(--pvp-radius-md);
+  border-radius: var(--radius-sm);
   background: linear-gradient(135deg, #2a2640, #15131f);
   border: 1.5px solid var(--duel-side-self-border);
   display: grid; place-items: center;
@@ -239,11 +302,11 @@ body {
 }
 .lg-turn__p--opp .lg-turn__avatar { border-color: var(--duel-side-opp-border); }
 .lg-turn__meta { display: flex; flex-direction: column; line-height: 1.15; }
-.lg-turn__name { font-size: var(--text-xs); color: var(--text-muted); font-weight: var(--weight-medium); }
+.lg-turn__name { font-size: var(--gl-label); color: var(--text-muted); font-weight: var(--weight-medium); }
 .lg-turn__lp {
   font-family: var(--font-mono);
   font-weight: var(--weight-bold);
-  font-size: var(--text-sm);
+  font-size: var(--gl-text);
   color: var(--text-primary);
 }
 
@@ -251,48 +314,75 @@ body {
   margin: var(--space-1) var(--space-4);
   text-align: center;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--gl-label);
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--text-muted);
   padding: var(--space-1) 0;
   border-top: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
-  background: rgba(255,255,255,0.015);
+  background: var(--surface-overlay);
 }
 
-.lg-chain {
-  margin: var(--space-2) var(--space-4) var(--space-1);
+/* ============================================================
+   CHAIN GROUP — D-B : une chaîne = UN bloc groupé.
+   Au lieu de 3 barres (Début / Résolution / Fin), un conteneur
+   .lg-chaingroup qui :
+     - porte un en-tête « Chaîne · N liens »
+     - encadre toutes ses lignes d'un rail latéral gauche doré
+     - intercale « Résolution » comme sous-marqueur fin (pas une barre)
+   Le rail s'arrête tout seul = plus de barre « Fin de chaîne ».
+   ============================================================ */
+.lg-chaingroup {
+  margin: var(--space-3) var(--space-3);
+  border-left: 2px solid var(--gold-soft-30);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: linear-gradient(90deg, var(--gold-soft-06), transparent 60%);
+  padding: 2px 0 var(--space-1) 0;
+}
+.lg-chaingroup__head {
   display: flex; align-items: center; gap: var(--space-2);
-  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
   font-family: var(--font-mono);
+  font-size: var(--gl-title);
   font-weight: var(--weight-semibold);
   letter-spacing: .1em;
   text-transform: uppercase;
+  color: var(--gold-on-surface);
 }
-.lg-chain::before, .lg-chain::after { content: ""; height: 1px; flex: 1; }
-.lg-chain .material-icons-round { font-size: 14px; }
-.lg-chain--start { color: var(--gold-on-surface); }
-.lg-chain--start::before, .lg-chain--start::after {
-  background: linear-gradient(90deg, transparent, var(--gold-soft-40), transparent);
+.lg-chaingroup__head .material-icons-round { font-size: var(--gl-icon-title); }
+.lg-chaingroup__count {
+  margin-left: auto;
+  font-size: var(--gl-label);
+  letter-spacing: .04em;
+  color: var(--text-muted);
 }
-.lg-chain--resolve {
+/* sous-marqueur « Résolution » — fin, inline dans le groupe */
+.lg-chainmark {
+  display: flex; align-items: center; gap: var(--space-1);
+  margin: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: .12em;
+  text-transform: uppercase;
   color: var(--gold-50);
-  background: linear-gradient(180deg, var(--gold-soft-12), transparent);
-  padding: var(--space-1) 0;
-  border-radius: var(--pvp-radius-sm);
 }
-.lg-chain--resolve::before, .lg-chain--resolve::after { background: var(--gold-soft-40); }
-.lg-chain--end { color: var(--text-muted); }
-.lg-chain--end::before, .lg-chain--end::after { background: var(--border-medium); }
+.lg-chainmark::before, .lg-chainmark::after {
+  content: ""; height: 1px; flex: 1; background: var(--gold-soft-20);
+}
+.lg-chainmark .material-icons-round { font-size: var(--gl-icon-label); }
+/* lignes À L'INTÉRIEUR d'un groupe — marge gauche réduite (le rail
+   du groupe remplace une partie du chrome de la ligne). */
+.lg-chaingroup .lg-row { margin-left: var(--space-2); margin-right: var(--space-2); }
+.lg-chaingroup .lg-row--bare { margin-left: var(--space-3); }
 
 /* ============================================================
-   LOG ROW — universal anatomy
+   LOG ROW — anatomie universelle (ligne PLEINE)
    ============================================================ */
 .lg-row {
   margin: var(--space-2) var(--space-3);
   padding: var(--space-3);
-  border-radius: var(--pvp-radius-md);
+  border-radius: var(--radius-md);
   background: var(--surface-row);
   border-left: 3px solid var(--duel-side-self);
   cursor: pointer;
@@ -300,15 +390,157 @@ body {
 }
 .lg-row:hover { background: var(--surface-hover); }
 .lg-row--opp { border-left-color: var(--duel-side-opp); }
-/* negated row — dimmed, struck source */
+/* ligne niée — atténuée, source barrée */
 .lg-row--negated { opacity: .62; border-left-color: var(--negated); }
 
-/* --- source-card header --- */
-.lg-src {
+/* --- D-C : ligne BARE — mouvement système sans carte source.
+   2 POIDS, mais le bare reste LISIBLE : MÊME vignette et MÊME typo que
+   les lignes pleines. Différence avec une ligne pleine : pas de rail
+   latéral, fond léger. « les activations sont des blocs, les mouvements
+   système des murmures » — mais un murmure se lit quand même.
+   ESPACEMENT : marge standard (--space-2), plus le « 1px collé » legacy
+   — chaque mouvement système est un bloc autonome lisible. --- */
+.lg-row--bare {
+  margin: var(--space-2) var(--space-3);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sub);
+  border-left: none;       /* pas de rail — c'est un murmure */
+  cursor: default;
+  gap: 0;
+}
+.lg-row--bare:hover { background: var(--surface-hover); }
+.lg-row--bare .lg-body { flex: 1; min-width: 0; gap: 0; }
+
+/* ============================================================
+   LG-BARE — carte déplacée, LAYOUT DEUX ÉTAGES (2026-05-22).
+   ------------------------------------------------------------
+   Le nom de carte ne flotte plus au-dessus d'un flux de hauteur
+   variable. Il devient un EN-TÊTE pleine largeur ancré en HAUT,
+   indépendant de la hauteur du flux. Sous un filet fin, le CORPS
+   (vignette + flux du trajet) forme le second étage.
+     Étage 1 — .lg-bare__head : nom de la carte (ancrage stable)
+     Étage 2 — .lg-bare__body : vignette + flux source→dest
+   S'applique IDENTIQUEMENT aux moved-cards des lignes pleines ET
+   des bare-rows — la seule différence reste le chrome de .lg-row.
+   ============================================================ */
+.lg-bare {
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+/* dans une LIGNE PLEINE, le corps peut tenir plusieurs moved-cards
+   (Link materials, multi-tribut…) : chacune est une sous-carte
+   encadrée d'un fond léger ; un filet les sépare. */
+.lg-row:not(.lg-row--bare) .lg-bare {
+  background: var(--surface-sub);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.lg-body .lg-bare + .lg-bare { margin-top: var(--space-1); }
+
+/* --- Étage 1 : en-tête — l'ancrage du nom de carte --- */
+.lg-bare__head {
+  display: flex; align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+/* nom de carte = niveau CORPS, poids unifié SEMIBOLD (600) partout */
+.lg-bare__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  line-height: var(--line-tight);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lg-bare__name--hidden { font-style: italic; color: var(--text-muted); }
+
+/* --- Étage 2 : corps — vignette + flux, centrés ensemble --- */
+.lg-bare__body {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2);
+  min-width: 0;
+}
+/* MÊME vignette que les lignes pleines (30×43). Sélecteur doublé pour
+   ne pas dépendre de l'ordre de cascade. */
+.lg-bare .lg-bare__thumb { width: 30px; height: 43px; }
+
+/* --- le flux : zone départ ── verbe/flèche ── destination.
+   .lg-bare__flow centre verticalement TOUS ses enfants. La jambe
+   verbe+flèche, les zones-piles et le mini-plateau tombent donc sur la
+   même médiane. Destination case-terrain → mini-plateau (.lg-board) ;
+   destination pile → case-slot (.lg-bare__pile). --- */
+.lg-bare__flow {
   display: flex; align-items: center; gap: var(--space-2);
 }
+/* zone PILE = vraie case-slot — un emplacement de carte 30×42, bord
+   pointillé, le nom de pile dedans. C'est la « vraie apparence » d'une
+   zone-pile, pas un chip texte plat. */
+.lg-bare__pile {
+  width: 30px; height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-zonecell);
+  border: 1px dashed var(--border-medium);
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  color: var(--text-muted);
+}
+.lg-bare__pile small {
+  font-family: var(--font-mono); font-size: 7px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+/* la pile DESTINATION est teintée or — c'est le point d'arrivée du trajet */
+.lg-bare__pile--dest {
+  border-color: var(--gold-soft-30);
+  background: var(--gold-soft-08);
+  color: var(--gold-50);
+}
+/* jambe verbe+flèche : COLONNE en flux normal (verbe AU-DESSUS, flèche
+   EN DESSOUS). Le verbe occupe sa hauteur → la jambe a la hauteur du
+   couple, son centre tombe au milieu, aligné sur la médiane des zones.
+   Largeur de la jambe = largeur du verbe (nowrap) ; la flèche dessous
+   fait width:100% → même largeur, jamais plus (pas de débordement). */
+.lg-bare__leg {
+  display: inline-flex; flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 44px;       /* flèche lisible même si le verbe est court */
+}
+/* verbe = niveau LÉGENDE — il étiquette le trajet */
+.lg-bare__verb {
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap; text-align: center; line-height: 1;
+}
+/* flèche = trait extensible (flex:1) + pointe SVG fixe. Le conteneur
+   fait toute la largeur de la jambe ; trajet symétrique d'un bord à
+   l'autre. */
+.lg-bare__arrow {
+  display: flex; align-items: center;
+  color: var(--gold-soft-40);
+  height: 7px;
+}
+.lg-bare__arrow::before {
+  content: ""; flex: 1; height: 1.4px;
+  background: currentColor; border-radius: 1px;
+}
+.lg-bare__arrow svg { display: block; flex: none; }
+/* posture-change variant — pas de flèche, juste verbe + transition */
+.lg-bare__zones {
+  font-family: var(--font-mono);
+  font-size: var(--gl-text);
+  color: var(--text-secondary);
+}
+
+/* --- source-card header --- */
+.lg-src { display: flex; align-items: center; gap: var(--space-2); }
+/* nom de la carte source = niveau CORPS (comme tout nom de carte), la
+   hiérarchie passe par le POIDS (semibold), pas par une taille à part. */
 .lg-src__name {
-  font-size: var(--text-sm);
+  font-size: var(--gl-text);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
 }
@@ -316,13 +548,13 @@ body {
 .lg-negated-tag {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--gl-label);
   font-weight: var(--weight-bold);
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--negated);
   border: 1px solid var(--negated);
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   padding: 1px var(--space-1);
 }
 .badge-cl {
@@ -330,8 +562,8 @@ body {
   display: grid; place-items: center;
   border-radius: 50%;
   background: var(--gold);
-  color: #1a1208;
-  font-size: 11px;
+  color: var(--text-inverse, #1a1208);
+  font-size: var(--gl-text);
   font-weight: var(--weight-black);
   font-family: var(--font-mono);
   flex-shrink: 0;
@@ -343,17 +575,27 @@ body {
   padding: var(--space-2);
   background: var(--surface-effect);
   border: 1px solid var(--border-soft);
-  border-radius: var(--pvp-radius-sm);
-  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--gl-text);
   line-height: var(--line-normal);
   color: var(--text-secondary);
 }
+/* rappel d'effet sur une ligne de résolution — D-C : la résolution ne
+   re-rend PAS la description complète, juste un rappel ténu une ligne. */
+.lg-desc--echo {
+  padding: 2px var(--space-2);
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--gold-soft-20);
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
-/* --- targeting annotation — discreet line under the effect description.
-   A targeting is a property of the effect, not a standalone row. --- */
+/* --- targeting annotation — discrète, sous la description --- */
 .lg-targets {
   margin: 2px 0 0 var(--space-2);
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   color: var(--gold-on-surface);
   opacity: .85;
 }
@@ -361,12 +603,12 @@ body {
 /* --- thumbnails --- */
 .lg-thumb {
   width: 30px; height: 43px;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   background: linear-gradient(135deg, #3a3550, #211f30);
   border: 1px solid var(--border-medium);
   flex-shrink: 0;
   display: grid; place-items: center;
-  font-size: 7.5px; color: var(--text-muted);
+  font-size: var(--gl-label); color: var(--text-muted);
   text-align: center;
   overflow: hidden;
 }
@@ -384,17 +626,17 @@ body {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
   background: var(--surface-sub);
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
 }
 .lg-moved__card { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .lg-moved__name {
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   font-weight: var(--weight-medium);
   color: var(--text-primary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lg-moved__hidden {
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   font-style: italic;
   color: var(--text-muted);
 }
@@ -404,18 +646,18 @@ body {
   flex-shrink: 0;
 }
 .lg-moved__verb {
-  font-size: 8px;
+  font-size: var(--gl-label);
   font-family: var(--font-mono);
   letter-spacing: .04em;
   text-transform: uppercase;
   color: var(--text-secondary);
 }
 .lg-moved__arrow { color: var(--gold-soft-40); display: flex; }
-.lg-moved__arrow .material-icons-round { font-size: 13px; }
+.lg-moved__arrow .material-icons-round { font-size: var(--gl-icon-text); }
 
-/* a labelled sub-section header inside the body (e.g. "Matériaux") */
+/* sous-section labellisée du corps (ex. « Matériaux ») */
 .lg-sub-label {
-  font-size: 8px;
+  font-size: var(--gl-label);
   font-family: var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -426,7 +668,7 @@ body {
 /* zone destination chip */
 .lg-dest {
   width: 30px; height: 42px;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   background: var(--surface-zonecell);
   border: 1px dashed var(--border-medium);
   flex-shrink: 0;
@@ -435,7 +677,7 @@ body {
   gap: 1px;
   color: var(--text-muted);
 }
-.lg-dest small { font-size: 6.5px; letter-spacing: .03em; }
+.lg-dest small { font-size: var(--gl-label); letter-spacing: .03em; }
 .zone-ico { display: inline-block; width: 15px; height: 15px; }
 .zone-ico img {
   width: 100%; height: 100%;
@@ -446,25 +688,24 @@ body {
 /* ============================================================
    FIELD GRID — full mini-board (M + S/T rows, both players)
    ------------------------------------------------------------
-   The ONLY field-position component. Used everywhere a row shows
-   an on-field cell — some effects place cards on the opponent
-   side, so the grid always shows the whole board.
-   Layout per player: monster row (5) + spell/trap row (5);
-   shared EMZ band (2 cells) sits between the two halves.
+   Le SEUL composant de position-plateau. Toute position plateau
+   affiche le board entier (certains effets posent côté adverse).
+   Layout par joueur : monstre (5) + magie/piège (5) ; bande EMZ
+   partagée (2 cellules) entre les deux moitiés.
    ============================================================ */
 .lg-board {
   display: flex; flex-direction: column; gap: 2px;
   width: 78px; flex-shrink: 0;
 }
 .lg-board__row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
-.lg-board__emz {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
-}
-/* per-row zone tag (M / M/P / EMZ) — synced with game-log-html.ts so the
-   monster vs spell rows always read apart. */
+.lg-board__emz { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
+/* tag de rangée (M / M/P / EMZ) — synchro game-log-html.ts */
 .lg-board__line { display: flex; align-items: center; gap: 3px; }
 .lg-board__line .lg-board__row,
 .lg-board__line .lg-board__emz { flex: 1; }
+/* rowtag/label du mini-plateau : 6px assumé — le mini-plateau est un
+   PICTOGRAMME (vue terrain miniature), pas du texte de lecture ; ses
+   tags ne suivent pas l'échelle --gl-* (qui les gonflerait). */
 .lg-board__rowtag {
   width: 22px; flex: none;
   font-family: var(--font-mono); font-size: 6px;
@@ -487,19 +728,22 @@ body {
   background: var(--surface-zonecell);
   border: 1px solid var(--border-soft);
 }
-.lg-cell--st     { border-style: dashed; }
-.lg-cell--emz    { border-color: var(--gold-soft-30); background: var(--gold-soft-08); }
+.lg-cell--st  { border-style: dashed; }
+.lg-cell--emz { border-color: var(--gold-soft-30); background: var(--gold-soft-08); }
 .lg-cell--target {
   background: var(--gold-soft-30);
   border-color: var(--gold);
   box-shadow: 0 0 5px var(--gold-soft-40);
 }
 .lg-cell--from {
-  background: rgba(217,83,74,0.18);
+  background: var(--opp-amber-soft);
   border-color: var(--duel-side-opp-border);
 }
+/* FIELD-spell cell */
+.lg-board__field { display: flex; justify-content: center; margin-top: 2px; }
+.lg-board__field .lg-cell { width: 13px; }
 
-/* draw card strip in the body */
+/* bande de pioche initiale dans le corps */
 .lg-draw5 { display: flex; gap: 3px; }
 .lg-draw5 .lg-thumb { width: 28px; height: 40px; }
 
@@ -510,14 +754,14 @@ body {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-2);
   background: var(--surface-sub);
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
 }
 .lg-rng__icon, .lg-action__icon { display: flex; }
 .lg-rng__icon { color: var(--gold-on-surface); }
 .lg-rng__icon .material-icons-round,
-.lg-action__icon .material-icons-round { font-size: 16px; }
+.lg-action__icon .material-icons-round { font-size: var(--gl-icon-text); }
 .lg-rng__label, .lg-action__label {
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   font-weight: var(--weight-semibold);
   color: var(--text-secondary);
 }
@@ -525,12 +769,12 @@ body {
 .lg-rng-die {
   width: 22px; height: 22px;
   display: grid; place-items: center;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   background: var(--surface-bg-deep);
   border: 1px solid var(--gold-soft-30);
   font-family: var(--font-mono);
   font-weight: var(--weight-bold);
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   color: var(--gold-50);
 }
 .lg-rng-coin {
@@ -538,7 +782,7 @@ body {
   border-radius: var(--radius-pill);
   background: var(--surface-bg-deep);
   border: 1px solid var(--gold-soft-30);
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   font-weight: var(--weight-semibold);
   color: var(--gold-50);
 }
@@ -549,82 +793,129 @@ body {
 }
 .lg-combat__thumb {
   width: 30px; height: 43px;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   background: linear-gradient(135deg, #3a3550, #211f30);
   border: 1px solid var(--border-medium);
   display: grid; place-items: center;
-  font-size: 7px; color: var(--text-muted); text-align: center;
+  font-size: var(--gl-label); color: var(--text-muted); text-align: center;
 }
 .lg-combat__stat {
-  font-family: var(--font-mono); font-size: 9px; font-weight: var(--weight-bold);
+  font-family: var(--font-mono); font-size: var(--gl-label); font-weight: var(--weight-bold);
   display: inline-flex; align-items: center; gap: 2px;
 }
-/* ATK = ambre (offensif) · DEF = bleu acier (défensif) — distinction
-   couleur + pictogramme pour qu'une stat se lise d'un coup d'œil. */
-.lg-combat__atk { color: #e8a23d; }
-.lg-combat__def { color: #5fa8d8; }
-.lg-combat__dmg { color: #ff6b6b; }
-.lg-combat__stat .material-icons-round { font-size: 9px; }
+/* ATK = ambre offensif · DEF = bleu acier défensif — couleur +
+   pictogramme pour qu'une stat se lise d'un coup d'œil. */
+.lg-combat__atk { color: var(--combat-atk); }
+.lg-combat__def { color: var(--combat-def); }
+.lg-combat__dmg { color: var(--combat-dmg); }
+.lg-combat__stat .material-icons-round { font-size: var(--gl-icon-label); }
 .lg-combat__vs {
   display: flex; flex-direction: column; align-items: center;
   flex: 1; color: var(--text-muted);
 }
-.lg-combat__vs .material-icons-round { font-size: 18px; color: #ff6b6b; }
+.lg-combat__vs .material-icons-round { font-size: var(--gl-icon-title); color: var(--combat-dmg); }
 .lg-combat__vs small {
-  font-family: var(--font-mono); font-size: 8px;
+  font-family: var(--font-mono); font-size: var(--gl-label);
   letter-spacing: .06em; text-transform: uppercase;
 }
-.lg-combat__direct {
-  flex: 1; text-align: center;
-  font-family: var(--font-mono); font-size: var(--text-xs);
-  color: #ff6b6b; font-weight: var(--weight-semibold);
-  text-transform: uppercase; letter-spacing: .05em;
+/* ligne PV PERDUS — sous le combat, une puce par joueur qui perd des
+   PV. RIEN du tout si aucun PV perdu (un clash sans dégâts n'affiche
+   pas de ligne). Icône joueur + nom + montant rouge. */
+.lg-lploss {
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  margin-top: var(--space-2);
+  justify-content: center;
+}
+.lg-lploss__chip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: rgba(255,107,107,0.10);
+  border: 1px solid var(--combat-dmg);
+}
+.lg-lploss__chip .material-icons-round {
+  font-size: var(--gl-icon-label); color: var(--combat-dmg);
+}
+.lg-lploss__who {
+  font-size: var(--gl-label);
+  color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.lg-lploss__amt {
+  font-family: var(--font-mono); font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  color: var(--combat-dmg);
+}
+
+/* attaque directe — l'attaquant frappe le joueur. Au lieu d'une chaîne
+   rouge à plat, une « cible joueur » : un disque-avatar + un libellé.
+   Lit comme « ça atterrit sur le joueur », symétrique d'une vignette
+   défenseur. */
+.lg-combat__player {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; flex-shrink: 0;
+}
+.lg-combat__player-ico {
+  width: 30px; height: 43px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(255,107,107,0.22), rgba(255,107,107,0.06));
+  border: 1px solid var(--combat-dmg);
+  display: grid; place-items: center;
+  color: var(--combat-dmg);
+}
+.lg-combat__player-ico .material-icons-round { font-size: var(--gl-icon-title); }
+.lg-combat__player-dmg {
+  font-family: var(--font-mono); font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--combat-dmg);
+  white-space: nowrap;
 }
 
 .lg-action--add .lg-action__icon { color: #6bce6b; }
 .lg-action--rem .lg-action__icon { color: #ff8a8a; }
-.lg-action__detail { font-size: var(--text-xs); color: var(--text-muted); }
+.lg-action__detail { font-size: var(--gl-text); color: var(--text-muted); }
 .lg-action__targets { display: flex; align-items: center; gap: var(--space-1); margin-left: auto; }
 .lg-action__targets .lg-thumb { width: 22px; height: 31px; }
 .lg-counter-badge {
   margin-left: auto;
   font-family: var(--font-mono);
   font-weight: var(--weight-bold);
-  font-size: var(--text-sm);
+  font-size: var(--gl-text);
 }
 .lg-counter-badge--add { color: #6bce6b; }
 .lg-counter-badge--rem { color: #ff8a8a; }
 
 /* position-change body */
 .lg-pos__icon { color: var(--gold-on-surface); display: flex; }
-.lg-pos__icon .material-icons-round { font-size: 16px; }
+.lg-pos__icon .material-icons-round { font-size: var(--gl-icon-text); }
 .lg-pos__states {
   display: flex; align-items: center; gap: var(--space-2);
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   font-weight: var(--weight-semibold);
 }
-.lg-pos__states .material-icons-round { font-size: 13px; color: var(--gold-soft-40); }
-/* Posture pills — same ATK/DEF identity as the combat row: ATK = ambre +
-   cible, DEF = bleu acier + bouclier. The "before" state is dimmed (it is
-   the posture being left), the "after" state at full strength. */
+.lg-pos__states .material-icons-round { font-size: var(--gl-icon-text); color: var(--gold-soft-40); }
+/* Posture pills — même identité ATK/DEF que le combat. « before »
+   atténué (la posture quittée), « after » plein. */
 .lg-posture {
   display: inline-flex; align-items: center; gap: 2px;
   padding: 1px 5px;
-  border-radius: var(--pvp-radius-sm);
+  border-radius: var(--radius-sm);
   border: 1px solid currentColor;
+  font-family: var(--font-mono); font-size: var(--gl-label); font-weight: var(--weight-bold);
 }
-.lg-posture .material-icons-round { font-size: 10px; color: inherit; }
-.lg-posture--atk { color: #e8a23d; }
-.lg-posture--def { color: #5fa8d8; }
+.lg-posture .material-icons-round { font-size: var(--gl-icon-label); color: inherit; }
+.lg-posture--atk { color: var(--combat-atk); }
+.lg-posture--def { color: var(--combat-def); }
 .lg-posture--before { opacity: .45; }
 
 /* duel-over separator */
 .lg-end {
   margin: var(--space-3) var(--space-3) var(--space-2);
   padding: var(--space-3);
-  border-radius: var(--pvp-radius-md);
+  border-radius: var(--radius-md);
   text-align: center;
   background:
     linear-gradient(180deg, var(--gold-soft-20), var(--gold-soft-08)),
@@ -634,12 +925,12 @@ body {
 .lg-end__title {
   font-family: var(--font-display);
   font-weight: var(--weight-black);
-  font-size: var(--text-md);
+  font-size: var(--gl-title);
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--gold-50);
 }
-.lg-end__reason { margin-top: 2px; font-size: var(--text-xs); color: var(--text-secondary); }
+.lg-end__reason { margin-top: 2px; font-size: var(--gl-text); color: var(--text-secondary); }
 
 /* ============================================================
    EFFECT BUBBLE
@@ -648,7 +939,7 @@ body {
   width: 320px;
   background: var(--surface-bg-deep);
   border: 1px solid var(--border-soft);
-  border-radius: var(--pvp-radius-lg);
+  border-radius: var(--radius-lg);
   padding: var(--space-5);
   position: relative;
   min-height: 240px;
@@ -659,26 +950,26 @@ body {
   width: 130px;
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-2);
-  border-radius: var(--pvp-radius-md);
-  background: linear-gradient(135deg, rgba(217,83,74,0.16), rgba(20,18,30,0.9));
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--opp-amber-soft), rgba(20,18,30,0.9));
   border: 1px solid var(--duel-side-opp-border);
 }
 .bubble-duelist__av {
-  width: 32px; height: 32px; border-radius: var(--pvp-radius-md);
-  background: linear-gradient(135deg, #3a2630, #15131f);
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #3a2e26, #15131f);
   display: grid; place-items: center; font-size: 16px;
 }
 .bubble-duelist__meta { line-height: 1.2; }
-.bubble-duelist__name { font-size: var(--text-xs); color: var(--text-muted); }
+.bubble-duelist__name { font-size: var(--gl-label); color: var(--text-muted); }
 .bubble-duelist__lp {
   font-family: var(--font-mono); font-weight: var(--weight-bold);
-  font-size: var(--text-sm); color: var(--text-primary);
+  font-size: var(--gl-text); color: var(--text-primary);
 }
 .bubble {
   width: 250px;
-  background: var(--surface-panel);
+  background: var(--pvp-zone-browser-bg);
   border: 1px solid var(--gold-soft-40);
-  border-radius: var(--pvp-radius-md);
+  border-radius: var(--radius-md);
   box-shadow: var(--elevation-2), 0 0 20px var(--gold-soft-12);
   overflow: hidden;
   animation: bubble-in .3s ease;
@@ -693,23 +984,26 @@ body {
   background: linear-gradient(180deg, var(--gold-soft-20), transparent);
   border-bottom: 1px solid var(--border-soft);
 }
-.bubble__head .material-icons-round { font-size: 16px; color: var(--gold-on-surface); }
+.bubble__head .material-icons-round { font-size: var(--gl-icon-title); color: var(--gold-on-surface); }
 .bubble__cardname {
   font-family: var(--font-display);
   font-weight: var(--weight-bold);
-  font-size: var(--text-sm);
+  font-size: var(--gl-title);
   color: var(--gold-on-surface);
 }
 .bubble__body {
   padding: var(--space-3);
-  font-size: var(--text-xs);
+  font-size: var(--gl-text);
   line-height: var(--line-relaxed);
   color: var(--text-secondary);
   max-height: 150px;
   overflow-y: auto;
 }
+/* corps court — un fragment cards.cdb laconique (« Place Scales ») ne
+   doit pas laisser un grand vide : le corps se contracte au contenu. */
+.bubble__body--short { padding: var(--space-2) var(--space-3); }
 .bubble__caption {
-  font-size: var(--text-xs); color: var(--text-muted);
+  font-size: var(--gl-label); color: var(--text-muted);
   text-align: right; width: 250px; margin-top: var(--space-1);
   font-style: italic;
 }
@@ -729,7 +1023,8 @@ body {
   <h1>Game Log + Effect Bubble — grammaire des lignes</h1>
   <p>Une ligne = carte SOURCE (toujours révélée) + description + corps.
      Verbes en français. Toute position plateau = mini-plateau complet
-     (M+S/T des 2 joueurs). Bleu = toi, rouge = adversaire.</p>
+     (M+S/T des 2 joueurs). <b>Bleu = toi · ambre = adversaire</b> —
+     le rouge reste réservé au danger. Une chaîne = un bloc groupé.</p>
 </div>
 
 <div class="legend">
@@ -737,6 +1032,7 @@ body {
   <span><i style="background:var(--duel-side-opp)"></i> Adversaire (rel. 1)</span>
   <span><i style="background:var(--gold)"></i> Séparateur / chaîne</span>
   <span><i style="background:var(--negated)"></i> Effet nié</span>
+  <span><i style="background:var(--combat-dmg)"></i> Danger / combat</span>
 </div>
 
 <div class="stage">
@@ -806,18 +1102,23 @@ body {
 
         <div class="lg-phase">Phase de Pioche</div>
 
-        <!-- DRAW PHASE — regular draw: NO source header, NO description -->
-        <div class="lg-row">
+        <!-- DRAW PHASE — regular draw: NO source header, NO description.
+             Mouvement système → ligne BARE, layout DEUX ÉTAGES :
+             en-tête nom de carte, corps vignette + flux zone→zone. -->
+        <div class="lg-row lg-row--bare lg-row--self">
           <div class="lg-body">
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Vision</div>
-                <span class="lg-moved__name">Radiant Typhoon Vision</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Pioche</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/hand.svg" alt=""></span><small>MAIN</small></div>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name">Radiant Typhoon Vision</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb">Radiant<br>Vision</div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>DECK</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Pioche</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <span class="lg-bare__pile lg-bare__pile--dest"><small>MAIN</small></span>
+                </div>
               </div>
             </div>
           </div>
@@ -825,7 +1126,7 @@ body {
 
         <div class="lg-phase">Main Phase 1</div>
 
-        <!-- NORMAL SUMMON — full board grid -->
+        <!-- NORMAL SUMMON — ligne PLEINE, full board grid -->
         <div class="lg-row">
           <div class="lg-src">
             <div class="lg-thumb lg-thumb--src">Radiant<br>Eldam</div>
@@ -833,41 +1134,44 @@ body {
           </div>
           <div class="lg-desc">Invocation Normale depuis la main.</div>
           <div class="lg-body">
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Eldam</div>
-                <span class="lg-moved__name">Radiant Typhoon Eldam</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Inv. Normale</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-board">
-                  <div class="lg-board__label lg-board__label--opp"><span>Adv.</span></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
-                    <div class="lg-cell"></div><div class="lg-cell"></div><div class="lg-cell"></div>
-                    <div class="lg-cell"></div><div class="lg-cell"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">EMZ</span><div class="lg-board__emz">
-                    <div class="lg-cell"></div><div class="lg-cell lg-cell--emz"></div>
-                    <div class="lg-cell"></div><div class="lg-cell lg-cell--emz"></div>
-                    <div class="lg-cell"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
-                    <div class="lg-cell"></div><div class="lg-cell"></div>
-                    <div class="lg-cell lg-cell--target"></div>
-                    <div class="lg-cell"></div><div class="lg-cell"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div>
-                  </div></div>
-                  <div class="lg-board__label lg-board__label--self"><span>Toi</span></div>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name">Radiant Typhoon Eldam</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb">Radiant<br>Eldam</div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>MAIN</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Inv. Normale</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <div class="lg-board">
+                    <div class="lg-board__label lg-board__label--opp"><span>Adv.</span></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
+                      <div class="lg-cell"></div><div class="lg-cell"></div><div class="lg-cell"></div>
+                      <div class="lg-cell"></div><div class="lg-cell"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">EMZ</span><div class="lg-board__emz">
+                      <div class="lg-cell"></div><div class="lg-cell lg-cell--emz"></div>
+                      <div class="lg-cell"></div><div class="lg-cell lg-cell--emz"></div>
+                      <div class="lg-cell"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
+                      <div class="lg-cell"></div><div class="lg-cell"></div>
+                      <div class="lg-cell lg-cell--target"></div>
+                      <div class="lg-cell"></div><div class="lg-cell"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div>
+                    </div></div>
+                    <div class="lg-board__label lg-board__label--self"><span>Toi</span></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -889,7 +1193,7 @@ body {
                 <span class="lg-posture lg-posture--atk lg-posture--before">
                   <span class="material-icons-round">crisis_alert</span>ATK
                 </span>
-                <span class="material-icons-round">arrow_forward</span>
+                <span class="lg-moved__arrow">▶</span>
                 <span class="lg-posture lg-posture--def">
                   <span class="material-icons-round">shield</span>DEF
                 </span>
@@ -906,181 +1210,162 @@ body {
           </div>
           <div class="lg-desc">Invocation Lien avec 2 monstres comme Matériaux.</div>
           <div class="lg-body">
-            <!-- materials consumed -->
-            <div class="lg-sub-label">Matériaux</div>
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Eldam</div>
-                <span class="lg-moved__name">Radiant Typhoon Eldam</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Matériau</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/gy.svg" alt=""></span><small>GY</small></div>
-              </div>
-            </div>
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Krosea</div>
-                <span class="lg-moved__name">Radiant Typhoon Krosea</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Matériau</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/gy.svg" alt=""></span><small>GY</small></div>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name">Radiant Typhoon Eldam</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb">Radiant<br>Eldam</div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>M/P</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Matériau</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <span class="lg-bare__pile lg-bare__pile--dest"><small>GY</small></span>
+                </div>
               </div>
             </div>
-            <!-- the summoned monster -->
-            <div class="lg-sub-label">Invocation</div>
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Eos</div>
-                <span class="lg-moved__name">Radiant Typhoon Eos</span>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name">Radiant Typhoon Krosea</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb">Radiant<br>Krosea</div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>M/P</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Matériau</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <span class="lg-bare__pile lg-bare__pile--dest"><small>GY</small></span>
+                </div>
               </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Inv. Lien</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-board">
-                  <div class="lg-board__label lg-board__label--opp"><span>Adv.</span></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
-                    <div class="lg-cell"></div><div class="lg-cell"></div><div class="lg-cell"></div>
-                    <div class="lg-cell"></div><div class="lg-cell"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">EMZ</span><div class="lg-board__emz">
-                    <div class="lg-cell"></div><div class="lg-cell lg-cell--emz lg-cell--target"></div>
-                    <div class="lg-cell"></div><div class="lg-cell lg-cell--emz"></div>
-                    <div class="lg-cell"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
-                    <div class="lg-cell"></div><div class="lg-cell"></div><div class="lg-cell"></div>
-                    <div class="lg-cell"></div><div class="lg-cell"></div>
-                  </div></div>
-                  <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
-                    <div class="lg-cell lg-cell--st"></div>
-                  </div></div>
-                  <div class="lg-board__label lg-board__label--self"><span>Toi</span></div>
+            </div>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name">Radiant Typhoon Eos</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb">Radiant<br>Eos</div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>EXTRA</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Inv. Lien</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <div class="lg-board">
+                    <div class="lg-board__label lg-board__label--opp"><span>Adv.</span></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
+                      <div class="lg-cell"></div><div class="lg-cell"></div><div class="lg-cell"></div>
+                      <div class="lg-cell"></div><div class="lg-cell"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">EMZ</span><div class="lg-board__emz">
+                      <div class="lg-cell"></div><div class="lg-cell lg-cell--emz lg-cell--target"></div>
+                      <div class="lg-cell"></div><div class="lg-cell lg-cell--emz"></div>
+                      <div class="lg-cell"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M</span><div class="lg-board__row">
+                      <div class="lg-cell"></div><div class="lg-cell"></div><div class="lg-cell"></div>
+                      <div class="lg-cell"></div><div class="lg-cell"></div>
+                    </div></div>
+                    <div class="lg-board__line"><span class="lg-board__rowtag">M/P</span><div class="lg-board__row">
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div><div class="lg-cell lg-cell--st"></div>
+                      <div class="lg-cell lg-cell--st"></div>
+                    </div></div>
+                    <div class="lg-board__label lg-board__label--self"><span>Toi</span></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- chain START -->
-        <div class="lg-chain lg-chain--start">
-          <span class="material-icons-round">link</span>
-          Début de chaîne
-        </div>
+        <!-- ====================================================
+             CHAIN GROUP — D-B : une chaîne = UN bloc groupé.
+             En-tête « Chaîne · N liens » + rail latéral.
+             « Résolution » = sous-marqueur fin. Pas de barre « Fin ».
+             ==================================================== -->
+        <div class="lg-chaingroup">
+          <div class="lg-chaingroup__head">
+            <span class="material-icons-round">link</span>
+            Chaîne
+            <span class="lg-chaingroup__count">2 maillons</span>
+          </div>
 
-        <!-- ACTIVATION (CL1) — source + description + 2 drawn cards -->
-        <div class="lg-row">
-          <div class="lg-src">
-            <span class="badge-cl">1</span>
-            <div class="lg-thumb lg-thumb--src">Radiant<br>Draw</div>
-            <span class="lg-src__name">Radiant Typhoon Draw</span>
-          </div>
-          <div class="lg-desc">
-            Piochez 2 cartes, puis si vous avez une carte "Radiant Typhoon"
-            ou une Magie Rapide dans votre main, défaussez-en 1.
-          </div>
-          <div class="lg-body">
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Eos</div>
-                <span class="lg-moved__name">Radiant Typhoon Eos</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Pioche</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/hand.svg" alt=""></span><small>MAIN</small></div>
-              </div>
+          <!-- ACTIVATION (CL1) — source + description + 2 drawn cards -->
+          <div class="lg-row">
+            <div class="lg-src">
+              <span class="badge-cl">1</span>
+              <div class="lg-thumb lg-thumb--src">Radiant<br>Draw</div>
+              <span class="lg-src__name">Radiant Typhoon Draw</span>
             </div>
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Krosea</div>
-                <span class="lg-moved__name">Radiant Typhoon Krosea</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Pioche</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/hand.svg" alt=""></span><small>MAIN</small></div>
-              </div>
+            <div class="lg-desc">
+              Piochez 2 cartes, puis si vous avez une carte "Radiant Typhoon"
+              ou une Magie Rapide dans votre main, défaussez-en 1.
             </div>
           </div>
-        </div>
 
-        <!-- ACTIVATION (CL2, opponent) -->
-        <div class="lg-row lg-row--opp">
-          <div class="lg-src">
-            <span class="badge-cl">2</span>
-            <div class="lg-thumb lg-thumb--src">Radiant<br>Chant</div>
-            <span class="lg-src__name">Radiant Typhoon Chant</span>
+          <!-- ACTIVATION (CL2, opponent) -->
+          <div class="lg-row lg-row--opp">
+            <div class="lg-src">
+              <span class="badge-cl">2</span>
+              <div class="lg-thumb lg-thumb--src">Radiant<br>Chant</div>
+              <span class="lg-src__name">Radiant Typhoon Chant</span>
+            </div>
+            <div class="lg-desc">
+              Quand une carte ou un effet est activé : annulez cette
+              activation, et si vous le faites, bannissez cette carte.
+            </div>
           </div>
-          <div class="lg-desc">
-            Quand une carte ou un effet est activé : annulez cette
-            activation, et si vous le faites, bannissez cette carte.
-          </div>
-        </div>
 
-        <!-- chain RESOLUTION -->
-        <div class="lg-chain lg-chain--resolve">
-          <span class="material-icons-round">sync</span>
-          Résolution de la chaîne
-        </div>
+          <!-- inline « Résolution » sub-marker — D-B : pas une barre -->
+          <div class="lg-chainmark">
+            <span class="material-icons-round">sync</span>
+            Résolution
+          </div>
 
-        <!-- RESOLUTION (CL2) — banishes CL1's card -->
-        <div class="lg-row lg-row--opp">
-          <div class="lg-src">
-            <span class="badge-cl">2</span>
-            <div class="lg-thumb lg-thumb--src">Radiant<br>Chant</div>
-            <span class="lg-src__name">Radiant Typhoon Chant</span>
-          </div>
-          <div class="lg-desc">
-            Quand une carte ou un effet est activé : annulez cette
-            activation, et si vous le faites, bannissez cette carte.
-          </div>
-          <div class="lg-body">
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Draw</div>
-                <span class="lg-moved__name">Radiant Typhoon Draw</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Bannissement</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/banished.svg" alt=""></span><small>BANNIE</small></div>
+          <!-- RESOLUTION (CL2) — banishes CL1's card. D-C : pas de
+               re-rendu de la description, juste un rappel ténu + le corps. -->
+          <div class="lg-row lg-row--opp">
+            <div class="lg-src">
+              <span class="badge-cl">2</span>
+              <div class="lg-thumb lg-thumb--src">Radiant<br>Chant</div>
+              <span class="lg-src__name">Radiant Typhoon Chant</span>
+            </div>
+            <div class="lg-desc lg-desc--echo">Annule l'activation, puis bannit la carte.</div>
+            <div class="lg-body">
+              <div class="lg-bare">
+                <div class="lg-bare__head"><span class="lg-bare__name">Radiant Typhoon Draw</span></div>
+                <div class="lg-bare__body">
+                  <div class="lg-thumb lg-bare__thumb">Radiant<br>Draw</div>
+                  <div class="lg-bare__flow">
+                    <span class="lg-bare__pile"><small>M/P</small></span>
+                    <span class="lg-bare__leg">
+                      <span class="lg-bare__verb">Bannissement</span>
+                      <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    </span>
+                    <span class="lg-bare__pile lg-bare__pile--dest"><small>BANNIE</small></span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- RESOLUTION (CL1) — NEGATED: dimmed, struck, "Nié" tag -->
-        <div class="lg-row lg-row--negated">
-          <div class="lg-src">
-            <span class="badge-cl">1</span>
-            <div class="lg-thumb lg-thumb--src">Radiant<br>Draw</div>
-            <span class="lg-src__name">Radiant Typhoon Draw</span>
-            <span class="lg-negated-tag">Nié</span>
-          </div>
-          <div class="lg-desc">
-            Piochez 2 cartes, puis si vous avez une carte "Radiant Typhoon"
-            ou une Magie Rapide dans votre main, défaussez-en 1.
+          <!-- RESOLUTION (CL1) — NEGATED: dimmed, struck, "Nié" tag -->
+          <div class="lg-row lg-row--negated">
+            <div class="lg-src">
+              <span class="badge-cl">1</span>
+              <div class="lg-thumb lg-thumb--src">Radiant<br>Draw</div>
+              <span class="lg-src__name">Radiant Typhoon Draw</span>
+              <span class="lg-negated-tag">Nié</span>
+            </div>
+            <div class="lg-desc lg-desc--echo">Piochez 2 cartes, puis défaussez-en 1.</div>
           </div>
         </div>
+        <!-- fin du bloc-chaîne : le rail s'arrête, pas de barre « Fin » -->
 
-        <!-- chain END -->
-        <div class="lg-chain lg-chain--end">
-          <span class="material-icons-round">link_off</span>
-          Fin de chaîne
-        </div>
-
-        <!-- ACTIVATION — Add to hand: moved card revealed -->
+        <!-- ACTIVATION — Add to hand: hors chaîne, ligne PLEINE -->
         <div class="lg-row lg-row--opp">
           <div class="lg-src">
             <div class="lg-thumb lg-thumb--src">Radiant<br>Search</div>
@@ -1090,21 +1375,26 @@ body {
             Ajoutez 1 monstre "Radiant Typhoon" de votre Deck à votre main.
           </div>
           <div class="lg-body">
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb">Radiant<br>Krosea</div>
-                <span class="lg-moved__name">Radiant Typhoon Krosea</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Ajout</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/hand.svg" alt=""></span><small>MAIN</small></div>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name">Radiant Typhoon Krosea</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb">Radiant<br>Krosea</div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>DECK</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Ajout</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <span class="lg-bare__pile lg-bare__pile--dest"><small>MAIN</small></span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ACTIVATION — opponent effect: moved cards HIDDEN by OCGCore -->
+        <!-- ACTIVATION — opponent effect: moved cards HIDDEN by OCGCore.
+             Carte non révélée → l'en-tête porte le placeholder italique,
+             le corps garde vignette dos-de-carte + flux. -->
         <div class="lg-row lg-row--opp">
           <div class="lg-src">
             <div class="lg-thumb lg-thumb--src">Card<br>Destruction</div>
@@ -1115,32 +1405,61 @@ body {
             nombre de cartes qu'il a défaussées.
           </div>
           <div class="lg-body">
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb lg-thumb--back"></div>
-                <span class="lg-moved__hidden">Carte non révélée</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Défausse</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/gy.svg" alt=""></span><small>GY</small></div>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name lg-bare__name--hidden">Carte non révélée</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb lg-thumb--back"></div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>MAIN</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Défausse</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <span class="lg-bare__pile lg-bare__pile--dest"><small>GY</small></span>
+                </div>
               </div>
             </div>
-            <div class="lg-moved">
-              <div class="lg-moved__card">
-                <div class="lg-thumb lg-thumb--back"></div>
-                <span class="lg-moved__hidden">Carte non révélée</span>
-              </div>
-              <div class="lg-moved__flow">
-                <span class="lg-moved__verb">Pioche</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                <div class="lg-dest"><span class="zone-ico"><img src="assets/zones/hand.svg" alt=""></span><small>MAIN</small></div>
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name lg-bare__name--hidden">Carte non révélée</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb lg-thumb--back"></div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>DECK</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Pioche</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <span class="lg-bare__pile lg-bare__pile--dest"><small>MAIN</small></span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ACTIVATION — coin toss -->
+        <!-- système : mouvements sans source → lignes BARE consécutives.
+             Un mouvement de carte garde sa vignette + le flux zone→zone
+             en layout DEUX ÉTAGES ; un mélange (pas de carte unique) est
+             un bloc ACTION, pas un bare-row. -->
+        <div class="lg-row lg-row--bare lg-row--self">
+          <div class="lg-body">
+            <div class="lg-bare">
+              <div class="lg-bare__head"><span class="lg-bare__name">D/D Savant Kepler</span></div>
+              <div class="lg-bare__body">
+                <div class="lg-thumb lg-bare__thumb">D/D<br>Kepler</div>
+                <div class="lg-bare__flow">
+                  <span class="lg-bare__pile"><small>M/P</small></span>
+                  <span class="lg-bare__leg">
+                    <span class="lg-bare__verb">Retour à l'Extra</span>
+                    <span class="lg-bare__arrow"><svg width="6" height="8" viewBox="0 0 6 8"><path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                  </span>
+                  <span class="lg-bare__pile lg-bare__pile--dest"><small>EXTRA</small></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVATION — coin toss (hors chaîne) -->
         <div class="lg-row">
           <div class="lg-src">
             <div class="lg-thumb lg-thumb--src">Cup of<br>Ace</div>
@@ -1159,23 +1478,43 @@ body {
           </div>
         </div>
 
-        <!-- ACTIVATION — dice roll (in chain) -->
-        <div class="lg-row lg-row--opp">
-          <div class="lg-src">
-            <span class="badge-cl">1</span>
-            <div class="lg-thumb lg-thumb--src">Dicephoon</div>
-            <span class="lg-src__name">Dicephoon</span>
+        <!-- CHAIN GROUP — chaîne à 1 lien avec lancer de dé -->
+        <div class="lg-chaingroup">
+          <div class="lg-chaingroup__head">
+            <span class="material-icons-round">link</span>
+            Chaîne
+            <span class="lg-chaingroup__count">1 maillon</span>
           </div>
-          <div class="lg-desc">
-            Lancez un dé à six faces ; si le résultat est 3 ou moins,
-            ciblez 1 Magie/Piège sur le Terrain ; détruisez-la.
-          </div>
-          <div class="lg-body">
-            <div class="lg-rng">
-              <span class="lg-rng__icon"><span class="material-icons-round">casino</span></span>
-              <span class="lg-rng__label">Lancé de dé</span>
-              <div class="lg-rng__results"><span class="lg-rng-die">2</span></div>
+          <div class="lg-row lg-row--opp">
+            <div class="lg-src">
+              <span class="badge-cl">1</span>
+              <div class="lg-thumb lg-thumb--src">Dicephoon</div>
+              <span class="lg-src__name">Dicephoon</span>
             </div>
+            <div class="lg-desc">
+              Lancez un dé à six faces ; si le résultat est 3 ou moins,
+              ciblez 1 Magie/Piège sur le Terrain ; détruisez-la.
+            </div>
+            <div class="lg-body">
+              <div class="lg-rng">
+                <span class="lg-rng__icon"><span class="material-icons-round">casino</span></span>
+                <span class="lg-rng__label">Lancé de dé</span>
+                <div class="lg-rng__results"><span class="lg-rng-die">2</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="lg-chainmark">
+            <span class="material-icons-round">sync</span>
+            Résolution
+          </div>
+          <div class="lg-row lg-row--opp">
+            <div class="lg-src">
+              <span class="badge-cl">1</span>
+              <div class="lg-thumb lg-thumb--src">Dicephoon</div>
+              <span class="lg-src__name">Dicephoon</span>
+            </div>
+            <div class="lg-desc lg-desc--echo">Détruit la Magie/Piège ciblée.</div>
+            <div class="lg-targets">▸ cible : Mage Power</div>
           </div>
         </div>
 
@@ -1220,19 +1559,6 @@ body {
           </div>
         </div>
 
-        <!-- RESOLUTION — le ciblage n'est PAS une ligne : c'est une
-             annotation « ▸ cible : … » sous la description de l'effet
-             qui cible (resync impl. — MSG_BECOME_TARGET replié). -->
-        <div class="lg-row lg-row--opp">
-          <div class="lg-src">
-            <span class="badge-cl">1</span>
-            <div class="lg-thumb lg-thumb--src">Radiant<br>Storm</div>
-            <span class="lg-src__name">Radiant Typhoon Storm</span>
-          </div>
-          <div class="lg-desc">Ciblez jusqu'à 2 monstres sur le Terrain ; détruisez-les.</div>
-          <div class="lg-targets">▸ cible : Radiant Typhoon Eldam, Radiant Typhoon Eos</div>
-        </div>
-
         <div class="lg-phase">Battle Phase</div>
 
         <!-- ATTACK -->
@@ -1264,7 +1590,7 @@ body {
           </div>
         </div>
 
-        <!-- BATTLE — calc -->
+        <!-- BATTLE — calc : l'adversaire perd des PV → ligne PV PERDUS -->
         <div class="lg-row">
           <div class="lg-src">
             <div class="lg-thumb lg-thumb--src">Radiant<br>Eos</div>
@@ -1275,21 +1601,23 @@ body {
             <div class="lg-combat">
               <div class="lg-combat__side">
                 <div class="lg-combat__thumb">Radiant<br>Eos</div>
-                <span class="lg-combat__stat lg-combat__dmg">0</span>
               </div>
-              <div class="lg-combat__vs">
-                <span class="material-icons-round">whatshot</span>
-                <small>−500 LP adv.</small>
-              </div>
+              <div class="lg-combat__vs"><span class="material-icons-round">bolt</span></div>
               <div class="lg-combat__side">
                 <div class="lg-combat__thumb">Radiant<br>Fonix</div>
-                <span class="lg-combat__stat lg-combat__dmg">détruit</span>
               </div>
+            </div>
+            <div class="lg-lploss">
+              <span class="lg-lploss__chip">
+                <span class="material-icons-round">person</span>
+                <span class="lg-lploss__who">Adversaire</span>
+                <span class="lg-lploss__amt">−500 PV</span>
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- DIRECT ATTACK -->
+        <!-- DIRECT ATTACK — déclaration : pas de ligne PV (rien perdu encore) -->
         <div class="lg-row lg-row--opp">
           <div class="lg-src">
             <div class="lg-thumb lg-thumb--src">Radiant<br>Chant</div>
@@ -1304,7 +1632,11 @@ body {
                   <span class="material-icons-round">crisis_alert</span>ATK 1800
                 </span>
               </div>
-              <div class="lg-combat__direct">▶ Joueur · −1800 LP</div>
+              <div class="lg-combat__vs"><span class="material-icons-round">bolt</span></div>
+              <div class="lg-combat__player">
+                <span class="lg-combat__player-ico"><span class="material-icons-round">person</span></span>
+                <span class="lg-combat__player-dmg">Attaque directe</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1327,6 +1659,8 @@ body {
   <!-- ============ EFFECT BUBBLE ============ -->
   <div class="col">
     <div class="col-label">Effect Bubble — sous la duelist card adverse</div>
+
+    <!-- texte long : la bulle grandit puis scrolle (max-height) -->
     <div class="bubble-demo">
       <div class="bubble-duelist">
         <div class="bubble-duelist__av">🦊</div>
@@ -1347,7 +1681,29 @@ body {
           d'un monstre LUMIÈRE. »
         </div>
       </div>
-      <div class="bubble__caption">~3,5 s · z-index &gt; chain overlay</div>
+      <div class="bubble__caption">texte long · grandit puis scrolle</div>
+    </div>
+
+    <!-- texte court : un fragment cards.cdb laconique se contracte
+         au contenu, pas de grand vide -->
+    <div class="bubble-demo" style="min-height:160px">
+      <div class="bubble-duelist">
+        <div class="bubble-duelist__av">🦊</div>
+        <div class="bubble-duelist__meta">
+          <div class="bubble-duelist__name">LOX</div>
+          <div class="bubble-duelist__lp">6800</div>
+        </div>
+      </div>
+      <div class="bubble">
+        <div class="bubble__head">
+          <span class="material-icons-round">bolt</span>
+          <span class="bubble__cardname">D/D Savant Copernicus</span>
+        </div>
+        <div class="bubble__body bubble__body--short">
+          « Send to Graveyard »
+        </div>
+      </div>
+      <div class="bubble__caption">texte court · ~3,5 s · z-index &gt; chain overlay</div>
     </div>
   </div>
 
@@ -1355,4 +1711,3 @@ body {
 
 </body>
 </html>
-</content>

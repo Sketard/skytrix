@@ -23,6 +23,7 @@ import type {
 import type {
   GameLogEntry,
   LogCardRef,
+  LpLoss,
   MovedCard,
   BoardCell,
   RelPlayer,
@@ -298,7 +299,10 @@ export class GameLogBuilder {
         kind: 'turn',
         label: `Tour ${board.turnCount}`,
         turnNumber: board.turnCount,
-        lp: this.relLp(board.players[0].lp, board.players[1].lp),
+        // O5 / C2 contract: the board snapshot is ALREADY relative-to-viewer
+        // (`players[0]` = "you"). The builder never swaps it — `players[]` is
+        // read verbatim. See game-log-integration-analysis.md §4.3.
+        lp: [board.players[0].lp, board.players[1].lp],
       });
       // A new turn invalidates any unclosed chain bookkeeping (H3): a chain
       // never legitimately straddles a turn boundary, and stale chain state
@@ -489,7 +493,7 @@ export class GameLogBuilder {
     });
   }
 
-  /** Decode a MSG_MOVE into a MovedCard (verb + destination). */
+  /** Decode a MSG_MOVE into a MovedCard (verb + origin + destination). */
   private describeMove(e: {
     cardCode: number;
     cardName: string;
@@ -502,6 +506,10 @@ export class GameLogBuilder {
   }): MovedCard {
     const card = this.cardRef(e.cardCode, e.cardName);
     const { reason, toLocation, fromLocation, toPlayer, toSequence } = e;
+    // Origin label — MSG_MOVE carries `fromLocation` (the category, not a
+    // sequence) so a field origin collapses to its row tag. Drawn by the
+    // bare-row renderer as the `source` half of a `source → dest` flow.
+    const fromZone = zoneLabel(fromLocation);
 
     if (toLocation === LOCATION.MZONE) {
       // A summon that lands while a chain is RESOLVING is always a Special
@@ -513,15 +521,16 @@ export class GameLogBuilder {
       return {
         card,
         verb,
+        fromZone,
         destCell: this.fieldCell(toPlayer, 'M', toSequence),
         isMaterial: false,
       };
     }
     if (toLocation === LOCATION.SZONE) {
-      return { card, verb: VERB.set, destCell: this.fieldCell(toPlayer, 'S', toSequence) };
+      return { card, verb: VERB.set, fromZone, destCell: this.fieldCell(toPlayer, 'S', toSequence) };
     }
     if (toLocation === LOCATION.OVERLAY) {
-      return { card, verb: VERB.attach, destZone: 'XYZ', isMaterial: true };
+      return { card, verb: VERB.attach, fromZone, destZone: 'XYZ', isMaterial: true };
     }
     if (toLocation === LOCATION.GRAVE) {
       const verb =
@@ -529,26 +538,27 @@ export class GameLogBuilder {
         : reason & REASON_DISCARD ? VERB.discard
         : reason & REASON_RELEASE ? VERB.tribute
         : VERB.sendGy;
-      return { card, verb, destZone: 'GY', isMaterial: !!(reason & REASON_MATERIAL) };
+      return { card, verb, fromZone, destZone: 'GY', isMaterial: !!(reason & REASON_MATERIAL) };
     }
     if (toLocation === LOCATION.BANISHED) {
-      return { card, verb: VERB.banish, destZone: 'BANNIE' };
+      return { card, verb: VERB.banish, fromZone, destZone: 'BANNIE' };
     }
     if (toLocation === LOCATION.HAND) {
       return {
         card,
         verb: fromLocation === LOCATION.DECK ? VERB.add : VERB.returnHand,
+        fromZone,
         destZone: 'MAIN',
       };
     }
     if (toLocation === LOCATION.DECK) {
-      return { card, verb: VERB.returnDeck, destZone: 'DECK' };
+      return { card, verb: VERB.returnDeck, fromZone, destZone: 'DECK' };
     }
     if (toLocation === LOCATION.EXTRA) {
       // Pendulum monster destroyed from the field, Fusion returning, etc.
-      return { card, verb: VERB.returnExtra, destZone: 'EXTRA' };
+      return { card, verb: VERB.returnExtra, fromZone, destZone: 'EXTRA' };
     }
-    return { card, verb: VERB.move, destZone: 'TERRAIN' };
+    return { card, verb: VERB.move, fromZone, destZone: 'TERRAIN' };
   }
 
   private onSet(e: {
@@ -796,7 +806,8 @@ export class GameLogBuilder {
       defender: direct
         ? undefined
         : { card: { revealed: true, cardCode: null, cardName: 'Défenseur' } },
-      directLabel: direct ? '▶ Attaque directe' : undefined,
+      // The renderer supplies the visual arrow/icon — the label is plain text.
+      directLabel: direct ? 'Attaque directe' : undefined,
     });
   }
 
@@ -806,18 +817,23 @@ export class GameLogBuilder {
     defenderPlayer: Player;
     defenderDamage: number;
   }): void {
+    // LP loss is a dedicated structured field — one entry per player who
+    // actually lost LP. A 0-damage battle yields an empty list and the
+    // renderer shows nothing. Players are relativized for the viewer.
+    const lpLoss: LpLoss[] = [];
+    if (e.attackerDamage > 0) {
+      lpLoss.push({ player: this.rel(e.attackerPlayer), amount: e.attackerDamage });
+    }
+    if (e.defenderDamage > 0) {
+      lpLoss.push({ player: this.rel(e.defenderPlayer), amount: e.defenderDamage });
+    }
     this.entries.push({
       block: 'combat',
       ...this.rowHead(e.attackerPlayer, null, null),
       combat: 'battle',
-      attacker: {
-        card: { revealed: true, cardCode: null, cardName: 'Attaquant' },
-        outcome: e.attackerDamage > 0 ? `−${e.attackerDamage} LP` : '0',
-      },
-      defender: {
-        card: { revealed: true, cardCode: null, cardName: 'Défenseur' },
-        outcome: e.defenderDamage > 0 ? `−${e.defenderDamage} LP` : '0',
-      },
+      attacker: { card: { revealed: true, cardCode: null, cardName: 'Attaquant' } },
+      defender: { card: { revealed: true, cardCode: null, cardName: 'Défenseur' } },
+      lpLoss,
     });
   }
 
@@ -866,9 +882,11 @@ export class GameLogBuilder {
   ): void {
     const resolved = e.cards.map(c => {
       this.targetTotal++;
+      // `c.player` is ABSOLUTE (MSG_BECOME_TARGET event field) — relativise
+      // it before indexing the relative-to-viewer board snapshot (O5 / C2).
       const fromBoard = this.resolveBoardCard(
         state.boardState,
-        c.player,
+        this.rel(c.player),
         c.location,
         c.sequence,
       );
@@ -966,12 +984,14 @@ export class GameLogBuilder {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
+  /**
+   * Relativise an ABSOLUTE event player field (server P0/P1) for the viewer.
+   * O5 / C2: this stays — `MSG_CHAINING.player`, `MSG_MOVE.player`/`toPlayer`,
+   * `MSG_DRAW.player`, attack/battle players ARE absolute on both sides. Only
+   * the board *snapshot* is relative and is never swapped.
+   */
   private rel(absolute: Player): RelPlayer {
     return absolute === this.perspective ? 0 : 1;
-  }
-
-  private relLp(lp0: number, lp1: number): [number, number] {
-    return this.perspective === 0 ? [lp0, lp1] : [lp1, lp0];
   }
 
   private cardRef(code: number | null, name: string | null): LogCardRef {
@@ -988,15 +1008,19 @@ export class GameLogBuilder {
    * sequence)`. Events like `MSG_BECOME_TARGET` / `MSG_ATTACK` carry only a
    * field position, not a `cardCode` — the board state holds the identity.
    * Returns a hidden `LogCardRef` when the slot can't be resolved.
+   *
+   * O5 / C2: the board is relative-to-viewer, so `relativePlayer` MUST be a
+   * RELATIVE index. Callers relativise the absolute event field via `rel()`
+   * before the lookup.
    */
   private resolveBoardCard(
     board: BoardStatePayload,
-    absolute: Player,
+    relativePlayer: RelPlayer,
     location: number,
     sequence: number,
   ): LogCardRef {
     const zoneIds = LOCATION_TO_ZONE_IDS[location];
-    const player = board.players[absolute];
+    const player = board.players[relativePlayer];
     if (zoneIds && player) {
       const first = zoneIds[0];
       // A pile location is a single zone whose `cards` array is indexed by
@@ -1088,6 +1112,36 @@ function summonVerb(reason: number, duringChainRes: boolean): string {
 /** True when a move's reason marks an Extra-Deck summon. */
 export function isExtraDeckSummon(reason: number): boolean {
   return (reason & EXTRA_DECK_SUMMON) !== 0;
+}
+
+/**
+ * Short French label for a `LOCATION` bitmask value — the origin/destination
+ * vocabulary shared by the move-row renderers. A field LOCATION (MZONE/SZONE)
+ * carries no sequence in `fromLocation`, so it collapses to its row tag.
+ * Labels stay consistent with the `destZone` strings used in `describeMove`
+ * (`MAIN`, `GY`, `BANNIE`, `DECK`, `EXTRA`).
+ */
+function zoneLabel(location: number): string {
+  switch (location) {
+    case LOCATION.DECK:
+      return 'DECK';
+    case LOCATION.HAND:
+      return 'MAIN';
+    case LOCATION.MZONE:
+      return 'Monstre';
+    case LOCATION.SZONE:
+      return 'M/P';
+    case LOCATION.GRAVE:
+      return 'GY';
+    case LOCATION.BANISHED:
+      return 'BANNIE';
+    case LOCATION.EXTRA:
+      return 'EXTRA';
+    case LOCATION.OVERLAY:
+      return 'XYZ';
+    default:
+      return 'Terrain';
+  }
 }
 
 /** Battle posture (ATK / DEF) of a POSITION bitmask value — drives the

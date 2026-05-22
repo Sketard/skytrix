@@ -207,7 +207,115 @@ verb above the arrow already names the action.
 4. **Combat rows** — attack declaration, battle calculation.
 5. **Action rows** — counter +/−, equip, GY↔Deck swap, shuffle.
 
-> **Targeting is NOT a row.** `MSG_BECOME_TARGET` is a *property of the
+**Design review — 2026-05-22 (Sally).** A design pass against the real
+`a8859c98` prototype output and the live `_tokens.scss` produced four
+binding decisions, recorded here so the implementation does not drift
+back to the original mockup:
+
+- **D-A — Side colour = blue / amber, NOT blue / red.** The opponent
+  band uses `--opp-amber` (the `_tokens.scss` duel-side colour the
+  replay viewer already uses for the opponent), not the mockup's
+  ad-hoc red `#d9534a`. Rationale: skytrix already owns one duel-side
+  convention (self = `--self-blue`, opponent = `--opp-amber`). A second
+  red-coded convention would (a) collide with the danger / target /
+  defeat semantics red carries everywhere else (`--danger-strong`,
+  `--pvp-target-reticle`, `--result-lose`), and (b) make a neutral
+  opponent row read as a threat. Master Duel uses red — skytrix does
+  not, on purpose. The two tokens to add in the token layer (§6.2) are
+  therefore **aliases of `--self-blue` / `--opp-amber`**, not new hues.
+
+- **D-B — Chain renders as ONE grouped block, not three separators.**
+  The original grammar emitted `chain-start` → … → `chain-resolve` → …
+  → `chain-end` as three full-width separator bars. On the real
+  `a8859c98` replay a single turn contains ~18 chains → ~54 chain bars,
+  pure structural noise. Revised rendering: a chain is a **visual
+  group** — one header `⛓ Chaîne · N liens` opens it, a left rail
+  (`--gold-soft-*`) brackets every row that belongs to the chain, and
+  `Résolution` becomes a thin **inline sub-marker** between the
+  activation phase and the resolution phase (not a full bar). `chain-end`
+  is no longer rendered as a bar — the rail simply stops. The three
+  `SeparatorEntry` kinds (`chain-start` / `chain-resolve` / `chain-end`)
+  stay in the builder model (they are the parse signal) but the
+  **renderer** folds them: `chain-start` opens the group + counts links,
+  `chain-resolve` emits the inline sub-marker, `chain-end` closes the
+  group. No builder grammar change — this is a render-layer decision.
+  *Wording (2026-05-22):* the link count reads `Chaîne · N maillon(s)`
+  — "maillon" is the established French term for a chain link.
+
+- **D-C — Two row weights: full rows vs bare rows.** An activation /
+  resolution / combat row (has a source card + description) keeps the
+  full `.lg-row` chrome (3px side rail, padding, surface). A
+  source-less system move (`Retour à l'Extra`, `Pose`, rule-driven
+  relocations — the `_(aucune carte source)_` lines, very frequent on
+  real data) renders as a **bare row**: no side rail, no surface fill,
+  no mini-board. The hierarchy: *activations are blocks, system moves
+  are whispers.* The resolution row also MUST NOT re-print the full
+  effect description — it is identical to the activation row's
+  description (verified duplicate on `a8859c98`); the resolution shows
+  only the **body** (what moved). The activation row owns the
+  description.
+
+  *Bare-row layout (refined 2026-05-22 with the user):* a bare row is
+  NOT a plain text line, and NOT a shrunk-down row either — it uses
+  the **same thumbnail size and same typography** as a full row. It
+  keeps the **card thumbnail** on the left, the **card name** beside
+  it, and BELOW the name a `source → dest` flow with the verb centred
+  UNDER the arrow. The *only* things a bare row drops vs a full row:
+  the 3px side rail, the surface fill, the effect-description box, and
+  the side-colour marker (a system move has no meaningful side). It is
+  a *whisper* by its chrome, not by its legibility.
+
+  **The destination obeys the standardised field-grid rule — bare
+  rows included.** A destination ON THE FIELD (M / S / EMZ / FIELD)
+  renders the **full mini-board**, the exact same `renderMiniBoard`
+  component a full row uses. A destination that is a PILE (DECK, GY,
+  BANNIE, EXTRA, MAIN) renders a short text chip. There is no
+  `Toi S1`-style text tag for a field cell — a field position is
+  always the mini-board, everywhere:
+
+  ```
+  [img]  D/D/D Zero Doom Queen Machinex
+         MAIN ──▶ [ mini-board, S1 highlighted ]
+              Pose
+
+  [img]  D/D Savant Copernicus
+         Monstre ──▶ EXTRA          ← pile destination → text chip
+                Retour à l'Extra
+  ```
+
+  This required a model change: `MovedCard` gained a **`fromZone`**
+  field (`game-log-types.ts`). `MSG_MOVE` carries `fromLocation` (the
+  zone category, not a sequence) — `describeMove()` now maps it via
+  the shared `zoneLabel()` helper and stores it. A field origin
+  collapses to its row tag (`Monstre` / `M/P`); a pile keeps its name
+  (`DECK`, `GY`, `EXTRA`, …). The flow arrow is a Unicode glyph
+  (`▶` / `───▶`), NOT a Material icon — the flow is structural and
+  must render even when the icon font has not loaded (offline
+  preview). A move with no known destination (or a shuffle, which has
+  no single card) falls back to the verb alone, no orphan arrow.
+
+- **D-D — One 3-level typographic scale.** The game log had
+  accumulated **13 ad-hoc font sizes** (6px → 18px) — the cause of the
+  "patte de mouche" / "blocs qui dénotent" feel. It is replaced by a
+  strict **3-level game-log scale**, every text size routed through a
+  token, zero literal `px`:
+
+  | Token | Role | ~size |
+  |-------|------|-------|
+  | `--gl-title` | turn / duel-end separators, chain header, panel title | ~13px |
+  | `--gl-text`  | card name, effect description, zone label, RNG result, LP | ~11px |
+  | `--gl-label` | verb, phase, chain tag/count, sub-label, negated tag | ~10px |
+
+  Each level has ONE companion icon size (`--gl-icon-title/-text/
+  -label`). The card name is `--gl-text` **everywhere** — source card,
+  moved card, bare-row card — the hierarchy between a source name and
+  a moved name is carried by **weight** (semibold vs medium), never by
+  a separate size. Two documented exceptions stay literal: the
+  mini-board's 6px row tags (it is a *pictogram*, not reading text)
+  and fixed icon/emoji glyph sizes inside fixed-size containers
+  (`.gamelog__close`, `.lg-turn__avatar`). The mockup's `:root`
+  declares the 6 `--gl-*` tokens; the Angular implementation adds them
+  to the token layer. `MSG_BECOME_TARGET` is a *property of the
 > effect that caused it*, not a standalone event. It is rendered as a
 > discreet `▸ cible : …` annotation under the effect description of the
 > activation/resolution row that targeted (revised 2026-05-21 — was
@@ -564,10 +672,17 @@ component added under `components/` MUST be registered there.
 - Ghost scrollbar: `@include ghost-scroll` (see
   `ghost-scrollbar-convention`).
 - Sticky turn headers — `position: sticky`, no `::ng-deep`.
-- Player band colours — tokens. If no existing token fits the
-  blue/red duel-side coding, add `--duel-side-self` /
-  `--duel-side-opponent` in the token layer (`styles/**`), not inline
-  hex.
+- Player band colours — tokens. Per design decision **D-A** (§4.2),
+  add `--duel-side-self` / `--duel-side-opponent` in the token layer
+  (`styles/**`) as **aliases of `--self-blue` / `--opp-amber`** — the
+  existing duel-side palette. Do NOT introduce a red opponent hue. The
+  alias names give the game log a stable semantic handle; the values
+  stay locked to the canonical duel-side colours.
+- Chain group rail — a left border / inset rail in `--gold-soft-*`
+  tokens (per **D-B**), not a separate hue. The `Résolution` inline
+  sub-marker is a thin monospace label, not a full-width bar.
+- Bare-row variant (per **D-C**) — a `.lg-row--bare` modifier that
+  drops the side rail + surface fill; pure token work, no new colour.
 - Row card thumbnails — reuse `DuelCardArtService.resolveUrl` (same as
   the zone-browser overlay).
 
@@ -589,8 +704,8 @@ component added under `components/` MUST be registered there.
 | ID | Question |
 |----|----------|
 | **O1** | RESOLVED 2026-05-21 — LP-change events (`MSG_DAMAGE` / `MSG_RECOVER` / `MSG_PAY_LPCOST`) get **no dedicated row**. Net LP appears on turn separators and on combat rows. Keeps the log readable; combat damage is already shown in the combat block. |
-| **O2** | Dev-hub access once its button is replaced — keyboard-only in dev builds, or keep both buttons? |
-| **O3** | Bubble/log text language — `cards.cdb` is English. If skytrix duel prompts are already English, the bubble is consistent. If prompts are French, investigate the translation path. Verify the actual language of current `SELECT_OPTION` prompts in a live duel. |
+| **O2** | RESOLVED 2026-05-22 — the `DuelDevHub` **stays**; only the on-screen **"debug" button** is replaced by the game-log button in PvP. The dev hub remains reachable via its keyboard shortcut. |
+| **O3** | RESOLVED 2026-05-22 — `cards.cdb` is English-only (ProjectIgnis/BabelCDB, `data-updater.ts:7`). French IS reachable simply: BabelCDB also ships `cards-fr.cdb` (same schema, same passcode keys). **Plan:** `data-updater.ts` downloads `cards-fr.cdb` alongside `cards.cdb`; the duel-server keeps a second `CardDB` and resolves effect text from the FR base. ~30 min — 3 files (`data-updater.ts`, `ocg-scripts.ts`, `types.ts`). This also re-opens the dropped card-inspector "Activé ce tour" mention (a French *indexed* `strN` makes `strIndex`-to-paragraph addressing viable). |
 | **O4** | Visual fidelity of movement rows (the `card → icon` + arrow illustration in the captures) — full illustration vs a simpler `Card → GY` text row. Pin against the Master Duel captures during the visual pass. |
 
 ## 8. Validation Prototype — build BEFORE the Angular component
@@ -667,21 +782,42 @@ For the prototype the CLI resolves `descriptionText` itself via
 done after the grammar is validated. Validate first, wire the protocol
 cleanly second.
 
-### 8.5 Visual references — prototype output vs mockup
+### 8.5 Visual reference — one generated file, two columns
 
-Two visual artefacts coexist, with distinct roles:
+**Single visual reference (2026-05-22, Sally).** There is now ONE
+artefact, `_bmad-output/game-log/a8859c98.html`, generated by
+`game-log-html.ts` from a real replay. It carries two columns:
 
-- **`game-log-html.ts` prototype output** (e.g.
-  `_bmad-output/game-log/a8859c98.html`) — the **primary** reference:
-  the real grammar driven by a real replay. Always current with the
+- **Column 1 — "Game Log — données replay réelles"** — the real
+  grammar driven by the `a8859c98` replay. Always current with the
   builder.
-- **`_mockups/mockup-game-log.html`** — kept as a **case catalogue**:
-  it shows event kinds that a given replay may not contain (position
-  change, coin toss, dice roll, equip, counter — all absent from the
-  `a8859c98` reference replay). It is no longer the design baseline,
-  only a hand-built illustration of the rare cases. Keep it minimally
-  in sync (ATK/DEF distinction, `▸ cible` annotation) so it does not
-  contradict the implemented grammar.
+- **Column 2 — "Other design — cas absents de ce replay"** — a
+  **synthetic catalogue** (`buildShowcaseEntries()` in
+  `game-log-html.ts`) covering every block/variant a single replay
+  may not exercise: each summon kind, overlay attach, tribute,
+  return-to-hand/deck, flip, position change, target annotation,
+  negated link, dice + coin, the action rows (counter add/remove,
+  equip, gy-deck-swap, shuffle, swap) and combat with/without LP
+  loss. It is **data fed through the same `renderStream`** — not
+  hand-written HTML — so it can never drift from the renderer. A new
+  builder case MUST get an entry in `buildShowcaseEntries()`.
+
+**CSS source of truth.** `duel-server/src/game-log/game-log.css` — the
+single stylesheet, read verbatim by the CLI and injected into the
+generated HTML's `<style>`. Its `:root` mirrors
+`front/src/app/styles/_tokens.scss` by value (a standalone file has no
+SCSS access, but the values must match or the rendered Angular panel
+drifts).
+
+**`_mockups/mockup-game-log.html` is deprecated** — its `<style>` was
+the former CSS source (now `game-log.css`) and its hand-written demo
+body is fully superseded by the generated Column 2 catalogue.
+
+**Design decisions D-A / D-B / D-C** remain applied — opponent band =
+amber, a chain renders as one grouped block with a left rail + inline
+`Résolution` sub-marker, source-less system moves render as bare
+rows. Plus the **two-tier `lg-bare` layout** (2026-05-22): card name in
+a full-width header, thumbnail + flow in the body below.
 
 ## 9. Suggested Delivery Sequence (one block, internal order)
 

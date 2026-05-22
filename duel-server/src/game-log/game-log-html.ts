@@ -1,15 +1,15 @@
 // =============================================================================
 // game-log-html.ts — render GameLogEntry[] to a standalone HTML document
 // -----------------------------------------------------------------------------
-// Visual preview of the five-block grammar driven by real replay data. Reuses
-// the class names + CSS of `_mockups/mockup-game-log.html` so the preview
-// matches the approved mockup.
+// Visual preview of the five-block grammar driven by real replay data.
 //
-// PURITY: the CSS is INJECTED by the caller (the CLI reads the mockup file).
-// This module never touches `fs`. GameLogEntry[] + css string in, HTML out.
+// PURITY: the CSS is INJECTED by the caller (the CLI reads `game-log.css`, the
+// single source of truth). This module never touches `fs`, and never appends
+// its own CSS — every rule, including `.lg-thumb--art`, lives in game-log.css.
+// GameLogEntry[] + css string in, HTML out.
 //
-// Card thumbnails use the mockup's text-placeholder style (card name in the
-// thumb) — no image fetching in the prototype.
+// Card thumbnails render real artwork when a CardImageResolver is supplied,
+// else fall back to a text-placeholder (card name in the thumb).
 // =============================================================================
 
 import type {
@@ -35,6 +35,46 @@ function esc(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+// -----------------------------------------------------------------------------
+// Player avatar — a faithful copy of the front-end `AvatarComponent` logic
+// (front/src/app/shared/avatar/avatar.component.ts). Same djb2 hash → hue, so
+// a given pseudo gets the SAME gradient here as in the live duel HUD. The HTML
+// preview must NOT diverge from the real avatar, hence the duplicated formula.
+// -----------------------------------------------------------------------------
+
+/** Stable hue (0-359) from a string — djb2 hash, identical to AvatarComponent. */
+function hueFromString(input: string): number {
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) {
+    h = ((h << 5) + h) + input.charCodeAt(i);
+  }
+  return Math.abs(h) % 360;
+}
+
+/** First character of a pseudo, uppercased — the avatar's initial (`?` if empty). */
+function avatarInitial(pseudo: string): string {
+  const p = pseudo.trim();
+  return p.length > 0 ? p[0].toUpperCase() : '?';
+}
+
+/**
+ * Render a player avatar disc — gradient background + initial, coloured by a
+ * stable hash of the pseudo. Mirrors `<app-avatar>` so the game-log preview
+ * matches the real duel HUD. The pseudo also lands in `aria-label` (the disc
+ * is a `role="img"`).
+ */
+function avatarMarkup(pseudo: string): string {
+  const h = hueFromString(pseudo);
+  const bg =
+    `linear-gradient(135deg, hsl(${h},65%,45%), hsl(${(h + 30) % 360},70%,30%))`;
+  const border = `hsl(${h},60%,55%)`;
+  return (
+    `<div class="lg-turn__avatar" role="img" aria-label="${esc(pseudo)}"` +
+    ` style="background:${bg};border-color:${border}">` +
+    `${esc(avatarInitial(pseudo))}</div>`
+  );
+}
+
 /**
  * Resolves a card code to an artwork URL. Injected by the caller so the
  * renderer stays pure (it never knows the backend host). Return `null` to
@@ -47,24 +87,41 @@ export type CardImageResolver = (cardCode: number) => string | null;
  *  threading the resolver through every render function's signature. */
 let activeImageResolver: CardImageResolver | null = null;
 
+/** Module-scoped per-render player pseudos, in RELATIVE order [you, opp] —
+ *  same convention as the `turn` separator's `lp`. Drives the turn-header
+ *  avatars; falls back to generic labels when the caller omits them. */
+let activePlayerNames: [string, string] = ['Toi', 'Adversaire'];
+
 /**
  * Render a full standalone HTML document.
  *
  * @param entries        the built game log
  * @param title          document title (replay id / metadata)
- * @param css            the `<style>` body extracted from mockup-game-log.html
+ * @param css            the full game-log.css body, injected verbatim into
+ *                       the document `<style>` (single source of truth)
  * @param cardImageUrl   optional card-code → artwork URL resolver. When given,
  *                       revealed thumbnails render the real artwork.
+ * @param playerNames    optional [you, opp] pseudos in RELATIVE order — drives
+ *                       the turn-header avatars (initial + hashed colour).
  */
 export function renderHtml(
   entries: GameLogEntry[],
   title: string,
   css: string,
   cardImageUrl?: CardImageResolver,
+  playerNames?: [string, string],
 ): string {
   activeImageResolver = cardImageUrl ?? null;
-  const rows = entries.map(renderEntry).join('\n');
+  activePlayerNames = playerNames ?? ['Toi', 'Adversaire'];
+  const rows = renderStream(entries);
+  // Column 2 — "Other design": the design cases a single replay can't
+  // exercise (materials, RNG, direct attack, counter, equip, …) rendered
+  // through the SAME render functions from a synthetic catalogue. One file,
+  // zero hand-written demo markup to drift — the catalogue is the only
+  // place these cases live and it shares the renderer end to end.
+  const catalogue = renderStream(buildShowcaseEntries());
   activeImageResolver = null;
+  activePlayerNames = ['Toi', 'Adversaire'];
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -76,46 +133,6 @@ export function renderHtml(
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <style>
 ${css}
-/* real-artwork thumbnails (game-log prototype — injected by renderHtml) */
-.lg-thumb--art { padding: 0; overflow: hidden; }
-.lg-thumb--art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* FIELD-spell cell — appears only when an on-field move targets the Field zone */
-.lg-board__field { display: flex; justify-content: center; margin-top: 2px; }
-.lg-board__field .lg-cell { width: 13px; }
-/* ATK / DEF visual identity — ATK = ambre (offensif), DEF = bleu acier
-   (défensif), each with its own pictogram so a stat reads at a glance. */
-.lg-combat__stat { display: inline-flex; align-items: center; gap: 2px; }
-.lg-combat__stat .material-icons-round { font-size: 9px; }
-.lg-combat__def { color: #5fa8d8; }
-/* battle-posture pills — the change-position transition (ATK ⇄ DEF) */
-.lg-posture {
-  display: inline-flex; align-items: center; gap: 2px;
-  padding: 1px 5px;
-  border-radius: var(--pvp-radius-sm, 2px);
-  border: 1px solid currentColor;
-  font-family: var(--font-mono); font-size: 8px; font-weight: 700;
-}
-.lg-posture .material-icons-round { font-size: 10px; color: inherit; }
-.lg-posture--atk { color: #e8a23d; }
-.lg-posture--def { color: #5fa8d8; }
-.lg-posture--before { opacity: .45; }
-/* targeting annotation — discreet line under the effect description */
-.lg-targets {
-  margin: 2px 0 0 var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--gold-on-surface);
-  opacity: .85;
-}
-/* per-row zone tag (M / M/P / EMZ) so monster vs spell rows read apart */
-.lg-board__line { display: flex; align-items: center; gap: 3px; }
-.lg-board__line .lg-board__row,
-.lg-board__line .lg-board__emz { flex: 1; }
-.lg-board__rowtag {
-  width: 22px; flex: none;
-  font-family: var(--font-mono); font-size: 6px;
-  letter-spacing: .04em; text-align: right;
-  color: var(--text-muted); opacity: .75;
-}
 </style>
 </head>
 <body>
@@ -139,48 +156,159 @@ ${rows}
       </div>
     </div>
   </div>
+  <div class="col">
+    <div class="col-label">Other design — cas absents de ce replay</div>
+    <div class="gamelog">
+      <div class="gamelog__head">
+        <div class="gamelog__title">
+          <span class="material-icons-round">palette</span>
+          Catalogue
+        </div>
+        <button class="gamelog__close"><span class="material-icons-round">close</span></button>
+      </div>
+      <div class="gamelog__scroll">
+${catalogue}
+      </div>
+    </div>
+  </div>
 </div>
 </body>
 </html>
 `;
 }
 
-function renderEntry(entry: GameLogEntry): string {
+// -----------------------------------------------------------------------------
+// Stream rendering — folds the chain delimiter trio into ONE grouped block.
+// -----------------------------------------------------------------------------
+//
+// Design decision D-B (chantier §4.2): a chain renders as a single visual
+// group, not three full-width separator bars. The builder still emits the
+// `chain-start` / `chain-resolve` / `chain-end` separators (they are the
+// parse signal) — this renderer FOLDS them:
+//   - `chain-start`   → opens `<div class="lg-chaingroup">` + a header that
+//                       names the link count (counted by a forward scan).
+//   - `chain-resolve` → an inline `.lg-chainmark` sub-marker, NOT a bar.
+//   - `chain-end`     → closes the group; the left rail simply stops.
+//
+// `isResolution` flags every move row that appears AFTER `chain-resolve` so
+// the renderer can echo (not re-print) the duplicated effect description —
+// design decision D-C.
+
+/** Render the whole entry stream, grouping chains into `.lg-chaingroup`. */
+function renderStream(entries: GameLogEntry[]): string {
+  const out: string[] = [];
+  let i = 0;
+  while (i < entries.length) {
+    const entry = entries[i];
+    if (entry.block === 'separator' && entry.kind === 'chain-start') {
+      const end = chainGroupEnd(entries, i);
+      out.push(renderChainGroup(entries.slice(i + 1, end)));
+      // Skip past the consumed chain-end separator (if present).
+      i = end < entries.length ? end + 1 : end;
+      continue;
+    }
+    out.push(renderEntry(entry, false));
+    i++;
+  }
+  return out.join('\n');
+}
+
+/** Index of the `chain-end` separator closing the chain opened at `start`,
+ *  or `entries.length` when the stream ends with an unclosed chain. */
+function chainGroupEnd(entries: GameLogEntry[], start: number): number {
+  for (let j = start + 1; j < entries.length; j++) {
+    const e = entries[j];
+    if (e.block === 'separator' && e.kind === 'chain-end') return j;
+    // A turn separator implicitly closes a straggling chain (defensive —
+    // the builder resets chain state on a turn boundary).
+    if (e.block === 'separator' && e.kind === 'turn') return j;
+  }
+  return entries.length;
+}
+
+/**
+ * Render one chain as a grouped block: header + bracketed rows. `inner` is the
+ * slice of entries BETWEEN `chain-start` and `chain-end` (exclusive).
+ */
+function renderChainGroup(inner: GameLogEntry[]): string {
+  // Link count = distinct chainLink values across the activation rows (the
+  // rows BEFORE the `chain-resolve` marker). Resolution rows reuse the same
+  // chainLink values, so counting both halves would double it.
+  const links = new Set<number>();
+  let seenResolve = false;
+  for (const e of inner) {
+    if (e.block === 'separator' && e.kind === 'chain-resolve') seenResolve = true;
+    if (!seenResolve && e.block === 'move' && e.chainLink) links.add(e.chainLink);
+  }
+  const n = links.size;
+  const countLabel = n === 1 ? '1 maillon' : `${n} maillons`;
+
+  const body: string[] = [];
+  let resolution = false;
+  for (const e of inner) {
+    if (e.block === 'separator' && e.kind === 'chain-resolve') {
+      resolution = true;
+      body.push(`          <div class="lg-chainmark">
+            <span class="material-icons-round">sync</span>
+            Résolution
+          </div>`);
+      continue;
+    }
+    body.push(renderEntry(e, resolution));
+  }
+
+  return `        <div class="lg-chaingroup">
+          <div class="lg-chaingroup__head">
+            <span class="material-icons-round">link</span>
+            Chaîne
+            <span class="lg-chaingroup__count">${countLabel}</span>
+          </div>
+${body.join('\n')}
+        </div>`;
+}
+
+/** Render a single entry. `isResolution` = the entry sits after the chain's
+ *  `chain-resolve` marker (drives the description-echo of D-C). */
+function renderEntry(entry: GameLogEntry, isResolution: boolean): string {
   switch (entry.block) {
     case 'separator':
       return renderSeparator(entry);
     case 'move':
-      return renderMove(entry);
+      return renderMove(entry, isResolution);
     case 'rng':
-      return renderRng(entry);
+      return renderRng(entry, isResolution);
     case 'combat':
-      return renderCombat(entry);
+      return renderCombat(entry, isResolution);
     case 'action':
-      return renderAction(entry);
+      return renderAction(entry, isResolution);
   }
 }
 
 // -----------------------------------------------------------------------------
-// Separators
+// Separators — chain delimiters are folded by renderStream and never reach here.
 // -----------------------------------------------------------------------------
 function renderSeparator(e: SeparatorEntry): string {
   switch (e.kind) {
     case 'turn': {
       const [you, opp] = e.lp ?? [0, 0];
+      // Avatars + names mirror the live duel HUD (`<app-avatar>` / player
+      // card): same djb2-hashed gradient per pseudo. `activePlayerNames` is
+      // relative [you, opp] — same order as `e.lp`.
+      const [youName, oppName] = activePlayerNames;
       return `        <div class="lg-turn">
           <div class="lg-turn__title">${esc(e.label)}</div>
           <div class="lg-turn__players">
             <div class="lg-turn__p">
-              <div class="lg-turn__avatar">🐺</div>
+              ${avatarMarkup(youName)}
               <div class="lg-turn__meta">
-                <span class="lg-turn__name">Toi</span>
+                <span class="lg-turn__name">${esc(youName)}</span>
                 <span class="lg-turn__lp">${you}</span>
               </div>
             </div>
             <div class="lg-turn__p lg-turn__p--opp">
-              <div class="lg-turn__avatar">🦊</div>
+              ${avatarMarkup(oppName)}
               <div class="lg-turn__meta">
-                <span class="lg-turn__name">Adversaire</span>
+                <span class="lg-turn__name">${esc(oppName)}</span>
                 <span class="lg-turn__lp">${opp}</span>
               </div>
             </div>
@@ -189,12 +317,12 @@ function renderSeparator(e: SeparatorEntry): string {
     }
     case 'phase':
       return `        <div class="lg-phase">${esc(e.label)}</div>`;
+    // Chain delimiters are consumed by renderStream → renderChainGroup; a stray
+    // one reaching here means an unbalanced stream — render nothing.
     case 'chain-start':
-      return chainBar('lg-chain--start', 'link', e.label);
     case 'chain-resolve':
-      return chainBar('lg-chain--resolve', 'sync', e.label);
     case 'chain-end':
-      return chainBar('lg-chain--end', 'link_off', e.label);
+      return '';
     case 'decision':
       return `        <div class="lg-decision">${esc(e.label)}</div>`;
     case 'duel-over':
@@ -202,30 +330,66 @@ function renderSeparator(e: SeparatorEntry): string {
   }
 }
 
-function chainBar(cls: string, icon: string, label: string): string {
-  return `        <div class="lg-chain ${cls}">
-          <span class="material-icons-round">${icon}</span>
-          ${esc(label)}
-        </div>`;
-}
-
 // -----------------------------------------------------------------------------
 // Row head (source card + description)
 // -----------------------------------------------------------------------------
-function rowClass(e: RowHead): string {
-  const opp = e.player === 1 ? ' lg-row--opp' : '';
-  const negated = e.negated ? ' lg-row--negated' : '';
-  return `lg-row${opp}${negated}`;
+//
+// Design decision D-C (chantier §4.2): two row weights.
+//   - A FULL row has a source card → full chrome (side rail, surface).
+//   - A BARE row is a source-less system move (`Mélange du Deck`, `Retour à
+//     l'Extra`, rule-driven relocations) → no rail, no surface, near a plain
+//     line of text. `isBareRow` decides.
+// And the resolution row of a chain MUST NOT re-print the effect description
+// (identical to the activation row) — `isResolution` switches `.lg-desc` to
+// the ténu `.lg-desc--echo`.
+
+/** A move row is BARE when it has no source AND is a standalone system move
+ *  (not one of the initial-hand / draw-phase special variants, which have
+ *  their own dedicated rendering). */
+function isBareRow(e: GameLogEntry): boolean {
+  return (
+    e.block === 'move' &&
+    !e.source &&
+    e.variant !== 'initial-hand' &&
+    e.variant !== 'draw-phase'
+  );
 }
 
-function renderHead(e: RowHead): string {
+function rowClass(e: RowHead, bare: boolean): string {
+  const side = e.player === 1 ? ' lg-row--opp' : ' lg-row--self';
+  const negated = e.negated ? ' lg-row--negated' : '';
+  const bareCls = bare ? ' lg-row--bare' : '';
+  return `lg-row${side}${negated}${bareCls}`;
+}
+
+/**
+ * The full attribute string for a `.lg-row` div — class plus, for FULL rows
+ * only, keyboard affordances (`tabindex` + `role="button"`). A full row is
+ * an activation/event the reader can focus to inspect; a bare row is a
+ * non-interactive system "whisper" (`cursor: default`) and stays a plain
+ * div — never focusable. This mirrors the `.lg-row:focus-visible` CSS rule.
+ */
+function rowAttrs(e: RowHead, bare: boolean): string {
+  const cls = `class="${rowClass(e, bare)}"`;
+  return bare ? cls : `${cls} tabindex="0" role="button"`;
+}
+
+/**
+ * Render the source-card header + description + targeting annotation.
+ * `isResolution` echoes the description (D-C) instead of re-printing the full
+ * effect box.
+ */
+function renderHead(e: RowHead, isResolution: boolean): string {
   if (!e.source) return '';
   const badge = e.chainLink
     ? `<span class="badge-cl">${e.chainLink}</span>`
     : '';
   const negTag = e.negated ? `<span class="lg-negated-tag">Nié</span>` : '';
+  // D-C: a resolution row echoes the description ténu (single line), never the
+  // full effect box — it is identical to the activation row above it.
+  const descCls = isResolution ? 'lg-desc lg-desc--echo' : 'lg-desc';
   const desc = e.description
-    ? `\n          <div class="lg-desc">${esc(e.description.trim())}</div>`
+    ? `\n          <div class="${descCls}">${esc(e.description.trim())}</div>`
     : '';
   // Targeting is a discreet annotation of the effect row, not its own row.
   const targetLine = e.targets?.length
@@ -244,10 +408,10 @@ function renderHead(e: RowHead): string {
 // -----------------------------------------------------------------------------
 // Move rows
 // -----------------------------------------------------------------------------
-function renderMove(e: MoveEntry): string {
+function renderMove(e: MoveEntry, isResolution: boolean): string {
   if (e.variant === 'initial-hand') {
     const cards = e.movedCards.map(m => thumb(m.card, '')).join('\n            ');
-    return `        <div class="${rowClass(e)}">
+    return `        <div class="${rowClass(e, false)}">
           <div class="lg-body">
             <div class="lg-moved">
               <div class="lg-draw5">
@@ -258,60 +422,129 @@ function renderMove(e: MoveEntry): string {
           </div>
         </div>`;
   }
-  const body = e.movedCards.map(renderMovedCard).join('\n');
-  return `        <div class="${rowClass(e)}">
-${renderHead(e)}
+  const bare = isBareRow(e);
+  // Full and bare rows share the SAME moved-card body (renderMovedCard) — the
+  // only difference is the outer .lg-row chrome (rail, surface, description
+  // box) handled by rowClass. A move reads identically everywhere.
+  //
+  // De-duplication: when a moved card IS the row's source card (an effect
+  // that displaces its own activator), the source name already sits in the
+  // `.lg-src` head — the moved-card's own name header would print it twice.
+  // `suppressName` drops the redundant header for that card; its body
+  // (thumbnail + flow) still renders.
+  const body = e.movedCards
+    .map(m => renderMovedCard(m, isSameCard(m.card, e.source)))
+    .join('\n');
+  return `        <div ${rowAttrs(e, bare)}>
+${renderHead(e, isResolution)}
           <div class="lg-body">
 ${body}
           </div>
         </div>`;
 }
 
-function renderMovedCard(m: MovedCard): string {
-  // A position change renders a posture transition (ATK ⇄ DEF) instead of
-  // the plain verb + destination flow.
-  const flow = m.posChange
-    ? `<span class="lg-moved__verb">${esc(m.verb)}</span>
-                ${posturePill(m.posChange.from, true)}
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                ${posturePill(m.posChange.to, false)}`
-    : `<span class="lg-moved__verb">${esc(m.verb)}</span>
-                <span class="lg-moved__arrow"><span class="material-icons-round">arrow_forward</span></span>
-                ${destChip(m)}`;
-  return `            <div class="lg-moved">
-              <div class="lg-moved__card">
-                ${thumb(m.card, '')}
-                ${cardLabel(m.card)}
-              </div>
-              <div class="lg-moved__flow">
-                ${flow}
+/** True when a moved card and the row's source are the same revealed card.
+ *  A hidden card (cardCode null) never matches — it carries no identity. */
+function isSameCard(moved: LogCardRef, source: LogCardRef | null): boolean {
+  return (
+    source != null &&
+    moved.revealed &&
+    source.revealed &&
+    moved.cardCode != null &&
+    moved.cardCode === source.cardCode
+  );
+}
+
+/** The name line of a moved card — revealed name or the hidden placeholder. */
+function bareName(m: MovedCard): string {
+  return m.card.revealed
+    ? `<span class="lg-bare__name">${cardName(m.card)}</span>`
+    : `<span class="lg-bare__name lg-bare__name--hidden">Carte non révélée</span>`;
+}
+
+/**
+ * Render a moved card — the body of any move row, full OR bare.
+ *
+ * Two-tier anatomy (2026-05-22 with the user): the card NAME is a
+ * full-width HEADER anchored at the top (`.lg-bare__head`); BELOW a thin
+ * rule, the BODY (`.lg-bare__body`) holds the thumbnail + the
+ * `source → dest` flow. The name no longer floats above a variable-height
+ * flow — it has a stable anchor regardless of whether the destination is a
+ * one-line pile chip or a tall mini-board. Full and bare rows render
+ * IDENTICALLY here; they differ only in the OUTER `.lg-row` chrome handled
+ * by `renderMove` / `rowClass`.
+ *
+ * `suppressName` drops the name header (the source name above already
+ * carries it) — the body renders alone.
+ */
+function renderMovedCard(m: MovedCard, suppressName = false): string {
+  const head = suppressName
+    ? ''
+    : `\n              <div class="lg-bare__head">${bareName(m)}</div>`;
+  return `            <div class="lg-bare">${head}
+              <div class="lg-bare__body">
+                ${thumb(m.card, 'lg-bare__thumb')}
+                ${renderMovedFlow(m)}
               </div>
             </div>`;
 }
 
-/**
- * A battle-posture pill — ATK = ambre + cible, DEF = bleu acier + bouclier.
- * `before` dims the pill (the posture being left).
- */
-function posturePill(kind: 'ATK' | 'DEF', before: boolean): string {
-  const variant = kind === 'ATK' ? 'lg-posture--atk' : 'lg-posture--def';
-  const icon = kind === 'ATK' ? 'crisis_alert' : 'shield';
-  const dim = before ? ' lg-posture--before' : '';
-  return `<span class="lg-posture ${variant}${dim}"><span class="material-icons-round">${icon}</span>${kind}</span>`;
+/** The SVG arrowhead — a fixed cap. The shaft is a flex-stretched `::before`
+ *  rule on `.lg-bare__arrow`, so the arrow always spans exactly the verb's
+ *  width. SVG (not a glyph) so the cap aligns optically with the shaft. */
+const ARROW_SVG =
+  '<svg width="6" height="8" viewBox="0 0 6 8">' +
+  '<path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4" ' +
+  'fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+/** The verb+arrow leg — a column where the verb (nowrap) dictates the width
+ *  and the arrow below stretches to match it. */
+function flowLeg(verb: string): string {
+  return `<span class="lg-bare__leg">
+                  <span class="lg-bare__verb">${esc(verb)}</span>
+                  <span class="lg-bare__arrow">${ARROW_SVG}</span>
+                </span>`;
 }
 
-function destChip(m: MovedCard): string {
-  // An on-field destination renders the FULL mini-board (both players' M+S
-  // rows + the shared EMZ band) with the target cell highlighted — per the
-  // standardised field-grid rule (chantier §4.2): some effects place cards
-  // on the opponent's side, so a half-grid can't represent every position.
-  if (m.destCell) {
-    return renderMiniBoard(m.destCell);
+/** A pile-zone slot — a dashed card-slot cell carrying the pile name. The
+ *  destination slot is gold-tinted (`isDest`) as the flow's endpoint. */
+function pileSlot(zone: string, isDest: boolean): string {
+  const cls = isDest ? 'lg-bare__pile lg-bare__pile--dest' : 'lg-bare__pile';
+  return `<span class="${cls}"><small>${esc(zone)}</small></span>`;
+}
+
+/**
+ * The flow under a moved card's head.
+ *   - position change → verb + a posture transition (`ATK → DEF`).
+ *   - field destination → source pile-slot — verb/arrow leg — mini-board.
+ *   - pile destination → source pile-slot — verb/arrow leg — dest pile-slot.
+ * Zones render in their real appearance: a pile is a dashed card-slot, a
+ * field cell is the full mini-board (standardised field-grid rule).
+ */
+function renderMovedFlow(m: MovedCard): string {
+  if (m.posChange) {
+    return `<div class="lg-bare__flow">
+                  ${flowLeg(m.verb)}
+                  <span class="lg-bare__zones">${esc(m.posChange.from)} → ${esc(m.posChange.to)}</span>
+                </div>`;
   }
-  if (m.destZone) {
-    return `<div class="lg-dest"><small>${esc(m.destZone)}</small></div>`;
+  // A field destination is ALWAYS the full mini-board; a pile destination is
+  // a dashed card-slot tinted gold.
+  const destPart = m.destCell
+    ? renderMiniBoard(m.destCell)
+    : m.destZone
+      ? pileSlot(m.destZone, true)
+      : '';
+  if (!destPart) {
+    return `<div class="lg-bare__flow">
+                  ${flowLeg(m.verb)}
+                </div>`;
   }
-  return '';
+  return `<div class="lg-bare__flow">
+                  ${m.fromZone ? pileSlot(m.fromZone, false) : ''}
+                  ${flowLeg(m.verb)}
+                  ${destPart}
+                </div>`;
 }
 
 /**
@@ -380,15 +613,15 @@ function renderMiniBoard(target: BoardCell): string {
 // -----------------------------------------------------------------------------
 // RNG rows
 // -----------------------------------------------------------------------------
-function renderRng(e: RngEntry): string {
+function renderRng(e: RngEntry, isResolution: boolean): string {
   const icon = e.rng === 'coin' ? 'toll' : 'casino';
   const label = e.rng === 'coin' ? 'Lancé de pièce' : 'Lancé de dé';
   const chip = e.rng === 'coin' ? 'lg-rng-coin' : 'lg-rng-die';
   const results = e.results
     .map(r => `<span class="${chip}">${esc(r)}</span>`)
     .join('');
-  return `        <div class="${rowClass(e)}">
-${renderHead(e)}
+  return `        <div ${rowAttrs(e, false)}>
+${renderHead(e, isResolution)}
           <div class="lg-body">
             <div class="lg-rng">
               <span class="lg-rng__icon"><span class="material-icons-round">${icon}</span></span>
@@ -402,21 +635,53 @@ ${renderHead(e)}
 // -----------------------------------------------------------------------------
 // Combat rows
 // -----------------------------------------------------------------------------
-function renderCombat(e: CombatEntry): string {
+function renderCombat(e: CombatEntry, isResolution: boolean): string {
+  // Direct attack — the attacker strikes the player, no defender. Rendered
+  // as attacker thumb → bolt → a player "target" pill, instead of a flat
+  // red string. The actual LP loss (if any) shows on the dedicated line
+  // below — `renderLpLoss`.
   const sides = e.directLabel
     ? `<div class="lg-combat__side">${combatThumb(e.attacker)}</div>
-              <div class="lg-combat__direct">${esc(e.directLabel)}</div>`
+              <div class="lg-combat__vs"><span class="material-icons-round">bolt</span></div>
+              <div class="lg-combat__player">
+                <span class="lg-combat__player-ico"><span class="material-icons-round">person</span></span>
+                <span class="lg-combat__player-dmg">${esc(e.directLabel)}</span>
+              </div>`
     : `<div class="lg-combat__side">${combatThumb(e.attacker)}</div>
               <div class="lg-combat__vs"><span class="material-icons-round">bolt</span></div>
               <div class="lg-combat__side">${combatThumb(e.defender ?? e.attacker)}</div>`;
-  return `        <div class="${rowClass(e)}">
-${renderHead(e)}
+  return `        <div ${rowAttrs(e, false)}>
+${renderHead(e, isResolution)}
           <div class="lg-body">
             <div class="lg-combat">
               ${sides}
-            </div>
+            </div>${renderLpLoss(e.lpLoss)}
           </div>
         </div>`;
+}
+
+/**
+ * The LP-loss line of a combat — one chip per player who actually lost LP.
+ * Returns '' when nobody lost LP, so the row shows NOTHING in that case
+ * (a clash with no damage gets no damage line). Player 0 = "Toi",
+ * player 1 = "Adversaire".
+ */
+function renderLpLoss(losses: CombatEntry['lpLoss']): string {
+  if (!losses?.length) return '';
+  const chips = losses
+    .map(l => {
+      const who = l.player === 0 ? 'Toi' : 'Adversaire';
+      return `<span class="lg-lploss__chip">
+                <span class="material-icons-round">person</span>
+                <span class="lg-lploss__who">${who}</span>
+                <span class="lg-lploss__amt">−${l.amount} PV</span>
+              </span>`;
+    })
+    .join('\n              ');
+  return `
+            <div class="lg-lploss">
+              ${chips}
+            </div>`;
 }
 
 function combatThumb(s: CombatEntry['attacker']): string {
@@ -432,6 +697,7 @@ function combatThumb(s: CombatEntry['attacker']): string {
  */
 function statBadge(stat: string): string {
   const trimmed = stat.trim();
+  if (!trimmed) return '';
   if (/^ATK\b/i.test(trimmed)) {
     return `<span class="lg-combat__stat lg-combat__atk"><span class="material-icons-round">crisis_alert</span>${esc(trimmed)}</span>`;
   }
@@ -444,7 +710,7 @@ function statBadge(stat: string): string {
 // -----------------------------------------------------------------------------
 // Action rows
 // -----------------------------------------------------------------------------
-function renderAction(e: ActionEntry): string {
+function renderAction(e: ActionEntry, isResolution: boolean): string {
   const badge = e.counterBadge
     ? `<span class="lg-counter-badge">${esc(e.counterBadge)}</span>`
     : '';
@@ -454,8 +720,8 @@ function renderAction(e: ActionEntry): string {
   const targets = e.equipTargets?.length
     ? `<div class="lg-action__targets">${e.equipTargets.map(t => thumb(t, '')).join('')}</div>`
     : '';
-  return `        <div class="${rowClass(e)}">
-${renderHead(e)}
+  return `        <div ${rowAttrs(e, false)}>
+${renderHead(e, isResolution)}
           <div class="lg-body">
             <div class="lg-action">
               <span class="lg-action__icon"><span class="material-icons-round">bolt</span></span>
@@ -487,12 +753,6 @@ function thumb(ref: LogCardRef, extra: string): string {
   return `<div class="${cls}">${inner}</div>`;
 }
 
-function cardLabel(ref: LogCardRef): string {
-  return ref.revealed
-    ? `<span class="lg-moved__name">${cardName(ref)}</span>`
-    : `<span class="lg-moved__hidden">Carte non révélée</span>`;
-}
-
 function cardName(ref: LogCardRef): string {
   return esc(ref.cardName ?? (ref.cardCode ? `#${ref.cardCode}` : 'Carte'));
 }
@@ -503,5 +763,261 @@ function shortName(ref: LogCardRef): string {
   return name.split(/\s+/).slice(0, 2).join(' ');
 }
 
-/** Re-export for the CLI to extract the mockup CSS without re-implementing. */
+// -----------------------------------------------------------------------------
+// Showcase catalogue — the "Other design" column.
+// -----------------------------------------------------------------------------
+//
+// A synthetic GameLogEntry[] covering the design cases a single replay may
+// not exercise. Rendered through the SAME renderStream as the real log, so
+// the catalogue can never drift from the renderer — it is not hand-written
+// HTML, it is data fed to the identical pipeline. Add a missing case here
+// (not as static markup) when a new block variant needs a visual reference.
+
+/** A revealed card ref with a display name. */
+function showCard(name: string): LogCardRef {
+  return { revealed: true, cardCode: null, cardName: name };
+}
+/** The shared RowHead fields for a showcase entry. */
+function showHead(player: RelPlayer, source: LogCardRef | null): RowHead {
+  return { player, turnNumber: 1, source, description: null };
+}
+
+/**
+ * Build the exhaustive showcase catalogue. Covers EVERY block/variant the
+ * `GameLogBuilder` can emit (audited against its MSG_* handlers, 2026-05-22):
+ *   · move → MZONE per summon kind (Normale/Spéciale/Fusion/Rituelle/
+ *     Synchro/Xyz/Lien), → SZONE (Pose), → OVERLAY (Matériau Xyz),
+ *     → GRAVE (Envoi/Défausse/Tribut/Matériau), → BANISHED, → HAND
+ *     (Ajout/Retour en main), → DECK, → EXTRA, flip, position change
+ *   · move with a targeting annotation, and a negated chain row
+ *   · rng dice + coin
+ *   · combat attack / battle (with & without LP loss) / direct attack
+ *   · action counter-add / counter-remove / equip / gy-deck-swap /
+ *     shuffle / swap
+ * A new builder case MUST get an entry here — this list is the single
+ * visual reference for the renderer's full surface.
+ */
+function buildShowcaseEntries(): GameLogEntry[] {
+  const eos = showCard('Radiant Typhoon Eos');
+  const eldam = showCard('Radiant Typhoon Eldam');
+  const krosea = showCard('Radiant Typhoon Krosea');
+  const fonix = showCard('Radiant Typhoon Fonix');
+  const vision = showCard('Radiant Typhoon Vision');
+  const hidden: LogCardRef = { revealed: false, cardCode: null, cardName: null };
+  /** A board cell on the viewer's monster row. */
+  const cellM = (seq: number): BoardCell => ({ player: 0, row: 'M', sequence: seq });
+
+  // A move entry whose single moved card lands somewhere — the common shape.
+  const move = (
+    source: LogCardRef | null,
+    description: string,
+    movedCards: MovedCard[],
+    player: RelPlayer = 0,
+  ): GameLogEntry => ({ ...showHead(player, source), block: 'move', description, movedCards });
+
+  return [
+    // === INVOCATIONS — une par type (move → MZONE) ==========================
+    { block: 'separator', kind: 'phase', label: 'Invocations' },
+    move(eldam, 'Invocation Normale depuis la main.', [
+      { card: eldam, verb: 'Inv. Normale', fromZone: 'MAIN', destCell: cellM(2) },
+    ]),
+    move(vision, 'Invocation Spéciale depuis le GY.', [
+      { card: vision, verb: 'Inv. Spéciale', fromZone: 'GY', destCell: cellM(1) },
+    ]),
+    move(showCard('Radiant Typhoon Dragon'), 'Invocation Fusion.', [
+      { card: eldam, verb: 'Matériau', fromZone: 'MAIN', destZone: 'GY', isMaterial: true },
+      { card: krosea, verb: 'Matériau', fromZone: 'M/P', destZone: 'GY', isMaterial: true },
+      { card: showCard('Radiant Typhoon Dragon'), verb: 'Inv. Fusion', fromZone: 'EXTRA', destCell: cellM(2) },
+    ]),
+    move(showCard('Radiant Ritual Beast'), 'Invocation Rituelle.', [
+      { card: showCard('Radiant Ritual Beast'), verb: 'Inv. Rituelle', fromZone: 'MAIN', destCell: cellM(0) },
+    ]),
+    move(showCard('Radiant Typhoon Synchron'), 'Invocation Synchro.', [
+      { card: showCard('Radiant Typhoon Synchron'), verb: 'Inv. Synchro', fromZone: 'EXTRA', destCell: cellM(3) },
+    ]),
+    move(showCard('Radiant Typhoon No.7'), 'Invocation Xyz.', [
+      { card: showCard('Radiant Typhoon No.7'), verb: 'Inv. Xyz', fromZone: 'EXTRA', destCell: cellM(2) },
+    ]),
+    move(eos, 'Invocation Lien avec 2 Matériaux.', [
+      { card: eldam, verb: 'Matériau', fromZone: 'M/P', destZone: 'GY', isMaterial: true },
+      { card: krosea, verb: 'Matériau', fromZone: 'M/P', destZone: 'GY', isMaterial: true },
+      { card: eos, verb: 'Inv. Lien', fromZone: 'EXTRA', destCell: { player: 0, row: 'EMZ', sequence: 0 } },
+    ]),
+    move(showCard('Radiant Trap'), 'Pose une carte face verso.', [
+      { card: hidden, verb: 'Pose', fromZone: 'MAIN', destCell: { player: 0, row: 'S', sequence: 1 } },
+    ]),
+    move(eldam, 'Inv. par Flip — le monstre face verso est retourné.', [
+      { card: eldam, verb: 'Inv. par Flip', fromZone: 'M/P', destCell: cellM(2) },
+    ]),
+
+    // === DÉPLACEMENTS DE CARTE (move → piles) ==============================
+    { block: 'separator', kind: 'phase', label: 'Déplacements de carte' },
+    move(null, 'Pioche de la phase de pioche.', [
+      { card: vision, verb: 'Pioche', fromZone: 'DECK', destZone: 'MAIN' },
+    ]),
+    move(showCard('Radiant Searcher'), 'Ajoute 1 monstre du Deck à la main.', [
+      { card: krosea, verb: 'Ajout', fromZone: 'DECK', destZone: 'MAIN' },
+    ]),
+    move(showCard('Radiant Recall'), 'Renvoie un monstre du Terrain en main.', [
+      { card: eldam, verb: 'Retour en main', fromZone: 'M/P', destZone: 'MAIN' },
+    ]),
+    move(showCard('Card Destruction'), 'Chaque joueur défausse sa main.', [
+      { card: hidden, verb: 'Défausse', fromZone: 'MAIN', destZone: 'GY' },
+      { card: hidden, verb: 'Pioche', fromZone: 'DECK', destZone: 'MAIN' },
+    ], 1),
+    move(showCard('Radiant Tribute'), 'Sacrifie un monstre comme Tribut.', [
+      { card: eldam, verb: 'Tribut', fromZone: 'M/P', destZone: 'GY' },
+    ]),
+    move(showCard('Radiant Banisher'), 'Bannit une carte du Terrain.', [
+      { card: krosea, verb: 'Bannissement', fromZone: 'M/P', destZone: 'BANNIE' },
+    ], 1),
+    move(showCard('Radiant Recycle'), 'Renvoie une carte du GY au Deck.', [
+      { card: vision, verb: 'Retour au deck', fromZone: 'GY', destZone: 'DECK' },
+    ]),
+    move(null, 'Un monstre Pendule détruit retourne à l\'Extra.', [
+      { card: eos, verb: 'Retour à l\'Extra', fromZone: 'M/P', destZone: 'EXTRA' },
+    ]),
+    move(showCard('Radiant Overlay'), 'Attache une carte comme Matériau Xyz.', [
+      { card: eldam, verb: 'Matériau', fromZone: 'MAIN', destZone: 'XYZ', isMaterial: true },
+    ]),
+    // Position change — posture transition.
+    move(eldam, 'Passe ce monstre en Position de Défense.', [
+      { card: eldam, verb: 'Changement de position', posChange: { from: 'ATK', to: 'DEF' } },
+    ]),
+
+    // === CIBLAGE + EFFET NIÉ ==============================================
+    { block: 'separator', kind: 'phase', label: 'Ciblage & négation' },
+    // A targeting annotation folded onto an activation row.
+    {
+      ...showHead(1, showCard('Radiant Typhoon Strike')),
+      block: 'move',
+      description: 'Cible 1 monstre adverse et le détruit.',
+      targets: [eldam],
+      movedCards: [{ card: eldam, verb: 'Envoi au GY', fromZone: 'M/P', destZone: 'GY' }],
+    },
+    // A negated chain link.
+    {
+      ...showHead(0, showCard('Radiant Typhoon Draw')),
+      block: 'move',
+      description: 'Pioche 2 cartes — effet annulé par une contre-carte.',
+      chainLink: 1,
+      negated: true,
+      movedCards: [],
+    },
+
+    // === ALÉATOIRE ========================================================
+    { block: 'separator', kind: 'phase', label: 'Aléatoire' },
+    {
+      ...showHead(1, showCard('Dicephoon')),
+      block: 'rng',
+      description: 'Lance un dé à six faces.',
+      rng: 'dice',
+      results: ['2'],
+    },
+    {
+      ...showHead(0, showCard('Cup of Ace')),
+      block: 'rng',
+      description: 'Lance une pièce.',
+      rng: 'coin',
+      results: ['Face'],
+    },
+
+    // === ACTIONS (compteur, équipement, échanges, mélange) ================
+    { block: 'separator', kind: 'phase', label: 'Compteurs & échanges' },
+    {
+      ...showHead(0, showCard('Endymion, the Mighty Master of Magic')),
+      block: 'action',
+      description: 'Place 2 Compteurs Magie.',
+      action: 'counter-add',
+      label: 'Compteur',
+      detail: 'Compteur Magie',
+      counterBadge: '+2',
+    },
+    {
+      ...showHead(0, showCard('Endymion, the Mighty Master of Magic')),
+      block: 'action',
+      description: 'Retire 1 Compteur Magie pour payer un coût.',
+      action: 'counter-remove',
+      label: 'Compteur',
+      detail: 'Compteur Magie',
+      counterBadge: '−1',
+    },
+    {
+      ...showHead(1, showCard('Mage Power')),
+      block: 'action',
+      description: 'Équipe ce monstre.',
+      action: 'equip',
+      label: 'Équipé à',
+      equipTargets: [eldam],
+    },
+    {
+      ...showHead(0, showCard('Exchange of the Spirit')),
+      block: 'action',
+      description: 'Échange le Cimetière et le Deck.',
+      action: 'gy-deck-swap',
+      label: 'Échange GY ↔ Deck',
+    },
+    {
+      ...showHead(1, showCard('Mind Control')),
+      block: 'action',
+      description: 'Deux cartes échangent de contrôleur.',
+      action: 'swap',
+      label: 'Échange de cartes',
+    },
+    {
+      ...showHead(0, showCard('Radiant Shuffle')),
+      block: 'action',
+      description: 'Mélange le Deck.',
+      action: 'shuffle',
+      label: 'Mélange du Deck',
+    },
+
+    // === COMBAT ===========================================================
+    { block: 'separator', kind: 'phase', label: 'Combat' },
+    // Attack declaration on a monster — no LP line (just a declaration).
+    {
+      ...showHead(0, eos),
+      block: 'combat',
+      combat: 'attack',
+      attacker: { card: eos, stat: 'ATK 2400' },
+      defender: { card: fonix, stat: 'DEF 1900' },
+    },
+    // Battle damage — the opponent loses LP → the dedicated LP-loss line.
+    {
+      ...showHead(0, eos),
+      block: 'combat',
+      combat: 'battle',
+      attacker: { card: eos },
+      defender: { card: fonix },
+      lpLoss: [{ player: 1, amount: 500 }],
+    },
+    // Battle with NO damage — the LP-loss line is omitted entirely.
+    {
+      ...showHead(0, eos),
+      block: 'combat',
+      combat: 'battle',
+      attacker: { card: eos },
+      defender: { card: fonix },
+      lpLoss: [],
+    },
+    // Direct attack declaration → battle: the player takes the hit.
+    {
+      ...showHead(1, showCard('Radiant Typhoon Chant')),
+      block: 'combat',
+      combat: 'attack',
+      attacker: { card: showCard('Radiant Typhoon Chant'), stat: 'ATK 1800' },
+      directLabel: 'Attaque directe',
+    },
+    {
+      ...showHead(1, showCard('Radiant Typhoon Chant')),
+      block: 'combat',
+      combat: 'battle',
+      attacker: { card: showCard('Radiant Typhoon Chant') },
+      defender: { card: { revealed: true, cardCode: null, cardName: 'Joueur' } },
+      lpLoss: [{ player: 0, amount: 1800 }],
+    },
+  ];
+}
+
+/** Re-export the relative-player type for the CLI / catalogue builders. */
 export { type RelPlayer };

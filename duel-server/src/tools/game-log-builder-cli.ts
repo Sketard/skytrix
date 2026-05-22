@@ -24,6 +24,10 @@
 //   --userId        participant user id for the replay JWT (default 1)
 //   --from-file     read a captured states JSON instead of the live WS
 //   --capture       also write the raw states JSON next to the output
+//
+// The HTML preview's CSS comes from `../game-log/game-log.css` — the single
+// source of truth, injected verbatim. (Was a regex extract from the now
+// deprecated `_mockups/mockup-game-log.html`.)
 // =============================================================================
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -34,6 +38,7 @@ import Database from 'better-sqlite3';
 
 import type { PreComputedState } from '../ws-protocol-replay.js';
 import type { ServerMessage } from '../ws-protocol.js';
+import type { BoardStatePayload } from '../ws-protocol-shared.js';
 import type { CardDB } from '../types.js';
 import { loadSystemStrings } from '../ocg-scripts.js';
 import { resolveDescription } from '../game-log/effect-desc-resolver.js';
@@ -43,7 +48,10 @@ import { renderHtml } from '../game-log/game-log-html.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(HERE, '../../data');
-const MOCKUP_PATH = resolve(HERE, '../../../_mockups/mockup-game-log.html');
+// Single source of truth for the Game Log style. Read verbatim and injected
+// into the standalone HTML's <style>. Replaces the deprecated regex extract
+// from `_mockups/mockup-game-log.html` (2026-05-22).
+const GAME_LOG_CSS_PATH = resolve(HERE, '../game-log/game-log.css');
 
 // -----------------------------------------------------------------------------
 // CLI argument parsing
@@ -112,6 +120,9 @@ function buildReplayJwt(userId: string): string {
 interface ReplayResult {
   states: PreComputedState[];
   title: string;
+  /** Player pseudos in ABSOLUTE server order [P0, P1] — from REPLAY_METADATA.
+   *  Undefined when the server sent no metadata (legacy / metadata-less). */
+  playerUsernames?: [string, string];
 }
 
 function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
@@ -126,7 +137,7 @@ function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
     const states: PreComputedState[] = [];
     let title = args.replayId;
     let settled = false;
-    let gotMetadata = false;
+    let playerUsernames: [string, string] | undefined;
 
     const finish = (ok: boolean, err?: string): void => {
       if (settled) return;
@@ -134,7 +145,7 @@ function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
       clearTimeout(hardTimeout);
       if (quietTimer) clearTimeout(quietTimer);
       try { ws.close(); } catch { /* already closing */ }
-      if (ok) resolvePromise({ states, title });
+      if (ok) resolvePromise({ states, title, playerUsernames });
       else rejectPromise(new Error(err ?? 'replay WS failed'));
     };
 
@@ -171,7 +182,7 @@ function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
         states.push(...msg.states);
         armQuietFinish();
       } else if (msg.type === 'REPLAY_METADATA') {
-        gotMetadata = true;
+        playerUsernames = msg.playerUsernames;
         const [p1, p2] = msg.playerUsernames;
         title = `${args.replayId} — ${p1} vs ${p2} (${msg.turnCount} tours)`;
         armQuietFinish();
@@ -241,21 +252,48 @@ function openCardDb(): CardDB {
 }
 
 // -----------------------------------------------------------------------------
+// Board relativisation — O5 / C2 contract
+// -----------------------------------------------------------------------------
+/**
+ * Swap a `PreComputedState.boardState` from relative-to-P0 to relative-to-the-
+ * viewer. `replay-precompute.ts` produces `boardState` via
+ * `sanitizeBoardState(forPlayer=0)` — so it is relative-to-P0. The
+ * GameLogBuilder (O5 / C2) now treats its board as already relative-to-viewer
+ * and NEVER swaps it, so the CLI owns the P0→viewer swap for `--perspective 1`.
+ * Mirror of `ReplayDuelAdapter.swapBoardState`.
+ */
+function toViewerRelative(
+  bs: BoardStatePayload,
+  perspective: 0 | 1,
+): BoardStatePayload {
+  if (perspective === 0) return bs; // already P0-relative == viewer-relative
+  return {
+    ...bs,
+    turnPlayer: bs.turnPlayer === 0 ? 1 : 0,
+    players: [bs.players[1], bs.players[0]],
+  };
+}
+
+// -----------------------------------------------------------------------------
 // Output
 // -----------------------------------------------------------------------------
-function writeOutputs(
-  args: CliArgs,
-  states: PreComputedState[],
-  title: string,
-): void {
+function writeOutputs(args: CliArgs, result: ReplayResult): void {
+  const { states, title, playerUsernames } = result;
   // One card-db pass resolves both effect descriptions and code-only names.
   const cardDb = openCardDb();
   const systemStrings = loadSystemStrings(join(DATA_DIR, 'strings.conf'));
   const descriptionResolver = buildDescriptionResolver(cardDb, systemStrings);
   const nameResolver = buildNameResolver(cardDb);
 
+  // O5 / C2: hand the builder a viewer-relative board for every state. The
+  // builder no longer swaps — this is now the CLI's responsibility.
+  const viewerStates: PreComputedState[] = states.map(s => ({
+    ...s,
+    boardState: toViewerRelative(s.boardState, args.perspective),
+  }));
+
   const { entries, targetStats } = buildGameLogWithStats({
-    states,
+    states: viewerStates,
     perspective: args.perspective,
     resolveDescription: descriptionResolver,
     resolveCardName: nameResolver,
@@ -271,12 +309,19 @@ function writeOutputs(
   // The HTML preview points card thumbnails at the same Spring Boot artwork
   // endpoint the front-end uses (`/documents/small/code/{code}`). Absolute
   // URL so the standalone file resolves images when opened in a browser.
-  const css = extractMockupCss();
+  const css = loadGameLogCss();
   const cardImageUrl = (code: number): string =>
     `${args.springBootUrl}/documents/small/code/${code}`;
+  // Turn-header avatars need the pseudos in RELATIVE order [you, opp].
+  // `playerUsernames` is ABSOLUTE [P0, P1]; swap when the viewer is P1.
+  const relativeNames = playerUsernames
+    ? args.perspective === 1
+      ? ([playerUsernames[1], playerUsernames[0]] as [string, string])
+      : playerUsernames
+    : undefined;
   writeFileSync(
     htmlPath,
-    renderHtml(entries, title, css, cardImageUrl),
+    renderHtml(entries, title, css, cardImageUrl, relativeNames),
     'utf-8',
   );
 
@@ -284,6 +329,17 @@ function writeOutputs(
     const statesPath = mdPath.replace(/\.md$/i, '') + '.states.json';
     writeFileSync(statesPath, JSON.stringify(states), 'utf-8');
     console.log(`  captured states → ${statesPath}`);
+    // Sidecar metadata — pseudos + title don't live in the states array, so
+    // a `--from-file` re-run would lose the avatars without this.
+    if (playerUsernames) {
+      const metaPath = mdPath.replace(/\.md$/i, '') + '.meta.json';
+      writeFileSync(
+        metaPath,
+        JSON.stringify({ playerUsernames, title }),
+        'utf-8',
+      );
+      console.log(`  captured meta   → ${metaPath}`);
+    }
   }
 
   console.log(`✔ ${entries.length} log entries`);
@@ -301,14 +357,15 @@ function writeOutputs(
   }
 }
 
-/** Extract the `<style>` body from the approved mockup for the HTML preview. */
-function extractMockupCss(): string {
+/** Load the Game Log stylesheet — the single source of truth, injected
+ *  verbatim into the standalone HTML's `<style>`. */
+function loadGameLogCss(): string {
   try {
-    const html = readFileSync(MOCKUP_PATH, 'utf-8');
-    const match = html.match(/<style>([\s\S]*?)<\/style>/);
-    return match ? match[1] : '';
+    return readFileSync(GAME_LOG_CSS_PATH, 'utf-8');
   } catch {
-    console.warn('  (mockup CSS not found — HTML will be unstyled)');
+    console.warn(
+      `  (game-log.css not found at ${GAME_LOG_CSS_PATH} — HTML will be unstyled)`,
+    );
     return '';
   }
 }
@@ -337,9 +394,13 @@ async function main(): Promise<void> {
     if (!Array.isArray(parsed)) {
       fail(`${args.fromFile} is not a JSON array of PreComputedState`);
     }
+    // Sidecar `.meta.json` (written by a prior `--capture`) restores the
+    // pseudos + title — the states array alone carries neither.
+    const meta = loadCapturedMeta(args.fromFile);
     result = {
       states: parsed as PreComputedState[],
-      title: args.replayId || args.fromFile,
+      title: meta?.title ?? args.replayId ?? args.fromFile,
+      playerUsernames: meta?.playerUsernames,
     };
   } else {
     console.log(`Fetching replay ${args.replayId} from ${args.duelServerUrl}`);
@@ -350,7 +411,24 @@ async function main(): Promise<void> {
     fail('no precomputed states received');
   }
   console.log(`Received ${result.states.length} precomputed states`);
-  writeOutputs(args, result.states, result.title);
+  writeOutputs(args, result);
+}
+
+/** Sidecar metadata accompanying a captured `.states.json`. */
+interface CapturedMeta {
+  playerUsernames?: [string, string];
+  title?: string;
+}
+
+/** Load the `.meta.json` sitting next to a captured states file. Returns
+ *  null when absent (a states file captured before sidecars existed). */
+function loadCapturedMeta(statesPath: string): CapturedMeta | null {
+  const metaPath = statesPath.replace(/\.states\.json$/i, '') + '.meta.json';
+  try {
+    return JSON.parse(readFileSync(metaPath, 'utf-8')) as CapturedMeta;
+  } catch {
+    return null;
+  }
 }
 
 main().catch((e: unknown) => {
