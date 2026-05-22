@@ -41,8 +41,13 @@
               <div class="lg-chaingroup__head">
                 <mat-icon aria-hidden="true">link</mat-icon>
                 <span>{{ 'gameLog.panel.chain' | translate }}</span>
+                <!-- Bug 4 — pluralised: "1 maillon" / "2 maillons" (the count
+                     is interpolated INTO the i18n string via {{count}}). -->
                 <span class="lg-chaingroup__count">
-                  {{ node.linkCount }} {{ 'gameLog.panel.links' | translate }}
+                  {{ (node.linkCount === 1
+                        ? 'gameLog.panel.linkSingle'
+                        : 'gameLog.panel.linkPlural')
+                     | translate:{ count: node.linkCount } }}
                 </span>
               </div>
               @for (row of node.rows; track $index) {
@@ -72,9 +77,13 @@
     <!-- G3 — "↓ nouvelles entrées" affordance. Shown only when a new entry
          landed below the fold while the user was scrolled up; a click scrolls
          to the newest entry. `<app-pill>` is non-interactive, so a `<button>`
-         carries the click + keyboard semantics. -->
+         carries the click + keyboard semantics.
+         `$event.stopPropagation()` keeps the click from bubbling to the
+         document-level click-outside listener (Bug 3 — a pill click must
+         scroll to the bottom, never close the panel). -->
     @if (hasNewEntries()) {
-      <button type="button" class="gamelog__newpill" (click)="scrollToBottom()">
+      <button type="button" class="gamelog__newpill"
+              (click)="scrollToBottom(); $event.stopPropagation()">
         <app-pill variant="gold" size="sm" icon="keyboard_arrow_down">
           {{ 'gameLog.panel.newEntries' | translate }}
         </app-pill>

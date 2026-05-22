@@ -13,6 +13,7 @@
 
 import { Injectable, isDevMode, signal, type Signal } from '@angular/core';
 import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
+import type { PreComputedState } from '../duel-ws-replay.types';
 import type { DuelState, GameEvent } from '../types';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
@@ -158,6 +159,37 @@ export class DuelGameLogService {
   }
 
   /**
+   * REPLAY ONLY — rebuild the whole journal from the precomputed states
+   * `[0..N]` after a seek (analysis: the journal is an *history*, not a
+   * snapshot of step N).
+   *
+   * A replay seek runs `abortAndClean → resetForSwitch → reset()` which
+   * empties the journal, then `jumpToState()` renders the board for step N
+   * directly — the events BEFORE N never pass back through the
+   * `notifyGameLog` tap, so the journal would restart empty at N. This
+   * method re-feeds the builder with every event of states `[0..N]` so the
+   * journal reflects the cumulative duel history up to N.
+   *
+   * It is a SILENT rebuild: each state is fed through the batch
+   * `GameLogBuilder.ingestState` — that path drives ONLY the builder, never
+   * `captureOpponentActivation`. So replaying a MSG_CHAINING here cannot
+   * flash the opponent bubble (the bubble is fed exclusively from the
+   * `notifyGameLog` event path). PvP never calls this (no seek in PvP — the
+   * journal builds in the normal `notifyGameLog` flow).
+   *
+   * The retained `tappedEvents` are cleared: after a seek the live feed
+   * resumes from N, and a subsequent perspective flip rebuilds from the
+   * states (which `rebuildUpTo` is re-called with) — not from a stale
+   * partial `tappedEvents` slice.
+   */
+  rebuildUpTo(states: readonly PreComputedState[]): void {
+    this.builder = new GameLogBuilder(this.perspective);
+    this.tappedEvents.length = 0;
+    for (const state of states) this.builder.ingestState(state);
+    this._entries.set([...this.builder.entries]);
+  }
+
+  /**
    * Called by the orchestrator tap, once per genuinely-dispatched event
    * (analysis §2.3 — buffered chain events reach this only on re-dispatch,
    * in logical resolution order, exactly once).
@@ -197,18 +229,24 @@ export class DuelGameLogService {
   }
 
   /**
-   * Cleared on rematch / mode switch / state-sync — wired into the
-   * orchestrator's `resetAllState()` at Lot 2e. A rematch reuses the page
-   * component (no `ngOnDestroy`), so a stale journal would otherwise carry
-   * into the next duel (R8).
+   * Cleared on rematch / mode switch / state-sync / replay seek — wired
+   * into the orchestrator's `resetAllState()` at Lot 2e. A rematch reuses
+   * the page component (no `ngOnDestroy`), so a stale journal would
+   * otherwise carry into the next duel (R8).
+   *
+   * Clears the journal CONTENT only — it deliberately does NOT close the
+   * panel. The open state is a session-level user preference: a replay
+   * seek runs through this path on every jump (Bug 1), and slamming the
+   * panel shut on each seek would make the rebuilt journal invisible. A
+   * rematch keeping the panel open is also the expected behaviour (the
+   * user opened it). `togglePanel` / `beginPanelClose` remain the only
+   * ways the panel closes.
    */
   reset(): void {
     this.builder = new GameLogBuilder(this.perspective);
     this.tappedEvents.length = 0;
     this._entries.set([]);
     this._lastOpponentActivation.set(null);
-    this._panelOpen.set(false);
-    this._panelClosing.set(false);
   }
 
   // ---------------------------------------------------------------------------

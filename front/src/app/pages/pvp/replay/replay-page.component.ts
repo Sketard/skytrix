@@ -509,6 +509,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   private hasConnected = false;
 
+  /** Bumped by `abortAndClean()` to trigger the game-log seek-rebuild effect
+   *  (Bug 1 — the journal must stay a full history across a seek). */
+  private readonly gameLogRebuildTick = signal(0);
+
   // Phase announcement tracking
   private lastAnnouncedPhase: string | null = null;
 
@@ -536,6 +540,34 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     // Re-feeding `setPerspective` rebuilds the journal from the retained raw
     // events for the new viewer (R7 — handled inside the service).
     effect(() => this.gameLog.setPerspective(this.perspectiveIndex()));
+
+    // Seek-rebuild — keep the journal a full HISTORY across a seek.
+    // A replay seek runs `abortAndClean → reset()` (journal emptied) then
+    // `jumpToState()` which renders step N's board directly — the events
+    // BEFORE N never re-cross the `notifyGameLog` tap, so the journal would
+    // restart empty at N. This effect re-feeds the builder with every event
+    // of states `[0..currentIndex]` after a seek.
+    //
+    // Driven by `gameLogRebuildTick`, bumped by `abortAndClean()`. EVERY
+    // interruption that empties the journal — seek, scrub, step-back,
+    // skip, perspective flip, animation toggle — goes through
+    // `abortAndClean`; a forward step does NOT, so it leaves the tick
+    // untouched and the journal keeps building event-by-event through
+    // `notifyGameLog` (re-feeding then would double-log the new events).
+    // Reading `currentIndex` untracked picks up the index the seek has
+    // already committed synchronously before the effect flushes.
+    //
+    // The effect runs AFTER the `setPerspective` effect above, so when a
+    // perspective flip fires both, `this.perspective` inside the service is
+    // already current when `rebuildUpTo` reads it.
+    effect(() => {
+      this.gameLogRebuildTick();
+      untracked(() => {
+        const idx = this.currentIndex();
+        this.gameLog.rebuildUpTo(this.boardStates().slice(0, idx + 1));
+      });
+    });
+
     this.transport.configure({
       adapter: this.adapter,
       phaseService: this.phaseService,
@@ -756,6 +788,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.orchestrator.resetForSwitch();
     this.phaseService.clear();
     this.adapter.abort();
+    // `resetForSwitch` cleared the game-log journal (R8). Bump the rebuild
+    // tick so the seek-rebuild effect re-feeds the journal with the
+    // history [0..currentIndex] once the seek has committed its index
+    // (Bug 1). A forward step does NOT call `abortAndClean`, so it never
+    // triggers this — its events log naturally through `notifyGameLog`.
+    this.gameLogRebuildTick.update(t => t + 1);
   }
 
   // --- Playback controls (transport delegates with abortAndClean side-effect) ---

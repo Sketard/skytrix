@@ -144,6 +144,17 @@ export class GameLogPanelComponent {
    *  "↓ nouvelles entrées" pill (G3). */
   readonly hasNewEntries = signal(false);
 
+  /**
+   * Whether the viewport was scrolled to the bottom BEFORE the latest entry
+   * was appended (Bug 5). The G3 auto-scroll must decide "follow vs raise the
+   * pill" from the bottom-state as it was *before* the new row grew the
+   * scroll height — checking `isAtBottom()` after the re-render always reads
+   * "not at bottom" (the new row pushed the content past the fold). Kept
+   * fresh by `onScroll()` (every user scroll) and `scrollToBottom()`; seeded
+   * `true` (an empty viewport counts as "at bottom" — follow the first row).
+   */
+  private wasAtBottom = true;
+
   /** Document-level click-outside teardown — re-armed each time the panel
    *  re-opens (the listener is torn down on close). */
   private removeOutsideListener: (() => void) | null = null;
@@ -176,14 +187,32 @@ export class GameLogPanelComponent {
       });
     });
 
+    // Bug 5 — calibrate `wasAtBottom` when the panel opens. The viewport
+    // mounts scrolled to the top: a journal that fits is "at bottom", one
+    // that overflows is not. Without this the seed (`true`) would make the
+    // first entry after an open-with-overflow auto-scroll wrongly. This
+    // effect is declared BEFORE the auto-scroll effect so a same-tick open
+    // calibrates before the scroll decision reads `wasAtBottom`.
+    effect(() => {
+      if (!this.open()) return;
+      untracked(() => (this.wasAtBottom = this.isAtBottom()));
+    });
+
     // G3 auto-scroll. A new entry appends at the bottom (oldest-at-top order).
-    // If the user is already at the bottom, follow it; if they scrolled up to
+    // If the user was already at the bottom, follow it; if they scrolled up to
     // read history, do NOT hijack — raise the "new entries" pill instead.
+    //
+    // Bug 5: the decision reads `wasAtBottom` — the bottom-state captured
+    // BEFORE this entry grew the scroll height — not a live `isAtBottom()`.
+    // This effect runs AFTER the re-render, so the new row has already
+    // pushed the content past the fold; a fresh `isAtBottom()` would always
+    // read "not at bottom" and the panel would never follow. `scrollToBottom()`
+    // still runs post-render, which is correct — the DOM has the new height.
     effect(() => {
       const count = this.entries().length;
       untracked(() => {
         if (count === 0 || !this.open()) return;
-        if (this.isAtBottom()) {
+        if (this.wasAtBottom) {
           this.scrollToBottom();
         } else {
           this.hasNewEntries.set(true);
@@ -241,17 +270,22 @@ export class GameLogPanelComponent {
     return distance <= SCROLL_BOTTOM_TOLERANCE_PX;
   }
 
-  /** Scroll the viewport to the newest entry and clear the pill. */
+  /** Scroll the viewport to the newest entry and clear the pill. The panel is
+   *  now at the bottom — record it so a burst of follow-up entries keeps
+   *  auto-scrolling (Bug 5). */
   scrollToBottom(): void {
     const el = this.scrollEl()?.nativeElement;
     if (el) el.scrollTop = el.scrollHeight;
+    this.wasAtBottom = true;
     this.hasNewEntries.set(false);
   }
 
-  /** Scroll handler — clears the "new entries" pill once the user reaches the
-   *  bottom on their own. */
+  /** Scroll handler — tracks `wasAtBottom` on every user scroll so the G3
+   *  auto-scroll has the correct pre-render bottom-state (Bug 5), and clears
+   *  the "new entries" pill once the user reaches the bottom on their own. */
   onScroll(): void {
-    if (this.hasNewEntries() && this.isAtBottom()) {
+    this.wasAtBottom = this.isAtBottom();
+    if (this.hasNewEntries() && this.wasAtBottom) {
       this.hasNewEntries.set(false);
     }
   }

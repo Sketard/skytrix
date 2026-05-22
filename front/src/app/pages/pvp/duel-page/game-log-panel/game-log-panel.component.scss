@@ -60,23 +60,27 @@
 }
 
 // ============================================================
-// PANEL — full-height side band
+// PANEL — inset side band
 // ============================================================
-// `position: fixed` (not absolute) so the panel is a full-viewport-height
-// side band without depending on a positioned ancestor — the page templates
-// mount it as a bare sibling. Open/close chrome (Lot 4c) mirrors
-// `pvp-zone-browser-overlay`: a slide-in on mount, a slide-out under
-// `.gamelog--closing` before the DOM tears down.
+// A right-edge side band with an 8px top/bottom inset — mirrors the
+// `pvp-zone-browser-overlay` proportions (its `.right-sidebar` host gives
+// the card panel the same 8px breathing margin) rather than spanning the
+// full height. Open/close chrome (Lot 4c): a slide-in on mount, a slide-out
+// under `.gamelog--closing` before the DOM tears down.
+//
+// `position: fixed` in PvP — mounted as a bare sibling with no positioned
+// ancestor; the 8px insets are viewport-relative (no transport stack there).
 .gamelog {
   position: fixed;
-  top: 0;
+  top: 8px;
   right: 0;
-  bottom: 0;
+  bottom: 8px;
   z-index: 60;
   width: 330px;
   max-width: 92vw;
   background: var(--pvp-zone-browser-bg);
-  border-left: 1px solid var(--border-medium);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   box-shadow: var(--elevation-3);
   display: flex;
   flex-direction: column;
@@ -86,11 +90,11 @@
 
 // Replay mode — the viewport's bottom edge holds the transport stack
 // (timeline-bar/stepper + transport-bar, in normal flow). A viewport-fixed
-// panel anchored `bottom: 0` would extend behind it. In the replay DOM the
-// panel is a child of `.board-area` (`position: relative`, the flex:1 play
-// region ABOVE the transport stack) — so switching to `position: absolute`
-// bounds the panel to exactly that region, clearing the transport bar
-// whatever its (variable) height. PvP keeps the viewport-fixed band.
+// panel would extend behind it. In the replay DOM the panel is a child of
+// `.board-area` (`position: relative`, the flex:1 play region ABOVE the
+// transport stack) — switching to `position: absolute` bounds the panel
+// (and its 8px insets) to exactly that region, clearing the transport bar
+// whatever its (variable) height.
 :host-context(app-replay-page) .gamelog {
   position: absolute;
 }
@@ -568,9 +572,15 @@
 
 // Chain-link badge — `.badge` is the allowed global class; `.badge-cl` is the
 // game-log size variant (a small round counter disc).
+//
+// `.badge` (_badge.scss) brings `padding: 3px 8px` + `border-radius: 12px` for
+// its pill shape — both wrong for an 18×18 round disc: the inherited padding
+// shifts the digit off-centre despite `place-items: center`. Neutralise both
+// here so the disc geometry is owned entirely by `.badge-cl`.
 .badge-cl {
   width: 18px;
   height: 18px;
+  padding: 0;
   display: grid;
   place-items: center;
   border-radius: 50%;

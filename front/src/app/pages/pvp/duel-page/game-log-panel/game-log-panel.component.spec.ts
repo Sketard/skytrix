@@ -243,11 +243,17 @@ describe('GameLogPanelComponent', () => {
     expect(emitted).toBe(false);
   });
 
-  // ── G3 auto-scroll (Lot 4d) ─────────────────────────────────────────────────
+  // ── G3 auto-scroll (Lot 4d / Bug 5) ─────────────────────────────────────────
   // The Karma DOM does not lay out a real scroll viewport, so `scrollHeight` /
   // `clientHeight` / `scrollTop` are forced. `scrollTop` gets a real
   // getter/setter backed by a cell so the component's `el.scrollTop = …`
-  // write is observable. `scrollTopOf()` reads the cell back.
+  // write is observable.
+  //
+  // Bug 5 — the auto-scroll decision reads `wasAtBottom`, captured BEFORE a
+  // new row grows the viewport (the post-render `isAtBottom()` always reads
+  // "not at bottom"). `wasAtBottom` is kept fresh by `onScroll()` — so each
+  // test dispatches a `scroll` event after mocking the metrics, exactly as a
+  // real user scroll would, to seed the pre-render bottom-state.
   function mockScrollMetrics(
     el: HTMLElement,
     scrollHeight: number,
@@ -266,12 +272,18 @@ describe('GameLogPanelComponent', () => {
   function scrollBoxEl(): HTMLElement {
     return fixture.nativeElement.querySelector('.gamelog__scroll') as HTMLElement;
   }
+  /** Fire a real `scroll` event so `onScroll()` captures `wasAtBottom`. */
+  function fireScroll(box: HTMLElement): void {
+    box.dispatchEvent(new Event('scroll'));
+    fixture.detectChanges();
+  }
 
   it('auto-scrolls to the newest entry when already at the bottom', () => {
     openPanel();
-    // 700 + 300 === 1000 → at the bottom.
+    // 700 + 300 === 1000 → at the bottom; a scroll event seeds wasAtBottom.
     const box = scrollBoxEl();
     mockScrollMetrics(box, 1000, 300, 700);
+    fireScroll(box);
 
     feed([draw(0, [1001])]);
     // The auto-scroll pushed scrollTop to scrollHeight; no pill.
@@ -285,6 +297,7 @@ describe('GameLogPanelComponent', () => {
     // 100 — far from the bottom; the user is reading history.
     const box = scrollBoxEl();
     mockScrollMetrics(box, 1000, 300, 100);
+    fireScroll(box);
 
     feed([draw(0, [1001])]);
     // The scroll was NOT hijacked…
@@ -294,10 +307,28 @@ describe('GameLogPanelComponent', () => {
     expect(fixture.nativeElement.querySelector('.gamelog__newpill')).not.toBeNull();
   });
 
+  it('keeps following the bottom across a burst of entries', () => {
+    // Bug 5 — once at the bottom, a run of entries must all be followed:
+    // `scrollToBottom()` re-asserts `wasAtBottom = true` so the next entry
+    // still auto-scrolls even though no user scroll happened in between.
+    openPanel();
+    const box = scrollBoxEl();
+    mockScrollMetrics(box, 1000, 300, 700);
+    fireScroll(box);
+
+    feed([draw(0, [1001])]);
+    feed([draw(0, [1002])]);
+    feed([draw(1, [2001])]);
+    expect(box.scrollTop).toBe(1000);
+    expect(component.hasNewEntries()).toBe(false);
+  });
+
   it('the sub-pixel tolerance keeps "at bottom" true for a fractional scroll gap', () => {
     openPanel();
     // 690 + 300 = 990 — a 10px gap, within the tolerance: still "at bottom".
-    mockScrollMetrics(scrollBoxEl(), 1000, 300, 690);
+    const box = scrollBoxEl();
+    mockScrollMetrics(box, 1000, 300, 690);
+    fireScroll(box);
 
     feed([draw(0, [1001])]);
     expect(component.hasNewEntries()).toBe(false);
@@ -308,6 +339,7 @@ describe('GameLogPanelComponent', () => {
     openPanel();
     const box = scrollBoxEl();
     mockScrollMetrics(box, 1000, 300, 100);
+    fireScroll(box);
 
     feed([draw(0, [1001])]);
     const pill = fixture.nativeElement.querySelector(
@@ -321,6 +353,33 @@ describe('GameLogPanelComponent', () => {
     expect(component.hasNewEntries()).toBe(false);
     expect(fixture.nativeElement.querySelector('.gamelog__newpill')).toBeNull();
   });
+
+  // ── Bug 3 — the "new entries" pill must NOT close the panel ──────────────────
+  it('clicking the "new entries" pill does not close the panel', fakeAsync(() => {
+    openPanel();
+    tick(); // arm the click-outside listener (microtask-deferred)
+    const box = scrollBoxEl();
+    mockScrollMetrics(box, 1000, 300, 100);
+    fireScroll(box);
+
+    feed([draw(0, [1001])]);
+    const pill = fixture.nativeElement.querySelector(
+      '.gamelog__newpill',
+    ) as HTMLButtonElement;
+    expect(pill).not.toBeNull();
+
+    // A real bubbling click — `$event.stopPropagation()` on the pill must
+    // keep it from reaching the document-level click-outside listener.
+    pill.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    // The panel stayed open — no close was started.
+    expect(gameLog.panelClosing()).toBe(false);
+    expect(gameLog.panelOpen()).toBe(true);
+    expect(panelEl()).not.toBeNull();
+    // …and the click still did its job: scrolled to the bottom.
+    expect(box.scrollTop).toBe(1000);
+  }));
 
   // ── helper-method behaviour ─────────────────────────────────────────────────
   it('isBareRow flags a source-less standalone move', () => {

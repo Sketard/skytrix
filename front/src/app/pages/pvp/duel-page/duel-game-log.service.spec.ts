@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { DuelGameLogService } from './duel-game-log.service';
 import type { DuelState, GameEvent } from '../types';
 import type { ChainingMsg, DrawMsg } from '../duel-ws.types';
+import type { PreComputedState } from '../duel-ws-replay.types';
 
 // -----------------------------------------------------------------------------
 // Board fixture — a viewer-relative `BoardStatePayload` (`players[0]` = "you").
@@ -38,6 +39,21 @@ function chaining(
     chainIndex: 0,
     description: 0,
     descriptionText,
+  };
+}
+
+/** A precomputed replay state carrying a board snapshot + its events — the
+ *  unit `rebuildUpTo` consumes after a seek. */
+function state(
+  events: GameEvent[],
+  turnCount = 1,
+  phase = 'MAIN1',
+): PreComputedState {
+  return {
+    boardState: board(turnCount, phase),
+    events,
+    label: '',
+    responseCount: 0,
   };
 }
 
@@ -137,6 +153,90 @@ describe('DuelGameLogService', () => {
     const entries = service.gameLogEntries();
     service.setPerspective(0);
     expect(service.gameLogEntries()).toBe(entries);
+  });
+
+  // ── rebuildUpTo (Bug 1 — seek-rebuild: the journal is a full history) ───────
+  describe('rebuildUpTo', () => {
+    it('rebuilds the journal from the precomputed states [0..N]', () => {
+      // Simulate a seek to step 2: abortAndClean empties the journal, then
+      // rebuildUpTo re-feeds the history of states 0, 1, 2.
+      const states: PreComputedState[] = [
+        state([draw(0, [1001, 1002, 1003, 1004, 1005])], 1),
+        state([chaining(0, 5001, 'Effet 1', 'A')], 1),
+        state([chaining(1, 5002, 'Effet 2', 'B')], 2),
+      ];
+
+      service.reset(); // the seek path empties the journal first
+      expect(service.gameLogEntries()).toEqual([]);
+
+      service.rebuildUpTo(states);
+
+      // The journal now reflects every event of states 0..2 — not just the
+      // events of the seek target.
+      const entries = service.gameLogEntries();
+      expect(entries.length).toBeGreaterThan(0);
+      // Both chained activations made it in (state 1 AND state 2).
+      const moves = entries.filter(e => e.block === 'move');
+      expect(moves.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('a seek BACKWARD reflects only the events up to the target', () => {
+      const states: PreComputedState[] = [
+        state([draw(0, [1001])], 1),
+        state([draw(0, [1002])], 1),
+        state([draw(0, [1003])], 1),
+        state([draw(0, [1004])], 1),
+      ];
+
+      // Seek forward to the end…
+      service.reset();
+      service.rebuildUpTo(states);
+      const fullCount = service.gameLogEntries().length;
+
+      // …then seek backward to step 1 — the journal must shrink to [0..1].
+      service.reset();
+      service.rebuildUpTo(states.slice(0, 2));
+      const backwardCount = service.gameLogEntries().length;
+
+      expect(backwardCount).toBeLessThan(fullCount);
+      expect(backwardCount).toBeGreaterThan(0);
+    });
+
+    it('the silent rebuild does NOT flash the opponent bubble', () => {
+      // A seek-rebuild replays MSG_CHAINING events through the batch
+      // ingestState path — it must NOT feed `lastOpponentActivation` (the
+      // bubble is driven exclusively by the live `notifyGameLog` path).
+      const states: PreComputedState[] = [
+        state([chaining(1, 5002, 'Effet adverse', 'B')], 1),
+      ];
+
+      service.reset();
+      service.rebuildUpTo(states);
+
+      expect(service.gameLogEntries().length).toBeGreaterThan(0);
+      expect(service.lastOpponentActivation()).toBeNull();
+    });
+
+    it('clears retained tappedEvents (the perspective rebuild owns the states)', () => {
+      // `rebuildUpTo` clears `tappedEvents`: after a seek the live feed
+      // resumes from N, and in replay a perspective flip is rebuilt by the
+      // page re-calling `rebuildUpTo` with the states — never from a stale
+      // partial `tappedEvents` slice. The internal `setPerspective` rebuild
+      // (which re-feeds `tappedEvents`) therefore finds it empty.
+      const states: PreComputedState[] = [
+        state([draw(0, [1001])], 1),
+        state([draw(0, [1002])], 1),
+      ];
+      service.reset();
+      service.rebuildUpTo(states);
+      expect(service.gameLogEntries().length).toBeGreaterThan(0);
+
+      // The page (replay-page) is responsible for re-feeding the states on a
+      // perspective flip — calling rebuildUpTo again restores the journal.
+      service.setPerspective(1);
+      service.rebuildUpTo(states);
+      expect(service.gameLogEntries().length).toBeGreaterThan(0);
+    });
   });
 
   // ── injectDevChaining (Lot 3d — dev-hub effect-bubble trigger) ──────────────
