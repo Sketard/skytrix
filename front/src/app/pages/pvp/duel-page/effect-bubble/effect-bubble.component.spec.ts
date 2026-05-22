@@ -42,6 +42,10 @@ describe('EffectBubbleComponent', () => {
   function bubbleCardName(): string {
     return bubbleEl()?.querySelector('.effect-bubble__card')?.textContent?.trim() ?? '';
   }
+  /** The bubble's effect-text box, or null when it was not rendered. */
+  function bubbleTextEl(): HTMLElement | null {
+    return bubbleEl()?.querySelector('.effect-bubble__text') ?? null;
+  }
   /** Push a new feed value and let the effect + CD settle. */
   function emit(value: OpponentActivation | null): void {
     feed.set(value);
@@ -167,6 +171,30 @@ describe('EffectBubbleComponent', () => {
     // The service's reset() nulls the feed — the bubble drops with no exit anim.
     emit(null);
     expect(bubbleEl()).toBeNull();
+
+    flush();
+  }));
+
+  // ── compact bubble — empty descriptionText (Lot 1b) ─────────────────────────
+  it('renders the effect-text box when descriptionText is present', fakeAsync(() => {
+    emit(activation('Card A', 'Special Summon 1 monster'));
+    const text = bubbleTextEl();
+    expect(text).not.toBeNull();
+    expect(text!.textContent?.trim()).toBe('Special Summon 1 monster');
+    flush();
+  }));
+
+  it('renders a compact bubble — no effect-text box — when descriptionText is empty', fakeAsync(() => {
+    // OCGCore emitted no disambiguation string: the bubble shows ⚡ + name
+    // only. The text zone retracts (the `@if` renders nothing) so the bubble
+    // closes cleanly around its header — no empty gap.
+    emit(activation('Card A', ''));
+
+    // The bubble itself still shows on an opponent activation (never hidden).
+    expect(bubbleEl()).not.toBeNull();
+    expect(bubbleCardName()).toBe('Card A');
+    // …but the effect-text box is absent from the DOM, not an empty element.
+    expect(bubbleTextEl()).toBeNull();
 
     flush();
   }));

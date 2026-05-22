@@ -200,6 +200,13 @@
     <div class="lg-desc" [class.lg-desc--echo]="isResolution">
       {{ e.description.trim() }}
     </div>
+  } @else if (showsGenericActivation(e, isResolution)) {
+    <!-- Activation with no resolved effect text — OCGCore emitted no
+         disambiguation string. A generic label keeps the row's description
+         line filled so it does not look truncated. -->
+    <div class="lg-desc lg-desc--generic">
+      {{ 'gameLog.activationGeneric' | translate:{ card: cardName(e.source!) } }}
+    </div>
   }
   @if (e.targets?.length) {
     <div class="lg-targets">

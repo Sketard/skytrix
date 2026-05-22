@@ -418,6 +418,25 @@ export class GameLogPanelComponent {
     );
   }
 
+  /**
+   * True when an activation row has a source card but NO resolved effect text
+   * — the panel then shows a generic "active l'effet de {{card}}" label so the
+   * row is not left with a gap (the source card and the description sit on
+   * separate lines). Scoped to chain ACTIVATION rows (`chainLink` set,
+   * `isResolution === false`): a resolution row reuses the activation's
+   * description and must not echo a second generic line; a source-less
+   * rule-driven row (draw) legitimately has no description.
+   */
+  showsGenericActivation(e: GameLogEntry, isResolution: boolean): boolean {
+    return (
+      e.block !== 'separator' &&
+      !isResolution &&
+      e.source != null &&
+      e.chainLink != null &&
+      !e.description
+    );
+  }
+
   /** True when a moved card and the row source are the same revealed card —
    *  the moved-card name header is then suppressed (the source head carries
    *  it). A hidden card never matches (no identity). */

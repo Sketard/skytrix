@@ -235,6 +235,11 @@ function renderHead(e: RowHead, isResolution: boolean): string[] {
   // chain group. The activation row owns the description.
   if (e.description && !isResolution) {
     out.push(`    > « ${e.description.trim()} »`);
+  } else if (!isResolution && e.source && e.chainLink) {
+    // Activation with no resolved effect text (OCGCore emitted no
+    // disambiguation string) — a generic line keeps the row from looking
+    // truncated. Mirrors the panel's `gameLog.activationGeneric`.
+    out.push(`    > _active l'effet de ${plainName(e.source)}_`);
   }
   // Targeting is an annotation of the effect, not its own row.
   if (e.targets?.length) {
@@ -251,8 +256,13 @@ function side(e: { player: RelPlayer }): string {
 
 function card(ref: LogCardRef): string {
   if (!ref.revealed) return '_Carte non révélée_';
-  // `cardName` is usually a real card name, but the combat placeholders
-  // (`gameLog.combat.attacker`, …) put an i18n key here — `frString` resolves
-  // a key and returns a real name unchanged (a name is never in KEY_TO_FR).
-  return `**${ref.cardName ? frString(ref.cardName) : `#${ref.cardCode}`}**`;
+  return `**${plainName(ref)}**`;
+}
+
+/** The card's display name without Markdown emphasis — for inlining inside an
+ *  italic phrase (the generic activation label) where `**` would not nest.
+ *  `cardName` is usually a real name, but combat placeholders put an i18n key
+ *  here — `frString` resolves a key and returns a real name unchanged. */
+function plainName(ref: LogCardRef): string {
+  return ref.cardName ? frString(ref.cardName) : `#${ref.cardCode}`;
 }

@@ -1103,6 +1103,7 @@
       "lpLossSuffix": "LP",
       "cardFallback": "Card"
     },
+    "activationGeneric": "activates the effect of {{card}}",
     "verb": {
       "draw": "Draw",
       "add": "Add",

@@ -718,6 +718,10 @@ export class GameLogBuilder {
     player: Player;
     chainIndex: number;
     description: number;
+    /** Effect text resolved server-side (`duel-worker` via `resolveDescription`).
+     *  Present on live PvP + replay payloads — the ONLY description source the
+     *  browser has (it carries no cards.cdb). Absent on legacy payloads. */
+    descriptionText?: string;
   }): void {
     if (!this.chainOpen) {
       this.chainOpen = true;
@@ -728,8 +732,13 @@ export class GameLogBuilder {
         labelKey: SEPARATOR_KEY.chainStart,
       });
     }
-    // Resolve from the raw `description` CODE (not chainIndex, which collides).
-    const description = this.resolveDescription?.(e.description) ?? '';
+    // Prefer the server-resolved `descriptionText` — it is present on every
+    // live PvP + replay payload and is the only text the browser can show
+    // (no cards.cdb client-side). `resolveDescription` is the CLI-only
+    // fallback: that path injects a cards.cdb-backed resolver for the raw
+    // `description` CODE (not chainIndex, which collides across chains).
+    const description =
+      e.descriptionText || this.resolveDescription?.(e.description) || '';
     const row: MoveEntry = {
       block: 'move',
       ...this.rowHead(e.player, this.cardRef(e.cardCode, e.cardName), description),

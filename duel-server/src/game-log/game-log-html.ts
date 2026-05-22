@@ -411,9 +411,17 @@ function renderHead(e: RowHead, isResolution: boolean): string {
   // D-C: a resolution row echoes the description ténu (single line), never the
   // full effect box — it is identical to the activation row above it.
   const descCls = isResolution ? 'lg-desc lg-desc--echo' : 'lg-desc';
-  const desc = e.description
-    ? `\n          <div class="${descCls}">${esc(e.description.trim())}</div>`
-    : '';
+  let desc = '';
+  if (e.description) {
+    desc = `\n          <div class="${descCls}">${esc(e.description.trim())}</div>`;
+  } else if (!isResolution && e.chainLink) {
+    // Activation with no resolved effect text (OCGCore emitted no
+    // disambiguation string) — a generic label keeps the description line
+    // filled. Mirrors the panel's `gameLog.activationGeneric`.
+    desc = `\n          <div class="lg-desc lg-desc--generic">active l'effet de ${esc(
+      cardName(e.source),
+    )}</div>`;
+  }
   // Targeting is a discreet annotation of the effect row, not its own row.
   const targetLine = e.targets?.length
     ? `\n          <div class="lg-targets">▸ cible : ${e.targets

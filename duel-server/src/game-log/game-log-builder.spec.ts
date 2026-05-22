@@ -642,6 +642,55 @@ describe('GameLogBuilder — five-block grammar', () => {
     expect(seen).toContain(4242);
     expect(seen).not.toContain(0);
   });
+
+  it('uses the server-resolved descriptionText (live PvP — no resolver)', () => {
+    // Live PvP feeds the builder with NO `resolveDescription` (the browser has
+    // no cards.cdb). The worker has already resolved the text into
+    // `descriptionText` — the builder must read it straight off the event.
+    const states = [
+      state(board(1, 'MAIN1'), [
+        {
+          type: 'MSG_CHAINING',
+          cardCode: 111,
+          cardName: 'Effect Card',
+          player: 0,
+          location: LOCATION.SZONE,
+          sequence: 0,
+          chainIndex: 0,
+          description: 1160,
+          descriptionText: 'Activate it as a Pendulum Spell',
+        },
+      ]),
+    ];
+    const entries = buildGameLog({ states, perspective: 0 });
+    const activation = moves(entries).find(m => m.chainLink === 1);
+    expect(activation!.description).toBe('Activate it as a Pendulum Spell');
+  });
+
+  it('descriptionText wins over the resolveDescription fallback', () => {
+    const states = [
+      state(board(1, 'MAIN1'), [
+        {
+          type: 'MSG_CHAINING',
+          cardCode: 111,
+          cardName: 'Effect Card',
+          player: 0,
+          location: LOCATION.SZONE,
+          sequence: 0,
+          chainIndex: 0,
+          description: 4242,
+          descriptionText: 'server-resolved',
+        },
+      ]),
+    ];
+    const entries = buildGameLog({
+      states,
+      perspective: 0,
+      resolveDescription: () => 'cli-resolved',
+    });
+    const activation = moves(entries).find(m => m.chainLink === 1);
+    expect(activation!.description).toBe('server-resolved');
+  });
 });
 
 // -----------------------------------------------------------------------------

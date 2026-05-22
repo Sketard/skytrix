@@ -1103,6 +1103,7 @@
       "lpLossSuffix": "PV",
       "cardFallback": "Carte"
     },
+    "activationGeneric": "active l'effet de {{card}}",
     "verb": {
       "draw": "Pioche",
       "add": "Ajout",

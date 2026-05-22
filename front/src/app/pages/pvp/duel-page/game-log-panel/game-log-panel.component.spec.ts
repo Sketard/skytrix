@@ -498,4 +498,77 @@ describe('GameLogPanelComponent', () => {
     expect(cells[1].target).toBe(true);
     expect(cells[3].target).toBe(false);
   });
+
+  // ── generic activation fallback (Lot 1b) ────────────────────────────────────
+  it('renders the generic activation label for an activation with no description', () => {
+    // The `chaining()` fixture carries `description: 0` and no
+    // `descriptionText` → OCGCore emitted no disambiguation string. The panel
+    // fills the description line with "active l'effet de {{card}}".
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', {
+      gameLog: { activationGeneric: 'activates the effect of {{card}}' },
+    });
+    translate.use('en');
+
+    openPanel();
+    feed([chaining(1, 5050, 'Dark Contract')]);
+
+    const generic = fixture.nativeElement.querySelector(
+      '.lg-desc--generic',
+    ) as HTMLElement | null;
+    expect(generic).not.toBeNull();
+    expect(generic!.textContent?.trim()).toBe(
+      'activates the effect of Dark Contract',
+    );
+    // The raw i18n key never leaks.
+    expect(generic!.textContent).not.toContain('gameLog.');
+  });
+
+  it('shows the real description (not the generic label) when descriptionText is set', () => {
+    openPanel();
+    feed([
+      { ...chaining(1, 5050, 'Dark Contract'), descriptionText: 'Place Scales' },
+    ]);
+    const desc = fixture.nativeElement.querySelector('.lg-desc:not(.lg-desc--generic)');
+    expect(desc).not.toBeNull();
+    expect(desc!.textContent?.trim()).toBe('Place Scales');
+    expect(fixture.nativeElement.querySelector('.lg-desc--generic')).toBeNull();
+  });
+
+  it('showsGenericActivation is false for a source-less rule-driven row', () => {
+    // A draw-phase row has no source — it legitimately has no description and
+    // must NOT get the generic activation label.
+    expect(
+      component.showsGenericActivation(
+        {
+          block: 'move',
+          player: 0,
+          turnNumber: 1,
+          source: null,
+          description: null,
+          movedCards: [],
+        },
+        false,
+      ),
+    ).toBe(false);
+  });
+
+  it('showsGenericActivation is false for a resolution row', () => {
+    // A resolution row reuses the activation's description — echoing a second
+    // generic line under it would be a duplicate.
+    expect(
+      component.showsGenericActivation(
+        {
+          block: 'move',
+          player: 0,
+          turnNumber: 1,
+          source: { revealed: true, cardCode: 5050, cardName: 'Dark Contract' },
+          description: null,
+          chainLink: 1,
+          movedCards: [],
+        },
+        /* isResolution */ true,
+      ),
+    ).toBe(false);
+  });
 });

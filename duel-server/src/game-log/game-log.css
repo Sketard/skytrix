@@ -640,6 +640,16 @@ body {
   font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* libellé d'activation générique — OCGCore n'a émis aucune chaîne de
+   désambiguïsation. Texte de remplacement, pas un effet de carte : pas de
+   cadre, ton ténu pour ne pas le confondre avec la vraie description. */
+.lg-desc--generic {
+  padding: 2px var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-style: italic;
+}
 
 /* --- targeting annotation — discrète, sous la description --- */
 .lg-targets {
