@@ -270,11 +270,16 @@ export class GameLogBuilder {
     private readonly resolveCardName?: CardNameResolver,
   ) {}
 
-  /** Ingest one precomputed state: its board snapshot then its events. */
+  /**
+   * Ingest one precomputed state: its board snapshot then its events.
+   * Thin batch wrapper over the public incremental API (`syncTurnAndPhase`
+   * + `ingestEvent`) — the CLI and the spec drive the builder through this;
+   * the live `DuelGameLogService` drives the two finer methods directly.
+   */
   ingestState(state: PreComputedState): void {
-    this.syncTurnAndPhase(state);
+    this.syncTurnAndPhase(state.boardState);
     for (const event of state.events) {
-      this.ingestEvent(event, state);
+      this.ingestEvent(event, state.boardState);
     }
   }
 
@@ -286,8 +291,14 @@ export class GameLogBuilder {
   // ---------------------------------------------------------------------------
   // Turn / phase separator synthesis (§5.5 — derived from board-state deltas)
   // ---------------------------------------------------------------------------
-  private syncTurnAndPhase(state: PreComputedState): void {
-    const board = state.boardState;
+  /**
+   * Synthesise turn/phase separators from a board snapshot delta. Public for
+   * the incremental live feed — the driver must call this with the current
+   * board snapshot BEFORE `ingestEvent` for the events of that snapshot
+   * (the ordering contract — see game-log-integration-analysis.md §1.2).
+   * No-ops when turn and phase are unchanged.
+   */
+  syncTurnAndPhase(board: BoardStatePayload): void {
     if (board.turnCount !== this.lastTurnCount) {
       this.lastTurnCount = board.turnCount;
       this.currentTurn = board.turnCount;
@@ -320,7 +331,14 @@ export class GameLogBuilder {
   // ---------------------------------------------------------------------------
   // Event dispatch
   // ---------------------------------------------------------------------------
-  private ingestEvent(event: ServerMessage, state: PreComputedState): void {
+  /**
+   * Ingest one event against a board snapshot. Public for the incremental
+   * live feed — the `board` is the viewer-relative snapshot the event was
+   * dispatched against (the live driver's `logicalState()`); it is only
+   * read by the `MSG_BECOME_TARGET` path to resolve targeted field cells.
+   * Call `syncTurnAndPhase` first to honour the ordering contract (§1.2).
+   */
+  ingestEvent(event: ServerMessage, board: BoardStatePayload): void {
     switch (event.type) {
       case 'MSG_DRAW':
         this.onDraw(event);
@@ -338,7 +356,7 @@ export class GameLogBuilder {
         this.onChangePos(event);
         break;
       case 'MSG_CHAINING':
-        this.onChaining(event, state);
+        this.onChaining(event);
         break;
       case 'MSG_CHAIN_SOLVING':
         this.onChainSolving(event);
@@ -374,7 +392,7 @@ export class GameLogBuilder {
         this.onCounter(event, false);
         break;
       case 'MSG_BECOME_TARGET':
-        this.onBecomeTarget(event, state);
+        this.onBecomeTarget(event, board);
         break;
       case 'MSG_SWAP_GRAVE_DECK':
         this.onGyDeckSwap(event);
@@ -628,16 +646,13 @@ export class GameLogBuilder {
   // ---------------------------------------------------------------------------
   // Chain handling
   // ---------------------------------------------------------------------------
-  private onChaining(
-    e: {
-      cardCode: number;
-      cardName: string;
-      player: Player;
-      chainIndex: number;
-      description: number;
-    },
-    _state: PreComputedState,
-  ): void {
+  private onChaining(e: {
+    cardCode: number;
+    cardName: string;
+    player: Player;
+    chainIndex: number;
+    description: number;
+  }): void {
     if (!this.chainOpen) {
       this.chainOpen = true;
       this.resetChainState(/* keepOpen */ true);
@@ -878,14 +893,14 @@ export class GameLogBuilder {
    */
   private onBecomeTarget(
     e: { cards: { player: Player; location: number; sequence: number }[] },
-    state: PreComputedState,
+    board: BoardStatePayload,
   ): void {
     const resolved = e.cards.map(c => {
       this.targetTotal++;
       // `c.player` is ABSOLUTE (MSG_BECOME_TARGET event field) — relativise
       // it before indexing the relative-to-viewer board snapshot (O5 / C2).
       const fromBoard = this.resolveBoardCard(
-        state.boardState,
+        board,
         this.rel(c.player),
         c.location,
         c.sequence,
