@@ -336,6 +336,14 @@
   background: var(--gold-soft-20);
 }
 
+// The label is wrapped in a <span> (required — it carries an i18n key). A
+// default <span> is `flex: 0 1 auto` (shrinkable) and negotiates flex space
+// differently from the prototype's bare text node, starving the `flex: 1`
+// ::before/::after rules. Pin it to its content width so the side rules grow.
+.lg-chainmark span {
+  flex: 0 0 auto;
+}
+
 .lg-chainmark mat-icon {
   @include mixin.icon-size(var(--gl-icon-label));
 }

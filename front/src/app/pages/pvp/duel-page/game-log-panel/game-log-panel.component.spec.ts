@@ -18,13 +18,14 @@ import {
   TranslateFakeLoader,
   TranslateLoader,
   TranslateModule,
+  TranslateService,
 } from '@ngx-translate/core';
 
 import { GameLogPanelComponent } from './game-log-panel.component';
 import { DuelGameLogService } from '../duel-game-log.service';
 import { DuelCardArtService } from '../duel-card-art.service';
 import type { DuelState, GameEvent } from '../../types';
-import type { ChainingMsg, DrawMsg } from '../../duel-ws.types';
+import type { AttackMsg, ChainingMsg, DrawMsg } from '../../duel-ws.types';
 import type { PreComputedState } from '../../duel-ws-replay.types';
 
 // -----------------------------------------------------------------------------
@@ -56,6 +57,17 @@ function chaining(player: 0 | 1, cardCode: number, cardName: string): ChainingMs
     sequence: 0,
     chainIndex: 1,
     description: 0,
+  };
+}
+
+/** A direct attack — the builder emits i18n-KEY combatant placeholders. */
+function attack(player: 0 | 1): AttackMsg {
+  return {
+    type: 'MSG_ATTACK',
+    attackerPlayer: player,
+    attackerSequence: 0,
+    defenderPlayer: 1 - player as 0 | 1,
+    defenderSequence: 0,
   };
 }
 
@@ -196,6 +208,47 @@ describe('GameLogPanelComponent', () => {
     // chain delimiters, the render tree folds them into a chaingroup.
     const hasRows = fixture.nativeElement.querySelectorAll('.lg-row').length > 0;
     expect(hasRows).toBe(true);
+  });
+
+  // ── i18n — combat placeholder keys are translated, never shown raw ──────────
+  it('translates the combat attacker/defender placeholder keys', () => {
+    // The builder emits i18n KEYS (gameLog.combat.attacker / .defender) into
+    // LogCardRef.cardName for combat placeholders — the combatants have no
+    // card identity. The panel MUST route those through ngx-translate, never
+    // render the raw key. Provide the real bundle entries for the assertion.
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', {
+      gameLog: {
+        combat: { attacker: 'Attacker', defender: 'Defender' },
+      },
+    });
+    translate.use('en');
+
+    openPanel();
+    feed([attack(0)]);
+
+    const thumbs = fixture.nativeElement.querySelectorAll('.lg-combat__thumb');
+    expect(thumbs.length).toBeGreaterThanOrEqual(2);
+    const text = Array.from(thumbs)
+      .map((t) => (t as HTMLElement).textContent?.trim())
+      .join(' ');
+    // The translated labels appear…
+    expect(text).toContain('Attacker');
+    expect(text).toContain('Defender');
+    // …and the raw key never leaks to the DOM.
+    expect(text).not.toContain('gameLog.combat');
+  });
+
+  it('returns a real card name verbatim — never treated as an i18n key', () => {
+    // A genuine card name has no `gameLog.` prefix, so `displayName` leaves it
+    // untouched (no spurious translate lookup).
+    expect(
+      component.cardName({
+        revealed: true,
+        cardCode: 5001,
+        cardName: 'Albion the Branded Dragon',
+      }),
+    ).toBe('Albion the Branded Dragon');
   });
 
   it('publishes a fresh render tree as new events arrive', () => {

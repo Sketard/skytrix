@@ -37,7 +37,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DuelGameLogService } from '../duel-game-log.service';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { AvatarComponent } from '../../../../shared/avatar/avatar.component';
@@ -115,6 +115,7 @@ export class GameLogPanelComponent {
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
+  private readonly translate = inject(TranslateService);
 
   /**
    * Open gate (R5). Driven by `DuelGameLogService.panelOpen` — the trigger
@@ -418,14 +419,33 @@ export class GameLogPanelComponent {
   // Card / zone rendering helpers
   // ---------------------------------------------------------------------------
 
+  /**
+   * Resolve a `LogCardRef.cardName` for display. The builder emits i18n KEYS
+   * (not real names) for combat placeholders — the attacker/defender/equipped
+   * monster have no card identity (`game-log-builder.ts` COMBAT_KEY). Those
+   * keys must be translated through the same `gameLog.*` ngx-translate bundle
+   * the rest of the panel uses; a real card name ("Albion the Branded
+   * Dragon") is NOT a key and is returned verbatim. The `gameLog.` prefix is
+   * the discriminator — only the builder's keys carry it, no card name does.
+   */
+  private displayName(name: string): string {
+    return name.startsWith('gameLog.') ? this.translate.instant(name) : name;
+  }
+
   /** The display name of a card ref — a real name, or a `#code` fallback. */
   cardName(ref: LogCardRef): string {
-    return ref.cardName ?? (ref.cardCode != null ? `#${ref.cardCode}` : 'Carte');
+    if (ref.cardName != null) return this.displayName(ref.cardName);
+    return ref.cardCode != null ? `#${ref.cardCode}` : 'Carte';
   }
 
   /** First two words of a card name — fits the small thumbnail box. */
   shortName(ref: LogCardRef): string {
-    const name = ref.cardName ?? (ref.cardCode != null ? `#${ref.cardCode}` : 'carte');
+    const name =
+      ref.cardName != null
+        ? this.displayName(ref.cardName)
+        : ref.cardCode != null
+          ? `#${ref.cardCode}`
+          : 'carte';
     return name.split(/\s+/).slice(0, 2).join(' ');
   }
 
