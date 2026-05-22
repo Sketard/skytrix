@@ -202,6 +202,14 @@ describe('DuelGameLogService', () => {
       expect(backwardCount).toBeGreaterThan(0);
     });
 
+    it('bumps journalRebuiltTick so the panel can jump to the bottom', () => {
+      // A wholesale rebuild signals the panel to scroll to the latest entry
+      // (a seek lands the user on step N — they want its row, not the top).
+      const before = service.journalRebuiltTick();
+      service.rebuildUpTo([state([draw(0, [1001])], 1)]);
+      expect(service.journalRebuiltTick()).toBe(before + 1);
+    });
+
     it('the silent rebuild does NOT flash the opponent bubble', () => {
       // A seek-rebuild replays MSG_CHAINING events through the batch
       // ingestState path — it must NOT feed `lastOpponentActivation` (the

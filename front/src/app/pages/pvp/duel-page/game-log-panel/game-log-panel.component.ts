@@ -24,6 +24,8 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -112,6 +114,7 @@ export class GameLogPanelComponent {
   private readonly cardArt = inject(DuelCardArtService);
   private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
 
   /**
    * Open gate (R5). Driven by `DuelGameLogService.panelOpen` — the trigger
@@ -187,33 +190,55 @@ export class GameLogPanelComponent {
       });
     });
 
-    // Bug 5 — calibrate `wasAtBottom` when the panel opens. The viewport
-    // mounts scrolled to the top: a journal that fits is "at bottom", one
-    // that overflows is not. Without this the seed (`true`) would make the
-    // first entry after an open-with-overflow auto-scroll wrongly. This
-    // effect is declared BEFORE the auto-scroll effect so a same-tick open
-    // calibrates before the scroll decision reads `wasAtBottom`.
+    // Bug 5 — opening the panel jumps the viewport to the bottom. The
+    // journal is a history; on open the user wants the latest entry, not
+    // the top. The scroll runs in `afterNextRender` so the `@if(open())`
+    // DOM is painted first. `scrollToBottom()` also seeds `wasAtBottom`.
     effect(() => {
       if (!this.open()) return;
-      untracked(() => (this.wasAtBottom = this.isAtBottom()));
+      untracked(() =>
+        afterNextRender(() => this.scrollToBottom(), { injector: this.injector }),
+      );
+    });
+
+    // Bug 5 — a wholesale rebuild (replay seek, `journalRebuiltTick`) jumps
+    // the viewport to the bottom: a seek lands the user on step N, and
+    // step N's entry is the bottom of the rebuilt history. Distinct from
+    // an incremental append (handled by the G3 follow-the-bottom effect).
+    //
+    // `wasAtBottom` is forced true SYNCHRONOUSLY here: a rebuild also fires
+    // the `entries()` effect below (same `_entries.set`), and this effect
+    // is declared first — so the G3 effect then sees `wasAtBottom === true`
+    // and defers to the scroll instead of flashing the "new entries" pill.
+    effect(() => {
+      this.gameLog.journalRebuiltTick();
+      untracked(() => {
+        if (!this.open()) return;
+        this.wasAtBottom = true;
+        afterNextRender(() => this.scrollToBottom(), { injector: this.injector });
+      });
     });
 
     // G3 auto-scroll. A new entry appends at the bottom (oldest-at-top order).
     // If the user was already at the bottom, follow it; if they scrolled up to
     // read history, do NOT hijack — raise the "new entries" pill instead.
     //
-    // Bug 5: the decision reads `wasAtBottom` — the bottom-state captured
-    // BEFORE this entry grew the scroll height — not a live `isAtBottom()`.
-    // This effect runs AFTER the re-render, so the new row has already
-    // pushed the content past the fold; a fresh `isAtBottom()` would always
-    // read "not at bottom" and the panel would never follow. `scrollToBottom()`
-    // still runs post-render, which is correct — the DOM has the new height.
+    // Bug 5: TWO timing traps, both fixed here.
+    //  · The decision reads `wasAtBottom` — the bottom-state captured BEFORE
+    //    this entry grew the scroll height. A live `isAtBottom()` checked
+    //    here would always read "not at bottom" (the new row already pushed
+    //    the content past the fold).
+    //  · The actual scroll is deferred to `afterNextRender`: an `effect`
+    //    can run BEFORE the `@for` paints the new row, so a synchronous
+    //    `scrollToBottom()` would scroll to the OLD `scrollHeight` and leave
+    //    the new row below the fold. `afterNextRender` runs post-paint, when
+    //    `scrollHeight` includes the new row.
     effect(() => {
       const count = this.entries().length;
       untracked(() => {
         if (count === 0 || !this.open()) return;
         if (this.wasAtBottom) {
-          this.scrollToBottom();
+          afterNextRender(() => this.scrollToBottom(), { injector: this.injector });
         } else {
           this.hasNewEntries.set(true);
         }

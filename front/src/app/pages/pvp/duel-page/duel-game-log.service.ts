@@ -68,6 +68,15 @@ export class DuelGameLogService {
   readonly panelOpen: Signal<boolean>;
   /** Panel close-in-progress flag — drives the exit transition (Lot 4c). */
   readonly panelClosing: Signal<boolean>;
+  /**
+   * Monotonic counter bumped each time the journal is wholesale REBUILT
+   * (a replay seek — `rebuildUpTo`). The panel watches it to jump the
+   * viewport to the bottom: after a seek to step N the user wants to see
+   * the most recent entry, not the top of the history (Bug 5 follow-up).
+   * Distinct from an incremental append, which only triggers the G3
+   * follow-the-bottom behaviour.
+   */
+  readonly journalRebuiltTick: Signal<number>;
 
   private readonly _entries = signal<GameLogEntry[]>([]);
   private readonly _lastOpponentActivation = signal<OpponentActivation | null>(
@@ -75,6 +84,7 @@ export class DuelGameLogService {
   );
   private readonly _panelOpen = signal(false);
   private readonly _panelClosing = signal(false);
+  private readonly _journalRebuiltTick = signal(0);
 
   /**
    * Absolute index of the viewer (the player the log is rendered FROM). The
@@ -110,6 +120,7 @@ export class DuelGameLogService {
     this.lastOpponentActivation = this._lastOpponentActivation.asReadonly();
     this.panelOpen = this._panelOpen.asReadonly();
     this.panelClosing = this._panelClosing.asReadonly();
+    this.journalRebuiltTick = this._journalRebuiltTick.asReadonly();
   }
 
   // ---------------------------------------------------------------------------
@@ -187,6 +198,10 @@ export class DuelGameLogService {
     this.tappedEvents.length = 0;
     for (const state of states) this.builder.ingestState(state);
     this._entries.set([...this.builder.entries]);
+    // Signal a wholesale rebuild (vs an incremental append) so the panel
+    // jumps the viewport to the bottom — a seek lands the user on step N,
+    // and step N's entry is the bottom of the rebuilt history.
+    this._journalRebuiltTick.update(t => t + 1);
   }
 
   /**

@@ -25,6 +25,7 @@ import { DuelGameLogService } from '../duel-game-log.service';
 import { DuelCardArtService } from '../duel-card-art.service';
 import type { DuelState, GameEvent } from '../../types';
 import type { ChainingMsg, DrawMsg } from '../../duel-ws.types';
+import type { PreComputedState } from '../../duel-ws-replay.types';
 
 // -----------------------------------------------------------------------------
 // Fixtures — mirror duel-game-log.service.spec.ts (a viewer-relative board).
@@ -349,6 +350,26 @@ describe('GameLogPanelComponent', () => {
 
     pill.click();
     fixture.detectChanges();
+    expect(box.scrollTop).toBe(1000);
+    expect(component.hasNewEntries()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.gamelog__newpill')).toBeNull();
+  });
+
+  it('jumps to the bottom after a seek rebuild even when scrolled up', () => {
+    // Bug 5 follow-up — a replay seek (`rebuildUpTo`) lands the user on
+    // step N: the panel must scroll to the bottom (step N's row), NOT raise
+    // the "new entries" pill, regardless of the prior scroll position.
+    openPanel();
+    const box = scrollBoxEl();
+    mockScrollMetrics(box, 1000, 300, 100);
+    fireScroll(box); // user scrolled up — wasAtBottom is false
+
+    const states: PreComputedState[] = [
+      { boardState: board(), events: [draw(0, [1001])], label: '', responseCount: 0 },
+    ];
+    gameLog.rebuildUpTo(states);
+    fixture.detectChanges();
+
     expect(box.scrollTop).toBe(1000);
     expect(component.hasNewEntries()).toBe(false);
     expect(fixture.nativeElement.querySelector('.gamelog__newpill')).toBeNull();
