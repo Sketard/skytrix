@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, isDevMode, OnDestroy, OnInit, signal, untracked,
+  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, OnDestroy, OnInit, signal, untracked,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
@@ -35,8 +35,6 @@ import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import type { DuelState } from '../types';
 import type { PreComputedState, TurnMeta } from '../replay-ws.types';
-import { DebugLogPanelComponent } from '../duel-page/debug-log-panel/debug-log-panel.component';
-import { buildReplayLogEntries } from '../duel-page/debug-log-formatter';
 import type { CardOnField, SelectPlaceMsg, SelectDisfieldMsg, PlaceOption, ZoneId } from '../duel-ws.types';
 import { buildFaceDownZoneKeys, preloadCardImages } from '../pvp-card.utils';
 import { buildHandChainBadges, buildHandRevealedCards, buildOpponentHandChainData } from '../duel-page/chain-badge.utils';
@@ -94,7 +92,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent,
     PvpZoneBrowserOverlayComponent,
-    TimelineBarComponent, TransportBarComponent, DebugLogPanelComponent,
+    TimelineBarComponent, TransportBarComponent,
     PvpPromptDialogComponent, PvpChainOverlayComponent, EffectBubbleComponent, GameLogPanelComponent, PvpDuelOverlaysComponent,
     OrientationLockComponent,
     BackFabComponent,
@@ -151,14 +149,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly isPlaying = this.transport.isPlaying;
   readonly pausedAtBoundary = this.transport.pausedAtBoundary;
 
-  readonly debugPanelOpen = signal(false);
-
   /** 'decision' = pause on prompts, 'result' = skip prompts */
   readonly promptMode = signal<'result' | 'decision'>(
     localStorage.getItem(ReplayPageComponent.PREF_PROMPT_MODE) === 'result' ? 'result' : 'decision',
   );
-  /** Debug log detail level (toggled via G key) */
-  readonly logDetail = signal<'normal' | 'debug'>(isDevMode() ? 'debug' : 'normal');
   /** Perspective: 0 = player 1, 1 = player 2 */
   readonly perspectiveIndex = signal<Player>(
     localStorage.getItem(ReplayPageComponent.PREF_PERSPECTIVE) === '1' ? 1 : 0,
@@ -244,7 +238,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return upTo > 0 && this.currentIndex() >= upTo;
   });
   readonly currentState = computed<PreComputedState | null>(() => this.boardStates()[this.currentIndex()] ?? null);
-  readonly debugLogEntries = computed(() => buildReplayLogEntries(this.boardStates(), this.logDetail()));
 
   /** Duel state for display — the adapter's RBS is already perspective-relative
    *  (swapBoardState applied on every updateLogical), so no swap needed here. */
@@ -962,10 +955,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       case 'End': this.onSkipEnd(); break;
       case 'f': case 'F': this.onFork(); break;
       case 'a': case 'A': this.onToggleAnimations(); break;
-      case 'g': case 'G': this.logDetail.update(v => v === 'normal' ? 'debug' : 'normal'); break;
       case 'm': case 'M': this.onTogglePromptMode(); break;
       case 'v': case 'V': this.onTogglePerspective(); break;
-      case 'd': case 'D': this.debugPanelOpen.update(v => !v); break;
+      // `l` — toggle the game-log panel. Replay has no on-screen trigger
+      // (PvP uses the mini-toolbar button); the keyboard is the only opener.
+      case 'l': case 'L': this.gameLog.togglePanel(); break;
       // `?` — Shift+/ on QWERTY US AND Shift+, on AZERTY FR both emit
       // the literal character U+003F regardless of physical key, so testing
       // `event.key === '?'` covers both layouts without `event.code` magic.

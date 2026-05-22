@@ -203,15 +203,6 @@
                         (openCheatSheet)="onOpenCheatSheet()"
                         (openMoreOptions)="onOpenOptions()" />
 
-    <!-- Debug Log Panel -->
-    <app-debug-log-panel [entries]="debugLogEntries()"
-                          [open]="debugPanelOpen()"
-                          [replayMode]="true"
-                          [activeIndex]="currentIndex()"
-                          [computedUpTo]="computedUpTo()"
-                          (closed)="debugPanelOpen.set(false)"
-                          (seekToEvent)="onSeek($event)" />
-
     <!-- Card Inspector -->
     @if (inspectedCard(); as card) {
       <app-pvp-card-inspector-wrapper [card]="card"

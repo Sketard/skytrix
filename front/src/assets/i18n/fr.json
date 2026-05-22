@@ -287,8 +287,8 @@
       "rotateLandscape": "Tournez votre appareil en paysage",
       "exit": "Quitter",
       "player": "Joueur",
-      "debug": "Debug",
       "devHub": "Dev hub",
+      "gameLog": "Journal",
       "chainResolution": "Résolution de chaîne",
       "selectCard": "Choisir une carte",
       "selectEffect": "Choisir un effet",
@@ -689,7 +689,6 @@
     "copyRoomLink": "Copier le lien de la room",
     "connectionError": "Erreur de connexion",
     "cardActions": "Actions de carte",
-    "toggleDebugLogs": "Afficher/masquer les logs de debug",
     "toggleDevHub": "Afficher/masquer le dev hub",
     "switchPlayer": "Passer à {{player}}",
     "loadingReplay": "Chargement du replay",
@@ -698,9 +697,6 @@
     "openNav": "Ouvrir la navigation",
     "closeNav": "Fermer la navigation",
     "navMenu": "Menu de navigation",
-    "downloadLogs": "Télécharger les logs",
-    "clearLogs": "Effacer les logs",
-    "closeDebugPanel": "Fermer le panneau de debug",
     "deleteDeck": "Supprimer {{name}}",
     "favorite": "Favori",
     "activationToggle": "Bascule d'activation",
@@ -984,8 +980,7 @@
         "perspective": "Changer de perspective",
         "animations": "Animations on / off",
         "promptMode": "Mode décisions / résultats",
-        "debug": "Panneau de debug",
-        "logLevel": "Niveau de log",
+        "gameLog": "Journal de partie",
         "fork": "Forker à ce point",
         "copyLink": "Copier le lien à ce moment",
         "help": "Afficher cette aide",
@@ -1076,6 +1071,105 @@
     "debug": {
       "title": "Logs de débogage",
       "emptyState": "Aucun log pour le moment"
+    }
+  },
+  "gameLog": {
+    "panel": {
+      "title": "Journal de partie",
+      "toggle": "Journal de partie",
+      "close": "Fermer le journal de partie",
+      "empty": "Aucun événement pour le moment",
+      "chain": "Chaîne",
+      "links": "maillons",
+      "resolution": "Résolution",
+      "newEntries": "Nouvelles entrées",
+      "turn": "Tour",
+      "youWin": "Victoire",
+      "oppWin": "Défaite",
+      "negated": "annulé",
+      "targets": "Cibles",
+      "openingHand": "Main de départ",
+      "hiddenCard": "Carte face cachée",
+      "coinToss": "Pile ou face",
+      "diceRoll": "Lancer de dé",
+      "you": "Vous",
+      "opponent": "Adversaire",
+      "counterType": "Type"
+    },
+    "verb": {
+      "draw": "Pioche",
+      "add": "Ajout",
+      "discard": "Défausse",
+      "sendGy": "Envoi au GY",
+      "banish": "Bannissement",
+      "returnDeck": "Retour au deck",
+      "returnHand": "Retour en main",
+      "returnExtra": "Retour à l'Extra",
+      "normalSummon": "Inv. Normale",
+      "specialSummon": "Inv. Spéciale",
+      "fusionSummon": "Inv. Fusion",
+      "ritualSummon": "Inv. Rituelle",
+      "synchroSummon": "Inv. Synchro",
+      "xyzSummon": "Inv. Xyz",
+      "linkSummon": "Inv. Lien",
+      "set": "Pose",
+      "flip": "Inv. par Flip",
+      "attach": "Matériau",
+      "move": "Déplacement",
+      "tribute": "Tribut",
+      "material": "Matériau",
+      "changePos": "Changement de position"
+    },
+    "phase": {
+      "draw": "Phase de Pioche",
+      "standby": "Phase Standby",
+      "main1": "Main Phase 1",
+      "battle": "Battle Phase",
+      "main2": "Main Phase 2",
+      "end": "End Phase"
+    },
+    "winReason": {
+      "lpZero": "Points de vie à 0",
+      "deckOut": "Deck épuisé",
+      "exodia": "Combo de victoire (Exodia)",
+      "surrender": "Abandon",
+      "timeout": "Temps écoulé"
+    },
+    "separator": {
+      "chainStart": "Début de chaîne",
+      "chainResolve": "Résolution de la chaîne",
+      "chainEnd": "Fin de chaîne"
+    },
+    "zone": {
+      "deck": "DECK",
+      "hand": "MAIN",
+      "monster": "Monstre",
+      "spellTrap": "M/P",
+      "grave": "GY",
+      "banished": "BANNIE",
+      "extra": "EXTRA",
+      "overlay": "XYZ",
+      "field": "Terrain"
+    },
+    "action": {
+      "equip": "Équipé à",
+      "counter": "Compteur",
+      "counterType": "Type {{n}}",
+      "gyDeckSwap": "Échange GY ↔ Deck",
+      "shuffleHand": "Mélange de la main",
+      "shuffleDeck": "Mélange du Deck",
+      "shuffleSetCard": "Mélange des cartes posées",
+      "swap": "Échange de cartes"
+    },
+    "combat": {
+      "directAttack": "Attaque directe",
+      "attacker": "Attaquant",
+      "defender": "Défenseur",
+      "equippedMonster": "Monstre équipé"
+    },
+    "rng": {
+      "heads": "Face",
+      "tails": "Pile"
     }
   }
 }

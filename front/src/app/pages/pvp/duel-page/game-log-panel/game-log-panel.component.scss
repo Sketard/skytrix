@@ -84,6 +84,17 @@
   animation: gamelog-slide-in var(--transition-fast) var(--ease-out);
 }
 
+// Replay mode — the viewport's bottom edge holds the transport stack
+// (timeline-bar/stepper + transport-bar, in normal flow). A viewport-fixed
+// panel anchored `bottom: 0` would extend behind it. In the replay DOM the
+// panel is a child of `.board-area` (`position: relative`, the flex:1 play
+// region ABOVE the transport stack) — so switching to `position: absolute`
+// bounds the panel to exactly that region, clearing the transport bar
+// whatever its (variable) height. PvP keeps the viewport-fixed band.
+:host-context(app-replay-page) .gamelog {
+  position: absolute;
+}
+
 .gamelog--closing {
   animation: gamelog-slide-out var(--transition-fast) var(--ease-in) forwards;
 }

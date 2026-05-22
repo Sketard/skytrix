@@ -57,7 +57,6 @@ import { DuelToastService } from './duel-toast.service';
 import { DebugLogService } from './debug-log.service';
 import { DuelDebugService } from './duel-debug.service';
 import { DuelGameLogService } from './duel-game-log.service';
-import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { DuelDevStateService } from './duel-dev-hub/duel-dev-state.service';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
@@ -71,7 +70,6 @@ import { ButtonComponent } from '../../../components/button/button.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { WaitingRoomSkeletonComponent } from '../../../shared/skel';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-duel-page',
@@ -97,7 +95,6 @@ import { environment } from '../../../../environments/environment';
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
     MatIcon, MatProgressSpinner,
     MatDialogClose,
-    DebugLogPanelComponent,
     PvpChainOverlayComponent,
     EffectBubbleComponent,
     GameLogPanelComponent,
@@ -124,16 +121,16 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   private readonly cardDataCache = inject(CardDataCacheService);
   private readonly systemStrings = inject(DuelSystemStringsService);
   readonly tabGuard = inject(DuelTabGuardService);
-  readonly debugLog = inject(DebugLogService);
   private readonly debugService = inject(DuelDebugService);
   // Provided + injected at page level (R10) so the Game Log accumulates from
   // the duel's very first event. A component-level service is instantiated on
   // its FIRST injection — if only the (Lot-4) panel injected it, every event
   // before the panel opens would be lost. Mirrors `DuelDebugService`.
-  private readonly gameLog = inject(DuelGameLogService);
+  // `protected` — the mini-toolbar's journal button reads `panelOpen()` /
+  // calls `togglePanel()`.
+  protected readonly gameLog = inject(DuelGameLogService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly orchestrator = inject(SoloDuelOrchestratorService);
-  readonly showDebugTools = environment.debugTools;
   readonly isSoloMode = signal(false);
   forkReplayId: string | null = null;
   forkSeekTo = 0;

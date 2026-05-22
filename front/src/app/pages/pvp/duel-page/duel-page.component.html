@@ -363,20 +363,29 @@
             </button>
           }
           <app-pvp-activation-toggle [(mode)]="activationMode" />
-          @if (showDebugTools) {
+          <!-- Game-log trigger — a player-facing feature, always visible.
+               Toggles the journal panel via the shared DuelGameLogService.
+               It took the slot of the former dev-only Debug button (the
+               debug-log-panel is dev tooling and was dropped from PvP — it
+               stays reachable in replay mode via the `d` key). -->
+          <button class="mini-toolbar__item"
+                  type="button"
+                  [attr.aria-label]="'gameLog.panel.toggle' | translate"
+                  [attr.aria-expanded]="gameLog.panelOpen()"
+                  (click)="gameLog.togglePanel()">
+            <mat-icon class="mini-toolbar__icon">history_edu</mat-icon>
+            <span class="mini-toolbar__label">{{ 'duel.misc.gameLog' | translate }}</span>
+          </button>
+          @if (devMode) {
             <button class="mini-toolbar__item"
                     type="button"
-                    [attr.aria-label]="'a11y.toggleDebugLogs' | translate"
-                    [attr.aria-expanded]="debugLog.panelOpen()"
-                    aria-controls="debug-log-panel"
-                    (click)="debugLog.panelOpen.set(!debugLog.panelOpen())">
-              <mat-icon class="mini-toolbar__icon">bug_report</mat-icon>
-              <span class="mini-toolbar__label">{{ 'duel.misc.debug' | translate }}</span>
+                    [attr.aria-label]="'a11y.toggleDevHub' | translate"
+                    [attr.aria-expanded]="devState.hubVisible()"
+                    (click)="devState.toggleHub()">
+              <mat-icon class="mini-toolbar__icon">construction</mat-icon>
+              <span class="mini-toolbar__label">{{ 'duel.misc.devHub' | translate }}</span>
             </button>
           }
-          <!-- The on-screen dev-hub button was removed (Lot 4f) — its slot is
-               taken by the game-log trigger in `pvp-board-container`. The dev
-               hub itself stays reachable via Ctrl+Shift+D. -->
         </div>
       </div>
 
@@ -511,13 +520,6 @@
                            (longPressInspect)="onLongPressInspect($event)"
                            (preTargetCards)="onPreTargetCards($event)" />
 
-    <!-- Debug Log Panel (dev only) -->
-    @if (showDebugTools) {
-      <app-debug-log-panel [entries]="debugLog.entries()"
-                            [open]="debugLog.panelOpen()"
-                            (closed)="debugLog.panelOpen.set(false)"
-                            (clearRequested)="debugLog.clearLogs()" />
-    }
   }
 
   <!-- Pre-duel dice arena (Phase 3.14): owns the full pre-duel UX

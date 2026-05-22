@@ -1019,14 +1019,20 @@
   }
 }
 // ============================================================
-// Game Log trigger button (Lot 4f)
+// Game Log trigger button — REPLAY ONLY
 // ============================================================
-// Floating button bottom-right, replacing the former on-screen dev-hub
-// toolbar button. Sits below the game-log panel ($z-pvp-floating-instruction
-// = 60) so the panel covers it when open; the `[active]` state on the
-// `<app-icon-button>` still reads through as a gold tint underneath.
+// In PvP the journal is opened from the mini-toolbar. The replay page has
+// no mini-toolbar, so the trigger floats bottom-right here instead.
+//
+// `position: absolute` (not fixed): the replay viewport's bottom-right
+// corner is occupied by the transport stack (timeline-bar/stepper +
+// transport-bar, in normal flow). A viewport-fixed button would land
+// behind it. The board-container host is `position: relative` (set by
+// replay-page.scss) and fills exactly the play region ABOVE the transport
+// stack — anchoring the button to it keeps it clear of the transport bar
+// whatever its (variable) height (timeline-bar desktop vs stepper mobile).
 .game-log-trigger {
-  position: fixed;
+  position: absolute;
   right: var(--space-4);
   bottom: var(--space-4);
   z-index: z.$z-pvp-mini-toolbar;

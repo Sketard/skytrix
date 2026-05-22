@@ -1,5 +1,4 @@
 import { LOCATION, type ServerMessage } from '../duel-ws.types';
-import type { PreComputedState, ReplayDebugLogEntry } from '../replay-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { isFaceUp, isDefense } from '../pvp-card.utils';
 import { IDLE_ACTION, BATTLE_ACTION } from './idle-action-codes';
@@ -9,14 +8,6 @@ export interface DebugLogEntry {
   category: 'event' | 'prompt' | 'response' | 'system';
   text: string;
   player?: 0 | 1;
-}
-
-export interface DebugPanelEntry {
-  category: 'event' | 'prompt' | 'response' | 'system';
-  text: string;
-  player?: 0 | 1;
-  timestamp?: number;
-  eventIndex?: number;
 }
 
 // =============================================================================
@@ -338,50 +329,4 @@ export function extractPlayerFromMsg(msg: ServerMessage): 0 | 1 | undefined {
   if ('player' in msg && typeof msg.player === 'number') return msg.player as 0 | 1;
   if ('attackerPlayer' in msg && typeof msg.attackerPlayer === 'number') return msg.attackerPlayer as 0 | 1;
   return undefined;
-}
-
-// =============================================================================
-// Replay log entries builder
-// =============================================================================
-
-export function buildReplayLogEntries(
-  boardStates: PreComputedState[],
-  granularity: 'normal' | 'debug',
-): ReplayDebugLogEntry[] {
-  const entries: ReplayDebugLogEntry[] = [];
-  for (let i = 0; i < boardStates.length; i++) {
-    const state = boardStates[i];
-    if (granularity === 'normal') {
-      entries.push({
-        eventIndex: i,
-        category: state.events.length > 0 ? categorizeMsg(state.events[0].type) : 'event',
-        text: state.label || `Event ${i}`,
-        player: state.events.length > 0 ? extractPlayerFromMsg(state.events[0]) : undefined,
-      });
-    } else {
-      // Debug mode: all events within one boardState share the same eventIndex.
-      // Clicking any sub-event seeks to the parent boardState snapshot — this is
-      // an ADR-7 limitation (navigation granularity = boardState, not WS event).
-      let pushed = false;
-      for (const event of state.events) {
-        const text = formatServerMessage(event);
-        if (text === null) continue;
-        entries.push({
-          eventIndex: i,
-          category: categorizeMsg(event.type),
-          text,
-          player: extractPlayerFromMsg(event),
-        });
-        pushed = true;
-      }
-      if (!pushed) {
-        entries.push({
-          eventIndex: i,
-          category: 'event',
-          text: state.label || `Event ${i}`,
-        });
-      }
-    }
-  }
-  return entries;
 }

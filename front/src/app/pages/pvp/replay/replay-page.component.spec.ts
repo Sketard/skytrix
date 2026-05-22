@@ -524,20 +524,17 @@ describe('ReplayPageComponent — onKeydown dispatch', () => {
     expect(transport.stepForward).not.toHaveBeenCalled();
   });
 
-  it('G toggles logDetail (normal ↔ debug)', () => {
-    const initial = component.logDetail();
-    press('g', document.body);
-    expect(component.logDetail()).not.toBe(initial);
-    press('G', document.body);
-    expect(component.logDetail()).toBe(initial);
-  });
-
-  it('D toggles debugPanelOpen', () => {
-    expect(component.debugPanelOpen()).toBe(false);
-    press('d', document.body);
-    expect(component.debugPanelOpen()).toBe(true);
-    press('D', document.body);
-    expect(component.debugPanelOpen()).toBe(false);
+  it('L toggles the game-log panel', () => {
+    // DuelGameLogService is provided at the component level, not the module —
+    // pull it from the component injector, not TestBed's root injector.
+    const gameLog = fixture.debugElement.injector.get(DuelGameLogService);
+    expect(gameLog.panelOpen()).toBe(false);
+    press('l', document.body);
+    expect(gameLog.panelOpen()).toBe(true);
+    // Second press begins the close — `panelOpen` stays true until the panel
+    // component finishes the exit transition; `panelClosing` is the live flag.
+    press('L', document.body);
+    expect(gameLog.panelClosing()).toBe(true);
   });
 
   it('unmapped key is a no-op', () => {

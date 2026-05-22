@@ -70,8 +70,7 @@ export class ReplayCheatSheetComponent {
         { labelKey: 'replay.viewer.cheatSheet.perspective',   keys: ['V'] },
         { labelKey: 'replay.viewer.cheatSheet.animations',    keys: ['A'] },
         { labelKey: 'replay.viewer.cheatSheet.promptMode',    keys: ['M'] },
-        { labelKey: 'replay.viewer.cheatSheet.debug',         keys: ['D'] },
-        { labelKey: 'replay.viewer.cheatSheet.logLevel',      keys: ['G'] },
+        { labelKey: 'replay.viewer.cheatSheet.gameLog',       keys: ['L'] },
       ],
     },
     {
