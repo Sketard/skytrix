@@ -321,7 +321,7 @@ Pas instanciés directement dans un template métier, ou usage unique.
 | Navbar | `<navbar>` | Navigation principale. Placée une fois dans le shell. |
 | System overlay | `<app-system-overlay>` | Overlay d'état réseau. `variant` (`lost\|reconnecting\|grace\|blocked`, requis), `title`, `subtitle`, `pulseTitle`. |
 | Effect bubble | `<app-effect-bubble>` | **Feature-scoped** (`pvp/duel-page/effect-bubble/`, pas un primitif DS-core). Bulle éphémère de l'effet activé par l'adversaire (Surface 2 du Game Log). Aucune entrée : se monte sans binding dans `duel-page` + `replay-page`, lit `DuelGameLogService.lastOpponentActivation`, pilote son propre overlay CDK ancré sur la duelist-card adverse. |
-| Game log panel | `<app-game-log-panel>` | **Feature-scoped** (`pvp/duel-page/game-log-panel/`, pas un primitif DS-core). Bandeau latéral pleine hauteur — journal du duel (Surface 1 du Game Log). Lit `DuelGameLogService.gameLogEntries`, rend la grammaire à 5 blocs (séparateurs / move / rng / combat / action) avec groupage de chaîne. Inputs : `open` (gate DOM — provisoirement hard-true en attendant le bouton trigger Lot 4f), `playerNames` (`[toi, adv]`). Se monte dans `duel-page` + `replay-page`. |
+| Game log panel | `<app-game-log-panel>` | **Feature-scoped** (`pvp/duel-page/game-log-panel/`, pas un primitif DS-core). Bandeau latéral pleine hauteur — journal du duel (Surface 1 du Game Log). Lit `DuelGameLogService.gameLogEntries`, rend la grammaire à 5 blocs (séparateurs / move / rng / combat / action) avec groupage de chaîne. Ouverture pilotée par `DuelGameLogService.panelOpen` — bouton mini-toolbar en PvP, raccourci `l` en replay ; `@if(open())` ne rend aucun DOM panneau fermé. Se monte dans `duel-page` + `replay-page`. |
 
 ---
 
