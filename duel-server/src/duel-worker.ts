@@ -464,21 +464,37 @@ function transformSelectChain(msg: any): ServerMessage {
   };
 }
 
+/** Resolve a prompt `description` code to its effect text server-side — the
+ *  code's `strN` paragraph (cards.cdb) is only reachable here. Returns ''
+ *  (never `%ls`/`%d`) via `resolveDescription`'s placeholder guard, or
+ *  undefined when the card db is not loaded. */
+function resolvePromptDescription(description: number): string | undefined {
+  return cardDb ? resolveDescription(description, cardDb, systemStrings) : undefined;
+}
+
 function transformSelectEffectYn(msg: any): ServerMessage {
-  // The description code is emitted raw — the client localizes it (FR/EN).
+  const description = Number(msg.description);
   return {
     type: 'SELECT_EFFECTYN', player: msg.player as Player,
-    cardCode: msg.code, cardName: getCardName(msg.code), description: Number(msg.description),
+    cardCode: msg.code, cardName: getCardName(msg.code), description,
+    descriptionText: resolvePromptDescription(description),
   };
 }
 
 function transformSelectOption(msg: any): ServerMessage {
-  // `options` carries the raw 64-bit description codes — the client localizes each.
+  // `options` carries the raw 64-bit description codes. The codes are kept for
+  // the client, but the EFFECT TEXT is resolved here: a code's `strN` paragraph
+  // (cards.cdb) is only reachable server-side. `resolveDescription` returns a
+  // clean string or '' (its placeholder guard drops any `%ls` / `%d`).
   const rawOptions = msg.options.map(Number);
   dlog.debug('SELECT_OPTION', { raw: msg.options.map(String), decoded: rawOptions.map((o: number) => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF })) });
+  const optionTexts = cardDb
+    ? rawOptions.map((code: number) => resolveDescription(code, cardDb!, systemStrings))
+    : undefined;
   return {
     type: 'SELECT_OPTION', player: msg.player as Player,
     options: rawOptions,
+    optionTexts,
   };
 }
 
@@ -690,8 +706,11 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return transformSelectEffectYn(msg);
 
     case OcgMessageType.SELECT_YESNO: {
-      // The description code is emitted raw — the client localizes it (FR/EN).
-      return { type: 'SELECT_YESNO', player: msg.player as Player, description: Number(msg.description) };
+      const description = Number(msg.description);
+      return {
+        type: 'SELECT_YESNO', player: msg.player as Player, description,
+        descriptionText: resolvePromptDescription(description),
+      };
     }
 
     case OcgMessageType.SELECT_PLACE:

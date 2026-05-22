@@ -18,6 +18,16 @@ const TABLE_URLS: Record<string, string> = {
 const FALLBACK_LANG = 'en';
 
 /**
+ * Unsubstituted printf-style placeholders OCGCore leaves in some system
+ * strings (`%ls` for an interpolated card name, `%d` for a count). They are
+ * filled by the engine where the argument list is in scope — the browser
+ * never has those args, so a system string still carrying one is unusable as
+ * display text and must not surface in a prompt hint. Mirrors the server-side
+ * guard in `duel-server/src/game-log/effect-desc-resolver.ts`.
+ */
+const PLACEHOLDER_RE = /%ls|%d/;
+
+/**
  * Resolves OCGCore system strings (prompt chrome, win reasons) client-side
  * from the bundled FR/EN tables, keyed off the current UI language.
  *
@@ -52,9 +62,14 @@ export class DuelSystemStringsService {
    * Resolves a system-string index for the current language. Falls back to
    * the EN table when the index is absent, then to '' so the UI never shows
    * `undefined`.
+   *
+   * A resolved string still carrying an unsubstituted `%ls` / `%d` placeholder
+   * is dropped to '' — the browser cannot fill it (no engine argument list),
+   * and a raw "%ls" in a prompt hint reads as a bug to the user.
    */
   resolveSystemString(strIndex: number): string {
-    return this.lookup('system', String(strIndex));
+    const text = this.lookup('system', String(strIndex));
+    return PLACEHOLDER_RE.test(text) ? '' : text;
   }
 
   /**

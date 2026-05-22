@@ -92,21 +92,36 @@ export class PromptOptionListComponent implements PromptSubComponent<OptionListP
   }
 
   /**
-   * Resolves each SELECT_OPTION code to a localized label. System strings
-   * (`cardCode == 0`) resolve synchronously; card-text descriptions resolve
-   * to the card's localized name via the Spring Boot card-data path.
+   * Resolves each SELECT_OPTION code to a localized label.
+   *
+   * The server now ships `optionTexts` — the per-code effect text resolved
+   * from its `strN` paragraph (cards.cdb), the only place that text exists.
+   * It is preferred whenever present and non-empty. The legacy client-side
+   * path is the fallback for payloads without `optionTexts`: a system string
+   * resolves synchronously, a card-text code degrades to the card's name
+   * (no `strN` access client-side). When `optionTexts` IS present but an
+   * entry is `''` (server dropped a placeholder string / unknown card), the
+   * generic "Option N" label is shown — never a misleading card name.
    */
   private async resolveOptionLabels(codes: number[]): Promise<void> {
+    const optionTexts =
+      this.promptData?.type === 'SELECT_OPTION'
+        ? this.promptData.optionTexts
+        : undefined;
     const deps = { resolveSystemString: (i: number) => this.systemStrings.resolveSystemString(i) };
     await this.systemStrings.preload();
     const labels = await Promise.all(
       codes.map(async (code, i) => {
+        const fallback = this.translate.instant('duel.prompt.optionFallback', { n: i + 1 });
+        // Server-resolved text wins. `optionTexts` present ⇒ trust it fully:
+        // a '' entry is an explicit "nothing usable", fall to the generic label.
+        if (optionTexts) return optionTexts[i] || fallback;
+
+        // Legacy payload — best-effort client-side resolution.
         const result = resolveDescription(code, deps);
-        if (result.kind === 'system') {
-          return result.text || this.translate.instant('duel.prompt.optionFallback', { n: i + 1 });
-        }
+        if (result.kind === 'system') return result.text || fallback;
         const card = await this.cardDataCache.getCardData(result.cardCode);
-        return card.name || this.translate.instant('duel.prompt.optionFallback', { n: i + 1 });
+        return card.name || fallback;
       }),
     );
     this.resolvedOptionLabels.set(labels);

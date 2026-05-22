@@ -59,6 +59,11 @@ export interface SelectEffectYnMsg {
   /** 64-bit OCGCore description code: high 20 bits = cardCode, low 20 = strIndex.
    *  Resolved to localized text client-side (see duel-description.util.ts). */
   description: number;
+  /** Server-resolved effect text for `description` — the code's `strN`
+   *  paragraph (cards.cdb) or system string, the only place that text is
+   *  reachable. `''` when nothing usable resolved (placeholder string,
+   *  unknown card). Absent on legacy payloads. */
+  descriptionText?: string;
 }
 
 export interface SelectYesNoMsg {
@@ -67,6 +72,11 @@ export interface SelectYesNoMsg {
   /** 64-bit OCGCore description code: high 20 bits = cardCode, low 20 = strIndex.
    *  Resolved to localized text client-side (see duel-description.util.ts). */
   description: number;
+  /** Server-resolved effect text for `description` — the code's `strN`
+   *  paragraph (cards.cdb) or system string, the only place that text is
+   *  reachable. `''` when nothing usable resolved (placeholder string,
+   *  unknown card). Absent on legacy payloads. */
+  descriptionText?: string;
 }
 
 export interface SelectPlaceMsg {
@@ -97,6 +107,15 @@ export interface SelectOptionMsg {
   /** Each entry is a 64-bit OCGCore description code (high 20 bits = cardCode,
    *  low 20 = strIndex). Resolved to localized labels client-side. */
   options: number[];
+  /**
+   * Server-resolved effect text for each `options` entry — same index. The
+   * worker resolves the code's `strN` paragraph (cards.cdb) or system string,
+   * the only place the per-paragraph card text is available. A `''` entry
+   * means the code resolved to nothing usable (placeholder string, unknown
+   * card) — the client falls back to a generic label. Absent on legacy
+   * payloads (the client then keeps its own best-effort resolution).
+   */
+  optionTexts?: string[];
 }
 
 export interface SelectTributeMsg {

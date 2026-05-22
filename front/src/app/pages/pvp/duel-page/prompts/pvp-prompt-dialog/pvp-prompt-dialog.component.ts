@@ -514,19 +514,34 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Reads the numeric `description` code off a SELECT_EFFECTYN / SELECT_YESNO
-   * prompt and resolves it synchronously when it is a system string
-   * (`cardCode == 0`). Card-text descriptions (`cardCode != 0`) need an async
-   * card-data fetch — they return '' here and are filled in by
-   * `resolveCardDescriptionAsync`.
+   * Resolves the SELECT_EFFECTYN / SELECT_YESNO description for the initial
+   * (synchronous) hint build.
+   *
+   * The server now ships `descriptionText` — the code's effect text resolved
+   * from its `strN` paragraph (cards.cdb), the only place that text exists.
+   * It is preferred whenever present. The legacy fallback resolves a system
+   * string synchronously; a card-text code returns '' here and is filled in
+   * by `resolveDescriptionAsync`.
    */
   private resolveSystemDescription(prompt: Prompt): string {
+    const serverText = this.promptDescriptionText(prompt);
+    if (serverText !== undefined) return serverText;
+
     const code = this.descriptionCode(prompt);
     if (code == null) return '';
     const result = resolveDescription(code, {
       resolveSystemString: i => this.systemStrings.resolveSystemString(i),
     });
     return result.kind === 'system' ? result.text : '';
+  }
+
+  /** Server-resolved description text of a SELECT_EFFECTYN / SELECT_YESNO
+   *  prompt, or undefined on a legacy payload that carries none. */
+  private promptDescriptionText(prompt: Prompt): string | undefined {
+    if (prompt.type === 'SELECT_EFFECTYN' || prompt.type === 'SELECT_YESNO') {
+      return (prompt as { descriptionText?: string }).descriptionText;
+    }
+    return undefined;
   }
 
   /**
@@ -539,6 +554,9 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private async resolveDescriptionAsync(prompt: Prompt, cardName: string, hintAction: string, hintTimingLabel: string): Promise<void> {
     const code = this.descriptionCode(prompt);
     if (code == null) return;
+    // Server already resolved it — the sync `resolveSystemDescription` used it,
+    // nothing to fetch.
+    if (this.promptDescriptionText(prompt) !== undefined) return;
 
     const deps = { resolveSystemString: (i: number) => this.systemStrings.resolveSystemString(i) };
     const result = resolveDescription(code, deps);

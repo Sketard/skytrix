@@ -8,11 +8,21 @@ import { DuelSystemStringsService } from './duel-system-strings.service';
 // FR intentionally omits index 999 + victory 0x99 so the EN-fallback path is
 // exercised.
 const EN_TABLE = {
-  system: { '500': 'Select the card(s) to Tribute', '999': 'EN-only string' },
+  system: {
+    '500': 'Select the card(s) to Tribute',
+    '999': 'EN-only string',
+    // Strings OCGCore leaves with unsubstituted printf placeholders — the
+    // browser has no engine args to fill them.
+    '221': 'Activate the Trigger Effect of "%ls" from [%ls]?',
+    '204': 'Remove %d "%ls"',
+  },
   victory: { '0x1': 'LP reached 0', '0x99': 'EN-only victory' },
 };
 const FR_TABLE = {
-  system: { '500': 'Sélectionnez la/les carte(s) à Sacrifier' },
+  system: {
+    '500': 'Sélectionnez la/les carte(s) à Sacrifier',
+    '221': 'Activer l\'Effet Déclencheur de « %ls » depuis [%ls] ?',
+  },
   victory: { '0x1': 'Points de Vie réduits à 0' },
 };
 
@@ -72,6 +82,27 @@ describe('DuelSystemStringsService', () => {
     makeService('fr');
     await preloadWithTables();
     expect(service.resolveSystemString(123456)).toBe('');
+  });
+
+  it('drops a system string carrying an unsubstituted %ls placeholder', async () => {
+    // system 221 — "Activate the Trigger Effect of \"%ls\" from [%ls]?". The
+    // browser cannot fill %ls (no engine args) — a raw "%ls" in a prompt hint
+    // reads as a bug. The guard returns '' so the caller falls back cleanly.
+    makeService('fr');
+    await preloadWithTables();
+    expect(service.resolveSystemString(221)).toBe('');
+  });
+
+  it('drops a system string carrying an unsubstituted %d placeholder', async () => {
+    makeService('en');
+    await preloadWithTables();
+    expect(service.resolveSystemString(204)).toBe('');
+  });
+
+  it('still resolves a placeholder-free system string normally', async () => {
+    makeService('en');
+    await preloadWithTables();
+    expect(service.resolveSystemString(500)).toBe('Select the card(s) to Tribute');
   });
 
   it('resolves a win reason in French when lang=fr', async () => {
