@@ -8,6 +8,10 @@
 // its own CSS — every rule, including `.lg-thumb--art`, lives in game-log.css.
 // GameLogEntry[] + css string in, HTML out.
 //
+// O9: the GameLogBuilder emits i18n KEYS, not French strings. This dev-artefact
+// renderer translates them through `KEY_TO_FR` (`game-log-fr-strings.ts`) so
+// the preview stays readable French — it is not i18n-bound.
+//
 // Card thumbnails render real artwork when a CardImageResolver is supplied,
 // else fall back to a text-placeholder (card name in the thumb).
 // =============================================================================
@@ -25,6 +29,7 @@ import type {
   RowHead,
   RelPlayer,
 } from './game-log-types.js';
+import { frString } from './game-log-fr-strings.js';
 
 /** HTML-escape a string for safe text interpolation. */
 function esc(value: string): string {
@@ -295,8 +300,9 @@ function renderSeparator(e: SeparatorEntry): string {
       // card): same djb2-hashed gradient per pseudo. `activePlayerNames` is
       // relative [you, opp] — same order as `e.lp`.
       const [youName, oppName] = activePlayerNames;
+      // STRUCTURED kind — compose "Tour N" from the carried turnNumber.
       return `        <div class="lg-turn">
-          <div class="lg-turn__title">${esc(e.label)}</div>
+          <div class="lg-turn__title">Tour ${esc(String(e.turnNumber ?? '?'))}</div>
           <div class="lg-turn__players">
             <div class="lg-turn__p">
               ${avatarMarkup(youName)}
@@ -316,7 +322,8 @@ function renderSeparator(e: SeparatorEntry): string {
         </div>`;
     }
     case 'phase':
-      return `        <div class="lg-phase">${esc(e.label)}</div>`;
+      // Key-pure kind — `labelKey` translated through KEY_TO_FR.
+      return `        <div class="lg-phase">${esc(frString(e.labelKey ?? ''))}</div>`;
     // Chain delimiters are consumed by renderStream → renderChainGroup; a stray
     // one reaching here means an unbalanced stream — render nothing.
     case 'chain-start':
@@ -324,9 +331,18 @@ function renderSeparator(e: SeparatorEntry): string {
     case 'chain-end':
       return '';
     case 'decision':
-      return `        <div class="lg-decision">${esc(e.label)}</div>`;
-    case 'duel-over':
-      return `        <div class="lg-end"><div class="lg-end__title">${esc(e.label)}</div></div>`;
+      // STRUCTURED kind — never emitted by the current builder; render nothing.
+      return '';
+    case 'duel-over': {
+      // STRUCTURED kind — compose the winner line + reason from the side and
+      // the win-reason key.
+      const winner =
+        e.winnerSide === 0 ? 'Toi — Victoire' : 'Adversaire — Victoire';
+      const reason = e.reasonKey
+        ? `<div class="lg-end__reason">${esc(frString(e.reasonKey))}</div>`
+        : '';
+      return `        <div class="lg-end"><div class="lg-end__title">🏆 ${esc(winner)}</div>${reason}</div>`;
+    }
   }
 }
 
@@ -522,9 +538,11 @@ function pileSlot(zone: string, isDest: boolean): string {
  * field cell is the full mini-board (standardised field-grid rule).
  */
 function renderMovedFlow(m: MovedCard): string {
+  // `verb` and the zone tags are i18n keys — translate through KEY_TO_FR.
+  const verb = frString(m.verb);
   if (m.posChange) {
     return `<div class="lg-bare__flow">
-                  ${flowLeg(m.verb)}
+                  ${flowLeg(verb)}
                   <span class="lg-bare__zones">${esc(m.posChange.from)} → ${esc(m.posChange.to)}</span>
                 </div>`;
   }
@@ -533,16 +551,16 @@ function renderMovedFlow(m: MovedCard): string {
   const destPart = m.destCell
     ? renderMiniBoard(m.destCell)
     : m.destZone
-      ? pileSlot(m.destZone, true)
+      ? pileSlot(frString(m.destZone), true)
       : '';
   if (!destPart) {
     return `<div class="lg-bare__flow">
-                  ${flowLeg(m.verb)}
+                  ${flowLeg(verb)}
                 </div>`;
   }
   return `<div class="lg-bare__flow">
-                  ${m.fromZone ? pileSlot(m.fromZone, false) : ''}
-                  ${flowLeg(m.verb)}
+                  ${m.fromZone ? pileSlot(frString(m.fromZone), false) : ''}
+                  ${flowLeg(verb)}
                   ${destPart}
                 </div>`;
 }
@@ -617,8 +635,11 @@ function renderRng(e: RngEntry, isResolution: boolean): string {
   const icon = e.rng === 'coin' ? 'toll' : 'casino';
   const label = e.rng === 'coin' ? 'Lancé de pièce' : 'Lancé de dé';
   const chip = e.rng === 'coin' ? 'lg-rng-coin' : 'lg-rng-die';
+  // Coin results are i18n keys (`gameLog.rng.heads/tails`); dice results are
+  // plain numeric strings — both pass through `frString` (a number string is
+  // not a key, so it is returned verbatim).
   const results = e.results
-    .map(r => `<span class="${chip}">${esc(r)}</span>`)
+    .map(r => `<span class="${chip}">${esc(frString(r))}</span>`)
     .join('');
   return `        <div ${rowAttrs(e, false)}>
 ${renderHead(e, isResolution)}
@@ -645,7 +666,7 @@ function renderCombat(e: CombatEntry, isResolution: boolean): string {
               <div class="lg-combat__vs"><span class="material-icons-round">bolt</span></div>
               <div class="lg-combat__player">
                 <span class="lg-combat__player-ico"><span class="material-icons-round">person</span></span>
-                <span class="lg-combat__player-dmg">${esc(e.directLabel)}</span>
+                <span class="lg-combat__player-dmg">${esc(frString(e.directLabel))}</span>
               </div>`
     : `<div class="lg-combat__side">${combatThumb(e.attacker)}</div>
               <div class="lg-combat__vs"><span class="material-icons-round">bolt</span></div>
@@ -714,9 +735,16 @@ function renderAction(e: ActionEntry, isResolution: boolean): string {
   const badge = e.counterBadge
     ? `<span class="lg-counter-badge">${esc(e.counterBadge)}</span>`
     : '';
-  const detail = e.detail
-    ? `<span class="lg-action__detail">${esc(e.detail)}</span>`
-    : '';
+  // Counter rows carry a numeric type — compose "Type N" from the i18n key.
+  const detail =
+    e.counterType !== undefined
+      ? `<span class="lg-action__detail">${esc(
+          frString('gameLog.action.counterType').replace(
+            '{n}',
+            String(e.counterType),
+          ),
+        )}</span>`
+      : '';
   const targets = e.equipTargets?.length
     ? `<div class="lg-action__targets">${e.equipTargets.map(t => thumb(t, '')).join('')}</div>`
     : '';
@@ -725,7 +753,7 @@ ${renderHead(e, isResolution)}
           <div class="lg-body">
             <div class="lg-action">
               <span class="lg-action__icon"><span class="material-icons-round">bolt</span></span>
-              <span class="lg-action__label">${esc(e.label)}</span>
+              <span class="lg-action__label">${esc(frString(e.labelKey))}</span>
               ${detail}
               ${targets}
               ${badge}
@@ -754,13 +782,23 @@ function thumb(ref: LogCardRef, extra: string): string {
 }
 
 function cardName(ref: LogCardRef): string {
-  return esc(ref.cardName ?? (ref.cardCode ? `#${ref.cardCode}` : 'Carte'));
+  return esc(resolvedName(ref) ?? (ref.cardCode ? `#${ref.cardCode}` : 'Carte'));
 }
 
 /** First two words of a card name — fits the small thumbnail box. */
 function shortName(ref: LogCardRef): string {
-  const name = ref.cardName ?? (ref.cardCode ? `#${ref.cardCode}` : 'carte');
+  const name = resolvedName(ref) ?? (ref.cardCode ? `#${ref.cardCode}` : 'carte');
   return name.split(/\s+/).slice(0, 2).join(' ');
+}
+
+/**
+ * The display name of a card ref. `cardName` is usually a real card name, but
+ * the combat placeholders (`gameLog.combat.attacker`, …) carry an i18n key —
+ * `frString` resolves a key and returns a real name unchanged (a name is never
+ * in KEY_TO_FR). Returns null when the ref carries no name.
+ */
+function resolvedName(ref: LogCardRef): string | null {
+  return ref.cardName != null ? frString(ref.cardName) : null;
 }
 
 // -----------------------------------------------------------------------------
@@ -783,6 +821,16 @@ function showHead(player: RelPlayer, source: LogCardRef | null): RowHead {
 }
 
 /**
+ * A section-header separator for the catalogue. O9: `phase` is a key-pure
+ * separator kind — `labelKey` is translated through `KEY_TO_FR`. These section
+ * titles are catalogue captions, not real game phases, so they are not in the
+ * table; `frString` returns them verbatim (loud fallback) — intended here.
+ */
+function showSection(caption: string): GameLogEntry {
+  return { block: 'separator', kind: 'phase', labelKey: caption };
+}
+
+/**
  * Build the exhaustive showcase catalogue. Covers EVERY block/variant the
  * `GameLogBuilder` can emit (audited against its MSG_* handlers, 2026-05-22):
  *   · move → MZONE per summon kind (Normale/Spéciale/Fusion/Rituelle/
@@ -796,6 +844,10 @@ function showHead(player: RelPlayer, source: LogCardRef | null): RowHead {
  *     shuffle / swap
  * A new builder case MUST get an entry here — this list is the single
  * visual reference for the renderer's full surface.
+ *
+ * O9: every `verb` / `fromZone` / `destZone` / action `labelKey` / `directLabel`
+ * / combat placeholder is an i18n KEY — the same keys the builder emits — so
+ * the catalogue exercises the exact translation path the real log uses.
  */
 function buildShowcaseEntries(): GameLogEntry[] {
   const eos = showCard('Radiant Typhoon Eos');
@@ -817,83 +869,83 @@ function buildShowcaseEntries(): GameLogEntry[] {
 
   return [
     // === INVOCATIONS — une par type (move → MZONE) ==========================
-    { block: 'separator', kind: 'phase', label: 'Invocations' },
+    showSection('Invocations'),
     move(eldam, 'Invocation Normale depuis la main.', [
-      { card: eldam, verb: 'Inv. Normale', fromZone: 'MAIN', destCell: cellM(2) },
+      { card: eldam, verb: 'gameLog.verb.normalSummon', fromZone: 'gameLog.zone.hand', destCell: cellM(2) },
     ]),
     move(vision, 'Invocation Spéciale depuis le GY.', [
-      { card: vision, verb: 'Inv. Spéciale', fromZone: 'GY', destCell: cellM(1) },
+      { card: vision, verb: 'gameLog.verb.specialSummon', fromZone: 'gameLog.zone.grave', destCell: cellM(1) },
     ]),
     move(showCard('Radiant Typhoon Dragon'), 'Invocation Fusion.', [
-      { card: eldam, verb: 'Matériau', fromZone: 'MAIN', destZone: 'GY', isMaterial: true },
-      { card: krosea, verb: 'Matériau', fromZone: 'M/P', destZone: 'GY', isMaterial: true },
-      { card: showCard('Radiant Typhoon Dragon'), verb: 'Inv. Fusion', fromZone: 'EXTRA', destCell: cellM(2) },
+      { card: eldam, verb: 'gameLog.verb.material', fromZone: 'gameLog.zone.hand', destZone: 'gameLog.zone.grave', isMaterial: true },
+      { card: krosea, verb: 'gameLog.verb.material', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.grave', isMaterial: true },
+      { card: showCard('Radiant Typhoon Dragon'), verb: 'gameLog.verb.fusionSummon', fromZone: 'gameLog.zone.extra', destCell: cellM(2) },
     ]),
     move(showCard('Radiant Ritual Beast'), 'Invocation Rituelle.', [
-      { card: showCard('Radiant Ritual Beast'), verb: 'Inv. Rituelle', fromZone: 'MAIN', destCell: cellM(0) },
+      { card: showCard('Radiant Ritual Beast'), verb: 'gameLog.verb.ritualSummon', fromZone: 'gameLog.zone.hand', destCell: cellM(0) },
     ]),
     move(showCard('Radiant Typhoon Synchron'), 'Invocation Synchro.', [
-      { card: showCard('Radiant Typhoon Synchron'), verb: 'Inv. Synchro', fromZone: 'EXTRA', destCell: cellM(3) },
+      { card: showCard('Radiant Typhoon Synchron'), verb: 'gameLog.verb.synchroSummon', fromZone: 'gameLog.zone.extra', destCell: cellM(3) },
     ]),
     move(showCard('Radiant Typhoon No.7'), 'Invocation Xyz.', [
-      { card: showCard('Radiant Typhoon No.7'), verb: 'Inv. Xyz', fromZone: 'EXTRA', destCell: cellM(2) },
+      { card: showCard('Radiant Typhoon No.7'), verb: 'gameLog.verb.xyzSummon', fromZone: 'gameLog.zone.extra', destCell: cellM(2) },
     ]),
     move(eos, 'Invocation Lien avec 2 Matériaux.', [
-      { card: eldam, verb: 'Matériau', fromZone: 'M/P', destZone: 'GY', isMaterial: true },
-      { card: krosea, verb: 'Matériau', fromZone: 'M/P', destZone: 'GY', isMaterial: true },
-      { card: eos, verb: 'Inv. Lien', fromZone: 'EXTRA', destCell: { player: 0, row: 'EMZ', sequence: 0 } },
+      { card: eldam, verb: 'gameLog.verb.material', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.grave', isMaterial: true },
+      { card: krosea, verb: 'gameLog.verb.material', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.grave', isMaterial: true },
+      { card: eos, verb: 'gameLog.verb.linkSummon', fromZone: 'gameLog.zone.extra', destCell: { player: 0, row: 'EMZ', sequence: 0 } },
     ]),
     move(showCard('Radiant Trap'), 'Pose une carte face verso.', [
-      { card: hidden, verb: 'Pose', fromZone: 'MAIN', destCell: { player: 0, row: 'S', sequence: 1 } },
+      { card: hidden, verb: 'gameLog.verb.set', fromZone: 'gameLog.zone.hand', destCell: { player: 0, row: 'S', sequence: 1 } },
     ]),
     move(eldam, 'Inv. par Flip — le monstre face verso est retourné.', [
-      { card: eldam, verb: 'Inv. par Flip', fromZone: 'M/P', destCell: cellM(2) },
+      { card: eldam, verb: 'gameLog.verb.flip', fromZone: 'gameLog.zone.spellTrap', destCell: cellM(2) },
     ]),
 
     // === DÉPLACEMENTS DE CARTE (move → piles) ==============================
-    { block: 'separator', kind: 'phase', label: 'Déplacements de carte' },
+    showSection('Déplacements de carte'),
     move(null, 'Pioche de la phase de pioche.', [
-      { card: vision, verb: 'Pioche', fromZone: 'DECK', destZone: 'MAIN' },
+      { card: vision, verb: 'gameLog.verb.draw', fromZone: 'gameLog.zone.deck', destZone: 'gameLog.zone.hand' },
     ]),
     move(showCard('Radiant Searcher'), 'Ajoute 1 monstre du Deck à la main.', [
-      { card: krosea, verb: 'Ajout', fromZone: 'DECK', destZone: 'MAIN' },
+      { card: krosea, verb: 'gameLog.verb.add', fromZone: 'gameLog.zone.deck', destZone: 'gameLog.zone.hand' },
     ]),
     move(showCard('Radiant Recall'), 'Renvoie un monstre du Terrain en main.', [
-      { card: eldam, verb: 'Retour en main', fromZone: 'M/P', destZone: 'MAIN' },
+      { card: eldam, verb: 'gameLog.verb.returnHand', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.hand' },
     ]),
     move(showCard('Card Destruction'), 'Chaque joueur défausse sa main.', [
-      { card: hidden, verb: 'Défausse', fromZone: 'MAIN', destZone: 'GY' },
-      { card: hidden, verb: 'Pioche', fromZone: 'DECK', destZone: 'MAIN' },
+      { card: hidden, verb: 'gameLog.verb.discard', fromZone: 'gameLog.zone.hand', destZone: 'gameLog.zone.grave' },
+      { card: hidden, verb: 'gameLog.verb.draw', fromZone: 'gameLog.zone.deck', destZone: 'gameLog.zone.hand' },
     ], 1),
     move(showCard('Radiant Tribute'), 'Sacrifie un monstre comme Tribut.', [
-      { card: eldam, verb: 'Tribut', fromZone: 'M/P', destZone: 'GY' },
+      { card: eldam, verb: 'gameLog.verb.tribute', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.grave' },
     ]),
     move(showCard('Radiant Banisher'), 'Bannit une carte du Terrain.', [
-      { card: krosea, verb: 'Bannissement', fromZone: 'M/P', destZone: 'BANNIE' },
+      { card: krosea, verb: 'gameLog.verb.banish', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.banished' },
     ], 1),
     move(showCard('Radiant Recycle'), 'Renvoie une carte du GY au Deck.', [
-      { card: vision, verb: 'Retour au deck', fromZone: 'GY', destZone: 'DECK' },
+      { card: vision, verb: 'gameLog.verb.returnDeck', fromZone: 'gameLog.zone.grave', destZone: 'gameLog.zone.deck' },
     ]),
     move(null, 'Un monstre Pendule détruit retourne à l\'Extra.', [
-      { card: eos, verb: 'Retour à l\'Extra', fromZone: 'M/P', destZone: 'EXTRA' },
+      { card: eos, verb: 'gameLog.verb.returnExtra', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.extra' },
     ]),
     move(showCard('Radiant Overlay'), 'Attache une carte comme Matériau Xyz.', [
-      { card: eldam, verb: 'Matériau', fromZone: 'MAIN', destZone: 'XYZ', isMaterial: true },
+      { card: eldam, verb: 'gameLog.verb.attach', fromZone: 'gameLog.zone.hand', destZone: 'gameLog.zone.overlay', isMaterial: true },
     ]),
     // Position change — posture transition.
     move(eldam, 'Passe ce monstre en Position de Défense.', [
-      { card: eldam, verb: 'Changement de position', posChange: { from: 'ATK', to: 'DEF' } },
+      { card: eldam, verb: 'gameLog.verb.changePos', posChange: { from: 'ATK', to: 'DEF' } },
     ]),
 
     // === CIBLAGE + EFFET NIÉ ==============================================
-    { block: 'separator', kind: 'phase', label: 'Ciblage & négation' },
+    showSection('Ciblage & négation'),
     // A targeting annotation folded onto an activation row.
     {
       ...showHead(1, showCard('Radiant Typhoon Strike')),
       block: 'move',
       description: 'Cible 1 monstre adverse et le détruit.',
       targets: [eldam],
-      movedCards: [{ card: eldam, verb: 'Envoi au GY', fromZone: 'M/P', destZone: 'GY' }],
+      movedCards: [{ card: eldam, verb: 'gameLog.verb.sendGy', fromZone: 'gameLog.zone.spellTrap', destZone: 'gameLog.zone.grave' }],
     },
     // A negated chain link.
     {
@@ -906,7 +958,7 @@ function buildShowcaseEntries(): GameLogEntry[] {
     },
 
     // === ALÉATOIRE ========================================================
-    { block: 'separator', kind: 'phase', label: 'Aléatoire' },
+    showSection('Aléatoire'),
     {
       ...showHead(1, showCard('Dicephoon')),
       block: 'rng',
@@ -919,18 +971,18 @@ function buildShowcaseEntries(): GameLogEntry[] {
       block: 'rng',
       description: 'Lance une pièce.',
       rng: 'coin',
-      results: ['Face'],
+      results: ['gameLog.rng.heads'],
     },
 
     // === ACTIONS (compteur, équipement, échanges, mélange) ================
-    { block: 'separator', kind: 'phase', label: 'Compteurs & échanges' },
+    showSection('Compteurs & échanges'),
     {
       ...showHead(0, showCard('Endymion, the Mighty Master of Magic')),
       block: 'action',
       description: 'Place 2 Compteurs Magie.',
       action: 'counter-add',
-      label: 'Compteur',
-      detail: 'Compteur Magie',
+      labelKey: 'gameLog.action.counter',
+      counterType: 1,
       counterBadge: '+2',
     },
     {
@@ -938,8 +990,8 @@ function buildShowcaseEntries(): GameLogEntry[] {
       block: 'action',
       description: 'Retire 1 Compteur Magie pour payer un coût.',
       action: 'counter-remove',
-      label: 'Compteur',
-      detail: 'Compteur Magie',
+      labelKey: 'gameLog.action.counter',
+      counterType: 1,
       counterBadge: '−1',
     },
     {
@@ -947,7 +999,7 @@ function buildShowcaseEntries(): GameLogEntry[] {
       block: 'action',
       description: 'Équipe ce monstre.',
       action: 'equip',
-      label: 'Équipé à',
+      labelKey: 'gameLog.action.equip',
       equipTargets: [eldam],
     },
     {
@@ -955,25 +1007,25 @@ function buildShowcaseEntries(): GameLogEntry[] {
       block: 'action',
       description: 'Échange le Cimetière et le Deck.',
       action: 'gy-deck-swap',
-      label: 'Échange GY ↔ Deck',
+      labelKey: 'gameLog.action.gyDeckSwap',
     },
     {
       ...showHead(1, showCard('Mind Control')),
       block: 'action',
       description: 'Deux cartes échangent de contrôleur.',
       action: 'swap',
-      label: 'Échange de cartes',
+      labelKey: 'gameLog.action.swap',
     },
     {
       ...showHead(0, showCard('Radiant Shuffle')),
       block: 'action',
       description: 'Mélange le Deck.',
       action: 'shuffle',
-      label: 'Mélange du Deck',
+      labelKey: 'gameLog.action.shuffleDeck',
     },
 
     // === COMBAT ===========================================================
-    { block: 'separator', kind: 'phase', label: 'Combat' },
+    showSection('Combat'),
     // Attack declaration on a monster — no LP line (just a declaration).
     {
       ...showHead(0, eos),
@@ -1006,7 +1058,7 @@ function buildShowcaseEntries(): GameLogEntry[] {
       block: 'combat',
       combat: 'attack',
       attacker: { card: showCard('Radiant Typhoon Chant'), stat: 'ATK 1800' },
-      directLabel: 'Attaque directe',
+      directLabel: 'gameLog.combat.directAttack',
     },
     {
       ...showHead(1, showCard('Radiant Typhoon Chant')),

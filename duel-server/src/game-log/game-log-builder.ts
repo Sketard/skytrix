@@ -132,53 +132,109 @@ export interface BuildInput {
 }
 
 // =============================================================================
-// French verb / label vocabulary (§4.2 — prototype const map, not i18n infra)
+// i18n key vocabulary (O9 — the builder is LANGUAGE-AGNOSTIC)
+// -----------------------------------------------------------------------------
+// The builder emits STABLE i18n keys, never French strings. The Angular
+// component (future lots) translates them; EN comes free. The CLI's dev
+// renderers translate via `game-log-fr-strings.ts`'s `KEY_TO_FR` table. The
+// keys here mirror the `gameLog.*` namespace the front-end's i18n bundle uses.
 // =============================================================================
 const VERB = {
-  draw: 'Pioche',
-  add: 'Ajout',
-  discard: 'Défausse',
-  sendGy: 'Envoi au GY',
-  banish: 'Bannissement',
-  returnDeck: 'Retour au deck',
-  returnHand: 'Retour en main',
-  returnExtra: 'Retour à l\'Extra',
-  normalSummon: 'Inv. Normale',
-  specialSummon: 'Inv. Spéciale',
-  fusionSummon: 'Inv. Fusion',
-  ritualSummon: 'Inv. Rituelle',
-  synchroSummon: 'Inv. Synchro',
-  xyzSummon: 'Inv. Xyz',
-  linkSummon: 'Inv. Lien',
-  set: 'Pose',
-  flip: 'Inv. par Flip',
-  attach: 'Matériau',
-  move: 'Déplacement',
-  tribute: 'Tribut',
-  material: 'Matériau',
+  draw: 'gameLog.verb.draw',
+  add: 'gameLog.verb.add',
+  discard: 'gameLog.verb.discard',
+  sendGy: 'gameLog.verb.sendGy',
+  banish: 'gameLog.verb.banish',
+  returnDeck: 'gameLog.verb.returnDeck',
+  returnHand: 'gameLog.verb.returnHand',
+  returnExtra: 'gameLog.verb.returnExtra',
+  normalSummon: 'gameLog.verb.normalSummon',
+  specialSummon: 'gameLog.verb.specialSummon',
+  fusionSummon: 'gameLog.verb.fusionSummon',
+  ritualSummon: 'gameLog.verb.ritualSummon',
+  synchroSummon: 'gameLog.verb.synchroSummon',
+  xyzSummon: 'gameLog.verb.xyzSummon',
+  linkSummon: 'gameLog.verb.linkSummon',
+  set: 'gameLog.verb.set',
+  flip: 'gameLog.verb.flip',
+  attach: 'gameLog.verb.attach',
+  move: 'gameLog.verb.move',
+  tribute: 'gameLog.verb.tribute',
+  material: 'gameLog.verb.material',
+  changePos: 'gameLog.verb.changePos',
 } as const;
 
+// OCGCore phase token → i18n key. Several Battle-Phase tokens fold to the same
+// key on purpose: a phase separator only emits on a KEY change, so the whole
+// Battle Phase yields one separator (the pre-O9 behaviour, key-based now).
 const PHASE_LABEL: Record<string, string> = {
-  DRAW: 'Phase de Pioche',
-  STANDBY: 'Phase Standby',
-  MAIN1: 'Main Phase 1',
-  BATTLE_START: 'Battle Phase',
-  BATTLE_STEP: 'Battle Phase',
-  DAMAGE: 'Battle Phase',
-  DAMAGE_CALC: 'Battle Phase',
-  BATTLE: 'Battle Phase',
-  MAIN2: 'Main Phase 2',
-  END: 'End Phase',
+  DRAW: 'gameLog.phase.draw',
+  STANDBY: 'gameLog.phase.standby',
+  MAIN1: 'gameLog.phase.main1',
+  BATTLE_START: 'gameLog.phase.battle',
+  BATTLE_STEP: 'gameLog.phase.battle',
+  DAMAGE: 'gameLog.phase.battle',
+  DAMAGE_CALC: 'gameLog.phase.battle',
+  BATTLE: 'gameLog.phase.battle',
+  MAIN2: 'gameLog.phase.main2',
+  END: 'gameLog.phase.end',
 };
 
-// MSG_WIN reason codes — OCGCore win-reason enum (subset that matters).
+// MSG_WIN reason code → i18n key — OCGCore win-reason enum (subset that matters).
 const WIN_REASON: Record<number, string> = {
-  0: 'Points de vie à 0',
-  1: 'Deck épuisé',
-  2: 'Combo de victoire (Exodia)',
-  3: 'Abandon',
-  4: 'Temps écoulé',
+  0: 'gameLog.winReason.lpZero',
+  1: 'gameLog.winReason.deckOut',
+  2: 'gameLog.winReason.exodia',
+  3: 'gameLog.winReason.surrender',
+  4: 'gameLog.winReason.timeout',
 };
+
+// Separator label keys — the key-pure separator kinds (phase / chain-*).
+const SEPARATOR_KEY = {
+  chainStart: 'gameLog.separator.chainStart',
+  chainResolve: 'gameLog.separator.chainResolve',
+  chainEnd: 'gameLog.separator.chainEnd',
+} as const;
+
+// Zone tag keys — the short source/destination labels of a move-row flow
+// (`MovedCard.fromZone` / `destZone`).
+const ZONE_KEY = {
+  deck: 'gameLog.zone.deck',
+  hand: 'gameLog.zone.hand',
+  monster: 'gameLog.zone.monster',
+  spellTrap: 'gameLog.zone.spellTrap',
+  grave: 'gameLog.zone.grave',
+  banished: 'gameLog.zone.banished',
+  extra: 'gameLog.zone.extra',
+  overlay: 'gameLog.zone.overlay',
+  field: 'gameLog.zone.field',
+} as const;
+
+// Action-row label keys (`ActionEntry.labelKey`).
+const ACTION_KEY = {
+  equip: 'gameLog.action.equip',
+  counter: 'gameLog.action.counter',
+  gyDeckSwap: 'gameLog.action.gyDeckSwap',
+  shuffleHand: 'gameLog.action.shuffleHand',
+  shuffleDeck: 'gameLog.action.shuffleDeck',
+  shuffleSetCard: 'gameLog.action.shuffleSetCard',
+  swap: 'gameLog.action.swap',
+} as const;
+
+// Combat label / placeholder keys and RNG result-token keys. The combat
+// attacker/defender placeholders fill `LogCardRef.cardName` — the builder has
+// no field position to resolve a real identity, so it emits a key.
+const COMBAT_KEY = {
+  directAttack: 'gameLog.combat.directAttack',
+  attacker: 'gameLog.combat.attacker',
+  defender: 'gameLog.combat.defender',
+  equippedMonster: 'gameLog.combat.equippedMonster',
+} as const;
+
+const RNG_KEY = {
+  heads: 'gameLog.rng.heads',
+  tails: 'gameLog.rng.tails',
+} as const;
 
 // =============================================================================
 // Builder
@@ -308,7 +364,9 @@ export class GameLogBuilder {
       this.entries.push({
         block: 'separator',
         kind: 'turn',
-        label: `Tour ${board.turnCount}`,
+        // O9 — STRUCTURED kind: no pre-composed `label`. "Tour N" needs the
+        // turn number interpolated, which a pure i18n key cannot do — the
+        // renderer composes it from a fixed key + `turnNumber`.
         turnNumber: board.turnCount,
         // O5 / C2 contract: the board snapshot is ALREADY relative-to-viewer
         // (`players[0]` = "you"). The builder never swaps it — `players[]` is
@@ -321,10 +379,17 @@ export class GameLogBuilder {
       this.lastPhase = null;
       this.resetChainState();
     }
-    const phaseLabel = PHASE_LABEL[board.phase] ?? board.phase;
-    if (phaseLabel !== this.lastPhase) {
-      this.lastPhase = phaseLabel;
-      this.entries.push({ block: 'separator', kind: 'phase', label: phaseLabel });
+    // O9 — key-pure kind: `phaseKey` IS the i18n key. An unmapped OCGCore
+    // phase token passes through as its own key (loud fallback in `frString`).
+    // Dedup on the key, so the whole Battle Phase still yields one separator.
+    const phaseKey = PHASE_LABEL[board.phase] ?? board.phase;
+    if (phaseKey !== this.lastPhase) {
+      this.lastPhase = phaseKey;
+      this.entries.push({
+        block: 'separator',
+        kind: 'phase',
+        labelKey: phaseKey,
+      });
     }
   }
 
@@ -467,7 +532,7 @@ export class GameLogBuilder {
         movedCards: e.cards.map(code => ({
           card: this.cardRef(code, null),
           verb: VERB.draw,
-          destZone: 'MAIN',
+          destZone: ZONE_KEY.hand,
         })),
       });
       return;
@@ -480,7 +545,7 @@ export class GameLogBuilder {
         row.movedCards.push({
           card: this.cardRef(code, null),
           verb: VERB.draw,
-          destZone: 'MAIN',
+          destZone: ZONE_KEY.hand,
         });
       }
     }
@@ -548,7 +613,7 @@ export class GameLogBuilder {
       return { card, verb: VERB.set, fromZone, destCell: this.fieldCell(toPlayer, 'S', toSequence) };
     }
     if (toLocation === LOCATION.OVERLAY) {
-      return { card, verb: VERB.attach, fromZone, destZone: 'XYZ', isMaterial: true };
+      return { card, verb: VERB.attach, fromZone, destZone: ZONE_KEY.overlay, isMaterial: true };
     }
     if (toLocation === LOCATION.GRAVE) {
       const verb =
@@ -556,27 +621,27 @@ export class GameLogBuilder {
         : reason & REASON_DISCARD ? VERB.discard
         : reason & REASON_RELEASE ? VERB.tribute
         : VERB.sendGy;
-      return { card, verb, fromZone, destZone: 'GY', isMaterial: !!(reason & REASON_MATERIAL) };
+      return { card, verb, fromZone, destZone: ZONE_KEY.grave, isMaterial: !!(reason & REASON_MATERIAL) };
     }
     if (toLocation === LOCATION.BANISHED) {
-      return { card, verb: VERB.banish, fromZone, destZone: 'BANNIE' };
+      return { card, verb: VERB.banish, fromZone, destZone: ZONE_KEY.banished };
     }
     if (toLocation === LOCATION.HAND) {
       return {
         card,
         verb: fromLocation === LOCATION.DECK ? VERB.add : VERB.returnHand,
         fromZone,
-        destZone: 'MAIN',
+        destZone: ZONE_KEY.hand,
       };
     }
     if (toLocation === LOCATION.DECK) {
-      return { card, verb: VERB.returnDeck, fromZone, destZone: 'DECK' };
+      return { card, verb: VERB.returnDeck, fromZone, destZone: ZONE_KEY.deck };
     }
     if (toLocation === LOCATION.EXTRA) {
       // Pendulum monster destroyed from the field, Fusion returning, etc.
-      return { card, verb: VERB.returnExtra, fromZone, destZone: 'EXTRA' };
+      return { card, verb: VERB.returnExtra, fromZone, destZone: ZONE_KEY.extra };
     }
-    return { card, verb: VERB.move, fromZone, destZone: 'TERRAIN' };
+    return { card, verb: VERB.move, fromZone, destZone: ZONE_KEY.field };
   }
 
   private onSet(e: {
@@ -633,7 +698,7 @@ export class GameLogBuilder {
       movedCards: [
         {
           card: this.cardRef(e.cardCode, e.cardName),
-          verb: 'Changement de position',
+          verb: VERB.changePos,
           posChange: {
             from: postureKind(e.previousPosition),
             to: postureKind(e.currentPosition),
@@ -659,7 +724,7 @@ export class GameLogBuilder {
       this.entries.push({
         block: 'separator',
         kind: 'chain-start',
-        label: 'Début de chaîne',
+        labelKey: SEPARATOR_KEY.chainStart,
       });
     }
     // Resolve from the raw `description` CODE (not chainIndex, which collides).
@@ -687,7 +752,7 @@ export class GameLogBuilder {
       this.entries.push({
         block: 'separator',
         kind: 'chain-resolve',
-        label: 'Résolution de la chaîne',
+        labelKey: SEPARATOR_KEY.chainResolve,
       });
     }
     this.emitResolutionRow(e.chainIndex);
@@ -704,7 +769,7 @@ export class GameLogBuilder {
     this.entries.push({
       block: 'separator',
       kind: 'chain-end',
-      label: 'Fin de chaîne',
+      labelKey: SEPARATOR_KEY.chainEnd,
     });
     this.resetChainState();
   }
@@ -788,7 +853,8 @@ export class GameLogBuilder {
       block: 'rng',
       ...this.rowHead(e.player, null, null),
       rng: 'coin',
-      results: e.results.map(r => (r ? 'Face' : 'Pile')),
+      // O9 — heads/tails are emitted as i18n keys; the renderer translates.
+      results: e.results.map(r => (r ? RNG_KEY.heads : RNG_KEY.tails)),
     });
   }
 
@@ -815,14 +881,16 @@ export class GameLogBuilder {
       block: 'combat',
       ...this.rowHead(e.attackerPlayer, null, null),
       combat: 'attack',
+      // The attacker/defender placeholders are i18n keys — MSG_ATTACK carries
+      // only a field position, no `cardCode`, so the builder cannot name them.
       attacker: {
-        card: { revealed: true, cardCode: null, cardName: 'Attaquant' },
+        card: { revealed: true, cardCode: null, cardName: COMBAT_KEY.attacker },
       },
       defender: direct
         ? undefined
-        : { card: { revealed: true, cardCode: null, cardName: 'Défenseur' } },
-      // The renderer supplies the visual arrow/icon — the label is plain text.
-      directLabel: direct ? 'Attaque directe' : undefined,
+        : { card: { revealed: true, cardCode: null, cardName: COMBAT_KEY.defender } },
+      // The renderer supplies the visual arrow/icon — the label is an i18n key.
+      directLabel: direct ? COMBAT_KEY.directAttack : undefined,
     });
   }
 
@@ -846,8 +914,10 @@ export class GameLogBuilder {
       block: 'combat',
       ...this.rowHead(e.attackerPlayer, null, null),
       combat: 'battle',
-      attacker: { card: { revealed: true, cardCode: null, cardName: 'Attaquant' } },
-      defender: { card: { revealed: true, cardCode: null, cardName: 'Défenseur' } },
+      // i18n-key placeholders — MSG_BATTLE carries no `cardCode` for the
+      // combatants.
+      attacker: { card: { revealed: true, cardCode: null, cardName: COMBAT_KEY.attacker } },
+      defender: { card: { revealed: true, cardCode: null, cardName: COMBAT_KEY.defender } },
       lpLoss,
     });
   }
@@ -860,9 +930,9 @@ export class GameLogBuilder {
       block: 'action',
       ...this.rowHead(e.equipPlayer, null, null),
       action: 'equip',
-      label: 'Équipé à',
+      labelKey: ACTION_KEY.equip,
       equipTargets: [
-        { revealed: true, cardCode: null, cardName: 'Monstre équipé' },
+        { revealed: true, cardCode: null, cardName: COMBAT_KEY.equippedMonster },
       ],
     });
   }
@@ -875,9 +945,11 @@ export class GameLogBuilder {
       block: 'action',
       ...this.rowHead(e.player, null, null),
       action: add ? 'counter-add' : 'counter-remove',
-      label: 'Compteur',
+      labelKey: ACTION_KEY.counter,
       counterBadge: `${add ? '+' : '−'}${e.count}`,
-      detail: `Type ${e.counterType}`,
+      // Structured: the builder only knows the numeric counter type — the
+      // renderer composes "Type {{n}}" from `gameLog.action.counterType`.
+      counterType: e.counterType,
     });
   }
 
@@ -943,7 +1015,7 @@ export class GameLogBuilder {
       block: 'action',
       ...this.rowHead(e.player, null, null),
       action: 'gy-deck-swap',
-      label: 'Échange GY ↔ Deck',
+      labelKey: ACTION_KEY.gyDeckSwap,
     });
   }
 
@@ -953,7 +1025,7 @@ export class GameLogBuilder {
       block: 'action',
       ...this.rowHead(player, null, null),
       action: 'shuffle',
-      label: what === 'hand' ? 'Mélange de la main' : 'Mélange du Deck',
+      labelKey: what === 'hand' ? ACTION_KEY.shuffleHand : ACTION_KEY.shuffleDeck,
     });
   }
 
@@ -963,7 +1035,7 @@ export class GameLogBuilder {
       block: 'action',
       ...this.rowHead(this.perspective, null, null),
       action: 'swap',
-      label: 'Échange de cartes',
+      labelKey: ACTION_KEY.swap,
     });
   }
 
@@ -976,7 +1048,7 @@ export class GameLogBuilder {
       block: 'action',
       ...this.rowHead(owner, null, null),
       action: 'shuffle',
-      label: 'Mélange des cartes posées',
+      labelKey: ACTION_KEY.shuffleSetCard,
     });
   }
 
@@ -984,15 +1056,15 @@ export class GameLogBuilder {
   // Duel over
   // ---------------------------------------------------------------------------
   private onWin(e: { player: Player; reason: number }): void {
-    const rel = this.rel(e.player);
-    const winner = rel === 0 ? 'Toi — Victoire' : 'Adversaire — Victoire';
-    const reason = WIN_REASON[e.reason] ?? `Raison ${e.reason}`;
-    // ONE duel-over separator carrying both the winner line and the reason.
+    // O9 — STRUCTURED kind: the winner line interpolates which side won, so a
+    // pure key cannot carry it. Emit `winnerSide` (relative) + a `reasonKey`;
+    // the renderer composes "🏆 Toi/Adversaire — Victoire" + the reason line.
+    // An unmapped reason code passes through as its own key (loud fallback).
     this.entries.push({
       block: 'separator',
       kind: 'duel-over',
-      label: `🏆 ${winner}`,
-      reason,
+      winnerSide: this.rel(e.player),
+      reasonKey: WIN_REASON[e.reason] ?? `gameLog.winReason.${e.reason}`,
     });
   }
 
@@ -1130,32 +1202,31 @@ export function isExtraDeckSummon(reason: number): boolean {
 }
 
 /**
- * Short French label for a `LOCATION` bitmask value — the origin/destination
+ * i18n key for a `LOCATION` bitmask value — the origin/destination zone-tag
  * vocabulary shared by the move-row renderers. A field LOCATION (MZONE/SZONE)
  * carries no sequence in `fromLocation`, so it collapses to its row tag.
- * Labels stay consistent with the `destZone` strings used in `describeMove`
- * (`MAIN`, `GY`, `BANNIE`, `DECK`, `EXTRA`).
+ * Keys stay consistent with the `destZone` keys used in `describeMove`.
  */
 function zoneLabel(location: number): string {
   switch (location) {
     case LOCATION.DECK:
-      return 'DECK';
+      return ZONE_KEY.deck;
     case LOCATION.HAND:
-      return 'MAIN';
+      return ZONE_KEY.hand;
     case LOCATION.MZONE:
-      return 'Monstre';
+      return ZONE_KEY.monster;
     case LOCATION.SZONE:
-      return 'M/P';
+      return ZONE_KEY.spellTrap;
     case LOCATION.GRAVE:
-      return 'GY';
+      return ZONE_KEY.grave;
     case LOCATION.BANISHED:
-      return 'BANNIE';
+      return ZONE_KEY.banished;
     case LOCATION.EXTRA:
-      return 'EXTRA';
+      return ZONE_KEY.extra;
     case LOCATION.OVERLAY:
-      return 'XYZ';
+      return ZONE_KEY.overlay;
     default:
-      return 'Terrain';
+      return ZONE_KEY.field;
   }
 }
 

@@ -103,7 +103,11 @@ describe('GameLogBuilder — five-block grammar', () => {
     ];
     const entries = buildGameLog({ states, perspective: 0 });
     const phases = separators(entries).filter(s => s.kind === 'phase');
-    expect(phases.map(p => p.label)).toEqual(['Phase de Pioche', 'Main Phase 1']);
+    // O9 — the builder emits stable i18n KEYS, not French strings.
+    expect(phases.map(p => p.labelKey)).toEqual([
+      'gameLog.phase.draw',
+      'gameLog.phase.main1',
+    ]);
   });
 
   it('Effect-driven draw → activation row with source + description + drawn sub-rows', () => {
@@ -137,7 +141,7 @@ describe('GameLogBuilder — five-block grammar', () => {
     expect(activation!.source?.cardName).toBe('Pot of Greed');
     expect(activation!.description).toBe('Draw 2 cards.');
     expect(activation!.movedCards).toHaveLength(2);
-    expect(activation!.movedCards[0].verb).toBe('Pioche');
+    expect(activation!.movedCards[0].verb).toBe('gameLog.verb.draw');
   });
 
   it('Draw-phase draw → move row with no source, no description', () => {
@@ -153,7 +157,7 @@ describe('GameLogBuilder — five-block grammar', () => {
     expect(drawPhase).toBeDefined();
     expect(drawPhase!.source).toBeNull();
     expect(drawPhase!.description).toBeNull();
-    expect(drawPhase!.movedCards[0].verb).toBe('Pioche');
+    expect(drawPhase!.movedCards[0].verb).toBe('gameLog.verb.draw');
   });
 
   it('Hidden moved card → sub-row marked not revealed', () => {
@@ -300,7 +304,7 @@ describe('GameLogBuilder — five-block grammar', () => {
     ];
     const entries = buildGameLog({ states, perspective: 0 });
     const summon = moves(entries).find(m =>
-      m.movedCards.some(c => c.verb === 'Inv. Lien'),
+      m.movedCards.some(c => c.verb === 'gameLog.verb.linkSummon'),
     );
     expect(summon).toBeDefined();
     const cell = summon!.movedCards[0].destCell;
@@ -316,7 +320,8 @@ describe('GameLogBuilder — five-block grammar', () => {
     ];
     const entries = buildGameLog({ states, perspective: 0 });
     const coin = rngs(entries).find(r => r.rng === 'coin');
-    expect(coin?.results).toEqual(['Face', 'Pile']);
+    // O9 — coin results are i18n keys (`gameLog.rng.heads/tails`).
+    expect(coin?.results).toEqual(['gameLog.rng.heads', 'gameLog.rng.tails']);
   });
 
   it('RNG → dice roll row with numeric results', () => {
@@ -412,10 +417,11 @@ describe('GameLogBuilder — five-block grammar', () => {
     ];
     const entries = buildGameLog({ states, perspective: 0 });
     const over = separators(entries).filter(s => s.kind === 'duel-over');
-    // Exactly ONE separator — winner in `label`, reason in `reason`.
+    // O9 — STRUCTURED kind: `winnerSide` (relative) + a `reasonKey` i18n key;
+    // the renderer composes the winner line + the reason line.
     expect(over).toHaveLength(1);
-    expect(over[0].label).toContain('Toi');
-    expect(over[0].reason).toBe('Points de vie à 0');
+    expect(over[0].winnerSide).toBe(0); // viewer won
+    expect(over[0].reasonKey).toBe('gameLog.winReason.lpZero');
   });
 
   it('Initial 5-card draw → initial-hand variant, no source', () => {
@@ -481,10 +487,10 @@ describe('GameLogBuilder — five-block grammar', () => {
     ];
     const entries = buildGameLog({ states, perspective: 0 });
     const move = moves(entries).find(m =>
-      m.movedCards.some(c => c.destZone === 'EXTRA'),
+      m.movedCards.some(c => c.destZone === 'gameLog.zone.extra'),
     );
     expect(move).toBeDefined();
-    expect(move!.movedCards[0].verb).toBe('Retour à l\'Extra');
+    expect(move!.movedCards[0].verb).toBe('gameLog.verb.returnExtra');
   });
 
   it('SZONE sequence 5 → the singleton Field Spell cell, not an "S6"', () => {
@@ -536,7 +542,7 @@ describe('GameLogBuilder — five-block grammar', () => {
     ];
     const entries = buildGameLog({ states, perspective: 0 });
     const move = moves(entries).find(m => m.movedCards.length > 0);
-    expect(move!.movedCards[0].verb).toBe('Déplacement');
+    expect(move!.movedCards[0].verb).toBe('gameLog.verb.move');
   });
 
   it('Shuffle events → shuffle action rows (hand + deck)', () => {
@@ -549,8 +555,9 @@ describe('GameLogBuilder — five-block grammar', () => {
     const entries = buildGameLog({ states, perspective: 0 });
     const shuffles = actions(entries).filter(a => a.action === 'shuffle');
     expect(shuffles).toHaveLength(2);
-    expect(shuffles[0].label).toBe('Mélange de la main');
-    expect(shuffles[1].label).toBe('Mélange du Deck');
+    // O9 — action labels are i18n keys.
+    expect(shuffles[0].labelKey).toBe('gameLog.action.shuffleHand');
+    expect(shuffles[1].labelKey).toBe('gameLog.action.shuffleDeck');
     expect(shuffles[1].player).toBe(1); // opponent, relativized
   });
 
@@ -570,7 +577,7 @@ describe('GameLogBuilder — five-block grammar', () => {
     const entries = buildGameLog({ states, perspective: 0 });
     const swap = actions(entries).find(a => a.action === 'swap');
     expect(swap).toBeDefined();
-    expect(swap!.label).toBe('Échange de cartes');
+    expect(swap!.labelKey).toBe('gameLog.action.swap');
   });
 
   it('MSG_BECOME_TARGET resolves an opponent-half card under perspective 1 (O5)', () => {

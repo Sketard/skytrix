@@ -84,17 +84,39 @@ export type SeparatorKind =
   | 'chain-end'
   | 'duel-over';
 
+/**
+ * A separator entry. Language-agnostic (O9): the builder emits stable i18n
+ * keys, never French strings — the renderer translates.
+ *
+ * Per-kind label policy (audited per `SeparatorKind`, Lot 0c):
+ *   - `phase` / `chain-start` / `chain-resolve` / `chain-end` — **key-pure**:
+ *     `labelKey` is a self-sufficient i18n key, no interpolation needed.
+ *   - `turn` — **structured**: no `labelKey`; the renderer composes
+ *     "Tour {{n}}" from a fixed i18n key + the `turnNumber` field carried here.
+ *   - `duel-over` — **structured**: no `labelKey`; the renderer composes the
+ *     winner line from `winnerSide` and the win-reason line from `reasonKey`.
+ *   - `decision` — **structured**: never emitted by the current builder; if a
+ *     future decision separator is added it carries its own structured fields
+ *     (a pure key cannot interpolate the chooser's pseudo). No `labelKey`.
+ */
 export interface SeparatorEntry {
   block: 'separator';
   kind: SeparatorKind;
-  /** Display text (turn label, phase name, decision sentence, winner line). */
-  label: string;
+  /**
+   * Stable i18n key for the separator label — key-pure kinds only
+   * (`phase`, `chain-start`, `chain-resolve`, `chain-end`). Absent for the
+   * structured kinds (`turn`, `duel-over`, `decision`) whose label needs
+   * interpolation and is composed by the renderer.
+   */
+  labelKey?: string;
   /** Turn separator only — both players' LP, in relative order [you, opp]. */
   lp?: [number, number];
-  /** Turn separator only — the turn number. */
+  /** Turn separator only — the turn number (the renderer composes "Tour N"). */
   turnNumber?: number;
-  /** `duel-over` separator only — the win-reason line, shown under `label`. */
-  reason?: string;
+  /** `duel-over` separator only — the relative side that won the duel. */
+  winnerSide?: RelPlayer;
+  /** `duel-over` separator only — i18n key of the win-reason line. */
+  reasonKey?: string;
 }
 
 // =============================================================================
@@ -206,12 +228,16 @@ export interface ActionEntry extends RowHead {
     | 'gy-deck-swap'
     | 'shuffle'
     | 'swap';
-  /** French label naming the action ("Compteur", "Équipé à", …). */
-  label: string;
+  /** i18n key naming the action (`gameLog.action.counter`, `…equip`, …). */
+  labelKey: string;
   /** Counter rows — the signed badge text, e.g. "+2" / "−1". */
   counterBadge?: string;
-  /** Counter rows — counter type detail, e.g. "Compteur Magie". */
-  detail?: string;
+  /**
+   * Counter rows — the OCGCore counter-type code. The builder only knows the
+   * numeric type, so the renderer composes "Type {{n}}" from a fixed i18n key
+   * + this number (structured interpolation, O9). Absent for non-counter rows.
+   */
+  counterType?: number;
   /** Equip rows — the affected card thumbnails. */
   equipTargets?: LogCardRef[];
 }
