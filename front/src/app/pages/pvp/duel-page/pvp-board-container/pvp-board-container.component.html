@@ -463,24 +463,8 @@
 </div>
 </div>
 
-<!-- Game Log trigger — REPLAY ONLY. In PvP the journal is opened from the
-     mini-toolbar (duel-page); the replay page has no mini-toolbar so the
-     trigger floats here instead. Gated on `effectiveReadOnly()` (true in
-     replay), `!preview()` (skip timeline thumbnails) and an optional
-     `DuelGameLogService` (absent in preview embeddings). The button is
-     `position: absolute` — its containing block is the board-container
-     host, which fills the play region ABOVE the replay transport stack, so
-     it floats clear of the transport bar whatever its height. -->
-@if (effectiveReadOnly() && !preview() && gameLog; as gl) {
-  <app-icon-button class="game-log-trigger"
-                   variant="framed"
-                   size="md"
-                   round
-                   [active]="gl.panelOpen()"
-                   ariaLabel="{{ 'gameLog.panel.toggle' | translate }}"
-                   (click)="gl.togglePanel()">
-    <mat-icon>history_edu</mat-icon>
-  </app-icon-button>
-}
+<!-- The game-log journal has no on-screen trigger in the board container.
+     PvP opens it from the mini-toolbar button (duel-page); replay opens it
+     via the `l` keyboard shortcut. -->
 
 @if (devMode) { <app-duel-dev-hub /> }

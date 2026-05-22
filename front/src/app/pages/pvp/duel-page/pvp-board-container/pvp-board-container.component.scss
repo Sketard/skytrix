@@ -1018,22 +1018,3 @@
     color: CanvasText;
   }
 }
-// ============================================================
-// Game Log trigger button — REPLAY ONLY
-// ============================================================
-// In PvP the journal is opened from the mini-toolbar. The replay page has
-// no mini-toolbar, so the trigger floats bottom-right here instead.
-//
-// `position: absolute` (not fixed): the replay viewport's bottom-right
-// corner is occupied by the transport stack (timeline-bar/stepper +
-// transport-bar, in normal flow). A viewport-fixed button would land
-// behind it. The board-container host is `position: relative` (set by
-// replay-page.scss) and fills exactly the play region ABOVE the transport
-// stack — anchoring the button to it keeps it clear of the transport bar
-// whatever its (variable) height (timeline-bar desktop vs stepper mobile).
-.game-log-trigger {
-  position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-4);
-  z-index: z.$z-pvp-mini-toolbar;
-}
