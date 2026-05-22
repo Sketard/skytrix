@@ -106,4 +106,32 @@ describe('DuelSystemStringsService', () => {
     await promise;
     expect(service.resolveSystemString(500)).toBe('Select the card(s) to Tribute');
   });
+
+  it('degrades gracefully when a table fetch fails — no rejection, resolves to ""', async () => {
+    makeService('fr');
+    const warnSpy = spyOn(console, 'warn');
+    // `preload()` must resolve (not reject) even when every fetch errors.
+    const promise = service.preload();
+    for (const req of httpMock.match(() => true)) {
+      req.error(new ProgressEvent('error'));
+    }
+    await promise;
+    expect(warnSpy).toHaveBeenCalled();
+    // An empty table is cached — resolution falls through to ''.
+    expect(service.resolveSystemString(500)).toBe('');
+    expect(service.resolveWinReason(0x1)).toBe('');
+  });
+
+  it('does not retry a failed table fetch on a later resolve', async () => {
+    makeService('fr');
+    spyOn(console, 'warn');
+    const promise = service.preload();
+    for (const req of httpMock.match(() => true)) {
+      req.error(new ProgressEvent('error'));
+    }
+    await promise;
+    service.resolveSystemString(500);
+    // The empty table is cached — no further HTTP requests are issued.
+    httpMock.expectNone(() => true);
+  });
 });

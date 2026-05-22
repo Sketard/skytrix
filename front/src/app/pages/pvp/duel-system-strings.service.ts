@@ -94,9 +94,10 @@ export class DuelSystemStringsService {
         return table;
       })
       .catch((err: unknown): DuelStringTable => {
-        // Degrade gracefully: a failed fetch must not surface as an unhandled
-        // rejection (the constructor's `void preload()` swallows it). Cache an
-        // empty table so resolution falls through to '' and never retries.
+        // Degrade gracefully: callers launch `preload()` fire-and-forget
+        // (`void preload()`), so a failed fetch must not surface as an
+        // unhandled rejection. Cache an empty table so resolution falls
+        // through to '' and never retries.
         console.warn(`[DuelSystemStrings] failed to load "${lang}" table — system strings will be blank`, err);
         const empty: DuelStringTable = { system: {}, victory: {} };
         this.tables.set(lang, empty);

@@ -5,6 +5,7 @@ import {
   HostBinding,
   HostListener,
   inject,
+  OnInit,
   signal,
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
@@ -51,7 +52,7 @@ function cardKey(c: CardInfo): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [TranslatePipe, CardNamePipe, PillComponent, CdkOverlayOrigin, CdkConnectedOverlay],
 })
-export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt> {
+export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt>, OnInit {
   private readonly artService = inject(DuelCardArtService);
   private readonly systemStrings = inject(DuelSystemStringsService);
   private readonly cardDataCache = inject(CardDataCacheService);

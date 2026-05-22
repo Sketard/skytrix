@@ -195,7 +195,7 @@ interface ServerSessionMirror {
 
 interface ClientStateMirror {
   pendingPrompt: unknown | null;
-  hintContext: { hintType: number; player: number; value: number; cardName: string; hintAction: string };
+  hintContext: { hintType: number; player: number; value: number; cardName: string };
   lastConfirmedCards: unknown[];
   lastSelectedCards: unknown[];
   lastSelectedPromptType: string | null;
@@ -218,7 +218,7 @@ function makeServerMirror(): ServerSessionMirror {
 function makeClientMirror(): ClientStateMirror {
   return {
     pendingPrompt: null,
-    hintContext: { hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' },
+    hintContext: { hintType: 0, player: 0, value: 0, cardName: '' },
     lastConfirmedCards: [],
     lastSelectedCards: [],
     lastSelectedPromptType: null,
@@ -328,7 +328,7 @@ describe('Cancel sweep — every contract slot is restored', () => {
     const idleCmdPromptStub = { type: 'SELECT_IDLECMD', player: 0 };
     server.lastSentPrompt[0] = idleCmdPromptStub;
     server.awaitingResponse[0] = true;
-    server.lastSentHint[0] = { type: 'MSG_HINT', player: 0, hintType: 1, hintAction: 'Before the normal draw' };
+    server.lastSentHint[0] = { type: 'MSG_HINT', player: 0, hintType: 1, value: 30, cardName: '' };
 
     // Snapshot all surfaces' pre-state
     const preWorkerField = stableSerialize(core.duelQueryField(duel));
@@ -377,7 +377,7 @@ describe('Cancel sweep — every contract slot is restored', () => {
 
     // Mutate every server-side mirror slot the way the realistic flow does
     server.lastSentPrompt[0] = { type: 'SELECT_PLACE', player: 0, count: 1, field_mask: 0xFF };
-    server.lastSentHint[0] = { type: 'MSG_HINT', player: 0, hintType: 3, hintAction: 'Select a zone' };
+    server.lastSentHint[0] = { type: 'MSG_HINT', player: 0, hintType: 3, value: 504, cardName: '' };
     server.activeChainLinks = [{ chainIndex: 0, cardCode: 73819701, player: 0 }];
     server.chainPhase = 'building';
     server.negatedChainIndices.add(0);
@@ -388,7 +388,7 @@ describe('Cancel sweep — every contract slot is restored', () => {
 
     // Mutate every client-side mirror slot
     client.pendingPrompt = { type: 'SELECT_PLACE', player: 0 };
-    client.hintContext = { hintType: 3, player: 0, value: 504, cardName: '', hintAction: 'Select a zone' };
+    client.hintContext = { hintType: 3, player: 0, value: 504, cardName: '' };
     client.lastConfirmedCards = [{ cardCode: 12345, sequence: 0 }];
     client.lastSelectedCards = [{ cardCode: 67890, sequence: 1 }];
     client.lastSelectedPromptType = 'SELECT_CARD';
@@ -439,7 +439,7 @@ describe('Cancel sweep — every contract slot is restored', () => {
 
     // 3c. Client-side cascade (mirror the `STATE_SYNC` handler)
     client.pendingPrompt = null;
-    client.hintContext = { hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' };
+    client.hintContext = { hintType: 0, player: 0, value: 0, cardName: '' };
     client.lastConfirmedCards = [];
     client.lastSelectedCards = [];
     client.lastSelectedPromptType = null;
@@ -459,7 +459,7 @@ describe('Cancel sweep — every contract slot is restored', () => {
     expect(server.invalidResponseCount).toEqual([0, 0]);
 
     expect(client.pendingPrompt).toBeNull();
-    expect(client.hintContext).toEqual({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
+    expect(client.hintContext).toEqual({ hintType: 0, player: 0, value: 0, cardName: '' });
     expect(client.lastConfirmedCards).toEqual([]);
     expect(client.lastSelectedCards).toEqual([]);
     expect(client.lastSelectedPromptType).toBeNull();
