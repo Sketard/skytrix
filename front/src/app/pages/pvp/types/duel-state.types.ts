@@ -12,6 +12,9 @@ export interface ChainLinkState {
   sequence: number;
   resolving: boolean;
   negated: boolean;
+  // Resolved effect text, carried from MSG_CHAINING.descriptionText.
+  // Optional: absent on legacy payloads that predate server-side resolution.
+  descriptionText?: string;
 }
 
 export const EMPTY_DUEL_STATE: DuelState = {

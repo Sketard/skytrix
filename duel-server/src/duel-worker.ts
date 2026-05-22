@@ -26,6 +26,7 @@ import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
 import { CardDbCache } from './card-db-cache.js';
 import { resolveDeckLoadOrder, normalizeReplayDeck } from './deck-load-order.js';
 import { runReplayPreComputation, SELECT_MESSAGE_TYPES } from './replay-precompute.js';
+import { resolveDescription } from './game-log/effect-desc-resolver.js';
 import type {
   ServerMessage,
   BoardStateMsg,
@@ -527,12 +528,21 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.PAY_LPCOST:
       return { type: 'MSG_PAY_LPCOST', player: msg.player as Player, amount: msg.amount };
 
-    case OcgMessageType.CHAINING:
+    case OcgMessageType.CHAINING: {
+      const description = Number(msg.description);
+      // Resolve the effect text server-side — the front needs it for the
+      // game-log bubble + panel. Shared by live PvP and replay precompute
+      // (both run transformMessage), so old replays inherit it on reload.
+      const descriptionText = cardDb
+        ? resolveDescription(description, cardDb, systemStrings)
+        : '';
       return {
         type: 'MSG_CHAINING', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
         location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-        sequence: msg.sequence, chainIndex: msg.chain_size - 1, description: Number(msg.description),
+        sequence: msg.sequence, chainIndex: msg.chain_size - 1, description,
+        descriptionText,
       };
+    }
 
     case OcgMessageType.CHAIN_SOLVING:
       dlog.debug('CHAIN_SOLVING → MSG_CHAIN_SOLVING', { chainIndex: msg.chain_size - 1 });

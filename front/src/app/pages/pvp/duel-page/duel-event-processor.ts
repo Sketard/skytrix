@@ -77,6 +77,7 @@ export class DuelEventProcessor {
       sequence: msg.sequence,
       resolving: false,
       negated: false,
+      descriptionText: msg.descriptionText,
     };
   }
 

@@ -83,6 +83,9 @@ export interface ChainingMsg {
   sequence: number;
   chainIndex: number;
   description: number;
+  // Resolved effect text for `description` — populated server-side via
+  // `resolveDescription` (cards.cdb). Optional: absent on legacy payloads.
+  descriptionText?: string;
 }
 
 export interface ChainSolvingMsg {
