@@ -28,6 +28,11 @@
                 [class.dev-hub__tab--active]="activeTab() === 'end-flow'"
                 [attr.aria-selected]="activeTab() === 'end-flow'"
                 (click)="setTab('end-flow')">End-flow</button>
+        <button type="button" role="tab"
+                class="dev-hub__tab"
+                [class.dev-hub__tab--active]="activeTab() === 'game-log'"
+                [attr.aria-selected]="activeTab() === 'game-log'"
+                (click)="setTab('game-log')">Game Log</button>
       </nav>
 
       <section class="dev-hub__body" role="tabpanel">
@@ -40,6 +45,9 @@
           }
           @case ('end-flow') {
             <app-duel-dev-hub-end-flow-tab />
+          }
+          @case ('game-log') {
+            <app-duel-dev-hub-game-log-tab />
           }
         }
       </section>

@@ -13,6 +13,9 @@ export type DevResultOutcome = {
   cause: string;
 };
 
+/** The dev-hub tabs. `game-log` (Lot 3d) drives the effect-bubble trigger. */
+export type DevHubTab = 'board' | 'prompts' | 'end-flow' | 'game-log';
+
 export type DevRematchState =
   | 'idle' | 'requested' | 'invited' | 'opponent-left' | 'expired';
 

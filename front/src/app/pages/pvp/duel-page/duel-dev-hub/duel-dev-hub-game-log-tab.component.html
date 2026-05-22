@@ -1,0 +1,18 @@
+<section class="dev-hub-category">
+  <h4 class="dev-hub-category__title">Effect bubble</h4>
+  <div class="dev-hub-fixture-list">
+    @for (f of fixtures; track f.key) {
+      <button type="button"
+              class="dev-hub-radio dev-hub-radio--full"
+              (click)="trigger(f)">
+        <span class="dev-hub-radio__label">{{ f.label }}</span>
+        <span class="dev-hub-radio__hint">{{ f.hint }}</span>
+      </button>
+    }
+  </div>
+  <p class="dev-hub-category__hint">
+    Each button injects a synthetic MSG_CHAINING through the real pipeline —
+    the bubble is exercised end-to-end. Dev-injected events never add a row to
+    the game-log panel.
+  </p>
+</section>

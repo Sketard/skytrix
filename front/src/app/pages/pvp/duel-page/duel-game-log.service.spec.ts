@@ -138,4 +138,49 @@ describe('DuelGameLogService', () => {
     service.setPerspective(0);
     expect(service.gameLogEntries()).toBe(entries);
   });
+
+  // ── injectDevChaining (Lot 3d — dev-hub effect-bubble trigger) ──────────────
+  describe('injectDevChaining', () => {
+    it('feeds the bubble without adding a journal row', () => {
+      service.injectDevChaining(chaining(1, 9001, 'Effet dev', 'Texte dev'));
+
+      // The bubble feed fires…
+      expect(service.lastOpponentActivation()).toEqual({
+        cardCode: 9001,
+        cardName: 'Effet dev',
+        descriptionText: 'Texte dev',
+      });
+      // …but the journal stays empty — a dev event must not pollute it.
+      expect(service.gameLogEntries()).toEqual([]);
+    });
+
+    it('does not show the bubble for a self activation', () => {
+      // player 0 = the viewer under perspective 0 — opponent-only filter
+      // must suppress the bubble.
+      service.injectDevChaining(chaining(0, 9002, 'Mon effet dev', 'X'));
+      expect(service.lastOpponentActivation()).toBeNull();
+      expect(service.gameLogEntries()).toEqual([]);
+    });
+
+    it('honours last-wins across a burst', () => {
+      service.injectDevChaining([
+        chaining(1, 9101, 'Link 1', 'A'),
+        chaining(1, 9102, 'Link 2', 'B'),
+        chaining(1, 9103, 'Link 3', 'C'),
+      ]);
+      expect(service.lastOpponentActivation()?.cardCode).toBe(9103);
+      expect(service.gameLogEntries()).toEqual([]);
+    });
+
+    it('does not retain dev events for a perspective-flip rebuild', () => {
+      service.notifyGameLog(draw(0, [1001]));
+      const realEntries = service.gameLogEntries().length;
+      service.injectDevChaining(chaining(1, 9201, 'Effet dev', 'X'));
+
+      // Flipping perspective rebuilds from retained events — the dev event
+      // was never retained, so the rebuilt journal matches the real one.
+      service.setPerspective(1);
+      expect(service.gameLogEntries().length).toBe(realEntries);
+    });
+  });
 });

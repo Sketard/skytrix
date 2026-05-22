@@ -11,12 +11,26 @@
 // `providedIn: 'root'` — one instance per duel page, reset on rematch / seek.
 // =============================================================================
 
-import { Injectable, signal, type Signal } from '@angular/core';
-import type { Player, BoardStatePayload } from '../duel-ws.types';
+import { Injectable, isDevMode, signal, type Signal } from '@angular/core';
+import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
 import type { DuelState, GameEvent } from '../types';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
 import { EMPTY_DUEL_STATE } from '../types';
+
+/**
+ * DEV ONLY — a synthetic `MSG_CHAINING` carries a `__dev` marker so the two
+ * branches of `notifyGameLog` can diverge: the bubble-feeding branch honours
+ * it, the builder-feeding branch skips it (no phantom journal row — analysis
+ * §3.7 caveat 1). The marker lives on a LOCAL type, never on the shared
+ * `ChainingMsg` (it is not a transport field).
+ */
+type DevChainingMsg = ChainingMsg & { __dev: true };
+
+/** True when `event` is a dev-injected synthetic `MSG_CHAINING`. */
+function isDevChaining(event: GameEvent): event is DevChainingMsg {
+  return (event as Partial<DevChainingMsg>).__dev === true;
+}
 
 /**
  * The data the opponent-effect bubble (Surface 2) needs — read straight off
@@ -98,11 +112,39 @@ export class DuelGameLogService {
    * Called by the orchestrator tap, once per genuinely-dispatched event
    * (analysis §2.3 — buffered chain events reach this only on re-dispatch,
    * in logical resolution order, exactly once).
+   *
+   * One branch, explicit (analysis §3.7 caveat 1): a dev-injected synthetic
+   * `MSG_CHAINING` feeds ONLY the bubble — it is skipped by the builder (no
+   * phantom journal row) and not retained for the perspective-flip rebuild.
    */
   notifyGameLog(event: GameEvent): void {
+    if (isDevChaining(event)) {
+      this.captureOpponentActivation(event);
+      return;
+    }
     this.tappedEvents.push(event);
     this.ingest(event);
     this.captureOpponentActivation(event);
+  }
+
+  /**
+   * DEV ONLY — feed a synthetic `MSG_CHAINING` (or a burst) into the bubble
+   * feed for the dev-hub trigger (Lot 3d, analysis §3.7, mechanism D1). The
+   * synthetic events travel the SAME `notifyGameLog` path a genuine event
+   * does — so the opponent-only filter, last-wins replace and the bubble's
+   * anti-flicker floor are all exercised end-to-end.
+   *
+   * Each event carries the `__dev` marker (added here, not by the fixture)
+   * so the builder branch skips it — a dev trigger never pollutes the real
+   * journal. No-op in production: `isDevMode()` is false and Angular's
+   * tree-shaker drops the call site + the fixtures.
+   */
+  injectDevChaining(event: ChainingMsg | ChainingMsg[]): void {
+    if (!isDevMode()) return;
+    const events = Array.isArray(event) ? event : [event];
+    for (const e of events) {
+      this.notifyGameLog({ ...e, __dev: true } as DevChainingMsg);
+    }
   }
 
   /**

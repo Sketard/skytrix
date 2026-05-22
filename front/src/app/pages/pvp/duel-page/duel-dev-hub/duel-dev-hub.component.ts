@@ -11,12 +11,11 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { DuelDevStateService } from './duel-dev-state.service';
+import { DuelDevStateService, type DevHubTab } from './duel-dev-state.service';
 import { DuelDevHubBoardTabComponent } from './duel-dev-hub-board-tab.component';
 import { DuelDevHubEndFlowTabComponent } from './duel-dev-hub-end-flow-tab.component';
 import { DuelDevHubPromptsTabComponent } from './duel-dev-hub-prompts-tab.component';
-
-type DevHubTab = 'board' | 'prompts' | 'end-flow';
+import { DuelDevHubGameLogTabComponent } from './duel-dev-hub-game-log-tab.component';
 
 @Component({
   selector: 'app-duel-dev-hub',
@@ -24,7 +23,12 @@ type DevHubTab = 'board' | 'prompts' | 'end-flow';
   styleUrl: './duel-dev-hub.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DuelDevHubBoardTabComponent, DuelDevHubEndFlowTabComponent, DuelDevHubPromptsTabComponent],
+  imports: [
+    DuelDevHubBoardTabComponent,
+    DuelDevHubEndFlowTabComponent,
+    DuelDevHubPromptsTabComponent,
+    DuelDevHubGameLogTabComponent,
+  ],
 })
 export class DuelDevHubComponent {
   protected readonly devState = inject(DuelDevStateService);
