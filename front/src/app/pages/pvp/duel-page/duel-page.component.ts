@@ -56,6 +56,7 @@ import { DuelAnimationBridgeService } from './duel-animation-bridge.service';
 import { DuelToastService } from './duel-toast.service';
 import { DebugLogService } from './debug-log.service';
 import { DuelDebugService } from './duel-debug.service';
+import { DuelGameLogService } from './duel-game-log.service';
 import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { DuelDevStateService } from './duel-dev-hub/duel-dev-state.service';
@@ -84,7 +85,7 @@ import { environment } from '../../../../environments/environment';
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
     AnimationOrchestratorService, CardTravelEngine, BoardEffectsService, FloatRegistryService, RoomStateMachineService, CardInspectionService,
-    DebugLogService, DuelDebugService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
+    DebugLogService, DuelDebugService, DuelGameLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
     DuelCardArtService, CardActionMenuService, PromptDerivationService,
     { provide: ANIMATION_DATA_SOURCE, useExisting: DuelWebSocketService },
@@ -121,6 +122,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   readonly tabGuard = inject(DuelTabGuardService);
   readonly debugLog = inject(DebugLogService);
   private readonly debugService = inject(DuelDebugService);
+  // Provided + injected at page level (R10) so the Game Log accumulates from
+  // the duel's very first event. A component-level service is instantiated on
+  // its FIRST injection — if only the (Lot-4) panel injected it, every event
+  // before the panel opens would be lost. Mirrors `DuelDebugService`.
+  private readonly gameLog = inject(DuelGameLogService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly orchestrator = inject(SoloDuelOrchestratorService);
   readonly showDebugTools = environment.debugTools;
@@ -546,6 +552,20 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     });
     this.cardTravelEngine.registerContainer(this.elementRef.nativeElement);
     this.cardInspection.init(this.cardDataCache);
+
+    // --- Game Log wiring (Lot 2d / R10) ---
+    // Configured here, before the bootstrap below kicks off the WS connection,
+    // so the service's perspective + board source are set before the first
+    // event reaches the orchestrator's `notifyGameLog` tap. `ownPlayerIndex`
+    // is absolute (the value the builder relativises event fields against);
+    // `logicalState()` is the viewer-relative board the builder consumes.
+    this.gameLog.setPerspective(this.ownPlayerIndex());
+    this.gameLog.attachBoardSource(() => this.logicalState());
+    // `ownPlayerIndex()` is a computed — at construction `ocgPlayerIndex()` is
+    // still null (→ 0); it resolves to the real absolute index once the first
+    // BOARD_STATE lands. Track it so the journal is rebuilt for the correct
+    // viewer (`setPerspective` no-ops when unchanged, rebuilds otherwise).
+    effect(() => this.gameLog.setPerspective(this.ownPlayerIndex()));
     this.wsService.onStateSync = () => {
       this.animationService.onStateSync();
       // On reconnect (STATE_SYNC), skip the duel-loading phase — thumbnails were

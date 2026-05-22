@@ -558,6 +558,10 @@ export class AnimationOrchestratorService {
     this.counterPulseKey.set(null);
     this.swapGraveDeckKeys.set(new Set());
     this.toastService.clear();
+    // R8 — a rematch reuses the page component (no ngOnDestroy), so the
+    // game-log accumulator must be cleared on the shared reset path or
+    // duel 1's journal leaks into duel 2.
+    this.gameLog?.reset();
   }
 
   resetForSwitch(): void {

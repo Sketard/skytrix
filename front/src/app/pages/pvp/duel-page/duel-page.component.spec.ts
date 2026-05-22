@@ -48,6 +48,7 @@ import { RoomStateMachineService } from './room-state-machine.service';
 import { CardInspectionService } from './card-inspection.service';
 import { DebugLogService } from './debug-log.service';
 import { DuelDebugService } from './duel-debug.service';
+import { DuelGameLogService } from './duel-game-log.service';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { PhaseAnnouncementService } from './phase-announcement.service';
 import { DuelToastService } from './duel-toast.service';
@@ -396,6 +397,9 @@ function setupTestBed(routeStub: ActivatedRoute = makeRouteStub()): void {
             preActivationBufferAccessor: null as unknown,
           },
         },
+        // Real service — pure (signals + GameLogBuilder), no DI deps, inert
+        // until the orchestrator taps it. The page wires it in its constructor.
+        DuelGameLogService,
         { provide: SoloDuelOrchestratorService, useClass: StubSoloOrchestrator },
         { provide: PhaseAnnouncementService, useClass: StubPhaseAnnouncementService },
         { provide: DuelToastService, useValue: {} },

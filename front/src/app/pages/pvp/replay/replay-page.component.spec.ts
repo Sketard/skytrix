@@ -38,6 +38,7 @@ import { FloatRegistryService } from '../duel-page/float-registry.service';
 import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DebugLogService } from '../duel-page/debug-log.service';
 import { DuelDebugService } from '../duel-page/duel-debug.service';
+import { DuelGameLogService } from '../duel-page/duel-game-log.service';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
 import { AnimationOrchestratorService } from '../duel-page/animation-orchestrator.service';
 import { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
@@ -301,6 +302,9 @@ function setupTestBed(): void {
           },
         },
         { provide: DuelWebSocketService, useValue: {} },
+        // Real service — pure (signals + GameLogBuilder), no DI deps, inert
+        // until the orchestrator taps it. The page wires it in its constructor.
+        DuelGameLogService,
         { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
       ],
     },

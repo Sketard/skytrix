@@ -54,6 +54,7 @@ import { FloatRegistryService } from '../duel-page/float-registry.service';
 import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DebugLogService } from '../duel-page/debug-log.service';
 import { DuelDebugService } from '../duel-page/duel-debug.service';
+import { DuelGameLogService } from '../duel-page/duel-game-log.service';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
 import { AnimationOrchestratorService } from '../duel-page/animation-orchestrator.service';
 import { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
@@ -84,7 +85,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
     ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
-    DebugLogService, DuelDebugService,
+    DebugLogService, DuelDebugService, DuelGameLogService,
     DuelWebSocketService, // Required by PvpPromptDialogComponent
     { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
   ],
@@ -129,6 +130,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private readonly duelCtx = inject(DuelContext);
   private readonly duelLogger = inject(DuelLogger);
   private readonly debugService = inject(DuelDebugService);
+  // Provided + injected at page level (R10) so the Game Log accumulates from
+  // the replay's very first event — a component-level service is instantiated
+  // on its first injection. Mirrors `DuelDebugService`.
+  private readonly gameLog = inject(DuelGameLogService);
   readonly adapter = inject(ReplayDuelAdapter);
   readonly orchestrator = inject(AnimationOrchestratorService);
   readonly chainManager = inject(ChainResolutionManager);
@@ -524,6 +529,18 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   constructor() {
     this.cardInspection.init(this.cardDataCache);
     this.cardTravel.registerContainer(this.elementRef.nativeElement);
+
+    // --- Game Log wiring (Lot 2d / R10) ---
+    // Wired in the constructor — before `connect()` (ngOnInit) feeds any event
+    // to the orchestrator's `notifyGameLog` tap. `perspectiveIndex()` is the
+    // absolute viewer index in replay; the adapter's `logicalState()` is the
+    // viewer-relative board the builder consumes.
+    this.gameLog.setPerspective(this.perspectiveIndex());
+    this.gameLog.attachBoardSource(() => this.adapter.boardStateView.logicalState());
+    // The user can flip perspective mid-session (`onTogglePerspective`).
+    // Re-feeding `setPerspective` rebuilds the journal from the retained raw
+    // events for the new viewer (R7 — handled inside the service).
+    effect(() => this.gameLog.setPerspective(this.perspectiveIndex()));
     this.transport.configure({
       adapter: this.adapter,
       phaseService: this.phaseService,
