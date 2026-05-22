@@ -1,0 +1,1040 @@
+@use '../../../../styles/mixin' as mixin;
+
+// =============================================================================
+// game-log-panel.component.scss — Surface 1 of the Game Log feature.
+// -----------------------------------------------------------------------------
+// Ported from `duel-server/src/game-log/game-log.css` (analysis §5). The CSS
+// source — a standalone stylesheet — copied DS token values by hand in its
+// own `:root`. This port is the DS-conform version: the three-bucket token
+// sort (analysis §5.1) is applied —
+//   · Bucket A (--text-*, --space-*, --radius-*, --gold*, --self-blue*,
+//     --opp-amber*, --surface-bg*, --border-*, --text-*, --font-*,
+//     --elevation-*) — NOT redeclared; inherited from the app `:root`.
+//   · Bucket B (--gl-* typo scale, --gl-pictogram/--gl-pile-tag,
+//     --duel-side-*) — declared once in `styles/_tokens.scss`, consumed here.
+//   · Bucket C (surfaces/gradients/combat colours below) — component-local,
+//     derived from DS tokens (no literal hex — stylelint `color-no-hex`).
+// The `.lg-*` rule structure is UNCHANGED — only the token SOURCES moved.
+// =============================================================================
+
+:host {
+  display: block;
+
+  // --- Bucket C — component-local derived values --------------------------
+  // game-log.css invented these surfaces/gradients/combat colours; the DS has
+  // no equivalent, so they stay component-scoped. Each is DERIVED from a DS
+  // token (analysis §5.1 — "derived from DS tokens where possible") so no
+  // literal hex survives.
+
+  // Row / sub-body / effect-box surfaces — translucent tints over the panel.
+  --gl-surface-row:      color-mix(in srgb, var(--surface-card-ds) 82%, transparent);
+  --gl-surface-effect:   color-mix(in srgb, var(--surface-bg) 85%, transparent);
+  --gl-surface-sub:      var(--surface-overlay);
+  --gl-surface-zonecell: var(--surface-hover);
+
+  // Decorative thumbnail gradients — placeholder card face + card back.
+  --gl-thumb-grad:    var(--surface-thumb-gradient);
+  --gl-cardback-grad: repeating-linear-gradient(
+    45deg,
+    var(--surface-slot) 0 6px,
+    var(--surface-bg-deep) 6px 12px
+  );
+
+  // Targeted-cell glow — a local "elevation glow" (no hard shadow in a rule).
+  --gl-glow-target: 0 0 5px var(--gold-soft-40);
+
+  // Negated effect — neutral grey (a plain grey, not the alpha
+  // --pvp-chain-glow-negated; --text-muted is the DS neutral grey).
+  --gl-negated: var(--text-muted);
+
+  // Combat — ATK offensive amber / DEF steel blue / damage red. The DS has no
+  // dedicated combat palette (--pvp-alteration-* is a different semantic), so
+  // these alias the closest DS hues (chantier permits sub-perceptual shifts).
+  --gl-combat-atk: var(--gold-on-surface);
+  --gl-combat-def: var(--cyan-300);
+  --gl-combat-dmg: var(--danger-light);
+
+  // Counter / action — green add, soft red remove.
+  --gl-action-add: var(--success-light);
+  --gl-action-rem: var(--danger-light);
+}
+
+// ============================================================
+// PANEL — full-height side band
+// ============================================================
+// `position: fixed` (not absolute) so the panel is a full-viewport-height
+// side band without depending on a positioned ancestor — the page templates
+// mount it as a bare sibling. The real open/close chrome is Lot 4c.
+.gamelog {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  width: 330px;
+  max-width: 92vw;
+  background: var(--pvp-zone-browser-bg);
+  border-left: 1px solid var(--border-medium);
+  box-shadow: var(--elevation-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gamelog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, var(--gold-soft-08), transparent);
+}
+
+.gamelog__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-title);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gold-on-surface);
+}
+
+.gamelog__title mat-icon {
+  @include mixin.icon-size(var(--gl-icon-title));
+}
+
+.gamelog__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) 0 var(--space-5);
+  display: flex;
+  flex-direction: column;
+}
+
+.gamelog__empty {
+  margin: auto;
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--gl-text);
+  color: var(--text-muted);
+}
+
+// ============================================================
+// SEPARATORS — turn / phase / end
+// ============================================================
+.lg-decision {
+  text-align: center;
+  font-size: var(--gl-text);
+  color: var(--text-secondary);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+
+.lg-turn {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: var(--space-2) 0;
+  background:
+    linear-gradient(180deg, var(--gold-soft-18), var(--gold-soft-06)),
+    var(--surface-bg-deep);
+  border-top: 1px solid var(--gold-soft-30);
+  border-bottom: 1px solid var(--gold-soft-30);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+}
+
+.lg-turn__title {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: var(--weight-black);
+  font-size: var(--gl-title);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-50);
+}
+
+.lg-turn__players {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  gap: var(--space-3);
+}
+
+.lg-turn__p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.lg-turn__p--opp {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.lg-turn__meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.lg-turn__name {
+  font-size: var(--gl-label);
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+}
+
+.lg-turn__lp {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-text);
+  color: var(--text-primary);
+}
+
+.lg-phase {
+  margin: var(--space-1) var(--space-4);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-overlay);
+}
+
+// ============================================================
+// CHAIN GROUP — D-B: one chain = ONE grouped block
+// ============================================================
+.lg-chaingroup {
+  margin: var(--space-3) var(--space-3);
+  border-left: 2px solid var(--gold-soft-30);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: linear-gradient(90deg, var(--gold-soft-06), transparent 60%);
+  padding: 2px 0 var(--space-1) 0;
+}
+
+.lg-chaingroup__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-on-surface);
+}
+
+.lg-chaingroup__head mat-icon {
+  @include mixin.icon-size(var(--gl-icon-title));
+}
+
+.lg-chaingroup__count {
+  margin-left: auto;
+  font-size: var(--gl-label);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.lg-chainmark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-50);
+}
+
+.lg-chainmark::before,
+.lg-chainmark::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--gold-soft-20);
+}
+
+.lg-chainmark mat-icon {
+  @include mixin.icon-size(var(--gl-icon-label));
+}
+
+.lg-chaingroup .lg-row {
+  margin-left: var(--space-2);
+  margin-right: var(--space-2);
+}
+
+.lg-chaingroup .lg-row--bare {
+  margin-left: var(--space-3);
+}
+
+// ============================================================
+// LOG ROW — universal anatomy (FULL row)
+// ============================================================
+.lg-row {
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--gl-surface-row);
+  border-left: 3px solid var(--duel-side-self);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.lg-row:hover {
+  background: var(--surface-hover);
+}
+
+.lg-row:focus-visible {
+  outline: 2px solid var(--gold-soft-40);
+  outline-offset: -1px;
+  background: var(--surface-hover);
+}
+
+.lg-row--opp {
+  border-left-color: var(--duel-side-opp);
+}
+
+.lg-row--negated {
+  opacity: 0.62;
+  border-left-color: var(--gl-negated);
+}
+
+// --- D-C: BARE row — system move with no source card.
+.lg-row--bare {
+  margin: var(--space-2) var(--space-3);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--gl-surface-sub);
+  border-left: none;
+  cursor: default;
+  gap: 0;
+}
+
+.lg-row--bare:hover {
+  background: var(--surface-hover);
+}
+
+.lg-row--bare .lg-body {
+  flex: 1;
+  min-width: 0;
+  gap: 0;
+}
+
+// ============================================================
+// LG-BARE — moved card, TWO-TIER layout
+// ============================================================
+.lg-bare {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lg-row:not(.lg-row--bare) .lg-bare {
+  background: var(--gl-surface-sub);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.lg-body .lg-bare + .lg-bare {
+  margin-top: var(--space-1);
+}
+
+// --- Tier 1: head — the card-name anchor ---
+.lg-bare__head {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.lg-bare__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  line-height: var(--line-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lg-bare__name--hidden {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+// --- Tier 2: body — thumbnail + flow ---
+.lg-bare__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  min-width: 0;
+}
+
+.lg-bare .lg-bare__thumb {
+  width: 30px;
+  height: 43px;
+}
+
+.lg-bare__flow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lg-bare__pile {
+  width: 30px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--gl-surface-zonecell);
+  border: 1px dashed var(--border-medium);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-muted);
+}
+
+.lg-bare__pile small {
+  font-family: var(--font-mono);
+  font-size: var(--gl-pile-tag);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lg-bare__pile--dest {
+  border-color: var(--gold-soft-30);
+  background: var(--gold-soft-08);
+  color: var(--gold-50);
+}
+
+.lg-bare__leg {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 44px;
+}
+
+.lg-bare__verb {
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1;
+}
+
+.lg-bare__arrow {
+  display: flex;
+  align-items: center;
+  color: var(--gold-soft-40);
+  height: 7px;
+}
+
+.lg-bare__arrow::before {
+  content: '';
+  flex: 1;
+  height: 1.4px;
+  background: currentcolor;
+  border-radius: 1px;
+}
+
+.lg-bare__arrow svg {
+  display: block;
+  flex: none;
+}
+
+.lg-bare__zones {
+  font-family: var(--font-mono);
+  font-size: var(--gl-text);
+  color: var(--text-secondary);
+}
+
+// --- source-card header ---
+.lg-src {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lg-src__name {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.lg-row--negated .lg-src__name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.lg-negated-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gl-negated);
+  border: 1px solid var(--gl-negated);
+  border-radius: var(--radius-sm);
+  padding: 1px var(--space-1);
+}
+
+// Chain-link badge — `.badge` is the allowed global class; `.badge-cl` is the
+// game-log size variant (a small round counter disc).
+.badge-cl {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--text-inverse);
+  font-size: var(--gl-text);
+  font-weight: var(--weight-black);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.lg-row--negated .badge-cl {
+  background: var(--gl-negated);
+}
+
+// --- effect description ---
+.lg-desc {
+  padding: var(--space-2);
+  background: var(--gl-surface-effect);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--gl-text);
+  line-height: var(--line-normal);
+  color: var(--text-secondary);
+}
+
+.lg-desc--echo {
+  padding: 2px var(--space-2);
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--gold-soft-20);
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// --- targeting annotation ---
+.lg-targets {
+  margin: 2px 0 0 var(--space-2);
+  font-size: var(--gl-text);
+  color: var(--gold-on-surface);
+  opacity: 0.85;
+}
+
+// --- thumbnails ---
+.lg-thumb {
+  width: 30px;
+  height: 43px;
+  border-radius: var(--radius-sm);
+  background: var(--gl-thumb-grad);
+  border: 1px solid var(--border-medium);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--gl-label);
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+}
+
+.lg-thumb--src {
+  width: 34px;
+  height: 49px;
+}
+
+.lg-thumb--back {
+  background: var(--gl-cardback-grad);
+  border-color: var(--gold-soft-20);
+}
+
+.lg-thumb--art {
+  padding: 0;
+  overflow: hidden;
+}
+
+.lg-thumb--art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+// ============================================================
+// BODY — moved-card sub-rows
+// ============================================================
+.lg-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.lg-moved {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--gl-surface-sub);
+  border-radius: var(--radius-sm);
+}
+
+.lg-moved__flow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.lg-moved__verb {
+  font-size: var(--gl-label);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+// initial-hand draw band
+.lg-draw5 {
+  display: flex;
+  gap: 3px;
+}
+
+.lg-draw5 .lg-thumb {
+  width: 28px;
+  height: 40px;
+}
+
+// ============================================================
+// FIELD GRID — full mini-board (M + S/T rows, both players)
+// ============================================================
+.lg-board {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 78px;
+  flex-shrink: 0;
+}
+
+.lg-board__line {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.lg-board__line .lg-board__row,
+.lg-board__line .lg-board__emz {
+  flex: 1;
+}
+
+.lg-board__row,
+.lg-board__emz {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+}
+
+.lg-board__rowtag {
+  width: 22px;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--gl-pictogram);
+  letter-spacing: 0.04em;
+  text-align: right;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.lg-board__label {
+  font-size: var(--gl-pictogram);
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+.lg-board__label--opp span:first-child {
+  color: var(--duel-side-opp);
+}
+
+.lg-board__label--self span:first-child {
+  color: var(--duel-side-self);
+}
+
+.lg-cell {
+  aspect-ratio: 1;
+  border-radius: 1px;
+  background: var(--gl-surface-zonecell);
+  border: 1px solid var(--border-soft);
+}
+
+.lg-cell--st {
+  border-style: dashed;
+}
+
+.lg-cell--emz {
+  border-color: var(--gold-soft-30);
+  background: var(--gold-soft-08);
+}
+
+.lg-cell--target {
+  background: var(--gold-soft-30);
+  border-color: var(--gold);
+  box-shadow: var(--gl-glow-target);
+}
+
+.lg-board__field {
+  display: flex;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.lg-board__field .lg-cell {
+  width: 13px;
+}
+
+// ============================================================
+// BODY — RNG / combat / action / position
+// ============================================================
+.lg-rng,
+.lg-combat,
+.lg-action,
+.lg-pos {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--gl-surface-sub);
+  border-radius: var(--radius-sm);
+}
+
+.lg-rng__icon,
+.lg-action__icon {
+  display: flex;
+}
+
+.lg-rng__icon {
+  color: var(--gold-on-surface);
+}
+
+.lg-rng__icon mat-icon,
+.lg-action__icon mat-icon {
+  @include mixin.icon-size(var(--gl-icon-text));
+}
+
+.lg-rng__label,
+.lg-action__label {
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+
+.lg-rng__results {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.lg-rng-die {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-bg-deep);
+  border: 1px solid var(--gold-soft-30);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-text);
+  color: var(--gold-50);
+}
+
+.lg-rng-coin {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg-deep);
+  border: 1px solid var(--gold-soft-30);
+  font-size: var(--gl-text);
+  font-weight: var(--weight-semibold);
+  color: var(--gold-50);
+}
+
+.lg-combat__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.lg-combat__thumb {
+  width: 30px;
+  height: 43px;
+  border-radius: var(--radius-sm);
+  background: var(--gl-thumb-grad);
+  border: 1px solid var(--border-medium);
+  display: grid;
+  place-items: center;
+  font-size: var(--gl-label);
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+}
+
+.lg-combat__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lg-combat__stat {
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.lg-combat__atk {
+  color: var(--gl-combat-atk);
+}
+
+.lg-combat__def {
+  color: var(--gl-combat-def);
+}
+
+.lg-combat__dmg {
+  color: var(--gl-combat-dmg);
+}
+
+.lg-combat__stat mat-icon {
+  @include mixin.icon-size(var(--gl-icon-label));
+}
+
+.lg-combat__vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  color: var(--text-muted);
+}
+
+.lg-combat__vs mat-icon {
+  @include mixin.icon-size(var(--gl-icon-title));
+
+  color: var(--gl-combat-dmg);
+}
+
+.lg-lploss {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  justify-content: center;
+}
+
+.lg-lploss__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--gl-combat-dmg) 10%, transparent);
+  border: 1px solid var(--gl-combat-dmg);
+}
+
+.lg-lploss__chip mat-icon {
+  @include mixin.icon-size(var(--gl-icon-label));
+
+  color: var(--gl-combat-dmg);
+}
+
+.lg-lploss__who {
+  font-size: var(--gl-label);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lg-lploss__amt {
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  color: var(--gl-combat-dmg);
+}
+
+.lg-combat__player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.lg-combat__player-ico {
+  width: 30px;
+  height: 43px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--gl-combat-dmg) 22%, transparent),
+    color-mix(in srgb, var(--gl-combat-dmg) 6%, transparent)
+  );
+  border: 1px solid var(--gl-combat-dmg);
+  display: grid;
+  place-items: center;
+  color: var(--gl-combat-dmg);
+}
+
+.lg-combat__player-ico mat-icon {
+  @include mixin.icon-size(var(--gl-icon-title));
+}
+
+.lg-combat__player-dmg {
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gl-combat-dmg);
+  white-space: nowrap;
+}
+
+.lg-action--add .lg-action__icon {
+  color: var(--gl-action-add);
+}
+
+.lg-action--rem .lg-action__icon {
+  color: var(--gl-action-rem);
+}
+
+.lg-action__detail {
+  font-size: var(--gl-text);
+  color: var(--text-muted);
+}
+
+.lg-action__targets {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.lg-action__targets .lg-thumb {
+  width: 22px;
+  height: 31px;
+}
+
+.lg-counter-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--gl-text);
+}
+
+.lg-counter-badge--add {
+  color: var(--gl-action-add);
+}
+
+.lg-counter-badge--rem {
+  color: var(--gl-action-rem);
+}
+
+// position-change body
+.lg-pos__icon {
+  color: var(--gold-on-surface);
+  display: flex;
+}
+
+.lg-pos__icon mat-icon {
+  @include mixin.icon-size(var(--gl-icon-text));
+}
+
+// posture pills — same ATK/DEF identity as combat
+.lg-posture {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid currentcolor;
+  font-family: var(--font-mono);
+  font-size: var(--gl-label);
+  font-weight: var(--weight-bold);
+}
+
+.lg-posture mat-icon {
+  @include mixin.icon-size(var(--gl-icon-label));
+
+  color: inherit;
+}
+
+.lg-posture--atk {
+  color: var(--gl-combat-atk);
+}
+
+.lg-posture--def {
+  color: var(--gl-combat-def);
+}
+
+.lg-posture--before {
+  opacity: 0.45;
+}
+
+// ============================================================
+// duel-over separator
+// ============================================================
+.lg-end {
+  margin: var(--space-3) var(--space-3) var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  text-align: center;
+  background:
+    linear-gradient(180deg, var(--gold-soft-20), var(--gold-soft-08)),
+    var(--surface-bg-deep);
+  border: 1px solid var(--gold-soft-40);
+}
+
+.lg-end__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-black);
+  font-size: var(--gl-title);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-50);
+}
+
+.lg-end__reason {
+  margin-top: 2px;
+  font-size: var(--gl-text);
+  color: var(--text-secondary);
+}

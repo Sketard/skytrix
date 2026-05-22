@@ -541,6 +541,38 @@
   --pvp-lobby-cta-color: #121212;
 
   // =========================================================================
+  // === Game Log Tokens (Surface 1 panel — game-log-feed chantier, Lot 4b) ===
+  // === Bucket B of the game-log.css three-way token sort (analysis §5.1):
+  // === semantic handles the panel SCSS consumes. All ALIASES of existing
+  // === tokens — never a new hue (chantier D-A / D-D).
+  // =========================================================================
+
+  // --- Game-log typographic scale (chantier D-D) — 3 strict levels so the
+  // --- journal stops reading "patte de mouche". Every font-size in the panel
+  // --- routes through one of these. Each level pairs with one icon size.
+  //   · --gl-title  titles   — turn / end / chain-group header, panel title
+  //   · --gl-text   body     — card name, description, zone label, RNG, LP
+  //   · --gl-label  captions — verb, phase, chain tag/counter, board rowtag
+  --gl-title:      var(--text-sm);   // ~13px
+  --gl-text:       var(--text-xs);   // ~11px
+  --gl-label:      0.62rem;          // ~10px — a step under --text-xs
+  --gl-icon-title: 15px;
+  --gl-icon-text:  13px;
+  --gl-icon-label: 11px;
+  // Pictogram scale — the mini-board is a miniature field view, not reading
+  // text; its tags do NOT follow the --gl-* scale (which would balloon them).
+  --gl-pictogram:  6px;
+  --gl-pile-tag:   7px;
+
+  // --- Duel-side semantic handles (chantier D-A) — pure aliases of the
+  // --- replay-viewer duel-side palette. self = blue, opponent = AMBER (never
+  // --- red — red stays reserved for danger/target/defeat).
+  --duel-side-self:        var(--self-blue);
+  --duel-side-self-border: var(--self-blue-soft);
+  --duel-side-opp:         var(--opp-amber);
+  --duel-side-opp-border:  var(--opp-amber-soft);
+
+  // =========================================================================
   // === Solver Tokens ===
   // =========================================================================
 

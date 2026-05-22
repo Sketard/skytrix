@@ -443,6 +443,10 @@
          drives its own CDK overlay anchored on the opponent duelist card). -->
     <app-effect-bubble />
 
+    <!-- Game Log — Surface 1: the journal panel. `open` is hard-true here
+         (Lot 4a/4b provisional gate); the real trigger button is Lot 4f. -->
+    <app-game-log-panel />
+
     <!-- Story 3.4 — Rematch Starting Overlay -->
     @if (wsService.rematchStarting()) {
       <app-system-overlay variant="reconnecting"

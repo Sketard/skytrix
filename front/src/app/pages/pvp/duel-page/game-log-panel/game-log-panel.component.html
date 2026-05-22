@@ -1,0 +1,523 @@
+<!-- =============================================================================
+  game-log-panel.component.html — Surface 1 render tree.
+  Re-expresses `duel-server/src/game-log/game-log-html.ts` as an Angular
+  template: `renderStream` chain-grouping → the `renderNodes` computed; the
+  per-block `renderEntry` / `renderMove` / `renderMiniBoard` functions →
+  `@switch` blocks + the helper methods on the component.
+
+  R5: the whole panel lives behind `@if (open())` — when closed it renders
+  NO DOM (the builder keeps accumulating regardless).
+============================================================================ -->
+@if (open()) {
+  <section class="gamelog" aria-label="Journal de partie">
+    <header class="gamelog__head">
+      <div class="gamelog__title">
+        <mat-icon aria-hidden="true">history_edu</mat-icon>
+        <span>{{ 'gameLog.panel.title' | translate }}</span>
+      </div>
+      <!-- Close affordance — DS `<app-icon-button>`. The (click) handler is
+           wired by Lot 4c (panel chrome); for 4a/4b `open` is a hard-true
+           input, so closing is a no-op placeholder. -->
+      <app-icon-button size="sm" ariaLabel="{{ 'gameLog.panel.close' | translate }}">
+        <mat-icon>close</mat-icon>
+      </app-icon-button>
+    </header>
+
+    <div class="gamelog__scroll">
+      @if (renderNodes().length === 0) {
+        <p class="gamelog__empty">{{ 'gameLog.panel.empty' | translate }}</p>
+      }
+
+      @for (node of renderNodes(); track $index) {
+        @switch (node.kind) {
+          <!-- A folded chain — D-B: one chain is ONE grouped block. -->
+          @case ('chain') {
+            <div class="lg-chaingroup">
+              <div class="lg-chaingroup__head">
+                <mat-icon aria-hidden="true">link</mat-icon>
+                <span>{{ 'gameLog.panel.chain' | translate }}</span>
+                <span class="lg-chaingroup__count">
+                  {{ node.linkCount }} {{ 'gameLog.panel.links' | translate }}
+                </span>
+              </div>
+              @for (row of node.rows; track $index) {
+                @if (row.resolveMarker) {
+                  <div class="lg-chainmark">
+                    <mat-icon aria-hidden="true">sync</mat-icon>
+                    <span>{{ 'gameLog.panel.resolution' | translate }}</span>
+                  </div>
+                } @else {
+                  <ng-container
+                    [ngTemplateOutlet]="entryTpl"
+                    [ngTemplateOutletContext]="{ entry: row.entry, isResolution: row.isResolution }" />
+                }
+              }
+            </div>
+          }
+          <!-- A standalone entry. -->
+          @case ('entry') {
+            <ng-container
+              [ngTemplateOutlet]="entryTpl"
+              [ngTemplateOutletContext]="{ entry: node.entry, isResolution: false }" />
+          }
+        }
+      }
+    </div>
+  </section>
+}
+
+<!-- =============================================================================
+  entryTpl — `renderEntry`: dispatch one entry by its `block` discriminator.
+============================================================================ -->
+<ng-template #entryTpl let-entry="entry" let-isResolution="isResolution">
+  @switch (entry.block) {
+    @case ('separator') {
+      <ng-container
+        [ngTemplateOutlet]="separatorTpl"
+        [ngTemplateOutletContext]="{ e: entry }" />
+    }
+    @case ('move') {
+      <ng-container
+        [ngTemplateOutlet]="moveTpl"
+        [ngTemplateOutletContext]="{ e: entry, isResolution }" />
+    }
+    @case ('rng') {
+      <ng-container
+        [ngTemplateOutlet]="rngTpl"
+        [ngTemplateOutletContext]="{ e: entry, isResolution }" />
+    }
+    @case ('combat') {
+      <ng-container
+        [ngTemplateOutlet]="combatTpl"
+        [ngTemplateOutletContext]="{ e: entry, isResolution }" />
+    }
+    @case ('action') {
+      <ng-container
+        [ngTemplateOutlet]="actionTpl"
+        [ngTemplateOutletContext]="{ e: entry, isResolution }" />
+    }
+  }
+</ng-template>
+
+<!-- =============================================================================
+  separatorTpl — `renderSeparator`. Chain delimiters are folded by the render
+  tree and never reach here; a stray one renders nothing.
+============================================================================ -->
+<ng-template #separatorTpl let-e="e">
+  @switch (separatorKind(e)) {
+    @case ('turn') {
+      <div class="lg-turn">
+        <div class="lg-turn__title">
+          {{ 'gameLog.panel.turn' | translate }} {{ e.turnNumber ?? '?' }}
+        </div>
+        <div class="lg-turn__players">
+          <div class="lg-turn__p">
+            <app-avatar [pseudo]="playerNames()[0]" size="sm" />
+            <div class="lg-turn__meta">
+              <span class="lg-turn__name">{{ playerNames()[0] }}</span>
+              <span class="lg-turn__lp">{{ turnLp(e)[0] }}</span>
+            </div>
+          </div>
+          <div class="lg-turn__p lg-turn__p--opp">
+            <app-avatar [pseudo]="playerNames()[1]" size="sm" />
+            <div class="lg-turn__meta">
+              <span class="lg-turn__name">{{ playerNames()[1] }}</span>
+              <span class="lg-turn__lp">{{ turnLp(e)[1] }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+    @case ('phase') {
+      <div class="lg-phase">{{ (e.labelKey ?? '') | translate }}</div>
+    }
+    @case ('duel-over') {
+      <div class="lg-end">
+        <div class="lg-end__title">
+          🏆
+          {{ (e.winnerSide === 0 ? 'gameLog.panel.youWin' : 'gameLog.panel.oppWin') | translate }}
+        </div>
+        @if (e.reasonKey) {
+          <div class="lg-end__reason">{{ e.reasonKey | translate }}</div>
+        }
+      </div>
+    }
+  }
+</ng-template>
+
+<!-- =============================================================================
+  rowHeadTpl — `renderHead`: source-card header + description + targeting.
+  `isResolution` echoes the description ténu (D-C) instead of the full box.
+============================================================================ -->
+<ng-template #rowHeadTpl let-e="e" let-isResolution="isResolution">
+  @if (e.source; as source) {
+    <div class="lg-src">
+      @if (e.chainLink) {
+        <span class="badge badge-cl">{{ e.chainLink }}</span>
+      }
+      <ng-container
+        [ngTemplateOutlet]="thumbTpl"
+        [ngTemplateOutletContext]="{ ref: source, extra: 'lg-thumb--src' }" />
+      <span class="lg-src__name">{{ cardName(source) }}</span>
+      @if (e.negated) {
+        <span class="lg-negated-tag">{{ 'gameLog.panel.negated' | translate }}</span>
+      }
+    </div>
+  }
+  @if (e.description) {
+    <div class="lg-desc" [class.lg-desc--echo]="isResolution">
+      {{ e.description.trim() }}
+    </div>
+  }
+  @if (e.targets?.length) {
+    <div class="lg-targets">
+      ▸ {{ 'gameLog.panel.targets' | translate }} :
+      @for (t of e.targets; track $index) {
+        {{ cardName(t) }}{{ $last ? '' : ', ' }}
+      }
+    </div>
+  }
+</ng-template>
+
+<!-- =============================================================================
+  moveTpl — `renderMove`. initial-hand is a dedicated draw band; otherwise the
+  full/bare row shares the same moved-card body.
+============================================================================ -->
+<ng-template #moveTpl let-e="e" let-isResolution="isResolution">
+  @if (e.variant === 'initial-hand') {
+    <div class="lg-row lg-row--self">
+      <div class="lg-body">
+        <div class="lg-moved">
+          <div class="lg-draw5">
+            @for (m of e.movedCards; track $index) {
+              <ng-container
+                [ngTemplateOutlet]="thumbTpl"
+                [ngTemplateOutletContext]="{ ref: m.card, extra: '' }" />
+            }
+          </div>
+          <div class="lg-moved__flow">
+            <span class="lg-moved__verb">
+              {{ 'gameLog.panel.openingHand' | translate }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="lg-row"
+         [class.lg-row--opp]="e.player === 1"
+         [class.lg-row--self]="e.player !== 1"
+         [class.lg-row--negated]="e.negated"
+         [class.lg-row--bare]="isBareRow(e)"
+         [attr.tabindex]="isBareRow(e) ? null : 0"
+         [attr.role]="isBareRow(e) ? null : 'button'">
+      <ng-container
+        [ngTemplateOutlet]="rowHeadTpl"
+        [ngTemplateOutletContext]="{ e, isResolution }" />
+      <div class="lg-body">
+        @for (m of e.movedCards; track $index) {
+          <ng-container
+            [ngTemplateOutlet]="movedCardTpl"
+            [ngTemplateOutletContext]="{ m, suppressName: isSameCard(m.card, e.source) }" />
+        }
+      </div>
+    </div>
+  }
+</ng-template>
+
+<!-- =============================================================================
+  movedCardTpl — `renderMovedCard`: the two-tier moved-card anatomy (name
+  header anchored at the top, thumbnail + flow below).
+============================================================================ -->
+<ng-template #movedCardTpl let-m="m" let-suppressName="suppressName">
+  <div class="lg-bare">
+    @if (!suppressName) {
+      <div class="lg-bare__head">
+        @if (m.card.revealed) {
+          <span class="lg-bare__name">{{ cardName(m.card) }}</span>
+        } @else {
+          <span class="lg-bare__name lg-bare__name--hidden">
+            {{ 'gameLog.panel.hiddenCard' | translate }}
+          </span>
+        }
+      </div>
+    }
+    <div class="lg-bare__body">
+      <ng-container
+        [ngTemplateOutlet]="thumbTpl"
+        [ngTemplateOutletContext]="{ ref: m.card, extra: 'lg-bare__thumb' }" />
+      <ng-container
+        [ngTemplateOutlet]="movedFlowTpl"
+        [ngTemplateOutletContext]="{ m }" />
+    </div>
+  </div>
+</ng-template>
+
+<!-- =============================================================================
+  movedFlowTpl — `renderMovedFlow`: source pile → verb/arrow leg → destination
+  (mini-board for a field cell, dashed slot for a pile).
+============================================================================ -->
+<ng-template #movedFlowTpl let-m="m">
+  @if (m.posChange) {
+    <div class="lg-bare__flow">
+      <ng-container
+        [ngTemplateOutlet]="flowLegTpl"
+        [ngTemplateOutletContext]="{ verb: m.verb }" />
+      <span class="lg-bare__zones">{{ m.posChange.from }} → {{ m.posChange.to }}</span>
+    </div>
+  } @else if (m.destCell) {
+    <div class="lg-bare__flow">
+      @if (m.fromZone) {
+        <span class="lg-bare__pile"><small>{{ m.fromZone | translate }}</small></span>
+      }
+      <ng-container
+        [ngTemplateOutlet]="flowLegTpl"
+        [ngTemplateOutletContext]="{ verb: m.verb }" />
+      <ng-container
+        [ngTemplateOutlet]="miniBoardTpl"
+        [ngTemplateOutletContext]="{ cell: m.destCell }" />
+    </div>
+  } @else if (m.destZone) {
+    <div class="lg-bare__flow">
+      @if (m.fromZone) {
+        <span class="lg-bare__pile"><small>{{ m.fromZone | translate }}</small></span>
+      }
+      <ng-container
+        [ngTemplateOutlet]="flowLegTpl"
+        [ngTemplateOutletContext]="{ verb: m.verb }" />
+      <span class="lg-bare__pile lg-bare__pile--dest">
+        <small>{{ m.destZone | translate }}</small>
+      </span>
+    </div>
+  } @else {
+    <div class="lg-bare__flow">
+      <ng-container
+        [ngTemplateOutlet]="flowLegTpl"
+        [ngTemplateOutletContext]="{ verb: m.verb }" />
+    </div>
+  }
+</ng-template>
+
+<!-- flowLegTpl — the verb (nowrap) above a flex-stretched arrow shaft. -->
+<ng-template #flowLegTpl let-verb="verb">
+  <span class="lg-bare__leg">
+    <span class="lg-bare__verb">{{ verb | translate }}</span>
+    <span class="lg-bare__arrow">
+      <svg width="6" height="8" viewBox="0 0 6 8" aria-hidden="true">
+        <path d="M0 1l5 3-5 3" stroke="currentColor" stroke-width="1.4"
+              fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </span>
+  </span>
+</ng-template>
+
+<!-- =============================================================================
+  miniBoardTpl — `renderMiniBoard`: the full two-halves field grid, one cell
+  highlighted. Top→bottom: opponent S, opponent M, shared EMZ, your M, your S.
+============================================================================ -->
+<ng-template #miniBoardTpl let-cell="cell">
+  <div class="lg-board" title="terrain complet — case ciblée">
+    <div class="lg-board__label lg-board__label--opp"><span>Adv.</span></div>
+    <ng-container
+      [ngTemplateOutlet]="boardLineTpl"
+      [ngTemplateOutletContext]="{ tag: 'M/P', cells: boardRow(cell, 1, 'S'), grid: 'row' }" />
+    <ng-container
+      [ngTemplateOutlet]="boardLineTpl"
+      [ngTemplateOutletContext]="{ tag: 'M', cells: boardRow(cell, 1, 'M'), grid: 'row' }" />
+    <ng-container
+      [ngTemplateOutlet]="boardLineTpl"
+      [ngTemplateOutletContext]="{ tag: 'EMZ', cells: boardEmz(cell), grid: 'emz' }" />
+    <ng-container
+      [ngTemplateOutlet]="boardLineTpl"
+      [ngTemplateOutletContext]="{ tag: 'M', cells: boardRow(cell, 0, 'M'), grid: 'row' }" />
+    <ng-container
+      [ngTemplateOutlet]="boardLineTpl"
+      [ngTemplateOutletContext]="{ tag: 'M/P', cells: boardRow(cell, 0, 'S'), grid: 'row' }" />
+    <div class="lg-board__label lg-board__label--self"><span>Toi</span></div>
+    @if (isFieldTarget(cell)) {
+      <div class="lg-board__field"><div class="lg-cell lg-cell--target"></div></div>
+    }
+  </div>
+</ng-template>
+
+<!-- boardLineTpl — one rowtag + a 5-cell grid line. -->
+<ng-template #boardLineTpl let-tag="tag" let-cells="cells" let-grid="grid">
+  <div class="lg-board__line">
+    <span class="lg-board__rowtag">{{ tag }}</span>
+    <div [class.lg-board__row]="grid === 'row'" [class.lg-board__emz]="grid === 'emz'">
+      @for (c of cells; track $index) {
+        <div class="lg-cell"
+             [class.lg-cell--st]="c.spellTrap"
+             [class.lg-cell--emz]="c.emz"
+             [class.lg-cell--target]="c.target"></div>
+      }
+    </div>
+  </div>
+</ng-template>
+
+<!-- =============================================================================
+  rngTpl — `renderRng`: a dice/coin row with the results chips.
+============================================================================ -->
+<ng-template #rngTpl let-e="e" let-isResolution="isResolution">
+  <div class="lg-row"
+       [class.lg-row--opp]="e.player === 1"
+       [class.lg-row--self]="e.player !== 1"
+       tabindex="0" role="button">
+    <ng-container
+      [ngTemplateOutlet]="rowHeadTpl"
+      [ngTemplateOutletContext]="{ e, isResolution }" />
+    <div class="lg-body">
+      <div class="lg-rng">
+        <span class="lg-rng__icon">
+          <mat-icon aria-hidden="true">{{ rngIcon(e.rng) }}</mat-icon>
+        </span>
+        <span class="lg-rng__label">
+          {{ (e.rng === 'coin' ? 'gameLog.panel.coinToss' : 'gameLog.panel.diceRoll') | translate }}
+        </span>
+        <div class="lg-rng__results">
+          @for (r of e.results; track $index) {
+            <span [class.lg-rng-coin]="e.rng === 'coin'"
+                  [class.lg-rng-die]="e.rng !== 'coin'">{{ r | translate }}</span>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<!-- =============================================================================
+  combatTpl — `renderCombat`: attacker → bolt → defender (or a player target
+  pill for a direct attack), plus the dedicated LP-loss line.
+============================================================================ -->
+<ng-template #combatTpl let-e="e" let-isResolution="isResolution">
+  <div class="lg-row"
+       [class.lg-row--opp]="e.player === 1"
+       [class.lg-row--self]="e.player !== 1"
+       tabindex="0" role="button">
+    <ng-container
+      [ngTemplateOutlet]="rowHeadTpl"
+      [ngTemplateOutletContext]="{ e, isResolution }" />
+    <div class="lg-body">
+      <div class="lg-combat">
+        <div class="lg-combat__side">
+          <ng-container
+            [ngTemplateOutlet]="combatThumbTpl"
+            [ngTemplateOutletContext]="{ side: e.attacker }" />
+        </div>
+        <div class="lg-combat__vs">
+          <mat-icon aria-hidden="true">bolt</mat-icon>
+        </div>
+        @if (e.directLabel) {
+          <div class="lg-combat__player">
+            <span class="lg-combat__player-ico">
+              <mat-icon aria-hidden="true">person</mat-icon>
+            </span>
+            <span class="lg-combat__player-dmg">{{ e.directLabel | translate }}</span>
+          </div>
+        } @else {
+          <div class="lg-combat__side">
+            <ng-container
+              [ngTemplateOutlet]="combatThumbTpl"
+              [ngTemplateOutletContext]="{ side: e.defender ?? e.attacker }" />
+          </div>
+        }
+      </div>
+      @if (e.lpLoss?.length) {
+        <div class="lg-lploss">
+          @for (l of e.lpLoss; track $index) {
+            <span class="lg-lploss__chip">
+              <mat-icon aria-hidden="true">person</mat-icon>
+              <span class="lg-lploss__who">
+                {{ (l.player === 0 ? 'gameLog.panel.you' : 'gameLog.panel.opponent') | translate }}
+              </span>
+              <span class="lg-lploss__amt">−{{ l.amount }} PV</span>
+            </span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</ng-template>
+
+<!-- combatThumbTpl — a combat side: thumbnail + ATK/DEF stat badge. -->
+<ng-template #combatThumbTpl let-side="side">
+  <ng-container
+    [ngTemplateOutlet]="thumbTpl"
+    [ngTemplateOutletContext]="{ ref: side.card, extra: 'lg-combat__thumb' }" />
+  @if (statText(side); as stat) {
+    @if (stat) {
+      <span class="lg-combat__stat"
+            [class.lg-combat__atk]="statClass(stat) === 'atk'"
+            [class.lg-combat__def]="statClass(stat) === 'def'"
+            [class.lg-combat__dmg]="statClass(stat) === 'dmg'">
+        @if (statClass(stat) === 'atk') {
+          <mat-icon aria-hidden="true">crisis_alert</mat-icon>
+        } @else if (statClass(stat) === 'def') {
+          <mat-icon aria-hidden="true">shield</mat-icon>
+        }
+        {{ stat }}
+      </span>
+    }
+  }
+</ng-template>
+
+<!-- =============================================================================
+  actionTpl — `renderAction`: a counter / equip / swap / shuffle row.
+============================================================================ -->
+<ng-template #actionTpl let-e="e" let-isResolution="isResolution">
+  <div class="lg-row"
+       [class.lg-row--opp]="e.player === 1"
+       [class.lg-row--self]="e.player !== 1"
+       tabindex="0" role="button">
+    <ng-container
+      [ngTemplateOutlet]="rowHeadTpl"
+      [ngTemplateOutletContext]="{ e, isResolution }" />
+    <div class="lg-body">
+      <div class="lg-action"
+           [class.lg-action--add]="e.action === 'counter-add'"
+           [class.lg-action--rem]="e.action === 'counter-remove'">
+        <span class="lg-action__icon">
+          <mat-icon aria-hidden="true">bolt</mat-icon>
+        </span>
+        <span class="lg-action__label">{{ e.labelKey | translate }}</span>
+        @if (e.counterType !== undefined) {
+          <span class="lg-action__detail">
+            {{ 'gameLog.panel.counterType' | translate }} {{ e.counterType }}
+          </span>
+        }
+        @if (e.equipTargets?.length) {
+          <div class="lg-action__targets">
+            @for (t of e.equipTargets; track $index) {
+              <ng-container
+                [ngTemplateOutlet]="thumbTpl"
+                [ngTemplateOutletContext]="{ ref: t, extra: '' }" />
+            }
+          </div>
+        }
+        @if (e.counterBadge) {
+          <span class="lg-counter-badge"
+                [class.lg-counter-badge--add]="e.action === 'counter-add'"
+                [class.lg-counter-badge--rem]="e.action === 'counter-remove'">
+            {{ e.counterBadge }}
+          </span>
+        }
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<!-- =============================================================================
+  thumbTpl — `thumb`: a card thumbnail. Real artwork when resolvable, else a
+  text placeholder; a hidden card shows the card-back style.
+============================================================================ -->
+<ng-template #thumbTpl let-ref="ref" let-extra="extra">
+  @if (artUrl(ref); as url) {
+    <div class="lg-thumb lg-thumb--art" [class]="extra">
+      <img [src]="url" [alt]="shortName(ref)" loading="lazy" />
+    </div>
+  } @else {
+    <div class="lg-thumb" [class]="extra" [class.lg-thumb--back]="!ref.revealed">
+      {{ ref.revealed ? shortName(ref) : '' }}
+    </div>
+  }
+</ng-template>

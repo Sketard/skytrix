@@ -62,6 +62,7 @@ import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { DuelDevStateService } from './duel-dev-hub/duel-dev-state.service';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { EffectBubbleComponent } from './effect-bubble/effect-bubble.component';
+import { GameLogPanelComponent } from './game-log-panel/game-log-panel.component';
 import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.component';
 import { PvpDiceArenaComponent } from './pvp-dice-arena/pvp-dice-arena.component';
 import { PvpBoardSkeletonComponent } from './pvp-board-skeleton/pvp-board-skeleton.component';
@@ -99,6 +100,7 @@ import { environment } from '../../../../environments/environment';
     DebugLogPanelComponent,
     PvpChainOverlayComponent,
     EffectBubbleComponent,
+    GameLogPanelComponent,
     PvpDuelOverlaysComponent,
     PvpDiceArenaComponent,
     PvpBoardSkeletonComponent,
