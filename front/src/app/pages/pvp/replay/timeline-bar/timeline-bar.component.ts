@@ -19,9 +19,10 @@ export type TimelineSegment =
   | { type: 'chain'; indices: number[] };
 
 /** Labels that act as chain separators but should NOT render as visible bullets
- *  in the timeline/stepper sub-event row. Adding a new server-side hidden label
- *  here keeps the desktop bar AND the mobile stepper in sync. */
-const HIDDEN_SUB_EVENT_LABELS = new Set(['MSG_CHAIN_END']);
+ *  in the timeline/stepper sub-event row, nor in the transport-bar event label.
+ *  Adding a new server-side hidden label here keeps the desktop bar, the mobile
+ *  stepper AND the context-pill in sync. */
+export const HIDDEN_SUB_EVENT_LABELS = new Set(['MSG_CHAIN_END']);
 
 /** Walks a turn's pre-computed states and groups them into single-event or
  *  chain segments, skipping hidden separator labels. Pure function — safe to

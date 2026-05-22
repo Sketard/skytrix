@@ -11,7 +11,7 @@ import { ReplayConnectionService } from './replay-connection.service';
 import { ReplayForkService } from './replay-fork.service';
 import { ReplayDuelAdapter } from './replay-duel-adapter';
 import { ReplayTransportService } from './replay-transport.service';
-import { TimelineBarComponent, type ZoomLevel } from './timeline-bar/timeline-bar.component';
+import { TimelineBarComponent, HIDDEN_SUB_EVENT_LABELS, type ZoomLevel } from './timeline-bar/timeline-bar.component';
 import { TransportBarComponent } from './transport-bar/transport-bar.component';
 import { TimelineStepperComponent } from './timeline-stepper/timeline-stepper.component';
 import { TurnPickerSheetComponent } from './turn-picker-sheet/turn-picker-sheet.component';
@@ -342,7 +342,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return this.phaseService.phaseDisplayName(phase);
   });
 
-  readonly eventLabel = computed<string | null>(() => this.currentState()?.label ?? null);
+  readonly eventLabel = computed<string | null>(() => {
+    // Skip the server-side chain-separator sentinel ('MSG_CHAIN_END') — it is a
+    // raw marker, not an i18n key. Same filter the timeline/stepper apply.
+    const label = this.currentState()?.label ?? null;
+    return label && HIDDEN_SUB_EVENT_LABELS.has(label) ? null : label;
+  });
 
   /** Drives the gold dot indicator on the mobile `⋯ More` button — true when
    *  any visionnage option is set to a non-default value. The animation
