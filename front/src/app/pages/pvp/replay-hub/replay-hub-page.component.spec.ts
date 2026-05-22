@@ -6,11 +6,9 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
-import { BehaviorSubject, of } from 'rxjs';
+import { of } from 'rxjs';
 import { ReplayHubPageComponent } from './replay-hub-page.component';
-import { ReplayHubStore } from './replay-hub-store';
 import { AuthService } from '../../../services/auth.service';
-import { DeckBuildService } from '../../../services/deck-build.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReplayDTO } from '../../../core/model/dto/replay-dto';
 import { DuelResult } from '../../../core/enums/duel-result.enum';
@@ -42,7 +40,6 @@ describe('ReplayHubPageComponent', () => {
   let component: ReplayHubPageComponent;
   let http: HttpTestingController;
   let router: Router;
-  let deckSubject: BehaviorSubject<Array<{ name: string }>>;
   let dialog: jasmine.SpyObj<MatDialog>;
 
   /** Stub the destructive-action confirm dialog. `confirmed=true` simulates
@@ -54,7 +51,6 @@ describe('ReplayHubPageComponent', () => {
   }
 
   beforeEach(async () => {
-    deckSubject = new BehaviorSubject<Array<{ name: string }>>([{ name: 'MyDeck' }]);
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
 
     const authStub = {
@@ -69,7 +65,6 @@ describe('ReplayHubPageComponent', () => {
         provideHttpClientTesting(),
         provideNoopAnimations(),
         { provide: AuthService, useValue: authStub },
-        { provide: DeckBuildService, useValue: { decks$: deckSubject.asObservable() } },
         { provide: NotificationService, useValue: jasmine.createSpyObj('Notify', ['error']) },
         { provide: MatDialog, useValue: dialog },
       ],

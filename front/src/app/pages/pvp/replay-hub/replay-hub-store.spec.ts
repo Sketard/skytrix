@@ -1,10 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { BehaviorSubject, of, throwError } from 'rxjs';
 import { ReplayHubStore } from './replay-hub-store';
 import { AuthService } from '../../../services/auth.service';
-import { DeckBuildService } from '../../../services/deck-build.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReplayDTO } from '../../../core/model/dto/replay-dto';
 import { DuelResult } from '../../../core/enums/duel-result.enum';
@@ -48,16 +46,13 @@ describe('ReplayHubStore', () => {
   let store: ReplayHubStore;
   let http: HttpTestingController;
   let notify: jasmine.SpyObj<NotificationService>;
-  let deckSubject: BehaviorSubject<Array<{ name: string }>>;
 
   beforeEach(() => {
     notify = jasmine.createSpyObj('NotificationService', ['error']);
-    deckSubject = new BehaviorSubject<Array<{ name: string }>>([{ name: 'MyDeck' }]);
 
     const authStub = {
       user: () => ({ id: ME_ID, pseudo: 'Me', role: 'USER' } as unknown as UserDTO),
     };
-    const deckBuildStub = { decks$: deckSubject.asObservable() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -65,7 +60,6 @@ describe('ReplayHubStore', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: authStub },
-        { provide: DeckBuildService, useValue: deckBuildStub },
         { provide: NotificationService, useValue: notify },
       ],
     });
@@ -149,20 +143,6 @@ describe('ReplayHubStore', () => {
       expect(store.filteredReplays().map(r => r.id)).toEqual(['pvpWin']);
       store.setActiveFilter('losses');
       expect(store.filteredReplays().map(r => r.id)).toEqual(['pvpLoss']);
-    });
-
-    it('myDeck — keeps only replays whose user-side deck matches decks[0].name', () => {
-      seedAndFlushSnapshot([
-        // Me is player1, my deck = "MyDeck" (matches defaultDeckName)
-        makeReplay({ id: 'a', player1Id: ME_ID, metadataOverrides: { deckNames: ['MyDeck', 'OppDeck'] } }),
-        // Me is player2 (other side), my deck = "OtherDeck" (no match)
-        makeReplay({ id: 'b', player1Id: OTHER_ID, player2Id: ME_ID, metadataOverrides: { deckNames: ['OppDeck', 'OtherDeck'] } }),
-        // Me is player2, my deck = "MyDeck" (matches)
-        makeReplay({ id: 'c', player1Id: OTHER_ID, player2Id: ME_ID, metadataOverrides: { deckNames: ['OppDeck', 'MyDeck'] } }),
-      ]);
-      store.setActiveFilter('myDeck');
-      const ids = store.filteredReplays().map(r => r.id).sort();
-      expect(ids).toEqual(['a', 'c']);
     });
 
     it('last7days — keeps replays within last 7 days', () => {
@@ -283,21 +263,4 @@ describe('ReplayHubStore', () => {
     });
   });
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // hasDecks / defaultDeckName reactivity
-  // ───────────────────────────────────────────────────────────────────────────
-
-  describe('decks subscription', () => {
-    it('hasDecks() flips when DeckBuildService.decks$ emits an empty list', () => {
-      store.start();
-      http.expectOne(req => req.url === '/api/replays' && req.method === 'GET').flush({ elements: [], size: 0 });
-      http.expectOne('/api/replays/stats').flush({
-        total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0,
-      });
-      expect(store.hasDecks()).toBe(true);
-
-      deckSubject.next([]);
-      expect(store.hasDecks()).toBe(false);
-    });
-  });
 });

@@ -93,12 +93,11 @@ export class ReplayHubPageComponent implements OnInit {
   readonly deletingId = signal<string | null>(null);
 
   readonly sortModes: ReplaySortMode[] = ['newest', 'oldest', 'mostTurns'];
-  readonly filterModes: { id: ReplayFilter; icon?: string; needsDeck?: boolean }[] = [
+  readonly filterModes: { id: ReplayFilter; icon?: string }[] = [
     { id: 'all' },
     { id: 'wins',       icon: 'emoji_events' },
     { id: 'losses',     icon: 'close' },
     { id: 'solo',       icon: 'person' },
-    { id: 'myDeck',     icon: 'style', needsDeck: true },
     { id: 'last7days',  icon: 'schedule' },
   ];
 

@@ -40,7 +40,6 @@
       @for (f of filterModes; track f.id) {
         <app-chip
                 [active]="store.activeFilter() === f.id"
-                [disabled]="f.needsDeck && !store.hasDecks()"
                 [icon]="f.icon"
                 (click)="setActiveFilter(f.id)">
           <span>{{ 'replay.hub.filter.' + f.id | translate }}</span>

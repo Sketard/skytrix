@@ -1,10 +1,8 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ReplayService } from '../../../services/replay.service';
 import { AuthService } from '../../../services/auth.service';
-import { DeckBuildService } from '../../../services/deck-build.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReplayDTO } from '../../../core/model/dto/replay-dto';
 import { ReplayStatsDTO } from '../../../core/model/dto/replay-stats-dto';
@@ -16,7 +14,7 @@ const NEXT_PAGE_TRIGGER_OFFSET = 5;
 const LAST_7_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type ReplaySortMode = 'newest' | 'oldest' | 'mostTurns';
-export type ReplayFilter = 'all' | 'wins' | 'losses' | 'solo' | 'myDeck' | 'last7days';
+export type ReplayFilter = 'all' | 'wins' | 'losses' | 'solo' | 'last7days';
 
 /**
  * Owns the Replay Hub state machine. Extends `ListStore<ReplayDTO>` for the
@@ -40,9 +38,7 @@ export type ReplayFilter = 'all' | 'wins' | 'losses' | 'solo' | 'myDeck' | 'last
 export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayFilter> {
   private readonly replayService = inject(ReplayService);
   private readonly authService = inject(AuthService);
-  private readonly deckBuildService = inject(DeckBuildService);
   private readonly notify = inject(NotificationService);
-  private readonly destroyRef = inject(DestroyRef);
 
   /** Domain-named alias of `items()` — clearer at call sites. */
   readonly replays = this.items;
@@ -61,23 +57,16 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
    *  `loadNextPage()` exclusively. */
   readonly fetchingMore = this._fetchingMore.asReadonly();
 
-  // Default deck name (first in user's deck list, refreshed when decks$ fires).
-  // Used by the "myDeck" filter — falls back to '' when the user has no decks.
-  private readonly defaultDeckName = signal<string>('');
-
   readonly hasMore = computed(() => {
     const total = this.totalElements();
     return total === null ? false : this.replays().length < total;
   });
-
-  readonly hasDecks = computed(() => this.defaultDeckName().length > 0);
 
   constructor() {
     super('newest', 'all');
   }
 
   start(): void {
-    this.subscribeToDeckList();
     this.fetchSnapshot();
     this.fetchStats();
   }
@@ -170,17 +159,6 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
     }
   }
 
-  private subscribeToDeckList(): void {
-    // Reactive to deck list changes — keeps the "myDeck" filter targeted
-    // at the first deck of the user's collection. Falls back to '' when the
-    // collection is empty (chip disabled in the template).
-    this.deckBuildService.decks$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(decks => {
-        this.defaultDeckName.set(decks?.[0]?.name ?? '');
-      });
-  }
-
   // ─── ListStore hooks ──────────────────────────────────────────────────────
 
   /** Search matches against the opponent username + both deck names
@@ -205,12 +183,6 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
         return !isSolo(r) && isLoss(result);
       case 'solo':
         return isSolo(r);
-      case 'myDeck': {
-        const defaultDeck = this.defaultDeckName();
-        // No default deck → filter is a no-op (chip disabled in the template).
-        if (!defaultDeck) return true;
-        return r.metadata.deckNames[this.sides(r).mySide] === defaultDeck;
-      }
       case 'last7days':
         return new Date(r.createdAt).getTime() >= Date.now() - LAST_7_DAYS_MS;
       case 'all':
