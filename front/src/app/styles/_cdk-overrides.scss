@@ -64,6 +64,13 @@
   pointer-events: none;
 }
 
+// --- opponent effect bubble (Surface 2 du Game Log) : le wrapper overlay est
+// click-through (guard-rail G1) — un clic plateau passe à travers ; seule la
+// boîte de texte scrollable interne réactive `pointer-events`.
+.effect-bubble-pane {
+  pointer-events: none;
+}
+
 .replay-list-viewport .cdk-virtual-scroll-content-wrapper {
   width: 100%;
   // Marge en haut pour que le hover-lift de la première carte

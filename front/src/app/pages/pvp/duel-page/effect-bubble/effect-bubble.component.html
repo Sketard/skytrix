@@ -1,0 +1,17 @@
+<!-- The bubble body — projected into a CDK overlay via a TemplatePortal so it
+     lives in this component's change-detection tree. The host element renders
+     nothing on the page itself. -->
+<ng-template #bubbleTpl>
+  @if (content(); as a) {
+    <div class="effect-bubble" [class.effect-bubble--leaving]="leaving()"
+         role="status" aria-live="polite">
+      <div class="effect-bubble__head">
+        <mat-icon class="effect-bubble__glyph" aria-hidden="true">bolt</mat-icon>
+        <span class="effect-bubble__card">{{ a.cardName }}</span>
+      </div>
+      @if (a.descriptionText) {
+        <div class="effect-bubble__text ghost-scroll">{{ a.descriptionText }}</div>
+      }
+    </div>
+  }
+</ng-template>

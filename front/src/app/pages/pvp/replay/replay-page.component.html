@@ -119,6 +119,10 @@
       <!-- Chain Overlay -->
       <app-pvp-chain-overlay [promptActive]="adapter.activePrompt() !== null" />
 
+      <!-- Game Log — Surface 2: opponent effect bubble (zero DOM here; drives
+           its own CDK overlay anchored on the opponent duelist card). -->
+      <app-effect-bubble />
+
       <!-- Prompt Dialog for Replay Decision Mode -->
       <app-pvp-prompt-dialog [prompt]="promptMode() === 'decision' ? adapter.activePrompt() : null"
                               [passiveMessage]="null"

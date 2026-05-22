@@ -70,6 +70,7 @@ import { MoveAnimationRouter } from '../duel-page/move-animation-router';
 import { TargetIndicatorManager } from '../duel-page/target-indicator-manager';
 import { BufferReplayBuilder } from '../duel-page/buffer-replay-builder';
 import { PvpChainOverlayComponent } from '../duel-page/pvp-chain-overlay/pvp-chain-overlay.component';
+import { EffectBubbleComponent } from '../duel-page/effect-bubble/effect-bubble.component';
 import { PvpDuelOverlaysComponent } from '../duel-page/pvp-duel-overlays/pvp-duel-overlays.component';
 import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog/pvp-prompt-dialog.component';
 
@@ -93,7 +94,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent,
     PvpZoneBrowserOverlayComponent,
     TimelineBarComponent, TransportBarComponent, DebugLogPanelComponent,
-    PvpPromptDialogComponent, PvpChainOverlayComponent, PvpDuelOverlaysComponent,
+    PvpPromptDialogComponent, PvpChainOverlayComponent, EffectBubbleComponent, PvpDuelOverlaysComponent,
     OrientationLockComponent,
     BackFabComponent,
     ReplayTopbarComponent, ReplayLoadingSkeletonComponent,

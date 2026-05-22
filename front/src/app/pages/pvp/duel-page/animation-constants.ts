@@ -120,6 +120,21 @@ export const CHAIN_ACTIVATE_MIN_MS = 250;
 /** MSG_CHAINING fallback budget when no zone resolves (HAND-only or unknown). */
 export const CHAIN_ACTIVATE_FALLBACK_MS = 400;
 
+// --- Opponent effect bubble (Surface 2 — `<app-effect-bubble>`) ---------------
+/** How long the effect bubble holds a content before fading out (Lot 3b). */
+export const EFFECT_BUBBLE_MS = 3500;
+export const EFFECT_BUBBLE_MIN_MS = 1750;
+/** Enter (fade+slide) / exit (fade) transition of the effect bubble. Kept in
+ *  lockstep with the SCSS `--transition-normal` token (250ms) the bubble's
+ *  CSS transition uses — the JS fade timer must not tear the overlay down
+ *  before the CSS exit transition completes. */
+export const EFFECT_BUBBLE_FADE_MS = 250;
+export const EFFECT_BUBBLE_FADE_MIN_MS = 125;
+/** Anti-flicker floor: minimum time a bubble content stays visible before a
+ *  newer activation may replace it — coalesces a rapid chain burst into
+ *  "first link briefly → last link" instead of a 3-frame strobe (Lot 3b). */
+export const EFFECT_BUBBLE_MIN_VISIBLE_MS = 700;
+
 /** MSG_CHAIN_SOLVING multi-link banner pause budget + return value when
  *  resolution is deferred to let the banner play. */
 export const CHAIN_BANNER_PAUSE_MS = 1000;

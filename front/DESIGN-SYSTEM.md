@@ -320,6 +320,7 @@ Pas instanciés directement dans un template métier, ou usage unique.
 | Custom tooltip | `custom-tooltip` | Conteneur tooltip — `contentTemplate` (`TemplateRef`, requis) ou `text`. |
 | Navbar | `<navbar>` | Navigation principale. Placée une fois dans le shell. |
 | System overlay | `<app-system-overlay>` | Overlay d'état réseau. `variant` (`lost\|reconnecting\|grace\|blocked`, requis), `title`, `subtitle`, `pulseTitle`. |
+| Effect bubble | `<app-effect-bubble>` | **Feature-scoped** (`pvp/duel-page/effect-bubble/`, pas un primitif DS-core). Bulle éphémère de l'effet activé par l'adversaire (Surface 2 du Game Log). Aucune entrée : se monte sans binding dans `duel-page` + `replay-page`, lit `DuelGameLogService.lastOpponentActivation`, pilote son propre overlay CDK ancré sur la duelist-card adverse. |
 
 ---
 

@@ -439,6 +439,10 @@
     <!-- Story 6.1 / 6.3 — Chain Overlay (H1: services injected directly, only promptActive as input) -->
     <app-pvp-chain-overlay [promptActive]="hasActivePrompt()" />
 
+    <!-- Game Log — Surface 2: opponent effect bubble (renders zero DOM here;
+         drives its own CDK overlay anchored on the opponent duelist card). -->
+    <app-effect-bubble />
+
     <!-- Story 3.4 — Rematch Starting Overlay -->
     @if (wsService.rematchStarting()) {
       <app-system-overlay variant="reconnecting"

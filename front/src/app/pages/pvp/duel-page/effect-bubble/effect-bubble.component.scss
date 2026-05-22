@@ -1,0 +1,95 @@
+@use '../../../../styles/mixin' as mixin;
+
+// =============================================================================
+// Effect bubble — Surface 2 of the Game Log feature.
+// Built fresh from DS tokens (analysis §5.3 — the old `.bubble*` mockup classes
+// are NOT resurrected). The bubble body renders inside a CDK overlay whose
+// wrapper (`.effect-bubble-pane`, see `_cdk-overrides.scss`) is click-through;
+// only the `.effect-bubble__text` box re-enables pointer-events for scrolling
+// a long effect (guard-rail G1).
+// =============================================================================
+
+:host {
+  display: none; // The host renders nothing on the page — the body is a portal.
+}
+
+.effect-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: clamp(220px, 22vw, 320px);
+  padding: var(--space-3) var(--space-4);
+
+  background: var(--gradient-card-ds);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-md);
+  box-shadow:
+    var(--elevation-3),
+    0 0 16px var(--gold-soft-30);
+
+  // Enter: fade + slide-down. The `--leaving` modifier swaps to a plain fade.
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--transition-normal) var(--ease-out),
+    transform var(--transition-normal) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.effect-bubble--leaving {
+  opacity: 0;
+  // Exit is a plain fade — no slide (chantier §4.1 state table).
+  transform: translateY(0);
+}
+
+.effect-bubble__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.effect-bubble__glyph {
+  flex: 0 0 auto;
+  @include mixin.icon-size(18px);
+  color: var(--gold-on-surface);
+}
+
+.effect-bubble__card {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--gold-on-surface);
+  // Card names can be long — wrap rather than overflow the head row.
+  overflow-wrap: anywhere;
+}
+
+.effect-bubble__text {
+  // Re-enable pointer-events so a long effect can be wheel/touch-scrolled
+  // even though the overlay wrapper is click-through (guard-rail G1).
+  pointer-events: auto;
+
+  // Grow to fit, capped at ~40% of the opponent half-board, then scroll
+  // internally (guard-rail G1 — never run off the opponent's half).
+  max-height: 20vh;
+  overflow-y: auto;
+
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  white-space: pre-line;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .effect-bubble {
+    transition: none;
+
+    @starting-style {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
