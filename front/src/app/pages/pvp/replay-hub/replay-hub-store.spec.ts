@@ -127,6 +127,30 @@ describe('ReplayHubStore', () => {
       expect(ids).toEqual(['a', 'b', 'c']);
     });
 
+    it('solo — keeps only replays with the same user on both sides', () => {
+      seedAndFlushSnapshot([
+        makeReplay({ id: 'solo1', player1Id: ME_ID, player2Id: ME_ID }),
+        makeReplay({ id: 'solo2', player1Id: ME_ID, player2Id: ME_ID }),
+        makeReplay({ id: 'pvp',   player1Id: ME_ID, player2Id: OTHER_ID }),
+      ]);
+      store.setActiveFilter('solo');
+      const ids = store.filteredReplays().map(r => r.id).sort();
+      expect(ids).toEqual(['solo1', 'solo2']);
+    });
+
+    it('wins / losses — exclude solo replays despite their result', () => {
+      seedAndFlushSnapshot([
+        makeReplay({ id: 'pvpWin',  player1Id: ME_ID, player2Id: OTHER_ID, metadataOverrides: { result: DuelResult.VICTORY } }),
+        makeReplay({ id: 'soloWin', player1Id: ME_ID, player2Id: ME_ID,    metadataOverrides: { result: DuelResult.VICTORY } }),
+        makeReplay({ id: 'pvpLoss', player1Id: ME_ID, player2Id: OTHER_ID, metadataOverrides: { result: DuelResult.DEFEAT } }),
+        makeReplay({ id: 'soloLoss',player1Id: ME_ID, player2Id: ME_ID,    metadataOverrides: { result: DuelResult.DEFEAT } }),
+      ]);
+      store.setActiveFilter('wins');
+      expect(store.filteredReplays().map(r => r.id)).toEqual(['pvpWin']);
+      store.setActiveFilter('losses');
+      expect(store.filteredReplays().map(r => r.id)).toEqual(['pvpLoss']);
+    });
+
     it('myDeck — keeps only replays whose user-side deck matches decks[0].name', () => {
       seedAndFlushSnapshot([
         // Me is player1, my deck = "MyDeck" (matches defaultDeckName)

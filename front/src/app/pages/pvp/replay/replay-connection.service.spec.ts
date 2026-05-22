@@ -150,6 +150,7 @@ describe('ReplayConnectionService — server message dispatch', () => {
       divergenceWarning: false,
       totalResponses: 42,
       cardCodes: [1, 2, 3],
+      isSolo: false,
     };
     dispatchServerMessage(ws, msg);
     expect(svc.metadata()).toEqual(msg);

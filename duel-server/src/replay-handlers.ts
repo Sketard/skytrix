@@ -154,6 +154,9 @@ export async function handleReplayConnection(ws: WebSocket, jwt: string, replayI
 
   // Fetch replay data from Spring Boot (or hit the cache)
   let replayData!: WorkerReplayPayload;
+  // Both player ids — used to flag solo "quick duels" (p1 === p2) in
+  // REPLAY_METADATA. Populated in both the cache-hit and fetch branches.
+  let replayPlayerIds: [string, string] = ['', ''];
   const cached = c.replayCache.get(replayId);
   if (cached) {
     if (cached.playerIds[0] !== userId && cached.playerIds[1] !== userId) {
@@ -163,6 +166,7 @@ export async function handleReplayConnection(ws: WebSocket, jwt: string, replayI
       return;
     }
     replayData = cached.data;
+    replayPlayerIds = cached.playerIds;
     c.replayCache.touch(replayId);
     logger.debug('Replay cache hit (TTL refreshed)', { replayId });
   } else {
@@ -199,6 +203,7 @@ export async function handleReplayConnection(ws: WebSocket, jwt: string, replayI
         }
 
         replayData = { ...body.replayData, metadata: body.metadata };
+        replayPlayerIds = [p1, p2];
         c.replayCache.set(replayId, { data: replayData, playerIds: [p1, p2] });
         break;
       } catch (err) {
@@ -229,6 +234,7 @@ export async function handleReplayConnection(ws: WebSocket, jwt: string, replayI
     totalResponses: replayData.playerResponses.length,
     cardCodes,
     durationSec: replayData.metadata.durationSec,
+    isSolo: replayPlayerIds[0] === replayPlayerIds[1],
   }));
 
   // Mark as alive for heartbeat (shared with duel connections via wss.clients)

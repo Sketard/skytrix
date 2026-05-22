@@ -893,6 +893,7 @@
         "all": "Tous",
         "wins": "Victoires",
         "losses": "Défaites",
+        "solo": "Solo",
         "myDeck": "Mon deck",
         "last7days": "7 derniers jours"
       },
@@ -927,6 +928,8 @@
         "deleteTitle": "Supprimer le replay",
         "deleteConfirm": "Voulez-vous vraiment supprimer définitivement ce replay ?",
         "turns": "{{n}} tours",
+        "solo": "Solo",
+        "soloHint": "Partie solo — non comptée dans les statistiques",
         "result": {
           "victory": "Victoire",
           "defeat": "Défaite",

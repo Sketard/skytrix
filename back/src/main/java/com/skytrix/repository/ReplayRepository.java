@@ -35,6 +35,14 @@ public interface ReplayRepository extends CrudRepository<Replay, UUID>, PagingAn
         long getDraws();
     }
 
+    /**
+     * PvP win/loss stats for a user. Solo "quick duels" are persisted as
+     * replays with player1_id = player2_id = the same user (so they stay
+     * replayable in the match-history list) — but they are excluded here:
+     * a solo row would otherwise match BOTH the victory and defeat filters
+     * (both branches of each OR are true when both ids are :userId),
+     * inflating victories + defeats past total.
+     */
     @Query(value = """
             SELECT
               COUNT(*) AS total,
@@ -50,7 +58,8 @@ public interface ReplayRepository extends CrudRepository<Replay, UUID>, PagingAn
               ) AS defeats,
               COUNT(*) FILTER (WHERE metadata->>'result' = 'DRAW') AS draws
             FROM replay
-            WHERE player1_id = :userId OR player2_id = :userId
+            WHERE (player1_id = :userId OR player2_id = :userId)
+              AND player1_id <> player2_id
             """, nativeQuery = true)
     ReplayStatsProjection getStatsForUser(@Param("userId") Long userId);
 }

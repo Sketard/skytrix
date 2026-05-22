@@ -13,6 +13,7 @@ function makeMeta(overrides: Partial<ReplayMetadataMsg> = {}): ReplayMetadataMsg
     divergenceWarning: false,
     totalResponses: 0,
     cardCodes: [],
+    isSolo: false,
     ...overrides,
   } as ReplayMetadataMsg;
 }
@@ -116,5 +117,25 @@ describe('ReplayTopbarComponent', () => {
   it('renders nothing in summary when metadata is null', () => {
     bind(null);
     expect(el.querySelector('.replay-topbar__summary')).toBeNull();
+  });
+
+  it('shows the Solo badge instead of player names, keeps decks, hides result pills', () => {
+    bind(makeMeta({ isSolo: true, result: 'victory' }), 0);
+    const soloBadges = el.querySelectorAll('.replay-topbar__solo');
+    expect(soloBadges.length).toBe(2);
+    // Player names are replaced by the badge…
+    expect(el.querySelector('.replay-topbar__chip-name')).toBeNull();
+    // …but deck names stay visible.
+    const decks = el.querySelectorAll('.replay-topbar__chip-deck');
+    expect(decks[0].textContent?.trim()).toBe('Snake-Eye Fiendsmith');
+    expect(decks[1].textContent?.trim()).toBe('Yubel');
+    // Result W/L pills are hidden for solo (arbitrary result).
+    expect(el.querySelector('.pill--gold')).toBeNull();
+  });
+
+  it('renders player names normally when isSolo is false', () => {
+    bind(makeMeta({ isSolo: false }), 0);
+    expect(el.querySelector('.replay-topbar__solo')).toBeNull();
+    expect(el.querySelector('.replay-topbar__chip-name')?.textContent?.trim()).toBe('AxelDuel');
   });
 });

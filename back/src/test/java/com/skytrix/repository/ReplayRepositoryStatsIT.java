@@ -108,6 +108,26 @@ class ReplayRepositoryStatsIT {
     }
 
     @Test
+    void getStatsForUser_excludesSoloReplays() {
+        User alice = createUser("alice3");
+        User bob = createUser("bob3");
+
+        persistReplay(alice, bob, DuelResult.VICTORY);
+        persistReplay(alice, bob, DuelResult.DEFEAT);
+        // Solo "quick duels" — alice on both sides. Must NOT count: a solo
+        // row matches both the victory and the defeat filters at once.
+        persistReplay(alice, alice, DuelResult.VICTORY);
+        persistReplay(alice, alice, DuelResult.DEFEAT);
+
+        var stats = replayRepository.getStatsForUser(alice.getId());
+
+        assertEquals(2, stats.getTotal(), "only the 2 PvP replays are counted");
+        assertEquals(1, stats.getVictories());
+        assertEquals(1, stats.getDefeats());
+        assertEquals(0, stats.getDraws());
+    }
+
+    @Test
     void getStatsForUser_returnsZeroesForUnknownUser() {
         var stats = replayRepository.getStatsForUser(99999L);
 

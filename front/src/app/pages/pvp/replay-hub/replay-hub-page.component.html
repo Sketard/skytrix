@@ -134,8 +134,16 @@
             </div>
             <div class="replay-card__info">
               <div class="replay-card__title">
-                <span class="replay-card__vs-prefix">{{ 'replay.hub.card.vsPrefix' | translate }}</span>
-                <span class="replay-card__opponent">{{ opponentName(replay) || ('replay.hub.card.opponentUnknown' | translate) }}</span>
+                @if (isSolo(replay)) {
+                  <span class="replay-card__solo"
+                        [matTooltip]="'replay.hub.card.soloHint' | translate">
+                    <mat-icon>person</mat-icon>
+                    {{ 'replay.hub.card.solo' | translate }}
+                  </span>
+                } @else {
+                  <span class="replay-card__vs-prefix">{{ 'replay.hub.card.vsPrefix' | translate }}</span>
+                  <span class="replay-card__opponent">{{ opponentName(replay) || ('replay.hub.card.opponentUnknown' | translate) }}</span>
+                }
               </div>
               <div class="replay-card__meta">
                 @if (deckMatchupText(replay); as txt) {

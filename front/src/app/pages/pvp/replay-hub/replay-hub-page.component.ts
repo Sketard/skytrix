@@ -97,6 +97,7 @@ export class ReplayHubPageComponent implements OnInit {
     { id: 'all' },
     { id: 'wins',       icon: 'emoji_events' },
     { id: 'losses',     icon: 'close' },
+    { id: 'solo',       icon: 'person' },
     { id: 'myDeck',     icon: 'style', needsDeck: true },
     { id: 'last7days',  icon: 'schedule' },
   ];
@@ -182,6 +183,12 @@ export class ReplayHubPageComponent implements OnInit {
   }
   resultMeta(r: ReplayDTO): ResultMeta {
     return RESULT_META[r.metadata.result];
+  }
+  /** A solo "quick duel" — same user on both sides. These replays stay
+   *  viewable but are excluded from the win/loss stats (a solo row would
+   *  match both the victory and defeat filters server-side). */
+  isSolo(r: ReplayDTO): boolean {
+    return r.player1Id === r.player2Id;
   }
   /** Formats the optional duration as M:SS, or empty string when absent. */
   durationText(r: ReplayDTO): string {

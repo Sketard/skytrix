@@ -16,7 +16,7 @@ const NEXT_PAGE_TRIGGER_OFFSET = 5;
 const LAST_7_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type ReplaySortMode = 'newest' | 'oldest' | 'mostTurns';
-export type ReplayFilter = 'all' | 'wins' | 'losses' | 'myDeck' | 'last7days';
+export type ReplayFilter = 'all' | 'wins' | 'losses' | 'solo' | 'myDeck' | 'last7days';
 
 /**
  * Owns the Replay Hub state machine. Extends `ListStore<ReplayDTO>` for the
@@ -196,10 +196,15 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
   protected passesFilter(r: ReplayDTO, mode: ReplayFilter): boolean {
     const result = r.metadata.result;
     switch (mode) {
+      // Solo replays have an arbitrary win/loss result (the user plays both
+      // sides), so they are excluded from wins/losses — same rationale as
+      // their exclusion from the win/loss stats.
       case 'wins':
-        return isWin(result);
+        return !isSolo(r) && isWin(result);
       case 'losses':
-        return isLoss(result);
+        return !isSolo(r) && isLoss(result);
+      case 'solo':
+        return isSolo(r);
       case 'myDeck': {
         const defaultDeck = this.defaultDeckName();
         // No default deck → filter is a no-op (chip disabled in the template).
@@ -251,4 +256,10 @@ function isLoss(r: DuelResult): boolean {
     || r === DuelResult.TIMEOUT
     || r === DuelResult.DISCONNECT
     || r === DuelResult.SURRENDER;
+}
+
+/** A solo "quick duel" — same user on both sides. Excluded from win/loss
+ *  stats and from the wins/losses filters (arbitrary result). */
+function isSolo(r: ReplayDTO): boolean {
+  return r.player1Id === r.player2Id;
 }

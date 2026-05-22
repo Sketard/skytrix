@@ -95,6 +95,9 @@ export interface ReplayMetadataMsg {
   /** Duel duration in seconds — shipped by hub-rework B1 for the topbar pill.
    *  Optional: legacy replays recorded before B1 don't carry it. */
   durationSec?: number;
+  /** True when both sides are the same user — a solo "quick duel". The
+   *  viewer shows a "Solo" badge and the result is not a real W/L. */
+  isSolo: boolean;
 }
 
 export interface ReplayErrorMsg {

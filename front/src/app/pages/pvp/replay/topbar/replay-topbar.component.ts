@@ -46,13 +46,20 @@ export class ReplayTopbarComponent {
   protected readonly selfDeck = computed(() => this.metadata()?.deckNames[this.mySide()] ?? '');
   protected readonly oppDeck  = computed(() => this.metadata()?.deckNames[this.mySide() === 0 ? 1 : 0] ?? '');
 
+  /** Solo "quick duel" — same user on both sides. The chips keep their deck
+   *  names (the matchup is the point of a solo test) but the redundant
+   *  player name is replaced by a "Solo" badge, and the W/L pills are
+   *  hidden (a solo result is arbitrary). `isSolo` is absent on legacy
+   *  REPLAY_METADATA messages → `?? false`. */
+  protected readonly isSolo = computed(() => this.metadata()?.isSolo ?? false);
+
   protected readonly outcome = computed<ReplayOutcome>(() =>
     deriveOutcome(this.metadata()?.result ?? null, this.mySide()),
   );
 
-  // "V" / "D" / "—" pill on each player chip.
-  protected readonly selfResultTag = computed(() => this.tagFor(this.outcome(), 'self'));
-  protected readonly oppResultTag  = computed(() => this.tagFor(this.outcome(), 'opp'));
+  // "V" / "D" / "—" pill on each player chip — hidden for solo replays.
+  protected readonly selfResultTag = computed(() => this.isSolo() ? null : this.tagFor(this.outcome(), 'self'));
+  protected readonly oppResultTag  = computed(() => this.isSolo() ? null : this.tagFor(this.outcome(), 'opp'));
 
   protected readonly durationLabel = computed<string | null>(() => {
     const sec = this.metadata()?.durationSec;

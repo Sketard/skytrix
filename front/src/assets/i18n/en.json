@@ -893,6 +893,7 @@
         "all": "All",
         "wins": "Wins",
         "losses": "Losses",
+        "solo": "Solo",
         "myDeck": "My deck",
         "last7days": "Last 7 days"
       },
@@ -927,6 +928,8 @@
         "deleteTitle": "Delete replay",
         "deleteConfirm": "Delete this replay permanently?",
         "turns": "{{n}} turns",
+        "solo": "Solo",
+        "soloHint": "Solo game — not counted in statistics",
         "result": {
           "victory": "Victory",
           "defeat": "Defeat",

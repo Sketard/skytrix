@@ -187,4 +187,9 @@ describe('ReplayHubPageComponent', () => {
     initialFetchFlush([], { total: 4, victories: 3, defeats: 1, draws: 0, winrate: 0.75 });
     expect(component.winratePercent()).toBe(75);
   });
+
+  it('isSolo() flags replays with the same user on both sides', () => {
+    expect(component.isSolo(makeReplay('pvp', { player1Id: ME_ID, player2Id: 99 }))).toBe(false);
+    expect(component.isSolo(makeReplay('solo', { player1Id: ME_ID, player2Id: ME_ID }))).toBe(true);
+  });
 });

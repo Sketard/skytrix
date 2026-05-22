@@ -63,6 +63,29 @@
   max-width: 140px;
 }
 
+// Solo "quick duel" — replaces the redundant player name in each chip with
+// a prominent cyan badge (same token set as the DS `.pill--cyan` variant +
+// the hub card's `.replay-card__solo`). Deck name stays below it.
+.replay-topbar__solo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  padding: 2px var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--cyan-soft-15);
+  border: 1px solid var(--cyan-soft-25);
+  color: var(--cyan-300);
+  font: var(--weight-bold) var(--text-xs) / 1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  mat-icon {
+    // !important: override mat-icon's default 24px host bind.
+    @include icon-size(13px);
+  }
+}
+
 .replay-topbar__vs {
   padding: 0 var(--space-2);
 }

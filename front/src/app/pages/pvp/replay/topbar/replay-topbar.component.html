@@ -15,7 +15,14 @@
       <div class="replay-topbar__chip">
         <app-avatar [pseudo]="selfName()" size="sm" />
         <div class="replay-topbar__chip-meta">
-          <span class="replay-topbar__chip-name">{{ selfName() }}</span>
+          @if (isSolo()) {
+            <span class="replay-topbar__solo">
+              <mat-icon aria-hidden="true">person</mat-icon>
+              {{ 'replay.hub.card.solo' | translate }}
+            </span>
+          } @else {
+            <span class="replay-topbar__chip-name">{{ selfName() }}</span>
+          }
           <span class="replay-topbar__chip-deck text-eyebrow">{{ selfDeck() }}</span>
         </div>
         @if (selfResultTag(); as tag) {
@@ -36,7 +43,14 @@
           </app-pill>
         }
         <div class="replay-topbar__chip-meta">
-          <span class="replay-topbar__chip-name">{{ oppName() }}</span>
+          @if (isSolo()) {
+            <span class="replay-topbar__solo">
+              <mat-icon aria-hidden="true">person</mat-icon>
+              {{ 'replay.hub.card.solo' | translate }}
+            </span>
+          } @else {
+            <span class="replay-topbar__chip-name">{{ oppName() }}</span>
+          }
           <span class="replay-topbar__chip-deck text-eyebrow">{{ oppDeck() }}</span>
         </div>
         <app-avatar [pseudo]="oppName()" size="sm" />

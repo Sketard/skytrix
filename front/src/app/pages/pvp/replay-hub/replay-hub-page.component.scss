@@ -329,6 +329,30 @@
   text-overflow: ellipsis;
 }
 
+// Solo replays replace the "vs Opponent" title — no opponent to name when
+// the same user plays both sides. Rendered as a prominent cyan badge (same
+// token set as the DS `.pill--cyan` variant) so a solo row reads at a glance
+// as distinct from a PvP match.
+.replay-card__solo {
+  display: inline-flex;
+  align-items: center;
+  align-self: center; // parent `.replay-card__title` is baseline-aligned
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--cyan-soft-15);
+  border: 1px solid var(--cyan-soft-25);
+  color: var(--cyan-300);
+  font: var(--weight-bold) var(--text-sm) / var(--line-tight) var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  mat-icon {
+    // !important: override mat-icon's default 24px host bind.
+    @include icon-size(16px);
+  }
+}
+
 .replay-card__meta {
   display: flex;
   flex-wrap: wrap;
