@@ -71,6 +71,35 @@ processor guarantees identical behavior across both modes.
 `MSG_CHAIN_NEGATED` is consumed silently by the processor (sets `negated`
 flag on the matching chain link) — it is NOT pushed to `animationQueue`.
 
+## Game Log — known PvP↔Replay divergence (DEFERRED to queue-runner chantier)
+
+The live Game Log (`DuelGameLogService`) is fed in PvP exclusively by the
+`notifyGameLog` tap inside `AnimationOrchestratorService.processEvent` —
+i.e. by the **animation queue**. The shared `GameLogBuilder` knows how to
+handle `MSG_CHAIN_NEGATED` (negated badge), `MSG_WIN` (🏆 winner row) and
+`SELECT_CARD` (secondary `MSG_BECOME_TARGET` target resolution), but in
+live PvP these three never reach the tap:
+
+- `MSG_CHAIN_NEGATED` — consumed silently by `DuelEventProcessor`, never
+  enqueued (see the section above);
+- `SELECT_CARD` — a prompt, routed outside the animation queue;
+- `MSG_WIN` — converted to `DUEL_END` server-side; the front never sees
+  a raw `MSG_WIN`.
+
+So in **Replay** these builder branches run (the journal is rebuilt from
+precompute states via `rebuildUpTo` → `ingestState`), in **live PvP** they
+are dead — the same duel yields a different journal per mode.
+
+The fix is NOT a one-liner: the root cause is that the journal piggy-backs
+on the *animation queue* instead of a unified *event stream*. A naive
+side-channel breaks the `SELECT_CARD` → `MSG_BECOME_TARGET` ordering;
+forcing the three types into the queue breaks the `MSG_CHAIN_NEGATED`
+"never enqueued" invariant. The proper fix — separate an `EventStream`
+(all duel events, journal source) from the `AnimationQueue` (animatable
+subset) — is folded into the queue-runner extraction chantier
+(`_bmad-output/planning-artifacts/queue-runner-extraction-chantier.md`).
+Until then the live PvP journal is missing those three rows by design.
+
 ## Replay Board State Parity Rule
 
 Replay must provide equivalent intermediate board states so
