@@ -281,17 +281,21 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
   `build(buffer)` returns `{ batch, releaseSessionLocks }`. The
   orchestrator stays as dispatch policy: drain → call builder → prepend
   batch + `batch-end` + `await-signal` directives.
-- **`QueueRunner`** (Palier A, 2026-05-23) — async animation loop,
-  decision step (`decideNextStep` pure), and the 5 lifecycle primitives
-  (`_isProcessing`, `_innerLoopDepth`, `_resetGeneration`,
-  `_rescueNoProgressCount`, `_lastRescueQueueLen`). Owns the per-step
-  `setTimeout` + travel `Promise.race` guard. Business dispatch (per-type
-  handlers, directive switch, pre-activation buffer) stays in the
-  orchestrator and is reached via `QueueRunnerDeps` callbacks; the runner
-  never imports YGO types. Plain class, instantiated in the orchestrator
-  constructor. `_isAnimating` (orchestrator's exposed signal) is
-  synchronised via the runner's `onIsRunningChange` callback —
-  orchestrator-side façade, runner-side source of truth.
+- **`QueueRunner`** (Paliers A + B + C, 2026-05-23) — async animation
+  loop, decision step (`decideNextStep` pure), and the lifecycle
+  primitives (`_isRunning`, `_isProcessing`, `_innerLoopDepth`,
+  `_abort: AbortController` (palier C, replaced the maison
+  `_resetGeneration` token), `_rescueNoProgressCount`,
+  `_lastRescueQueueLen`). Owns the per-step `setTimeout` + travel
+  `Promise.race` guard. Business dispatch (per-type handlers, directive
+  switch, pre-activation buffer) stays in the orchestrator and is
+  reached via `QueueRunnerDeps` callbacks; the runner never imports YGO
+  types. Plain class, instantiated in the orchestrator constructor.
+  `_isAnimating` (orchestrator's exposed signal) is synchronised via the
+  runner's `onIsRunningChange` callback — orchestrator-side façade,
+  runner-side source of truth. 27 unit specs cover the lifecycle
+  (notifyEnqueue / requestStop / rescue / finalize / await-signal /
+  abort invalidation).
 
 **`DuelContext`** is the shared context for all managers. API surface:
 
@@ -803,10 +807,13 @@ delegates to `runner.requestStop()`.
    `finally` floors it at 0 (`Math.max(0, …)`) so a stale loop resuming
    after the reset can't drive it negative.
 
-   Defense in depth: a `_resetGeneration` counter (bumped in
-   `runner.requestStop`) — the inner loop captures it on entry and
-   bails on mismatch; the `processAnimationQueue` finally skips its
-   rescue when the generation moved. And a no-progress ceiling
+   Defense in depth (Palier C, 2026-05-23): the maison `_resetGeneration`
+   token was replaced by an `AbortController`. `runner.requestStop()`
+   calls `_abort.abort()` then installs a fresh controller; suspended
+   inner loops check `abortSignal.aborted` after each `await` and bail
+   cleanly. The `processAnimationQueue` finally compares its captured
+   `AbortController` by reference against `_abort` to detect a swap and
+   stays inert across it. Plus a no-progress ceiling
    (`RESCUE_NO_PROGRESS_CEILING`) — past N rescues with `queueLen`
    unchanged the rescue abandons with a `logger.warn` instead of looping.
 

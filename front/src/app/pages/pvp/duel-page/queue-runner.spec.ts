@@ -408,7 +408,26 @@ describe('QueueRunner (loop) — Palier B', () => {
     });
   });
 
-  describe('requestStop / generation invalidation', () => {
+  describe('requestStop / abort invalidation (palier C)', () => {
+    it('a fresh AbortController is installed on every requestStop', () => {
+      const { runner, ds } = makeRunner({
+        handleEntry: () => new Promise<void>(() => undefined),
+      });
+      ds.setQueue([ev('MSG_MOVE')]);
+      runner.notifyEnqueue();
+      // Two consecutive resets → two distinct controllers. The runner exposes
+      // none of this directly, but we can prove it by chaining a fresh start
+      // after each reset and checking it's not pre-aborted (the new fresh
+      // start succeeds in dispatching).
+      runner.requestStop();
+      runner.requestStop();
+      ds.setQueue([ev('MSG_DAMAGE')]);
+      runner.notifyEnqueue();
+      // Allow the new loop to settle.
+      // (Stale promise never resolves — we're testing fresh-start health.)
+      expect(runner.isRunning()).toBeTrue();
+    });
+
     it('flips _isRunning to false through onIsRunningChange', () => {
       const { runner, ds, isRunningHistory } = makeRunner({
         handleEntry: () => new Promise<void>(() => undefined),

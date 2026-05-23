@@ -1,19 +1,25 @@
 // =============================================================================
-// queue-runner.ts — Palier A of the QueueRunner extraction chantier (2026-05-23)
+// queue-runner.ts — QueueRunner extraction chantier (paliers A + B + C, 2026-05-23)
 // -----------------------------------------------------------------------------
 // Extracted from AnimationOrchestratorService.{_processAnimationQueueInner,
-// processAnimationQueue, decideNextStep}. Owns the async loop, the 5 lifecycle
-// primitives (_isProcessing, _innerLoopDepth, _resetGeneration,
-// _rescueNoProgressCount, _lastRescueQueueLen), the per-step wait (setTimeout
-// + guardTimer Promise.race), and the `case 'finalize'` mechanics. Business
-// dispatch lives in the orchestrator and is reached through injected
+// processAnimationQueue, decideNextStep}. Owns the async loop, the lifecycle
+// primitives (`_isRunning`, `_isProcessing`, `_innerLoopDepth`, `_abort`,
+// `_rescueNoProgressCount`, `_lastRescueQueueLen`), the per-step wait
+// (setTimeout + guardTimer Promise.race), and the `case 'finalize'` mechanics.
+// Business dispatch lives in the orchestrator and is reached through injected
 // callbacks; the runner never knows about YGO message types.
 //
 // Design notes:
 //   · `_isRunning` is the runner's internal flag; the orchestrator's exposed
 //     `_isAnimating` signal is synchronised via `onIsRunningChange`. This keeps
 //     the public façade stable while isolating the loop's lifecycle.
-//   · The runner owns the per-step setTimeout (`_stepTimeout`) and the travel
+//   · Palier C — the maison `_resetGeneration` token was replaced by a
+//     standard `AbortController`. `requestStop()` calls `_abort.abort()` and
+//     installs a fresh controller; suspended inner loops check
+//     `abortSignal.aborted` after each `await` and bail cleanly. Single
+//     semantic concept (signal lifecycle) replacing the integer-bump
+//     comparison.
+//   · The runner owns the per-step setTimeout (`_stepTimeouts`) and the travel
 //     `Promise.race` guard timer (`_guardTimer`) — both cleared by
 //     `requestStop()`. The orchestrator's `animationTimeouts[]` registry
 //     (handler-level timers, e.g. equip lines, board effects) does NOT migrate.
@@ -171,14 +177,28 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
 export class QueueRunner {
   private readonly deps: QueueRunnerDeps;
 
-  // --- Lifecycle primitives (the 5 ad-hoc safety primitives, now scoped) ---
+  // --- Lifecycle primitives ---
   private _isRunning = false;
-  /** Re-entry guard for `processAnimationQueue` (multiple sync callers). */
+  /** Re-entry guard for `processAnimationQueue` (multiple sync callers in
+   *  the same microtask batch). NOT the same as the abort signal: this is
+   *  a sync mutex preventing two `_processAnimationQueueInner` calls from
+   *  starting in the same turn; the abort signal preserves ordering across
+   *  reset boundaries (palier C). */
   private _isProcessing = false;
-  /** Detects parallel re-entry of `_processAnimationQueueInner` (audit finding C4). */
+  /** Detects parallel re-entry of `_processAnimationQueueInner` (audit
+   *  finding C4). Palier C kept this as a runtime invariant assertion —
+   *  with `AbortController` it should never trip in practice, but it
+   *  surfaces a regression if it does. */
   private _innerLoopDepth = 0;
-  /** Bumped by `requestStop()`; the inner loop bails on mismatch. */
-  private _resetGeneration = 0;
+  /**
+   * Palier C — replaces the maison `_resetGeneration` token. A suspended
+   * inner loop checks `_abort.signal.aborted` after each `await`; an
+   * abort throws (via `throwIfAborted()`), the loop's finally cleans up,
+   * and the post-reset fresh start gets a brand-new `AbortController` so
+   * its own `aborted` check stays false. Single semantic concept (signal
+   * lifecycle) replacing the integer-bump comparison.
+   */
+  private _abort = new AbortController();
   /** Anti-runaway: counts consecutive rescues that made NO progress. */
   private _rescueNoProgressCount = 0;
   private _lastRescueQueueLen = -1;
@@ -235,7 +255,11 @@ export class QueueRunner {
 
   /**
    * Request the runner to stop and invalidate any in-flight inner loop.
-   * Stale loops bail on their generation check. Called by the orchestrator's
+   * Palier C: `_abort.abort()` is the single semantic point — any suspended
+   * `_processAnimationQueueInner` resumes from its `await` and throws via
+   * `throwIfAborted()`, which the loop's finally converts into a silent
+   * cleanup. A fresh `AbortController` is installed for the next run so its
+   * own `aborted` check stays false. Called by the orchestrator's
    * `clearTimersAndPolling`.
    */
   requestStop(): void {
@@ -246,16 +270,17 @@ export class QueueRunner {
     this._isProcessing = false;
     this._rescueNoProgressCount = 0;
     this._lastRescueQueueLen = -1;
-    // Invalidate any suspended inner loop — it will see the bumped generation
-    // on resume and bail.
-    this._resetGeneration++;
+    // Abort any suspended inner loop and install a fresh controller so the
+    // next run starts uncontaminated.
+    this._abort.abort();
+    this._abort = new AbortController();
     // Reset re-entry depth. A reset can land while a loop is suspended on an
     // `await`; that loop's `finally { _innerLoopDepth-- }` has not run yet,
     // so the counter is stale at 1. Zeroing here + the `Math.max(0, …)`
     // floor in the inner-loop finally keeps it balanced across resets.
     this._innerLoopDepth = 0;
     this.setRunning(false);
-    this.trace('requestStop', { resetGeneration: this._resetGeneration });
+    this.trace('requestStop', { aborted: true });
   }
 
   /** Clear the runner's internal timers (per-step hold + travel guard). */
@@ -279,12 +304,16 @@ export class QueueRunner {
   private processAnimationQueue(): void {
     if (this._isProcessing || !this._isRunning) return;
     this._isProcessing = true;
-    const generation = this._resetGeneration;
-    this._processAnimationQueueInner().finally(() => {
+    // Capture the current AbortController at entry. If a reset happens
+    // mid-await, `requestStop()` installs a fresh controller — this finally
+    // block detects the swap by reference comparison and stays inert (the
+    // fresh run has already taken over).
+    const myAbort = this._abort;
+    this._processAnimationQueueInner(myAbort.signal).finally(() => {
       // A reset (seek / sub-event click) superseded this run — its feed
       // already started a fresh loop. Touching _isProcessing or the rescue
       // here would race that fresh loop, so this stale finally is inert.
-      if (this._resetGeneration !== generation) return;
+      if (this._abort !== myAbort) return;
       this._isProcessing = false;
       const queueLen = this.deps.dataSource.animationQueue().length;
       if (queueLen === 0) {
@@ -334,7 +363,7 @@ export class QueueRunner {
     });
   }
 
-  private async _processAnimationQueueInner(): Promise<void> {
+  private async _processAnimationQueueInner(abortSignal: AbortSignal): Promise<void> {
     this._innerLoopDepth++;
     duelAssert(
       this._innerLoopDepth <= 1,
@@ -342,17 +371,15 @@ export class QueueRunner {
       `Parallel re-entry detected (depth=${this._innerLoopDepth}). The _isProcessing `
       + `finalize block opened a window where a second async loop started before the first finished (audit finding C4).`,
     );
-    // Capture the reset generation at entry. Any reset (seek / sub-event
-    // click / resetForSwitch) during an `await` bumps it; the guard at the
-    // top of each loop turn then bails this now-stale loop instead of
-    // letting it race the fresh one started by the post-reset feed.
-    const generation = this._resetGeneration;
     try {
       while (this._isRunning) {
-        if (this._resetGeneration !== generation) {
+        // Palier C — single abort check at the top of each turn. A reset
+        // (`requestStop`) calls `_abort.abort()` and the abortSignal we
+        // captured at entry flips to `aborted=true`. Throws synchronously;
+        // the outer try/finally cleans up `_innerLoopDepth`.
+        if (abortSignal.aborted) {
           this.deps.logger.log(DuelLogCategory.QUEUE,
-            'inner loop bailing — reset generation changed (%d → %d), a seek/abort superseded this run',
-            generation, this._resetGeneration);
+            'inner loop bailing — abort signal raised, a seek/abort superseded this run');
           return;
         }
         // Pre-lock pass is a non-decisional side effect: it must run before
@@ -557,7 +584,7 @@ export class QueueRunner {
 
   private trace(action: string, detail?: Record<string, unknown>): void {
     this.deps.logger.log(DuelLogCategory.RUNNER,
-      '[RUNNER] %s gen=%d depth=%d %o',
-      action, this._resetGeneration, this._innerLoopDepth, detail ?? {});
+      '[RUNNER] %s aborted=%s depth=%d %o',
+      action, this._abort.signal.aborted, this._innerLoopDepth, detail ?? {});
   }
 }
