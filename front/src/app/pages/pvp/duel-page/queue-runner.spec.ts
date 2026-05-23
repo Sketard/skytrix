@@ -371,6 +371,45 @@ describe('QueueRunner (loop) — Palier B', () => {
       expect(handleCalls.map(e => e.type)).toEqual(['MSG_DRAW', 'MSG_MOVE', 'MSG_DAMAGE']);
     });
 
+    it('relaunches the loop when an async handler suspended the cycle then resume signals back', async () => {
+      // Regression guard for the a8859c98 draw-stall bug (2026-05-23).
+      // Scenario: an event handler returns 'async' (e.g. initial draw). The
+      // inner loop returns without entering case 'finalize', so _isRunning
+      // stays true. The .finally rescue early-returns because queueLen===0.
+      // Later, the async work completes and calls notifyEnqueue (via
+      // drawManager.resumeQueueIfSafe). The runner MUST relaunch the loop
+      // even though _isRunning is still true — otherwise the cycle stalls
+      // forever, finalizeAndCommit never runs, _isAnimating never flips.
+      let asyncHandlerCount = 0;
+      const { runner, ds, isRunningHistory } = makeRunner({
+        handleEntry: () => {
+          asyncHandlerCount++;
+          return 'async';
+        },
+      });
+      ds.setQueue([ev('MSG_DRAW')]);
+      runner.notifyEnqueue();
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+
+      // After 'async' return: handler invoked once, queue drained, but
+      // _isRunning stays true (case 'finalize' never reached).
+      expect(asyncHandlerCount).toBe(1);
+      expect(ds.animationQueue().length).toBe(0);
+      expect(runner.isRunning()).toBeTrue();
+      expect(runner.isProcessing()).toBeFalse();
+
+      // Simulate drawManager.resumeQueueIfSafe → notifyEnqueue. Queue is
+      // still empty (no new events arrived). The runner must relaunch the
+      // inner loop, which will see empty queue + no waits and hit
+      // case 'finalize' → onIsRunningChange(false).
+      runner.notifyEnqueue();
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+
+      // The loop finalized — _isRunning has flipped back to false at least once.
+      expect(isRunningHistory).toContain(false);
+      expect(runner.isRunning()).toBeFalse();
+    });
+
     it('drops `divert` results without further processing', async () => {
       let onStepCount = 0;
       const ds = new MockDataSource();

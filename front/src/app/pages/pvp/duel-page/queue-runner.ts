@@ -228,9 +228,23 @@ export class QueueRunner {
   }
 
   /**
-   * Notify the runner that new events were enqueued. Launches the loop if
-   * idle. Idempotent — a re-entry while running is a no-op (the existing
-   * loop will pick up the new events on its next tick).
+   * Notify the runner that new events were enqueued OR that a previously
+   * suspended async handler is ready to resume. Two reactivation states:
+   *  · `!_isRunning`        → start a fresh animation cycle.
+   *  · `_isRunning && !_isProcessing` → relaunch the inner loop inside the
+   *    existing cycle. This is the "stuck-but-empty queue" state an
+   *    `'async'`-returning handler leaves behind: the inner loop returned,
+   *    the .finally rescue early-returned because queueLen===0, but the
+   *    cycle is still open and someone (drawManager.resumeQueueIfSafe,
+   *    chainManager.resumeEffect, ...) is signaling that its async work is
+   *    done. Without this branch the runner stalls forever — master used
+   *    to handle this implicitly because `initQueueResumeCallback` routed
+   *    to the private `processAnimationQueue` (guarded only on
+   *    `_isProcessing`); after palier A everything routes here. Verified
+   *    by the debug-replay harness on a8859c98 (2026-05-23).
+   * Idempotent in both branches — the re-entry guard inside
+   * `processAnimationQueue` (`_isProcessing` check) keeps multiple sync
+   * callers safe.
    */
   notifyEnqueue(): void {
     this.trace('notifyEnqueue', {
@@ -249,6 +263,15 @@ export class QueueRunner {
       // for both PvP and replay so cards don't appear at their destination
       // before the travel animation plays.
       this.deps.preLockQueuedSources();
+      this.processAnimationQueue();
+      return;
+    }
+    // _isRunning=true but the inner loop has exited (typically an 'async'
+    // handler whose awaited work is now resolving). Re-enter the loop so
+    // it can advance, finalize, or rescue depending on queue + decision
+    // inputs. processAnimationQueue's own `_isProcessing` guard makes this
+    // a no-op when the loop is genuinely active.
+    if (!this._isProcessing) {
       this.processAnimationQueue();
     }
   }
