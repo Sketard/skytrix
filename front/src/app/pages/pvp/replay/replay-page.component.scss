@@ -147,22 +147,6 @@
     position: relative;
     z-index: z.$z-pvp-card-travel + 1; // above traveling card floats (900)
   }
-
-  // Visual gap between the timeline strip and the transport dock — matches
-  // mockup §timeline-bar / §transport-bar separation. Lets the surface-bg
-  // breathe between the two so they read as distinct controls rather than
-  // a single fused bar. Pairs with the `border-top` removal on
-  // `.transport-bar` (otherwise a hairline gold border would bridge the gap).
-  app-transport-bar {
-    margin-top: var(--space-3);
-  }
-
-  // Mobile landscape — close the gap entirely, every pixel is rare.
-  @media (orientation: landscape) and (max-height: 500px) {
-    app-transport-bar {
-      margin-top: 0;
-    }
-  }
 }
 
 // F4 — Bottom-sheet backdrop wrapper used for picker / options / details.
