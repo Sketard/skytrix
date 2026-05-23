@@ -393,13 +393,17 @@ export class QueueRunner {
           queue: this.deps.dataSource.animationQueue(),
         });
 
-        this.deps.logger.log(DuelLogCategory.QUEUE,
-          'decideNextStep — action=%s queueLen=%d ownPlayer=%d',
-          step.action, this.deps.dataSource.animationQueue().length, this.deps.ctx.ownPlayerIndex());
-        this.deps.logger.log(DuelLogCategory.RUNNER,
-          'tick action=%s isResolving=%s queueLen=%d isWaitingForOverlay=%s commitMode=%s',
-          step.action, inputs.isResolving, this.deps.dataSource.animationQueue().length,
-          inputs.isWaitingForOverlay, inputs.commitMode);
+        if (this.deps.logger.isEnabled(DuelLogCategory.QUEUE)) {
+          this.deps.logger.log(DuelLogCategory.QUEUE,
+            'decideNextStep — action=%s queueLen=%d ownPlayer=%d',
+            step.action, this.deps.dataSource.animationQueue().length, this.deps.ctx.ownPlayerIndex());
+        }
+        if (this.deps.logger.isEnabled(DuelLogCategory.RUNNER)) {
+          this.deps.logger.log(DuelLogCategory.RUNNER,
+            'tick action=%s isResolving=%s queueLen=%d isWaitingForOverlay=%s commitMode=%s',
+            step.action, inputs.isResolving, this.deps.dataSource.animationQueue().length,
+            inputs.isWaitingForOverlay, inputs.commitMode);
+        }
 
         switch (step.action) {
           case 'pause-external':
@@ -562,6 +566,11 @@ export class QueueRunner {
    */
   installAwaitSignal(signal: () => boolean): boolean {
     if (signal()) return true;
+    // Defense-in-depth: by contract there is only one active await-signal at
+    // a time, but if a prior effect was somehow still in place (e.g. a
+    // signal flip raced its own destroy), drop it before installing the new
+    // one — otherwise the orphan effect survives + leaks.
+    this._awaitSignalEffect?.destroy();
     this._awaitSignalEffect = effect(() => {
       if (signal()) {
         this._awaitSignalEffect?.destroy();
@@ -583,6 +592,10 @@ export class QueueRunner {
   }
 
   private trace(action: string, detail?: Record<string, unknown>): void {
+    // CLAUDE.md "What NOT to instrument" — bind expensive payloads behind
+    // `logger.isEnabled(cat)` checks so the call site cost (signal-getter +
+    // object literal) is paid only when the category is on.
+    if (!this.deps.logger.isEnabled(DuelLogCategory.RUNNER)) return;
     this.deps.logger.log(DuelLogCategory.RUNNER,
       '[RUNNER] %s aborted=%s depth=%d %o',
       action, this._abort.signal.aborted, this._innerLoopDepth, detail ?? {});

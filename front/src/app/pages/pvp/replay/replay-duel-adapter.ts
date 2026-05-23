@@ -75,9 +75,13 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
    * Palier 0 — attach the EventStream sink (orchestrator's
    * `notifyOutOfBandEvent`). Replay only needs the processor's `onEvent`
    * for `MSG_CHAIN_NEGATED`: `SELECT_CARD` is not surfaced in replay
-   * (the adapter never emits prompts as events) and `MSG_WIN` arrives in
-   * the precompute's final state events, transiting normally through
-   * `processEvent` — no synthesis needed on this side.
+   * (the adapter never emits prompts as events), and `MSG_WIN` doesn't
+   * need to reach EventStream on this side at all — the replay seek path
+   * rebuilds the journal via `DuelGameLogService.rebuildUpTo` which calls
+   * `GameLogBuilder.ingestState` directly on the precompute's per-state
+   * `events[]` (which retain the original `MSG_WIN`), so the 🏆 row is
+   * produced without touching the live event stream. The processor's
+   * `enqueue` guard would drop `MSG_WIN` anyway (it isn't a `GameEvent`).
    */
   attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
     this.processor.onEvent = sink;

@@ -64,9 +64,13 @@ export type GameEvent =
  * design but still belong to the duel's logical event stream:
  *   · `ChainNegatedMsg` — consumed by `DuelEventProcessor` for chain state,
  *     never enqueued; surfaces here for the Game Log "Nié" badge;
- *   · `WinMsg` — server converts MSG_WIN → DUEL_END at the WS boundary;
- *     reconstructed front-side from `DUEL_END.winner` + `winReasonCode`
- *     for the journal 🏆 row;
+ *   · `WinMsg` — PvP only: the server forwards both the raw MSG_WIN AND a
+ *     DUEL_END synthesized from it. The raw MSG_WIN is dropped at the
+ *     DuelConnection layer (no case in `handleMessage`'s switch); the
+ *     journal 🏆 row is sourced from a synthetic WinMsg reconstructed in
+ *     the `DUEL_END` case using `winner` + `winReasonCode`. Replay
+ *     reaches the same row via `GameLogBuilder.ingestState` instead, so
+ *     the synthesis is PvP-only.
  *   · `SelectCardMsg` — a prompt, routed outside `processEvent`; the
  *     builder needs it as the secondary `MSG_BECOME_TARGET` resolver.
  * The animation queue and the EventStream are distinct objects; the

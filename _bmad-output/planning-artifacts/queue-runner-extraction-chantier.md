@@ -306,19 +306,45 @@ deviennent des tests unitaires :
 - le rescue draine puis s'arrête (jamais infini) ;
 - terminaison garantie sous abort. Avec `fakeAsync` — pas de Playwright.
 
-**Palier C (optionnel, à décider après B) — modèle `AnimationRun`.**
-Remplacer le token maison `_resetGeneration` + le compteur `_innerLoopDepth`
-par un `AbortController` standard : `requestStop()` fait `run.abort()`, la
-boucle fait `signal.throwIfAborted()` après chaque `await` (un seul point de
-contrôle). `_isProcessing`, `_innerLoopDepth`, `_resetGeneration`, et la
-moitié de la logique de rescue **disparaissent** — fondus dans le `signal`.
+**Palier C (optionnel, à décider après B) — `AbortController` pour
+l'invalidation cross-reset.** Remplacer le token maison `_resetGeneration`
+par un `AbortController` standard : `requestStop()` fait `_abort.abort()`
+puis installe un nouveau controller ; la boucle vérifie
+`abortSignal.aborted` après chaque `await` (un seul point de contrôle).
 Refactor désormais **interne au `QueueRunner`, couvert par les specs du
 palier B** → sûr.
 
-Après C : on passe de **7 primitifs ad hoc → 2 concepts** : `AnimationRun`
-(cycle de vie) + `PollDropWatchdog` (santé des *données* — un MSG_CHAIN_END
-qui n'arrive jamais du serveur ; il reste, mais pour la bonne raison, plus
-comme filet d'un bug du moteur).
+> **Révision honnête post-livraison (2026-05-23).** La rédaction initiale
+> annonçait que `_isProcessing`, `_innerLoopDepth` et la moitié du rescue
+> "disparaissent" en même temps que `_resetGeneration`. En pratique chacun
+> garde un rôle distinct que l'`AbortController` ne remplit pas — defense-
+> in-depth assumée :
+> · `_isProcessing` — mutex **synchrone** dans la même microtask
+>   (notifyEnqueue, await-signal effect, postFinalize rescue peuvent
+>   converger). `_abort.signal.aborted` ne devient vrai qu'après un
+>   `requestStop()` ; sans abort en cours, deux callers verraient
+>   `aborted=false` tous les deux et démarreraient en parallèle. Mutex
+>   sync ⊥ abort.
+> · `_innerLoopDepth` — **invariant runtime** (`duelAssert`) qui détecte
+>   une ré-entrée parallèle (audit finding C4). Ne devrait jamais tripper
+>   en pratique ; le retirer rendrait C4 invisible si jamais il
+>   re-survenait.
+> · `_rescueNoProgressCount` + `_lastRescueQueueLen` — plafond
+>   anti-runaway sur la boucle rescue (`infinite rescue`, CLAUDE.md). Un
+>   rescue infini est un *autre* problème que le seek-pendant-suspended ;
+>   l'abort ne le couvre pas (rien n'a appelé `requestStop`).
+>
+> Bilan effectif : `_resetGeneration` disparaît, les 4 autres restent
+> avec un rôle bien circonscrit. CLAUDE.md reflète cette réalité dans la
+> section "Orchestrator Decomposition".
+
+Après C : on passe de **7 primitifs ad hoc → 2 concepts + 3 primitifs
+secondaires** : `AbortController` (invalidation cross-reset) + mutex
+sync (`_isProcessing`) + assertion runtime (`_innerLoopDepth`) + plafond
+rescue (`_rescueNoProgressCount` / `_lastRescueQueueLen`) +
+`PollDropWatchdog` (santé des *données* — un MSG_CHAIN_END qui n'arrive
+jamais du serveur ; il reste, mais pour la bonne raison, plus comme
+filet d'un bug du moteur).
 
 ## 6bis. Effet de bord exploité — debuggabilité du moteur
 
@@ -480,7 +506,9 @@ mais "résolue").
   derrière `AnimationDataSource`, comme l'orchestrateur aujourd'hui.
 - Faire le palier C **seulement** si le palier B est solide. Si B révèle que
   le couplage est trop fort, s'arrêter à B (testabilité acquise, c'était
-  l'objectif premier).
+  l'objectif premier). *Note 2026-05-23 — B et C ont été livrés, mais C
+  s'est borné à `_resetGeneration` → `AbortController`. Les autres
+  primitifs ont survécu pour de bonnes raisons documentées en §5 ci-dessus.*
 
 ## 8. Estimation
 
@@ -499,8 +527,12 @@ si entrepris.
 
 ## 9. Définition de "terminé"
 
-- **Palier 0** : `_eventStream` ajouté au `DuelEventProcessor`,
-  `DuelGameLogService` abonné dessus, tap orchestrateur supprimé.
+- **Palier 0** : `_eventStream` ajouté côté orchestrateur (signal poussé
+  dans `processEvent` au point du tap actuel — option (a) §6 ; le
+  `DuelEventProcessor` reçoit en parallèle un callback `onEvent?` qui
+  alimente le stream pour les types hors-file comme `MSG_CHAIN_NEGATED`).
+  `DuelGameLogService` abonné dessus via `attachEventStream`, tap
+  orchestrateur supprimé.
   Journal PvP affiche désormais le badge "Nié", la ligne 🏆 et les
   cibles secondaires (parité Replay vérifiée à la main sur une partie
   de référence). 291 specs `DuelEventProcessor` + specs `DuelGameLogService`

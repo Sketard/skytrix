@@ -259,6 +259,7 @@ const ev = (type: string): GameEvent => ({ type } as unknown as GameEvent);
 const silentLogger: DuelLogger = {
   log: () => undefined,
   warn: () => undefined,
+  isEnabled: () => false,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;
 

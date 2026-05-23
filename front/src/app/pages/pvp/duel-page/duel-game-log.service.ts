@@ -11,7 +11,7 @@
 // `providedIn: 'root'` — one instance per duel page, reset on rematch / seek.
 // =============================================================================
 
-import { effect, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
+import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
 import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
 import type { PreComputedState } from '../duel-ws-replay.types';
 import type { DuelState, StreamEvent } from '../types';
@@ -121,6 +121,14 @@ export class DuelGameLogService {
    *  Reset on `reset()` (and implicitly on `rebuildUpTo`, which clears
    *  `tappedEvents`). Drives the incremental drain in `attachEventStream`. */
   private _streamConsumedLength = 0;
+
+  /** Palier 0 — the `effect()` ref installed by `attachEventStream`. Held
+   *  so a subsequent `attachEventStream` call (or a manual `detachEventStream`)
+   *  can tear down the previous subscription explicitly. The provider is
+   *  component-scoped so Angular's `DestroyRef` handles cleanup on page
+   *  destroy, but holding the ref defends against re-attach races and lets
+   *  tests opt into explicit teardown. */
+  private _streamEffect: EffectRef | null = null;
 
   private readonly injector = inject(Injector);
 
@@ -248,7 +256,8 @@ export class DuelGameLogService {
    * stays idle until the next live push.
    */
   attachEventStream(stream: Signal<readonly StreamEvent[]>): void {
-    effect(() => {
+    this._streamEffect?.destroy();
+    this._streamEffect = effect(() => {
       const events = stream();
       if (events.length < this._streamConsumedLength) {
         // Stream was cleared (orchestrator reset) — sync the cursor back.
@@ -260,6 +269,14 @@ export class DuelGameLogService {
         this._streamConsumedLength++;
       }
     }, { injector: this.injector });
+  }
+
+  /** Tear down the `attachEventStream` subscription. Angular's `DestroyRef`
+   *  handles this implicitly on page destroy (provider is component-scoped),
+   *  but tests and any future re-attach path can call this directly. */
+  detachEventStream(): void {
+    this._streamEffect?.destroy();
+    this._streamEffect = null;
   }
 
   /**
