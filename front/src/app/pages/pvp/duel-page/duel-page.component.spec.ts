@@ -136,6 +136,7 @@ class StubWsService {
   connect = jasmine.createSpy('connect');
   destroy = jasmine.createSpy('destroy');
   ngOnDestroy = jasmine.createSpy('ngOnDestroy');
+  attachOutOfBandSink = jasmine.createSpy('attachOutOfBandSink');
 
   onStateSync?: () => void;
 }
@@ -159,10 +160,12 @@ class StubAnimationOrchestrator {
   readonly animatingZone = signal<unknown>(null);
   readonly confirmRevealedCards = signal<Map<number, number>>(new Map());
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
+  readonly eventStream = signal<readonly unknown[]>([]);
   destroy = jasmine.createSpy('destroy');
   onStateSync = jasmine.createSpy('onStateSync');
   isPreActivationBufferActive = jasmine.createSpy('isPreActivationBufferActive').and.returnValue(false);
   drainPreActivationBuffer = jasmine.createSpy('drainPreActivationBuffer');
+  notifyOutOfBandEvent = jasmine.createSpy('notifyOutOfBandEvent');
 }
 
 /** Stub for SoloDuelOrchestratorService. */

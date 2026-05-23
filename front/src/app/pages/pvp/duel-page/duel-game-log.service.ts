@@ -11,10 +11,10 @@
 // `providedIn: 'root'` — one instance per duel page, reset on rematch / seek.
 // =============================================================================
 
-import { Injectable, isDevMode, signal, type Signal } from '@angular/core';
+import { effect, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
 import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
 import type { PreComputedState } from '../duel-ws-replay.types';
-import type { DuelState, GameEvent } from '../types';
+import type { DuelState, StreamEvent } from '../types';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
 import { EMPTY_DUEL_STATE } from '../types';
@@ -29,7 +29,7 @@ import { EMPTY_DUEL_STATE } from '../types';
 type DevChainingMsg = ChainingMsg & { __dev: true };
 
 /** True when `event` is a dev-injected synthetic `MSG_CHAINING`. */
-function isDevChaining(event: GameEvent): event is DevChainingMsg {
+function isDevChaining(event: StreamEvent): event is DevChainingMsg {
   return (event as Partial<DevChainingMsg>).__dev === true;
 }
 
@@ -111,9 +111,18 @@ export class DuelGameLogService {
   /**
    * Every event tapped, in dispatch order — retained so a replay perspective
    * flip can rebuild the journal from scratch (R7 / analysis §4.2). Kept
-   * alongside the built entries, never derived from them.
+   * alongside the built entries, never derived from them. Holds `StreamEvent`
+   * (Palier 0): wider than `GameEvent` to admit out-of-band feeds —
+   * `MSG_CHAIN_NEGATED`, `MSG_WIN`, `SELECT_CARD`.
    */
-  private readonly tappedEvents: GameEvent[] = [];
+  private readonly tappedEvents: StreamEvent[] = [];
+
+  /** Palier 0 — index of last event consumed from the attached `eventStream`.
+   *  Reset on `reset()` (and implicitly on `rebuildUpTo`, which clears
+   *  `tappedEvents`). Drives the incremental drain in `attachEventStream`. */
+  private _streamConsumedLength = 0;
+
+  private readonly injector = inject(Injector);
 
   constructor() {
     this.gameLogEntries = this._entries.asReadonly();
@@ -213,7 +222,7 @@ export class DuelGameLogService {
    * `MSG_CHAINING` feeds ONLY the bubble — it is skipped by the builder (no
    * phantom journal row) and not retained for the perspective-flip rebuild.
    */
-  notifyGameLog(event: GameEvent): void {
+  notifyGameLog(event: StreamEvent): void {
     if (isDevChaining(event)) {
       this.captureOpponentActivation(event);
       return;
@@ -221,6 +230,36 @@ export class DuelGameLogService {
     this.tappedEvents.push(event);
     this.ingest(event);
     this.captureOpponentActivation(event);
+  }
+
+  /**
+   * Palier 0 — subscribe to the orchestrator's `EventStream`. Pose un
+   * `effect()` that drains newly-pushed events through `notifyGameLog`
+   * exactly once each, in arrival order. The `_streamConsumedLength`
+   * index tracks the prefix already consumed so the effect is idempotent
+   * across multiple recomputations (signal re-emits the same array when
+   * an unrelated dependency changes — defensive in practice, and free).
+   *
+   * Replay seek path is honoured by construction: a seek triggers
+   * `orchestrator.resetAllState()` → `_eventStream.set([])`, then this
+   * service's `reset()` clears the consumed index; the subsequent
+   * `rebuildUpTo` re-feeds the builder directly via `ingestState`. The
+   * effect sees the cleared stream (length 0 == consumed length 0) and
+   * stays idle until the next live push.
+   */
+  attachEventStream(stream: Signal<readonly StreamEvent[]>): void {
+    effect(() => {
+      const events = stream();
+      if (events.length < this._streamConsumedLength) {
+        // Stream was cleared (orchestrator reset) — sync the cursor back.
+        this._streamConsumedLength = events.length;
+        return;
+      }
+      while (this._streamConsumedLength < events.length) {
+        this.notifyGameLog(events[this._streamConsumedLength]);
+        this._streamConsumedLength++;
+      }
+    }, { injector: this.injector });
   }
 
   /**
@@ -260,6 +299,7 @@ export class DuelGameLogService {
   reset(): void {
     this.builder = new GameLogBuilder(this.perspective);
     this.tappedEvents.length = 0;
+    this._streamConsumedLength = 0;
     this._entries.set([]);
     this._lastOpponentActivation.set(null);
   }
@@ -274,7 +314,7 @@ export class DuelGameLogService {
    * (analysis §2.4); the orchestrator has already folded this event's
    * `boardStateAfter` into it before the tap fires.
    */
-  private ingest(event: GameEvent): void {
+  private ingest(event: StreamEvent): void {
     const board = this.readBoard();
     // Ordering contract (§1.2): turn/phase sync precedes the event ingest.
     this.builder.syncTurnAndPhase(board);
@@ -290,7 +330,7 @@ export class DuelGameLogService {
    * leaves the signal untouched (the bubble is opponent-only — analysis §3.3).
    * This does NOT go through the builder (analysis §3.5).
    */
-  private captureOpponentActivation(event: GameEvent): void {
+  private captureOpponentActivation(event: StreamEvent): void {
     if (event.type !== 'MSG_CHAINING') return;
     const isOpponent = event.player !== this.perspective;
     if (!isOpponent) return;

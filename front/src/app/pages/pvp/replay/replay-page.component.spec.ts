@@ -121,6 +121,7 @@ class StubReplayDuelAdapter {
   jumpToState = jasmine.createSpy('jumpToState');
   abort = jasmine.createSpy('abort');
   collapseRemainingSteps = jasmine.createSpy('collapseRemainingSteps');
+  attachOutOfBandSink = jasmine.createSpy('attachOutOfBandSink');
 }
 
 class StubReplayFork {
@@ -146,10 +147,12 @@ class StubAnimationOrchestrator {
   readonly animatingZone = signal<unknown>(null);
   readonly confirmRevealedCards = signal<Map<number, number>>(new Map());
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
+  readonly eventStream = signal<readonly unknown[]>([]);
   destroy = jasmine.createSpy('destroy');
   resetForSwitch = jasmine.createSpy('resetForSwitch');
   startProcessingIfIdle = jasmine.createSpy('startProcessingIfIdle');
   onStateSync = jasmine.createSpy('onStateSync');
+  notifyOutOfBandEvent = jasmine.createSpy('notifyOutOfBandEvent');
 }
 
 class StubChainResolutionManager {

@@ -5,6 +5,7 @@ import { DebugLogService } from './debug-log.service';
 import { DuelLogger } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
 import type { AnimationDataSource, QueueEntry } from './animation-data-source';
+import type { StreamEvent } from '../types';
 
 export { ResponseData } from './duel-connection';
 
@@ -18,6 +19,10 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private _activeConnection = signal<DuelConnection>(this._defaultConnection);
 
   onStateSync?: () => void;
+
+  /** Palier 0 — EventStream sink (orchestrator's `notifyOutOfBandEvent`).
+   *  Retained so we can re-apply it on `setActiveConnection`. */
+  private _outOfBandSink?: (event: StreamEvent) => void;
 
   constructor() {
     this._defaultConnection.artService = this.artService;
@@ -36,6 +41,15 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
 
   setActiveConnection(connection: DuelConnection): void {
     this._activeConnection.set(connection);
+    if (this._outOfBandSink) connection.attachOutOfBandSink(this._outOfBandSink);
+  }
+
+  /** Palier 0 — wire the EventStream sink onto the active connection (and
+   *  any future one set via `setActiveConnection`). Called by the page at
+   *  bootstrap with `orchestrator.notifyOutOfBandEvent`. */
+  attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
+    this._outOfBandSink = sink;
+    this._activeConnection().attachOutOfBandSink(sink);
   }
 
   // --- All 13 signals + canRetry computed through _activeConnection ---

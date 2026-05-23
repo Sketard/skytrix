@@ -534,13 +534,18 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.cardInspection.init(this.cardDataCache);
     this.cardTravel.registerContainer(this.elementRef.nativeElement);
 
-    // --- Game Log wiring (Lot 2d / R10) ---
-    // Wired in the constructor — before `connect()` (ngOnInit) feeds any event
-    // to the orchestrator's `notifyGameLog` tap. `perspectiveIndex()` is the
-    // absolute viewer index in replay; the adapter's `logicalState()` is the
-    // viewer-relative board the builder consumes.
+    // --- Game Log wiring (Lot 2d / R10 — Palier 0 EventStream) ---
+    // Wired in the constructor — before `connect()` (ngOnInit) feeds any
+    // event to the orchestrator. `perspectiveIndex()` is the absolute
+    // viewer index in replay; the adapter's `logicalState()` is the
+    // viewer-relative board the builder consumes. The adapter routes
+    // `MSG_CHAIN_NEGATED` to the orchestrator's out-of-band sink so the
+    // "Nié" badge appears during step-by-step play (replay seek uses the
+    // separate `rebuildUpTo` path below).
     this.gameLog.setPerspective(this.perspectiveIndex());
     this.gameLog.attachBoardSource(() => this.adapter.boardStateView.logicalState());
+    this.gameLog.attachEventStream(this.orchestrator.eventStream);
+    this.adapter.attachOutOfBandSink(ev => this.orchestrator.notifyOutOfBandEvent(ev));
     // The user can flip perspective mid-session (`onTogglePerspective`).
     // Re-feeding `setPerspective` rebuilds the journal from the retained raw
     // events for the new viewer (R7 — handled inside the service).

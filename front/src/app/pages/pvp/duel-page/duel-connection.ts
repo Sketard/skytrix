@@ -1,11 +1,11 @@
 import { computed, signal } from '@angular/core';
-import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
+import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState, StreamEvent } from '../types';
 import { syncAfterBoardState, type QueueEntry } from './animation-data-source';
 import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
+import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -54,6 +54,15 @@ export class DuelConnection {
    *  every revealed cardCode is requested once, before its animation lands.
    *  See P3 audit follow-up — opponent decklist no longer pre-fetched upfront. */
   artService?: { prefetchCard(code: number | null | undefined): void };
+  /**
+   * Palier 0 — sink for events that bypass the animation queue but belong
+   * to the duel's logical event stream (Game Log feeds). Wired by
+   * `DuelWebSocketService` to `AnimationOrchestratorService.notifyOutOfBandEvent`.
+   * Three feeders: `processor.onEvent` (MSG_CHAIN_NEGATED), the
+   * `SELECT_CARD` prompt branch, and the `DUEL_END` handler (reconstructs
+   * a synthetic MSG_WIN from `winner` + `winReasonCode`).
+   */
+  private _outOfBandSink?: (event: StreamEvent) => void;
   private readonly processor = new DuelEventProcessor();
   private readonly rbs = new RenderedBoardStateService();
   /** Full RBS — write/control surface used by AnimationDataSource (orchestrator + managers). */
@@ -192,6 +201,17 @@ export class DuelConnection {
   onMessage?: (msg: ServerMessage) => void;
   onResponse?: (promptType: string, data: ResponseData) => void;
   onStateSync?: () => void;
+
+  /**
+   * Palier 0 — attach the EventStream sink (orchestrator's
+   * `notifyOutOfBandEvent`). Wires the processor's `onEvent` callback so
+   * `MSG_CHAIN_NEGATED` surfaces in the stream too. Idempotent — calling
+   * again replaces the previous sink (used by `setActiveConnection`).
+   */
+  attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
+    this._outOfBandSink = sink;
+    this.processor.onEvent = sink;
+  }
 
   private readonly storageKey: string;
 
@@ -600,6 +620,10 @@ export class DuelConnection {
       case 'SELECT_UNSELECT_CARD':
       case 'SELECT_COUNTER':
         this.processor.processMessage(message);
+        // Palier 0 — only `SELECT_CARD` belongs to the EventStream (the
+        // game-log builder uses it as the secondary `MSG_BECOME_TARGET`
+        // resolver). The other prompts in this branch do not feed the log.
+        if (message.type === 'SELECT_CARD') this._outOfBandSink?.(message);
         // Reset exclusion accumulator when the prompt type changes mid-sequence
         // (must happen before _pendingPrompt.set so attachComponent reads the correct value)
         if (this._lastSelectedPromptType !== null && this._lastSelectedPromptType !== message.type) {
@@ -713,6 +737,24 @@ export class DuelConnection {
         break;
 
       case 'DUEL_END':
+        // Palier 0 — server converts MSG_WIN → DUEL_END at the WS boundary
+        // (it drops the engine event and emits the lifecycle message). When
+        // the duel ended naturally in the engine (winner+winReasonCode
+        // present), reconstruct a synthetic MSG_WIN for the EventStream so
+        // the Game Log renders its 🏆 row in PvP live — matching what the
+        // Replay sees via the precompute's final state (which retains the
+        // original MSG_WIN). Non-engine ends (surrender, timeout,
+        // disconnect) leave `winReasonCode` undefined and do NOT synthesize
+        // a MSG_WIN: replay's `ingestState` doesn't see one for those
+        // cases either, so the journal stays consistent across modes.
+        if (message.winner !== null && message.winReasonCode !== undefined) {
+          const synthetic: WinMsg = {
+            type: 'MSG_WIN',
+            player: message.winner,
+            reason: message.winReasonCode,
+          };
+          this._outOfBandSink?.(synthetic);
+        }
         this._lastConfirmedCards = [];
         this._confirmedCardsByChain.clear();
         this.processor.reset();

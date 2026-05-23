@@ -555,14 +555,17 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     this.cardTravelEngine.registerContainer(this.elementRef.nativeElement);
     this.cardInspection.init(this.cardDataCache);
 
-    // --- Game Log wiring (Lot 2d / R10) ---
+    // --- Game Log wiring (Lot 2d / R10 — Palier 0 EventStream) ---
     // Configured here, before the bootstrap below kicks off the WS connection,
-    // so the service's perspective + board source are set before the first
-    // event reaches the orchestrator's `notifyGameLog` tap. `ownPlayerIndex`
-    // is absolute (the value the builder relativises event fields against);
-    // `logicalState()` is the viewer-relative board the builder consumes.
+    // so the service's perspective + board source + stream subscription are
+    // set before the first event reaches the orchestrator's EventStream.
+    // `ownPlayerIndex` is absolute (the value the builder relativises event
+    // fields against); `logicalState()` is the viewer-relative board the
+    // builder consumes.
     this.gameLog.setPerspective(this.ownPlayerIndex());
     this.gameLog.attachBoardSource(() => this.logicalState());
+    this.gameLog.attachEventStream(this.animationService.eventStream);
+    this.wsService.attachOutOfBandSink(ev => this.animationService.notifyOutOfBandEvent(ev));
     // `ownPlayerIndex()` is a computed — at construction `ocgPlayerIndex()` is
     // still null (→ 0); it resolves to the real absolute index once the first
     // BOARD_STATE lands. Track it so the journal is rebuilt for the correct

@@ -1,5 +1,5 @@
 import { computed, signal } from '@angular/core';
-import { ChainLinkState, GameEvent } from '../types';
+import { ChainLinkState, GameEvent, StreamEvent } from '../types';
 import type { ChainingMsg, ChainNegatedMsg, ChainSolvingMsg, ChainSolvedMsg, ServerMessage } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
@@ -29,6 +29,16 @@ function isGameEvent(msg: ServerMessage): msg is GameEvent {
  */
 export class DuelEventProcessor {
   logger?: DuelLogger;
+  /**
+   * Palier 0 — out-of-band hook for `GameEvent`s the processor consumes
+   * without enqueueing (currently only `MSG_CHAIN_NEGATED`). The hook lets
+   * the orchestrator surface them on its `EventStream` so the Game Log
+   * sees the "Nié" badge in PvP live. NOT called for events that DO
+   * enqueue — those reach the orchestrator's `processEvent` naturally and
+   * are tapped there. The invariant "`MSG_CHAIN_NEGATED` is NOT pushed to
+   * `animationQueue`" stays true: the callback is a parallel stream.
+   */
+  onEvent?: (event: StreamEvent) => void;
 
   private _activeChainLinks = signal<ChainLinkState[]>([]);
   private _chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
@@ -117,6 +127,7 @@ export class DuelEventProcessor {
         this._activeChainLinks.update(links =>
           links.map(l => l.chainIndex === negMsg.chainIndex ? { ...l, negated: true } : l),
         );
+        this.onEvent?.(negMsg);
         break;
       }
       case 'WAITING_RESPONSE':

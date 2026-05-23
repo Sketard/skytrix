@@ -1,5 +1,5 @@
 import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
-import type { DuelState, GameEvent } from '../types';
+import type { DuelState, GameEvent, StreamEvent } from '../types';
 import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION, POSITION } from '../duel-ws.types';
 import { DuelCardArtService } from './duel-card-art.service';
@@ -115,11 +115,11 @@ export class AnimationOrchestratorService {
   private readonly artService = inject(DuelCardArtService);
   private readonly bufferReplayBuilder = inject(BufferReplayBuilder);
   /**
-   * Optional Game Log tap. Injected `{ optional: true }` so the orchestrator's
-   * own spec suite (which does not provide the service) keeps compiling — and
-   * so any future test/page that mounts the orchestrator without the Game Log
-   * still works. The service is provided at the duel-page / replay-page level
-   * (Lot 2d); when absent, `this.gameLog?.notifyGameLog` is a no-op.
+   * Optional Game Log handle — used only for `reset()` on rematch / state
+   * sync (R8). The journal is fed by subscribing to `eventStream` from the
+   * page (`attachEventStream` at Lot 2d), no tap method is called from
+   * here. Injected `{ optional: true }` so the orchestrator's own spec
+   * suite (which does not provide the service) keeps compiling.
    */
   private readonly gameLog = inject(DuelGameLogService, { optional: true });
 
@@ -234,6 +234,21 @@ export class AnimationOrchestratorService {
     if (this.dataSource.chainPhase() === 'resolving') return 'deferred';
     return 'per-event';
   }
+
+  /**
+   * Palier 0 — `EventStream`. Holds every duel event in logical order
+   * (post-chain-buffer). Distinct from `dataSource.animationQueue()`: the
+   * queue is the *animatable subset* the runner consumes; this stream is
+   * the *complete log source* the Game Log subscribes to. Fed at the
+   * former `notifyGameLog` tap point for in-queue events, and via
+   * `notifyOutOfBandEvent` for the three types that bypass the animation
+   * queue by design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`, `MSG_WIN`
+   * reconstructed from `DUEL_END`). The animation queue invariant
+   * "`MSG_CHAIN_NEGATED` is NOT enqueued" stays true — queue and stream
+   * are two distinct objects.
+   */
+  private readonly _eventStream = signal<StreamEvent[]>([]);
+  readonly eventStream = this._eventStream.asReadonly();
 
   /** Zone keys of cards currently being targeted (MSG_BECOME_TARGET). */
   readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
@@ -558,10 +573,29 @@ export class AnimationOrchestratorService {
     this.counterPulseKey.set(null);
     this.swapGraveDeckKeys.set(new Set());
     this.toastService.clear();
+    this._eventStream.set([]);
     // R8 — a rematch reuses the page component (no ngOnDestroy), so the
     // game-log accumulator must be cleared on the shared reset path or
     // duel 1's journal leaks into duel 2.
     this.gameLog?.reset();
+  }
+
+  /**
+   * Palier 0 — push a `GameEvent` that bypasses the animation queue by
+   * design into the EventStream. Three call-sites:
+   *   · `MSG_CHAIN_NEGATED` — surfaced by `DuelEventProcessor.onEvent` (the
+   *     processor consumes it silently for chain-state but still emits it
+   *     here so the journal sees the "Nié" badge in PvP live);
+   *   · `SELECT_CARD` — surfaced by `DuelConnection` on prompt routing
+   *     (the builder needs it as the secondary `MSG_BECOME_TARGET` resolver);
+   *   · `MSG_WIN` (reconstructed from `DUEL_END`) — surfaced by
+   *     `DuelConnection` on duel close (server converts MSG_WIN → DUEL_END;
+   *     the journal needs the original to render the 🏆 row).
+   * Does NOT touch `dataSource.animationQueue()` — invariant "MSG_CHAIN_NEGATED
+   * is NOT enqueued" stays true.
+   */
+  notifyOutOfBandEvent(event: StreamEvent): void {
+    this._eventStream.update(s => [...s, event]);
   }
 
   resetForSwitch(): void {
@@ -1060,17 +1094,14 @@ export class AnimationOrchestratorService {
     const boardStateAfter = (event as GameEvent & { boardStateAfter?: DuelState }).boardStateAfter;
     if (boardStateAfter) this.rbs.updateLogical(boardStateAfter);
 
-    // Game Log tap — LOAD-BEARING placement, do not move (analysis §2.3):
-    //  - it sits AFTER the `bufferIfResolving` guard (above), so an event
-    //    buffered during a chain returns before this line and is NOT logged at
-    //    park time — it reaches the tap only when `replayBuffer` re-dispatches
-    //    it, i.e. in logical resolution order, exactly once;
-    //  - it sits AFTER `updateLogical(boardStateAfter)`, so `logicalState()` is
-    //    already current for this event when the service reads it inside
-    //    `notifyGameLog` — no board argument needed;
-    //  - it sits BEFORE the dispatch switch: a passive side-effect tap that
-    //    must not influence animation dispatch (it returns nothing usable here).
-    this.gameLog?.notifyGameLog(event);
+    // EventStream push — LOAD-BEARING placement, do not move (analysis §2.3):
+    //  - AFTER `bufferIfResolving` so a chain-buffered event reaches the
+    //    stream only on `replayBuffer` re-dispatch (logical order, once);
+    //  - AFTER `updateLogical(boardStateAfter)` so any subscriber reading
+    //    `logicalState()` sees the post-event board;
+    //  - BEFORE the dispatch switch: passive side-effect, no influence on
+    //    animation dispatch.
+    this._eventStream.update(s => [...s, event]);
 
     switch (event.type) {
       case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);

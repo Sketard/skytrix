@@ -4,7 +4,7 @@ import { syncAfterBoardState, type AnimationDataSource, type QueueEntry } from '
 import { DuelEventProcessor } from '../duel-page/duel-event-processor';
 import { DuelLogCategory, DuelLogger } from '../duel-page/duel-logger';
 import { RenderedBoardStateService, type BoardStateView } from '../duel-page/rendered-board-state.service';
-import type { HintContext, Prompt } from '../types';
+import type { HintContext, Prompt, StreamEvent } from '../types';
 import type {
   BoardStatePayload, DecisionMoment, Player, PreComputedState,
   PlayerBoardState, ServerMessage, CardInfo,
@@ -69,6 +69,18 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
 
   applyChainEnd(): void {
     this.processor.applyChainEnd();
+  }
+
+  /**
+   * Palier 0 — attach the EventStream sink (orchestrator's
+   * `notifyOutOfBandEvent`). Replay only needs the processor's `onEvent`
+   * for `MSG_CHAIN_NEGATED`: `SELECT_CARD` is not surfaced in replay
+   * (the adapter never emits prompts as events) and `MSG_WIN` arrives in
+   * the precompute's final state events, transiting normally through
+   * `processEvent` — no synthesis needed on this side.
+   */
+  attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
+    this.processor.onEvent = sink;
   }
 
   // ══════════════════════════════════════════════════

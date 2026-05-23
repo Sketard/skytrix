@@ -70,35 +70,42 @@ processor guarantees identical behavior across both modes.
 
 `MSG_CHAIN_NEGATED` is consumed silently by the processor (sets `negated`
 flag on the matching chain link) — it is NOT pushed to `animationQueue`.
+It IS pushed to `AnimationOrchestratorService.eventStream` via
+`DuelEventProcessor.onEvent` so the Game Log sees the "Nié" badge in PvP
+live (Palier 0).
 
-## Game Log — known PvP↔Replay divergence (DEFERRED to queue-runner chantier)
+## EventStream vs AnimationQueue (Palier 0)
 
-The live Game Log (`DuelGameLogService`) is fed in PvP exclusively by the
-`notifyGameLog` tap inside `AnimationOrchestratorService.processEvent` —
-i.e. by the **animation queue**. The shared `GameLogBuilder` knows how to
-handle `MSG_CHAIN_NEGATED` (negated badge), `MSG_WIN` (🏆 winner row) and
-`SELECT_CARD` (secondary `MSG_BECOME_TARGET` target resolution), but in
-live PvP these three never reach the tap:
+Two distinct flux coexist in the animation pipeline:
 
-- `MSG_CHAIN_NEGATED` — consumed silently by `DuelEventProcessor`, never
-  enqueued (see the section above);
-- `SELECT_CARD` — a prompt, routed outside the animation queue;
-- `MSG_WIN` — converted to `DUEL_END` server-side; the front never sees
-  a raw `MSG_WIN`.
+- **`AnimationQueue`** — the animatable subset, owned by
+  `DuelEventProcessor._animationQueue`, consumed by the queue runner.
+  Strict `GameEvent` union; the invariant "`MSG_CHAIN_NEGATED` is NOT
+  pushed to `animationQueue`" stays true.
+- **`AnimationOrchestratorService.eventStream`** — every duel event in
+  logical order (post-chain-buffer), the journal source. Wider
+  `StreamEvent` union (`GameEvent | ChainNegatedMsg | WinMsg |
+  SelectCardMsg`). Fed at four push sites:
+  · the in-queue tap inside `processEvent` (after `bufferIfResolving`,
+    after `updateLogical(boardStateAfter)`, before the dispatch switch);
+  · `DuelEventProcessor.onEvent(MSG_CHAIN_NEGATED)` → wired by
+    `DuelConnection.attachOutOfBandSink` and
+    `ReplayDuelAdapter.attachOutOfBandSink`;
+  · `DuelConnection` `SELECT_CARD` prompt branch (PvP only — replay has
+    no interactive prompts);
+  · `DuelConnection` `DUEL_END` handler reconstructs a synthetic
+    `MSG_WIN` from `winner` + `winReasonCode` when the duel ended
+    naturally in the engine (non-engine ends — surrender, timeout,
+    disconnect — leave `winReasonCode` undefined and skip the synthesis,
+    matching what replay sees in its precompute final state).
 
-So in **Replay** these builder branches run (the journal is rebuilt from
-precompute states via `rebuildUpTo` → `ingestState`), in **live PvP** they
-are dead — the same duel yields a different journal per mode.
-
-The fix is NOT a one-liner: the root cause is that the journal piggy-backs
-on the *animation queue* instead of a unified *event stream*. A naive
-side-channel breaks the `SELECT_CARD` → `MSG_BECOME_TARGET` ordering;
-forcing the three types into the queue breaks the `MSG_CHAIN_NEGATED`
-"never enqueued" invariant. The proper fix — separate an `EventStream`
-(all duel events, journal source) from the `AnimationQueue` (animatable
-subset) — is folded into the queue-runner extraction chantier
-(`_bmad-output/planning-artifacts/queue-runner-extraction-chantier.md`).
-Until then the live PvP journal is missing those three rows by design.
+`DuelGameLogService` subscribes via `attachEventStream(stream)` — a
+`signal` effect that drains newly-pushed events through `notifyGameLog`
+in arrival order. The journal index is reset at `reset()`; on replay
+seek `orchestrator.resetForSwitch` clears the stream and the service
+together, then `rebuildUpTo(states)` re-feeds the builder via the
+separate `ingestState` path. PvP↔Replay parity is structural — the
+same `GameLogBuilder` consumes the same event set on both sides.
 
 ## Replay Board State Parity Rule
 
