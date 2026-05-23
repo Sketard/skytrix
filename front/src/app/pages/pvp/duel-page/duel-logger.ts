@@ -21,6 +21,12 @@ export const enum DuelLogCategory {
    *  when a visible event "is missing" — you can confirm whether the message
    *  was received at all, or was swallowed by an upstream filter. */
   PIPELINE = 'PIPELINE',
+  /** Queue runner internals — tick-by-tick decision trace (action returned
+   *  by `decideNextStep` + the inputs that drove it), lifecycle transitions
+   *  (start, requestStop, generation bumps), rescue/finalize events. Verbose
+   *  by design: one or more lines per queue tick. Enable when diagnosing
+   *  re-entry, stalls, or stale-loop bugs. */
+  RUNNER   = 'RUNNER',
 }
 
 /**
@@ -45,6 +51,7 @@ export class DuelLogger {
   private static readonly VERBOSE_CATEGORIES: ReadonlySet<string> = new Set<string>([
     DuelLogCategory.RESOLVE,
     DuelLogCategory.PIPELINE,
+    DuelLogCategory.RUNNER,
   ]);
 
   private static readonly DEFAULT_ENABLED: ReadonlySet<string> = new Set<string>([

@@ -1,7 +1,12 @@
-import {
-  AnimationOrchestratorService,
-  type QueueDecisionInputs,
-} from './animation-orchestrator.service';
+// =============================================================================
+// queue-runner.spec.ts — `decideNextStep` migrated from
+// `animation-orchestrator.service.spec.ts` (Palier A, 2026-05-23). Same 15
+// scenarios; the function itself moved into `queue-runner.ts` and is now
+// exported as a standalone pure function (was a static method on the
+// orchestrator).
+// =============================================================================
+
+import { decideNextStep, type QueueDecisionInputs } from './queue-runner';
 import { QUEUE_COLLAPSE_KEEP } from './animation-constants';
 import type { QueueEntry } from './animation-data-source';
 import type { GameEvent } from '../types';
@@ -26,28 +31,24 @@ const baseInputs = (overrides: Partial<QueueDecisionInputs> = {}): QueueDecision
   ...overrides,
 });
 
-describe('AnimationOrchestratorService.decideNextStep', () => {
+describe('QueueRunner.decideNextStep', () => {
   // -------------------------------------------------------------------------
   // External wait gate (priority 1)
   // -------------------------------------------------------------------------
 
   describe('pause-external (wait gate)', () => {
     it('returns pause-external when isWaitingForOverlay=true', () => {
-      const step = AnimationOrchestratorService.decideNextStep(
-        baseInputs({ isWaitingForOverlay: true }),
-      );
+      const step = decideNextStep(baseInputs({ isWaitingForOverlay: true }));
       expect(step.action).toBe('pause-external');
     });
 
     it('returns pause-external when hasDrawsInFlight=true', () => {
-      const step = AnimationOrchestratorService.decideNextStep(
-        baseInputs({ hasDrawsInFlight: true }),
-      );
+      const step = decideNextStep(baseInputs({ hasDrawsInFlight: true }));
       expect(step.action).toBe('pause-external');
     });
 
     it('returns pause-external even when queue has entries (gate priority)', () => {
-      const step = AnimationOrchestratorService.decideNextStep(
+      const step = decideNextStep(
         baseInputs({ isWaitingForOverlay: true, queue: [damage(), damage()] }),
       );
       expect(step.action).toBe('pause-external');
@@ -56,9 +57,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
     it('gate prioritized over collapse: large LP burst with isWaitingForOverlay=true', () => {
       // 6 LP events would normally collapse; gate must preempt.
       const queue = [damage(), damage(), damage(), damage(), damage(), damage()];
-      const step = AnimationOrchestratorService.decideNextStep(
-        baseInputs({ isWaitingForOverlay: true, queue }),
-      );
+      const step = decideNextStep(baseInputs({ isWaitingForOverlay: true, queue }));
       expect(step.action).toBe('pause-external');
     });
   });
@@ -71,7 +70,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
     it('collapses when queue length > THRESHOLD and all LP-class', () => {
       // queue=6 (THRESHOLD=5), KEEP=3 → collapseCount=3
       const queue = [damage(), damage(), damage(), recover(), payLp(), damage()];
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({ queue }));
+      const step = decideNextStep(baseInputs({ queue }));
       expect(step.action).toBe('collapse');
       if (step.action === 'collapse') {
         expect(step.collapseCount).toBe(queue.length - QUEUE_COLLAPSE_KEEP);
@@ -81,7 +80,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
     it('does NOT collapse at threshold edge (queue.length === THRESHOLD)', () => {
       // queue=5 (== THRESHOLD), strict > required → no collapse
       const queue = [damage(), damage(), damage(), damage(), damage()];
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({ queue }));
+      const step = decideNextStep(baseInputs({ queue }));
       expect(step.action).toBe('dequeue');
     });
 
@@ -91,7 +90,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
         damage(), damage(), damage(), damage(), damage(),
         move(), damage(), damage(), damage(), damage(),
       ];
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({ queue }));
+      const step = decideNextStep(baseInputs({ queue }));
       expect(step.action).toBe('dequeue');
     });
 
@@ -101,7 +100,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
         groupDirective(), groupDirective(), groupDirective(),
         groupDirective(), groupDirective(), groupDirective(),
       ];
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({ queue }));
+      const step = decideNextStep(baseInputs({ queue }));
       expect(step.action).toBe('dequeue');
     });
   });
@@ -113,7 +112,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
   describe('dequeue priority', () => {
     it('returns consume-deferred when deferredSolvingEntry is set, even if queue non-empty', () => {
       const deferred = { type: 'MSG_CHAIN_SOLVING' } as unknown as GameEvent;
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
+      const step = decideNextStep(baseInputs({
         deferredSolvingEntry: deferred,
         queue: [damage()],
       }));
@@ -125,7 +124,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
 
     it('returns dequeue with first queue entry when no deferred', () => {
       const head = damage();
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
+      const step = decideNextStep(baseInputs({
         queue: [head, recover()],
       }));
       expect(step.action).toBe('dequeue');
@@ -141,7 +140,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
 
   describe('empty queue terminal branches', () => {
     it('returns pre-replay-buffer when isResolving + hasBufferedEvents + hasPendingPrompt', () => {
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
+      const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: true,
         hasPendingPrompt: true,
@@ -152,7 +151,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
     it('returns finalize when isResolving + hasBufferedEvents but NO prompt', () => {
       // Missing prompt — pre-replay condition fails, falls through.
       // commitMode=per-event by default → poll branch also skipped.
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
+      const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: true,
         hasPendingPrompt: false,
@@ -161,7 +160,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
     });
 
     it('returns finalize when isResolving + hasPendingPrompt but NO buffered events', () => {
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
+      const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: false,
         hasPendingPrompt: true,
@@ -170,7 +169,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
     });
 
     it('returns finalize for empty queue with default state (per-event commitMode)', () => {
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs());
+      const step = decideNextStep(baseInputs());
       expect(step.action).toBe('finalize');
     });
 
@@ -181,7 +180,7 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
       // itself just returns finalize. The watchdog catches stalls if no
       // event-driven re-wake (WS / advanceStep / chainOverlayReady) arrives
       // within POLL_DROP_REGRESSION_WATCHDOG_MS.
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
+      const step = decideNextStep(baseInputs({
         commitMode: 'deferred',
         isWaitingForOverlay: false,
       }));

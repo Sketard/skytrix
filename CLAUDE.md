@@ -257,7 +257,7 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
 ## Orchestrator Decomposition
 
 `AnimationOrchestratorService` is a thin coordinator that delegates to
-7 extracted managers:
+8 extracted managers/classes:
 
 - **`ChainResolutionManager`** — chain state (signals, buffer, replay
   timeouts, solved count). Pure state + `drainBuffer()`. Orchestrator
@@ -281,6 +281,17 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
   `build(buffer)` returns `{ batch, releaseSessionLocks }`. The
   orchestrator stays as dispatch policy: drain → call builder → prepend
   batch + `batch-end` + `await-signal` directives.
+- **`QueueRunner`** (Palier A, 2026-05-23) — async animation loop,
+  decision step (`decideNextStep` pure), and the 5 lifecycle primitives
+  (`_isProcessing`, `_innerLoopDepth`, `_resetGeneration`,
+  `_rescueNoProgressCount`, `_lastRescueQueueLen`). Owns the per-step
+  `setTimeout` + travel `Promise.race` guard. Business dispatch (per-type
+  handlers, directive switch, pre-activation buffer) stays in the
+  orchestrator and is reached via `QueueRunnerDeps` callbacks; the runner
+  never imports YGO types. Plain class, instantiated in the orchestrator
+  constructor. `_isAnimating` (orchestrator's exposed signal) is
+  synchronised via the runner's `onIsRunningChange` callback —
+  orchestrator-side façade, runner-side source of truth.
 
 **`DuelContext`** is the shared context for all managers. API surface:
 
@@ -619,9 +630,9 @@ order — they're additive, not redundant.
 
 ### Layer 1 — `DuelLogger` categories
 
-`DuelLogger` is the gated console logger. Eight categories, each filterable
+`DuelLogger` is the gated console logger. Nine categories, each filterable
 via `localStorage['duel-log-categories']` (CSV) or the DevHub toggle. Default
-set keeps the console readable; the two **verbose** categories are off by
+set keeps the console readable; the three **verbose** categories are off by
 default and must be opted in.
 
 - `QUEUE` / `MOVE` / `DRAW` / `CHAIN` / `SHUFFLE` / `LP` / `PROC` / `REPLAY`
@@ -638,6 +649,15 @@ default and must be opted in.
   (`ws.recv type=…`), per `processMessage` entry/exit with queue-length
   delta, per `advanceStep` step kind. Off by default. Use when diagnosing
   "did the event arrive at all".
+- `RUNNER` (verbose, Palier A 2026-05-23) — `QueueRunner` internal trace.
+  One line per queue tick (the `action` returned by `decideNextStep` +
+  the inputs that drove it: `isResolving`, `queueLen`,
+  `isWaitingForOverlay`, `commitMode`). Lifecycle transitions
+  (`notifyEnqueue`, `requestStop`, generation bump) and rescue/finalize
+  events get their own trace lines. Use when diagnosing re-entry, stalls,
+  or stale-loop bugs — centralises the causal chain that was previously
+  scattered across `decideNextStep`, `case finalize`, and the `.finally`
+  rescue.
 
 `logger.resolve(method, input, result, note?)` is the canonical helper for
 the `RESOLVE` category — it formats consistently and handles the null →
@@ -725,12 +745,15 @@ skipped` warn captures a frame + snapshot at the bug moment.
 The legacy chain-poll back-off (`_pollTimeout` + 50→500ms exponential +
 ceiling=30) was removed 2026-05-10 after investigation found it
 unreachable since commit 89b761c4 — three event-driven re-wakes
-(`startProcessingIfIdle` on WS message, `advanceStep` on
+(`runner.notifyEnqueue` on WS message, `advanceStep` on
 `setAnimating(false)`, `initResumeEffect` on `chainOverlayReady`) cover
-the "chain resolving, queue temporarily empty" gap. The
-`armPollDropWatchdog()` (fired in the `'finalize'` case when
-`chainPhase === 'resolving'`, cleared in `startProcessingIfIdle` +
-`clearTimersAndPolling`) is the safety net: after
+the "chain resolving, queue temporarily empty" gap. Palier A
+(2026-05-23) moved the loop into `QueueRunner` but the rescue + watchdog
+contract is unchanged.
+
+The `pollDropWatchdog.arm()` (fired in the runner's `'finalize'` case
+when `chainPhase === 'resolving'`, cleared in `runner.notifyEnqueue` +
+`runner.requestStop`) is the safety net: after
 `POLL_DROP_REGRESSION_WATCHDOG_MS` (10s) it logs
 `[POLL-DROP REGRESSION]` (unfilterable, not through `DuelLogger`) and
 fires `duelAssert(false, 'POLL-DROP-REGRESSION', ...)`.
@@ -741,14 +764,14 @@ else:**
 2. Did `chainPhase` transition to `'idle'`? Grep `applyChainEnd` traces.
 3. Was `initResumeEffect` fired on `chainOverlayReady`? Check
    `[ANIM:CHAIN] resumeEffect` logs.
-4. Did `startProcessingIfIdle` get called after the stall? Check
-   `[ANIM:QUEUE] startProcessingIfIdle` traces.
+4. Did `runner.notifyEnqueue` get called after the stall? Check
+   `[RUNNER] notifyEnqueue` traces (enable category `RUNNER` first).
 
 If none of (1-4) hold, the dropped poll mechanism was masking a real
 upstream bug — find the missing event/signal first, do NOT re-introduce
 the poll. Last-resort restore: a single
-`setTimeout(processAnimationQueue, 500)` in the finalize case (no
-back-off, no ceiling — the watchdog is the ceiling).
+`setTimeout(() => this.runner.notifyEnqueue(), 500)` in the runner's
+finalize case (no back-off, no ceiling — the watchdog is the ceiling).
 
 **Grep markers (do not change without updating this section):**
 `POLL-DROP REGRESSION` (the console.error string) and
@@ -757,13 +780,17 @@ back-off, no ceiling — the watchdog is the ceiling).
 ### Replay interruption safety (seek / pause during a chain)
 
 Interrupting a replay mid-chain has two distinct failure modes, both
-fixed defensively in `AnimationOrchestratorService` (2026-05-20):
+fixed defensively (2026-05-20). Since Palier A (2026-05-23) the
+lifecycle primitives live in `QueueRunner`; `orchestrator.clearTimersAndPolling`
+delegates to `runner.requestStop()`.
 
-1. **Stale async loop after a seek.** `_processAnimationQueueInner` is an
-   async loop that cannot be cancelled mid-`await`. A seek / sub-event
-   click runs `abortAndClean` → `resetForSwitch` (flips `_isAnimating`
-   false) then a fresh feed flips it back true — so the suspended stale
-   loop would resume and run alongside the new one.
+1. **Stale async loop after a seek.** `_processAnimationQueueInner`
+   (`QueueRunner`) is an async loop that cannot be cancelled mid-`await`.
+   A seek / sub-event click runs `abortAndClean` → `resetForSwitch` →
+   `runner.requestStop()` (flips `_isRunning` false through
+   `onIsRunningChange`, which also flips `_isAnimating`). Then a fresh
+   feed flips it back true — so the suspended stale loop would resume
+   and run alongside the new one.
 
    **Root cause of the "infinite rescue" (fixed 2026-05-20):** when the
    reset landed while a loop was suspended on an `await`, that loop's
@@ -772,12 +799,12 @@ fixed defensively in `AnimationOrchestratorService` (2026-05-20):
    → 2 → the parallel-re-entry `duelAssert` **threw**, aborting the loop
    body before it dispatched anything → the queue never drained → the
    `processAnimationQueue` finally rescue re-fired forever. Fix:
-   `clearTimersAndPolling` zeroes `_innerLoopDepth`, and the inner-loop
+   `runner.requestStop()` zeroes `_innerLoopDepth`, and the inner-loop
    `finally` floors it at 0 (`Math.max(0, …)`) so a stale loop resuming
    after the reset can't drive it negative.
 
    Defense in depth: a `_resetGeneration` counter (bumped in
-   `clearTimersAndPolling`) — the inner loop captures it on entry and
+   `runner.requestStop`) — the inner loop captures it on entry and
    bails on mismatch; the `processAnimationQueue` finally skips its
    rescue when the generation moved. And a no-progress ceiling
    (`RESCUE_NO_PROGRESS_CEILING`) — past N rescues with `queueLen`

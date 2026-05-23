@@ -1,14 +1,15 @@
-import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
+import { inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
 import type { DuelState, GameEvent, StreamEvent } from '../types';
 import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION, POSITION } from '../duel-ws.types';
 import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
+import { QueueRunner, type EventResult, type QueueDecisionInputs, type QueueStep } from './queue-runner';
 import {
-  LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD,
+  LOCK_SAFETY_TIMEOUT_MS,
   REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
-  POLL_DROP_REGRESSION_WATCHDOG_MS, RESCUE_NO_PROGRESS_CEILING,
+  POLL_DROP_REGRESSION_WATCHDOG_MS,
   BOARD_BREATHE_MS, BOARD_BREATHE_MIN_MS,
   POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS, TARGET_PILE_FLOAT_STAGGER_MS, TARGET_PILE_FLOAT_FADE_OUT_MS,
   CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
@@ -43,51 +44,23 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
-/**
- * Discrete actions returned by `AnimationOrchestratorService.decideNextStep`.
- * Drives the dispatcher inside `_processAnimationQueueInner`.
- *
- * NOTE: 'poll' / 'poll-ceiling-reset' actions were removed in 2026-05-10
- * (Phase 2 of pvp-replay-2026-05-08 audit closure). Investigation found
- * the poll branch UNREACHABLE since 2026-04-06 because the wait gate
- * (priority 1) returned first whenever the poll predicate matched. All
- * legitimate wait paths are now event-driven (WS message, advanceStep,
- * resume effect on chainOverlayReady). A POLL-DROP REGRESSION watchdog
- * fires if a finalize-during-resolving stalls — see CLAUDE.md.
- */
-export type QueueStep =
-  | { action: 'pause-external' }
-  | { action: 'collapse'; collapseCount: number }
-  | { action: 'consume-deferred'; entry: GameEvent }
-  | { action: 'dequeue'; entry: QueueEntry }
-  | { action: 'pre-replay-buffer' }
-  | { action: 'finalize' };
-
-/**
- * Snapshot of inputs consumed by the pure `decideNextStep` function.
- * The dispatcher reads signals + internal state once per tick and passes
- * them as plain values; tests construct the object directly.
- */
-export interface QueueDecisionInputs {
-  isWaitingForOverlay: boolean;
-  hasDrawsInFlight: boolean;
-  queue: readonly QueueEntry[];
-  isResolving: boolean;
-  hasBufferedEvents: boolean;
-  hasPendingPrompt: boolean;
-  commitMode: 'per-event' | 'deferred';
-  deferredSolvingEntry: GameEvent | null;
-}
+// `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
+// 2026-05-23). Re-exported here for back-compat of external callers.
+export type { QueueStep, QueueDecisionInputs } from './queue-runner';
 
 /**
  * Central animation queue processor for the duel page.
  * Provided at component level (NOT root).
  *
+
  * Thin coordinator that owns:
- * - Queue loop (processAnimationQueue, queue collapse)
- * - Event dispatch switch (processEvent → delegates to managers)
- * - Cross-cutting replay logic (replayBuffer via queue directives)
- * - Reset/destroy lifecycle
+ * - Business dispatch (`_dispatchEvent` + `processDirective` + the per-type
+ *   handlers in `processEvent`) — the runner calls back into here.
+ * - Cross-cutting replay logic (replayBuffer via queue directives).
+ * - Reset/destroy lifecycle (delegates to `runner.requestStop()`).
+ *
+ * The async queue loop + its 5 lifecycle primitives + per-step timing live
+ * in `QueueRunner` (Palier A, 2026-05-23). See `queue-runner.ts`.
  *
  * Extracted managers:
  * - ChainResolutionManager: chain state, signals, buffer, replay timeouts
@@ -171,40 +144,8 @@ export class AnimationOrchestratorService {
     }),
     () => this.firePollDropRegression(),
   );
-  /** Re-entry guard for processAnimationQueue (prevents double-dequeue). */
-  private _isProcessing = false;
-  /** Detects parallel re-entry into _processAnimationQueueInner (audit finding C4).
-   *  Always 0 or 1 in normal operation. >1 means a second async loop started before
-   *  the first finished — would dequeue events out of order. duelAssert fires in dev,
-   *  console.error in prod. See PVP-REPLAY-DIVERGENCES.md §2 for the design rationale
-   *  of the _isProcessing finalize block (lines ~648-656). */
-  private _innerLoopDepth = 0;
   /** Set while inline replayBuffer is dispatching buffered events, so processEvent skips re-buffering. */
   private _isReplayingBuffer = false;
-  /**
-   * Anti-runaway guard for the `processAnimationQueue` finally-block rescue.
-   * The rescue re-launches the queue when the inner loop exits with entries
-   * still queued (see cases (a)/(b) at the callsite). If the queue never
-   * drains — e.g. a seek/abort raced the loop and left undispatchable
-   * entries — the rescue would re-fire in a tight microtask loop forever
-   * ("infinite rescue" symptom on sub-event click during playback). This
-   * counts consecutive rescues that made NO progress (queueLen unchanged);
-   * past the ceiling the rescue bails instead of looping. Reset whenever
-   * the queue actually shrinks or on any hard reset. */
-  private _rescueNoProgressCount = 0;
-  private _lastRescueQueueLen = -1;
-  /**
-   * Reset generation token. `_processAnimationQueueInner` is an async loop
-   * that cannot be cancelled mid-`await`; a reset (seek / sub-event click /
-   * resetForSwitch) only flips `_isAnimating` to false. But the very next
-   * feed flips it back to true before the suspended loop resumes — so the
-   * stale loop would keep running in parallel with the fresh one (two
-   * coroutines draining the same queue → desync → a stuck entry → infinite
-   * rescue). Each reset bumps this counter; the inner loop captures it on
-   * entry and bails the moment it observes a mismatch. */
-  private _resetGeneration = 0;
-  /** Active await-signal effect (cleaned up on destroy/resetForSwitch). */
-  private _awaitSignalEffect: EffectRef | null = null;
 
   /**
    * Pre-activation buffer: BOARD_CHANGING events that arrived while
@@ -214,13 +155,23 @@ export class AnimationOrchestratorService {
    * initial 5-card draw plays its full animation instead of being avalé
    * silently by `processDrawEvent`'s legacy `!isBoardActive` guard.
    *
-   * FIFO. Filled by `_handleEntry` (single divert point). Drained by the
-   * `DuelLoadingEffectsService` `duel-loading → active` effect.
+   * FIFO. Filled by the dispatch handler (single divert point — returns
+   * `'divert'` to the runner). Drained by the `DuelLoadingEffectsService`
+   * `duel-loading → active` effect.
    */
   private readonly _preActivationBuffer: GameEvent[] = [];
   /** Set while drainPreActivationBuffer's setTimeout is pending. Prevents
    *  double-drain if setBoardActive(true) fires twice within the beat. */
   private _preActivationDrainScheduled = false;
+
+  /**
+   * The animation queue runner (Palier A, 2026-05-23). Instantiated in the
+   * constructor with callbacks into this orchestrator. Owns the async loop,
+   * the 5 lifecycle primitives, and the per-step timer mechanics; the
+   * orchestrator's role is reduced to business dispatch + the wiring of
+   * managers + the `EventStream` push tap.
+   */
+  private runner!: QueueRunner;
 
   /**
    * Commit mode for the queue loop. Every commit decision is a single switch.
@@ -285,32 +236,64 @@ export class AnimationOrchestratorService {
     // becomes a pure read of dataSource.chainPhase(); no parallel state to
     // keep in sync.
     this.chainManager.attachChainPhaseSource(() => this.dataSource.chainPhase());
+
+    // Palier A — instantiate the queue runner. The runner owns the async
+    // loop + the 5 lifecycle primitives; the orchestrator stays a thin
+    // coordinator that exposes the queue façade and dispatches business
+    // logic through callbacks below.
+    this.runner = new QueueRunner({
+      dataSource: this.dataSource,
+      pollDropWatchdog: this.pollDropWatchdog,
+      ctx: this.ctx,
+      logger: this.logger,
+      injector: this.injector,
+      handleEntry: ev => this._dispatchEvent(ev),
+      processDirective: entry => this.processDirective(entry),
+      applyInstantAnimation: ev => this.applyInstantAnimation(ev),
+      consumeDeferredSolving: () => this.chainManager.consumeDeferredSolving(),
+      preReplayBuffer: () => this.replayBuffer(true),
+      preLockQueuedSources: () => this.moveRouter.preLockQueuedSources(),
+      onStepSettled: () => {
+        this.lpTracker.commitIfPending();
+        this.animatingZone.set(null);
+      },
+      onFinalize: () => {
+        this.finalizeAndCommit();
+        this.drawManager.resetHandAnimationState();
+        this.animatingZone.set(null);
+        this.lpTracker.animatingLpPlayer.set(null);
+        const state = this.rbs.logicalState();
+        if (state.players.length === 2) {
+          this.lpTracker.syncFromBoardState(state.players[0].lp, state.players[1].lp);
+        }
+      },
+      onIsRunningChange: running => {
+        this._isAnimating.set(running);
+        this.dataSource.setAnimating(running);
+      },
+      decisionInputs: () => ({
+        isWaitingForOverlay: this.chainManager.isWaitingForOverlay,
+        hasDrawsInFlight: this.drawManager.hasDrawsInFlight,
+        isResolving: this.chainManager.isResolving,
+        hasBufferedEvents: this.chainManager.hasBufferedEvents,
+        hasPendingPrompt: this.dataSource.pendingPrompt() !== null,
+        commitMode: this.commitMode,
+        deferredSolvingEntry: this.chainManager.deferredSolvingEvent,
+      }),
+    });
+
     // Resume effect: when overlay signals ready, resume queue processing.
     // Handles the negated/no-buffer case where replayBuffer is NOT called.
     this.chainManager.initResumeEffect(() => {
-      if (this._isAnimating()) this.processAnimationQueue();
+      if (this._isAnimating()) this.runner.notifyEnqueue();
     });
     // Wire draw manager queue resume callback
-    this.drawManager.initQueueResumeCallback(() => this.processAnimationQueue());
+    this.drawManager.initQueueResumeCallback(() => this.runner.notifyEnqueue());
   }
 
   /** Called by the animation queue watcher effect in the component. */
   startProcessingIfIdle(): void {
-    this.trace('startProcessingIfIdle', { isAnimating: this._isAnimating(), isProcessing: this._isProcessing, queueLen: this.dataSource.animationQueue().length });
-    // Any new event arrival means the chain progressed — disarm the
-    // POLL-DROP REGRESSION watchdog. Even when _isAnimating is already
-    // true (re-entry from another caller), the watchdog might have been
-    // armed by an earlier finalize that has since been superseded.
-    this.pollDropWatchdog.clear();
-    if (!this._isAnimating()) {
-      this._isAnimating.set(true);
-      this.dataSource.setAnimating(true);
-      // Pre-lock all animated zones before first commitUnlocked — centralized
-      // for both PvP and replay so cards don't appear at their destination
-      // before the travel animation plays.
-      this.moveRouter.preLockQueuedSources();
-      this.processAnimationQueue();
-    }
+    this.runner.notifyEnqueue();
   }
 
   /**
@@ -392,10 +375,10 @@ export class AnimationOrchestratorService {
     const { batch, releaseSessionLocks } = this.bufferReplayBuilder.build(buffer);
     const cleanup = () => { releaseSessionLocks(); this.chainManager.endDrain(); };
 
-    // Inline path: called from mid-chain pre-replay inside _processAnimationQueueInner.
+    // Inline path: called from mid-chain pre-replay inside the runner's loop.
     // Prepend batch directly — the while loop continues and processes directives.
-    // No await-signal (overlay not involved), no external processAnimationQueue
-    // (would be a no-op since _isProcessing is true — causing a 10s deadlock).
+    // No await-signal (overlay not involved), no external `notifyEnqueue` call
+    // (would be a no-op since the runner is already processing).
     if (inlineFromLoop) {
       batch.push({ kind: 'batch-end', resolve: cleanup });
       this.trace('batchEnqueue', { bufferLen: buffer.length, directives: batch.filter(e => 'kind' in e).length, inline: true });
@@ -428,7 +411,7 @@ export class AnimationOrchestratorService {
       // Queue is paused from MSG_CHAIN_SOLVED 'async'. Clear the overlay wait
       // flag so the isWaitingForOverlay guard doesn't block, then force-resume.
       this.chainManager.clearWaiting();
-      this.processAnimationQueue();
+      this.runner.notifyEnqueue();
     });
   }
 
@@ -470,8 +453,8 @@ export class AnimationOrchestratorService {
 
   /**
    * Test seam: pushes an event into the pre-activation buffer directly,
-   * bypassing the `_handleEntry` queue-loop divert. Production code
-   * routes events through `_handleEntry` only — spec callers use this
+   * bypassing the `_dispatchEvent` queue-loop divert. Production code
+   * routes events through `_dispatchEvent` only — spec callers use this
    * to set up fixtures without driving the whole queue.
    */
   bufferPreActivationForTesting(event: GameEvent): void {
@@ -482,11 +465,11 @@ export class AnimationOrchestratorService {
    * Called by `DuelLoadingEffectsService` after `setBoardActive(true)` —
    * waits `BOARD_BREATHE_MS` (scaled by speedMultiplier), then prepends
    * the buffered events back into the animation queue and re-kicks the
-   * processor. Idempotent: a second call while the timer is pending is
+   * runner. Idempotent: a second call while the timer is pending is
    * a no-op, and an empty buffer resolves immediately.
    *
    * `BOARD_CHANGING` events that arrive while `boardActive=false` are
-   * parked by `_handleEntry` instead of running. The drain re-injects
+   * parked by `_dispatchEvent` instead of running. The drain re-injects
    * them through the normal queue path so locks, commits, and chain
    * gating behave identically to the live case — only the timing shifts.
    */
@@ -504,7 +487,7 @@ export class AnimationOrchestratorService {
       if (drained.length === 0) return;
       this.trace('preActivationDrain:fire', { count: drained.length });
       this.dataSource.prependToQueue(drained);
-      this.processAnimationQueue();
+      this.runner.notifyEnqueue();
     }, delay);
     this.animationTimeouts.push(t);
   }
@@ -518,23 +501,12 @@ export class AnimationOrchestratorService {
     this.animationTimeouts = [];
     for (const el of this.activeEquipLines) el.remove();
     this.activeEquipLines = [];
-    this.pollDropWatchdog.clear();
-    this._awaitSignalEffect?.destroy();
-    this._awaitSignalEffect = null;
-    this._isProcessing = false;
-    this._rescueNoProgressCount = 0;
-    this._lastRescueQueueLen = -1;
-    // Invalidate any in-flight `_processAnimationQueueInner` — a suspended
-    // stale loop will see the bumped generation on resume and bail.
-    this._resetGeneration++;
-    // Reset the re-entry depth counter. A reset can land while a loop is
-    // suspended on an `await`; that loop's `finally { _innerLoopDepth-- }`
-    // has not run yet, so the counter is stale at 1. Without this reset the
-    // next loop's `_innerLoopDepth++` hits 2 and the parallel-re-entry
-    // duelAssert throws — even though the stale loop will simply bail on
-    // its generation check. Zeroing here + the `Math.max(0, …)` floor in
-    // the inner-loop finally keeps the counter balanced across resets.
-    this._innerLoopDepth = 0;
+    // Palier A — the runner owns its 5 lifecycle primitives + per-step
+    // timers + await-signal effect + the POLL-DROP watchdog clear.
+    // `requestStop()` bumps the generation so any suspended inner loop
+    // bails on resume, then flips `_isRunning` back to false through the
+    // `onIsRunningChange` callback — which keeps `_isAnimating` in sync.
+    this.runner.requestStop();
     // Drop any parked initial-draw events — a hard reset (destroy /
     // resetForSwitch) means the next duel starts fresh, replaying its own
     // BOARD_STATE + MSG_DRAW sequence. Carrying stale buffered events
@@ -626,265 +598,31 @@ export class AnimationOrchestratorService {
   }
 
   // ---------------------------------------------------------------------------
-  // Queue processing (Phase 6: while-loop + directive handling)
+  // Queue dispatch (Palier A — the loop itself lives in `QueueRunner`).
+  //
+  // The orchestrator owns the BUSINESS dispatch (this `_dispatchEvent` +
+  // `processDirective` + the per-type handlers in `processEvent`). The runner
+  // owns the MECHANICS (when to dispatch, when to await, when to finalize,
+  // when to rescue). The seam is `_dispatchEvent`: it runs synchronously and
+  // returns the raw `EventResult` (number / 'async' / Promise) which the
+  // runner then awaits. Pre-activation buffering is signalled to the runner
+  // with the `'divert'` discriminant so the event is dropped silently.
   // ---------------------------------------------------------------------------
 
   /**
-   * Pure decision step for the queue loop. Given a snapshot of inputs,
-   * returns the next action to take. No side effects, no signal reads,
-   * no mutations — entirely testable in isolation.
+   * Synchronous business dispatch for a queued GameEvent. Pre-activation
+   * buffer divert → returns `'divert'`. Otherwise: invokes `processEvent`,
+   * releases pre-locks per CLAUDE.md rules, applies `commitMode` side
+   * effects, and returns the raw `EventResult` for the runner to await.
    *
-   * The dispatcher in _processAnimationQueueInner owns side effects
-   * (dequeue, trace, setTimeout, await processEvent, etc.) and is
-   * driven by the action returned here.
+   * The runner consumes the returned value:
+   *   · `number`           → millisecond hold (`setTimeout`).
+   *   · `'async'`          → suspend until a draw/overlay callback resumes.
+   *   · `Promise<void>`    → travel; awaited with a `LOCK_SAFETY_TIMEOUT_MS`
+   *                          guard `Promise.race`.
+   *   · `'divert'`         → event parked, dropped without further handling.
    */
-  static decideNextStep(input: QueueDecisionInputs): QueueStep {
-    // 1. External wait (overlay ready / draws in flight)
-    if (input.isWaitingForOverlay || input.hasDrawsInFlight) {
-      return { action: 'pause-external' };
-    }
-
-    // 2. Queue collapse (LP-only burst). Visual events MUST NOT be collapsed
-    // (see CLAUDE.md "Queue collapse — LP-only predicate").
-    if (
-      input.queue.length > QUEUE_COLLAPSE_THRESHOLD
-      && input.queue.every(e => !('kind' in e)
-        && (e.type === 'MSG_DAMAGE' || e.type === 'MSG_PAY_LPCOST' || e.type === 'MSG_RECOVER'))
-    ) {
-      return { action: 'collapse', collapseCount: input.queue.length - QUEUE_COLLAPSE_KEEP };
-    }
-
-    // 3. Dequeue priority: deferred-solving (held over from first-multi-link
-    // banner) before normal queue.
-    if (input.deferredSolvingEntry !== null) {
-      return { action: 'consume-deferred', entry: input.deferredSolvingEntry };
-    }
-    if (input.queue.length > 0) {
-      return { action: 'dequeue', entry: input.queue[0] };
-    }
-
-    // 4. Queue empty — three terminal branches.
-    // 4a. Mid-chain pre-replay: prompt arrived while chain still resolving
-    // and buffered events exist → flush them so player sees animations
-    // before answering.
-    if (input.isResolving && input.hasBufferedEvents && input.hasPendingPrompt) {
-      return { action: 'pre-replay-buffer' };
-    }
-
-    // 4b. Default: finalize.
-    // Note: prior versions had a poll back-off branch here gated on
-    // (commitMode === 'deferred' && isWaitingForOverlay). It was found
-    // unreachable due to the wait gate above (priority 1) and dropped
-    // in 2026-05-10 — see CLAUDE.md "Polling Removal — Regression Surface".
-    // The POLL-DROP REGRESSION watchdog (armPollDropWatchdog) catches
-    // the pathological case the dropped branch was meant to handle.
-    return { action: 'finalize' };
-  }
-
-  /**
-   * Entry point — guards against re-entry from multiple callers
-   * (await-signal effect, startProcessingIfIdle, postFinalize rescue).
-   */
-  private processAnimationQueue(): void {
-    if (this._isProcessing || !this._isAnimating()) return;
-    this._isProcessing = true;
-    const generation = this._resetGeneration;
-    this._processAnimationQueueInner().finally(() => {
-      // A reset (seek / sub-event click) superseded this run — its feed
-      // already started a fresh loop. Touching _isProcessing or the rescue
-      // here would race that fresh loop, so this stale finally is inert.
-      if (this._resetGeneration !== generation) return;
-      this._isProcessing = false;
-      const queueLen = this.dataSource.animationQueue().length;
-      if (queueLen === 0) {
-        this._rescueNoProgressCount = 0;
-        this._lastRescueQueueLen = -1;
-        return;
-      }
-      // Skip rescue when the inner loop paused on a legitimate wait — the
-      // overlay-ready effect (isWaitingForOverlay) and draws-complete
-      // callback (hasDrawsInFlight) own the resume. A rescue here retriggers
-      // the inner loop's early return in a tight microtask loop, starving
-      // the setTimeout-based animations that would clear the wait.
-      if (this.chainManager.isWaitingForOverlay || this.drawManager.hasDrawsInFlight) return;
-      // Anti-runaway: if the queue has not shrunk since the last rescue,
-      // re-launching cannot help — a seek/abort race left undispatchable
-      // entries, or the inner loop returns early every tick. Count the
-      // no-progress rescues; past the ceiling, bail with a warn instead
-      // of spinning the microtask queue forever ("infinite rescue").
-      if (queueLen >= this._lastRescueQueueLen && this._lastRescueQueueLen !== -1) {
-        this._rescueNoProgressCount++;
-      } else {
-        this._rescueNoProgressCount = 0;
-      }
-      this._lastRescueQueueLen = queueLen;
-      if (this._rescueNoProgressCount > RESCUE_NO_PROGRESS_CEILING) {
-        this.logger.warn('[ANIM:QUEUE] rescue abandoned — %d no-progress passes, queueLen=%d. '
-          + 'A seek/abort likely raced the queue; the next user action (seek, play) re-syncs.',
-          this._rescueNoProgressCount, queueLen);
-        this._rescueNoProgressCount = 0;
-        this._lastRescueQueueLen = -1;
-        return;
-      }
-      // Rescue cases for a stalled queue:
-      //  (a) setAnimating(false) in the inner loop synchronously triggered
-      //      advanceStep → feedTransition → enqueue. The effect that calls
-      //      startProcessingIfIdle can fire before this finally block, sees
-      //      _isProcessing=true and bails — so we re-enter here.
-      //  (b) An 'async'-returning event handler whose awaited work resolved
-      //      synchronously (e.g. MSG_CONFIRM_CARDS for a non-HAND card, where
-      //      confirmCardsInHand's loop bodies all `continue`) called
-      //      resumeQueueIfSafe() → processAnimationQueue() while _isProcessing
-      //      was still true (microtask race). That call was a silent no-op
-      //      and nothing else will relaunch the queue — rescue here.
-      this.trace('postFinalize', { action: 'rescued-stall', queueLen });
-      if (this._isAnimating()) this.processAnimationQueue();
-      else this.startProcessingIfIdle();
-    });
-  }
-
-  private async _processAnimationQueueInner(): Promise<void> {
-    this._innerLoopDepth++;
-    duelAssert(
-      this._innerLoopDepth <= 1,
-      '_processAnimationQueueInner',
-      `Parallel re-entry detected (depth=${this._innerLoopDepth}). The _isProcessing ` +
-      `finalize block (lines ~648-656) opened a window where a second async loop ` +
-      `started before the first finished (audit finding C4).`,
-    );
-    // Capture the reset generation at entry. Any reset (seek / sub-event
-    // click / resetForSwitch) during an `await` bumps it; the guard at the
-    // top of each loop turn then bails this now-stale loop instead of
-    // letting it race the fresh one started by the post-reset feed.
-    const generation = this._resetGeneration;
-    try {
-      while (this._isAnimating()) {
-        if (this._resetGeneration !== generation) {
-          this.logger.log(DuelLogCategory.QUEUE,
-            'inner loop bailing — reset generation changed (%d → %d), a seek/abort superseded this run',
-            generation, this._resetGeneration);
-          return;
-        }
-        // Pre-lock pass is a non-decisional side effect: it must run before
-        // the dispatcher reads the queue so locks for queued sources are in
-        // place when downstream branches commit/dequeue.
-        this.moveRouter.preLockQueuedSources();
-
-        const step = AnimationOrchestratorService.decideNextStep({
-          isWaitingForOverlay: this.chainManager.isWaitingForOverlay,
-          hasDrawsInFlight: this.drawManager.hasDrawsInFlight,
-          queue: this.dataSource.animationQueue(),
-          isResolving: this.chainManager.isResolving,
-          hasBufferedEvents: this.chainManager.hasBufferedEvents,
-          hasPendingPrompt: this.dataSource.pendingPrompt() !== null,
-          commitMode: this.commitMode,
-          deferredSolvingEntry: this.chainManager.deferredSolvingEvent,
-        });
-
-        this.logger.log(DuelLogCategory.QUEUE,
-          'decideNextStep — action=%s queueLen=%d ownPlayer=%d',
-          step.action, this.dataSource.animationQueue().length, this.ctx.ownPlayerIndex());
-
-        switch (step.action) {
-          case 'pause-external':
-            return;
-
-          case 'collapse': {
-            for (let i = 0; i < step.collapseCount; i++) {
-              const entry = this.dataSource.dequeueAnimation();
-              if (entry && !('kind' in entry)) this.applyInstantAnimation(entry);
-            }
-            continue;
-          }
-
-          case 'consume-deferred': {
-            // Commit the peek — chainManager held it in deferredSolvingEvent
-            // until we acknowledged it.
-            this.chainManager.consumeDeferredSolving();
-            const flow = await this._handleEntry(step.entry);
-            if (flow === 'return') return;
-            continue;
-          }
-
-          case 'dequeue': {
-            const entry = this.dataSource.dequeueAnimation()!;
-            if ('kind' in entry) {
-              const directiveResult = await this.processDirective(entry);
-              if (directiveResult === 'pause') return;
-              continue;
-            }
-            const flow = await this._handleEntry(entry);
-            if (flow === 'return') return;
-            continue;
-          }
-
-          case 'pre-replay-buffer': {
-            // Mid-chain pre-replay: prompt is waiting and buffer non-empty.
-            // replayBuffer(true) prepends directives + clears overlay wait;
-            // the next loop tick dequeues them via the 'dequeue' branch.
-            await this.replayBuffer(true);
-            continue;
-          }
-
-          case 'finalize': {
-            // INVARIANT: finalizeAndCommit() MUST run BEFORE setAnimating(false).
-            // In replay, setAnimating(false) triggers advanceStep() → updateLogical()
-            // with the next state. Committing first ensures we use the current state.
-            this.trace('queueEmpty', { action: 'finalize' });
-            // POLL-DROP REGRESSION watchdog — arm BEFORE finalize so a
-            // reset-during-finalize chain (rare but possible if the LP
-            // sync triggers a sync handler) clears it correctly. The
-            // dropped poll mechanism would have engaged here while
-            // chainPhase === 'resolving'; this watchdog catches stalls.
-            if (this.dataSource.chainPhase() === 'resolving') {
-              this.pollDropWatchdog.arm();
-            }
-            this.finalizeAndCommit();
-            this.drawManager.resetHandAnimationState();
-            this.animatingZone.set(null);
-            this.lpTracker.animatingLpPlayer.set(null);
-            // Clear _isProcessing BEFORE setAnimating(false) — the call may
-            // synchronously trigger advanceStep → feedTransition → enqueue,
-            // and the queue watcher effect may fire in the same microtask batch.
-            // If _isProcessing is still true, startProcessingIfIdle is a no-op
-            // and the queue stalls.
-            this._isProcessing = false;
-            this._isAnimating.set(false);
-            this.dataSource.setAnimating(false);
-            const postFinalizeQueue = this.dataSource.animationQueue().length;
-            if (postFinalizeQueue > 0) {
-              this.trace('postFinalize', { queueLen: postFinalizeQueue });
-              this._isAnimating.set(true);
-              this.dataSource.setAnimating(true);
-              this._isProcessing = true; // re-acquired for the continue
-              continue;
-            }
-            const state = this.rbs.logicalState();
-            if (state.players.length === 2) {
-              this.lpTracker.syncFromBoardState(state.players[0].lp, state.players[1].lp);
-            }
-            return;
-          }
-        }
-      }
-    } finally {
-      // Floor at 0 — `clearTimersAndPolling` may have already zeroed the
-      // counter while this loop was suspended on an `await`, in which case
-      // a bare `--` would go negative and corrupt the next assert.
-      this._innerLoopDepth = Math.max(0, this._innerLoopDepth - 1);
-    }
-  }
-
-  /**
-   * Process a dequeued GameEvent: release pre-locks, run processEvent,
-   * apply commitMode side effects, and await the result. Returns 'return'
-   * when the loop must exit (async result), 'continue' otherwise.
-   *
-   * Extracted from _processAnimationQueueInner to keep the dispatcher
-   * focused on routing decisions. Behavior is identical to the prior
-   * inline block — only the call site moved.
-   */
-  private async _handleEntry(event: GameEvent): Promise<'continue' | 'return'> {
+  private _dispatchEvent(event: GameEvent): EventResult | 'divert' {
     // Pre-activation buffer divert: between BOARD_STATE landing and the
     // dice arena dismissing (roomState 'duel-loading' → 'active'), the
     // initial-draw + opening-board events would otherwise be silently
@@ -907,7 +645,7 @@ export class AnimationOrchestratorService {
         && BOARD_CHANGING_EVENT_TYPES.has(event.type)) {
       this._preActivationBuffer.push(event);
       this.trace('preActivationDrain:park', { type: event.type, bufferLen: this._preActivationBuffer.length });
-      return 'continue';
+      return 'divert';
     }
 
     const result = this.processEvent(event);
@@ -952,54 +690,7 @@ export class AnimationOrchestratorService {
       this.rbs.commitUnlocked();
     }
 
-    if (result === 'async') {
-      this.trace('asyncReturn', { type: event.type, reason: 'draw/overlay' });
-      return 'return';
-    }
-
-    if (result instanceof Promise) {
-      this.trace('promiseReturn', { type: event.type, reason: 'travel' });
-      // Safety guard: warn + force-resume if a travel never resolves. The
-      // setTimeout must be cleared once `result` wins the race, otherwise it
-      // keeps firing on every long-running animation and floods the console
-      // with false "Travel promise never resolved" warnings even when the
-      // animation finished cleanly (regression observed pre-2026-05-18).
-      let guardTimer: ReturnType<typeof setTimeout> | null = null;
-      const guard = new Promise<void>(resolve => {
-        guardTimer = setTimeout(() => {
-          guardTimer = null;
-          this.logger.warn('Travel promise never resolved for %s — forcing queue continue', event.type);
-          resolve();
-        }, this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS));
-      });
-      try {
-        await Promise.race([result, guard]);
-      } finally {
-        if (guardTimer !== null) clearTimeout(guardTimer);
-      }
-      this.lpTracker.commitIfPending();
-      this.animatingZone.set(null);
-      return 'continue';
-    }
-
-    const speedMultiplier = this.ctx.speedMultiplier();
-    const adjustedDuration = Math.round(result * speedMultiplier);
-    this.logger.log(DuelLogCategory.QUEUE, 'type=%s → setTimeout(%dms)', event.type, adjustedDuration);
-
-    if (adjustedDuration > 0) {
-      await new Promise<void>(resolve => {
-        const timeout = setTimeout(() => {
-          const idx = this.animationTimeouts.indexOf(timeout);
-          if (idx !== -1) this.animationTimeouts.splice(idx, 1);
-          resolve();
-        }, adjustedDuration);
-        this.animationTimeouts.push(timeout);
-      });
-    }
-
-    this.lpTracker.commitIfPending();
-    this.animatingZone.set(null);
-    return 'continue';
+    return result;
   }
 
   // ---------------------------------------------------------------------------
@@ -1054,16 +745,12 @@ export class AnimationOrchestratorService {
         return 'continue';
       case 'await-signal': {
         this.trace('directive', { kind: 'await-signal', resolved: entry.signal() });
-        if (entry.signal()) return 'continue';
-        // Pause queue until signal becomes true.
-        this._awaitSignalEffect = effect(() => {
-          if (entry.signal()) {
-            this._awaitSignalEffect?.destroy();
-            this._awaitSignalEffect = null;
-            this.processAnimationQueue(); // re-entry guarded by _isProcessing (now false from finally)
-          }
-        }, { injector: this.injector });
-        return 'pause';
+        // Palier A — the runner owns the effect lifecycle so a `requestStop`
+        // can dispose it atomically. `installAwaitSignal` returns true when
+        // the signal was already truthy (no effect installed); false means
+        // the effect is now armed and the queue must pause.
+        const alreadyResolved = this.runner.installAwaitSignal(entry.signal);
+        return alreadyResolved ? 'continue' : 'pause';
       }
       default:
         this.logger.warn('Unknown directive kind: %o', entry);

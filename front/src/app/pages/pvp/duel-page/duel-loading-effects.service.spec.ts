@@ -99,7 +99,7 @@ describe('DuelLoadingEffectsService — duel-loading → active wiring', () => {
 
   it('orders the side effects: setBoardActive BEFORE drainPreActivationBuffer', () => {
     // The order is load-bearing — the orchestrator's drain re-injects events
-    // through `_handleEntry`, which gates on `isBoardActive()`. If the drain
+    // through `_dispatchEvent`, which gates on `isBoardActive()`. If the drain
     // ran first, the parked events would be re-parked instantly.
     const { svc, ws, orch } = setup();
     const roomState = signal<RoomState>('duel-loading');

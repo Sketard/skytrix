@@ -162,7 +162,7 @@ export class DrawSequenceManager {
   // --- Draw event processing ---
 
   processDrawEvent(msg: DrawMsg): number | 'async' {
-    // Defense in depth: AnimationOrchestratorService.`_handleEntry` parks
+    // Defense in depth: AnimationOrchestratorService.`_dispatchEvent` parks
     // BOARD_CHANGING events (incl. MSG_DRAW) in `_preActivationBuffer`
     // while !boardActive, so reaching this branch indicates a bypass —
     // log it and still return 0 so the queue doesn't hang. The legacy
@@ -503,10 +503,10 @@ export class DrawSequenceManager {
       // Defer to next microtask. When this is called from a synchronously-
       // resolving .finally() inside an 'async'-returning event handler (e.g.
       // MSG_CONFIRM_CARDS for a non-HAND card where confirmCardsInHand's loop
-      // only hits `continue`), the orchestrator's _processAnimationQueueInner
-      // .finally has not yet cleared _isProcessing, so processAnimationQueue()
-      // would no-op on the `_isProcessing` guard. queueMicrotask lets the
-      // inner finally run first.
+      // only hits `continue`), the QueueRunner's inner-loop .finally has not
+      // yet cleared its `_isProcessing` flag, so `notifyEnqueue()` would
+      // no-op on the runner's re-entry guard. queueMicrotask lets the inner
+      // finally run first.
       const resume = this._onQueueResume;
       queueMicrotask(() => resume());
     }
