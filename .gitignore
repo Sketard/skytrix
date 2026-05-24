@@ -87,6 +87,10 @@ duel-server/dist/
 # Logs (generated at runtime)
 logs/
 
+# Browser console exports — captured ad-hoc for bug investigation, never commit.
+# Archive worth keeping should be moved into _bmad-output/planning-artifacts/.
+console-export-*.log
+
 # Playwright (E2E tests)
 front/test-results/
 front/playwright-report/

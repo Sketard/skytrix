@@ -65,14 +65,19 @@ export class SoloDuelOrchestratorService {
     const outgoingIndex = this.activePlayerIndex();
     const newIndex: 0 | 1 = outgoingIndex === 0 ? 1 : 0;
 
-    conns[outgoingIndex].skipPendingAnimations();
+    // Queue-only clear — NOT a full processor reset. A SOLO switch during
+    // chain resolution must preserve `activeChainLinks` + `chainPhase` on
+    // both connections so the server's CHAIN_SOLVED/END messages arriving
+    // after the swap land on a coherent client state machine (Arthalion
+    // bug, 2026-05-24 — see clearAnimationQueueOnly docstring).
+    conns[outgoingIndex].clearAnimationQueueOnly();
     // Clear the incoming connection's accumulated animation queue — it has been
     // receiving events since game start (MSG_DRAW, MSG_MOVE, etc.) but its RBS
     // is already fully committed (_boardActive was false → every BOARD_STATE
     // called commitAll). Without this, resetForSwitch resets _initialDrawDone
     // and the stale MSG_DRAW events re-trigger the initial draw animation on
     // top of already-visible cards.
-    conns[newIndex].skipPendingAnimations();
+    conns[newIndex].clearAnimationQueueOnly();
     // M16: drop prompt-flow accumulators on both sides. Otherwise the
     // outgoing connection's lastConfirmedCards/lastSelectedCards persist
     // until its next sendResponse, and would surface in the next prompt's

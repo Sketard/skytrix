@@ -1,0 +1,537 @@
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] runDrawSequence — locking HAND-1 + DECK-1 lockDeck=false (locks before: 2) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] runDrawSequence — committing locks, renderedHand=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] runDrawSequence — committed, renderedHand=0 locks=2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] runDrawSequence — committing locks, renderedHand=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] runDrawSequence — committed, renderedHand=0 locks=2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "Dracotail Lukias", value: 75003700, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 75003700, cardName: "Dracotail Lukias" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] HAND→MZONE card=75003700 reason=0x2000400 relPlayer=0(msgPlayer=0/own=0) fromSeq=0 toSeq=2 | from:face-down/attack → to:face-up/attack | src=HAND-0 dst=M3-0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] relPlayer=0 relDstPlayer=0 | src=HAND-0 cards= 
+Array []
+  | dst=M3-0 cards= 
+Array []
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[M3-0] queue=0 chainPhase=idle  
+Object { type: "MSG_MOVE", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[M3-0] queue=0 chainPhase=idle  
+Object { event: "MSG_MOVE" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_EFFECTYN | hint= 
+Object { hintType: 3, player: 0, value: 75003700, cardName: "Dracotail Lukias" }
+ | hintCardName="Dracotail Lukias" | promptCardName="Dracotail Lukias" | lastConfirmedName="" | resolved="Dracotail Lukias" chunk-E7IYIWE6.js:21243:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { type: "MSG_CHAINING", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { event: "MSG_CHAINING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CHAIN | hint= 
+Object { hintType: 1, player: 0, value: 27, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CHAIN cards=3 excluded=0 displayEntries=3 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=1 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { type: "MSG_CHAINING", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { event: "MSG_CHAINING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CHAIN | hint= 
+Object { hintType: 3, player: 0, value: 75003700, cardName: "Dracotail Lukias" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CHAIN cards=2 excluded=0 displayEntries=2 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { type: "MSG_CHAINING", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { event: "MSG_CHAINING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] HAND→GRAVE card=1498449 reason=0x4080 relPlayer=0(msgPlayer=0/own=0) fromSeq=3 toSeq=0 | from:face-down/attack → to:face-up/attack | src=HAND-0 dst=GY-0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] relPlayer=0 relDstPlayer=0 | src=HAND-0 cards= 
+Array []
+  | dst=GY-0 cards= 
+Array [ 1498449 ]
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[GY-0] queue=0 chainPhase=building  
+Object { type: "MSG_MOVE", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[GY-0] queue=0 chainPhase=building  
+Object { event: "MSG_MOVE" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CHAIN | hint= 
+Object { hintType: 1, player: 0, value: 27, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CHAIN cards=2 excluded=0 displayEntries=2 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVING chainIndex=2 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=1 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { type: "MSG_CHAIN_SOLVING", result: "3000ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { event: "MSG_CHAIN_SOLVING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAIN_SOLVING → setTimeout(3000ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "", value: 509, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 509, cardName: "" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CARD | hint= 
+Object { hintType: 3, player: 0, value: 509, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CARD cards=4 excluded=0 displayEntries=4 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "", value: 511, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 511, cardName: "" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_UNSELECT_CARD | hint= 
+Object { hintType: 3, player: 0, value: 511, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_UNSELECT_CARD cards=3 excluded=0 displayEntries=3 chunk-E7IYIWE6.js:18644:13
+[PromptCardGrid] SELECT_UNSELECT_CARD confirm: toggledIndex= 2  card= 
+Object { cardCode: 75003700, name: "Dracotail Lukias", player: 0, location: 4, sequence: 2, position: 1 }
+  canFinish=false chunk-E7IYIWE6.js:19118:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "", value: 511, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 511, cardName: "" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_UNSELECT_CARD | hint= 
+Object { hintType: 3, player: 0, value: 511, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_UNSELECT_CARD cards=3 excluded=1 displayEntries=2 chunk-E7IYIWE6.js:18644:13
+[PromptCardGrid] SELECT_UNSELECT_CARD confirm: toggledIndex= 1  card= 
+Object { cardCode: 1498449, name: "Dracotail Faimena", player: 0, location: 2, sequence: 2, position: 10 }
+  canFinish=false chunk-E7IYIWE6.js:19118:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "", value: 511, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 511, cardName: "" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_UNSELECT_CARD | hint= 
+Object { hintType: 3, player: 0, value: 511, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_UNSELECT_CARD cards=3 excluded=2 displayEntries=1 chunk-E7IYIWE6.js:18644:13
+[PromptCardGrid] SELECT_UNSELECT_CARD confirm: toggledIndex= 0  card= 
+Object { cardCode: 14558127, name: "Ash Blossom & Joyous Spring", player: 0, location: 2, sequence: 1, position: 10 }
+  canFinish=true chunk-E7IYIWE6.js:19118:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] HAND→GRAVE card=14558127 reason=0x40048 relPlayer=0(msgPlayer=0/own=0) fromSeq=1 toSeq=1 | from:face-down/attack → to:face-up/attack | src=HAND-0 dst=GY-0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] relPlayer=0 relDstPlayer=0 | src=HAND-0 cards= 
+Array []
+  | dst=GY-0 cards= 
+Array [ 1498449 ]
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[GY-0] queue=0 chainPhase=idle  
+Object { type: "MSG_MOVE", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[GY-0] queue=0 chainPhase=idle  
+Object { event: "MSG_MOVE" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "Dracotail Arthalion", value: 33760966, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 33760966, cardName: "Dracotail Arthalion" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=2 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] HAND→GRAVE card=1498449 reason=0x40048 relPlayer=0(msgPlayer=0/own=0) fromSeq=1 toSeq=2 | from:face-down/attack → to:face-up/attack | src=HAND-0 dst=GY-0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] relPlayer=0 relDstPlayer=0 | src=HAND-0 cards= 
+Array []
+  | dst=GY-0 cards= 
+Array(4) [ 1498449, 14558127, 1498449, 75003700 ]
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[GY-0,M3-0] queue=1 chainPhase=idle  
+Object { type: "MSG_MOVE", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[GY-0,M3-0] queue=1 chainPhase=idle  
+Object { event: "MSG_MOVE" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] MZONE→GRAVE card=75003700 reason=0x40048 relPlayer=0(msgPlayer=0/own=0) fromSeq=2 toSeq=3 | from:face-up/attack → to:face-up/attack | src=M3-0 dst=GY-0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] relPlayer=0 relDstPlayer=0 | src=M3-0 cards= 
+Array []
+  | dst=GY-0 cards= 
+Array(4) [ 1498449, 14558127, 1498449, 75003700 ]
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[GY-0] queue=0 chainPhase=idle  
+Object { type: "MSG_MOVE", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[GY-0] queue=0 chainPhase=idle  
+Object { event: "MSG_MOVE" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_POSITION | hint= 
+Object { hintType: 3, player: 0, value: 33760966, cardName: "Dracotail Arthalion" }
+ | hintCardName="Dracotail Arthalion" | promptCardName="Dracotail Arthalion" | lastConfirmedName="" | resolved="Dracotail Arthalion" chunk-E7IYIWE6.js:21243:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] EXTRA→MZONE card=33760966 reason=0x800 relPlayer=0(msgPlayer=0/own=0) fromSeq=0 toSeq=0 | from:face-down/attack → to:face-up/attack | src=EXTRA-0 dst=M1-0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] relPlayer=0 relDstPlayer=0 | src=EXTRA-0 cards= 
+Array(15) [ 33760966, 33760966, 79755671, 42125140, 89851827, 87746184, 44146295, 38811586, 70534340, 3410461, … ]
+  | dst=M1-0 cards= 
+Array []
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[M1-0] queue=0 chainPhase=idle  
+Object { type: "MSG_MOVE", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[M1-0] queue=0 chainPhase=idle  
+Object { event: "MSG_MOVE" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=2 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVING chainIndex=1 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_NEGATED chainIndex=0 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=1 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVING chainIndex=0 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=0 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_END 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=6 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM] applyChainSolved: chainIndex 2 not in active links  
+Array []
+chunk-E7IYIWE6.js:177:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] applyChainSolved idx=2 → remaining links= 
+Array []
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=5 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=4 chainPhase=idle  
+Object { type: "MSG_CHAIN_SOLVING", result: "3000ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=4 chainPhase=idle  
+Object { event: "MSG_CHAIN_SOLVING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAIN_SOLVING → setTimeout(3000ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=consume-deferred queueLen=4 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=deferred locks=[] queue=4 chainPhase=resolving  
+Object { type: "MSG_CHAIN_SOLVING", result: "900ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAIN_SOLVING → setTimeout(900ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=4 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM] applyChainSolved: chainIndex 1 not in active links  
+Array []
+chunk-E7IYIWE6.js:177:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] applyChainSolved idx=1 → remaining links= 
+Array []
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=deferred locks=[] queue=3 chainPhase=resolving  
+Object { type: "MSG_CHAIN_SOLVED", result: "async" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=pause-external queueLen=3 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CHAIN | hint= 
+Object { hintType: 3, player: 0, value: 33760966, cardName: "Dracotail Arthalion" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CHAIN cards=3 excluded=0 displayEntries=3 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { type: "MSG_CHAINING", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { event: "MSG_CHAINING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "", value: 505, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 505, cardName: "" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CARD | hint= 
+Object { hintType: 3, player: 0, value: 505, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CARD cards=6 excluded=0 displayEntries=6 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { type: "MSG_BECOME_TARGET", result: "950ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { event: "MSG_BECOME_TARGET" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_BECOME_TARGET → setTimeout(950ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CHAIN | hint= 
+Object { hintType: 3, player: 0, value: 505, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CHAIN cards=2 excluded=0 displayEntries=2 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { type: "MSG_CHAINING", result: "400ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { event: "MSG_CHAINING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAINING → setTimeout(400ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CHAIN | hint= 
+Object { hintType: 3, player: 0, value: 505, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CHAIN cards=1 excluded=0 displayEntries=1 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { type: "MSG_CHAINING", result: "400ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { event: "MSG_CHAINING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAINING → setTimeout(400ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=building  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CHAIN | hint= 
+Object { hintType: 1, player: 0, value: 27, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CHAIN cards=2 excluded=0 displayEntries=2 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVING chainIndex=2 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=1 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { type: "MSG_CHAIN_SOLVING", result: "3000ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { event: "MSG_CHAIN_SOLVING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAIN_SOLVING → setTimeout(3000ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "", value: 510, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 510, cardName: "" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] resetForSwitch — clearing all state & timeouts chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CARD | hint= 
+Object { hintType: 3, player: 0, value: 510, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CARD cards=4 excluded=0 displayEntries=4 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "Dracotail Horn", value: 69932023, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 69932023, cardName: "Dracotail Horn" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] DECK→SZONE card=69932023 reason=0x0 relPlayer=0(msgPlayer=0/own=0) fromSeq=31 toSeq=4 | from:face-down/attack → to:face-down/attack | src=DECK-0 dst=S5-0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:MOVE] relPlayer=0 relDstPlayer=0 | src=DECK-0 cards= 
+Array []
+  | dst=S5-0 cards= 
+Array []
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[S5-0] queue=0 chainPhase=idle  
+Object { type: "MSG_MOVE", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[S5-0] queue=0 chainPhase=idle  
+Object { event: "MSG_MOVE" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=2 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVING chainIndex=1 2 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "", value: 510, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 510, cardName: "" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=4 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=3 chainPhase=idle  
+Object { type: "MSG_CONFIRM_CARDS", result: "Promise" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=3 chainPhase=idle  
+Object { event: "MSG_CONFIRM_CARDS" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=3 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=2 chainPhase=idle  
+Object { type: "MSG_SHUFFLE_DECK", result: "500ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=2 chainPhase=idle  
+Object { event: "MSG_SHUFFLE_DECK" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_SHUFFLE_DECK → setTimeout(500ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=2 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM] applyChainSolved: chainIndex 2 not in active links  
+Array []
+chunk-E7IYIWE6.js:177:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] applyChainSolved idx=2 → remaining links= 
+Array []
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { type: "MSG_CHAIN_SOLVING", result: "3000ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=per-event locks=[] queue=0 chainPhase=idle  
+Object { event: "MSG_CHAIN_SOLVING" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAIN_SOLVING → setTimeout(3000ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=consume-deferred queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=deferred locks=[] queue=0 chainPhase=resolving  
+Object { type: "MSG_CHAIN_SOLVING", result: "900ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CHAIN_SOLVING → setTimeout(900ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=deferred locks=[] queue=0 chainPhase=resolving  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[PROMPT] type=SELECT_CARD | hint= 
+Object { hintType: 3, player: 0, value: 510, cardName: "" }
+ | hintCardName="" | promptCardName="" | lastConfirmedName="" | resolved="" chunk-E7IYIWE6.js:21243:13
+[PromptCardGrid] type=SELECT_CARD cards=3 excluded=0 displayEntries=3 chunk-E7IYIWE6.js:18644:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_HINT raw:  
+Object { hintType: 3, cardName: "Dracotail Sting", value: 80208225, isSelectMsg: true, canInherit: false }
+  => merged:  
+Object { hintType: 3, player: 0, value: 80208225, cardName: "Dracotail Sting" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:CHAIN] Buffering MSG_MOVE during chain resolution card=80208225 reason=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=deferred locks=[S4-0] queue=0 chainPhase=resolving  
+Object { type: "MSG_MOVE", result: "0ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_MOVE → setTimeout(0ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=deferred locks=[S4-0] queue=0 chainPhase=resolving  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:CHAIN] Buffering MSG_CONFIRM_CARDS during chain resolution chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=deferred locks=[S4-0] queue=0 chainPhase=resolving  
+Object { type: "MSG_CONFIRM_CARDS", result: "0ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_CONFIRM_CARDS → setTimeout(0ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=deferred locks=[S4-0] queue=0 chainPhase=resolving  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:CHAIN] Buffering MSG_SHUFFLE_DECK during chain resolution chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=deferred locks=[S4-0] queue=0 chainPhase=resolving  
+Object { type: "MSG_SHUFFLE_DECK", result: "0ms" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] type=MSG_SHUFFLE_DECK → setTimeout(0ms) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=finalize queueLen=0 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] commitUnlocked | mode=deferred locks=[S4-0] queue=0 chainPhase=resolving  
+Object { site: "finalizeAndCommit" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(false) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=1 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:DRAW] setAnimating(true) chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=dequeue queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM] applyChainSolved: chainIndex 1 not in active links  
+Array []
+chunk-E7IYIWE6.js:177:13
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] applyChainSolved idx=1 → remaining links= 
+Array []
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] [ANIM-TRACE] processEvent | mode=deferred locks=[S4-0] queue=0 chainPhase=resolving  
+Object { type: "MSG_CHAIN_SOLVED", result: "async" }
+chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=1 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVING chainIndex=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=pause-external queueLen=1 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVING chainIndex=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=pause-external queueLen=2 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=pause-external queueLen=3 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=pause-external queueLen=4 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_SOLVED chainIndex=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_END chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:QUEUE] decideNextStep — action=pause-external queueLen=5 ownPlayer=0 chunk-E7IYIWE6.js:153:15
+[517fcd64-9c5a-409b-88cc-610c58b805f3][ANIM:PROC] MSG_CHAIN_END chunk-E7IYIWE6.js:153:15
+Error: [DUEL-ASSERT] lockZone: Lock safety timeout for S4-0 after 5006ms (source: unknown, remaining locks: GY-0, HAND-0)
+    duelAssert duel-assert.ts:10
+    timeoutId rendered-board-state.service.ts:180
+    Angular 5
+main.js:12095:37
+Error: [DUEL-ASSERT] lockZone: Lock safety timeout for GY-0 after 5002ms (source: unknown, remaining locks: HAND-0)
+    duelAssert duel-assert.ts:10
+    timeoutId rendered-board-state.service.ts:180
+    Angular 5
+main.js:12095:37
+Error: [DUEL-ASSERT] lockZone: Lock safety timeout for HAND-0 after 5001ms (source: unknown, remaining locks: none)
+    duelAssert duel-assert.ts:10
+    timeoutId rendered-board-state.service.ts:180
+    Angular 5
+main.js:12095:37

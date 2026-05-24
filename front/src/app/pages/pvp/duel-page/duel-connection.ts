@@ -348,6 +348,24 @@ export class DuelConnection {
   }
 
   /**
+   * Drop only the queued animations + force-sync RBS, preserving chain state
+   * (`activeChainLinks`, `chainPhase`, `pendingChainEntry`). Used by SOLO
+   * `switchPlayer` where the chain is mid-resolution server-side and both
+   * processors must stay aligned with the server's chain machine across the
+   * swap — wiping chain state here would leave `applyChainSolved` operating
+   * on `[]`, the overlay would never fire `onChainLinkResolved`, and the
+   * queue would stall on `pause-external` until safety timeouts fire
+   * (Arthalion bug, 2026-05-24).
+   *
+   * NOT for reconnect / STATE_SYNC / rematch — those expect a full
+   * `processor.reset()`. Use `skipPendingAnimations` there.
+   */
+  clearAnimationQueueOnly(): void {
+    this.processor.resetQueue();
+    this.rbs.commitAll();
+  }
+
+  /**
    * Drop the prompt-flow accumulators (lastConfirmedCards, lastSelectedCards,
    * promptType streak, hint-consumed flag). M16: solo swap must invoke this
    * on the outgoing connection so the next time it becomes active, its
