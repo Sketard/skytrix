@@ -240,10 +240,15 @@
 .form-stage {
   position: relative;
   overflow: hidden;
+  // Negative margin + matching padding on .form-panel reserves breathing
+  // room for the focused input's gold ring + glow (3px ring + 20px blur)
+  // without leaking the LR/RL slide animation outside the card.
+  margin: 0 calc(var(--space-2) * -1);
 }
 
 .form-panel {
   width: 100%;
+  padding: var(--space-2);
   animation: form-panel-enter var(--transition-slow) var(--ease-out) both;
 }
 
