@@ -17,7 +17,9 @@
 <div class="card-strip__inner scrollbar-visible">
   <div class="card-strip">
     @for (group of zoneGroups; track group.groupKey) {
-      <div class="zone-group">
+      <div class="zone-group"
+           [class.zone-group--self]="group.isOwn"
+           [class.zone-group--opp]="!group.isOwn">
         <div class="zone-group__badge">
           <img [src]="group.iconPath" alt="" class="zone-group__icon" />
         </div>

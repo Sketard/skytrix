@@ -34,6 +34,8 @@ interface ZoneGroup {
   iconPath: string;
   entries: DisplayEntry[];
   groupKey: string;
+  /** `true` when the group's cards belong to the viewer, `false` for the opponent. */
+  isOwn: boolean;
 }
 
 function isFieldZone(loc: CardLocation): boolean {
@@ -170,25 +172,24 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     const entries = this.displayEntries;
     const map = new Map<string, DisplayEntry[]>();
     for (const entry of entries) {
-      const loc = entry.card.location;
-      // Field zones: group by player+location to separate own vs opponent
-      const key = isFieldZone(loc) ? `${entry.card.player}-${loc}` : `${loc}`;
+      // Always group by player + location so the owner of a group is unambiguous
+      // (a SELECT_CHAIN spanning both GYs, a SELECT_CARD targeting cards in both
+      // hands, etc. would otherwise merge into a single ownerless group).
+      const key = `${entry.card.player}-${entry.card.location}`;
       const list = map.get(key);
       if (list) list.push(entry);
       else map.set(key, [entry]);
     }
     return Array.from(map.entries())
-      .sort(([a], [b]) => {
-        const locA = Number(a.split('-').pop()!);
-        const locB = Number(b.split('-').pop()!);
-        return getZoneDisplayOrder(locA as CardLocation) - getZoneDisplayOrder(locB as CardLocation);
-      })
       .map(([key, groupEntries]) => {
-        const location = Number(key.split('-').pop()!) as CardLocation;
+        const [playerStr, locStr] = key.split('-');
+        const location = Number(locStr) as CardLocation;
+        const player = Number(playerStr);
+        const isOwn = player === this.ownPlayerIndex;
         if (isFieldZone(location)) {
-          const isOpponent = groupEntries[0]?.card.player !== this.ownPlayerIndex;
+          // Opponent's field reads right-to-left from the viewer's perspective.
           groupEntries.sort((a, b) =>
-            isOpponent ? b.card.sequence - a.card.sequence : a.card.sequence - b.card.sequence,
+            isOwn ? a.card.sequence - b.card.sequence : b.card.sequence - a.card.sequence,
           );
         } else {
           groupEntries.sort((a, b) => b.card.name.localeCompare(a.card.name));
@@ -198,7 +199,15 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
           groupKey: key,
           iconPath: getZoneIconPath(location),
           entries: groupEntries,
+          isOwn,
         };
+      })
+      // Own groups first within the same zone, then by canonical zone order.
+      .sort((a, b) => {
+        const za = getZoneDisplayOrder(a.location);
+        const zb = getZoneDisplayOrder(b.location);
+        if (za !== zb) return za - zb;
+        return (a.isOwn ? 0 : 1) - (b.isOwn ? 0 : 1);
       });
   }
 

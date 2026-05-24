@@ -166,6 +166,25 @@ export const FIXTURE_CHAIN_DUPLICATE: Prompt = {
   ],
 };
 
+// SELECT_CARD spanning both players across multiple zones — used to validate
+// the per-owner grouping + colour-coded badge of `prompt-card-grid`.
+// Mix: my hand, opponent's hand, my MZONE, opponent's MZONE, my GY, opponent's GY.
+export const FIXTURE_CARD_GRID_MULTI_OWNER: Prompt = {
+  type: 'SELECT_CARD',
+  player: 0,
+  min: 1,
+  max: 6,
+  cancelable: true,
+  cards: [
+    makeMockCard({ cardCode: 12345, name: 'Branded Fusion',                  player: 0, location: LOCATION.HAND,   sequence: 0 }),
+    makeMockCard({ cardCode: 23456, name: 'Albion the Branded Dragon',       player: 1, location: LOCATION.HAND,   sequence: 0 }),
+    makeMockCard({ cardCode: 34567, name: 'Lubellion the Searing Dragon',    player: 0, location: LOCATION.MZONE,  sequence: 1 }),
+    makeMockCard({ cardCode: 45678, name: 'Mirrorjade the Iceblade Dragon',  player: 1, location: LOCATION.MZONE,  sequence: 2 }),
+    makeMockCard({ cardCode: 56789, name: 'Sprind the Irondash Dragon',      player: 0, location: LOCATION.GRAVE,  sequence: 0 }),
+    makeMockCard({ cardCode: 12345, name: 'Branded Beast',                   player: 1, location: LOCATION.GRAVE,  sequence: 0 }),
+  ],
+};
+
 // =============================================================================
 // Public registry — order matters (drives the hub UI list).
 // =============================================================================
@@ -174,6 +193,7 @@ export const PROMPT_FIXTURES: ReadonlyArray<{ key: string; label: string; value:
   { key: 'yes-no',           label: 'Yes / No',           value: FIXTURE_YES_NO },
   { key: 'option-list',      label: 'Option List',        value: FIXTURE_OPTION_LIST },
   { key: 'card-grid-target', label: 'Card Grid Target',   value: FIXTURE_CARD_GRID_TARGET },
+  { key: 'card-grid-multi-owner', label: 'Card Grid Multi-Owner', value: FIXTURE_CARD_GRID_MULTI_OWNER },
   { key: 'card-grid-sum',    label: 'Card Grid Sum',      value: FIXTURE_CARD_GRID_SUM },
   { key: 'sort-card',        label: 'Sort Card',          value: FIXTURE_SORT_CARD },
   { key: 'position-select',  label: 'Position Select',    value: FIXTURE_POSITION_SELECT },

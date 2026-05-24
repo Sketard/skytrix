@@ -62,7 +62,9 @@
   gap: var(--space-2);
 }
 
-// Zone group: badge + cards wrapped in a bordered container (Master Duel style)
+// Zone group: badge + cards wrapped in a bordered container (Master Duel style).
+// Owner is signalled by both the badge label ("Moi"/"Adversaire") AND the
+// border color tinted with the chain-owner palette (self = blue, opp = amber).
 .zone-group {
   position: relative;
   display: flex;
@@ -70,6 +72,15 @@
   border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
   padding: var(--space-2);
   background: var(--scrim-medium);
+  border: var(--border-width-thin) solid transparent;
+
+  &--self {
+    border-color: var(--self-blue-glow);
+  }
+
+  &--opp {
+    border-color: var(--opp-amber-glow);
+  }
 }
 
 .zone-group__badge {
@@ -83,6 +94,14 @@
   height: 28px;
   background: var(--scrim-medium);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
+
+  .zone-group--self & {
+    background: var(--self-blue-soft);
+  }
+
+  .zone-group--opp & {
+    background: var(--opp-amber-soft);
+  }
 }
 
 .zone-group__icon {
