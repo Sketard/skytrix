@@ -11,6 +11,17 @@ export interface PollDropWatchdogState {
   queueLen: number;
   /** True while the orchestrator's queue loop is animating. */
   isAnimating: boolean;
+  /**
+   * True when a player prompt is open (SELECT_*). A mid-chain prompt
+   * legitimately blocks new server events until the player responds — the
+   * server gates the next MSG_CHAIN_END / continuation on the response.
+   * Firing in this state was a false positive observed 2026-05-23 in SOLO
+   * PvP logs (`console-export-2026-5-23_16-43-53.log`): the chain was
+   * waiting on a SELECT_CARD that took >10s to resolve, the watchdog
+   * fired, and MSG_CHAIN_END arrived shortly after — i.e. the duel was
+   * fine, the user was just thinking.
+   */
+  hasPendingPrompt: boolean;
 }
 
 /**
@@ -61,13 +72,17 @@ export class PollDropWatchdog {
    * Pure fire-decision: given the state at timeout AND whether playback is
    * paused, should the watchdog surface the regression? A stall is real only
    * when the chain is still resolving, the queue is still empty, nothing is
-   * animating, and playback is NOT paused.
+   * animating, playback is NOT paused, and NO player prompt is open. A
+   * pending prompt is the legitimate cause for a resolving-but-empty chain:
+   * the server pauses on the response, so the absence of MSG_CHAIN_END is
+   * expected, not a regression.
    */
   static shouldFire(state: PollDropWatchdogState, paused: boolean): boolean {
     return state.isResolving
       && state.queueLen === 0
       && !state.isAnimating
-      && !paused;
+      && !paused
+      && !state.hasPendingPrompt;
   }
 
   /**
@@ -107,7 +122,7 @@ export class PollDropWatchdog {
       return;
     }
     const s = this.readState();
-    if (s.isResolving && s.queueLen === 0 && !s.isAnimating) {
+    if (s.isResolving && s.queueLen === 0 && !s.isAnimating && !s.hasPendingPrompt) {
       this.arm();
     }
   }

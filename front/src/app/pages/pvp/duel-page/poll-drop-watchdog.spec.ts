@@ -14,7 +14,7 @@ describe('PollDropWatchdog', () => {
 
   beforeEach(() => {
     jasmine.clock().install();
-    state = { isResolving: true, queueLen: 0, isAnimating: false };
+    state = { isResolving: true, queueLen: 0, isAnimating: false, hasPendingPrompt: false };
     fireCount = 0;
     watchdog = new PollDropWatchdog(() => state, () => { fireCount++; }, DELAY);
   });
@@ -24,27 +24,36 @@ describe('PollDropWatchdog', () => {
   describe('shouldFire (pure decision)', () => {
     it('fires on a genuine stall: resolving + empty queue + not animating + not paused', () => {
       expect(PollDropWatchdog.shouldFire(
-        { isResolving: true, queueLen: 0, isAnimating: false }, false)).toBeTrue();
+        { isResolving: true, queueLen: 0, isAnimating: false, hasPendingPrompt: false }, false)).toBeTrue();
     });
 
     it('does not fire when the chain is no longer resolving', () => {
       expect(PollDropWatchdog.shouldFire(
-        { isResolving: false, queueLen: 0, isAnimating: false }, false)).toBeFalse();
+        { isResolving: false, queueLen: 0, isAnimating: false, hasPendingPrompt: false }, false)).toBeFalse();
     });
 
     it('does not fire when the queue re-filled', () => {
       expect(PollDropWatchdog.shouldFire(
-        { isResolving: true, queueLen: 2, isAnimating: false }, false)).toBeFalse();
+        { isResolving: true, queueLen: 2, isAnimating: false, hasPendingPrompt: false }, false)).toBeFalse();
     });
 
     it('does not fire while still animating', () => {
       expect(PollDropWatchdog.shouldFire(
-        { isResolving: true, queueLen: 0, isAnimating: true }, false)).toBeFalse();
+        { isResolving: true, queueLen: 0, isAnimating: true, hasPendingPrompt: false }, false)).toBeFalse();
     });
 
     it('does not fire while playback is paused', () => {
       expect(PollDropWatchdog.shouldFire(
-        { isResolving: true, queueLen: 0, isAnimating: false }, true)).toBeFalse();
+        { isResolving: true, queueLen: 0, isAnimating: false, hasPendingPrompt: false }, true)).toBeFalse();
+    });
+
+    it('does not fire while a player prompt is pending (mid-chain SELECT_*)', () => {
+      // Regression guard from console-export-2026-5-23_16-43-53.log:
+      // chain resolving + queue empty + SELECT_CARD open → watchdog used to
+      // fire after 10s as the user was thinking, then MSG_CHAIN_END arrived
+      // shortly after. The duel was healthy, the user was just slow.
+      expect(PollDropWatchdog.shouldFire(
+        { isResolving: true, queueLen: 0, isAnimating: false, hasPendingPrompt: true }, false)).toBeFalse();
     });
   });
 
@@ -66,6 +75,13 @@ describe('PollDropWatchdog', () => {
     it('does not fire if the queue re-filled before the timeout', () => {
       watchdog.arm();
       state.queueLen = 3;
+      jasmine.clock().tick(DELAY + 1);
+      expect(fireCount).toBe(0);
+    });
+
+    it('does not fire if a player prompt opened before the timeout', () => {
+      watchdog.arm();
+      state.hasPendingPrompt = true; // SELECT_CARD opened mid-chain
       jasmine.clock().tick(DELAY + 1);
       expect(fireCount).toBe(0);
     });

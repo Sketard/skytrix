@@ -141,6 +141,7 @@ export class AnimationOrchestratorService {
       isResolving: this.dataSource.chainPhase() === 'resolving',
       queueLen: this.dataSource.animationQueue().length,
       isAnimating: this._isAnimating(),
+      hasPendingPrompt: this.dataSource.pendingPrompt() !== null,
     }),
     () => this.firePollDropRegression(),
   );

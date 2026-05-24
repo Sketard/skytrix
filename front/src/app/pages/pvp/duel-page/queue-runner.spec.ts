@@ -292,7 +292,7 @@ function makeRunner(opts: {
   const isRunningHistory: boolean[] = [];
   const injector = TestBed.inject(Injector);
   const watchdog = opts.pollDropWatchdog ?? new PollDropWatchdog(
-    () => ({ isResolving: ds.chainPhase() === 'resolving', queueLen: ds.animationQueue().length, isAnimating: false }),
+    () => ({ isResolving: ds.chainPhase() === 'resolving', queueLen: ds.animationQueue().length, isAnimating: false, hasPendingPrompt: false }),
     () => undefined,
     /* delayMs */ 10_000,
   );
@@ -415,7 +415,7 @@ describe('QueueRunner (loop) — Palier B', () => {
       const ds = new MockDataSource();
       const injector = TestBed.inject(Injector);
       const watchdog = new PollDropWatchdog(
-        () => ({ isResolving: false, queueLen: 0, isAnimating: false }),
+        () => ({ isResolving: false, queueLen: 0, isAnimating: false, hasPendingPrompt: false }),
         () => undefined, 10_000,
       );
       const runner = new QueueRunner({
@@ -515,7 +515,7 @@ describe('QueueRunner (loop) — Palier B', () => {
     it('arms the watchdog when finalize fires during chainPhase=resolving', async () => {
       const armed: number[] = [];
       const watchdog = new PollDropWatchdog(
-        () => ({ isResolving: true, queueLen: 0, isAnimating: false }),
+        () => ({ isResolving: true, queueLen: 0, isAnimating: false, hasPendingPrompt: false }),
         () => undefined, 10_000,
       );
       // Spy on `arm` — replace with a counter wrapper.
@@ -533,7 +533,7 @@ describe('QueueRunner (loop) — Palier B', () => {
 
     it('does NOT arm the watchdog when finalize fires during chainPhase=idle', async () => {
       const watchdog = new PollDropWatchdog(
-        () => ({ isResolving: false, queueLen: 0, isAnimating: false }),
+        () => ({ isResolving: false, queueLen: 0, isAnimating: false, hasPendingPrompt: false }),
         () => undefined, 10_000,
       );
       spyOn(watchdog, 'arm');
@@ -588,7 +588,7 @@ describe('QueueRunner (loop) — Palier B', () => {
       ds.setQueue([ev('MSG_MOVE')]);
       const injector = TestBed.inject(Injector);
       const watchdog = new PollDropWatchdog(
-        () => ({ isResolving: false, queueLen: 1, isAnimating: false }),
+        () => ({ isResolving: false, queueLen: 1, isAnimating: false, hasPendingPrompt: false }),
         () => undefined, 10_000,
       );
       const runner = new QueueRunner({
@@ -634,7 +634,7 @@ describe('QueueRunner (loop) — Palier B', () => {
       ds.setQueue([ev('MSG_MOVE')]);
       const injector = TestBed.inject(Injector);
       const watchdog = new PollDropWatchdog(
-        () => ({ isResolving: false, queueLen: 1, isAnimating: false }),
+        () => ({ isResolving: false, queueLen: 1, isAnimating: false, hasPendingPrompt: false }),
         () => undefined, 10_000,
       );
       const runner = new QueueRunner({
