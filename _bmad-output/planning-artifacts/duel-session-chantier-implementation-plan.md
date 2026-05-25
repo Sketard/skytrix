@@ -24,26 +24,37 @@ rien — il exécute.
 
 Cocher ces 3 items avant la première ligne de code de la phase α :
 
-- [ ] **Branche dédiée** : créer `feat/anim-pipeline-v2` depuis
+- [x] **Branche dédiée** : créer `feat/anim-pipeline-v2` depuis
   `chore/queue-runner-palier-0` (qui contient le commit du cadrage
   `7403caa9`). Le code phase α se développe là, pas sur master.
   **Pas de feature flag** — refactor in-place, V1 disparaît au merge
-  (cf. cadrage §4.5).
-- [ ] **Snapshots de référence V1 + harness Playwright parité** :
-  capturer sur master (pré-chantier) l'état final d'un set de 3-5
-  replays canoniques (BO1 simple, chain 4+ liens, SOLO switch,
-  scenario cost-before-overlay). État = board rendu sérialisé,
-  journal de log, chainPhase. Commit les JSON dans la branche feat/
-  comme oracle de parité. Le harness Playwright rejouera les mêmes
-  replays sur la branche feat/ à chaque story et comparera. Diff
-  toléré : seuls les deux bugs caractérisés
-  (`bug-solo-sequence.md` + `bug-cost-before-overlay-sequence.md`)
-  sont des résolutions attendues.
-- [ ] **Erreur TS pré-existante à fixer en amont** :
+  (cf. cadrage §4.5). ✅ Fait 2026-05-25 (HEAD `14df1caa`).
+- [x] ~~**Snapshots de référence V1 + harness Playwright parité**~~ —
+  **DROPPED 2026-05-25 après prototypage**. Tentative : un harness
+  Playwright qui rejoue 3-5 replays canoniques et compare l'état
+  final (board sérialisé + journal + chainPhase). Honest verdict
+  après l'avoir codé : à l'**end-of-replay**, locks vides, chain
+  idle, animation queue drainée — il ne reste que le board final
+  + le journal. C'est un oracle **macro post-mortem**, pas un
+  oracle d'animation. Il catche "le pipeline a abouti correctement"
+  (board ou journal différent = régression) mais **pas** "le pipeline
+  anime juste" (réordering interne, timing, états intermédiaires
+  pendant les chains passent silencieusement). Décision : pas de
+  faux sens de sécurité — on s'appuie sur (a) les 1379 tests
+  unitaires existants, (b) les tests ciblés par story (chaque
+  story livre son test de comportement attendu), (c) les deux
+  tests de victoire dédiés (`bug-solo-sequence.md` β.2,
+  `bug-cost-before-overlay-sequence.md` γ.7), (d) validation
+  manuelle UI solo en fin de chantier (§4 cadrage). Branche reste
+  isolée de master, V1 reste mergeable, donc le risque cassage
+  prod = 0.
+- [x] **Erreur TS pré-existante à fixer en amont** :
   `front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts:50-51`
-  (`onStateSync = (msg) => …` mais signature `() => void`) bloque la
-  compilation. À fixer en commit séparé avant tout autre travail. Cf.
-  mémoire `cost-before-overlay-failed-2026-05-25`.
+  — NO-OP. L'erreur n'existe plus sur `chore/queue-runner-palier-0`
+  (tsc + build + 1379 specs verts au 2026-05-25). Probablement
+  corrigée par un commit upstream entre la rédaction de la mémoire
+  `cost-before-overlay-failed-2026-05-25` et le démarrage de cette
+  branche. Pas de fix à appliquer.
 
 ---
 
@@ -53,9 +64,18 @@ Cocher ces 3 items avant la première ligne de code de la phase α :
 introduire de nouveau processor. Tout le travail α est sur le socle
 existant.
 
-**Test d'acceptation phase α** : tous les replays du set parité passent
-identique V1 vs V2 sous flag ON (zéro diff sur board final + journal +
-chainPhase). Lint custom actif en CI.
+**Note de relecture 2026-05-25** : toutes les références "test parité"
+dans ce plan (et dans les §β, §γ, §4 bascule) datent d'avant
+l'abandon du harness V1 vs V2 (cf. §0). Concrètement :
+- "test parité" = à requalifier en **test ciblé par story** (la story
+  livre le test qui prouve son acceptance criterion).
+- "snapshots V1" / "oracle V1" = à ignorer (aucun snapshot capturé).
+- "validation finale §4" = lecture allégée : les 2 tests de victoire
+  (β.2 cost-before-overlay, γ.7 SOLO mid-chain) + validation manuelle
+  UI solo + 1379 specs existantes restent les garde-fous.
+
+**Test d'acceptation phase α** : lint custom actif en CI + 1379 specs
+unitaires verts + chaque story a livré son test ciblé d'acceptance.
 
 ### Story α.1 — Lint custom "tag obligatoire pour signals" (~0.5-1j)
 
