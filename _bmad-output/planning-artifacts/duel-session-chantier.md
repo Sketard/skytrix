@@ -925,36 +925,48 @@ travail léger, inclus dans le scope (cf. `duel-session-chantier-critiques.md` �
 
 **Total : ~30-45 jours-homme** (6-9 semaines à intensité full-time, ou 10-15 semaines en intensité mi-temps en cohabitation avec le steady-state skytrix).
 
-### 4.5 Coexistence V1 ↔ V2
+### 4.5 Stratégie de bascule (branche dédiée, pas de feature flag)
 
-Pendant les 3 phases, V1 et V2 cohabitent. Trois mécanismes garantissent
-qu'aucun mode (PvP, SOLO, Replay) ne se casse en cours de route :
+Skytrix est un projet solo, pré-production, avec un seul développeur sur
+le pipeline d'animation. Le pattern classique "feature flag pour ramper
+progressivement V1↔V2 sur une fraction du trafic" n'a pas de cas d'usage
+ici — il ajouterait du code de bascule à écrire et maintenir pendant
+6-9 semaines pour zéro bénéfice opérationnel.
 
-1. **Feature flag** `ANIM_PIPELINE_V2` — défaut OFF, activable par session
-   (cookie, query param ou setting Préférences). Permet de tester V2 sur
-   replays sans toucher au PvP live.
-2. **Conservation des contrats publics** — la surface API consommée par
-   les composants UI (signaux exposés par l'orchestrator,
-   `AnimationDataSource` interface) reste identique. Les composants UI
-   ne savent pas s'ils consomment V1 ou V2.
-3. **Tests parité** — un test de référence rejoue un set de replays
-   canoniques sous V1 et sous V2, compare les états finaux (rendered
-   board, journal de log, états de chain). Diff = zéro tolérance hors
-   bugs documentés à fixer.
+**Stratégie retenue** : refactor in-place sur une branche dédiée
+`feat/anim-pipeline-v2` partant de `chore/queue-runner-palier-0`.
+Aucune cohabitation runtime V1↔V2.
 
-**Pas de contrat de sérialisation cross-V1↔V2** : le flag flip
-**invalide la session courante**. Tout état `SESSION_LIFETIME` (score
-best-of-3, opponent identity, scores cumulés) est wipé, l'app
-redémarre proprement sous le nouveau mode. Conséquence pratique : un
-user qui veut tester V2 commence une nouvelle session. Ce design évite
-une dette de compatibilité inter-version pour un cas d'usage qui n'existe
-pas (personne ne flippe le flag en plein BO3 — le flag est un outil de
-bascule pendant la fenêtre de stabilisation, pas un toggle UX
-permanent).
+Trois mécanismes protègent contre les régressions :
 
-V1 est conservé pendant **2 semaines de stabilisation** après V2 green.
-Au bout des 2 semaines, V1 est supprimé (suppression nette, pas de mort
-lente).
+1. **Branche isolée** — `feat/anim-pipeline-v2`. Le master continue à
+   shipper V1 si besoin de hotfix. La branche dédiée est rebasée sur
+   master ponctuellement si master diverge.
+2. **Snapshots de référence V1 capturés en début de chantier** — un set
+   de 3-5 replays canoniques (BO1 simple, chain 4+ liens, SOLO switch,
+   cost-before-overlay scenario) joué sur master pré-chantier. L'état
+   final (board rendu sérialisé, journal de log, chainPhase) est
+   capturé en JSON et commit dans la branche feat/ comme oracle de
+   parité.
+3. **Tests parité automatisés** — un harness Playwright rejoue les
+   replays canoniques sur la branche feat/ et compare contre les
+   snapshots. Diff = zéro tolérance hors bugs documentés à fixer (les
+   2 bugs caractérisés `bug-solo-sequence.md` et
+   `bug-cost-before-overlay-sequence.md` sont des diffs **attendus** —
+   leur résolution est l'objectif).
+
+**Bascule** : merge `feat/anim-pipeline-v2` → master en **une fois**,
+quand tous les tests parité passent + les deux tests de victoire
+passent + couverture ≥ 85% sur les processors. V1 disparaît au merge,
+pas de coexistence post-merge.
+
+**Stabilisation post-merge** : 1 semaine d'usage solo (jouer plusieurs
+duels SOLO et replays variés) avant de considérer le chantier
+"vraiment clos". Si une régression apparaît pendant cette semaine,
+fix sur master via PR dédiée — pas de revert global.
+
+**Pas de SESSION_LIFETIME cross-version à gérer** : V1 n'existe plus
+post-merge, la question de la sérialisation cross-version est vacante.
 
 ---
 

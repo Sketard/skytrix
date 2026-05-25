@@ -22,19 +22,23 @@ rien — il exécute.
 
 ## §0 Prérequis avant de coder
 
-Cocher ces 4 items avant la première ligne de code de la phase α :
+Cocher ces 3 items avant la première ligne de code de la phase α :
 
 - [ ] **Branche dédiée** : créer `feat/anim-pipeline-v2` depuis
   `chore/queue-runner-palier-0` (qui contient le commit du cadrage
   `7403caa9`). Le code phase α se développe là, pas sur master.
-- [ ] **Feature flag** : ajouter `ANIM_PIPELINE_V2` dans la config
-  Préférences (default OFF). Pendant α/β/γ, V1 et V2 cohabitent —
-  V2 ne s'active que si le flag est ON.
-- [ ] **Setup test parité** : créer un harness Playwright qui rejoue
-  un set de 3-5 replays canoniques (un BO1 simple, une chain 4+ liens,
-  un SOLO switch) sous V1 et capture l'état final (board rendu,
-  journal log, chainPhase). Sert de référence pour vérifier que V2
-  ne diverge pas.
+  **Pas de feature flag** — refactor in-place, V1 disparaît au merge
+  (cf. cadrage §4.5).
+- [ ] **Snapshots de référence V1 + harness Playwright parité** :
+  capturer sur master (pré-chantier) l'état final d'un set de 3-5
+  replays canoniques (BO1 simple, chain 4+ liens, SOLO switch,
+  scenario cost-before-overlay). État = board rendu sérialisé,
+  journal de log, chainPhase. Commit les JSON dans la branche feat/
+  comme oracle de parité. Le harness Playwright rejouera les mêmes
+  replays sur la branche feat/ à chaque story et comparera. Diff
+  toléré : seuls les deux bugs caractérisés
+  (`bug-solo-sequence.md` + `bug-cost-before-overlay-sequence.md`)
+  sont des résolutions attendues.
 - [ ] **Erreur TS pré-existante à fixer en amont** :
   `front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts:50-51`
   (`onStateSync = (msg) => …` mais signature `() => void`) bloque la
@@ -444,15 +448,17 @@ Ajouter les nouveaux tests cités dans
 
 ---
 
-## §4 Bascule production
+## §4 Bascule (merge branche → master)
 
-### Validation finale
+### Validation finale avant merge
 
 - [ ] **Tous les tests de victoire passent** :
   - `bug-solo-sequence.md` (γ.7)
   - `bug-cost-before-overlay-sequence.md` (β.2)
   - Tests Playwright regression γ.8
-- [ ] **Test parité V1 vs V2** : zéro diff sur le set de replays canoniques
+- [ ] **Test parité contre snapshots V1** : zéro diff sur le set de
+  replays canoniques, **hors** les deux diffs attendus correspondant
+  aux deux bugs résolus
 - [ ] **Lint custom CI** sans warning
 - [ ] **Couverture tests** ≥ 85% sur les processors (DeferredEffect,
   Boundary, BaseProjection) — cf. §2 cadrage
@@ -462,13 +468,19 @@ Ajouter les nouveaux tests cités dans
   perspective 1 avec carte face-up + LP delta + chain overlay (règle
   `decision.md §11`)
 
-### Bascule
+### Merge
 
-- [ ] Default OFF → default ON sur `ANIM_PIPELINE_V2` (toggle config)
-- [ ] **2 semaines de stabilisation** : V1 conservé en code, accessible
-  via override config
-- [ ] Au bout des 2 semaines : suppression nette de V1 (nouveau commit
-  dédié, pas pendant les phases α/β/γ)
+- [ ] **Merge `feat/anim-pipeline-v2` → master en une fois**. V1
+  disparaît au merge. Aucune coexistence runtime post-merge (cf.
+  cadrage §4.5 "stratégie de bascule").
+- [ ] **1 semaine d'usage solo post-merge** : jouer plusieurs duels
+  SOLO et replays variés. Si régression : fix via PR dédiée sur
+  master, pas de revert global.
+- [ ] Quand la semaine est passée sans régression visible : le
+  chantier est officiellement clos. Mettre à jour CLAUDE.md pour
+  refléter les nouveaux composants et les conventions
+  (BaseProjection, scope categories, DeferredEffectProcessor,
+  BoundaryProcessor, container-local coords).
 
 ---
 
