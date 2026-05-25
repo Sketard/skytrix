@@ -367,28 +367,52 @@ Rule unit tests live in
 `eslint-plugins/pipeline-signal-tagged/__tests__/rule.spec.mjs` —
 run via `node --test`.
 
-## Projection Infrastructure (α.2, 2026-05-25)
+## Projection Infrastructure (α.2 + α.4a, 2026-05-25)
 
 `front/src/app/pages/pvp/projections/` holds the base infrastructure
-every pipeline projection extends from. Cf.
+for flux-state resets and read-only projections. Cf.
 `_bmad-output/planning-artifacts/duel-session-chantier.md §3.5`.
 
-- **`BaseProjection<T>`** (abstract) — every projection subclasses it
-  and declares `readonly scope: ScopeCategory` (abstract — a subclass
-  that forgets compiles to nothing). Exposes `readonly value: Signal<T>`
-  + `applyEvent(FluxEvent)` + `applyReset(scopes, payload?)`.
+**Two contracts, layered**:
+
+- **`ResetTarget`** (interface, α.4a) — minimal contract for any
+  flux-state holder that needs to participate in scope resets. Two
+  members: `readonly scope: ScopeCategory` + `applyReset(scopes,
+  payload?)`. Implemented by **managers in transition** that mix YGO
+  business + transport + exposed signals in the same class
+  (`ChainResolutionManager`, `LpAnimationTracker`,
+  `BattleAnimationTracker`, `DuelGameLogService`). Wired at α.4b.
+- **`BaseProjection<T>`** (abstract class, α.2) — a strict superset of
+  `ResetTarget` (`BaseProjection<T> implements ResetTarget`). Adds
+  `readonly value: Signal<T>` + `applyEvent(FluxEvent)`. Models a pure
+  **deterministic read-only view of the flux + perspective** — what
+  the §3.9 ~10 projections will be. **Not yet used** at α.4 because
+  the existing managers are not at that purity; β.3 will extract
+  proper `BaseProjection` subclasses from the manager signals.
+
+**Sequence**:
+1. α.4b — managers implement `ResetTarget` (declare scope, refactor
+   `reset()` into `applyReset(scopes, payload?)`).
+2. β.3+ — read-only signals get extracted as proper
+   `BaseProjection<T>` subclasses, separate from the manager that
+   writes them.
+
+**Other members**:
+
 - **`ScopeCategory`** (`scope.ts`) — `'SESSION_LIFETIME' |
   'DUEL_LIFETIME' | 'CONNECTION_LIFETIME' | 'PERSPECTIVE_LIFETIME'`.
   Ordered top-down in `SCOPE_HIERARCHY`. Invalidating a scope cascades
   to every scope below it via `expandInvalidatedScopes(set)`.
-- **`ScopeResetDispatcher`** — registry + fan-out. `register(p)` checks
-  the scope is a known category via `duelAssert` (dev throws / prod
-  warns); `dispatch(scopes, payload?)` expands then calls `applyReset`
-  on every projection whose scope is in the expanded set. Idempotent
-  register; silent unregister.
+- **`ScopeResetDispatcher`** (`@Injectable`, provided at duel-page
+  component level) — registry + fan-out. `register(target)` accepts
+  any `ResetTarget` (including `BaseProjection` subclasses); checks
+  scope is a known category via `duelAssert` (dev throws / prod warns).
+  `dispatch(scopes, payload?)` expands then calls `applyReset` on
+  every registered target whose scope is in the expanded set.
+  Idempotent register; silent unregister.
 - **`CheckpointPayload`** — forwarded by `dispatch` only for §3.6
   checkpoints (`STATE_SYNC` / `RematchStarted`). Shape is `{ source,
-  body: unknown }` at α.2; each projection narrows on its own. Concrete
+  body: unknown }` at α.2; each target narrows on its own. Concrete
   schema will be pinned when the first consumer lands (β.3).
 - **`FluxEvent`** — alias of the legacy `StreamEvent` at α.2. The union
   will grow as α.3 adds transport events, β.1 adds boundary events, β.2

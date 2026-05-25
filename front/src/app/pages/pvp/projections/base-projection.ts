@@ -2,6 +2,7 @@ import type { Signal } from '@angular/core';
 
 import type { CheckpointPayload } from './checkpoint-payload';
 import type { FluxEvent } from './flux-event';
+import type { ResetTarget } from './reset-target';
 import type { ScopeCategory } from './scope';
 
 /**
@@ -18,9 +19,17 @@ import type { ScopeCategory } from './scope';
  * Cf. `_bmad-output/planning-artifacts/duel-session-chantier.md
  * §3.2 + §3.5`.
  *
+ * `BaseProjection<T>` is a **strict superset** of {@link ResetTarget}: a
+ * `BaseProjection` is automatically a valid {@link ResetTarget} for the
+ * dispatcher's purposes, but adds `value` (the exposed signal) and
+ * `applyEvent` (the per-event mutation entry point). Managers that do
+ * not yet satisfy the projection purity (mixed business + transport +
+ * exposed signals) implement the slimmer {@link ResetTarget} instead;
+ * the read-only signal extraction happens later (β.3).
+ *
  * @typeParam T  type of the value exposed to consumers via {@link value}.
  */
-export abstract class BaseProjection<T> {
+export abstract class BaseProjection<T> implements ResetTarget {
   /**
    * The persistence scope this projection lives in. Declared
    * **abstract readonly** so a subclass that forgets to declare it does

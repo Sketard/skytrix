@@ -3,6 +3,7 @@ import { signal, type Signal } from '@angular/core';
 import { BaseProjection } from './base-projection';
 import type { CheckpointPayload } from './checkpoint-payload';
 import type { FluxEvent } from './flux-event';
+import type { ResetTarget } from './reset-target';
 import { ScopeResetDispatcher } from './scope-reset-dispatcher';
 import type { ScopeCategory } from './scope';
 
@@ -128,5 +129,42 @@ describe('ScopeResetDispatcher', () => {
     dispatcher.register(p);
     dispatcher.dispatch(new Set());
     expect(p.resets.length).toBe(0);
+  });
+
+  describe('ResetTarget compatibility (α.4a)', () => {
+    // A plain ResetTarget — only `scope` + `applyReset`. No `value`,
+    // no `applyEvent`. Models the managers requalified by α.4b.
+    class LiteResetTarget implements ResetTarget {
+      readonly resets: Array<ReadonlySet<ScopeCategory>> = [];
+      constructor(readonly scope: ScopeCategory) {}
+      applyReset(scopes: ReadonlySet<ScopeCategory>): void {
+        this.resets.push(scopes);
+      }
+    }
+
+    it('accepts a slim ResetTarget (no value, no applyEvent)', () => {
+      const lite = new LiteResetTarget('CONNECTION_LIFETIME');
+      dispatcher.register(lite);
+      expect(dispatcher.size).toBe(1);
+      dispatcher.dispatch(new Set(['DUEL_LIFETIME']));
+      expect(lite.resets.length).toBe(1);
+    });
+
+    it('still rejects a slim ResetTarget with invalid scope', () => {
+      const bad = new LiteResetTarget('NOT_A_SCOPE' as ScopeCategory);
+      expect(() => dispatcher.register(bad)).toThrowError(
+        /DUEL-ASSERT.*ScopeResetDispatcher.register/,
+      );
+    });
+
+    it('fans out the same reset to a BaseProjection AND a ResetTarget', () => {
+      const proj = new TestProjection('PERSPECTIVE_LIFETIME');
+      const lite = new LiteResetTarget('PERSPECTIVE_LIFETIME');
+      dispatcher.register(proj);
+      dispatcher.register(lite);
+      dispatcher.dispatch(new Set(['PERSPECTIVE_LIFETIME']));
+      expect(proj.resets.length).toBe(1);
+      expect(lite.resets.length).toBe(1);
+    });
   });
 });
