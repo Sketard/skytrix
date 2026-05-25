@@ -2,6 +2,8 @@
 const eslint = require('@eslint/js');
 const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
+const skytrixPipeline = require('./eslint-plugins/pipeline-signal-tagged');
+const pipelineSignalAllowedFiles = require('./eslint-plugins/pipeline-signal-tagged/allowed-files.json');
 
 // Étape 1 du chantier DS (2026-05-20) — garde-fou, pas refonte.
 // Les règles structurelles (selectors, lifecycle, output-native) restent
@@ -20,6 +22,10 @@ module.exports = tseslint.config(
       'src/assets/**',
       'e2e/**',
       '_tmp-*.js',
+      // The custom-rule plugin itself + its fixtures don't run under the
+      // Angular lint (it's tooling consumed by eslint.config.js). Tests
+      // live in `__tests__/rule.spec.mjs` and use Node's built-in runner.
+      'eslint-plugins/**',
     ],
   },
   {
@@ -52,6 +58,20 @@ module.exports = tseslint.config(
       '@typescript-eslint/no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
+    // anim-pipeline-v2 chantier (α.1) — signal tagging rule scoped to the
+    // PvP pipeline. The `allowed-files.json` baseline lists files written
+    // before α.1 that still hold legacy untagged signals; α.7 shrinks it
+    // to zero as it migrates them. New files are checked from the start.
+    files: ['src/app/pages/pvp/**/*.ts'],
+    plugins: { 'skytrix-pipeline': skytrixPipeline },
+    rules: {
+      'skytrix-pipeline/pipeline-signal-tagged': [
+        'error',
+        { allowedFiles: pipelineSignalAllowedFiles },
       ],
     },
   },

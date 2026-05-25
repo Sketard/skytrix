@@ -323,6 +323,41 @@ Move depends on Draw for `travelToHand()`. Draw depends on Move
 Draw depends on Chain for `hasActiveReplayTimeouts`. Chain has zero
 cross-manager deps.
 
+## Pipeline Signal Tagging Convention (α.1, 2026-05-25)
+
+Every `signal()` declared under `front/src/app/pages/pvp/` MUST declare
+its nature so a code reviewer can answer "projection / @Environment /
+transport state?" without archaeology. Enforced by the custom ESLint
+rule `skytrix-pipeline/pipeline-signal-tagged`
+(`eslint-plugins/pipeline-signal-tagged/`).
+
+Three tags + one escape hatch:
+
+1. **`_transport_<name>`** — internal transport state (queue pointers,
+   timer flags, debounce counters). Never read by UI templates.
+2. **`<name>Source`** — `@Environment` input (OS setting, user prefs,
+   session config). Read-only from the pipeline's POV.
+3. **Property of a class that `extends BaseProjection<T>`** — every
+   other signal MUST live inside a registered projection (cf. α.2 +
+   α.4). The class membership is the tag.
+4. **`// eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged`**
+   — escape hatch for the rare legitimate exception. Add a `// why:`
+   sibling comment explaining the carve-out (lint doesn't enforce the
+   sibling — code review does).
+
+The rule has a **baseline** at
+`eslint-plugins/pipeline-signal-tagged/allowed-files.json` listing
+files that were untagged when the rule landed (α.1). Story α.7 shrinks
+that list to zero as it migrates the legacy signals. New files in
+`pvp/` are checked from creation — there's no "I'll tag it later"
+window.
+
+Regenerate the baseline (after taging a batch of legacy files) with
+`node front/eslint-plugins/pipeline-signal-tagged/regenerate-baseline.mjs`.
+Rule unit tests live in
+`eslint-plugins/pipeline-signal-tagged/__tests__/rule.spec.mjs` —
+run via `node --test`.
+
 ## Card Travel Stack
 
 The card-travel subsystem is split into 3 services (M11 Phases 1+2):
