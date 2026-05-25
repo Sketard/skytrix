@@ -281,21 +281,30 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
   `build(buffer)` returns `{ batch, releaseSessionLocks }`. The
   orchestrator stays as dispatch policy: drain → call builder → prepend
   batch + `batch-end` + `await-signal` directives.
-- **`QueueRunner`** (Paliers A + B + C, 2026-05-23) — async animation
-  loop, decision step (`decideNextStep` pure), and the lifecycle
-  primitives (`_isRunning`, `_isProcessing`, `_innerLoopDepth`,
+- **`QueueRunner`** (Paliers A + B + C, 2026-05-23; α.3 wrapper, 2026-05-25)
+  — async animation loop, decision step (`decideNextStep` pure), and the
+  lifecycle primitives (`_isRunning`, `_isProcessing`, `_innerLoopDepth`,
   `_abort: AbortController` (palier C, replaced the maison
   `_resetGeneration` token), `_rescueNoProgressCount`,
-  `_lastRescueQueueLen`). Owns the per-step `setTimeout` + travel
-  `Promise.race` guard. Business dispatch (per-type handlers, directive
-  switch, pre-activation buffer) stays in the orchestrator and is
-  reached via `QueueRunnerDeps` callbacks; the runner never imports YGO
-  types. Plain class, instantiated in the orchestrator constructor.
-  `_isAnimating` (orchestrator's exposed signal) is synchronised via the
-  runner's `onIsRunningChange` callback — orchestrator-side façade,
-  runner-side source of truth. 27 unit specs cover the lifecycle
-  (notifyEnqueue / requestStop / rescue / finalize / await-signal /
-  abort invalidation).
+  `_lastRescueQueueLen`). **All 5 primitives are `PERSPECTIVE_LIFETIME`
+  transport state** in the §3.2 sense — annotated in-file at their
+  declaration; cleared/installed-fresh by every `requestStop()`. Owns
+  the per-step `setTimeout` + travel `Promise.race` guard. Business
+  dispatch (per-type handlers, directive switch, pre-activation buffer)
+  stays in the orchestrator and is reached via `QueueRunnerDeps`
+  callbacks; the runner never imports YGO types. Plain class,
+  instantiated in the orchestrator constructor. `_isAnimating`
+  (orchestrator's exposed signal) is synchronised via the runner's
+  `onIsRunningChange` callback — orchestrator-side façade, runner-side
+  source of truth. **α.3 adds an optional
+  `onInternalEvent?(e: InternalTransportEvent)`** sink in
+  `QueueRunnerDeps` — the runner emits `runner-started`,
+  `runner-stopped`, `rescue-fired`, `rescue-abandoned`, `watchdog-armed`
+  (see `queue-runner-events.ts`). Sink errors are swallowed
+  (fire-and-forget); omitting it is back-compat. Two unit suites cover
+  the lifecycle: `decideNextStep` (pure decision branches) + `QueueRunner
+  (loop)` (notifyEnqueue / requestStop / rescue / finalize / await-signal
+  / abort invalidation / onInternalEvent emissions).
 
 **`DuelContext`** is the shared context for all managers. API surface:
 

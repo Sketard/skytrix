@@ -33,6 +33,7 @@ import { effect, EffectRef, Injector } from '@angular/core';
 import type { DuelContext } from './duel-context';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import type { AnimationDataSource, QueueDirective, QueueEntry } from './animation-data-source';
+import type { InternalTransportEvent } from './queue-runner-events';
 import type { GameEvent } from '../types';
 import {
   LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD,
@@ -119,6 +120,16 @@ export interface QueueRunnerDeps {
   onIsRunningChange: (running: boolean) => void;
   /** Reads the decision inputs that depend on orchestrator state (commitMode, prompt, …). */
   decisionInputs: () => Omit<QueueDecisionInputs, 'queue'>;
+  /**
+   * α.3 — optional sink for `InternalTransportEvent`s describing the
+   * runner's lifecycle transitions (start / stop / rescue fired /
+   * rescue abandoned / watchdog armed). Stays optional so existing
+   * callers compile unchanged; the orchestrator wires it in α.5 to
+   * push the events onto the duel's `eventStream` (cf.
+   * duel-session-chantier.md §3.3). The runner never blocks on the
+   * sink — emission is fire-and-forget.
+   */
+  onInternalEvent?: (event: InternalTransportEvent) => void;
 }
 
 /**
@@ -178,28 +189,37 @@ export class QueueRunner {
   private readonly deps: QueueRunnerDeps;
 
   // --- Lifecycle primitives ---
+  // α.3 (2026-05-25) — these 5 primitives are the runner's transport
+  // state in the §3.2 sense. Their **scope is PERSPECTIVE_LIFETIME**:
+  // every `requestStop()` (which a `PerspectiveSwitched` triggers via
+  // the orchestrator) zeros them and installs a fresh `AbortController`.
+  // None of them are read by UI templates; none of them are projections.
+  // Names kept un-renamed (no `_transport_*` prefix) — file is on the
+  // α.1 lint baseline and α.7 will revisit the renaming pass.
   private _isRunning = false;
-  /** Re-entry guard for `processAnimationQueue` (multiple sync callers in
-   *  the same microtask batch). NOT the same as the abort signal: this is
-   *  a sync mutex preventing two `_processAnimationQueueInner` calls from
-   *  starting in the same turn; the abort signal preserves ordering across
-   *  reset boundaries (palier C). */
+  /** scope: PERSPECTIVE_LIFETIME. Re-entry guard for `processAnimationQueue`
+   *  (multiple sync callers in the same microtask batch). NOT the same as
+   *  the abort signal: this is a sync mutex preventing two
+   *  `_processAnimationQueueInner` calls from starting in the same turn;
+   *  the abort signal preserves ordering across reset boundaries (palier C). */
   private _isProcessing = false;
-  /** Detects parallel re-entry of `_processAnimationQueueInner` (audit
-   *  finding C4). Palier C kept this as a runtime invariant assertion —
-   *  with `AbortController` it should never trip in practice, but it
-   *  surfaces a regression if it does. */
+  /** scope: PERSPECTIVE_LIFETIME. Detects parallel re-entry of
+   *  `_processAnimationQueueInner` (audit finding C4). Palier C kept this
+   *  as a runtime invariant assertion — with `AbortController` it should
+   *  never trip in practice, but it surfaces a regression if it does. */
   private _innerLoopDepth = 0;
   /**
-   * Palier C — replaces the maison `_resetGeneration` token. A suspended
-   * inner loop checks `_abort.signal.aborted` after each `await`; an
-   * abort throws (via `throwIfAborted()`), the loop's finally cleans up,
-   * and the post-reset fresh start gets a brand-new `AbortController` so
-   * its own `aborted` check stays false. Single semantic concept (signal
-   * lifecycle) replacing the integer-bump comparison.
+   * scope: PERSPECTIVE_LIFETIME. Palier C — replaces the maison
+   * `_resetGeneration` token. A suspended inner loop checks
+   * `_abort.signal.aborted` after each `await`; an abort throws (via
+   * `throwIfAborted()`), the loop's finally cleans up, and the post-reset
+   * fresh start gets a brand-new `AbortController` so its own `aborted`
+   * check stays false. Single semantic concept (signal lifecycle) replacing
+   * the integer-bump comparison.
    */
   private _abort = new AbortController();
-  /** Anti-runaway: counts consecutive rescues that made NO progress. */
+  /** scope: PERSPECTIVE_LIFETIME. Anti-runaway: counts consecutive rescues
+   *  that made NO progress. */
   private _rescueNoProgressCount = 0;
   private _lastRescueQueueLen = -1;
 
@@ -366,6 +386,7 @@ export class QueueRunner {
         this.deps.logger.warn('[ANIM:QUEUE] rescue abandoned — %d no-progress passes, queueLen=%d. '
           + 'A seek/abort likely raced the queue; the next user action (seek, play) re-syncs.',
           this._rescueNoProgressCount, queueLen);
+        this.emitInternal({ kind: 'rescue-abandoned', queueLen, at: Date.now() });
         this._rescueNoProgressCount = 0;
         this._lastRescueQueueLen = -1;
         return;
@@ -381,6 +402,12 @@ export class QueueRunner {
       //      _isProcessing was still true (microtask race). That call was a
       //      silent no-op and nothing else will relaunch the queue — rescue here.
       this.trace('postFinalize', { action: 'rescued-stall', queueLen });
+      this.emitInternal({
+        kind: 'rescue-fired',
+        queueLen,
+        noProgressCount: this._rescueNoProgressCount,
+        at: Date.now(),
+      });
       if (this._isRunning) this.processAnimationQueue();
       else this.notifyEnqueue();
     });
@@ -480,6 +507,7 @@ export class QueueRunner {
             // this watchdog catches stalls.
             if (this.deps.dataSource.chainPhase() === 'resolving') {
               this.deps.pollDropWatchdog.arm();
+              this.emitInternal({ kind: 'watchdog-armed', at: Date.now() });
             }
             this.deps.onFinalize();
             // Clear _isProcessing BEFORE setRunning(false) — the call may
@@ -612,6 +640,24 @@ export class QueueRunner {
     if (this._isRunning === running) return;
     this._isRunning = running;
     this.deps.onIsRunningChange(running);
+    this.emitInternal(running
+      ? { kind: 'runner-started', at: Date.now() }
+      : { kind: 'runner-stopped', at: Date.now() });
+  }
+
+  /**
+   * Forward an {@link InternalTransportEvent} to the optional sink. Fire-
+   * and-forget by contract: sink exceptions are swallowed so the runner's
+   * own loop is never destabilised by a misbehaving consumer.
+   */
+  private emitInternal(event: InternalTransportEvent): void {
+    const sink = this.deps.onInternalEvent;
+    if (!sink) return;
+    try {
+      sink(event);
+    } catch (err) {
+      this.deps.logger.warn('[RUNNER] onInternalEvent sink threw: %o', err);
+    }
   }
 
   private trace(action: string, detail?: Record<string, unknown>): void {

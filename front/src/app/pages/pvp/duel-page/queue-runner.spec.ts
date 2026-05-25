@@ -14,6 +14,7 @@
 import { Injector, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { decideNextStep, QueueRunner, type EventResult, type QueueDecisionInputs, type QueueRunnerDeps } from './queue-runner';
+import type { InternalTransportEvent } from './queue-runner-events';
 import { QUEUE_COLLAPSE_KEEP, RESCUE_NO_PROGRESS_CEILING } from './animation-constants';
 import { PollDropWatchdog } from './poll-drop-watchdog';
 import type { AnimationDataSource, QueueDirective, QueueEntry } from './animation-data-source';
@@ -277,6 +278,7 @@ interface RunnerHarness {
   handleCalls: GameEvent[];
   directiveCalls: QueueDirective[];
   isRunningHistory: boolean[];
+  internalEvents: InternalTransportEvent[];
   injector: Injector;
 }
 
@@ -285,11 +287,13 @@ function makeRunner(opts: {
   processDirective?: (d: QueueDirective) => Promise<'continue' | 'pause'>;
   decisionInputs?: () => Omit<QueueDecisionInputs, 'queue'>;
   pollDropWatchdog?: PollDropWatchdog;
+  onInternalEvent?: (e: InternalTransportEvent) => void;
 } = {}): RunnerHarness {
   const ds = new MockDataSource();
   const handleCalls: GameEvent[] = [];
   const directiveCalls: QueueDirective[] = [];
   const isRunningHistory: boolean[] = [];
+  const internalEvents: InternalTransportEvent[] = [];
   const injector = TestBed.inject(Injector);
   const watchdog = opts.pollDropWatchdog ?? new PollDropWatchdog(
     () => ({ isResolving: ds.chainPhase() === 'resolving', queueLen: ds.animationQueue().length, isAnimating: false, hasPendingPrompt: false }),
@@ -317,6 +321,10 @@ function makeRunner(opts: {
     onStepSettled: () => undefined,
     onFinalize: () => undefined,
     onIsRunningChange: (r) => { isRunningHistory.push(r); },
+    onInternalEvent: (e) => {
+      internalEvents.push(e);
+      opts.onInternalEvent?.(e);
+    },
     decisionInputs: opts.decisionInputs ?? (() => ({
       isWaitingForOverlay: false,
       hasDrawsInFlight: false,
@@ -328,7 +336,7 @@ function makeRunner(opts: {
     })),
   };
   const runner = new QueueRunner(deps);
-  return { runner, ds, watchdog, handleCalls, directiveCalls, isRunningHistory, injector };
+  return { runner, ds, watchdog, handleCalls, directiveCalls, isRunningHistory, internalEvents, injector };
 }
 
 describe('QueueRunner (loop) — Palier B', () => {
@@ -575,6 +583,126 @@ describe('QueueRunner (loop) — Palier B', () => {
       runner.notifyEnqueue();
       await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
       expect(handleCalls.map(e => e.type)).toEqual(['MSG_MOVE']);
+    });
+  });
+
+  describe('onInternalEvent (α.3 transport-event sink)', () => {
+    it('emits runner-started then runner-stopped on a simple drain', async () => {
+      const { runner, ds, internalEvents } = makeRunner();
+      ds.setQueue([ev('MSG_MOVE')]);
+      runner.notifyEnqueue();
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      const kinds = internalEvents.map(e => e.kind);
+      expect(kinds).toEqual(['runner-started', 'runner-stopped']);
+    });
+
+    it('emits watchdog-armed when finalize fires during chainPhase=resolving', async () => {
+      const watchdog = new PollDropWatchdog(
+        () => ({ isResolving: true, queueLen: 0, isAnimating: false, hasPendingPrompt: false }),
+        () => undefined, 10_000,
+      );
+      const { runner, ds, internalEvents } = makeRunner({ pollDropWatchdog: watchdog });
+      ds.setChainPhase('resolving');
+      runner.notifyEnqueue();
+      await Promise.resolve(); await Promise.resolve();
+      const armed = internalEvents.filter(e => e.kind === 'watchdog-armed');
+      expect(armed.length).toBe(1);
+      watchdog.clear();
+    });
+
+    it('emits rescue-fired when the post-finalize block re-enters the loop', async () => {
+      // Reproduce the documented rescue scenario: the first event returns
+      // 'async' so the inner loop exits without finalizing, the second
+      // event is still in the queue → the .finally block sees non-empty
+      // queue + no legitimate wait → rescue-fired emitted. We don't need
+      // the rescue to bail (ceiling) for this test — at least one fired.
+      const ds = new MockDataSource();
+      ds.setQueue([ev('MSG_MOVE'), ev('MSG_DAMAGE')]);
+      const injector = TestBed.inject(Injector);
+      const watchdog = new PollDropWatchdog(
+        () => ({ isResolving: false, queueLen: 1, isAnimating: false, hasPendingPrompt: false }),
+        () => undefined, 10_000,
+      );
+      const events: InternalTransportEvent[] = [];
+      const runner = new QueueRunner({
+        dataSource: asDataSource(ds),
+        pollDropWatchdog: watchdog,
+        ctx: stubCtx,
+        logger: silentLogger,
+        injector,
+        // First call: 'async' → loop exits, queue still has MSG_DAMAGE.
+        // Subsequent rescue ticks: same 'async' → keep stalling, rescue
+        // fires at least once on the very first post-finalize cycle.
+        handleEntry: () => 'async',
+        processDirective: async () => 'continue',
+        applyInstantAnimation: () => undefined,
+        consumeDeferredSolving: () => undefined,
+        preReplayBuffer: async () => undefined,
+        preLockQueuedSources: () => undefined,
+        onStepSettled: () => undefined,
+        onFinalize: () => undefined,
+        onIsRunningChange: () => undefined,
+        onInternalEvent: (e) => { events.push(e); },
+        decisionInputs: () => ({
+          isWaitingForOverlay: false, hasDrawsInFlight: false,
+          isResolving: false, hasBufferedEvents: false,
+          hasPendingPrompt: false, commitMode: 'per-event',
+          deferredSolvingEntry: null,
+        }),
+      });
+      runner.notifyEnqueue();
+      // Let the rescue spin up a few times; we only need at least one fired.
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      const rescues = events.filter(e => e.kind === 'rescue-fired');
+      expect(rescues.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('does NOT throw when sink itself throws — failures are swallowed', async () => {
+      const { runner, ds } = makeRunner({
+        onInternalEvent: () => { throw new Error('sink boom'); },
+      });
+      ds.setQueue([ev('MSG_MOVE')]);
+      expect(() => runner.notifyEnqueue()).not.toThrow();
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      // Loop still completed despite the sink throwing on every emission.
+      expect(runner.isRunning()).toBeFalse();
+    });
+
+    it('omitting onInternalEvent in deps is a no-op (back-compat)', async () => {
+      // Build a runner WITHOUT onInternalEvent to prove the existing
+      // contract (deps before α.3) still compiles and runs.
+      const ds = new MockDataSource();
+      ds.setQueue([ev('MSG_MOVE')]);
+      const injector = TestBed.inject(Injector);
+      const watchdog = new PollDropWatchdog(
+        () => ({ isResolving: false, queueLen: 0, isAnimating: false, hasPendingPrompt: false }),
+        () => undefined, 10_000,
+      );
+      const runner = new QueueRunner({
+        dataSource: asDataSource(ds),
+        pollDropWatchdog: watchdog,
+        ctx: stubCtx,
+        logger: silentLogger,
+        injector,
+        handleEntry: () => 0,
+        processDirective: async () => 'continue',
+        applyInstantAnimation: () => undefined,
+        consumeDeferredSolving: () => undefined,
+        preReplayBuffer: async () => undefined,
+        preLockQueuedSources: () => undefined,
+        onStepSettled: () => undefined,
+        onFinalize: () => undefined,
+        onIsRunningChange: () => undefined,
+        decisionInputs: () => ({
+          isWaitingForOverlay: false, hasDrawsInFlight: false,
+          isResolving: false, hasBufferedEvents: false,
+          hasPendingPrompt: false, commitMode: 'per-event',
+          deferredSolvingEntry: null,
+        }),
+      });
+      runner.notifyEnqueue();
+      await Promise.resolve(); await Promise.resolve();
+      expect(runner.isRunning()).toBeFalse();
     });
   });
 
