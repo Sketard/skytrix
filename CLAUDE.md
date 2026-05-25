@@ -358,6 +358,39 @@ Rule unit tests live in
 `eslint-plugins/pipeline-signal-tagged/__tests__/rule.spec.mjs` —
 run via `node --test`.
 
+## Projection Infrastructure (α.2, 2026-05-25)
+
+`front/src/app/pages/pvp/projections/` holds the base infrastructure
+every pipeline projection extends from. Cf.
+`_bmad-output/planning-artifacts/duel-session-chantier.md §3.5`.
+
+- **`BaseProjection<T>`** (abstract) — every projection subclasses it
+  and declares `readonly scope: ScopeCategory` (abstract — a subclass
+  that forgets compiles to nothing). Exposes `readonly value: Signal<T>`
+  + `applyEvent(FluxEvent)` + `applyReset(scopes, payload?)`.
+- **`ScopeCategory`** (`scope.ts`) — `'SESSION_LIFETIME' |
+  'DUEL_LIFETIME' | 'CONNECTION_LIFETIME' | 'PERSPECTIVE_LIFETIME'`.
+  Ordered top-down in `SCOPE_HIERARCHY`. Invalidating a scope cascades
+  to every scope below it via `expandInvalidatedScopes(set)`.
+- **`ScopeResetDispatcher`** — registry + fan-out. `register(p)` checks
+  the scope is a known category via `duelAssert` (dev throws / prod
+  warns); `dispatch(scopes, payload?)` expands then calls `applyReset`
+  on every projection whose scope is in the expanded set. Idempotent
+  register; silent unregister.
+- **`CheckpointPayload`** — forwarded by `dispatch` only for §3.6
+  checkpoints (`STATE_SYNC` / `RematchStarted`). Shape is `{ source,
+  body: unknown }` at α.2; each projection narrows on its own. Concrete
+  schema will be pinned when the first consumer lands (β.3).
+- **`FluxEvent`** — alias of the legacy `StreamEvent` at α.2. The union
+  will grow as α.3 adds transport events, β.1 adds boundary events, β.2
+  adds deferred events. Adding a member requires every `applyEvent`
+  switch to remain exhaustive (TS `never` default arm catches it).
+
+The lint rule `pipeline-signal-tagged` already recognises `extends
+BaseProjection` by name — new projection files are auto-tagged the
+moment they subclass it (option c in the rule). Internal registry
+structures inside the dispatcher are prefixed `_transport_*` (option a).
+
 ## Card Travel Stack
 
 The card-travel subsystem is split into 3 services (M11 Phases 1+2):
