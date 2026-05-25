@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 import type { ActiveDuelSession, WorkerReplayPayload } from './types.js';
 import { emptyChainState } from './chain-state-tracker.js';
+import { createSessionGameLog } from './session-game-log.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import { safeSend } from './http-helpers.js';
@@ -109,6 +110,7 @@ export function createForkSoloSession({
     deckNames: replayData.metadata.deckNames,
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    gameLog: createSessionGameLog(),
   };
 
   cfg.sessionManager.register(session, [token1, token2]);

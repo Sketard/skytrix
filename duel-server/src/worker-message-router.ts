@@ -4,6 +4,7 @@ import { createConfigurable } from './configurable.js';
 import { filterMessage } from './message-filter.js';
 import * as duelInstr from './duel-instrumentation.js';
 import { applyChainTransition } from './chain-state-tracker.js';
+import { ingestMessage as ingestIntoSessionGameLog } from './session-game-log.js';
 import {
   handleTurnChange,
   scheduleTimerStart,
@@ -209,6 +210,14 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
 export function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): void {
   const cfg = getCfg();
   const send = cfg.sendToPlayer;
+
+  // Game-log ingestion — fed BEFORE the MSG_WIN→DUEL_END synthesis below so
+  // the natural-end victory row is built from the raw MSG_WIN the worker
+  // emitted. Both per-perspective builders ingest the same raw message; only
+  // the board snapshot is sanitized per recipient (handled inside ingest).
+  // Safe to run on every message: the builder switches on type and silently
+  // skips ones it doesn't care about.
+  if (session.gameLog) ingestIntoSessionGameLog(session.gameLog, message);
 
   // Natural DUEL_END from worker (LP=0, deck-out, etc.)
   if (message.type === 'DUEL_END') {

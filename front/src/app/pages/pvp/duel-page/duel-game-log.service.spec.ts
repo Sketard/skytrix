@@ -291,4 +291,91 @@ describe('DuelGameLogService', () => {
       expect(service.gameLogEntries().length).toBe(realEntries);
     });
   });
+
+  describe('restoreFromSnapshot — STATE_SYNC reconnect / F5 path', () => {
+    it('populates entries from the server-built snapshot', () => {
+      // Simulate a server snapshot: a single turn separator entry.
+      const snapshot = [
+        {
+          block: 'separator' as const,
+          kind: 'turn' as const,
+          turnNumber: 1,
+          lp: [8000, 8000] as [number, number],
+        },
+      ];
+      service.restoreFromSnapshot(snapshot);
+      expect(service.gameLogEntries()).toEqual(snapshot);
+    });
+
+    it('bumps journalRebuiltTick so the panel jumps to bottom', () => {
+      const before = service.journalRebuiltTick();
+      service.restoreFromSnapshot([]);
+      expect(service.journalRebuiltTick()).toBe(before + 1);
+    });
+
+    it('subsequent live events append onto the restored snapshot', () => {
+      const snapshot = [
+        {
+          block: 'separator' as const,
+          kind: 'turn' as const,
+          turnNumber: 1,
+          lp: [8000, 8000] as [number, number],
+        },
+      ];
+      service.restoreFromSnapshot(snapshot);
+      const after = service.gameLogEntries().length;
+
+      // A live event after restore should append, not replace.
+      service.notifyGameLog(draw(0, [1001]));
+      expect(service.gameLogEntries().length).toBeGreaterThan(after);
+    });
+
+    it('takes an independent copy of the snapshot (defensive)', () => {
+      const snapshot = [
+        {
+          block: 'separator' as const,
+          kind: 'turn' as const,
+          turnNumber: 1,
+          lp: [8000, 8000] as [number, number],
+        },
+      ];
+      service.restoreFromSnapshot(snapshot);
+
+      // Mutate the source array — the service's published signal should be
+      // unaffected.
+      snapshot.length = 0;
+      expect(service.gameLogEntries().length).toBe(1);
+    });
+
+    it('seeds the builder so the next live event does not double the turn/phase separators', () => {
+      // Snapshot ends at turn 3 / Main Phase 1. A naive restore + next
+      // notifyGameLog with the same board would emit duplicate "Turn 3" +
+      // "MAIN1" separators because the local builder's lastTurnCount=-1.
+      const snapshot = [
+        {
+          block: 'separator' as const,
+          kind: 'turn' as const,
+          turnNumber: 3,
+          lp: [8000, 8000] as [number, number],
+        },
+        {
+          block: 'separator' as const,
+          kind: 'phase' as const,
+          labelKey: 'gameLog.phase.main1',
+        },
+      ];
+      service.restoreFromSnapshot(snapshot);
+      const lenAfterRestore = service.gameLogEntries().length;
+
+      // The drain effect now feeds a draw event with the same board (turn 3,
+      // MAIN1). With seeding, no duplicate separator is emitted — only the
+      // draw row appends.
+      service.attachBoardSource(() => board(3, 'MAIN1'));
+      service.notifyGameLog(draw(0, [1001]));
+      const entriesAfter = service.gameLogEntries();
+      const newCount = entriesAfter.length - lenAfterRestore;
+      // Exactly one new entry (the draw row), not three (turn + phase + draw).
+      expect(newCount).toBe(1);
+    });
+  });
 });

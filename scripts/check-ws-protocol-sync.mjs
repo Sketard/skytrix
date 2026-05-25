@@ -44,6 +44,10 @@ function normalize(content) {
     .replace(/from '\.\/ws-protocol-(\w+)\.js'/g, "from './duel-ws-$1.types'")
     // back-side index path: from './ws-protocol.js' → from './duel-ws.types'
     .replace(/from '\.\/ws-protocol\.js'/g, "from './duel-ws.types'")
+    // game-log sub-directory imports: same stem on both sides, only the `.js`
+    // suffix differs. Used by ws-protocol-system.ts importing GameLogEntry
+    // for the STATE_SYNC reconnect snapshot.
+    .replace(/from '\.\/game-log\/(game-log-\w+)\.js'/g, "from './game-log/$1'")
     // front-side already in target form — idempotent
     ;
 }

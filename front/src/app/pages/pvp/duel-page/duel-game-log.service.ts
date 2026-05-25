@@ -300,6 +300,27 @@ export class DuelGameLogService {
   }
 
   /**
+   * Restore the journal from a server-built snapshot (STATE_SYNC payload).
+   * The server holds a per-perspective `GameLogBuilder` per session; its
+   * entries ride the STATE_SYNC so an F5 / reconnect repopulates the
+   * journal from the duel start instead of empty.
+   *
+   * Self-contained: resets the local builder + stream cursor first so a
+   * caller that forgets to invoke `reset()` cannot corrupt subsequent
+   * appends. Live events arriving after the restore drain through the
+   * normal `notifyGameLog` path and append onto the snapshot.
+   */
+  restoreFromSnapshot(entries: GameLogEntry[]): void {
+    this.reset();
+    this.builder.seedFromSnapshot(entries);
+    // Republish the builder's entries (now containing the snapshot) — same
+    // pattern as `ingest`. Avoids a divergent `_entries` vs `builder.entries`
+    // state where the next live event would overwrite the snapshot.
+    this._entries.set([...this.builder.entries]);
+    this._journalRebuiltTick.update(t => t + 1);
+  }
+
+  /**
    * Cleared on rematch / mode switch / state-sync / replay seek — wired
    * into the orchestrator's `resetAllState()` at Lot 2e. A rematch reuses
    * the page component (no `ngOnDestroy`), so a stale journal would

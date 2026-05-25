@@ -798,11 +798,16 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.orchestrator.resetForSwitch();
     this.phaseService.clear();
     this.adapter.abort();
-    // `resetForSwitch` cleared the game-log journal (R8). Bump the rebuild
-    // tick so the seek-rebuild effect re-feeds the journal with the
-    // history [0..currentIndex] once the seek has committed its index
-    // (Bug 1). A forward step does NOT call `abortAndClean`, so it never
-    // triggers this — its events log naturally through `notifyGameLog`.
+    // Clear the journal explicitly — `resetForSwitch` used to do this via
+    // `resetAllState`, but that was decoupled (SOLO PvP fix: switchPlayer
+    // must not wipe the cumulative journal). Replay seek IS a legitimate
+    // journal-reset path because the rebuild tick below feeds `rebuildUpTo`
+    // with the new [0..currentIndex] history.
+    this.gameLog.reset();
+    // Bump the rebuild tick so the seek-rebuild effect re-feeds the journal
+    // with the history [0..currentIndex] once the seek has committed its
+    // index (Bug 1). A forward step does NOT call `abortAndClean`, so it
+    // never triggers this — its events log naturally through `notifyGameLog`.
     this.gameLogRebuildTick.update(t => t + 1);
   }
 

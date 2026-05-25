@@ -200,7 +200,10 @@ export class DuelConnection {
   // --- Callbacks (set by wrapper services) ---
   onMessage?: (msg: ServerMessage) => void;
   onResponse?: (promptType: string, data: ResponseData) => void;
-  onStateSync?: () => void;
+  /** Fired after the connection-level STATE_SYNC bookkeeping completes.
+   *  Carries the raw message so consumers can read `gameLogEntries`
+   *  (journal persistence across F5 / reconnect). */
+  onStateSync?: (msg: import('../duel-ws-system.types').StateSyncMsg) => void;
 
   /**
    * Palier 0 — attach the EventStream sink (orchestrator's
@@ -599,7 +602,7 @@ export class DuelConnection {
         this._hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
         // Suppress auto-respond until the game resumes (first BOARD_STATE after reconnect)
         this._justReconnected.set(true);
-        this.onStateSync?.();
+        this.onStateSync?.(message);
         break;
 
       case 'CHAIN_STATE': {

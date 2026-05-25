@@ -18,7 +18,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private readonly _defaultConnection = new DuelConnection(environment.wsUrl, true, undefined, this.logger);
   private _activeConnection = signal<DuelConnection>(this._defaultConnection);
 
-  onStateSync?: () => void;
+  onStateSync?: (msg: import('../duel-ws-system.types').StateSyncMsg) => void;
 
   /** Palier 0 — EventStream sink (orchestrator's `notifyOutOfBandEvent`).
    *  Retained so we can re-apply it on `setActiveConnection`. */
@@ -32,8 +32,8 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this._defaultConnection.onResponse = (promptType, data) => {
       this.debugLog.logPlayerResponse(promptType, data);
     };
-    this._defaultConnection.onStateSync = () => {
-      this.onStateSync?.();
+    this._defaultConnection.onStateSync = (msg) => {
+      this.onStateSync?.(msg);
     };
   }
 

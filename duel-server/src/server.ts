@@ -47,6 +47,7 @@ import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
+import { createSessionGameLog, entriesForPlayer } from './session-game-log.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { checkProtocolVersionPure } from './protocol-version-check.js';
@@ -476,6 +477,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       deckNames: [parsed.player1.deckName ?? 'Deck', parsed.player2.deckName ?? 'Deck'],
       pendingReplayResult: null,
       forkConnectionTimeout: null,
+      gameLog: createSessionGameLog(),
     };
 
     // Store in active duels and pending tokens
@@ -567,6 +569,9 @@ function startRematch(session: ActiveDuelSession): void {
   session.invalidResponseCount = [0, 0];
   session.promptSentAt = [0, 0];
   Object.assign(session, emptyChainState());
+  // Fresh builders for the rematch — the prior duel's entries must NOT bleed
+  // into the new journal.
+  session.gameLog = createSessionGameLog();
 
   clearAllDuelTimers(session);
 
@@ -666,6 +671,20 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
 // at boot. Server.ts keeps sendToPlayer as the WS-write helper (37
 // inline call sites depend on it).
 function sendToPlayer(session: ActiveDuelSession, playerIndex: 0 | 1, message: ServerMessage): void {
+  // Attach the per-perspective game-log snapshot to every outgoing STATE_SYNC.
+  // Three construction sites funnel through here so the attach is uniform:
+  //   1. `broadcastMessage` forward (reconnect resync path).
+  //   2. `sendStateSnapshot` on connect/sync (initial post-reconnect snapshot).
+  //   3. Cancel-rollback re-broadcast (`worker-message-router` WORKER_CANCEL_DONE).
+  // Path 3 is technically out of the F5 scope but reuses the same plumbing —
+  // the client's `onStateSync` clears + restores the journal on every
+  // STATE_SYNC, so a right-click-cancel correctly preserves the journal too.
+  // Guards: skip when `gameLogEntries` is already populated (no current caller
+  // sets it upstream — defence-in-depth) or when the session has no log
+  // (test fixtures with the field omitted).
+  if (message.type === 'STATE_SYNC' && !message.gameLogEntries && session.gameLog) {
+    message = { ...message, gameLogEntries: entriesForPlayer(session.gameLog, playerIndex) };
+  }
   safeSend(session.players[playerIndex].ws, message);
 }
 
@@ -719,6 +738,15 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
 
   // Clear all timer state (turn timer, inactivity, race windows)
   clearAllDuelTimers(session);
+
+  // Release the per-perspective GameLogBuilders. Pending closures (replay
+  // persist Promise, fork timeout callbacks) capture `session` by reference,
+  // so the builders would otherwise live as long as the longest-running
+  // captured callback. Replace with a fresh empty pair: the GC drops the
+  // old entries arrays, and any belated outbound message (cleanupDuelSession
+  // is idempotent, but a queued setTimeout could still fire) ingests into
+  // an empty builder rather than throwing.
+  session.gameLog = createSessionGameLog();
 
   // Close WebSocket connections + per-player grace timers. Reconnect tokens
   // are dropped by sessionManager.terminate() below (it nulls each player's

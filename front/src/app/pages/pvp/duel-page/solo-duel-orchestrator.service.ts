@@ -47,8 +47,8 @@ export class SoloDuelOrchestratorService {
     conn1.onMessage = msg => this.debugLog.logServerMessage(msg);
     conn0.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);
     conn1.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);
-    conn0.onStateSync = () => this.wsService.onStateSync?.();
-    conn1.onStateSync = () => this.wsService.onStateSync?.();
+    conn0.onStateSync = (msg) => this.wsService.onStateSync?.(msg);
+    conn1.onStateSync = (msg) => this.wsService.onStateSync?.(msg);
 
     this._connections.set([conn0, conn1]);
     conn0.connect(token1);

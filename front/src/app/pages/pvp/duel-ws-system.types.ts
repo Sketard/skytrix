@@ -10,6 +10,7 @@
 
 import type { Player, BoardStatePayload } from './duel-ws-shared.types';
 import type { ChainingMsg } from './duel-ws-game.types';
+import type { GameLogEntry } from './game-log/game-log-types';
 
 // =============================================================================
 // Server → Client: System Messages
@@ -136,6 +137,13 @@ export interface WorkerErrorMsg {
 export interface StateSyncMsg {
   type: 'STATE_SYNC';
   data: BoardStatePayload;
+  /** Full game-log entries from the duel start to the current event,
+   *  pre-relativised for the receiving player's perspective. Restored
+   *  client-side via DuelGameLogService.restoreFromSnapshot() so an F5 /
+   *  reconnect repopulates the journal instead of starting empty. Optional
+   *  for backward compatibility with payload sources that don't carry a
+   *  builder (cancel-rollback re-sends, fork lifecycle, future paths). */
+  gameLogEntries?: GameLogEntry[];
 }
 
 export interface ChainStateMsg {

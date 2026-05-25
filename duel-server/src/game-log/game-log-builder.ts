@@ -345,6 +345,41 @@ export class GameLogBuilder {
     /* nothing buffered across states in the current grammar */
   }
 
+  /**
+   * Pre-load `entries` from a server-built snapshot (the STATE_SYNC restore
+   * path) and seed internal turn/phase trackers so the next live event does
+   * not re-emit duplicate separators.
+   *
+   * Two effects:
+   *  - Copies the snapshot rows into `this.entries` so subsequent ingest
+   *    paths append to the full history (callers read `[...builder.entries]`
+   *    after each ingest; without this copy the snapshot would be lost the
+   *    moment the first live event lands).
+   *  - Scans the snapshot right-to-left for the most recent turn separator
+   *    and the most recent phase separator, fixing `lastTurnCount` +
+   *    `lastPhase` so `syncTurnAndPhase` no-ops on the next equal board.
+   *
+   * Chain state is intentionally NOT seeded — a snapshot taken mid-chain is
+   * rare (STATE_SYNC happens at stable boundaries) and the chain processor's
+   * `restoreChainState` is the authoritative path for that.
+   */
+  seedFromSnapshot(entries: readonly GameLogEntry[]): void {
+    this.entries.push(...entries);
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const e = entries[i];
+      if (e.block !== 'separator') continue;
+      if (e.kind === 'turn' && this.lastTurnCount < 0) {
+        this.lastTurnCount = e.turnNumber ?? 0;
+        this.currentTurn = this.lastTurnCount;
+        if (this.lastTurnCount >= 2) this.openingWindowClosed = true;
+      }
+      if (e.kind === 'phase' && this.lastPhase === null) {
+        this.lastPhase = e.labelKey ?? null;
+      }
+      if (this.lastTurnCount >= 0 && this.lastPhase !== null) break;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Turn / phase separator synthesis (§5.5 — derived from board-state deltas)
   // ---------------------------------------------------------------------------

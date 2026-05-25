@@ -526,7 +526,27 @@ export class AnimationOrchestratorService {
     this.battleTracker.reset();
   }
 
-  /** Shared reset logic for both resetForSwitch and onStateSync. */
+  /** Shared reset logic for both resetForSwitch and onStateSync.
+   *
+   *  ⚠️ DO NOT add `this.gameLog?.reset()` here. ⚠️
+   *
+   *  This line was present pre-2026-05-25 and caused the SOLO PvP journal
+   *  to wipe on every switchPlayer (the same duel viewed from both sides
+   *  must share the journal — `resetForSwitch` runs at every swap of
+   *  conn0↔conn1). The line was removed, regressed once during a parallel
+   *  refactor on this file, and re-removed. If you find yourself wanting
+   *  to put it back: you don't. The journal lifecycle is OPPOSITE for the
+   *  two callers — preserve in `resetForSwitch`, clear in `onStateSync`:
+   *
+   *   · SOLO PvP `switchPlayer` → `resetForSwitch` resets the orchestrator
+   *     between conn0↔conn1, but the journal must persist.
+   *   · `onStateSync` clears the journal explicitly below — the STATE_SYNC
+   *     payload's `gameLogEntries` repopulates it via `restoreFromSnapshot`
+   *     (R8 rematch + F5 reconnect, 2026-05-25 story).
+   *   · Replay perspective flip clears the journal explicitly at the call
+   *     site (`replay-page.component.ts:abortAndClean`), which rebuilds it
+   *     via `rebuildUpTo`.
+   */
   private resetAllState(): void {
     this.clearTimersAndPolling();
     this._isAnimating.set(false);
@@ -547,10 +567,6 @@ export class AnimationOrchestratorService {
     this.swapGraveDeckKeys.set(new Set());
     this.toastService.clear();
     this._eventStream.set([]);
-    // R8 — a rematch reuses the page component (no ngOnDestroy), so the
-    // game-log accumulator must be cleared on the shared reset path or
-    // duel 1's journal leaks into duel 2.
-    this.gameLog?.reset();
   }
 
   /**
@@ -596,6 +612,10 @@ export class AnimationOrchestratorService {
       `STATE_SYNC arrived mid-chain-resolve with ${this.dataSource.animationQueue().length} queued + buffered events — possible lock orphan`,
     );
     this.resetAllState();
+    // Journal lifecycle is separate from animation state — see resetAllState
+    // doc. Clear it here so the STATE_SYNC payload's gameLogEntries can
+    // repopulate from a clean slate (R8 rematch + F5 reconnect path).
+    this.gameLog?.reset();
   }
 
   // ---------------------------------------------------------------------------

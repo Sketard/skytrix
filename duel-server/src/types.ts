@@ -427,4 +427,15 @@ export interface ActiveDuelSession extends DuelSession {
   deckNames: [string, string];
   pendingReplayResult: string | null;
   forkConnectionTimeout: ReturnType<typeof setTimeout> | null;
+  /** Per-perspective game-log builders, fed from every outgoing worker
+   *  message. Snapshotted into STATE_SYNC so a reconnecting / F5'd client
+   *  rebuilds the journal from the duel start instead of from the reconnect
+   *  point. Reset on rematch + cleanupDuelSession.
+   *
+   *  Optional in the TYPE only — every production construction path
+   *  (`server.ts` POST /api/duels, `fork-handlers.createForkSoloSession`)
+   *  initialises it. Tests with `as unknown as ActiveDuelSession` fixtures
+   *  may omit it; the runtime tap in `worker-message-router.broadcastMessage`
+   *  guards with `if (session.gameLog)` for that reason. */
+  gameLog?: import('./session-game-log.js').SessionGameLog;
 }
