@@ -1,0 +1,86 @@
+{
+  "scenario": "T2",
+  "durationMs": 4000,
+  "samples": [
+    {
+      "pct": 25,
+      "t": 1061.1000000238419,
+      "rect": {
+        "x": 186.01895141601562,
+        "y": 140.67929077148438,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 50,
+      "t": 2056.199999988079,
+      "rect": {
+        "x": 207.8734130859375,
+        "y": 121.91558837890625,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 75,
+      "t": 3055.400000035763,
+      "rect": {
+        "x": 95.31585693359375,
+        "y": 46.87725830078125,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 100,
+      "t": 4053.400000035763,
+      "rect": {
+        "x": 70.00555419921875,
+        "y": 30.003662109375,
+        "w": 80,
+        "h": 120.00003051757812
+      }
+    }
+  ],
+  "fps": {
+    "avg": 60.00148151806218,
+    "min": 59.52380952380888,
+    "max": 60.60606060606061,
+    "frames": 243
+  },
+  "finalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "expectedFinalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "notes": [
+    "Parent rotate(180deg) applied at 50%.",
+    "WAAPI does NOT recompute keyframes — animation keeps running in local frame.",
+    "Visually, float should land at flipped-dst (≈70,30) NOT viewport-dst (≈650,450).",
+    "rectBefore-flip @ 50% = (512,358)",
+    "rectAfter-flip  @ 50% = (208,122)",
+    "If rectBefore != rectAfter at the same percent → flip is a visible jump (expected)."
+  ],
+  "extra": {
+    "rectBeforeFlip": {
+      "x": 512.1265869140625,
+      "y": 358.08441162109375,
+      "w": 80,
+      "h": 120
+    },
+    "rectAfterFlip": {
+      "x": 207.8734130859375,
+      "y": 121.91558837890625,
+      "w": 80,
+      "h": 120
+    }
+  }
+}

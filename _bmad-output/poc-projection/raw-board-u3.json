@@ -1,0 +1,4 @@
+{
+  "skippedReason": "Live in-flight timing on a real replay is too fragile to run as a regression spec. Verdict comes from: (a) J1 T2 confirmed WAAPI continues in local frame on parent transform change; (b) Q2 audit confirmed CardTravelEngine reads viewport-absolute coords (getBoundingClientRect) and floats live position:fixed under duel-page host, NOT under .board-host. Therefore a 180° flip on .board-host has ZERO effect on in-flight floats — they continue toward their pre-computed viewport destination, which is the WRONG visual destination post-flip. Strategy S3 (\"free lunch via container-relative\") is INVALIDATED in current engine state — it requires a refactor of float container + coord system, not a one-line CSS change.",
+  "decisionImpact": "See day2-findings.md §3."
+}

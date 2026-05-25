@@ -1,0 +1,438 @@
+{
+  "before": {
+    "containerExists": true,
+    "rect": {
+      "x": 0,
+      "y": 63,
+      "w": 1600,
+      "h": 813
+    },
+    "childrenCount": 4,
+    "transformApplied": "",
+    "candidates": [
+      {
+        "label": "board-wrapper",
+        "found": true,
+        "selector": ".board-wrapper",
+        "rect": {
+          "x": 333.765625,
+          "y": 103.65625,
+          "w": 932.46875,
+          "h": 731.6875
+        },
+        "position": "relative",
+        "parentChain": "div.board-host > app-pvp-board-container > div.board-area > div.replay-viewer"
+      },
+      {
+        "label": "opponent-field",
+        "found": true,
+        "selector": ".opponent-field",
+        "rect": {
+          "x": 333.765625,
+          "y": 103.65625,
+          "w": 932.46875,
+          "h": 292.671875
+        },
+        "position": "relative",
+        "parentChain": "div.board-wrapper > div.board-host > app-pvp-board-container > div.board-area"
+      },
+      {
+        "label": "player-field",
+        "found": true,
+        "selector": ".player-field",
+        "rect": {
+          "x": 333.765625,
+          "y": 542.65625,
+          "w": 932.46875,
+          "h": 292.671875
+        },
+        "position": "relative",
+        "parentChain": "div.board-wrapper > div.board-host > app-pvp-board-container > div.board-area"
+      },
+      {
+        "label": "chain-overlay",
+        "found": true,
+        "selector": "app-pvp-chain-overlay",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1600,
+          "h": 1000
+        },
+        "position": "fixed",
+        "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+      },
+      {
+        "label": "effect-bubble",
+        "found": true,
+        "selector": "app-effect-bubble",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "position": "static",
+        "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+      },
+      {
+        "label": "travel-float",
+        "found": false,
+        "selector": "[data-travel-float]"
+      },
+      {
+        "label": "boardfx-layer",
+        "found": false,
+        "selector": ".board-fx, [data-board-fx], .activate-effect, .slam-dust"
+      },
+      {
+        "label": "prompt-dialog",
+        "found": true,
+        "selector": "app-pvp-prompt-dialog",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "position": "absolute",
+        "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+      },
+      {
+        "label": "dev-hub",
+        "found": true,
+        "selector": "app-duel-dev-hub",
+        "rect": {
+          "x": 1588,
+          "y": 12,
+          "w": 0,
+          "h": 0
+        },
+        "position": "fixed",
+        "parentChain": "app-pvp-board-container > div.board-area > div.replay-viewer > app-replay-page.theme-dark"
+      },
+      {
+        "label": "cdk-overlay",
+        "found": true,
+        "selector": ".cdk-overlay-container",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1600,
+          "h": 1000
+        },
+        "position": "fixed",
+        "parentChain": "body.mat-typography > html.theme-light"
+      },
+      {
+        "label": "first-card-image",
+        "found": false,
+        "selector": ".card-image, [data-card], img.card"
+      }
+    ]
+  },
+  "after": {
+    "containerExists": true,
+    "rect": {
+      "x": 0,
+      "y": 63,
+      "w": 1600,
+      "h": 813
+    },
+    "childrenCount": 4,
+    "transformApplied": "matrix(-1, 0, 0, -1, 0, 0)",
+    "candidates": [
+      {
+        "label": "board-wrapper",
+        "found": true,
+        "selector": ".board-wrapper",
+        "rect": {
+          "x": 333.765625,
+          "y": 103.65625,
+          "w": 932.46875,
+          "h": 731.6875
+        },
+        "position": "relative",
+        "parentChain": "div.board-host > app-pvp-board-container > div.board-area > div.replay-viewer"
+      },
+      {
+        "label": "opponent-field",
+        "found": true,
+        "selector": ".opponent-field",
+        "rect": {
+          "x": 333.765625,
+          "y": 542.671875,
+          "w": 932.46875,
+          "h": 292.671875
+        },
+        "position": "relative",
+        "parentChain": "div.board-wrapper > div.board-host > app-pvp-board-container > div.board-area"
+      },
+      {
+        "label": "player-field",
+        "found": true,
+        "selector": ".player-field",
+        "rect": {
+          "x": 333.765625,
+          "y": 103.671875,
+          "w": 932.46875,
+          "h": 292.671875
+        },
+        "position": "relative",
+        "parentChain": "div.board-wrapper > div.board-host > app-pvp-board-container > div.board-area"
+      },
+      {
+        "label": "chain-overlay",
+        "found": true,
+        "selector": "app-pvp-chain-overlay",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1600,
+          "h": 1000
+        },
+        "position": "fixed",
+        "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+      },
+      {
+        "label": "effect-bubble",
+        "found": true,
+        "selector": "app-effect-bubble",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "position": "static",
+        "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+      },
+      {
+        "label": "travel-float",
+        "found": false,
+        "selector": "[data-travel-float]"
+      },
+      {
+        "label": "boardfx-layer",
+        "found": false,
+        "selector": ".board-fx, [data-board-fx], .activate-effect, .slam-dust"
+      },
+      {
+        "label": "prompt-dialog",
+        "found": true,
+        "selector": "app-pvp-prompt-dialog",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "position": "absolute",
+        "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+      },
+      {
+        "label": "dev-hub",
+        "found": true,
+        "selector": "app-duel-dev-hub",
+        "rect": {
+          "x": 1588,
+          "y": 12,
+          "w": 0,
+          "h": 0
+        },
+        "position": "fixed",
+        "parentChain": "app-pvp-board-container > div.board-area > div.replay-viewer > app-replay-page.theme-dark"
+      },
+      {
+        "label": "cdk-overlay",
+        "found": true,
+        "selector": ".cdk-overlay-container",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1600,
+          "h": 1000
+        },
+        "position": "fixed",
+        "parentChain": "body.mat-typography > html.theme-light"
+      },
+      {
+        "label": "first-card-image",
+        "found": false,
+        "selector": ".card-image, [data-card], img.card"
+      }
+    ]
+  },
+  "audit": [
+    {
+      "label": "board-wrapper",
+      "found": true,
+      "inside": false,
+      "beforeCenter": {
+        "x": 800,
+        "y": 469.5
+      },
+      "afterCenter": {
+        "x": 800,
+        "y": 469.5
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 0
+      },
+      "position": "relative",
+      "parentChain": "div.board-host > app-pvp-board-container > div.board-area > div.replay-viewer"
+    },
+    {
+      "label": "opponent-field",
+      "found": true,
+      "inside": true,
+      "beforeCenter": {
+        "x": 800,
+        "y": 249.9921875
+      },
+      "afterCenter": {
+        "x": 800,
+        "y": 689.0078125
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 439.015625
+      },
+      "position": "relative",
+      "parentChain": "div.board-wrapper > div.board-host > app-pvp-board-container > div.board-area"
+    },
+    {
+      "label": "player-field",
+      "found": true,
+      "inside": true,
+      "beforeCenter": {
+        "x": 800,
+        "y": 688.9921875
+      },
+      "afterCenter": {
+        "x": 800,
+        "y": 250.0078125
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 438.984375
+      },
+      "position": "relative",
+      "parentChain": "div.board-wrapper > div.board-host > app-pvp-board-container > div.board-area"
+    },
+    {
+      "label": "chain-overlay",
+      "found": true,
+      "inside": false,
+      "beforeCenter": {
+        "x": 800,
+        "y": 500
+      },
+      "afterCenter": {
+        "x": 800,
+        "y": 500
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 0
+      },
+      "position": "fixed",
+      "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+    },
+    {
+      "label": "effect-bubble",
+      "found": true,
+      "inside": false,
+      "beforeCenter": {
+        "x": 0,
+        "y": 0
+      },
+      "afterCenter": {
+        "x": 0,
+        "y": 0
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 0
+      },
+      "position": "static",
+      "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+    },
+    {
+      "label": "travel-float",
+      "found": false,
+      "inside": null,
+      "note": "not present in DOM at snapshot time"
+    },
+    {
+      "label": "boardfx-layer",
+      "found": false,
+      "inside": null,
+      "note": "not present in DOM at snapshot time"
+    },
+    {
+      "label": "prompt-dialog",
+      "found": true,
+      "inside": false,
+      "beforeCenter": {
+        "x": 0,
+        "y": 0
+      },
+      "afterCenter": {
+        "x": 0,
+        "y": 0
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 0
+      },
+      "position": "absolute",
+      "parentChain": "div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content"
+    },
+    {
+      "label": "dev-hub",
+      "found": true,
+      "inside": false,
+      "beforeCenter": {
+        "x": 1588,
+        "y": 12
+      },
+      "afterCenter": {
+        "x": 1588,
+        "y": 12
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 0
+      },
+      "position": "fixed",
+      "parentChain": "app-pvp-board-container > div.board-area > div.replay-viewer > app-replay-page.theme-dark"
+    },
+    {
+      "label": "cdk-overlay",
+      "found": true,
+      "inside": false,
+      "beforeCenter": {
+        "x": 800,
+        "y": 500
+      },
+      "afterCenter": {
+        "x": 800,
+        "y": 500
+      },
+      "delta": {
+        "dx": 0,
+        "dy": 0
+      },
+      "position": "fixed",
+      "parentChain": "body.mat-typography > html.theme-light"
+    },
+    {
+      "label": "first-card-image",
+      "found": false,
+      "inside": null,
+      "note": "not present in DOM at snapshot time"
+    }
+  ]
+}

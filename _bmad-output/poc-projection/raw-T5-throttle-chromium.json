@@ -1,0 +1,17 @@
+{
+  "throttling": "4x CPU",
+  "scenario": "T5-throttle",
+  "durationMs": 6000,
+  "fps": {
+    "avg": 60.00265939764643,
+    "min": 59.52380952380888,
+    "max": 60.60606060606061,
+    "frames": 361
+  },
+  "flips": 12,
+  "animsKicked": 40,
+  "notes": [
+    "Stability threshold per spec §7: fps avg ≥ 30 = OK on mobile, < 30 = unacceptable.",
+    "Observed: fps avg = 60.0, fps min = 59.5, frames captured = 361."
+  ]
+}

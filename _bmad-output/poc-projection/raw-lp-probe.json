@@ -1,0 +1,138 @@
+{
+  "before": {
+    "playerCardPlayer": {
+      "selector": "app-pvp-player-card[side=\"player\"]",
+      "found": true,
+      "rect": {
+        "x": 16,
+        "y": 787.40625,
+        "w": 240,
+        "h": 72.59375
+      },
+      "cx": 136,
+      "cy": 823.703125,
+      "chain": "div.board-host > app-pvp-board-container > div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content",
+      "inBoardHost": true
+    },
+    "playerCardOpponent": {
+      "selector": "app-pvp-player-card[side=\"opponent\"]",
+      "found": true,
+      "rect": {
+        "x": 1344,
+        "y": 79,
+        "w": 240,
+        "h": 70.59375
+      },
+      "cx": 1464,
+      "cy": 114.296875,
+      "chain": "div.board-host > app-pvp-board-container > div.board-area > div.replay-viewer > app-replay-page.theme-dark > main.dark-theme-content",
+      "inBoardHost": true
+    },
+    "lpBadgeAll": [
+      {
+        "i": 0,
+        "rect": {
+          "x": 1413,
+          "y": 115,
+          "w": 158,
+          "h": 25.59375
+        },
+        "cx": 1492,
+        "cy": 127.796875,
+        "insidePlayerCard": false,
+        "insideOpponentCard": true,
+        "textNow": "8000"
+      },
+      {
+        "i": 1,
+        "rect": {
+          "x": 85,
+          "y": 825.40625,
+          "w": 158,
+          "h": 25.59375
+        },
+        "cx": 164,
+        "cy": 838.203125,
+        "insidePlayerCard": true,
+        "insideOpponentCard": false,
+        "textNow": "8000"
+      },
+      {
+        "i": 2,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "cx": 0,
+        "cy": 0,
+        "insidePlayerCard": false,
+        "insideOpponentCard": true,
+        "textNow": "8000"
+      },
+      {
+        "i": 3,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "cx": 0,
+        "cy": 0,
+        "insidePlayerCard": true,
+        "insideOpponentCard": false,
+        "textNow": "8000"
+      }
+    ]
+  },
+  "after": {
+    "playerCardPlayer": {
+      "selector": "app-pvp-player-card[side=\"player\"]",
+      "found": true,
+      "rect": {
+        "x": 1344,
+        "y": 79,
+        "w": 240,
+        "h": 72.59375
+      },
+      "cx": 1464,
+      "cy": 115.296875
+    },
+    "playerCardOpponent": {
+      "selector": "app-pvp-player-card[side=\"opponent\"]",
+      "found": true,
+      "rect": {
+        "x": 16,
+        "y": 789.40625,
+        "w": 240,
+        "h": 70.59375
+      },
+      "cx": 136,
+      "cy": 824.703125
+    },
+    "lpBadgeAll": [
+      {
+        "i": 0,
+        "cx": 108,
+        "cy": 811.203125
+      },
+      {
+        "i": 1,
+        "cx": 1436,
+        "cy": 100.796875
+      },
+      {
+        "i": 2,
+        "cx": 0,
+        "cy": 0
+      },
+      {
+        "i": 3,
+        "cx": 0,
+        "cy": 0
+      }
+    ]
+  }
+}

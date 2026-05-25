@@ -1,0 +1,28 @@
+{
+  "scenario": "T5",
+  "durationMs": 6000,
+  "samples": [],
+  "fps": {
+    "avg": 60.00300015000751,
+    "min": 59.52380952380888,
+    "max": 60.60606060606061,
+    "frames": 360
+  },
+  "finalRect": {
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+  },
+  "notes": [
+    "Flips applied: 12",
+    "Animations kicked: 40",
+    "Wall clock: 6007ms",
+    "Stability heuristic: fps.avg ≥ 55 = stable, < 30 = unacceptable."
+  ],
+  "extra": {
+    "flips": 12,
+    "animsKicked": 40,
+    "totalMs": 6007.199999988079
+  }
+}

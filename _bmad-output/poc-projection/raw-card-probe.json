@@ -1,0 +1,550 @@
+{
+  "allDataZones": [
+    "HAND-1",
+    "M1-1",
+    "M2-1",
+    "M3-1",
+    "M4-1",
+    "M5-1",
+    "S1-1",
+    "S2-1"
+  ],
+  "hand0": {
+    "label": "HAND-0 (player)",
+    "found": true,
+    "rootZone": "HAND-0",
+    "directChildren": [
+      {
+        "tag": "div",
+        "id": null,
+        "classes": [
+          "hand-row",
+          "hand-row--player"
+        ],
+        "dataAttrs": [],
+        "transform": "",
+        "inlineTransform": ""
+      }
+    ],
+    "descendantsHead": [
+      {
+        "tag": "div",
+        "classes": [
+          "hand-row",
+          "hand-row--player"
+        ],
+        "transform": "",
+        "rect": {
+          "x": 8,
+          "y": 798,
+          "width": 1584,
+          "height": 120,
+          "top": 798,
+          "right": 1592,
+          "bottom": 918,
+          "left": 8
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.997564, -0.0697565, 0.0697565, 0.997564, 0.558052, 7.98051)",
+        "rect": {
+          "x": 684.8812866210938,
+          "y": 803.4019165039062,
+          "width": 90.4827880859375,
+          "height": 125.44952392578125,
+          "top": 803.4019165039062,
+          "right": 775.3640747070312,
+          "bottom": 928.8514404296875,
+          "left": 684.8812866210938
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "",
+        "rect": {
+          "x": 684.8812866210938,
+          "y": 803.4019165039062,
+          "width": 90.4827880859375,
+          "height": 125.44952392578125,
+          "top": 803.4019165039062,
+          "right": 775.3640747070312,
+          "bottom": 928.8514404296875,
+          "left": 684.8812866210938
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.999391, -0.0348995, 0.0348995, 0.999391, 0.139598, 3.99756)",
+        "rect": {
+          "x": 721.6954956054688,
+          "y": 800.6343383789062,
+          "width": 86.45025634765625,
+          "height": 122.799560546875,
+          "top": 800.6343383789062,
+          "right": 808.145751953125,
+          "bottom": 923.4338989257812,
+          "left": 721.6954956054688
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "",
+        "rect": {
+          "x": 721.6954956054688,
+          "y": 800.6343383789062,
+          "width": 86.45025634765625,
+          "height": 122.799560546875,
+          "top": 800.6343383789062,
+          "right": 808.145751953125,
+          "bottom": 923.4338989257812,
+          "left": 721.6954956054688
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "rect": {
+          "x": 758.84375,
+          "y": 798,
+          "width": 82.3125,
+          "height": 120,
+          "top": 798,
+          "right": 841.15625,
+          "bottom": 918,
+          "left": 758.84375
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "",
+        "rect": {
+          "x": 758.84375,
+          "y": 798,
+          "width": 82.3125,
+          "height": 120,
+          "top": 798,
+          "right": 841.15625,
+          "bottom": 918,
+          "left": 758.84375
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.999391, 0.0348995, -0.0348995, 0.999391, -0.139598, 3.99756)",
+        "rect": {
+          "x": 791.854248046875,
+          "y": 800.6343383789062,
+          "width": 86.45025634765625,
+          "height": 122.799560546875,
+          "top": 800.6343383789062,
+          "right": 878.3045043945312,
+          "bottom": 923.4338989257812,
+          "left": 791.854248046875
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "",
+        "rect": {
+          "x": 791.854248046875,
+          "y": 800.6343383789062,
+          "width": 86.45025634765625,
+          "height": 122.799560546875,
+          "top": 800.6343383789062,
+          "right": 878.3045043945312,
+          "bottom": 923.4338989257812,
+          "left": 791.854248046875
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.997564, 0.0697565, -0.0697565, 0.997564, -0.558052, 7.98051)",
+        "rect": {
+          "x": 824.6359252929688,
+          "y": 803.4019165039062,
+          "width": 90.4827880859375,
+          "height": 125.44952392578125,
+          "top": 803.4019165039062,
+          "right": 915.1187133789062,
+          "bottom": 928.8514404296875,
+          "left": 824.6359252929688
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "",
+        "rect": {
+          "x": 824.6359252929688,
+          "y": 803.4019165039062,
+          "width": 90.4827880859375,
+          "height": 125.44952392578125,
+          "top": 803.4019165039062,
+          "right": 915.1187133789062,
+          "bottom": 928.8514404296875,
+          "left": 824.6359252929688
+        }
+      }
+    ]
+  },
+  "hand1": {
+    "label": "HAND-1 (opponent)",
+    "found": true,
+    "rootZone": "HAND-1",
+    "directChildren": [
+      {
+        "tag": "div",
+        "id": null,
+        "classes": [
+          "hand-row",
+          "hand-row--opponent"
+        ],
+        "dataAttrs": [],
+        "transform": "",
+        "inlineTransform": ""
+      }
+    ],
+    "descendantsHead": [
+      {
+        "tag": "div",
+        "classes": [
+          "hand-row",
+          "hand-row--opponent"
+        ],
+        "transform": "",
+        "rect": {
+          "x": 8,
+          "y": 3,
+          "width": 1584,
+          "height": 120,
+          "top": 3,
+          "right": 1592,
+          "bottom": 123,
+          "left": 8
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.997564, -0.0697565, 0.0697565, 0.997564, -0.558052, -7.98051)",
+        "rect": {
+          "x": 692.1359252929688,
+          "y": -7.85142707824707,
+          "width": 90.4827880859375,
+          "height": 125.44951629638672,
+          "top": -7.85142707824707,
+          "right": 782.6187133789062,
+          "bottom": 117.59808921813965,
+          "left": 692.1359252929688
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+        "rect": {
+          "x": 692.1359252929688,
+          "y": -7.85142707824707,
+          "width": 90.4827880859375,
+          "height": 125.44951629638672,
+          "top": -7.85142707824707,
+          "right": 782.6187133789062,
+          "bottom": 117.59808921813965,
+          "left": 692.1359252929688
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.999391, -0.0348995, 0.0348995, 0.999391, -0.139598, -3.99756)",
+        "rect": {
+          "x": 725.604248046875,
+          "y": -2.4338955879211426,
+          "width": 86.45025634765625,
+          "height": 122.79956817626953,
+          "top": -2.4338955879211426,
+          "right": 812.0545043945312,
+          "bottom": 120.36567258834839,
+          "left": 725.604248046875
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+        "rect": {
+          "x": 725.604248046875,
+          "y": -2.4338955879211426,
+          "width": 86.45025634765625,
+          "height": 122.79956817626953,
+          "top": -2.4338955879211426,
+          "right": 812.0545043945312,
+          "bottom": 120.36567258834839,
+          "left": 725.604248046875
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "rect": {
+          "x": 758.84375,
+          "y": 3,
+          "width": 82.3125,
+          "height": 120,
+          "top": 3,
+          "right": 841.15625,
+          "bottom": 123,
+          "left": 758.84375
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+        "rect": {
+          "x": 758.84375,
+          "y": 3,
+          "width": 82.3125,
+          "height": 120,
+          "top": 3,
+          "right": 841.15625,
+          "bottom": 123,
+          "left": 758.84375
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.999391, 0.0348995, -0.0348995, 0.999391, 0.139598, -3.99756)",
+        "rect": {
+          "x": 787.9454956054688,
+          "y": -2.4338955879211426,
+          "width": 86.45025634765625,
+          "height": 122.79956817626953,
+          "top": -2.4338955879211426,
+          "right": 874.395751953125,
+          "bottom": 120.36567258834839,
+          "left": 787.9454956054688
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+        "rect": {
+          "x": 787.9454956054688,
+          "y": -2.4338955879211426,
+          "width": 86.45025634765625,
+          "height": 122.79956817626953,
+          "top": -2.4338955879211426,
+          "right": 874.395751953125,
+          "bottom": 120.36567258834839,
+          "left": 787.9454956054688
+        }
+      },
+      {
+        "tag": "div",
+        "classes": [
+          "hand-card"
+        ],
+        "transform": "matrix(0.997564, 0.0697565, -0.0697565, 0.997564, 0.558052, -7.98051)",
+        "rect": {
+          "x": 817.3812866210938,
+          "y": -7.85142707824707,
+          "width": 90.4827880859375,
+          "height": 125.44951629638672,
+          "top": -7.85142707824707,
+          "right": 907.8640747070312,
+          "bottom": 117.59808921813965,
+          "left": 817.3812866210938
+        }
+      },
+      {
+        "tag": "img",
+        "classes": [
+          "hand-card-art"
+        ],
+        "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+        "rect": {
+          "x": 817.3812866210938,
+          "y": -7.85142707824707,
+          "width": 90.4827880859375,
+          "height": 125.44951629638672,
+          "top": -7.85142707824707,
+          "right": 907.8640747070312,
+          "bottom": 117.59808921813965,
+          "left": 817.3812866210938
+        }
+      }
+    ]
+  },
+  "elementsWithRotateZ": [
+    {
+      "tag": "div",
+      "classes": [
+        "swipe-hint"
+      ],
+      "dataZone": null,
+      "transform": "matrix(1, 0, 0, 1, -100.398, 0)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "div",
+      "classes": [
+        "hand-card"
+      ],
+      "dataZone": null,
+      "transform": "matrix(0.997564, -0.0697565, 0.0697565, 0.997564, -0.558052, -7.98051)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "img",
+      "classes": [
+        "hand-card-art"
+      ],
+      "dataZone": null,
+      "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "div",
+      "classes": [
+        "hand-card"
+      ],
+      "dataZone": null,
+      "transform": "matrix(0.999391, -0.0348995, 0.0348995, 0.999391, -0.139598, -3.99756)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "img",
+      "classes": [
+        "hand-card-art"
+      ],
+      "dataZone": null,
+      "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "div",
+      "classes": [
+        "hand-card"
+      ],
+      "dataZone": null,
+      "transform": "matrix(1, 0, 0, 1, 0, 0)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "img",
+      "classes": [
+        "hand-card-art"
+      ],
+      "dataZone": null,
+      "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "div",
+      "classes": [
+        "hand-card"
+      ],
+      "dataZone": null,
+      "transform": "matrix(0.999391, 0.0348995, -0.0348995, 0.999391, 0.139598, -3.99756)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "img",
+      "classes": [
+        "hand-card-art"
+      ],
+      "dataZone": null,
+      "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "div",
+      "classes": [
+        "hand-card"
+      ],
+      "dataZone": null,
+      "transform": "matrix(0.997564, 0.0697565, -0.0697565, 0.997564, 0.558052, -7.98051)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "img",
+      "classes": [
+        "hand-card-art"
+      ],
+      "dataZone": null,
+      "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+      "inOpponent": false,
+      "inPlayer": false
+    },
+    {
+      "tag": "img",
+      "classes": [
+        "card-art"
+      ],
+      "dataZone": null,
+      "transform": "matrix(-1, 0, 0, -1, 0, 0)",
+      "inOpponent": true,
+      "inPlayer": false
+    }
+  ]
+}

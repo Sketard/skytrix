@@ -1,0 +1,86 @@
+{
+  "scenario": "T6",
+  "durationMs": 4000,
+  "samples": [
+    {
+      "pct": 25,
+      "t": 1050,
+      "rect": {
+        "x": 191.95233154296875,
+        "y": 144.6348876953125,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 50,
+      "t": 27328.0868,
+      "rect": {
+        "x": 205.04205322265625,
+        "y": 120.02804565429688,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 75,
+      "t": 3041,
+      "rect": {
+        "x": 94.05023193359375,
+        "y": 46.033477783203125,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 100,
+      "t": 4038.0000000000005,
+      "rect": {
+        "x": 70.00238037109375,
+        "y": 30.0015869140625,
+        "w": 80,
+        "h": 120
+      }
+    }
+  ],
+  "fps": {
+    "avg": 52.41141732283465,
+    "min": 32.25806451612903,
+    "max": 71.42857142857143,
+    "frames": 213
+  },
+  "finalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "expectedFinalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "notes": [
+    "Container-relative coords. Float parented inside #container. Animation values are container-local translate.",
+    "Hypothesis (H-T6): browser auto-recomputes viewport projection on parent rotate; no JS coordination needed.",
+    "rectBefore-flip @ 50% viewport = (515,360)",
+    "rectAfter-flip  @ 50% viewport = (205,120)",
+    "IMPORTANT: in this isolated POC, T6 ≡ T2 numerically because both use container-local translate. The semantic distinction (viewport vs container coords) matters at the engine API level, not the WAAPI behavior level.",
+    "Verdict for T6 depends on: does the visible jump between rectBefore and rectAfter feel like an acceptable \"switch event\" or a bug? In a real switch UX, this is the entire perspective flip — expected to be instant."
+  ],
+  "extra": {
+    "rectBefore": {
+      "x": 514.9579467773438,
+      "y": 359.9719543457031,
+      "w": 80,
+      "h": 120
+    },
+    "rectAfter": {
+      "x": 205.04205322265625,
+      "y": 120.02804565429688,
+      "w": 80,
+      "h": 120
+    }
+  }
+}

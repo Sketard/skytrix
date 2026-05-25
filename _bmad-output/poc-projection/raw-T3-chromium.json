@@ -1,0 +1,88 @@
+{
+  "scenario": "T3",
+  "durationMs": 4000,
+  "samples": [
+    {
+      "pct": 25,
+      "t": 1064.800000011921,
+      "rect": {
+        "x": 191.95556640625,
+        "y": 144.63705444335938,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 50,
+      "t": 12262.1291,
+      "rect": {
+        "x": 201.55194091796875,
+        "y": 117.7012939453125,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 75,
+      "t": 3062.5,
+      "rect": {
+        "x": 95.309814453125,
+        "y": 46.87322998046875,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 100,
+      "t": 4057.5,
+      "rect": {
+        "x": 70.00555419921875,
+        "y": 30.003662109375,
+        "w": 80,
+        "h": 120.00003051757812
+      }
+    }
+  ],
+  "fps": {
+    "avg": 60.00296310928935,
+    "min": 59.52380952380888,
+    "max": 60.60606060606061,
+    "frames": 243
+  },
+  "finalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "expectedFinalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "notes": [
+    "setKeyframes() called at 50% with rotate(180) container transform.",
+    "setKeyframes callable: true.",
+    "currentTime preserved: before=2000, after=2000 → YES.",
+    "Jump-vs-post rects compared to detect easing restart (visual snap)."
+  ],
+  "extra": {
+    "ok": true,
+    "error": null,
+    "currentTimeBefore": 1999.908999967575,
+    "currentTimeAfter": 1999.908999967575,
+    "jumpRect": {
+      "x": 204.680419921875,
+      "y": 119.78695678710938,
+      "w": 80,
+      "h": 120
+    },
+    "postRect": {
+      "x": 201.55194091796875,
+      "y": 117.7012939453125,
+      "w": 80,
+      "h": 120
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "cardsBeforeCount": 0,
+  "cardsAfterCount": 0,
+  "sample": {
+    "before": [],
+    "after": []
+  },
+  "notes": [
+    "After 180° flip on .board-host: cards in .opponent-field were at rotateZ(180) → visually 0° (facing player/up).",
+    "Cards in .player-field were at rotateZ(0) → visually 180° (face down/upside-down).",
+    "Option A (suppression): remove cardBaseRotation entirely → both at 0° local → both at 180° after flip → both face down. WRONG.",
+    "Reconsider: Option A = ALWAYS apply 180° on cards in opponent-field (regardless of perspective). Then after board flip, opponent cards stay at 180° local + 180° board = 360° = 0° visual (face up to viewer). Player cards stay at 0° local + 180° board = 180° = face down.",
+    "No option preserves \"cards face their owner\" without a counter-rotation per card. That is the core insight U2 surfaces."
+  ]
+}

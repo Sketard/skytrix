@@ -1,0 +1,94 @@
+{
+  "scenario": "T4",
+  "durationMs": 4000,
+  "samples": [
+    {
+      "pct": 25,
+      "t": 1048,
+      "rect": {
+        "x": 188.02899169921875,
+        "y": 142.0193328857422,
+        "w": 80,
+        "h": 120.00001525878906
+      }
+    },
+    {
+      "pct": 50,
+      "t": 16775.1811,
+      "rect": {
+        "x": 369.9425354003906,
+        "y": 229.96168518066406,
+        "w": 80,
+        "h": 119.99998474121094
+      }
+    },
+    {
+      "pct": 75,
+      "t": 3052,
+      "rect": {
+        "x": 141.60540771484375,
+        "y": 77.7369384765625,
+        "w": 80,
+        "h": 120
+      }
+    },
+    {
+      "pct": 100,
+      "t": 4057.0000000000005,
+      "rect": {
+        "x": 70.04046630859375,
+        "y": 30.027008056640625,
+        "w": 80,
+        "h": 120
+      }
+    }
+  ],
+  "fps": {
+    "avg": 45.67779960707269,
+    "min": 32.25806451612903,
+    "max": 71.42857142857143,
+    "frames": 186
+  },
+  "finalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "expectedFinalRect": {
+    "x": 70,
+    "y": 30,
+    "w": 80,
+    "h": 120
+  },
+  "notes": [
+    "Gap frames between cancel and replay: 1",
+    "Time cost cancel→replay: 16.00ms",
+    "rect@cancel viewport=(515,360)",
+    "rect after transform applied viewport=(670,430)",
+    "rect after replay first frame viewport=(370,230)",
+    "Jump visible iff |rectAfterApply.viewport - rectAtCancel.viewport| > a few px."
+  ],
+  "extra": {
+    "gapFrames": 1,
+    "rectAtCancel": {
+      "x": 514.9579467773438,
+      "y": 359.9719543457031,
+      "w": 80,
+      "h": 120
+    },
+    "rectAfterApply": {
+      "x": 670,
+      "y": 430,
+      "w": 80,
+      "h": 120
+    },
+    "rectAfterReplay": {
+      "x": 369.9425354003906,
+      "y": 229.96168518066406,
+      "w": 80,
+      "h": 119.99998474121094
+    },
+    "replayMs": 16
+  }
+}
