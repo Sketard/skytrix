@@ -54,6 +54,27 @@ ruleTester.run('pipeline-signal-tagged', rule, {
         }
       `,
     },
+    // (c) — class implements ResetTarget (α.4a — slim contract)
+    {
+      filename: pvpFile('foo.ts'),
+      code: `
+        import { signal } from '@angular/core';
+        class FooManager implements ResetTarget {
+          readonly state = signal(0);
+          private internal = signal(false);
+        }
+      `,
+    },
+    // (c) — class implements ResetTarget alongside another interface
+    {
+      filename: pvpFile('foo.ts'),
+      code: `
+        import { signal } from '@angular/core';
+        class FooManager implements OnDestroy, ResetTarget {
+          readonly state = signal(0);
+        }
+      `,
+    },
     // Out-of-scope file — rule no-ops, untagged is fine.
     {
       filename: outsideFile('foo.ts'),

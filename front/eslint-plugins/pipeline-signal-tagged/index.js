@@ -13,8 +13,11 @@
  *      pointers, timer flags). Never read by UI templates.
  *   2. **`*Source` suffix** — @Environment input (OS / user setting /
  *      session config). Read-only from the pipeline's POV.
- *   3. **Owned by a class that extends `BaseProjection`** — every other
- *      signal must be part of a registered projection (α.2 + α.4).
+ *   3. **Owned by a class that extends `BaseProjection` or implements
+ *      `ResetTarget`** — every other signal must be part of a class
+ *      that participates in the dispatcher contract (α.2 + α.4a + α.4b).
+ *      `ResetTarget` is the slim interface; `BaseProjection<T>` is the
+ *      strict superset for pure read-only projections (β.3+).
  *   4. **`// eslint-disable-next-line pipeline-signal-tagged`** — escape
  *      hatch for the rare legitimate exception (must include a `// why:`
  *      sibling comment per code-review convention).
@@ -53,7 +56,8 @@ const pipelineSignalTagged = {
         'Untagged signal `{{name}}`. Pick one: ' +
         '(a) prefix `_transport_` for transport state, ' +
         '(b) suffix `Source` for @Environment input, ' +
-        '(c) declare the host class extends `BaseProjection`. ' +
+        '(c) declare the host class `extends BaseProjection` or ' +
+        '`implements ResetTarget`. ' +
         'See duel-session-chantier.md §3.2.',
       untaggedAnonymousSignal:
         'Untagged anonymous signal() — assign to a named declaration ' +
@@ -130,23 +134,36 @@ const pipelineSignalTagged = {
       return null;
     }
 
+    /**
+     * Return true if a class node either extends `BaseProjection` or
+     * implements `ResetTarget`. The two participate in the same
+     * dispatcher contract (α.4a split): `BaseProjection<T>` is a strict
+     * superset of `ResetTarget`, and the lint treats both as the same
+     * "class membership is the tag" signal (option c in the rule's
+     * docstring).
+     */
+    function classIsProjectionLike(node) {
+      const sc = node.superClass;
+      const extendsBaseProjection =
+        (sc?.type === 'Identifier' && sc.name === 'BaseProjection') ||
+        (sc?.type === 'CallExpression' && sc.callee?.name === 'BaseProjection') ||
+        (sc?.type === 'TSInstantiationExpression' && sc.expression?.name === 'BaseProjection');
+      if (extendsBaseProjection) return true;
+      // `implements ResetTarget` — TypeScript-ESLint surfaces this as
+      // node.implements: TSClassImplements[] with .expression?.name.
+      const impls = /** @type {Array<{expression?: {name?: string}}>|undefined} */ (node.implements);
+      if (impls?.some(impl => impl.expression?.name === 'ResetTarget')) return true;
+      return false;
+    }
+
     return {
       'ClassDeclaration'(node) {
         if (!node.body) return;
-        const sc = node.superClass;
-        // Match `extends BaseProjection<X>` (TSAsExpression / TypeReference)
-        // or `extends BaseProjection` (Identifier).
-        const isProj =
-          (sc?.type === 'Identifier' && sc.name === 'BaseProjection') ||
-          (sc?.type === 'CallExpression' && sc.callee?.name === 'BaseProjection') ||
-          (sc?.type === 'TSInstantiationExpression' && sc.expression?.name === 'BaseProjection');
-        classBodyIsProjection.set(node.body, !!isProj);
+        classBodyIsProjection.set(node.body, classIsProjectionLike(node));
       },
       'ClassExpression'(node) {
         if (!node.body) return;
-        const sc = node.superClass;
-        const isProj = sc?.type === 'Identifier' && sc.name === 'BaseProjection';
-        classBodyIsProjection.set(node.body, !!isProj);
+        classBodyIsProjection.set(node.body, classIsProjectionLike(node));
       },
 
       'CallExpression'(node) {
