@@ -28,19 +28,31 @@ describe('expandInvalidatedScopes', () => {
     expect(out.has('PERSPECTIVE_LIFETIME')).toBeTrue();
   });
 
-  it('uses the deepest entry in a mixed input', () => {
-    // CONNECTION_LIFETIME (idx 2) is deeper than SESSION_LIFETIME (idx 0)
-    // → output should include the original SESSION_LIFETIME +
-    //   everything from CONNECTION_LIFETIME onwards. DUEL_LIFETIME
-    //   is NOT added because it lies between SESSION and CONNECTION
-    //   and was not in the input.
+  it('fills gaps below the shallowest entry in a mixed input (P9 hardening 2026-05-26)', () => {
+    // SESSION_LIFETIME (idx 0) is the shallowest = most-durable = highest;
+    // anything below it (DUEL, CONNECTION, PERSPECTIVE) is implicitly
+    // invalidated. The result therefore fills DUEL even though the input
+    // only named SESSION + CONNECTION. Previous algorithm anchored on the
+    // deepest entry and dropped DUEL silently — see code-review #2.
     const out = expandInvalidatedScopes(
       new Set<ScopeCategory>(['SESSION_LIFETIME', 'CONNECTION_LIFETIME']),
     );
     expect(out.has('SESSION_LIFETIME')).toBeTrue();
+    expect(out.has('DUEL_LIFETIME')).toBeTrue();
     expect(out.has('CONNECTION_LIFETIME')).toBeTrue();
     expect(out.has('PERSPECTIVE_LIFETIME')).toBeTrue();
-    expect(out.has('DUEL_LIFETIME')).toBeFalse();
+    expect(out.size).toBe(4);
+  });
+
+  it('expands non-contiguous {DUEL_LIFETIME, PERSPECTIVE_LIFETIME} to include CONNECTION_LIFETIME', () => {
+    const out = expandInvalidatedScopes(
+      new Set<ScopeCategory>(['DUEL_LIFETIME', 'PERSPECTIVE_LIFETIME']),
+    );
+    expect(out.has('SESSION_LIFETIME')).toBeFalse();
+    expect(out.has('DUEL_LIFETIME')).toBeTrue();
+    expect(out.has('CONNECTION_LIFETIME')).toBeTrue();
+    expect(out.has('PERSPECTIVE_LIFETIME')).toBeTrue();
+    expect(out.size).toBe(3);
   });
 
   it('does not mutate the input set', () => {
