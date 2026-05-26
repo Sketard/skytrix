@@ -261,7 +261,7 @@
                                (actionResponse)="onBoardActionResponse($event)"
                                (menuRequest)="onBoardMenuRequest($event)"
                                (zonePillRequest)="onZonePillRequest($event)"
-                               [targetedZoneKeys]="animationService.targetedZoneKeys()"
+                               [targetedZoneKeys]="animationService.targetedZoneKeys.value()"
                                [preTargetZoneKeys]="preTargetZoneKeys()"
                                [revealedZoneKeys]="revealedZoneKeys()"
                                [counterPulseKey]="animationService.counterPulse.value()"

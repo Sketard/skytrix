@@ -87,7 +87,7 @@
                                [animatingLp]="lpTracker.animatingLpPlayer()"
                                [activeChainLinks]="adapter.activeChainLinks()"
                                [chainPhase]="adapter.chainPhase()"
-                               [targetedZoneKeys]="orchestrator.targetedZoneKeys()"
+                               [targetedZoneKeys]="orchestrator.targetedZoneKeys.value()"
                                [counterPulseKey]="orchestrator.counterPulse.value()"
                                [swapGraveDeckKeys]="orchestrator.swapGraveDeckKeys.value()"
                                [preTargetZoneKeys]="emptyStringSet"

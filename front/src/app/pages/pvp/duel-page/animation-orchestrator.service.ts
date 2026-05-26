@@ -44,7 +44,7 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
-import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, type ScopeCategory } from '../projections';
+import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, TargetedZoneKeysProjection, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -345,8 +345,21 @@ export class AnimationOrchestratorService {
     reducedMotion: () => this.ctx.reducedMotion(),
   });
 
-  /** Zone keys of cards currently being targeted (MSG_BECOME_TARGET). */
-  readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
+  /**
+   * β.3 Lot 4.1-REDO — zone keys of FIELD cards currently being
+   * targeted (MSG_BECOME_TARGET). Pile-zone targets (GY/Banished/
+   * Extra) are handled separately by `TargetIndicatorManager`. The
+   * projection self-sets on each MSG_BECOME_TARGET (accumulation /
+   * union) and self-clears on `AnimationPhaseCompleted({phase:
+   * 'reticle-pulse', msgType: 'MSG_BECOME_TARGET'})` emitted by the
+   * handler via `phaseWait('reticle-pulse', holdMs, 'MSG_BECOME_TARGET')`
+   * — the boundary between the reticle hold and the pile-float
+   * fade-out (which itself outlives the field reticles).
+   * Templates read `targetedZoneKeys.value()`.
+   */
+  readonly targetedZoneKeys = new TargetedZoneKeysProjection({
+    relativePlayer: (abs: number) => this.ctx.relativePlayer(abs),
+  });
   /**
    * β.3 Lot 2.4-REDO — pulse glow on `GY-rel` + `DECK-rel` zones
    * during the glow sub-phase of `MSG_SWAP_GRAVE_DECK`. Cleared by
@@ -615,6 +628,13 @@ export class AnimationOrchestratorService {
     // visual `LpAnimData | null` slice (PERSPECTIVE_LIFETIME).
     this.scopeDispatcher?.register(this.lpTracker.animatingLpPlayerProjection);
     this.lpTracker.animatingLpPlayerProjection.attachEventStream(this._eventStream, this.injector);
+
+    // β.3 Lot 4.1-REDO — targeted-zone-keys projection: accumulates FIELD
+    // zone keys across back-to-back MSG_BECOME_TARGET, cleared by
+    // AnimationPhaseCompleted({phase:'reticle-pulse'}) emitted by the
+    // handler via `phaseWait`.
+    this.scopeDispatcher?.register(this.targetedZoneKeys);
+    this.targetedZoneKeys.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -930,11 +950,11 @@ export class AnimationOrchestratorService {
     this.scopeDispatcher?.dispatch(scopes);
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
-    this.targetedZoneKeys.set(new Set());
     this.targetIndicator.reset();
-    // β.3 Lot 2.3 + 2.4-REDO — `counterPulse` + `swapGraveDeckKeys`
-    // projections clear themselves via `applyReset` driven by the
-    // scopeDispatcher.dispatch above (PERSPECTIVE_LIFETIME scope).
+    // β.3 Lot 2.3 + 2.4-REDO + 4.1-REDO — `counterPulse` +
+    // `swapGraveDeckKeys` + `targetedZoneKeys` projections clear
+    // themselves via `applyReset` driven by the scopeDispatcher.dispatch
+    // above (PERSPECTIVE_LIFETIME scope).
     this.toastService.clear();
     // β.2a note — any `EffectAbandoned(checkpoint)` emitted by the DEP
     // during `dispatch(scopes)` above lands here BEFORE the clear, so
@@ -1452,24 +1472,20 @@ export class AnimationOrchestratorService {
   }
 
   private handleBecomeTarget(msg: BecomeTargetMsg): number {
-    const ownIdx = this.ctx.ownPlayerIndex();
-    // Field-zone targets keep the existing reticle binding on `.zone-card--targeted`.
-    // Pile-zone targets (GY/Banished/Extra) are surfaced as floats above the pile,
-    // since `.zone-pile` only renders the top card and would otherwise mis-target.
-    // Accumulate (union) field keys instead of replacing — back-to-back MSG_BECOME_TARGET
-    // (one per card) would otherwise leave only the last target highlighted.
-    const fieldKeys = new Set<string>(this.targetedZoneKeys());
-    for (const c of msg.cards) {
-      if (c.location === LOCATION.MZONE || c.location === LOCATION.SZONE) {
-        const relPlayer = c.player === ownIdx ? 0 : 1;
-        fieldKeys.add(locationToZoneKey(c.location, c.sequence, relPlayer));
-      }
-    }
-    this.targetedZoneKeys.set(fieldKeys);
+    // β.3 Lot 4.1-REDO — `targetedZoneKeys` projection observes this MSG
+    // via the EventStream `pushToStream` tap and self-sets (union over
+    // FIELD locations only). Handler keeps the pile-float side-effect +
+    // a11y announce + the `phaseWait` that clears the field reticles
+    // at the pulse boundary (before the pile-float fade-out, which
+    // outlives the reticles).
     this.targetIndicator.spawnPileFloats(msg);
     const holdMs = BECOME_TARGET_PULSE_MS * this.ctx.speedMultiplier();
-    const tid = setTimeout(() => this.targetedZoneKeys.set(new Set()), holdMs);
-    this.animationTimeouts.push(tid);
+    // Fire-and-forget: the projection self-clears on the emitted
+    // AnimationPhaseCompleted event. The runner waits `holdMs` (last
+    // MSG) or `TARGET_PILE_FLOAT_STAGGER_MS` (non-last) via the
+    // numeric return below — symmetric with the legacy setTimeout
+    // that lived inline.
+    void this.phaseWait('reticle-pulse', holdMs, 'MSG_BECOME_TARGET');
     // Pile-target floats live until handleChainSolving calls targetIndicator.cleanup().
     // The cascade safety timer is sized for the worst case (many targets + slow
     // playback) plus a margin; a chain that never resolves (negated, error)

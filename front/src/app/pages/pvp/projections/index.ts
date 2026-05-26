@@ -24,3 +24,7 @@ export {
   AnimatingLpProjection,
   type LpAnimData,
 } from './animating-lp.projection';
+export {
+  TargetedZoneKeysProjection,
+  type TargetedZoneKeysProjectionDeps,
+} from './targeted-zone-keys.projection';
