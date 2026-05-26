@@ -107,6 +107,42 @@ describe('LpAnimationTracker', () => {
       // speedMultiplier = 1, baseLpDuration = 500 → durationMs = 500
       expect(delta.durationMs).toBe(500);
     });
+
+    it('β.3 R4 — peekLpDelta MUST read trackedLp BEFORE processLpEvent mutates (case lp order contract)', () => {
+      // The orchestrator's `processDirective.case "lp"` runs in this
+      // strict order:
+      //   1. `decorateLpEventForStream(event)` → calls peekLpDelta
+      //      (pre-mutation read of trackedLp).
+      //   2. `pushToStream(decoratedEvent)` → feeds the projection
+      //      with `{fromLp, toLp}`.
+      //   3. `fireLpReplayEvent(event)` → calls processLpEvent
+      //      (mutates trackedLp).
+      //
+      // If anyone swaps steps 1 and 3, `peekLpDelta` reads the
+      // POST-mutation value: `fromLp === toLp` → badge animation
+      // silently freezes (no visible interpolation). This test pins
+      // the contract by asserting `peekLpDelta` returns the
+      // PRE-mutation `fromLp` when called BEFORE `processLpEvent`.
+      const delta = tracker.peekLpDelta(0, 1000, 'damage');
+      tracker.processLpEvent(0, 1000, 'damage');
+      expect(delta.fromLp).toBe(8000);
+      expect(delta.toLp).toBe(7000);
+      expect(tracker.getTrackedLp()[0]).toBe(7000);
+    });
+
+    it('β.3 R4 (regression case) — swapping the order desync\'s the projection', () => {
+      // Asserts the INVERTED order produces the wrong delta — proving
+      // the contract pinned above isn't a tautology. If a future
+      // refactor moves `processLpEvent` BEFORE `peekLpDelta`, this
+      // test surfaces the silent freeze.
+      tracker.processLpEvent(0, 1000, 'damage');
+      const delta = tracker.peekLpDelta(0, 500, 'damage');
+      // Post-mutation read: fromLp is now 7000, not 8000.
+      expect(delta.fromLp).toBe(7000);
+      // And toLp would be 6500, not the 7500 we'd expect if peek
+      // had run before the mutation.
+      expect(delta.toLp).toBe(6500);
+    });
   });
 
   describe('commitIfPending', () => {

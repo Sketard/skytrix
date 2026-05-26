@@ -85,15 +85,16 @@ export class LpAnimationTracker implements ResetTarget {
    * `lpDelta` so the projection can consume it without duplicating
    * the tracker's state.
    *
-   * `processLpEvent` is the mutating sibling — it re-derives the same
-   * delta and applies the mutation. Both methods agree by construction
-   * (same `relativePlayer` mapping, same arithmetic, same
-   * `baseLpDuration * speedMultiplier`).
+   * `processLpEvent` is the mutating sibling — it re-uses the same
+   * `_computeLpArithmetic` helper and applies the mutation. Both
+   * methods agree by construction (single source of arithmetic, single
+   * `relativePlayer` mapping). β.3 checkpoint R1 mitigation
+   * (2026-05-26): extracted from two duplicated 3-line blocks that
+   * existed in this file before — a regression there would have
+   * silently desynchronised the projection from the tracker.
    */
   peekLpDelta(player: number, amount: number, type: 'damage' | 'recover'): { fromLp: number; toLp: number; durationMs: number } {
-    const relativeIdx = this.ctx.relativePlayer(player);
-    const fromLp = this.trackedLp[relativeIdx] ?? 8000;
-    const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
+    const { fromLp, toLp } = this._computeLpArithmetic(player, amount, type);
     const speedMultiplier = this.ctx.speedMultiplier();
     const durationMs = Math.round(this.baseLpDuration * speedMultiplier);
     return { fromLp, toLp, durationMs };
@@ -107,9 +108,7 @@ export class LpAnimationTracker implements ResetTarget {
     // This method keeps its mutating role: advance `trackedLp`,
     // register the pending commit, fire the a11y announce, return the
     // runner's hold duration.
-    const relativeIdx = this.ctx.relativePlayer(player);
-    const fromLp = this.trackedLp[relativeIdx] ?? 8000;
-    const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
+    const { relativeIdx, toLp } = this._computeLpArithmetic(player, amount, type);
     this.trackedLp[relativeIdx] = toLp;
 
     this._pendingLpCommits.add(relativeIdx as Player);
@@ -122,6 +121,32 @@ export class LpAnimationTracker implements ResetTarget {
   }
 
   /**
+   * β.3 checkpoint R1 mitigation (2026-05-26) — single source of LP
+   * arithmetic shared by `peekLpDelta` (pure, called at push time by
+   * the orchestrator's `decorateLpEventForStream`) and
+   * `processLpEvent` (mutating, called from the dispatch switch).
+   *
+   * Returns the relative player index AND the from/to LP values
+   * computed against the CURRENT `trackedLp` state. Does NOT mutate.
+   * Callers responsible for any subsequent mutation /
+   * pending-commit / announce.
+   *
+   * Keeping this as a private method (not a free function) so it can
+   * read `this.trackedLp` and `this.ctx.relativePlayer` without
+   * threading them through arguments.
+   */
+  private _computeLpArithmetic(
+    player: number,
+    amount: number,
+    type: 'damage' | 'recover',
+  ): { relativeIdx: 0 | 1; fromLp: number; toLp: number } {
+    const relativeIdx = this.ctx.relativePlayer(player);
+    const fromLp = this.trackedLp[relativeIdx] ?? 8000;
+    const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
+    return { relativeIdx, fromLp, toLp };
+  }
+
+  /**
    * Commit pending LP to rendered state.
    * Called by the queue loop after an LP event's animation duration elapses.
    * No-op if nothing is pending.
@@ -129,6 +154,18 @@ export class LpAnimationTracker implements ResetTarget {
    * β.3 Lot 2.2-REDO — the projection's `value` is cleared by its own
    * `AnimationCompleted` observation (emitted by `onStepSettled` for
    * the LP message), not here.
+   *
+   * **β.3 checkpoint R5 mitigation (2026-05-26)** — contract change
+   * vs pre-β.3: `commitIfPending` USED TO clear `animatingLpPlayer`
+   * synchronously. Now it does NOT. Audit at Lot 2.2-REDO landing
+   * confirmed `animatingLpPlayer` has ZERO observer outside
+   * `pvp-lp-badge.component` (the LP badge UI). If a future feature
+   * subscribes to `animatingLpPlayer` to detect "LP commit done",
+   * it would be DESYNC'd: the animation surface stays set until
+   * `AnimationCompleted` fires (one tick after `commitIfPending`).
+   * Use `hasPendingCommit` for "is there pending commit work" or
+   * `AnimationCompleted({msgType: 'MSG_DAMAGE'|...})` on the stream
+   * for "the LP animation finished".
    */
   commitIfPending(): void {
     if (this._pendingLpCommits.size === 0) return;

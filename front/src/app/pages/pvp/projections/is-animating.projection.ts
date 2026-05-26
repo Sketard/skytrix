@@ -38,6 +38,24 @@
 // `resetAllState()` were redundant: the preceding
 // `clearTimersAndPolling → runner.requestStop()` already flips via the
 // runner callback. Both removed alongside this migration.
+//
+// **β.3 checkpoint R2 mitigation (2026-05-26)** — audited reader list
+// (load-bearing — verify before adding a synchronous reader):
+//   1. `PollDropWatchdog.arm()` getter — fires on poll, not on flip.
+//   2. `chainManager.initResumeEffect` callback — reactive to
+//      `chainOverlayReady`.
+//   3. `prompt-derivation.service.visiblePrompt` computed — reactive.
+//   4. `duel-animation-bridge.service` `initEffects` effect — reactive
+//      to `logicalState`.
+//
+// If a NEW reader is introduced that reads `isAnimating.value()`
+// SYNCHRONOUSLY at the same tick as a `setRunning` call (i.e., not
+// inside an effect / computed / timer-driven getter), the one-tick
+// lag becomes observable. Either:
+//   (a) wrap the read in an effect / computed; OR
+//   (b) read the runner's `_isRunning` flag directly via a new
+//       sync-tap method (breaks the projection abstraction —
+//       discuss before).
 // =============================================================================
 
 import { signal, type Signal } from '@angular/core';

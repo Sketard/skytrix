@@ -294,6 +294,27 @@ export class AnimationOrchestratorService {
    */
   private _transport_lastDispatchedRef: number | null = null;
 
+  // ===========================================================================
+  // β.3 projections (Lots 1-4, 2026-05-26)
+  // ---------------------------------------------------------------------------
+  // Each projection below is instantiated as a `readonly` field then
+  // registered + attached in the constructor (search for
+  // `scopeDispatcher?.register`). The `?.` is load-bearing: it lets the
+  // unit-test suite construct the orchestrator without providing a
+  // `ScopeResetDispatcher`. In production the DuelPageComponent's
+  // providers list ALWAYS includes the dispatcher, so the register
+  // calls fire — see `duel-page.component.ts` providers section.
+  //
+  // **β.3 checkpoint R3 mitigation (2026-05-26)**: if you spot a
+  // projection registered without a matching `applyReset` branch in
+  // its corresponding scope dispatch, the `?.` silently no-ops in the
+  // unit-test path. The lint rule `pipeline-signal-tagged` catches
+  // missing signals, NOT missing dispatcher registrations. Each
+  // projection's spec covers `applyReset` directly without going
+  // through the dispatcher, which proves the projection's reset
+  // semantics independently of the wiring.
+  // ===========================================================================
+
   /**
    * β.3 Lot 1b — first production `BaseProjection<T>` consumer of the
    * DEP flux. Tracks the set of `chainId`s for which the chain overlay
@@ -389,7 +410,21 @@ export class AnimationOrchestratorService {
    * The `peekLpDelta` is a pure read of the tracker's current state;
    * the subsequent `processLpEvent` (called from the dispatch switch)
    * re-derives the same values + applies the mutation. The two
-   * methods agree by construction (same arithmetic).
+   * methods agree by construction (single `_computeLpArithmetic`
+   * helper since β.3 checkpoint R1 mitigation).
+   *
+   * **β.3 checkpoint R6 mitigation (2026-05-26)** — the returned
+   * object is a SHALLOW CLONE with `lpDelta` added; the original
+   * `event` arg is never mutated. Two callers retain a reference to
+   * the ORIGINAL (without `lpDelta`):
+   *   · `processEvent` keeps `event` for the dispatch switch (reads
+   *     `event.type`, `event.player`, `event.amount` — the
+   *     `lpDelta` field is purely for the stream / projection layer).
+   *   · `processDirective.case 'lp'` keeps `entry.event` and passes
+   *     it to `fireLpReplayEvent` (which also doesn't need
+   *     `lpDelta`).
+   * Any future caller that reads the event AFTER `pushToStream` sees
+   * the ORIGINAL (the decorated clone exists only on `_eventStream`).
    */
   private decorateLpEventForStream(event: GameEvent): GameEvent {
     switch (event.type) {
