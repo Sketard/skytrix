@@ -353,8 +353,12 @@ export class PvpChainOverlayComponent {
     });
 
     // Effect D — Hide overlay during "Chain Resolution" banner
+    // β.3 Lot 3.2-REDO — reads from the `ChainResolutionAnnounceProjection`
+    // now living on `chainManager`. The manager keeps a private sync
+    // mirror (`_announcePending`) for `handleSolving`'s predicate; the
+    // two flip on the same `pauseMs` timer.
     effect(() => {
-      const announcing = this.chainManager.chainResolutionAnnounce();
+      const announcing = this.chainManager.chainResolutionAnnounce.value();
       untracked(() => {
         if (announcing) {
           this.cancelEntryTimer();

@@ -42,7 +42,11 @@ describe('PvpChainOverlayComponent', () => {
   // (which would drag DuelLogger + buffer state).
   type ChainManagerMock = {
     chainEntryAnimating: WritableSignal<boolean>;
-    chainResolutionAnnounce: WritableSignal<boolean>;
+    // β.3 Lot 3.2-REDO — `chainResolutionAnnounce` is now a projection.
+    // The component reads `.value()` of a `Signal<boolean>`; the stub
+    // exposes a writable signal under `.value` so tests can flip it via
+    // `mockChainManager.chainResolutionAnnounce.value.set(true)`.
+    chainResolutionAnnounce: { value: WritableSignal<boolean> };
     chainOverlayReady: WritableSignal<boolean>;
     chainPromptGateActive: WritableSignal<boolean>;
     hasBufferedEvents: boolean;
@@ -116,7 +120,7 @@ describe('PvpChainOverlayComponent', () => {
 
     mockChainManager = {
       chainEntryAnimating: signal(false),
-      chainResolutionAnnounce: signal(false),
+      chainResolutionAnnounce: { value: signal(false) },
       chainOverlayReady: signal(true),
       chainPromptGateActive: signal(false),
       hasBufferedEvents: false,
@@ -597,7 +601,7 @@ describe('PvpChainOverlayComponent', () => {
       // Overlay was shown during entry
       expect(component.overlayVisible()).toBeTrue();
 
-      mockChainManager.chainResolutionAnnounce.set(true);
+      mockChainManager.chainResolutionAnnounce.value.set(true);
       fixture.detectChanges();
 
       expect(component.overlayVisible()).toBeFalse();

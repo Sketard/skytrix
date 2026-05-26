@@ -635,6 +635,16 @@ export class AnimationOrchestratorService {
     // handler via `phaseWait`.
     this.scopeDispatcher?.register(this.targetedZoneKeys);
     this.targetedZoneKeys.attachEventStream(this._eventStream, this.injector);
+
+    // β.3 Lot 3.2-REDO — chain-resolution-announce projection lives on
+    // `chainManager` (symmetric with the lp-tracker's projection placement).
+    // Sets on AnimationPhaseCompleted({phase:'banner-announce'}) emitted
+    // by `handleChainSolving`'s parallel `phaseWait`; clears on
+    // MSG_CHAIN_END / applyReset. The manager's sync `_announcePending`
+    // mirror is fed by the same `pauseMs` setTimeout — both flip in the
+    // same wall-clock tick.
+    this.scopeDispatcher?.register(this.chainManager.chainResolutionAnnounce);
+    this.chainManager.chainResolutionAnnounce.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -1451,6 +1461,15 @@ export class AnimationOrchestratorService {
       const pauseMs = this.ctx.scaledDuration(CHAIN_BANNER_PAUSE_MS);
       const tid = this.chainManager.scheduleBannerAnnounce(pauseMs);
       this.animationTimeouts.push(tid);
+      // β.3 Lot 3.2-REDO — emit the phase event in parallel so the
+      // `chainResolutionAnnounce` projection (templates + Effect D)
+      // flips reactive at the same wall-clock moment as the manager's
+      // private sync mirror (`_announcePending`). Fire-and-forget: the
+      // returned Promise is irrelevant; only the EventStream push
+      // matters. Both timers are tracked + cleared by their respective
+      // cleanup paths (animationTimeouts for phaseWait, _bannerTimeouts
+      // for the manager).
+      void this.phaseWait('banner-announce', pauseMs, 'MSG_CHAIN_SOLVING');
       return CHAIN_BANNER_DEFERRED_BUDGET_MS;
     }
     this.dataSource.applyChainSolving(msg.chainIndex);

@@ -355,11 +355,16 @@ describe('ChainResolutionManager', () => {
   });
 
   describe('scheduleBannerAnnounce', () => {
-    it('should set chainResolutionAnnounce after delay', fakeAsync(() => {
-      expect(mgr.chainResolutionAnnounce()).toBeFalse();
+    // β.3 Lot 3.2-REDO — the timer now sets the sync mirror
+    // `_announcePending`; the reactive surface (`chainResolutionAnnounce`,
+    // now a projection) flips separately when the orchestrator emits
+    // AnimationPhaseCompleted on the EventStream. Tests assert the sync
+    // mirror; the projection's behavior is covered in its own spec.
+    it('should set isAnnouncePending after delay', fakeAsync(() => {
+      expect(mgr.isAnnouncePending).toBeFalse();
       mgr.scheduleBannerAnnounce(10);
       tick(10);
-      expect(mgr.chainResolutionAnnounce()).toBeTrue();
+      expect(mgr.isAnnouncePending).toBeTrue();
     }));
   });
 
@@ -380,7 +385,9 @@ describe('ChainResolutionManager', () => {
       expect(mgr.hasBufferedEvents).toBeFalse();
       expect(mgr.hasActiveReplayTimeouts).toBeFalse();
       expect(mgr.deferredSolvingEvent).toBeNull();
-      expect(mgr.chainResolutionAnnounce()).toBeFalse();
+      // β.3 Lot 3.2-REDO — assert the sync mirror; the projection's
+      // `applyReset` is exercised in its own spec.
+      expect(mgr.isAnnouncePending).toBeFalse();
       expect(mgr.chainEntryAnimating()).toBeFalse();
       expect(mgr.chainPromptGateActive()).toBeFalse();
       expect(mgr.chainOverlayReady()).toBeTrue();
@@ -407,9 +414,14 @@ describe('ChainResolutionManager', () => {
       const r0 = mgr.handleSolving(solving(2));
       expect(r0.deferred).toBeTrue();
 
-      // Consume deferred, simulate banner, then re-process
+      // Consume deferred, simulate banner, then re-process.
+      // β.3 Lot 3.2-REDO — production sets `_announcePending=true` via the
+      // `scheduleBannerAnnounce(pauseMs)` setTimeout. Tests jump straight
+      // to the post-timer state via a private write (the manager has no
+      // public setter, and simulating with fakeAsync isn't worth the
+      // extra surface here).
       mgr.consumeDeferredSolving();
-      mgr.chainResolutionAnnounce.set(true);
+      (mgr as unknown as { _announcePending: boolean })._announcePending = true;
       const r0b = enterResolving(2);
       expect(r0b.deferred).toBeFalse();
       expect(mgr.isResolving).toBeTrue();

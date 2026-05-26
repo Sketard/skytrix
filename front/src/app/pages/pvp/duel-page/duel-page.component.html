@@ -224,7 +224,7 @@
     <!-- Duel overlays (opponent thinking glow, phase/chain announcements) -->
     <app-pvp-duel-overlays
       [phaseAnnouncement]="phaseService.announcement()"
-      [chainResolutionAnnounce]="chainManager.chainResolutionAnnounce()"
+      [chainResolutionAnnounce]="chainManager.chainResolutionAnnounce.value()"
       [opponentThinking]="waitingForOpponent() && roomState() === 'active'"
       [duelToast]="toastService.toast()" />
 

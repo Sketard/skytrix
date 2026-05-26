@@ -28,3 +28,6 @@ export {
   TargetedZoneKeysProjection,
   type TargetedZoneKeysProjectionDeps,
 } from './targeted-zone-keys.projection';
+export {
+  ChainResolutionAnnounceProjection,
+} from './chain-resolution-announce.projection';

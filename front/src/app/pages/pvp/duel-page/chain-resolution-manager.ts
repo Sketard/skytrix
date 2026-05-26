@@ -4,6 +4,7 @@ import type { ChainSolvingMsg, ChainSolvedMsg, ConfirmCardsMsg } from '../duel-w
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import {
+  ChainResolutionAnnounceProjection,
   ScopeResetDispatcher,
   type CheckpointPayload,
   type ResetTarget,
@@ -59,7 +60,30 @@ export class ChainResolutionManager implements ResetTarget {
   }
 
   // --- Public signals (overlay contract) ---
-  readonly chainResolutionAnnounce = signal(false);
+  /**
+   * β.3 Lot 3.2-REDO (2026-05-26) — `chainResolutionAnnounce` is the
+   * projection consumed by templates + Effect D in `pvp-chain-overlay`.
+   * It self-sets on `AnimationPhaseCompleted({phase: 'banner-announce',
+   * msgType: 'MSG_CHAIN_SOLVING'})` (emitted by the orchestrator via
+   * `phaseWait` alongside `scheduleBannerAnnounce`) and clears on
+   * `MSG_CHAIN_END` / applyReset. Templates read `.value()`.
+   *
+   * The **sync** mirror of the same state lives on this manager as a
+   * private `_announcePending: boolean` — used by `handleSolving`'s
+   * predicate at the chainIndex>0 first-link branch, where the read
+   * MUST be synchronous (it runs inside the dispatch tick, before the
+   * projection's effect has scheduled). The two flip on the same
+   * `pauseMs` timer (one is direct assignment, the other goes through
+   * the EventStream + effect — same wall-clock, ~1 microtask apart).
+   *
+   * **Why both?** Effect D is reactive (needs a signal). The predicate
+   * is sync (cannot read the projection's effect-driven update). The
+   * legacy single-signal had to serve both purposes; splitting them
+   * lets the projection track via the flux (DRY with other Lot 2/3
+   * projections) without sacrificing sync-read semantics for the
+   * deferred-banner branch.
+   */
+  readonly chainResolutionAnnounce = new ChainResolutionAnnounceProjection();
   readonly chainOverlayReady = signal<boolean>(true);
   readonly chainEntryAnimating = signal<boolean>(false);
   readonly chainPromptGateActive = signal<boolean>(false);
@@ -72,6 +96,12 @@ export class ChainResolutionManager implements ResetTarget {
   private _replayTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _deferredSolvingEvent: GameEvent | null = null;
   private _bannerTimeouts: ReturnType<typeof setTimeout>[] = [];
+  /**
+   * β.3 Lot 3.2-REDO — sync mirror of `chainResolutionAnnounce` for the
+   * `handleSolving` predicate. See the comment on the projection above
+   * for the rationale.
+   */
+  private _announcePending = false;
   /** Closure reading the processor's chainPhase signal — wired via
    *  `attachChainPhaseSource()`. Lazy: returns 'idle' if not yet attached. */
   private _phaseSource: (() => 'idle' | 'building' | 'resolving') | null = null;
@@ -113,12 +143,12 @@ export class ChainResolutionManager implements ResetTarget {
     const msg = event as ChainSolvingMsg;
 
     // First solving of multi-link chain: pause to see chain, then banner, then resolve
-    if (this._chainSolvedCount === 0 && msg.chainIndex > 0 && !this._deferredSolvingEvent && !this.chainResolutionAnnounce()) {
+    if (this._chainSolvedCount === 0 && msg.chainIndex > 0 && !this._deferredSolvingEvent && !this._announcePending) {
       this._deferredSolvingEvent = event;
       return { deferred: true, isSingleLink: false };
     }
 
-    this.chainResolutionAnnounce.set(false);
+    this._announcePending = false;
     // H1 — phase flip is owned by the processor; orchestrator calls
     // `dataSource.applyChainSolving(msg.chainIndex)` immediately after this
     // method returns. Buffer is reset here because it's manager state.
@@ -127,12 +157,27 @@ export class ChainResolutionManager implements ResetTarget {
     return { deferred: false, isSingleLink };
   }
 
-  /** Schedule the banner announce after a pause. Returns the timeout ID for the orchestrator to track. */
+  /**
+   * Schedule the banner announce after a pause. Returns the timeout ID
+   * for the orchestrator to track. β.3 Lot 3.2-REDO: this sets the SYNC
+   * mirror `_announcePending`; the orchestrator separately schedules a
+   * `phaseWait('banner-announce', pauseMs, 'MSG_CHAIN_SOLVING')` so the
+   * projection (reactive surface) flips on the same wall-clock pauseMs.
+   */
   scheduleBannerAnnounce(pauseMs: number): ReturnType<typeof setTimeout> {
-    const tid = setTimeout(() => this.chainResolutionAnnounce.set(true), pauseMs);
+    const tid = setTimeout(() => { this._announcePending = true; }, pauseMs);
     this._bannerTimeouts.push(tid);
     return tid;
   }
+
+  /**
+   * β.3 Lot 3.2-REDO — test/debug accessor for the sync mirror.
+   * Production code MUST NOT read `_announcePending` directly (use
+   * `chainResolutionAnnounce.value()` for the reactive surface or call
+   * methods on this manager). The chain-resolution-manager.spec uses
+   * this to mirror the legacy `chainResolutionAnnounce()` read.
+   */
+  get isAnnouncePending(): boolean { return this._announcePending; }
 
   /** Handle MSG_CHAIN_SOLVED. Sets overlay state, returns 'async'.
    *
@@ -281,7 +326,10 @@ export class ChainResolutionManager implements ResetTarget {
     this._replayTimeouts = [];
     this._chainSolvedCount = 0;
     this.chainPromptGateActive.set(false);
-    this.chainResolutionAnnounce.set(false);
+    // β.3 Lot 3.2-REDO — `chainResolutionAnnounce` is now a projection;
+    // it self-clears via its own `applyReset` (dispatcher-driven by the
+    // orchestrator's `_resetForSwitch`). Reset the sync mirror here.
+    this._announcePending = false;
     this.chainEntryAnimating.set(false);
     this.chainOverlayReady.set(true);
     this._deferredSolvingEvent = null;
