@@ -1,6 +1,6 @@
 ---
 title: β.3 cas #12 — Commit 1 (DEP refactor) — audit pre-implémentation
-status: audit-only (aucun code livré, juste rédaction de spec)
+status: RÉSOLU — Q2/Q4/Q5 tranchés par Axel 2026-05-26. Q1 et Q3 reportés pass 1 / Commit 2. Implémentation peut démarrer.
 parent_spec: beta-3-case-12-xyz-leave-with-materials-spec.md
 related_audits:
   - beta-3-case-12-commit-0bis-AUDIT.md (audit du protocole WS — session parallèle)
@@ -20,6 +20,69 @@ out_of_scope:
 ---
 
 # β.3 cas #12 — Commit 1 — Audit pre-implémentation
+
+## §0 Résolutions Axel 2026-05-26 (questions tranchées)
+
+Trois des cinq questions ouvertes ont été tranchées par Axel avant le
+démarrage du dev. Les deux restantes sont des sujets pass 1 / Commit 2
+(pas blockers pour Commit 1).
+
+### Q2 — Discrimination `RewriterVerdict` → **Option B**
+
+Test sur **valeurs spécifiques** `'absorb'` / `'absorb-and-close'`
+AVANT de typer comme `AwaitingPredicate`. Pas de wrapper `{kind:
+'rearm', predicate}`. Justification : zéro breaking change sur les 5
+ObserverRule (qui retournent `AwaitingPredicate` nu), lecture
+triviale, ordre de test naturel.
+
+Implémentation : helper privé `interpretRewriterVerdict(verdict)` qui
+fait :
+```
+if verdict === null → 'close'
+if verdict.kind === 'absorb' → 'absorb'
+if verdict.kind === 'absorb-and-close' → 'absorb-and-close'
+sinon → { kind: 'rearm', predicate: verdict as AwaitingPredicate }
+```
+
+Cf. spec §2.2 (mise à jour 2026-05-26).
+
+### Q5 — `RuleSinks` → **2 méthodes**
+
+Pas de `relativePlayer` exposé. `lockZone(zoneId, absolutePlayer)` fait
+la conversion absolu→relatif **interne au sink** via `ctx.relativePlayer`.
+Justification : garde le sink à 2 méthodes (décision D2 architecture
+review), rule reste agnostique de la convention DOM
+`${zoneId}-${relPlayer}`, pas de fuite d'usage hors zone keys.
+
+Question pass 1 résiduelle : la signature doit-elle aussi prendre
+`sequence` (`lockZone(zoneId, sequence, absolutePlayer)`) ? Dépend du
+format de la zone key construite par `locationToZoneKey` — à figer en
+début de Commit 1.
+
+Cf. spec §2.3 + §4.4 (mises à jour 2026-05-26).
+
+### Q4 — Predicate awaiting `player` → **Ajouter `player: m.player`**
+
+Robustesse gratuite pour la mass-destruction bilatérale. Le matcher
+strict-equality du DEP narrow avant que `chainTo` soit appelé. Aucun
+risque de faux négatif (un matériau a toujours le même `player`
+controller que l'XYZ qui le portait).
+
+Cf. spec §4.3 + §4.4.2 (mises à jour 2026-05-26).
+
+### Q1 — Merge order (pass 1)
+
+Reporté en pass 1 du dev : vérifier que TS strict mode accepte les
+fixtures synthétiques avec `overlayMaterials: [...]` même si le champ
+n'est pas encore dans `MoveMsg` (Commit 0bis pas mergé). Si TS bloque,
+cast `as unknown as MoveMsg` dans les fixtures de test.
+
+### Q3 — Replay seek + lock externe (Commit 2)
+
+Reporté en spec Commit 2. Commit 1 ne touche pas aux locks réels —
+`NO_OP_SINKS.lockZone` retourne un release no-op dans les tests.
+
+---
 
 ## §1 Résumé exécutif du commit 1
 
