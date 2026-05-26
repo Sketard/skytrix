@@ -1,6 +1,12 @@
 import { inject, Injectable, signal } from '@angular/core';
 import type { AttackMsg, BattleMsg } from '../duel-ws.types';
 import { LOCATION } from '../duel-ws.types';
+import {
+  ScopeResetDispatcher,
+  type CheckpointPayload,
+  type ResetTarget,
+  type ScopeCategory,
+} from '../projections';
 import { locationToZoneKey } from '../pvp-zone.utils';
 import { CardTravelEngine } from './card-travel-engine.service';
 import { DuelContext } from './duel-context';
@@ -14,11 +20,25 @@ interface PendingAttack {
 /**
  * Tracks in-progress attack animations (attack line + clash impact).
  * Provided at component level (NOT root) — same pattern as LpAnimationTracker.
+ *
+ * α.4b — implements `ResetTarget`. All carried state (pendingAttack
+ * signal + release timer) is `PERSPECTIVE_LIFETIME` — cleared at any
+ * `PerspectiveSwitched`. The legacy `reset()` stays in place; α.5 will
+ * remove its callsites.
  */
 @Injectable()
-export class BattleAnimationTracker {
+export class BattleAnimationTracker implements ResetTarget {
   private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly ctx = inject(DuelContext);
+  // `optional: true` so isolated unit specs don't need to provide the
+  // dispatcher; production DuelPageComponent providers always include it.
+  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+
+  readonly scope: ScopeCategory = 'PERSPECTIVE_LIFETIME';
+
+  constructor() {
+    this.dispatcher?.register(this);
+  }
 
   private readonly pendingAttack = signal<PendingAttack | null>(null);
   private _releaseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -110,6 +130,20 @@ export class BattleAnimationTracker {
       duration: fadeMs, easing: 'ease-out',
     }).finished.then(() => pending.lineEl.remove()).catch(() => pending.lineEl.remove());
     this.pendingAttack.set(null);
+  }
+
+  /**
+   * α.4b — `ResetTarget` entry point. All carried state is PERSPECTIVE_LIFETIME,
+   * so any reset that touches that scope (the most common — a switch)
+   * triggers the same cleanup as the legacy `reset()`.
+   */
+  applyReset(
+    scopes: ReadonlySet<ScopeCategory>,
+    _checkpointPayload?: CheckpointPayload,
+  ): void {
+    if (scopes.has('PERSPECTIVE_LIFETIME')) {
+      this.reset();
+    }
   }
 
   /** Immediate cleanup without animation (duel reset/reconnect). */

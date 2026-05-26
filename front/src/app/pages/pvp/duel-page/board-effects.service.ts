@@ -14,6 +14,16 @@ import { ReducedMotionService } from '../../../services/reduced-motion.service';
  * `toAbsoluteUrl` rather than duplicating them. `CardTravelEngine.travel`
  * also calls back into `zoneImpactEffect` / `slamDustParticles` for soft /
  * banish / slam landings (cross-injection accepted via lazy `inject()`).
+ *
+ * α.4b note — **not a `ResetTarget`**. The service holds only autonomous
+ * DOM floats + timers (`_overlayEls`, `_timers`, `_hiddenForReveal`) —
+ * pure transport state at `PERSPECTIVE_LIFETIME` in the §3.2 sense.
+ * Cleanup is owned by `ngOnDestroy()` (Angular component lifetime) and
+ * by the orchestrator's `clearTimersAndPolling` for mid-duel resets. No
+ * exposed signal, no flux-derived projection — nothing for the
+ * dispatcher to fan out to. Cf.
+ * `_bmad-output/planning-artifacts/duel-session-chantier.md §4.1`
+ * row "BoardEffectsService — timers = transport state, pas projection".
  */
 @Injectable()
 export class BoardEffectsService implements OnDestroy {

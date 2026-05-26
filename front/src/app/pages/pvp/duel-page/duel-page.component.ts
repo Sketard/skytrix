@@ -35,6 +35,7 @@ import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
+import { ScopeResetDispatcher } from '../projections';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { BattleAnimationTracker } from './battle-animation-tracker';
@@ -81,6 +82,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
   // pour que le duel reste dark même quand `html.theme-light` est actif.
   host: { class: 'theme-dark' },
   providers: [
+    ScopeResetDispatcher,
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,

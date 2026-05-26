@@ -3,18 +3,47 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import type { LpAnimData } from './pvp-lp-badge/pvp-lp-badge.component';
 import type { GameEvent } from '../types';
 import type { DamageMsg, PayLpCostMsg, Player, RecoverMsg } from '../duel-ws.types';
+import {
+  ScopeResetDispatcher,
+  type CheckpointPayload,
+  type ResetTarget,
+  type ScopeCategory,
+} from '../projections';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { DuelContext } from './duel-context';
 
 /**
  * Tracks LP changes, animates the counter, and commits LP to rendered state.
  * Provided at component level (NOT root).
+ *
+ * α.4b — implements `ResetTarget`. The tracker carries state in **two
+ * scopes** (cf. duel-session-chantier.md §3.5):
+ *   - `_pendingLpCommits` + `trackedLp` are `DUEL_LIFETIME` (survive
+ *     a `PerspectiveSwitched`).
+ *   - `animatingLpPlayer` is `PERSPECTIVE_LIFETIME` (cleared at switch).
+ * The declared `scope` is the most durable (DUEL_LIFETIME); `applyReset`
+ * distinguishes via `scopes.has(...)` thanks to α.2's hierarchical
+ * cascade — a DUEL reset implicitly invalidates PERSPECTIVE too.
+ *
+ * The legacy `reset()` method stays in place. α.5 will replace its
+ * call-sites with `dispatcher.dispatch(...)`.
  */
 @Injectable()
-export class LpAnimationTracker {
+export class LpAnimationTracker implements ResetTarget {
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
+  // `optional: true` so isolated unit specs (which test the manager without
+  // a DuelPageComponent host) don't need to provide the dispatcher. In
+  // production every DuelPageComponent providers list includes
+  // ScopeResetDispatcher so the register call fires.
+  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+
+  readonly scope: ScopeCategory = 'DUEL_LIFETIME';
+
+  constructor() {
+    this.dispatcher?.register(this);
+  }
 
   private get rbs() { return this.dataSource.renderedBoardState; }
 
@@ -110,6 +139,35 @@ export class LpAnimationTracker {
 
   getTrackedLp(): [number, number] {
     return [...this.trackedLp] as [number, number];
+  }
+
+  /**
+   * α.4b — `ResetTarget` entry point. Driven by `ScopeResetDispatcher`
+   * when this tracker's scope (or any wider one) is invalidated. The
+   * dispatcher passes the **expanded** scope set, so we can distinguish
+   * the two slices declaratively:
+   *   - DUEL_LIFETIME present → clear trackedLp + pending commits
+   *   - PERSPECTIVE_LIFETIME present → clear the in-flight animation
+   * The hierarchical cascade (§3.5) means a DUEL reset always also
+   * carries PERSPECTIVE, so both branches fire — equivalent to the
+   * legacy `reset()`. A PerspectiveSwitched (PERSPECTIVE only) clears
+   * the animation but preserves trackedLp + pending commits.
+   *
+   * `checkpointPayload` is currently unused (LP state will re-seed
+   * from the BOARD_STATE payload directly via `syncFromBoardState`
+   * after a STATE_SYNC; that path stays as is at α.4b).
+   */
+  applyReset(
+    scopes: ReadonlySet<ScopeCategory>,
+    _checkpointPayload?: CheckpointPayload,
+  ): void {
+    if (scopes.has('DUEL_LIFETIME')) {
+      this.trackedLp = [8000, 8000];
+      this._pendingLpCommits.clear();
+    }
+    if (scopes.has('PERSPECTIVE_LIFETIME')) {
+      this.animatingLpPlayer.set(null);
+    }
   }
 
   reset(): void {

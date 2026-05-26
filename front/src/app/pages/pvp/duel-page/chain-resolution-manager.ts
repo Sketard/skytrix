@@ -3,6 +3,12 @@ import type { GameEvent } from '../types';
 import type { ChainSolvingMsg, ChainSolvedMsg, ConfirmCardsMsg } from '../duel-ws.types';
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
+import {
+  ScopeResetDispatcher,
+  type CheckpointPayload,
+  type ResetTarget,
+  type ScopeCategory,
+} from '../projections';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 
 /**
@@ -17,11 +23,40 @@ import { DuelLogCategory, DuelLogger } from './duel-logger';
  * `dataSource.applyChainSolving/Solved/End` to drive the phase — calling
  * `handleSolving/Solved/End` on this manager only handles overlay state,
  * buffer, and counters.
+ *
+ * α.4b — implements `ResetTarget`. The manager carries state across
+ * **two scopes** (cf. duel-session-chantier.md §3.5):
+ *   - Chain state (signals + `_chainSolvedCount` + `_bufferedBoardEvents` +
+ *     `_deferredSolvingEvent`) is `CONNECTION_LIFETIME` (survives a
+ *     `PerspectiveSwitched`, cleared at STATE_SYNC / reconnect).
+ *   - Banner + replay timers (`_bannerTimeouts`, `_replayTimeouts`)
+ *     are transport state at `PERSPECTIVE_LIFETIME` (must be cleared on
+ *     every switch).
+ *
+ * The declared `scope` is the **most volatile** one (PERSPECTIVE_LIFETIME)
+ * so a switch reaches `applyReset` to clear the timers. The cascade
+ * means any wider reset (CONNECTION_LIFETIME / DUEL_LIFETIME / …) also
+ * carries PERSPECTIVE in the expanded set, so the same `applyReset`
+ * branches into the full state reset. This is the **mirror** of
+ * `LpAnimationTracker` — LP declares the most durable (DUEL_LIFETIME) to
+ * *avoid* being reset on a switch (except for its animation slice).
+ *
+ * The legacy `reset()` and `clearTimeouts()` stay in place. α.5 will
+ * replace their callsites with `dispatcher.dispatch(...)`.
  */
 @Injectable()
-export class ChainResolutionManager {
+export class ChainResolutionManager implements ResetTarget {
   private readonly logger = inject(DuelLogger);
   private readonly injector = inject(Injector);
+  // `optional: true` so isolated unit specs don't need to provide the
+  // dispatcher; production DuelPageComponent providers always include it.
+  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+
+  readonly scope: ScopeCategory = 'PERSPECTIVE_LIFETIME';
+
+  constructor() {
+    this.dispatcher?.register(this);
+  }
 
   // --- Public signals (overlay contract) ---
   readonly chainResolutionAnnounce = signal(false);
@@ -206,6 +241,34 @@ export class ChainResolutionManager {
         }
       });
     }, { injector: this.injector });
+  }
+
+  /**
+   * α.4b — `ResetTarget` entry point. The declared `scope` is
+   * `PERSPECTIVE_LIFETIME` (the most volatile slice we carry) so this is
+   * reached by every reset event from PerspectiveSwitched upward.
+   * Branches:
+   *   - CONNECTION_LIFETIME present → full chain state reset (signals,
+   *     buffer, counters, deferred peek). Carried by STATE_SYNC,
+   *     RematchStarted, ServerKicked, NavigationAway.
+   *   - PERSPECTIVE_LIFETIME present only → just clear the transport
+   *     timers (banner + replay). Carried by PerspectiveSwitched.
+   * The cascade (§3.5) guarantees that a CONNECTION reset also carries
+   * PERSPECTIVE, so the timers are cleared as part of the full reset
+   * — and the legacy `reset()` is functionally equivalent to calling
+   * `applyReset(new Set(['CONNECTION_LIFETIME', 'PERSPECTIVE_LIFETIME']))`.
+   */
+  applyReset(
+    scopes: ReadonlySet<ScopeCategory>,
+    _checkpointPayload?: CheckpointPayload,
+  ): void {
+    if (scopes.has('CONNECTION_LIFETIME')) {
+      this.reset();
+      return; // reset() already clears all timers
+    }
+    if (scopes.has('PERSPECTIVE_LIFETIME')) {
+      this.clearTimeouts();
+    }
   }
 
   /** Full reset — single source of truth for clearing all chain state + signals.

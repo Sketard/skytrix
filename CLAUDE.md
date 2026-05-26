@@ -262,15 +262,30 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
 - **`ChainResolutionManager`** — chain state (signals, buffer, replay
   timeouts, solved count). Pure state + `drainBuffer()`. Orchestrator
   owns `replayBuffer()` (cross-cutting dispatch via queue directives).
+  α.4b: `ResetTarget` with declared scope **`PERSPECTIVE_LIFETIME`**
+  (the most volatile slice — banner + replay timers); `applyReset`
+  branches on `scopes.has('CONNECTION_LIFETIME')` for the full chain
+  state reset (signals + buffer + counters + deferred peek). The
+  cascade guarantees a CONNECTION/DUEL/SESSION reset also carries
+  PERSPECTIVE, so the timers are cleared as part of the full reset.
 - **`DrawSequenceManager`** — draw sequences, hand expansion, shuffle
   processing, card confirmation.
 - **`MoveAnimationRouter`** — MSG_MOVE routing via `MoveContext`, overlay
   detach, source + destination pre-locking. Field-destination branches
   lock dst synchronously (no imperative DOM hiding).
 - **`LpAnimationTracker`** — LP tracking, counter animation, pending LP
-  commit.
+  commit. α.4b: `ResetTarget` with declared scope **`DUEL_LIFETIME`**
+  (the most durable slice — `trackedLp` + `_pendingLpCommits`);
+  `applyReset` branches on `scopes.has('PERSPECTIVE_LIFETIME')` to
+  clear `animatingLpPlayer` separately. A `PerspectiveSwitched` (which
+  carries only PERSPECTIVE_LIFETIME) does NOT reach this manager — the
+  declared scope is DUEL, deeper than PERSPECTIVE in the hierarchy, so
+  the dispatcher's filter skips it. This is the **mirror** of
+  ChainResolutionManager.
 - **`BattleAnimationTracker`** — in-progress attack animations (attack
-  line + clash impact), pending attack release.
+  line + clash impact), pending attack release. α.4b: `ResetTarget`
+  with scope **`PERSPECTIVE_LIFETIME`** — all carried state cleared
+  on every switch.
 - **`TargetIndicatorManager`** — `MSG_BECOME_TARGET` reticles for cards
   inside pile zones (GY, Banished, Extra Deck). Pile zones only render
   their top card, so a separate float layer is needed to point at

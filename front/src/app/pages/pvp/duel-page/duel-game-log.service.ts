@@ -14,6 +14,12 @@
 import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
 import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
 import type { PreComputedState } from '../duel-ws-replay.types';
+import {
+  ScopeResetDispatcher,
+  type CheckpointPayload,
+  type ResetTarget,
+  type ScopeCategory,
+} from '../projections';
 import type { DuelState, StreamEvent } from '../types';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
@@ -59,7 +65,14 @@ export interface OpponentActivation {
  * sibling components: a shared service is the only handle both can reach.
  */
 @Injectable()
-export class DuelGameLogService {
+export class DuelGameLogService implements ResetTarget {
+  // α.4b — scope is DUEL_LIFETIME: the journal accumulates across
+  // perspective switches + reconnects (a PvP F5 reconnect reloads the
+  // page so the service is reconstructed anyway). It is cleared only
+  // at a §3.6 checkpoint event (STATE_SYNC / RematchStarted) or
+  // navigation away. The legacy `reset()` stays; α.5 will replace its
+  // callsites with `dispatcher.dispatch(...)`.
+  readonly scope: ScopeCategory = 'DUEL_LIFETIME';
   /** The accumulated journal — drives the panel (Surface 1). */
   readonly gameLogEntries: Signal<GameLogEntry[]>;
   /** The latest opponent activation — drives the bubble (Surface 2). */
@@ -131,6 +144,9 @@ export class DuelGameLogService {
   private _streamEffect: EffectRef | null = null;
 
   private readonly injector = inject(Injector);
+  // `optional: true` so isolated unit specs don't need to provide the
+  // dispatcher; production DuelPageComponent providers always include it.
+  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
 
   constructor() {
     this.gameLogEntries = this._entries.asReadonly();
@@ -138,6 +154,7 @@ export class DuelGameLogService {
     this.panelOpen = this._panelOpen.asReadonly();
     this.panelClosing = this._panelClosing.asReadonly();
     this.journalRebuiltTick = this._journalRebuiltTick.asReadonly();
+    this.dispatcher?.register(this);
   }
 
   // ---------------------------------------------------------------------------
@@ -334,6 +351,25 @@ export class DuelGameLogService {
    * user opened it). `togglePanel` / `beginPanelClose` remain the only
    * ways the panel closes.
    */
+  /**
+   * α.4b — `ResetTarget` entry point. Driven by `ScopeResetDispatcher`
+   * when DUEL_LIFETIME (or above) is invalidated — typically by §3.6
+   * checkpoints (STATE_SYNC / RematchStarted). A PerspectiveSwitched
+   * does NOT reach this branch (the journal survives a switch — see
+   * the §3.5 invalidation matrix). The `checkpointPayload` is currently
+   * unused: a STATE_SYNC will re-feed events through the attached
+   * stream, so resetting locally + waiting for the stream to drain is
+   * correct.
+   */
+  applyReset(
+    scopes: ReadonlySet<ScopeCategory>,
+    _checkpointPayload?: CheckpointPayload,
+  ): void {
+    if (scopes.has('DUEL_LIFETIME')) {
+      this.reset();
+    }
+  }
+
   reset(): void {
     this.builder = new GameLogBuilder(this.perspective);
     this.tappedEvents.length = 0;
