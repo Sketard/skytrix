@@ -1323,22 +1323,35 @@ export class AnimationOrchestratorService {
         return alreadyResolved ? 'continue' : 'pause';
       }
       case 'announcement': {
-        // β.3 cas #13 (2026-05-26) — sequential-announcement-gating. Bloque
-        // le dispatch des events suivants pendant `durationMs` d'affichage
-        // d'une annonce visuelle (phase / chain resolution / future
-        // banners). Timing :
-        //   t=0           : entrée dans la directive.
-        //   t=prePauseMs  : `onShow()` set la surface consommatrice (signal
-        //                   d'un service / projection mirror).
-        //   t=durationMs  : `onClear()` la remet à null, return 'continue'.
+        // β.3 cas #13 (2026-05-26) — sequential-announcement-gating. Affiche
+        // une annonce visuelle (phase / chain resolution / future banners).
+        // Deux modes:
+        //   · `nonBlocking: true` (phase announces) — `onShow` synchrone,
+        //     `onClear` schedulé via setTimeout, runner continue
+        //     immédiatement. La draw animation peut ainsi jouer en
+        //     parallèle avec le banner DRAW.
+        //   · `nonBlocking: false | undefined` (chain banner) — gate la
+        //     queue: `prePauseMs` puis `onShow`, attente `showMs`,
+        //     `onClear`, return 'continue'.
         // Les deux timers passent par `scheduleTimeout` (tracked dans
         // `animationTimeouts`) pour qu'un `clearTimersAndPolling`
-        // (rematch / state-sync / destroy) les coupe et la directive sorte
-        // sans rester suspendue indéfiniment.
+        // (rematch / state-sync / destroy) les coupe.
         const totalMs = this.ctx.scaledDuration(entry.durationMs);
         const preMs = entry.prePauseMs ? this.ctx.scaledDuration(entry.prePauseMs) : 0;
         const showMs = Math.max(0, totalMs - preMs);
-        this.trace('directive', { kind: 'announcement', source: entry.source, totalMs, preMs });
+        this.trace('directive', { kind: 'announcement', source: entry.source, totalMs, preMs, nonBlocking: !!entry.nonBlocking });
+        if (entry.nonBlocking) {
+          // Non-blocking path: schedule onShow (after prePauseMs) and
+          // onClear (after totalMs) via setTimeout, return immediately so
+          // the runner advances to the next entry without waiting.
+          if (preMs === 0) {
+            entry.onShow();
+          } else {
+            this.scheduleTimeout(() => entry.onShow(), preMs);
+          }
+          this.scheduleTimeout(() => entry.onClear(), totalMs);
+          return 'continue';
+        }
         if (preMs > 0) {
           await new Promise<void>(resolve => { this.scheduleTimeout(resolve, preMs); });
         }

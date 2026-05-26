@@ -23,6 +23,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   /** Palier 0 — EventStream sink (orchestrator's `notifyOutOfBandEvent`).
    *  Retained so we can re-apply it on `setActiveConnection`. */
   private _outOfBandSink?: (event: StreamEvent) => void;
+  private _drawNewTurnSink?: (turnPlayer: number, turnCount: number) => void;
 
   constructor() {
     this._defaultConnection.artService = this.artService;
@@ -42,6 +43,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   setActiveConnection(connection: DuelConnection): void {
     this._activeConnection.set(connection);
     if (this._outOfBandSink) connection.attachOutOfBandSink(this._outOfBandSink);
+    if (this._drawNewTurnSink) connection.onDrawNewTurn = this._drawNewTurnSink;
   }
 
   /** Palier 0 — wire the EventStream sink onto the active connection (and
@@ -50,6 +52,15 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
     this._outOfBandSink = sink;
     this._activeConnection().attachOutOfBandSink(sink);
+  }
+
+  /** β.3 cas #13 — wire the draw-new-turn sink onto the active connection
+   *  (and any future one set via `setActiveConnection`). The bridge calls
+   *  this once with a closure that forwards to
+   *  `PhaseAnnouncementService.show('DRAW', …)`. */
+  attachDrawNewTurnSink(sink: (turnPlayer: number, turnCount: number) => void): void {
+    this._drawNewTurnSink = sink;
+    this._activeConnection().onDrawNewTurn = sink;
   }
 
   // --- All 13 signals + canRetry computed through _activeConnection ---

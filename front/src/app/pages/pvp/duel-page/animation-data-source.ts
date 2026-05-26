@@ -24,7 +24,7 @@ export interface AnnouncementDirective {
   kind: 'announcement';
   source: string;
   /**
-   * Total time the directive blocks the queue. `onShow` fires at
+   * Total time the directive holds the banner visible. `onShow` fires at
    * `prePauseMs` (default 0) ; `onClear` fires at `durationMs`. The runner
    * scales both via `ctx.scaledDuration` so playback-speed applies. Asymmetric
    * pause + show lets the chain banner reproduce its 1000ms pre-pause +
@@ -32,6 +32,16 @@ export interface AnnouncementDirective {
    */
   durationMs: number;
   prePauseMs?: number;
+  /**
+   * When `true`, the directive fires `onShow` synchronously, schedules
+   * `onClear` via setTimeout, and returns 'continue' immediately — the
+   * queue does NOT pause for `durationMs`. Used by phase announces (DRAW
+   * / STANDBY / MAIN1 / …) so the next MSG_DRAW / event animation can play
+   * in parallel with the banner. Default `false` keeps the chain-resolution
+   * banner blocking (its `MSG_CHAIN_SOLVING` companion is in the queue
+   * RIGHT after and must wait for the banner to clear).
+   */
+  nonBlocking?: boolean;
   onShow: () => void;
   onClear: () => void;
 }

@@ -6,6 +6,7 @@ import { DuelWebSocketService } from './duel-web-socket.service';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
+import { PhaseAnnouncementService } from './phase-announcement.service';
 import { preloadCardImages } from '../pvp-card.utils';
 import type { RoomState } from './room-state-machine.service';
 
@@ -30,6 +31,7 @@ export class DuelLoadingEffectsService {
   private readonly roomService = inject(RoomStateMachineService);
   private readonly artService = inject(DuelCardArtService);
   private readonly orchestrator = inject(AnimationOrchestratorService);
+  private readonly phaseService = inject(PhaseAnnouncementService);
   private readonly http = inject(HttpClient);
   private readonly notify = inject(NotificationService);
 
@@ -102,6 +104,22 @@ export class DuelLoadingEffectsService {
         untracked(() => {
           this.wsService.setBoardActive(true);
           config.roomState.set('active');
+          // β.3 cas #13 (2026-05-26) — opening DRAW announce. Au boot,
+          // les 5 MSG_DRAW de la main d'ouverture sont parqués dans le
+          // pre-activation buffer (boardActive=false) et la DuelConnection
+          // skip leur intercept `onDrawNewTurn`. Le serveur landed
+          // directement en MAIN1 → la bridge effect n'annonce que MAIN1
+          // → l'utilisateur ne voit jamais "Draw Phase". On l'enqueue
+          // explicitement ici, juste avant le drain, pour que le banner
+          // DRAW soit synchronisé avec l'animation de pioche initiale
+          // (nonBlocking → parallèle). La phase logique courante est
+          // déjà MAIN1 — on force phase='DRAW' car la sémantique YGO de
+          // l'ouverture est "tu pioches ta main de départ pendant la
+          // phase DRAW", même si OCGCore squash STANDBY et passe direct
+          // en MAIN1.
+          const state = this.wsService.boardStateView.logicalState();
+          const label = this.phaseService.phaseDisplayName('DRAW');
+          this.phaseService.show(label, state.turnPlayer !== 0, 'DRAW', state.turnPlayer, state.turnCount);
           this.orchestrator.drainPreActivationBuffer();
         });
       }

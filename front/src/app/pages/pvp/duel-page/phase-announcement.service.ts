@@ -13,7 +13,7 @@ export interface PhaseAnnouncement {
   turnCount: number;
 }
 
-const PHASE_ANNOUNCE_DURATION = 2000;
+const PHASE_ANNOUNCE_DURATION = 1000;
 
 /**
  * Phases worth announcing visually + vocally — the 6 canonical turn phases:
@@ -77,6 +77,12 @@ export class PhaseAnnouncementService implements OnDestroy {
       kind: 'announcement',
       source: `phase:${phase}`,
       durationMs: PHASE_ANNOUNCE_DURATION,
+      // β.3 cas #13 — phase banners restent SÉQUENTIELS dans la queue
+      // (bloquantes par défaut). Si plusieurs phase changes back-to-back,
+      // la queue les sérialise, pas d'overwrite du `_announcement` signal.
+      // Les prompts serveur (SELECT_IDLECMD) sont gatés par le composant
+      // qui lit `announcement` — quand l'annonce ≠ phase logique, le
+      // prompt est caché (cf. duel-page.component.ts effectivePrompt).
       onShow: () => {
         this._announcement.set(ann);
         this.liveAnnouncer.announce(

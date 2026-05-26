@@ -13,8 +13,10 @@ import { DuelWebSocketService } from './duel-web-socket.service';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
+import { PhaseAnnouncementService } from './phase-announcement.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import type { RoomState } from './room-state-machine.service';
+import { EMPTY_DUEL_STATE } from '../types';
 
 /**
  * Spec for the `duel-loading → active` transition wiring in
@@ -31,6 +33,9 @@ import type { RoomState } from './room-state-machine.service';
 class StubWs {
   setBoardActive = jasmine.createSpy('setBoardActive');
   cardCodes = signal<readonly number[]>([]);
+  // β.3 cas #13 — DuelLoadingEffects reads logicalState to build the
+  // opening DRAW announce (turnPlayer / turnCount). Minimal stub.
+  readonly boardStateView = { logicalState: signal(EMPTY_DUEL_STATE) };
 }
 
 class StubRoomService {
@@ -47,6 +52,11 @@ class StubArt {
 
 class StubOrchestrator {
   drainPreActivationBuffer = jasmine.createSpy('drainPreActivationBuffer');
+}
+
+class StubPhaseAnnouncement {
+  phaseDisplayName = (phase: string): string => `phase:${phase}`;
+  show = jasmine.createSpy('show');
 }
 
 class StubHttp {
@@ -66,6 +76,7 @@ function setup() {
       { provide: RoomStateMachineService, useClass: StubRoomService },
       { provide: DuelCardArtService, useClass: StubArt },
       { provide: AnimationOrchestratorService, useClass: StubOrchestrator },
+      { provide: PhaseAnnouncementService, useClass: StubPhaseAnnouncement },
       { provide: HttpClient, useClass: StubHttp },
       { provide: NotificationService, useClass: StubNotify },
     ],
@@ -74,12 +85,13 @@ function setup() {
   const ws = TestBed.inject(DuelWebSocketService) as unknown as StubWs;
   const orch = TestBed.inject(AnimationOrchestratorService) as unknown as StubOrchestrator;
   const room = TestBed.inject(RoomStateMachineService) as unknown as StubRoomService;
-  return { svc, ws, orch, room };
+  const phase = TestBed.inject(PhaseAnnouncementService) as unknown as StubPhaseAnnouncement;
+  return { svc, ws, orch, room, phase };
 }
 
 describe('DuelLoadingEffectsService — duel-loading → active wiring', () => {
   it('drains the pre-activation buffer when duel-loading flips to active', () => {
-    const { svc, ws, orch } = setup();
+    const { svc, ws, orch, phase } = setup();
     const roomState = signal<RoomState>('duel-loading');
     const boardReady = signal(true);
     const duelLoadingReady = signal(false);
@@ -101,13 +113,19 @@ describe('DuelLoadingEffectsService — duel-loading → active wiring', () => {
     expect(ws.setBoardActive).toHaveBeenCalledOnceWith(true);
     expect(roomState()).toBe('active');
     expect(orch.drainPreActivationBuffer).toHaveBeenCalledTimes(1);
+    // β.3 cas #13 — opening DRAW announce enqueued at the transition.
+    expect(phase.show).toHaveBeenCalledTimes(1);
+    expect(phase.show.calls.mostRecent().args[2]).toBe('DRAW');
   });
 
-  it('orders the side effects: setBoardActive BEFORE drainPreActivationBuffer', () => {
+  it('orders the side effects: setBoardActive BEFORE phaseService.show(DRAW) BEFORE drainPreActivationBuffer', () => {
     // The order is load-bearing — the orchestrator's drain re-injects events
     // through `_dispatchEvent`, which gates on `isBoardActive()`. If the drain
     // ran first, the parked events would be re-parked instantly.
-    const { svc, ws, orch } = setup();
+    // β.3 cas #13 — the DRAW announce is enqueued BETWEEN setBoardActive
+    // (gate open) and the drain (so the directive sits ahead of the MSG_DRAW
+    // batch in the animation queue).
+    const { svc, ws, orch, phase } = setup();
     const roomState = signal<RoomState>('duel-loading');
     const boardReady = signal(true);
     const duelLoadingReady = signal(false);
@@ -115,6 +133,7 @@ describe('DuelLoadingEffectsService — duel-loading → active wiring', () => {
 
     const callOrder: string[] = [];
     ws.setBoardActive.and.callFake(() => callOrder.push('setBoardActive'));
+    phase.show.and.callFake(() => callOrder.push('show'));
     orch.drainPreActivationBuffer.and.callFake(() => callOrder.push('drain'));
 
     const injector = TestBed.inject(Injector);
@@ -126,7 +145,7 @@ describe('DuelLoadingEffectsService — duel-loading → active wiring', () => {
     duelLoadingReady.set(true);
     TestBed.flushEffects();
 
-    expect(callOrder).toEqual(['setBoardActive', 'drain']);
+    expect(callOrder).toEqual(['setBoardActive', 'show', 'drain']);
   });
 
   it('does not drain when duelLoadingReady=true but roomState !== duel-loading', () => {

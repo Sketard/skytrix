@@ -197,9 +197,31 @@ export class DuelConnection {
   private _justReconnected = signal(false);
   readonly justReconnected = this._justReconnected.asReadonly();
 
+  // β.3 cas #13 — track the last BOARD_STATE turn coordinates so a MSG_DRAW
+  // can detect a turn delta without waiting for the next BOARD_STATE. Boot
+  // default `0:0` matches EMPTY_DUEL_STATE — the 5 initial MSG_DRAW will
+  // all hash to `0:0` and share a single DRAW announce.
+  private _lastTurnPlayer = 0;
+  private _lastTurnCount = 0;
+  private _lastDrawAnnouncedHash: string | null = null;
+
   // --- Callbacks (set by wrapper services) ---
   onMessage?: (msg: ServerMessage) => void;
   onResponse?: (promptType: string, data: ResponseData) => void;
+  /**
+   * β.3 cas #13 (2026-05-26) — fired when the first `MSG_DRAW` of a new
+   * turn arrives. Wired by the UI bridge to `PhaseAnnouncementService.show`
+   * so the DRAW banner is enqueued onto the animation queue BEFORE the
+   * `MSG_DRAW` itself (the only way to make the announce visually precede
+   * the draw animation : the server emits MSG_DRAW first and only later
+   * BOARD_STATE delta carries phase=DRAW).
+   *
+   * Detection : we hash `${turnPlayer}:${turnCount}` from the last
+   * observed BOARD_STATE and compare with `_lastDrawAnnouncedHash`.
+   * Boot's 5 initial MSG_DRAW share hash `0:0` → one announce. A new
+   * turn flips the hash → re-announce.
+   */
+  onDrawNewTurn?: (turnPlayer: number, turnCount: number) => void;
   /** Fired after the connection-level STATE_SYNC bookkeeping completes.
    *  Carries the raw message so consumers can read `gameLogEntries`
    *  (journal persistence across F5 / reconnect). */
@@ -579,6 +601,12 @@ export class DuelConnection {
         // Runs after the sync tier decision so the BP's emit fires AFTER
         // the board state is reflected in the rendered/logical layers.
         this.processor.observeBoardState(message.data);
+        // β.3 cas #13 — cache the turn coordinates for the next MSG_DRAW
+        // turn-delta detection. We do NOT fire `onDrawNewTurn` here: the
+        // MSG_DRAW handler does, so the announce always enqueues right
+        // before its triggering MSG_DRAW in the queue (correct order).
+        this._lastTurnPlayer = message.data.turnPlayer;
+        this._lastTurnCount = message.data.turnCount;
         break;
 
       case 'STATE_SYNC':
@@ -907,8 +935,32 @@ export class DuelConnection {
         this.processor.processMessage(message);
         break;
       }
+      case 'MSG_DRAW': {
+        // β.3 cas #13 — fire `onDrawNewTurn` BEFORE handing the message
+        // off to the processor, so the bridge can enqueue the DRAW
+        // announce directive in front of the MSG_DRAW that triggered it.
+        // Hash composite `${player}:${count}` (cf. _lastTurnPlayer +
+        // _lastTurnCount field doc) — only one announce per new turn.
+        //
+        // Gate on `_boardActive` : boot's 5 initial MSG_DRAW arrive before
+        // the dice arena dismisses (`roomState !== 'active'`). Firing
+        // the announce there would burn its 2s timer behind the arena
+        // overlay, then MAIN1 would overwrite it before the user sees
+        // anything. By skipping the gate at boot, we silently swallow
+        // the initial draw (it's the opening hand, not a meaningful
+        // "new turn" — the engine starts in MAIN1 directly). The first
+        // real DRAW announce happens at the next turn start.
+        if (this._boardActive) {
+          const hash = `${this._lastTurnPlayer}:${this._lastTurnCount}`;
+          if (hash !== this._lastDrawAnnouncedHash) {
+            this._lastDrawAnnouncedHash = hash;
+            this.onDrawNewTurn?.(this._lastTurnPlayer, this._lastTurnCount);
+          }
+        }
+        this.processor.processMessage(message);
+        break;
+      }
       case 'MSG_MOVE':
-      case 'MSG_DRAW':
       case 'MSG_SHUFFLE_HAND':
       case 'MSG_SHUFFLE_DECK':
       case 'MSG_DAMAGE':
