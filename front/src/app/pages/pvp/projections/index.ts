@@ -9,3 +9,4 @@ export {
   type ScopeCategory,
 } from './scope';
 export { OverlayShowReadyProjection } from './overlay-show-ready.projection';
+export { CounterPulseProjection, type CounterPulseProjectionDeps } from './counter-pulse.projection';

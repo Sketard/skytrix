@@ -44,7 +44,7 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
-import { OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
+import { CounterPulseProjection, OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -295,10 +295,22 @@ export class AnimationOrchestratorService {
    */
   readonly overlayShowReady = new OverlayShowReadyProjection();
 
+  /**
+   * β.3 Lot 2.3 — pulse glow indicator for the counter badge on a card
+   * whose counters just changed (MSG_ADD_COUNTER / MSG_REMOVE_COUNTER).
+   * Cleared by the matching `AnimationCompleted` (wall-clock end of the
+   * COUNTER_PULSE_MS hold) or by `applyReset` on §3.6 checkpoint cascades.
+   * Reduced-motion gate is internal to the projection: it ignores the
+   * event entirely when `ctx.reducedMotion()` is true, mirroring the
+   * legacy handler's early-return.
+   */
+  readonly counterPulse = new CounterPulseProjection({
+    relativePlayer: (abs: number) => this.ctx.relativePlayer(abs),
+    reducedMotion: () => this.ctx.reducedMotion(),
+  });
+
   /** Zone keys of cards currently being targeted (MSG_BECOME_TARGET). */
   readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
-  /** Zone key of card with pulsing counter badge (MSG_ADD_COUNTER / MSG_REMOVE_COUNTER). */
-  readonly counterPulseKey = signal<string | null>(null);
   /** Zone keys of GY+DECK pulsing during SWAP_GRAVE_DECK. */
   readonly swapGraveDeckKeys = signal<ReadonlySet<string>>(new Set());
   /** Temporary reveal map for MSG_CONFIRM_CARDS: opponent hand index → cardCode. */
@@ -424,6 +436,13 @@ export class AnimationOrchestratorService {
     // hide it anyway when MSG_CHAIN_END arrives).
     this.scopeDispatcher?.register(this.overlayShowReady);
     this.overlayShowReady.attachEventStream(this._eventStream, this.injector);
+
+    // β.3 Lot 2.3 — register + attach the counter-pulse projection.
+    // Same wiring shape as overlayShowReady; the projection's
+    // PERSPECTIVE_LIFETIME scope means SOLO switchPlayer clears the
+    // pulse alongside the chain manager.
+    this.scopeDispatcher?.register(this.counterPulse);
+    this.counterPulse.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -677,6 +696,7 @@ export class AnimationOrchestratorService {
     // teardown, but explicit detach avoids relying on injector lifetime
     // for a hard reset path.
     this.overlayShowReady.detachEventStream();
+    this.counterPulse.detachEventStream();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -730,7 +750,8 @@ export class AnimationOrchestratorService {
     this.confirmRevealedCards.set(new Map());
     this.targetedZoneKeys.set(new Set());
     this.targetIndicator.reset();
-    this.counterPulseKey.set(null);
+    // β.3 Lot 2.3 — `counterPulse` projection clears itself via
+    // `applyReset` driven by the scopeDispatcher.dispatch above.
     this.swapGraveDeckKeys.set(new Set());
     this.toastService.clear();
     // β.2a note — any `EffectAbandoned(checkpoint)` emitted by the DEP
@@ -1321,15 +1342,14 @@ export class AnimationOrchestratorService {
     });
   }
 
-  private handleCounter(msg: AddCounterMsg | RemoveCounterMsg): number {
+  private handleCounter(_msg: AddCounterMsg | RemoveCounterMsg): number {
+    // β.3 Lot 2.3 — pulse signal owned by `counterPulse` projection, fed
+    // from the EventStream `pushToStream` tap. The handler only owns the
+    // RUNTIME side: returning the hold duration so the runner waits
+    // before emitting AnimationCompleted (which clears the pulse).
+    // reducedMotion gate stays here to keep the runner's hold at 0 — the
+    // projection's own reducedMotion gate handles the visual side.
     if (this.ctx.reducedMotion()) return 0;
-    const rel = this.ctx.relativePlayer(msg.player);
-    const key = locationToZoneKey(msg.location, msg.sequence, rel);
-    // Force signal change even for consecutive events on the same zone,
-    // so Angular re-evaluates the class binding and the CSS animation restarts.
-    this.counterPulseKey.set(null);
-    this.counterPulseKey.set(key);
-    this.scheduleTimeout(() => this.counterPulseKey.set(null), COUNTER_PULSE_MS * this.ctx.speedMultiplier());
     return COUNTER_PULSE_MS;
   }
 

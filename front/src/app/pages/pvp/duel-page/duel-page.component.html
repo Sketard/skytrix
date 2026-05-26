@@ -264,7 +264,7 @@
                                [targetedZoneKeys]="animationService.targetedZoneKeys()"
                                [preTargetZoneKeys]="preTargetZoneKeys()"
                                [revealedZoneKeys]="revealedZoneKeys()"
-                               [counterPulseKey]="animationService.counterPulseKey()"
+                               [counterPulseKey]="animationService.counterPulse.value()"
                                [swapGraveDeckKeys]="animationService.swapGraveDeckKeys()"
                                (cardInspectRequest)="onCardInspectRequest($event)" />
 
