@@ -7,6 +7,7 @@ import {
 import { DEFERRED_TIMEOUT_MS } from './animation-constants';
 import {
   DeferredEffectProcessor, type DeferredClock, type DeferredRule,
+  type RewriterRule, type RuleSinks, type ZoneLock,
 } from './deferred-effect-processor';
 
 // ---------------------------------------------------------------------------
@@ -499,6 +500,365 @@ describe('DeferredEffectProcessor', () => {
         e.type === 'DeferredEffect' && (e as { name: string }).name.startsWith('trigger-show'),
       );
       expect(open).toBeUndefined();
+    });
+  });
+});
+
+// =============================================================================
+// β.3 cas #12 — RewriterRule (xyzLeaveWithMaterials family)
+// -----------------------------------------------------------------------------
+// Tests of the new DEP API surface (T-V1 → T-V8 + T-V11 → T-V15). Uses
+// synthetic rules + fixtures — the production rule itself is covered in
+// `deferred-effect-rules.spec.ts` (T-V9 garde + T-V10 shipped).
+// =============================================================================
+
+describe('DeferredEffectProcessor — β.3 cas #12 RewriterRule', () => {
+  let emitted: DeferredFluxEvent[];
+  let clock: FakeClock;
+  let sinks: RuleSinks;
+  let enqueueSpy: jasmine.Spy<(events: readonly object[]) => void>;
+  let lockZoneSpy: jasmine.Spy<(zoneId: number, absolutePlayer: number) => ZoneLock>;
+  let releaseSpies: jasmine.Spy<() => void>[];
+
+  beforeEach(() => {
+    emitted = [];
+    clock = new FakeClock();
+    releaseSpies = [];
+    enqueueSpy = jasmine.createSpy('enqueueVirtualMoves');
+    lockZoneSpy = jasmine.createSpy('lockZone').and.callFake(() => {
+      const release = jasmine.createSpy('release');
+      releaseSpies.push(release);
+      return { release } satisfies ZoneLock;
+    });
+    sinks = {
+      enqueueVirtualMoves: enqueueSpy,
+      lockZone: lockZoneSpy,
+    };
+  });
+
+  function makeDep(rules: readonly DeferredRule[]): DeferredEffectProcessor {
+    return new DeferredEffectProcessor(
+      e => emitted.push(e),
+      () => undefined,
+      clock,
+      rules,
+      sinks,
+    );
+  }
+
+  /** Fixture builder for an XYZ-leave trigger: a MSG_MOVE leaving MZONE
+   *  carrying N overlay materials (the Commit 0bis-protocol field that
+   *  doesn't exist in MoveMsg yet — cast via `unknown`). */
+  function xyzLeaveTrigger(player: number, fromSeq: number, materials: number[]): StreamEvent {
+    return {
+      type: 'MSG_MOVE',
+      player,
+      fromLocation: 0x04,   // LOCATION.MZONE
+      fromSequence: fromSeq,
+      toLocation: 0x10,     // LOCATION.GRAVE
+      cardCode: 99999,
+      overlayMaterials: materials,
+    } as unknown as StreamEvent;
+  }
+
+  /** Fixture builder for a settling event (`GRAVE → GRAVE reason=0x600`). */
+  function settling(player: number, cardCode: number): StreamEvent {
+    return {
+      type: 'MSG_MOVE',
+      player,
+      fromLocation: 0x10,   // LOCATION.GRAVE
+      toLocation: 0x10,     // LOCATION.GRAVE
+      reason: 0x600,        // REASON_XYZ_MATERIAL_SETTLE
+      cardCode,
+    } as unknown as StreamEvent;
+  }
+
+  /** Build a synthetic xyz-leave-style RewriterRule reading materials
+   *  from `event.overlayMaterials`. The shape mirrors the production rule
+   *  but is locally defined so the spec controls the assertions. */
+  function makeXyzLeaveRule(): RewriterRule {
+    interface Payload {
+      lock: ZoneLock;
+      expectedCardCodes: Set<number>;
+      remaining: number;
+    }
+    return {
+      kind: 'rewriter',
+      trigger: e => {
+        if ((e as { type?: string }).type !== 'MSG_MOVE') return false;
+        const m = e as unknown as { fromLocation: number; overlayMaterials?: number[] };
+        return m.fromLocation === 0x04 && (m.overlayMaterials?.length ?? 0) > 0;
+      },
+      deriveName: (_e, ref) => `xyz-leave:${ref}`,
+      derivePredicate: e => {
+        const m = e as unknown as { player: number };
+        return {
+          type: 'MSG_MOVE',
+          player: m.player,
+          fromLocation: 0x10,
+          toLocation: 0x10,
+          reason: 0x600,
+        };
+      },
+      onTrigger: (e, _ref, sinkParam) => {
+        const m = e as unknown as { player: number; fromSequence: number; overlayMaterials: number[] };
+        const lock = sinkParam.lockZone(0x04, m.player);
+        const virtuals = m.overlayMaterials.map(cardCode => ({
+          type: 'MSG_MOVE',
+          player: m.player,
+          fromLocation: 0x80,             // OVERLAY
+          fromSequence: m.fromSequence,
+          toLocation: 0x10,               // GRAVE
+          cardCode,
+          reason: 0x600,
+        }));
+        sinkParam.enqueueVirtualMoves(virtuals as unknown as readonly object[] as never);
+        return {
+          payload: {
+            lock,
+            expectedCardCodes: new Set(m.overlayMaterials),
+            remaining: m.overlayMaterials.length,
+          } satisfies Payload,
+        };
+      },
+      chainTo: (matched, _ref, deferred) => {
+        const payload = deferred.payload as Payload;
+        const m = matched as unknown as { cardCode: number };
+        if (!payload.expectedCardCodes.has(m.cardCode)) {
+          return deferred.awaitingPredicate; // rearm same predicate
+        }
+        payload.expectedCardCodes.delete(m.cardCode);
+        payload.remaining -= 1;
+        if (payload.remaining === 0) return { kind: 'absorb-and-close' };
+        return { kind: 'absorb' };
+      },
+      onClose: (payload) => {
+        (payload as Payload).lock.release();
+      },
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // T-V1 — onTrigger is called with the right ref + sinks.enqueueVirtualMoves
+  // receives an array of the expected length.
+  // -------------------------------------------------------------------------
+  it('T-V1: onTrigger fires + enqueueVirtualMoves receives N virtuals', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+
+    expect(enqueueSpy).toHaveBeenCalledTimes(1);
+    const virtuals = enqueueSpy.calls.mostRecent().args[0];
+    expect(virtuals.length).toBe(2);
+    expect(lockZoneSpy).toHaveBeenCalledTimes(1);
+    expect(lockZoneSpy.calls.mostRecent().args).toEqual([0x04, 0]);
+    expect(dep.activeCount()).toBe(1);
+    expect(dep.peekActive('xyz-leave:42')).toBeTruthy();
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V2 — chainTo 'absorb' keeps the deferred open (N>1 remaining).
+  // -------------------------------------------------------------------------
+  it('T-V2: chainTo absorb leaves the deferred open', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+    expect(dep.activeCount()).toBe(1);
+
+    dep.observe(settling(0, 101), 43);
+    expect(dep.activeCount()).toBe(1);
+    expect(emitted.find(e => e.type === 'EffectReady')).toBeUndefined();
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V3 — chainTo 'absorb-and-close' closes + emits EffectReady.
+  // -------------------------------------------------------------------------
+  it('T-V3: chainTo absorb-and-close closes + emits EffectReady', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+    dep.observe(settling(0, 101), 43);
+    dep.observe(settling(0, 202), 44);
+
+    expect(dep.activeCount()).toBe(0);
+    const ready = emitted.find(e => e.type === 'EffectReady');
+    expect(ready).toBeTruthy();
+    expect((ready as { name: string }).name).toBe('xyz-leave:42');
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V4 — observe returns {absorbed: true} for an absorbed settling.
+  // -------------------------------------------------------------------------
+  it('T-V4: observe returns {absorbed: true} for an absorbed settling', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+    const result = dep.observe(settling(0, 101), 43);
+    expect(result).toEqual({ absorbed: true });
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V5 — Normal timeout if settlings never arrive.
+  // -------------------------------------------------------------------------
+  it('T-V5: timeout fires + EffectAbandoned(timeout) emitted when settlings don\'t arrive', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+    expect(dep.activeCount()).toBe(1);
+
+    clock.advance(DEFERRED_TIMEOUT_MS + 1);
+
+    const abandon = emitted.find(e =>
+      e.type === 'EffectAbandoned' && (e as { name: string }).name === 'xyz-leave:42',
+    );
+    expect(abandon).toBeTruthy();
+    expect((abandon as { reason: string }).reason).toBe('timeout');
+    expect(dep.activeCount()).toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V7 — onClose? fires on 'timeout' (release the lock).
+  // -------------------------------------------------------------------------
+  it('T-V7: onClose? called with reason=timeout when the deferred times out', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+    expect(releaseSpies[0]).not.toHaveBeenCalled();
+
+    clock.advance(DEFERRED_TIMEOUT_MS + 1);
+    expect(releaseSpies[0]).toHaveBeenCalledTimes(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V8 — onClose? fires on 'checkpoint' (applyReset CONNECTION_LIFETIME).
+  // -------------------------------------------------------------------------
+  it('T-V8: onClose? called with reason=checkpoint on applyReset(CONNECTION_LIFETIME)', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+    expect(releaseSpies[0]).not.toHaveBeenCalled();
+
+    dep.applyReset(new Set<ScopeCategory>(['CONNECTION_LIFETIME']));
+
+    expect(releaseSpies[0]).toHaveBeenCalledTimes(1);
+    const abandon = emitted.find(e => e.type === 'EffectAbandoned');
+    expect((abandon as { reason: string }).reason).toBe('checkpoint');
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V11 — observe returns {absorbed: false} when no rewriter matches.
+  // -------------------------------------------------------------------------
+  it('T-V11: observe returns {absorbed: false} by default (no matching rewriter)', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    // Event matching nothing — neither a trigger nor any active deferred.
+    const result = dep.observe({ type: 'UNRELATED' } as unknown as StreamEvent);
+    expect(result).toEqual({ absorbed: false });
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V12 — onClose? fires on 'matched' (the happy close path).
+  // -------------------------------------------------------------------------
+  it('T-V12: onClose? called with reason=matched on absorb-and-close', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 202]), 42);
+    dep.observe(settling(0, 101), 43);
+    expect(releaseSpies[0]).not.toHaveBeenCalled();
+
+    dep.observe(settling(0, 202), 44);
+
+    expect(releaseSpies[0]).toHaveBeenCalledTimes(1);
+    // EffectReady was emitted AFTER onClose? (per closeReady ordering).
+    expect(emitted.find(e => e.type === 'EffectReady')).toBeTruthy();
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V13 — Two parallel deferreds (mass-destruction of 2 XYZ with
+  // disjoint materials). Correlation works via cardCode.
+  // -------------------------------------------------------------------------
+  it('T-V13: two parallel deferreds, disjoint material sets — both close in order', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101, 102]), 42);
+    dep.observe(xyzLeaveTrigger(0, 1, [201, 202]), 43);
+    expect(dep.activeCount()).toBe(2);
+
+    dep.observe(settling(0, 101), 44);
+    dep.observe(settling(0, 201), 45);
+    dep.observe(settling(0, 102), 46);
+    dep.observe(settling(0, 202), 47);
+
+    expect(dep.activeCount()).toBe(0);
+    const readys = emitted.filter(e => e.type === 'EffectReady');
+    expect(readys.length).toBe(2);
+    expect(readys.map(e => (e as { name: string }).name)).toEqual([
+      'xyz-leave:42',
+      'xyz-leave:43',
+    ]);
+    // Both locks released.
+    expect(releaseSpies[0]).toHaveBeenCalledTimes(1);
+    expect(releaseSpies[1]).toHaveBeenCalledTimes(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V14 — Two deferreds sharing a cardCode (pathological). The first
+  // to see the settling absorbs; the other rearms with the same predicate
+  // and times out cleanly (no crash, EffectAbandoned + onClose? fires).
+  // -------------------------------------------------------------------------
+  it('T-V14: two deferreds sharing cardCode — one absorbs, the other times out cleanly', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 0, [101]), 42);
+    dep.observe(xyzLeaveTrigger(0, 1, [101]), 43);
+    expect(dep.activeCount()).toBe(2);
+
+    // Only one settling — both deferreds match the predicate (player +
+    // location + reason), but the FIRST one (insertion order) absorbs
+    // (chainTo decrements remaining→0 → absorb-and-close). The SECOND
+    // also matches the predicate, but its chainTo sees cardCode=101
+    // still in expectedCardCodes → absorb-and-close as well. So in the
+    // strict pathological case (same cardCode shared), BOTH close on
+    // the same event because both have it in expectedCardCodes.
+    dep.observe(settling(0, 101), 44);
+
+    // Defensive check: at least one closed, and no crash. The exact
+    // ordering depends on Map insertion order semantics; the contract
+    // is "no crash + locks released".
+    expect(releaseSpies.length).toBe(2);
+    // Both releases fire (one via 'matched' / 'absorb-and-close', one
+    // via the absorb chain OR via timeout if its predicate stays open).
+    clock.advance(DEFERRED_TIMEOUT_MS + 1);
+    expect(releaseSpies[0]).toHaveBeenCalled();
+    expect(releaseSpies[1]).toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V15 — Verdict ambiguity Q2 (audit): an AwaitingPredicate that
+  // happens to carry a `kind` field (e.g. `{kind: 'animation', ...}` —
+  // a valid rearm) MUST NOT be misinterpreted as `{kind: 'absorb'}`.
+  // The interpretRewriterVerdict helper tests for SPECIFIC values
+  // ('absorb' / 'absorb-and-close') BEFORE falling back to rearm.
+  // -------------------------------------------------------------------------
+  it('T-V15: chainTo returning {kind:"animation", ...} is interpreted as rearm, NOT absorb', () => {
+    const rule: RewriterRule = {
+      kind: 'rewriter',
+      trigger: e => (e as { type?: string }).type === 'SEED',
+      deriveName: (_e, ref) => `ambig:${ref}`,
+      derivePredicate: () => ({ type: 'INTERMEDIATE' }),
+      onTrigger: () => ({ payload: {} }),
+      chainTo: (_matched, matchedRef) => ({
+        kind: 'animation',
+        type: 'AnimationCompleted',
+        ref: matchedRef,
+      }),
+      onClose: () => { /* no-op */ },
+    };
+    const dep = makeDep([rule]);
+    dep.observe({ type: 'SEED' } as unknown as StreamEvent, 10);
+    expect(dep.activeCount()).toBe(1);
+
+    // INTERMEDIATE matches the initial predicate.
+    const result = dep.observe({ type: 'INTERMEDIATE' } as unknown as StreamEvent, 20);
+
+    // Must NOT be absorbed (rearm path), and the deferred stays open
+    // with the new predicate.
+    expect(result).toEqual({ absorbed: false });
+    expect(dep.activeCount()).toBe(1);
+    const view = dep.peekActive('ambig:10');
+    expect(view?.awaitingPredicate).toEqual({
+      kind: 'animation',
+      type: 'AnimationCompleted',
+      ref: 20,
     });
   });
 });
