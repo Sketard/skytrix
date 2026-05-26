@@ -1124,33 +1124,46 @@ casser ces cas non-testés au POC.
 Si un cas casse, isoler en sous-commit avec test minimal de repro.
 Marge effort déjà incluse dans le chiffrage (12h ≈ 1.5j POC + marge).
 
-### R10 — DuelGameLogService au switch (acté : figé à l'émission)
+### R10 — DuelGameLogService au switch (acté : réactif au render)
 
 **Risque** : le journal est DUEL_LIFETIME, donc survit au switch. Mais
 le journal est aujourd'hui alimenté par le tap sur `orchestrator.eventStream`.
 Si la perspective change, les entrées suivantes du journal sont-elles
 "vues par P0" ou "vues par P1" ?
 
-**Décision actée (2026-05-26)** : **journal figé à l'émission**. Le
-switch ne ré-écrit pas l'historique. Chaque ligne capture la phrase
-telle qu'elle a été émise sous la perspective du moment.
+**Décision actée (2026-05-26)** : **journal réactif au render**. Le
+switch flippe tout l'historique : chaque ligne re-calcule son préfixe
+("You: ..." / "Opponent: ...") en fonction de la perspective courante,
+pas de celle au moment de l'émission.
 
-Justification : le journal est la chronique causale du duel. Une
-réécriture rétroactive ("Opponent: ..." qui devient "You: ..." après
-switch) casse l'idée de chronique immuable et est mentalement coûteux
-pour le lecteur. Si l'utilisateur veut "lire le duel sous P1", il
-switch *avant* de lire ; pas après.
+Justification : le switch SOLO est une **vue actuelle du duel**, pas
+une session-bound. Quand l'utilisateur passe en perspective P1, il
+veut TOUT voir comme P1 — y compris l'historique. Un préfixe "Opponent"
+qui resterait collé à une action de P1 après flip serait contradictoire
+avec la sémantique "je joue maintenant P1". L'immuabilité du journal
+n'a pas de valeur métier en SOLO (un seul user, deux perspectives sur
+la même partie).
 
-Implications code (à vérifier en commit 7) :
-- `DuelGameLogService.notifyGameLog` doit capturer la string formatée
-  (ou la perspective relative) à l'append, PAS à lire
-  `DuelContext.perspective()` au render. Si le code actuel lit au
-  render, c'est un bug latent à corriger au commit 7.
+Implications code (à vérifier/garantir en commit 7) :
+- `DuelGameLogService` stocke les entrées avec leur **player absolu**
+  (P0/P1 du serveur), pas avec une string pré-formatée
+  "You/Opponent: ...".
+- Le formatage "You/Opponent" se fait au **render**, via un computed
+  qui lit `DuelContext.perspective()`. Le switch invalide le computed,
+  Angular re-render l'historique entier au prochain tick.
+- Le replay n'est PAS impacté — `replay-page.component` a son propre
+  `perspectiveIndex()` signal qui pilote le même computed.
 - Test T1 étendu : "switch après un événement de journal, vérifier que
-  la ligne préfixée 'Opponent:' reste préfixée 'Opponent:' après le
-  flip" (et symétriquement pour 'You:').
+  la ligne 'Opponent: Played Ash Blossom' devient 'You: Played Ash
+  Blossom' après le flip" (et symétriquement).
 
-**À investiguer en commit 7 (tests), corriger si le code lit au render.**
+**Conséquence sur §3.1 du chantier (le flux est l'unique source de
+vérité)** : cohérent. La perspective est un input `@Environment` (§3.2),
+le journal devient une projection déterministe
+`(flux, perspective) → strings`. La re-render au switch n'est pas une
+mutation rétroactive du flux — c'est une re-projection.
+
+**À implémenter en commit 7 si le code actuel fige à l'émission.**
 
 ---
 
