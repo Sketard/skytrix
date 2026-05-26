@@ -45,12 +45,25 @@ export interface AwaitingPredicate {
   player?: number;
   /** Matches `cardCode` (the OCG card id). */
   cardCode?: number;
-  /** Matches a source `LOCATION` enum value. */
+  /** Matches a source `LOCATION` enum value (semantic alias, NOT a
+   *  literal field name on `MoveMsg`). The literal matcher reads
+   *  `candidate.location` — currently unused since `MoveMsg.location`
+   *  doesn't exist. Prefer `fromLocation` for MSG_MOVE narrowing. */
   location?: number;
-  /** Matches a destination `LOCATION` enum value (MSG_MOVE.toLocation). */
+  /** Matches a destination `LOCATION` enum value (semantic alias).
+   *  Same caveat as `location` — for MSG_MOVE narrowing, use the
+   *  literal `toLocation` field instead. */
   destination?: number;
   /** Matches a chain id (for `ChainStarted/Ended` boundary events). */
   chainId?: number;
+  /** β.3 cas #12 — matches `MoveMsg.fromLocation` literal. */
+  fromLocation?: number;
+  /** β.3 cas #12 — matches `MoveMsg.toLocation` literal. */
+  toLocation?: number;
+  /** β.3 cas #12 — matches `MoveMsg.reason` bitfield literal. Strict
+   *  equality only (no mask AND). If the rule needs a bitmask match,
+   *  it must do so inside `chainTo` (not via the predicate matcher). */
+  reason?: number;
 }
 
 export interface DeferredEffectEvent {

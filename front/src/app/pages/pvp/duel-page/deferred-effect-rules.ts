@@ -31,8 +31,13 @@ import type {
   ChainingMsg, MoveMsg, AttackMsg, AddCounterMsg, RemoveCounterMsg,
   PayLpCostMsg,
 } from '../duel-ws.types';
-import { LOCATION } from '../duel-ws.types';
-import type { DeferredRule } from './deferred-effect-processor';
+import { LOCATION, POSITION } from '../duel-ws.types';
+import type {
+  ActiveDeferredView, DeferredRule, RewriterRule, RewriterVerdict,
+  ZoneLock,
+} from './deferred-effect-processor';
+import { REASON_XYZ_MATERIAL_SETTLE } from './ocgcore-reason-flags';
+import { tagAsVirtual } from './virtual-event-registry';
 
 // ---------------------------------------------------------------------------
 // Type guards on the FluxEvent union — narrow without `as` casts elsewhere.
@@ -204,6 +209,212 @@ const counterPulse: DeferredRule = {
 };
 
 // ---------------------------------------------------------------------------
+// #12 — xyz-leave-with-materials (Flow rewrite, β.3 — sole RewriterRule)
+// ---------------------------------------------------------------------------
+//
+// Canonical scenario : un monstre XYZ avec N matériaux quitte le terrain
+// (toute raison — battle destroy, Link material, Tribute, return-to-deck,
+// banishment). OCGCore émet ensuite N `MSG_MOVE GRAVE→GRAVE reason=0x600`
+// pour positionner les ex-matériaux dans le GY post-départ de l'XYZ. Le
+// routeur tombe sur la branche `pileToPile` → flashs des matériaux dans le
+// GY au lieu d'un travel propre depuis la zone MZONE de l'XYZ parti.
+//
+// Le rule absorbe ces N settling events du routing aval + synthétise N
+// MSG_MOVE virtuels `OVERLAY→GRAVE` (un par matériau) avec
+// `fromSequence = m.fromSequence` (la position MZONE de l'XYZ source).
+// Le routeur les anime via la branche existante `processOverlayDetachEvent`
+// (slide-out + travel depuis MZONE vers GY).
+//
+// Cf. spec parent §1 + §4 et catalogue §1bis cas #12.
+// Cf. ARCHITECTURE GUARD au-dessus de `RewriterRule` —
+// `xyzLeaveWithMaterials` est l'UNIQUE rewriter shipped à β.3.
+
+/**
+ * Détection du pattern « XYZ avec matériaux quittant le terrain ». Le
+ * trigger NE LIT PAS la `reason` du MSG_MOVE de l'XYZ — toutes les
+ * raisons de départ sont couvertes (destroy, release, link, redirect,
+ * etc.). La détection robuste est « XYZ qui part du terrain », peu
+ * importe pourquoi.
+ *
+ * Filtre via `overlayMaterials.length > 0` (champ Commit 0bis du
+ * protocole). Defensive : le helper retourne `[]` si le champ est
+ * absent (cas pré-Commit 0bis, vieux replays) — le trigger renvoie
+ * `false` silencieusement.
+ *
+ * EMZ : `LOCATION.MZONE` couvre les zones EMZ aussi (EMZ slots
+ * identifiés par `sequence ∈ [5,6]` — cf. CLAUDE.md MR5 EMZ
+ * convention). Pas besoin d'un `LOCATION.EMZ` séparé.
+ */
+function isXyzLeaveWithMaterials(e: StreamEvent): e is MoveMsg {
+  if (!isMove(e)) return false;
+  if (e.fromLocation !== LOCATION.MZONE) return false;
+  const materials = readOverlayMaterialsAtTrigger(e);
+  if (materials.length === 0) return false;
+  return true;
+}
+
+/**
+ * Helper défensif : retourne `[]` si `overlayMaterials` est absent du
+ * `MoveMsg` (cas pré-Commit 0bis, ou non-XYZ). Post-Commit 0bis, le
+ * serveur peuple le champ via la query `OcgQueryFlags.OVERLAY_CARD`
+ * capturée AVANT mutation OCGCore (snapshot pré-process).
+ *
+ * Note : `overlayMaterials` n'est PAS encore dans le type `MoveMsg`
+ * front (Commit 0bis pas mergé) — d'où le cast via `unknown`. Une fois
+ * Commit 0bis mergé, le cast deviendra inutile.
+ */
+function readOverlayMaterialsAtTrigger(m: MoveMsg): readonly number[] {
+  return (m as unknown as { overlayMaterials?: number[] }).overlayMaterials ?? [];
+}
+
+/**
+ * Payload porté par la deferred `xyz-leave:<ref>` entre `onTrigger`,
+ * `chainTo` (consommé sur chaque settling match) et `onClose?`
+ * (release garanti sur 3 chemins matched/timeout/checkpoint).
+ *
+ * Mutation par `chainTo` autorisée par le contrat
+ * `ActiveDeferredView.payload` — opaque côté DEP, mutable côté rule.
+ */
+interface XyzLeavePayload {
+  /** Lock externe sur la zone MZONE de l'XYZ source. Empêche
+   *  `commitUnlocked` de démonter la zone OVERLAY pendant que les N
+   *  virtuels animent. */
+  xyzZoneLock: ZoneLock;
+  /** CardCodes des matériaux attendus en settling. Décrémenté dans
+   *  `chainTo` à chaque absorb. */
+  expectedCardCodes: Set<number>;
+  /** Compteur de settlings restants à absorber. */
+  remaining: number;
+}
+
+const xyzLeaveWithMaterials: RewriterRule = {
+  kind: 'rewriter',
+
+  trigger: isXyzLeaveWithMaterials,
+
+  deriveName: (_e, ref) => `xyz-leave:${ref}`,
+
+  /**
+   * Predicate awaiting : settling event `GRAVE→GRAVE reason=0x600` du
+   * MÊME joueur (controller) que l'XYZ qui vient de partir.
+   *
+   * Le champ `player` (résolution Q4 audit, Axel 2026-05-26) serre la
+   * mass-destruction bilatérale — un matériau a toujours le même
+   * controller que l'XYZ qui le portait, donc aucun risque de faux
+   * négatif. Sans `player`, en cas de Dark Hole bilatéral, chaque
+   * deferred verrait les 4 settlings et `chainTo` filtrerait via
+   * `expectedCardCodes` — match plus tardif, robustesse moindre.
+   */
+  derivePredicate: (e) => {
+    const m = e as MoveMsg;
+    return {
+      type: 'MSG_MOVE',
+      player: m.player,
+      fromLocation: LOCATION.GRAVE,
+      toLocation: LOCATION.GRAVE,
+      reason: REASON_XYZ_MATERIAL_SETTLE,
+    };
+  },
+
+  /**
+   * Side-effect au trigger : acquiert le lock externe sur la zone
+   * MZONE source + synthétise N MSG_MOVE virtuels OVERLAY→GRAVE
+   * (taggués via `tagAsVirtual`).
+   *
+   * Le sink fait la conversion absolu→relatif via `ctx.relativePlayer`
+   * et construit la zone key DOM `${zoneId}-${relPlayer}` en interne
+   * (résolution Q5 audit, Axel 2026-05-26) — le rule reste agnostique
+   * de la convention DOM.
+   *
+   * ⚠️ Pass 1 d'impl Commit 2 : la signature `lockZone(zoneId,
+   * absolutePlayer)` doit-elle aussi prendre `sequence` pour cibler
+   * la zone MZONE-N spécifique (pas juste la zone MZONE générique) ?
+   * Question Q5 résiduelle — à figer en début de Commit 2 selon le
+   * format réel des zone keys construites par `locationToZoneKey`. En
+   * attendant, NO_OP_SINKS.lockZone est un no-op release (tests OK,
+   * prod inerte tant que Commit 2 n'est pas wired).
+   */
+  onTrigger: (e, _ref, sinks) => {
+    const m = e as MoveMsg;
+    const materials = readOverlayMaterialsAtTrigger(m);
+
+    // 1. Lock externe sur la zone MZONE de l'XYZ source.
+    const xyzZoneLock = sinks.lockZone(LOCATION.MZONE, m.player);
+
+    // 2. Synthétiser N virtuels OVERLAY→GRAVE, taggués virtuels.
+    const virtuals: MoveMsg[] = materials.map(cardCode => tagAsVirtual({
+      type: 'MSG_MOVE',
+      player: m.player,
+      toPlayer: m.player,
+      cardCode,
+      cardName: '',                                // résolu côté front si nécessaire
+      fromLocation: LOCATION.OVERLAY,
+      fromSequence: m.fromSequence,                // position MZONE de l'XYZ source
+      fromPosition: POSITION.FACEUP_ATTACK,
+      toLocation: LOCATION.GRAVE,
+      toSequence: 0,                                // GRAVE = pile, sequence ignoré par le routeur
+      toPosition: POSITION.FACEUP_ATTACK,
+      isToken: false,
+      reason: REASON_XYZ_MATERIAL_SETTLE,
+    } satisfies MoveMsg));
+    sinks.enqueueVirtualMoves(virtuals);
+
+    // 3. Retourner le payload — porté par la deferred jusqu'au close.
+    return {
+      payload: {
+        xyzZoneLock,
+        expectedCardCodes: new Set(materials),
+        remaining: materials.length,
+      } satisfies XyzLeavePayload,
+    };
+  },
+
+  /**
+   * Verdict d'absorption sur chaque settling matchant le predicate.
+   *
+   * Mutate le payload (decrement remaining + delete cardCode) —
+   * autorisé par le contrat (le DEP ne lit ni n'écrit dans `payload`).
+   *
+   * - `cardCode` hors liste → rearm avec MÊME predicate (probablement
+   *   le settling d'un AUTRE XYZ parti en parallèle ; un autre
+   *   deferred l'absorbera). Pas de modification du payload.
+   * - dernier matériau → `absorb-and-close` (close la deferred + emit
+   *   EffectReady + appelle onClose? avec reason='matched').
+   * - sinon → `absorb` (deferred reste ouverte, predicate inchangé).
+   */
+  chainTo: (matched, _ref, deferred: ActiveDeferredView): RewriterVerdict => {
+    if (!isMove(matched)) return null; // never happens given the predicate
+    const payload = deferred.payload as XyzLeavePayload;
+
+    if (!payload.expectedCardCodes.has(matched.cardCode)) {
+      // Settling orphelin — un autre deferred l'absorbera. Rearm avec
+      // même predicate pour rester à l'écoute des nôtres. Pas un
+      // close (qui abandonnerait nos vrais settlings attendus).
+      return deferred.awaitingPredicate;
+    }
+
+    payload.expectedCardCodes.delete(matched.cardCode);
+    payload.remaining -= 1;
+
+    if (payload.remaining === 0) {
+      return { kind: 'absorb-and-close' };
+    }
+    return { kind: 'absorb' };
+  },
+
+  /**
+   * Release du lock externe — appelé sur les 3 chemins de fermeture
+   * (`'matched'` / `'timeout'` / `'checkpoint'`). Garantie no-leak
+   * peu importe le chemin (décision D2 architecture review).
+   *
+   * `ZoneLock.release` est idempotent — safe sur double-fermeture.
+   */
+  onClose: (payload, _reason) => {
+    (payload as XyzLeavePayload).xyzZoneLock.release();
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Stubs deferred to β.2b-bis / β.3 — kept inline as documentation so a
 // future reader sees why they're not shipped at β.2b.
 // ---------------------------------------------------------------------------
@@ -239,4 +450,5 @@ export const RULES: readonly DeferredRule[] = [
   attackImpact,
   lpCost,
   counterPulse,
+  xyzLeaveWithMaterials,
 ];
