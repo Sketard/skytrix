@@ -571,6 +571,10 @@ export class DuelConnection {
         this._justReconnected.set(false);
         syncAfterBoardState(this.rbs, this.processor.chainPhase(),
           this.processor.animationQueue().length, message.data, this._boardActive);
+        // β.1 — feed the BoundaryProcessor for Turn/Phase delta detection.
+        // Runs after the sync tier decision so the BP's emit fires AFTER
+        // the board state is reflected in the rendered/logical layers.
+        this.processor.observeBoardState(message.data);
         break;
 
       case 'STATE_SYNC':
@@ -596,6 +600,11 @@ export class DuelConnection {
         this.rbs.assertNoLocks('onStateSync');
         this.rbs.updateLogical(message.data);
         this.rbs.commitAll();
+        // β.1 — emit `*Ended` for every still-open boundary group BEFORE
+        // wiping chain state. The journal sees the closures in causality
+        // order; the next BOARD_STATE (forwarded by the resync) re-opens
+        // fresh turn/phase groups.
+        this.processor.forceBoundaryClosure('STATE_SYNC');
         this.processor.reset();
         // Clear stale prompt + hint: server will re-send them in order (hint first, then prompt)
         this._pendingPrompt.set(null);
@@ -778,6 +787,12 @@ export class DuelConnection {
         }
         this._lastConfirmedCards = [];
         this._confirmedCardsByChain.clear();
+        // β.1 — emit `*Ended` for every still-open boundary group BEFORE
+        // wiping chain state so the journal sees the duel closure in
+        // causality order (Chain → Phase → Turn). Runs AFTER the MSG_WIN
+        // synthesis so the journal order is `…events… → MSG_WIN → *Ended`,
+        // matching the natural reading.
+        this.processor.forceBoundaryClosure('DuelEnded');
         this.processor.reset();
         this._pendingPrompt.set(null);
         this._inactivityWarning.set(null);
@@ -801,6 +816,9 @@ export class DuelConnection {
       case 'REMATCH_STARTING':
         this._lastConfirmedCards = [];
         this._confirmedCardsByChain.clear();
+        // β.1 — close any still-open boundary groups before resetting.
+        // The next duel's BOARD_STATE will open fresh ones.
+        this.processor.forceBoundaryClosure('RematchStarted');
         this.processor.reset();
         this._rematchStarting.set(true);
         this._duelResult.set(null);

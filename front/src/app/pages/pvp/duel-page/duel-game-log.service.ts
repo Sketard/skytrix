@@ -20,10 +20,19 @@ import {
   type ResetTarget,
   type ScopeCategory,
 } from '../projections';
-import type { DuelState, StreamEvent } from '../types';
+import type { BoundaryEvent, DuelState, StreamEvent } from '../types';
+import { isBoundaryEvent } from '../types';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
 import { EMPTY_DUEL_STATE } from '../types';
+
+/**
+ * StreamEvent narrowed to what the legacy journal actually consumes.
+ * β.1 excluded `BoundaryEvent` from the builder's input contract; this
+ * alias makes the intent explicit at the `ingest` / `captureOpponentActivation`
+ * call sites.
+ */
+type JournalEvent = Exclude<StreamEvent, BoundaryEvent>;
 
 /**
  * DEV ONLY — a synthetic `MSG_CHAINING` carries a `__dev` marker so the two
@@ -128,7 +137,7 @@ export class DuelGameLogService implements ResetTarget {
    * (Palier 0): wider than `GameEvent` to admit out-of-band feeds —
    * `MSG_CHAIN_NEGATED`, `MSG_WIN`, `SELECT_CARD`.
    */
-  private readonly tappedEvents: StreamEvent[] = [];
+  private readonly tappedEvents: JournalEvent[] = [];
 
   /** Palier 0 — index of last event consumed from the attached `eventStream`.
    *  Reset on `reset()` (and implicitly on `rebuildUpTo`, which clears
@@ -252,6 +261,14 @@ export class DuelGameLogService implements ResetTarget {
       this.captureOpponentActivation(event);
       return;
     }
+    // β.1 — Boundary events live on the same stream as MSG_* messages
+    // but the legacy GameLogBuilder does not consume them. β.3+ will
+    // wire dedicated boundary-aware projections; until then, filter
+    // them out at the journal boundary so the builder keeps its
+    // ServerMessage contract. Filter applies BEFORE `tappedEvents.push`
+    // so a perspective-flip rebuild stays consistent with what the
+    // builder actually consumed.
+    if (isBoundaryEvent(event)) return;
     this.tappedEvents.push(event);
     this.ingest(event);
     this.captureOpponentActivation(event);
@@ -388,7 +405,7 @@ export class DuelGameLogService implements ResetTarget {
    * (analysis §2.4); the orchestrator has already folded this event's
    * `boardStateAfter` into it before the tap fires.
    */
-  private ingest(event: StreamEvent): void {
+  private ingest(event: JournalEvent): void {
     const board = this.readBoard();
     // Ordering contract (§1.2): turn/phase sync precedes the event ingest.
     this.builder.syncTurnAndPhase(board);
@@ -404,7 +421,7 @@ export class DuelGameLogService implements ResetTarget {
    * leaves the signal untouched (the bubble is opponent-only — analysis §3.3).
    * This does NOT go through the builder (analysis §3.5).
    */
-  private captureOpponentActivation(event: StreamEvent): void {
+  private captureOpponentActivation(event: JournalEvent): void {
     if (event.type !== 'MSG_CHAINING') return;
     const isOpponent = event.player !== this.perspective;
     if (!isOpponent) return;

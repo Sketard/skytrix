@@ -2,4 +2,11 @@ export { DuelState, EMPTY_DUEL_STATE, ChainLinkState, EMPTY_ZONE_SET, EMPTY_STRI
 export { Prompt } from './prompt.types';
 export { HintContext } from './hint-context.types';
 export { GameEvent, StreamEvent } from './game-event.types';
+export {
+  BoundaryEvent,
+  ChainStartedEvent, ChainEndedEvent,
+  TurnStartedEvent, TurnEndedEvent,
+  PhaseStartedEvent, PhaseEndedEvent,
+  isBoundaryEvent,
+} from './boundary-event.types';
 export { ConnectionStatus } from './connection-status.types';

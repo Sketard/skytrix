@@ -1,7 +1,8 @@
 import { computed, signal } from '@angular/core';
 import { ChainLinkState, GameEvent, StreamEvent } from '../types';
-import type { ChainingMsg, ChainNegatedMsg, ChainSolvingMsg, ChainSolvedMsg, ServerMessage } from '../duel-ws.types';
+import type { BoardStatePayload, ChainingMsg, ChainNegatedMsg, ChainSolvingMsg, ChainSolvedMsg, ServerMessage } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
+import { BoundaryProcessor, type BoundaryClosureReason } from './boundary-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import type { QueueEntry } from './animation-data-source';
 
@@ -56,6 +57,27 @@ export class DuelEventProcessor {
   readonly pendingChainEntry = this._pendingChainEntry.asReadonly();
   readonly hasPendingChainEntry = computed(() => this._pendingChainEntry() !== null);
 
+  /**
+   * β.1 (2026-05-26) — boundary detector. Emits `ChainStarted/Ended`,
+   * `TurnStarted/Ended`, `PhaseStarted/Ended` on the same `onEvent`
+   * sink as `MSG_CHAIN_NEGATED` etc. The processor delegates two
+   * public methods (`observeBoardState`, `forceBoundaryClosure`) so
+   * the adapters (DuelConnection / ReplayDuelAdapter) only know about
+   * the processor, not about the BP itself.
+   * Sync mandatory: chain boundaries fire inside `_processMessageInner`
+   * BEFORE any state mutation, so a stream consumer never sees
+   * `MSG_CHAINING(N)` without `ChainStarted(N)` first.
+   *
+   * `getLogger` is a closure so the BP reads the processor's `logger`
+   * field lazily — the field is assigned after construction by the
+   * site that wires the BP (DuelConnection / ReplayDuelAdapter), and
+   * capturing it at field-init time would bind `undefined`.
+   */
+  private readonly boundary = new BoundaryProcessor(
+    e => this.onEvent?.(e),
+    () => this.logger,
+  );
+
   // Enqueue only if `msg` is a known GameEvent — runtime guard via
   // GAME_EVENT_TYPES set lets us narrow the discriminated union without an
   // unchecked cast. Non-GameEvent messages reaching here would indicate a
@@ -106,6 +128,10 @@ export class DuelEventProcessor {
   }
 
   private _processMessageInner(msg: ServerMessage): void {
+    // β.1 — boundary detection runs FIRST so a `ChainStarted(N)` is
+    // emitted on `onEvent` before the matching `MSG_CHAINING(N)` is
+    // enqueued and forwarded. Sync-mandatory ordering by construction.
+    this.boundary.observeMessage(msg);
     switch (msg.type) {
       case 'MSG_CHAINING': {
         const chainingMsg = msg as ChainingMsg;
@@ -210,6 +236,28 @@ export class DuelEventProcessor {
     this._pendingChainEntry.set(null);
   }
 
+  /**
+   * β.1 — feed a BOARD_STATE payload to the boundary detector. Called
+   * by the WS adapter (DuelConnection / ReplayDuelAdapter) from its
+   * BOARD_STATE handler. The BP emits `TurnStarted/Ended` and
+   * `PhaseStarted/Ended` on `onEvent` based on `turnCount/turnPlayer/phase`
+   * deltas.
+   */
+  observeBoardState(payload: BoardStatePayload): void {
+    this.boundary.observeBoardState(payload);
+  }
+
+  /**
+   * β.1 — force-close every open boundary group (chain / turn / phase).
+   * Called by the WS adapter on `STATE_SYNC`, `RematchStarted`, or
+   * `DUEL_END` per §3.6 + §3.8: a checkpoint closes the causality and
+   * anything previously open must be ended synthetically before fresh
+   * boundaries can open.
+   */
+  forceBoundaryClosure(reason: BoundaryClosureReason): void {
+    this.boundary.forceClosure(reason);
+  }
+
   /** Clear only the animation queue — preserves chain state for cross-transition chains. */
   resetQueue(): void {
     this._animationQueue.set([]);
@@ -220,5 +268,12 @@ export class DuelEventProcessor {
     this._activeChainLinks.set([]);
     this._chainPhase.set('idle');
     this._pendingChainEntry.set(null);
+    // β.1 — drop boundary state silently. `reset()` is hard teardown
+    // (duel destroy, fresh start) — the stream subscriber dies with the
+    // same scope, so emitting `*Ended` here would just pollute a stream
+    // nobody is reading. Use `forceBoundaryClosure(reason)` from the
+    // adapter when a §3.6 checkpoint is the actual cause and the
+    // journal should see the closures.
+    this.boundary.silentReset();
   }
 }

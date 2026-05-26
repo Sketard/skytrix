@@ -166,8 +166,14 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
       this.processor.processMessage(event);
     }
 
+    const nextSwapped = this.swapBoardState(next.boardState);
     syncAfterBoardState(this.rbs, this.processor.chainPhase(),
-      this.processor.animationQueue().length, this.swapBoardState(next.boardState), true);
+      this.processor.animationQueue().length, nextSwapped, true);
+    // β.1 — feed the BoundaryProcessor with the swapped board state
+    // (perspective-relative, matching what PvP feeds). Turn/Phase
+    // deltas emit `*Started/Ended` on the stream so the journal stays
+    // PvP/Replay-parity by construction.
+    this.processor.observeBoardState(nextSwapped);
 
     if (this.processor.animationQueue().length === 0) {
       this.rbs.syncRendered();
@@ -286,6 +292,9 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
       if (step.pendingState) {
         syncAfterBoardState(this.rbs, this.processor.chainPhase(),
           this.processor.animationQueue().length, step.pendingState, true);
+        // β.1 — same as feedTransition: feed boundary detector with the
+        // already-swapped pendingState (buildSteps swaps via buildSteps caller).
+        this.processor.observeBoardState(step.pendingState);
       }
 
       if (this.processor.animationQueue().length === 0) {
@@ -325,6 +334,11 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     if (lastState) {
       syncAfterBoardState(this.rbs, this.processor.chainPhase(),
         this.processor.animationQueue().length, lastState, true);
+      // β.1 — collapseRemainingSteps fast-forwards through the last
+      // pendingState; feed it to the BP so Turn/Phase deltas still
+      // emit. Without this, a "skip to end" replay control would
+      // silence the closing boundaries.
+      this.processor.observeBoardState(lastState);
     }
     if (this.processor.animationQueue().length === 0) {
       this.rbs.syncRendered();

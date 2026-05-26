@@ -85,7 +85,7 @@ Two distinct flux coexist in the animation pipeline:
 - **`AnimationOrchestratorService.eventStream`** — every duel event in
   logical order (post-chain-buffer), the journal source. Wider
   `StreamEvent` union (`GameEvent | ChainNegatedMsg | WinMsg |
-  SelectCardMsg`). Fed at four push sites:
+  SelectCardMsg | BoundaryEvent`). Fed at five push sites:
   · the in-queue tap inside `processEvent` (after `bufferIfResolving`,
     after `updateLogical(boardStateAfter)`, before the dispatch switch);
   · `DuelEventProcessor.onEvent(MSG_CHAIN_NEGATED)` → wired by
@@ -98,6 +98,10 @@ Two distinct flux coexist in the animation pipeline:
     naturally in the engine (non-engine ends — surrender, timeout,
     disconnect — leave `winReasonCode` undefined and skip the synthesis,
     matching what replay sees in its precompute final state).
+  · β.1 (2026-05-26) — `BoundaryProcessor` emits `ChainStarted/Ended`,
+    `TurnStarted/Ended`, `PhaseStarted/Ended` via the same `onEvent`
+    sink the processor uses for `MSG_CHAIN_NEGATED`. See the dedicated
+    "BoundaryProcessor" section below.
 
 `DuelGameLogService` subscribes via `attachEventStream(stream)` — a
 `signal` effect that drains newly-pushed events through `notifyGameLog`
@@ -106,6 +110,67 @@ seek `orchestrator.resetForSwitch` clears the stream and the service
 together, then `rebuildUpTo(states)` re-feeds the builder via the
 separate `ingestState` path. PvP↔Replay parity is structural — the
 same `GameLogBuilder` consumes the same event set on both sides.
+
+## BoundaryProcessor (β.1, 2026-05-26)
+
+`BoundaryProcessor` (`boundary-processor.ts`) is a plain class owned
+privately by `DuelEventProcessor` that emits explicit causal-group
+boundary markers on the EventStream. Cf. `duel-session-chantier.md
+§3.8`. Three pairs, all flat by OCGCore guarantee — chains never
+nest, turns never overlap, phases are strictly sequential:
+
+- `ChainStarted(chainId)` / `ChainEnded(chainId)` — encadrent les
+  events d'une même chain. `chainId` = `chainIndex` of the opening
+  `MSG_CHAINING`, stays fixed across multi-link chains.
+- `TurnStarted(turnNumber, player)` / `TurnEnded(turnNumber)` —
+  detected from BOARD_STATE `turnCount`/`turnPlayer` delta.
+- `PhaseStarted(phase)` / `PhaseEnded(phase)` — detected from
+  BOARD_STATE `phase` delta.
+
+Every boundary carries `kind: 'boundary'` so consumers narrow via
+`isBoundaryEvent(e)`. Boundaries live on `StreamEvent` (extended at
+β.1) alongside the MSG_* family — they are NEVER enqueued for
+animation, and `DuelGameLogService.notifyGameLog` filters them out
+before the legacy `GameLogBuilder` (β.3+ will wire dedicated
+boundary-aware projections).
+
+**Inputs**:
+
+- `observeMessage(msg)` — called from `DuelEventProcessor._processMessageInner`
+  as the FIRST line, BEFORE any state mutation. Sync-mandatory:
+  `ChainStarted(N)` emits on the stream before `MSG_CHAINING(N)`
+  reaches the orchestrator's `processEvent`.
+- `observeBoardState(payload)` — called from the WS adapter
+  (`DuelConnection` `case 'BOARD_STATE'`, `ReplayDuelAdapter`
+  `feedTransition` + `advanceStep` + `collapseRemainingSteps`)
+  AFTER `syncAfterBoardState`. Turn/Phase deltas emit on the
+  stream right after the board state lands.
+- `forceClosure(reason)` — called from the WS adapter on STATE_SYNC,
+  REMATCH_STARTING, DUEL_END. Emits `*Ended` for every open group in
+  Chain → Phase → Turn order, then clears state. Lets the journal
+  see the duel closure in causality order before the chain state is
+  wiped.
+
+**First-BOARD_STATE rule (Option 4, 2026-05-26)**: the very first
+BOARD_STATE emits `TurnStarted(N)` + `PhaseStarted(P)` without any
+preceding `*Ended`. Asymmetric by design — a duel opens with no
+preceding turn/phase. Avoids the "boardActive coupling" trap (the BP
+does not know about `boardActive`) and the "silent baseline" trap
+(consumers would have to infer Turn 1 opening).
+
+**Mismatch handling**: an `MSG_CHAIN_END` arriving without an open
+chain emits a synthetic `ChainEnded(-1)` + `logger.warn`. Throw was
+considered but rejected — legitimate queue-routing specs feed
+isolated `MSG_CHAIN_END` and would crash; the journal stays
+consistent via the synth, the anomaly surfaces in DevHub.
+
+**`silentReset`** drops the BP's state WITHOUT emitting any
+boundary. Called by `DuelEventProcessor.reset()` on hard teardown
+(duel destroy / fresh start) — the stream subscriber dies with the
+same scope, so emitting `*Ended` there would just pollute a stream
+nobody reads. Use `forceClosure(reason)` from the adapter when a
+§3.6 checkpoint is the actual cause and the journal should see the
+closures.
 
 ## Replay Board State Parity Rule
 

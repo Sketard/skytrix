@@ -3,15 +3,18 @@ import type { StreamEvent } from '../types';
 /**
  * The flux event union consumed by every {@link BaseProjection}.
  *
- * At α.2 this is an alias of {@link StreamEvent} (the existing palier-0
- * surface — `GameEvent | ChainNegatedMsg | WinMsg | SelectCardMsg`). The
- * alias decouples future projections from the legacy name and lets the
- * union grow as new families are introduced:
+ * Alias of {@link StreamEvent} (the palier-0 surface), decoupling
+ * future projections from the legacy name as the union grows family
+ * by family:
  *
- *   · α.3 — {@link InternalTransportEvent} family (`AnimationStarted`,
- *     `AnimationCompleted`, `TimerArmed`, `TimerFired`, `TimerCancelled`)
- *   · β.1 — Boundary family (`ChainStarted/Ended`, `TurnStarted/Ended`,
- *     `PhaseStarted/Ended`)
+ *   · Palier 0 (shipped) — `GameEvent | ChainNegatedMsg | WinMsg | SelectCardMsg`
+ *   · β.1 (shipped) — Boundary family (`ChainStarted/Ended`,
+ *     `TurnStarted/Ended`, `PhaseStarted/Ended`) added via `StreamEvent`
+ *     itself; consumers discriminate via `kind: 'boundary'`.
+ *   · α.3 (sink-only, not in union) — {@link InternalTransportEvent}
+ *     family (`runner-started/stopped/etc.`). Reaches an optional
+ *     `onInternalEvent` callback on the runner but is not (yet) merged
+ *     into `FluxEvent`. β.x will decide whether to absorb it.
  *   · β.2 — Deferred family (`DeferredEffect`, `EffectReady`,
  *     `EffectAbandoned`)
  *
