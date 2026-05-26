@@ -11,7 +11,7 @@
 // `providedIn: 'root'` — one instance per duel page, reset on rematch / seek.
 // =============================================================================
 
-import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
+import { computed, effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
 import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
 import type { PreComputedState } from '../duel-ws-replay.types';
 import {
@@ -126,8 +126,13 @@ export class DuelGameLogService implements ResetTarget {
   private readonly _lastOpponentActivation = signal<OpponentActivation | null>(
     null,
   );
-  private readonly _panelOpen = signal(false);
-  private readonly _panelClosing = signal(false);
+  // Three-state machine for the panel chrome. Replaces the previous pair
+  // `(_panelOpen, _panelClosing)` where (true, true) was illegal but not
+  // enforced — the two booleans were always set in lockstep. A single
+  // enum makes the legal states explicit and the transitions atomic
+  // (a single `.set()` instead of two consecutive sets, eliminating the
+  // transient tick where consumers could observe an inconsistent pair).
+  private readonly _panelState = signal<'open' | 'closing' | 'closed'>('closed');
   private readonly _journalRebuiltTick = signal(0);
 
   /**
@@ -182,8 +187,10 @@ export class DuelGameLogService implements ResetTarget {
   constructor() {
     this.gameLogEntries = this._entries.asReadonly();
     this.lastOpponentActivation = this._lastOpponentActivation.asReadonly();
-    this.panelOpen = this._panelOpen.asReadonly();
-    this.panelClosing = this._panelClosing.asReadonly();
+    // Backwards-compatible projections of the enum so existing consumers
+    // (panel component, page template, specs) keep their boolean view.
+    this.panelOpen = computed(() => this._panelState() !== 'closed');
+    this.panelClosing = computed(() => this._panelState() === 'closing');
     this.journalRebuiltTick = this._journalRebuiltTick.asReadonly();
     this.dispatcher?.register(this);
   }
@@ -197,7 +204,7 @@ export class DuelGameLogService implements ResetTarget {
   /** Toggle the panel — opens it, or starts a close if already open. The
    *  trigger button (Lot 4f) calls this. */
   togglePanel(): void {
-    if (this._panelOpen() && !this._panelClosing()) {
+    if (this._panelState() === 'open') {
       this.beginPanelClose();
       return;
     }
@@ -206,21 +213,19 @@ export class DuelGameLogService implements ResetTarget {
 
   /** Open the panel immediately, cancelling any in-progress close. */
   openPanel(): void {
-    this._panelClosing.set(false);
-    this._panelOpen.set(true);
+    this._panelState.set('open');
   }
 
   /** Mark the panel as closing — the panel component plays the exit
    *  transition, then calls `finishPanelClose()`. */
   beginPanelClose(): void {
-    if (!this._panelOpen() || this._panelClosing()) return;
-    this._panelClosing.set(true);
+    if (this._panelState() !== 'open') return;
+    this._panelState.set('closing');
   }
 
   /** Tear the panel DOM down — called by the panel after the exit transition. */
   finishPanelClose(): void {
-    this._panelOpen.set(false);
-    this._panelClosing.set(false);
+    this._panelState.set('closed');
   }
 
   /**
