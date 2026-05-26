@@ -56,7 +56,7 @@ describe('RenderedBoardStateService', () => {
     it('should start with EMPTY_DUEL_STATE for both logical and rendered', () => {
       expect(rbs.logicalState()).toEqual(EMPTY_DUEL_STATE);
       expect(rbs.renderedState()).toEqual(EMPTY_DUEL_STATE);
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
   });
 
@@ -77,7 +77,7 @@ describe('RenderedBoardStateService', () => {
   describe('lockZone + commit', () => {
     it('should set hasLockedZones to true when a lock is active', () => {
       rbs.lockZone('M1-0');
-      expect(rbs.hasLockedZones()).toBeTrue();
+      expect(rbs.hasLockedZones).toBeTrue();
     });
 
     it('should protect locked zone from syncRendered', () => {
@@ -118,7 +118,7 @@ describe('RenderedBoardStateService', () => {
     it('should set hasLockedZones to false after commit', () => {
       const lock = rbs.lockZone('M1-0');
       lock.commit();
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
   });
 
@@ -135,7 +135,7 @@ describe('RenderedBoardStateService', () => {
       // Zone should still show old value (100), not logical (999)
       const renderedZone = rbs.renderedState().players[0].zones.find(z => z.zoneId === 'M1');
       expect(renderedZone!.cards[0].cardCode).toBe(100);
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
   });
 
@@ -152,11 +152,11 @@ describe('RenderedBoardStateService', () => {
 
       inner.commit();
       // Still locked (outer holds)
-      expect(rbs.hasLockedZones()).toBeTrue();
+      expect(rbs.hasLockedZones).toBeTrue();
 
       outer.commit();
       // Now fully unlocked and committed
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
       expect(rbs.renderedState().players[0].zones.find(z => z.zoneId === 'M1')!.cards[0].cardCode).toBe(999);
     });
   });
@@ -166,28 +166,28 @@ describe('RenderedBoardStateService', () => {
       const lock = rbs.lockZone('M1-0');
       lock.commit();
       lock.commit(); // should not throw or double-decrement
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
 
     it('should be safe to call release twice', () => {
       const lock = rbs.lockZone('M1-0');
       lock.release();
       lock.release();
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
 
     it('should be safe to commit after release (no-op)', () => {
       const lock = rbs.lockZone('M1-0');
       lock.release();
       lock.commit(); // already released, should be no-op
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
 
     it('should be safe to release after commit (no-op)', () => {
       const lock = rbs.lockZone('M1-0');
       lock.commit();
       lock.release(); // already committed, should be no-op
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
   });
 
@@ -260,7 +260,7 @@ describe('RenderedBoardStateService', () => {
 
       expect(rbs.renderedState().players[0].lp).toBe(1000);
       expect(rbs.renderedState().players[0].zones.find(z => z.zoneId === 'M1')!.cards[0].cardCode).toBe(999);
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     });
   });
 
@@ -353,7 +353,7 @@ describe('RenderedBoardStateService', () => {
   describe('lockZone with source parameter', () => {
     it('should accept optional source string without error', () => {
       const lock = rbs.lockZone('M1-0', 'test-source');
-      expect(rbs.hasLockedZones()).toBeTrue();
+      expect(rbs.hasLockedZones).toBeTrue();
       lock.release();
     });
   });
@@ -365,10 +365,10 @@ describe('RenderedBoardStateService', () => {
   describe('lockZone safety timeout', () => {
     it('fires duelAssert with source tag + releases the lock when never committed', fakeAsync(() => {
       rbs.lockZone('M1-0', 'unit-test:orphan');
-      expect(rbs.hasLockedZones()).toBeTrue();
+      expect(rbs.hasLockedZones).toBeTrue();
       expect(() => tick(LOCK_SAFETY_TIMEOUT_MS + 50))
         .toThrowError(/DUEL-ASSERT.*lockZone.*M1-0.*unit-test:orphan/);
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     }));
 
     it('does NOT fire when lock is committed before the deadline', fakeAsync(() => {
@@ -377,7 +377,7 @@ describe('RenderedBoardStateService', () => {
       lock.commit();
       // Advancing past the original deadline must not re-throw (timer cleared).
       tick(500);
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     }));
 
     it('does NOT fire when lock is released before the deadline', fakeAsync(() => {
@@ -385,7 +385,7 @@ describe('RenderedBoardStateService', () => {
       tick(LOCK_SAFETY_TIMEOUT_MS - 100);
       lock.release();
       tick(500);
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
     }));
 
     it('fires duelAssert for each orphan in a multi-lock leak', fakeAsync(() => {
@@ -457,7 +457,7 @@ describe('RenderedBoardStateService', () => {
       rbs.updateLogical(makeState({ p0: { lp: 1000 } }));
       rbs.lockZone('M1-0');
       rbs.destroy();
-      expect(rbs.hasLockedZones()).toBeFalse();
+      expect(rbs.hasLockedZones).toBeFalse();
       expect(rbs.renderedState().players[0].lp).toBe(1000);
     });
   });

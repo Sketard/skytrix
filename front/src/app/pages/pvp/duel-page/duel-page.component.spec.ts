@@ -94,7 +94,7 @@ class StubWsService {
   readonly boardStateView = {
     logicalState: this._logical.asReadonly(),
     renderedState: this._rendered.asReadonly(),
-    hasLockedZones: signal(false).asReadonly(),
+    hasLockedZones: false,
   };
   setLogical(s: DuelState): void { this._logical.set(s); }
   setRendered(s: DuelState): void { this._rendered.set(s); }

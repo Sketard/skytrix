@@ -24,7 +24,7 @@ export interface ZoneLock {
 export interface BoardStateView {
   readonly logicalState: Signal<DuelState>;
   readonly renderedState: Signal<DuelState>;
-  readonly hasLockedZones: Signal<boolean>;
+  readonly hasLockedZones: boolean;
 }
 
 @Injectable()
@@ -55,12 +55,17 @@ export class RenderedBoardStateService implements BoardStateView {
   private _logical = signal<DuelState>(EMPTY_DUEL_STATE);
   private _rendered = signal<DuelState>(EMPTY_DUEL_STATE);
   private _locks = new Map<string, number>();
-  private _hasLockedZones = signal(false);
   private _safetyTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
   readonly logicalState = this._logical.asReadonly();
   readonly renderedState = this._rendered.asReadonly();
-  readonly hasLockedZones = this._hasLockedZones.asReadonly();
+  /**
+   * β.3 Lot 4 cleanup — derived getter (was a manually-synced `signal` until
+   * 2026-05-26). Pure derivation of `_locks.size > 0`; no reactive Angular
+   * propagation needed since no production consumer reads it inside a
+   * template / effect / computed (only the spec suite + 2 stubs).
+   */
+  get hasLockedZones(): boolean { return this._locks.size > 0; }
 
   // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -161,7 +166,6 @@ export class RenderedBoardStateService implements BoardStateView {
 
   lockZone(zoneKey: string, source?: string): ZoneLock {
     this._locks.set(zoneKey, (this._locks.get(zoneKey) ?? 0) + 1);
-    this._hasLockedZones.set(true);
 
     let released = false;
     const lockedAt = performance.now();
@@ -174,7 +178,6 @@ export class RenderedBoardStateService implements BoardStateView {
       const rc = this._locks.get(zoneKey)! - 1;
       if (rc <= 0) this._locks.delete(zoneKey);
       else this._locks.set(zoneKey, rc);
-      this._hasLockedZones.set(this._locks.size > 0);
       // Release WITHOUT commit — zone stays at old rendered state until next commitAll() (see §12.3)
       const msg = `Lock safety timeout for ${zoneKey} after ${Math.round(performance.now() - lockedAt)}ms (source: ${source ?? 'unknown'}, remaining locks: ${[...this._locks.keys()].join(', ') || 'none'})`;
       duelAssert(false, 'lockZone', msg);
@@ -195,8 +198,7 @@ export class RenderedBoardStateService implements BoardStateView {
         } else {
           this._locks.set(zoneKey, rc);
         }
-        this._hasLockedZones.set(this._locks.size > 0);
-      },
+        },
       release: () => {
         if (released) return;
         released = true;
@@ -206,8 +208,7 @@ export class RenderedBoardStateService implements BoardStateView {
         const rc = this._locks.get(zoneKey)! - 1;
         if (rc <= 0) this._locks.delete(zoneKey);
         else this._locks.set(zoneKey, rc);
-        this._hasLockedZones.set(this._locks.size > 0);
-      },
+        },
     };
   }
 
@@ -278,7 +279,6 @@ export class RenderedBoardStateService implements BoardStateView {
     this._safetyTimeouts.clear();
     this._locks.clear();
     this._rendered.set(this._logical());
-    this._hasLockedZones.set(false);
   }
 
   // ── commitLp ─────────────────────────────────────────────────────────

@@ -122,7 +122,7 @@ class StubReplayDuelAdapter {
   readonly boardStateView = {
     renderedState: this._rendered.asReadonly(),
     logicalState: this._rendered.asReadonly(),
-    hasLockedZones: signal(false).asReadonly(),
+    hasLockedZones: false,
   };
   jumpToState = jasmine.createSpy('jumpToState');
   abort = jasmine.createSpy('abort');
