@@ -81,6 +81,10 @@ export interface QueueDecisionInputs {
 /** Synchronous result of `handleEntry` — the runner awaits this itself. */
 export type EventResult = number | 'async' | Promise<void>;
 
+/** Cap on how many `onInternalEvent` sink-throw warnings are emitted before
+ *  the runner suppresses further logging from the same misbehaving consumer. */
+const SINK_THROW_WARN_LIMIT = 5;
+
 /**
  * Dependencies injected by the orchestrator at QueueRunner construction.
  * Every callback is invoked from inside the loop — none of them may
@@ -230,6 +234,13 @@ export class QueueRunner {
   private _guardTimer: ReturnType<typeof setTimeout> | null = null;
   /** Active await-signal effect (cleared by `requestStop()`). */
   private _awaitSignalEffect: EffectRef | null = null;
+
+  // --- emitInternal defense-in-depth (P2) ---
+  /** Re-entry guard: true while a sink callback is running on this thread.
+   *  Prevents recursive emit if a sink (or its logger path) re-emits. */
+  private _emittingInternal = false;
+  /** Total sink-throw count for warn rate-limit (see `SINK_THROW_WARN_LIMIT`). */
+  private _sinkThrowCount = 0;
 
   constructor(deps: QueueRunnerDeps) {
     this.deps = deps;
@@ -649,14 +660,35 @@ export class QueueRunner {
    * Forward an {@link InternalTransportEvent} to the optional sink. Fire-
    * and-forget by contract: sink exceptions are swallowed so the runner's
    * own loop is never destabilised by a misbehaving consumer.
+   *
+   * Defense-in-depth (code-review #2 finding P2):
+   *   - Re-entry guard: if `emitInternal` is already on the stack (sink
+   *     re-emits or its logger re-enters), we drop the nested call instead
+   *     of recursing.
+   *   - Sink-throw warn rate-limit: a sink that throws on every event
+   *     (broken wiring) would otherwise flood the warn channel — log only
+   *     the first ~SINK_THROW_WARN_LIMIT failures and a single summary.
    */
   private emitInternal(event: InternalTransportEvent): void {
     const sink = this.deps.onInternalEvent;
     if (!sink) return;
+    if (this._emittingInternal) return;
+    this._emittingInternal = true;
     try {
       sink(event);
     } catch (err) {
-      this.deps.logger.warn('[RUNNER] onInternalEvent sink threw: %o', err);
+      this._sinkThrowCount++;
+      if (this._sinkThrowCount <= SINK_THROW_WARN_LIMIT) {
+        this.deps.logger.warn('[RUNNER] onInternalEvent sink threw (#%d): %o',
+          this._sinkThrowCount, err);
+        if (this._sinkThrowCount === SINK_THROW_WARN_LIMIT) {
+          this.deps.logger.warn(
+            '[RUNNER] onInternalEvent sink threw %d times — suppressing further warnings',
+            SINK_THROW_WARN_LIMIT);
+        }
+      }
+    } finally {
+      this._emittingInternal = false;
     }
   }
 
