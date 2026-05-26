@@ -38,6 +38,18 @@ export const QUEUE_COLLAPSE_KEEP = 3;
 /** Safety timeout (ms) for replayBuffer batch-end resolution. */
 export const REPLAY_BUFFER_SAFETY_TIMEOUT_MS = 10_000;
 
+/**
+ * Timeout (ms) past which an open `DeferredEffect` is closed with
+ * `EffectAbandoned(reason='timeout')`. Generous (5s) and fixed at
+ * β.2a — pre-measurement; β.2b will revisit (DP-3) if T-I2 or e2e
+ * SOLO slow-playback shows clipping. NOT scaled by `speedMultiplier`
+ * today: the deferred lifecycle is logical (a chain cost can be slow
+ * to animate, but it still resolves), and a speed-scaled timeout
+ * would hide an actually stuck rule under slow playback. Cf.
+ * `_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md §2.3`.
+ */
+export const DEFERRED_TIMEOUT_MS = 5_000;
+
 /** Beat between board activation (`setBoardActive(true)` after the dice arena
  *  dismisses) and the drain of pre-activation buffered events. Lets the eye
  *  find the freshly revealed board zones before the first card animation —

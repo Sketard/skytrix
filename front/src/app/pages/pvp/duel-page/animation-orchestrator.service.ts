@@ -42,6 +42,7 @@ import { DuelToastService } from './duel-toast.service';
 import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
 import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
+import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { ScopeResetDispatcher, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
@@ -202,16 +203,46 @@ export class AnimationOrchestratorService {
    * Palier 0 — `EventStream`. Holds every duel event in logical order
    * (post-chain-buffer). Distinct from `dataSource.animationQueue()`: the
    * queue is the *animatable subset* the runner consumes; this stream is
-   * the *complete log source* the Game Log subscribes to. Fed at the
-   * former `notifyGameLog` tap point for in-queue events, and via
-   * `notifyOutOfBandEvent` for the three types that bypass the animation
-   * queue by design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`, `MSG_WIN`
-   * reconstructed from `DUEL_END`). The animation queue invariant
-   * "`MSG_CHAIN_NEGATED` is NOT enqueued" stays true — queue and stream
-   * are two distinct objects.
+   * the *complete log source* the Game Log subscribes to. Fed via the
+   * single convergence point `pushToStream(event)`:
+   *   - in-queue tap inside `processEvent` (every MSG_*);
+   *   - `notifyOutOfBandEvent` for the types that bypass the queue by
+   *     design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`, `MSG_WIN` from
+   *     `DUEL_END`, β.1 BoundaryEvents);
+   *   - the `QueueRunner.onInternalEvent` sink (β.2a — α.3
+   *     `InternalTransportEvent`s join the stream so the DEP observes
+   *     transport state alongside WS messages).
+   * The DEP also emits onto the stream through `pushDeferredToStream`,
+   * which bypasses the `observe` re-entry guard (a deferred-emitted
+   * `EffectReady` doesn't need to re-feed itself). The animation queue
+   * invariant "`MSG_CHAIN_NEGATED` is NOT enqueued" stays true — queue
+   * and stream are two distinct objects.
    */
   private readonly _eventStream = signal<StreamEvent[]>([]);
   readonly eventStream = this._eventStream.asReadonly();
+
+  /**
+   * β.2a — the DeferredEffectProcessor. Plain class, instantiated here
+   * because the DEP must observe the SAME convergence point as the
+   * orchestrator's `pushToStream` (the only site that sees WS messages,
+   * boundary events, AND runner transport events in arrival order). A
+   * processor-side instantiation (mirror of `BoundaryProcessor` inside
+   * `DuelEventProcessor`) would miss the runner half of the stream.
+   *
+   * Emit sink writes directly to `_eventStream` (no `observe` re-entry —
+   * a deferred event must not feed itself back into the processor). The
+   * lazy `getLogger` lets the DEP read `this.logger` after construction
+   * (mirror of the BP wiring inside the DEP).
+   *
+   * Auto-registered with `scopeDispatcher` in the constructor so it
+   * participates in §3.6 checkpoint fan-out (STATE_SYNC / RematchStarted
+   * cascade DUEL → CONNECTION → drop every pending deferred with
+   * `EffectAbandoned(reason='checkpoint')`).
+   */
+  private readonly deferredProcessor = new DeferredEffectProcessor(
+    e => this.pushDeferredToStream(e),
+    () => this.logger,
+  );
 
   /** Zone keys of cards currently being targeted (MSG_BECOME_TARGET). */
   readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
@@ -292,6 +323,12 @@ export class AnimationOrchestratorService {
         commitMode: this.commitMode,
         deferredSolvingEntry: this.chainManager.deferredSolvingEvent,
       }),
+      // β.2a — absorb the α.3 InternalTransportEvent sink onto the
+      // EventStream. The DEP (and future projections) observe the
+      // runner's lifecycle transitions in the same arrival order as WS
+      // messages + boundary events, closing the W1 finding from the α
+      // code-review (the transport sink was orthogonal to the stream).
+      onInternalEvent: e => this.pushToStream(e),
     });
 
     // Resume effect: when overlay signals ready, resume queue processing.
@@ -301,6 +338,16 @@ export class AnimationOrchestratorService {
     });
     // Wire draw manager queue resume callback
     this.drawManager.initQueueResumeCallback(() => this.runner.notifyEnqueue());
+
+    // β.2a — auto-register the DEP with the scope-reset dispatcher so
+    // STATE_SYNC / RematchStarted (DUEL_LIFETIME → cascades to
+    // CONNECTION) abandon every pending deferred with
+    // `EffectAbandoned(reason='checkpoint')`. `{ optional: true }` on
+    // the dispatcher inject above means the orchestrator's own spec
+    // suite (which does not provide the dispatcher) keeps compiling —
+    // the DEP simply never receives a reset there, which is fine for
+    // the unit tests that exercise it directly.
+    this.scopeDispatcher?.register(this.deferredProcessor);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -543,6 +590,12 @@ export class AnimationOrchestratorService {
     this.lpTracker.reset();
     this.battleTracker.reset();
     this.gameLog?.reset();
+    // β.2a — silent reset on hard teardown (mirrors BP.silentReset and
+    // the orchestrator's intent for `destroy`). Drops timers + the
+    // active map WITHOUT emitting `EffectAbandoned` — the stream
+    // subscriber dies with the same scope so emitting closures would
+    // only pollute a stream nobody reads.
+    this.deferredProcessor.silentReset();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -599,12 +652,49 @@ export class AnimationOrchestratorService {
     this.counterPulseKey.set(null);
     this.swapGraveDeckKeys.set(new Set());
     this.toastService.clear();
+    // β.2a note — any `EffectAbandoned(checkpoint)` emitted by the DEP
+    // during `dispatch(scopes)` above lands here BEFORE the clear, so
+    // the journal subscriber's effect (one task) only sees the final
+    // empty array. Acceptable at β.2a because RULES is empty in prod;
+    // β.3+ projections that consume EffectAbandoned will need this
+    // ordering reworked (drain dispatcher events before clearing, or
+    // dispatch AFTER the clear with a fresh stream).
     this._eventStream.set([]);
   }
 
   /**
+   * β.2a — the single convergence point for any event that lands on the
+   * EventStream. Updates the stream signal AND feeds the DEP so it can
+   * match its `awaitingPredicate`s against the event. Call sites:
+   *   · in-queue tap inside `processEvent` (every MSG_* the orchestrator
+   *     dispatches);
+   *   · `notifyOutOfBandEvent` (events that bypass the animation queue
+   *     by design — see its docblock);
+   *   · `QueueRunner.onInternalEvent` sink (β.2a — α.3 runner
+   *     `InternalTransportEvent`s, absorbed onto the stream so the DEP
+   *     observes transport state alongside WS messages).
+   * Does NOT touch `dataSource.animationQueue()` — invariant
+   * "`MSG_CHAIN_NEGATED` is NOT enqueued" stays true.
+   */
+  private pushToStream(event: StreamEvent): void {
+    this._eventStream.update(s => [...s, event]);
+    this.deferredProcessor.observe(event);
+  }
+
+  /**
+   * β.2a — exclusive entry point for the DEP's own emissions. Bypasses
+   * the `observe` re-entry guard: a `DeferredEffect` / `EffectReady` /
+   * `EffectAbandoned` event MUST NOT be re-fed to the DEP that emitted
+   * it. Otherwise correct — the stream stays the source of truth for
+   * downstream projections.
+   */
+  private pushDeferredToStream(event: StreamEvent): void {
+    this._eventStream.update(s => [...s, event]);
+  }
+
+  /**
    * Palier 0 — push a `GameEvent` that bypasses the animation queue by
-   * design into the EventStream. Three call-sites:
+   * design into the EventStream. Three+ call-sites:
    *   · `MSG_CHAIN_NEGATED` — surfaced by `DuelEventProcessor.onEvent` (the
    *     processor consumes it silently for chain-state but still emits it
    *     here so the journal sees the "Nié" badge in PvP live);
@@ -612,12 +702,14 @@ export class AnimationOrchestratorService {
    *     (the builder needs it as the secondary `MSG_BECOME_TARGET` resolver);
    *   · `MSG_WIN` (reconstructed from `DUEL_END`) — surfaced by
    *     `DuelConnection` on duel close (server converts MSG_WIN → DUEL_END;
-   *     the journal needs the original to render the 🏆 row).
-   * Does NOT touch `dataSource.animationQueue()` — invariant "MSG_CHAIN_NEGATED
-   * is NOT enqueued" stays true.
+   *     the journal needs the original to render the 🏆 row);
+   *   · β.1 `BoundaryEvent`s — emitted by `BoundaryProcessor` via the
+   *     same `processor.onEvent` sink the adapters wire here.
+   * Delegates to `pushToStream` (β.2a) so the DEP observes these events
+   * too. Public method kept as the stable adapter-side API.
    */
   notifyOutOfBandEvent(event: StreamEvent): void {
-    this._eventStream.update(s => [...s, event]);
+    this.pushToStream(event);
   }
 
   resetForSwitch(): void {
@@ -843,7 +935,9 @@ export class AnimationOrchestratorService {
     //    `logicalState()` sees the post-event board;
     //  - BEFORE the dispatch switch: passive side-effect, no influence on
     //    animation dispatch.
-    this._eventStream.update(s => [...s, event]);
+    // β.2a — routes through `pushToStream` so the DEP observes the event
+    // in the exact same arrival order projections see it.
+    this.pushToStream(event);
 
     switch (event.type) {
       case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);

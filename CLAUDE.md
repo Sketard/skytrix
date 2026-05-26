@@ -85,23 +85,37 @@ Two distinct flux coexist in the animation pipeline:
 - **`AnimationOrchestratorService.eventStream`** — every duel event in
   logical order (post-chain-buffer), the journal source. Wider
   `StreamEvent` union (`GameEvent | ChainNegatedMsg | WinMsg |
-  SelectCardMsg | BoundaryEvent`). Fed at five push sites:
+  SelectCardMsg | BoundaryEvent | DeferredFluxEvent |
+  InternalTransportEvent`). β.2a refactored the push pipeline around a
+  **single convergence point**: `AnimationOrchestratorService.pushToStream(event)`
+  appends to `_eventStream` AND calls `deferredProcessor.observe(event)`.
+  The DEP's own emissions go through `pushDeferredToStream` which
+  bypasses observe re-entry. Push sites converging on `pushToStream`:
   · the in-queue tap inside `processEvent` (after `bufferIfResolving`,
     after `updateLogical(boardStateAfter)`, before the dispatch switch);
-  · `DuelEventProcessor.onEvent(MSG_CHAIN_NEGATED)` → wired by
-    `DuelConnection.attachOutOfBandSink` and
-    `ReplayDuelAdapter.attachOutOfBandSink`;
-  · `DuelConnection` `SELECT_CARD` prompt branch (PvP only — replay has
-    no interactive prompts);
-  · `DuelConnection` `DUEL_END` handler reconstructs a synthetic
-    `MSG_WIN` from `winner` + `winReasonCode` when the duel ended
-    naturally in the engine (non-engine ends — surrender, timeout,
-    disconnect — leave `winReasonCode` undefined and skip the synthesis,
-    matching what replay sees in its precompute final state).
-  · β.1 (2026-05-26) — `BoundaryProcessor` emits `ChainStarted/Ended`,
-    `TurnStarted/Ended`, `PhaseStarted/Ended` via the same `onEvent`
-    sink the processor uses for `MSG_CHAIN_NEGATED`. See the dedicated
-    "BoundaryProcessor" section below.
+  · `notifyOutOfBandEvent` (public adapter API kept; delegates to
+    `pushToStream`) — feeds `DuelEventProcessor.onEvent(MSG_CHAIN_NEGATED)`
+    (wired by `DuelConnection.attachOutOfBandSink` /
+    `ReplayDuelAdapter.attachOutOfBandSink`); `DuelConnection`
+    `SELECT_CARD` prompt branch (PvP only — replay has no interactive
+    prompts); `DuelConnection` `DUEL_END` handler reconstructs a
+    synthetic `MSG_WIN` from `winner` + `winReasonCode` when the duel
+    ended naturally in the engine (non-engine ends — surrender,
+    timeout, disconnect — leave `winReasonCode` undefined and skip the
+    synthesis, matching what replay sees in its precompute final state);
+    β.1 BoundaryProcessor emissions via the same `processor.onEvent`
+    sink the adapters wire (`ChainStarted/Ended`, `TurnStarted/Ended`,
+    `PhaseStarted/Ended` — see the dedicated "BoundaryProcessor"
+    section below);
+  · β.2a (2026-05-26) — `QueueRunner.onInternalEvent` sink absorbed
+    onto the stream (the α.3 `InternalTransportEvent` family —
+    `runner-started/stopped`, `rescue-*`, `watchdog-armed`). Closes the
+    W1 code-review finding. The DEP observes runner transport events
+    alongside WS messages so a future rule can predicate on them.
+  · β.2a (2026-05-26) — `DeferredEffectProcessor` emits
+    `DeferredEffect/EffectReady/EffectAbandoned` via
+    `pushDeferredToStream`. See the dedicated
+    "DeferredEffectProcessor" section below.
 
 `DuelGameLogService` subscribes via `attachEventStream(stream)` — a
 `signal` effect that drains newly-pushed events through `notifyGameLog`
@@ -171,6 +185,92 @@ same scope, so emitting `*Ended` there would just pollute a stream
 nobody reads. Use `forceClosure(reason)` from the adapter when a
 §3.6 checkpoint is the actual cause and the journal should see the
 closures.
+
+## DeferredEffectProcessor (β.2a, 2026-05-26)
+
+`DeferredEffectProcessor` (`deferred-effect-processor.ts`) materialises
+cross-event temporal correlations as **explicit markers on the
+EventStream** instead of leaving each consumer to track them ad-hoc.
+Cf. `duel-session-chantier.md §3.7` + the implementation spec at
+`_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
+
+The processor closes the *cost-before-overlay* bug class
+**structurally** — the timing of the chain overlay vs the cost
+animation is no longer a mutable flag in 5 consumers but a single
+`DeferredEffect('overlay-show:N')` / `EffectReady('overlay-show:N')`
+pair that projections read off the flux. Cf. memory
+[[cost-before-overlay-failed-2026-05-25]] for the 4 prior attempts
+that motivated the rewrite.
+
+**β.2a ships INFRASTRUCTURE only**: the observe loop, the timer /
+collision / checkpoint / silentReset mechanics, the `ResetTarget`
+integration, and an **empty `RULES` table**. The DEP receives every
+flux event the orchestrator pushes (via `pushToStream`), but emits
+nothing because no rule matches. β.2b populates `RULES` with the 10
+catalogue cases; β.2c adds case #11 + the `TargetIndicatorManager`
+wiring.
+
+**Three emitted event types**, all carrying `kind: 'deferred'`:
+- `DeferredEffect(name, triggerRef, awaitingPredicate)` — a rule's
+  trigger fired; the processor is now watching for an event matching
+  the predicate.
+- `EffectReady(name, triggerRef)` — a flux event matched the
+  predicate; consumers can now treat the deferred as resolved.
+- `EffectAbandoned(name, triggerRef, reason)` — the deferred was
+  closed without a match. `reason: 'timeout'` (no match within
+  `DEFERRED_TIMEOUT_MS = 5s`) or `'checkpoint'` (a §3.6 reset wiped
+  every pending deferred).
+
+Discriminator: every event carries `kind: 'deferred'` so consumers
+narrow via `isDeferredFluxEvent(e)`. Deferred events live on
+`StreamEvent` (extended at β.2a) alongside the MSG_* family — they
+are NEVER enqueued for animation, and `DuelGameLogService.notifyGameLog`
+filters them out before the legacy `GameLogBuilder` (β.3+ will wire
+dedicated projection consumers).
+
+**Wiring** (different from β.1 BP): the DEP is owned by
+`AnimationOrchestratorService`, NOT `DuelEventProcessor`. Reason:
+the DEP must observe the SAME convergence point that sees WS
+messages AND boundary events AND runner transport events in arrival
+order — that point is the orchestrator's `pushToStream`.
+Instantiating inside the processor (like the BP) would miss the
+runner half of the stream. The two patterns are not the same because
+the two scopes are not the same.
+
+**Reset scope**: `CONNECTION_LIFETIME`. `PerspectiveSwitched`
+(PERSPECTIVE-only, deeper) does NOT abandon open deferreds —
+deferreds survive the switch (spec §3.7bis lifecycle bullet). A
+checkpoint dispatch (`STATE_SYNC` / `RematchStarted` → DUEL cascading
+to CONNECTION) emits `EffectAbandoned(reason='checkpoint')` for
+every active deferred in insertion order, then clears the internal
+map + timers.
+
+**`silentReset`** drops state + timers WITHOUT emitting any
+`EffectAbandoned`. Mirror of `BoundaryProcessor.silentReset`: called
+by `AnimationOrchestratorService.destroy()` on hard teardown
+(duel destroy / fresh start) where the stream subscriber dies with
+the same scope, so emitting closures would just pollute a stream
+nobody reads. Use `applyReset({CONNECTION_LIFETIME})` via the
+dispatcher when a §3.6 checkpoint is the actual cause and the
+journal should see the closures.
+
+**Collisions of `name`** are an invariant violation: `duelAssert`
+throws in dev; in prod the older entry is abandoned with
+`EffectAbandoned(reason='timeout')` and a `logger.warn`. The rules
+table guarantees uniqueness by including index / chainIndex / ref in
+each name (`overlay-show:<chainIdx>`, `banish-seq:<ref>:<n>`, …).
+
+**Convergence point — `pushToStream` (β.2a)**: the orchestrator
+exposes a single private `pushToStream(event)` method that both
+appends to `_eventStream` and calls `deferredProcessor.observe(event)`.
+Four call sites converge here: the in-queue tap inside
+`processEvent`, `notifyOutOfBandEvent` (boundary events + MSG_CHAIN_NEGATED
++ SELECT_CARD + synthesized MSG_WIN from DUEL_END), and the
+`QueueRunner.onInternalEvent` sink (β.2a absorbs the α.3 sink onto
+the stream, closing the W1 code-review finding). The DEP's own
+emissions go through `pushDeferredToStream` which **bypasses the
+observe re-entry guard** — an emitted `EffectReady` must not be
+re-fed to the DEP that emitted it.
 
 ## Replay Board State Parity Rule
 

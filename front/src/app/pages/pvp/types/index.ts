@@ -9,4 +9,10 @@ export {
   PhaseStartedEvent, PhaseEndedEvent,
   isBoundaryEvent,
 } from './boundary-event.types';
+export {
+  AwaitingPredicate,
+  DeferredEffectEvent, EffectReadyEvent, EffectAbandonedEvent,
+  DeferredFluxEvent,
+  isDeferredFluxEvent,
+} from './deferred-effect.types';
 export { ConnectionStatus } from './connection-status.types';

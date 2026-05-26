@@ -30,6 +30,8 @@ import {
   SelectCardMsg,
 } from '../duel-ws.types';
 import type { BoundaryEvent } from './boundary-event.types';
+import type { DeferredFluxEvent } from './deferred-effect.types';
+import type { InternalTransportEvent } from '../duel-page/queue-runner-events';
 
 export type GameEvent =
   | MoveMsg
@@ -79,14 +81,27 @@ export type GameEvent =
  *     `TurnStarted/Ended`, `PhaseStarted/Ended`). Every member carries
  *     `kind: 'boundary'` so consumers can discriminate them from the
  *     MSG_* messages (which never carry `kind`).
+ *   · `DeferredFluxEvent` — β.2 (2026-05-26): cross-event temporal
+ *     correlation markers emitted by `DeferredEffectProcessor`
+ *     (`DeferredEffect`, `EffectReady`, `EffectAbandoned`). Carry
+ *     `kind: 'deferred'`. Closes the cost-before-overlay bug class
+ *     structurally (cf. `bug-cost-before-overlay-sequence.md`).
+ *   · `InternalTransportEvent` — β.2 (2026-05-26, absorbed from the
+ *     α.3 separate sink): the `QueueRunner`'s lifecycle transitions
+ *     (`runner-started`, `runner-stopped`, `rescue-*`, …). Carry one
+ *     of the `runner-*` / `rescue-*` / `watchdog-*` kinds. Merged
+ *     into the stream so the DEP and future projections observe
+ *     transport state through the single convergence point.
  * The animation queue and the EventStream are distinct objects; the
  * "MSG_CHAIN_NEGATED is NOT enqueued" invariant stays true, and
- * BoundaryEvents are likewise never enqueued for animation — they
- * live purely on the stream.
+ * BoundaryEvents / DeferredFluxEvents / InternalTransportEvents are
+ * likewise never enqueued for animation — they live purely on the stream.
  */
 export type StreamEvent =
   | GameEvent
   | ChainNegatedMsg
   | WinMsg
   | SelectCardMsg
-  | BoundaryEvent;
+  | BoundaryEvent
+  | DeferredFluxEvent
+  | InternalTransportEvent;

@@ -20,19 +20,39 @@ import {
   type ResetTarget,
   type ScopeCategory,
 } from '../projections';
-import type { BoundaryEvent, DuelState, StreamEvent } from '../types';
-import { isBoundaryEvent } from '../types';
+import type {
+  BoundaryEvent, DeferredFluxEvent, DuelState, StreamEvent,
+} from '../types';
+import { isBoundaryEvent, isDeferredFluxEvent } from '../types';
+import type { InternalTransportEvent } from './queue-runner-events';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
 import { EMPTY_DUEL_STATE } from '../types';
 
 /**
  * StreamEvent narrowed to what the legacy journal actually consumes.
- * β.1 excluded `BoundaryEvent` from the builder's input contract; this
- * alias makes the intent explicit at the `ingest` / `captureOpponentActivation`
- * call sites.
+ * β.1 excluded `BoundaryEvent`; β.2 excludes `DeferredFluxEvent` (the
+ * cross-event correlation markers consumed by projections, never by
+ * the legacy builder) and `InternalTransportEvent` (the runner
+ * lifecycle markers absorbed onto the stream at β.2a — see
+ * `game-event.types.ts`). The alias makes the intent explicit at the
+ * `ingest` / `captureOpponentActivation` call sites.
  */
-type JournalEvent = Exclude<StreamEvent, BoundaryEvent>;
+type JournalEvent = Exclude<
+  StreamEvent,
+  BoundaryEvent | DeferredFluxEvent | InternalTransportEvent
+>;
+
+/** Discriminate a runner internal transport event by its `kind` prefix.
+ *  Used to filter the events out of the journal feed — same role as
+ *  `isBoundaryEvent` and `isDeferredFluxEvent`. */
+function isInternalTransportEvent(e: unknown): e is InternalTransportEvent {
+  if (typeof e !== 'object' || e === null) return false;
+  const kind = (e as { kind?: unknown }).kind;
+  return kind === 'runner-started' || kind === 'runner-stopped'
+    || kind === 'rescue-fired' || kind === 'rescue-abandoned'
+    || kind === 'watchdog-armed';
+}
 
 /**
  * DEV ONLY — a synthetic `MSG_CHAINING` carries a `__dev` marker so the two
@@ -261,14 +281,17 @@ export class DuelGameLogService implements ResetTarget {
       this.captureOpponentActivation(event);
       return;
     }
-    // β.1 — Boundary events live on the same stream as MSG_* messages
-    // but the legacy GameLogBuilder does not consume them. β.3+ will
-    // wire dedicated boundary-aware projections; until then, filter
-    // them out at the journal boundary so the builder keeps its
+    // β.1 / β.2 — Boundary + Deferred + InternalTransport events live
+    // on the same stream as MSG_* messages but the legacy GameLogBuilder
+    // does not consume them. β.3+ will wire dedicated projections that
+    // do; until then, filter them out at the journal boundary so the
+    // builder keeps its
     // ServerMessage contract. Filter applies BEFORE `tappedEvents.push`
     // so a perspective-flip rebuild stays consistent with what the
     // builder actually consumed.
     if (isBoundaryEvent(event)) return;
+    if (isDeferredFluxEvent(event)) return;
+    if (isInternalTransportEvent(event)) return;
     this.tappedEvents.push(event);
     this.ingest(event);
     this.captureOpponentActivation(event);
