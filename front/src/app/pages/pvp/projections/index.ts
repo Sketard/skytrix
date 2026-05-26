@@ -10,3 +10,8 @@ export {
 } from './scope';
 export { OverlayShowReadyProjection } from './overlay-show-ready.projection';
 export { CounterPulseProjection, type CounterPulseProjectionDeps } from './counter-pulse.projection';
+export {
+  AnimatingZoneProjection,
+  type AnimatingZoneData,
+  type AnimatingZoneProjectionDeps,
+} from './animating-zone.projection';

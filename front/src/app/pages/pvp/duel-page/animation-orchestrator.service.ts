@@ -44,7 +44,7 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
-import { CounterPulseProjection, OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
+import { AnimatingZoneProjection, CounterPulseProjection, OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -112,11 +112,18 @@ export class AnimationOrchestratorService {
   // --- Public read-only signals ---
   private readonly _isAnimating = signal(false);
   readonly isAnimating = this._isAnimating.asReadonly();
-  readonly animatingZone = signal<{
-    zoneId: string;
-    animationType: 'flip' | 'activate';
-    relativePlayerIndex: number;
-  } | null>(null);
+
+  /**
+   * β.3 Lot 2.6 — pulse glow on a field zone whose card just flipped
+   * face-up (MSG_FLIP_SUMMONING / MSG_CHANGE_POS face-down → face-up)
+   * or activated (MSG_CHAINING with a non-HAND zoneId). Cleared by the
+   * matching `AnimationCompleted` (wall-clock end of the handler's
+   * hold) or by `applyReset` on §3.6 cascades. Templates read
+   * `animatingZone.value()` directly.
+   */
+  readonly animatingZone = new AnimatingZoneProjection({
+    relativePlayer: (abs: number) => this.ctx.relativePlayer(abs),
+  });
 
   /** Single source of truth for the chain pulse glow duration (ms). */
   chainPulseDuration(): number {
@@ -360,7 +367,9 @@ export class AnimationOrchestratorService {
       preLockQueuedSources: () => this.moveRouter.preLockQueuedSources(),
       onStepSettled: (event, ref) => {
         this.lpTracker.commitIfPending();
-        this.animatingZone.set(null);
+        // β.3 Lot 2.6 — `animatingZone` projection clears itself when it
+        // observes the `AnimationCompleted` pushed below for an event
+        // whose msgType is in the FLIP/CHAIN/CHANGE_POS family.
         // β.3 — emit AnimationCompleted at the REAL wall-clock end of
         // the awaited step. Pair with the AnimationStarted that
         // `emitAnimationStarted` pushed synchronously at dispatch
@@ -377,7 +386,9 @@ export class AnimationOrchestratorService {
       onFinalize: () => {
         this.finalizeAndCommit();
         this.drawManager.resetHandAnimationState();
-        this.animatingZone.set(null);
+        // β.3 Lot 2.6 — `animatingZone` projection cleared via
+        // AnimationCompleted in `onStepSettled`; the defensive set(null)
+        // here was redundant. No-op cleanup retained for LP only.
         this.lpTracker.animatingLpPlayer.set(null);
         const state = this.rbs.logicalState();
         if (state.players.length === 2) {
@@ -441,6 +452,11 @@ export class AnimationOrchestratorService {
     // pulse alongside the chain manager.
     this.scopeDispatcher?.register(this.counterPulse);
     this.counterPulse.attachEventStream(this._eventStream, this.injector);
+
+    // β.3 Lot 2.6 — animating-zone projection: tracks flip/activate
+    // animation on a field zone. PERSPECTIVE_LIFETIME scope.
+    this.scopeDispatcher?.register(this.animatingZone);
+    this.animatingZone.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -695,6 +711,7 @@ export class AnimationOrchestratorService {
     // for a hard reset path.
     this.overlayShowReady.detachEventStream();
     this.counterPulse.detachEventStream();
+    this.animatingZone.detachEventStream();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -739,7 +756,8 @@ export class AnimationOrchestratorService {
     this._isAnimating.set(false);
     this.drawManager.reset();
     this.drawManager.clearTimeouts();
-    this.animatingZone.set(null);
+    // β.3 Lot 2.6 — `animatingZone` projection cleared via the
+    // scopeDispatcher.dispatch below (PERSPECTIVE_LIFETIME scope).
     this.finalizeAndCommit();
     this.rbs.commitAll(); // Lifecycle: force-sync all zones + clear locks
     this.scopeDispatcher?.dispatch(scopes);
@@ -1036,7 +1054,8 @@ export class AnimationOrchestratorService {
             ref, msgType: event.type,
           });
         }
-        this.animatingZone.set(null);
+        // β.3 Lot 2.6 — `animatingZone` projection observes the
+        // AnimationCompleted events above and clears itself.
         this.lpTracker.animatingLpPlayer.set(null);
         return 'continue';
       }
@@ -1146,9 +1165,11 @@ export class AnimationOrchestratorService {
   // ---------------------------------------------------------------------------
 
   private handleFlipSummoning(msg: FlipSummoningMsg): number {
+    // β.3 Lot 2.6 — `animatingZone` projection observes this MSG via
+    // the EventStream `pushToStream` tap and sets itself. Handler only
+    // owns runtime side-effects (a11y announce + duration return).
     const zoneId = locationToZoneId(msg.location, msg.sequence);
     if (zoneId) {
-      this.setAnimatingZone(zoneId, 'flip', msg.player);
       this.ctx.announceEvent('Card flip summoned', msg.player);
     }
     return POSITION_FLIP_MS;
@@ -1158,8 +1179,8 @@ export class AnimationOrchestratorService {
     const wasFaceDown = (msg.previousPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
     const nowFaceUp = (msg.currentPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
     if (wasFaceDown && nowFaceUp) {
-      const zoneId = locationToZoneId(msg.location, msg.sequence);
-      if (zoneId) this.setAnimatingZone(zoneId, 'flip', msg.player);
+      // β.3 Lot 2.6 — `animatingZone` projection self-sets on this msg
+      // (narrowed on the face-down → face-up branch).
       return POSITION_FLIP_MS;
     }
     if (!wasFaceDown && nowFaceUp) {
@@ -1173,7 +1194,7 @@ export class AnimationOrchestratorService {
     const holdMs = this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS);
     const zoneId = locationToZoneId(msg.location, msg.sequence);
     if (zoneId) {
-      this.setAnimatingZone(zoneId, 'activate', msg.player);
+      // β.3 Lot 2.6 — `animatingZone` projection self-sets on this msg.
       const zoneKey = locationToZoneKey(msg.location, msg.sequence, relPlayer);
       if (zoneKey) return this.boardEffects.activateEffect(zoneKey, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
         .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
@@ -1511,15 +1532,6 @@ export class AnimationOrchestratorService {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-
-  private setAnimatingZone(
-    zoneId: string,
-    animationType: 'flip' | 'activate',
-    absolutePlayer: number,
-  ): void {
-    const relativePlayerIndex = this.ctx.relativePlayer(absolutePlayer);
-    this.animatingZone.set({ zoneId, animationType, relativePlayerIndex });
-  }
 
   private trace(action: string, detail?: Record<string, unknown>): void {
     this.logger.log(DuelLogCategory.QUEUE,

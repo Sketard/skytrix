@@ -258,7 +258,9 @@ export class DuelPageComponent implements OnInit, OnDestroy {
 
   // Delegate animation signals to service
   readonly isAnimating = this.animationService.isAnimating;
-  readonly animatingZone = this.animationService.animatingZone;
+  // β.3 Lot 2.6 — `animatingZone` is now a projection; expose its
+  // read-only `value` signal directly so template bindings stay `()`.
+  readonly animatingZone = this.animationService.animatingZone.value;
 
   // Notify server when animations complete so it can start the turn timer.
   // Fires on every (pendingPrompt, isAnimating) change: sends immediately if
