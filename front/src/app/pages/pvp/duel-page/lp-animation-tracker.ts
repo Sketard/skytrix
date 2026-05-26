@@ -12,6 +12,8 @@ import {
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { DuelContext } from './duel-context';
 
+const STARTING_LP: readonly [number, number] = [8000, 8000];
+
 /**
  * Tracks LP changes, animates the counter, and commits LP to rendered state.
  * Provided at component level (NOT root).
@@ -47,7 +49,7 @@ export class LpAnimationTracker implements ResetTarget {
 
   private get rbs() { return this.dataSource.renderedBoardState; }
 
-  private trackedLp: [number, number] = [8000, 8000];
+  private trackedLp: [number, number] = [...STARTING_LP] as [number, number];
   private _pendingLpCommits = new Set<Player>();
   private _cachedBaseLpDuration: number | null = null;
 
@@ -143,42 +145,40 @@ export class LpAnimationTracker implements ResetTarget {
 
   /**
    * α.4b — `ResetTarget` entry point. Driven by `ScopeResetDispatcher`
-   * when this tracker's scope (or any wider one) is invalidated. The
-   * dispatcher passes the **expanded** scope set, so we can distinguish
-   * the two slices declaratively:
+   * when this tracker's scope (or any wider one) is invalidated. Layout:
    *   - DUEL_LIFETIME present → clear trackedLp + pending commits
    *   - PERSPECTIVE_LIFETIME present → clear the in-flight animation
    *
-   * The declared `scope = DUEL_LIFETIME` means a PerspectiveSwitched
-   * (PERSPECTIVE only) does NOT reach this `applyReset` at all — the
-   * dispatcher only fans out to targets whose scope is in the *expanded*
-   * invalidated set, and PERSPECTIVE expansion = {PERSPECTIVE} alone
-   * (PERSPECTIVE is the most volatile rung, nothing strictly below).
-   * The PERSPECTIVE branch below thus fires only as defense-in-depth
-   * when a wider reset (DUEL_LIFETIME) cascades through this target —
-   * DUEL expansion = {DUEL, CONNECTION, PERSPECTIVE}, so both branches
-   * run, which is equivalent to the legacy `reset()`.
+   * **Reachability** — declared `scope = DUEL_LIFETIME` means the
+   * dispatcher only routes here when DUEL (or above) is invalidated.
+   * Expansion is downward-only (cf. §3.5): DUEL → {DUEL, CONNECTION,
+   * PERSPECTIVE}, so any DUEL-or-above dispatch hits BOTH branches.
+   * A PERSPECTIVE-only dispatch never reaches this `applyReset` at all
+   * (target.scope=DUEL is not in the expanded set {PERSPECTIVE}). The
+   * two-branch shape is therefore equivalent to a single body — kept
+   * separate so β can split the scopes properly once typed reset events
+   * land. Until then, the PERSPECTIVE branch fires only as a co-effect
+   * of a DUEL cascade, never on its own.
    *
-   * **Known dette (party-mode 2026-05-26, Murat finding #3).** With LP
-   * declared DUEL_LIFETIME, an `animatingLpPlayer` in flight at the
-   * moment of a SOLO `switchPlayer` is NOT cleared by the dispatcher
-   * (the PERSPECTIVE branch is unreached). In practice this is benign
-   * because SOLO switches happen at prompt boundaries with the queue
-   * already drained — but the invariant is unguarded. Proper fix
-   * deferred to β when `BoundaryProcessor` emits typed switch events
-   * and the orchestrator can clear `animatingLpPlayer` explicitly at
-   * `resetForSwitch`, rather than relying on scope semantics.
+   * **Known dette (party-mode 2026-05-26, Murat finding #3).** A
+   * SOLO `switchPlayer` dispatches PERSPECTIVE_LIFETIME only, so an
+   * `animatingLpPlayer` in flight at switch time is NOT cleared here.
+   * Benign in practice (SOLO switches happen at prompt boundaries with
+   * the queue already drained). Proper fix deferred to β: once
+   * `BoundaryProcessor` emits typed switch events, the orchestrator
+   * clears `animatingLpPlayer` explicitly at `resetForSwitch` rather
+   * than via scope semantics.
    *
-   * `checkpointPayload` is currently unused (LP state will re-seed
-   * from the BOARD_STATE payload directly via `syncFromBoardState`
-   * after a STATE_SYNC; that path stays as is at α.4b).
+   * `checkpointPayload` is unused at α.4b — LP state re-seeds from the
+   * BOARD_STATE payload directly via `syncFromBoardState` after a
+   * STATE_SYNC.
    */
   applyReset(
     scopes: ReadonlySet<ScopeCategory>,
     _checkpointPayload?: CheckpointPayload,
   ): void {
     if (scopes.has('DUEL_LIFETIME')) {
-      this.trackedLp = [8000, 8000];
+      this.trackedLp = [...STARTING_LP] as [number, number];
       this._pendingLpCommits.clear();
     }
     if (scopes.has('PERSPECTIVE_LIFETIME')) {
@@ -187,7 +187,7 @@ export class LpAnimationTracker implements ResetTarget {
   }
 
   reset(): void {
-    this.trackedLp = [8000, 8000];
+    this.trackedLp = [...STARTING_LP] as [number, number];
     this._pendingLpCommits.clear();
     this.animatingLpPlayer.set(null);
   }

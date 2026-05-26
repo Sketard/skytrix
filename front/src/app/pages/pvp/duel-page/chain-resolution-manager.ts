@@ -247,15 +247,18 @@ export class ChainResolutionManager implements ResetTarget {
    * α.4b — `ResetTarget` entry point. The declared `scope` is
    * `PERSPECTIVE_LIFETIME` (the most volatile slice we carry) so this is
    * reached by every reset event from PerspectiveSwitched upward.
-   * Branches:
-   *   - CONNECTION_LIFETIME present → full chain state reset (signals,
-   *     buffer, counters, deferred peek). Carried by STATE_SYNC,
-   *     RematchStarted, ServerKicked, NavigationAway.
-   *   - PERSPECTIVE_LIFETIME present only → just clear the transport
-   *     timers (banner + replay). Carried by PerspectiveSwitched.
-   * The cascade (§3.5) guarantees that a CONNECTION reset also carries
-   * PERSPECTIVE, so the timers are cleared as part of the full reset
-   * — and the legacy `reset()` is functionally equivalent to calling
+   *
+   * Two intensities, ordered by widest scope first:
+   *   - CONNECTION_LIFETIME present (carried by STATE_SYNC, RematchStarted,
+   *     ServerKicked, NavigationAway) → full chain state reset via
+   *     `reset()` which itself clears banner + replay timers, so we stop
+   *     here.
+   *   - PERSPECTIVE_LIFETIME only (carried by PerspectiveSwitched) →
+   *     transport timers only via `clearTimeouts()`. Chain state is
+   *     intentionally preserved across the switch.
+   *
+   * The §3.5 cascade guarantees CONNECTION expansion contains PERSPECTIVE,
+   * so the legacy `reset()` is functionally equivalent to
    * `applyReset(new Set(['CONNECTION_LIFETIME', 'PERSPECTIVE_LIFETIME']))`.
    */
   applyReset(
@@ -264,9 +267,7 @@ export class ChainResolutionManager implements ResetTarget {
   ): void {
     if (scopes.has('CONNECTION_LIFETIME')) {
       this.reset();
-      return; // reset() already clears all timers
-    }
-    if (scopes.has('PERSPECTIVE_LIFETIME')) {
+    } else if (scopes.has('PERSPECTIVE_LIFETIME')) {
       this.clearTimeouts();
     }
   }
