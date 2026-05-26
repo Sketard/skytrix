@@ -319,18 +319,53 @@ risque sérieux.
 
 ## §3 Validation R8 (invariant temporel)
 
-Pour vérifier empiriquement en ~30 min que la query `OVERLAY_CARD`
-**post-`duelProcess`** retourne bien `[]` pour la zone MZONE d'un XYZ
-qui vient de partir, ajouter un log temporaire dans `transformMove`
-**SANS** le snapshot pré-process — uniquement la query post-process.
-Confirmer empiriquement le résultat vide. Si la query renvoie des
-overlays, c'est que l'invariant R8 est faux et il faut reconsidérer
-toute la stratégie (peut-être pas besoin du snapshot pré-process).
+### §3.0 RÉSULTATS EMPIRIQUES — 2026-05-26 ✓ R8 CONFIRMÉ
 
-### §3.1 Log à insérer
+**Validation effectuée** via le debug-replay harness Playwright (cf.
+`debug-xyz-bugs-2026-05-26.spec.ts:50`, replay
+`a8859c98-df53-4de3-bcdb-dd1a56176f86`, perspective 0, seekTo=26).
 
-À placer en haut de `transformMove` ([duel-worker.ts:341](../../duel-server/src/duel-worker.ts#L341)),
-AVANT la query REASON existante :
+Méthode : patch temporaire dans `transformMove` + relais front via
+`DuelEventProcessor.processMessage` (path commun PvP/Replay) →
+`console.warn` capturé par le harness (`warning` type).
+
+**4 R8-PROBE capturés**, tous avec `probeOverlayCount: 0` :
+
+| t | Card | XYZ ? | fromLoc | toLoc | reason | postCount |
+|---|---|:---:|---|---|---|:---:|
+| 20.160s | D/D Savant Copernicus | ❌ (Pendulum) | MZONE | EXTRA | 0x0 | **0** |
+| 20.165s | D/D/D Wise King Solomon | ✓ (XYZ Rank 5) | MZONE | EXTRA | 0x0 | **0** |
+| 27.454s | D/D/D Marksman King Tell | ✓ (XYZ Rank 5) | MZONE | GRAVE | 0x10000008 (LINK\|MATERIAL) | **0** |
+| 27.458s | D/D Savant Kepler | ❌ (Pendulum) | MZONE | EXTRA | 0x10000008 (LINK\|MATERIAL) | **0** |
+
+Cards types vérifiés via `cards.cdb` (`SELECT type FROM datas`) :
+- Solomon (`0x800021` = MONSTER\|EFFECT\|XYZ).
+- Tell (`0x800021` = MONSTER\|EFFECT\|XYZ).
+
+**Verdict** : les 2 XYZ qui quittent MZONE (Solomon vers EXTRA pour
+return-to-deck, Tell vers GRAVE via Link material) retournent
+`probeOverlayCount: 0` à la query post-process. Le bug visuel original
+prouvant la présence de matériaux (settlings GRAVE→GRAVE observés en
+production), R8 est confirmé : **les overlays sont irrécupérables
+post-`duelProcess`**.
+
+→ Le snapshot pré-process est nécessaire. La stratégie de la spec
+Commit 0bis est validée.
+
+Patches reverted 2026-05-26 ; les diffs sont disponibles dans le
+reflog si besoin de re-jouer.
+
+### §3.1 Protocole de capture utilisé (référence)
+
+Pour une future re-validation (régression test ou bump wasm), garder
+ce protocole en référence.
+
+Patch (à insérer + reverter avant merge) :
+
+### §3.2 Log à insérer (référence — validation 2026-05-26 utilisait cette forme)
+
+À placer dans `transformMove` ([duel-worker.ts:341](../../duel-server/src/duel-worker.ts#L341)),
+APRÈS la query REASON existante :
 
 ```ts
 function transformMove(msg: any): ServerMessage {
