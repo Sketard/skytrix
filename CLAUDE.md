@@ -327,7 +327,7 @@ needed for the cost-before-overlay fix to be USER-VISIBLE (β.2b only
 made it DEP-correct, the visual overlay still popped early because the
 emission was sync at dispatch).
 
-**Lot inventory** — 6 projections live in `front/src/app/pages/pvp/projections/`,
+**Lot inventory** — 8 projections live in `front/src/app/pages/pvp/projections/`,
 each `extends BaseProjection<T>` and is registered + attached on
 `_eventStream` by the orchestrator's constructor (search for
 `scopeDispatcher?.register`). All `PERSPECTIVE_LIFETIME` scope.
@@ -340,10 +340,12 @@ each `extends BaseProjection<T>` and is registered + attached on
 | 3.1 | `IsAnimatingProjection` | `runner-started` / `runner-stopped` (InternalTransportEvents) | applyReset |
 | 2.4-REDO | `SwapGraveDeckProjection` | `MSG_SWAP_GRAVE_DECK` | `AnimationPhaseCompleted({phase: 'glow'})` (Standardisation 1) |
 | 2.2-REDO | `AnimatingLpProjection` | `MSG_DAMAGE` / `MSG_RECOVER` / `MSG_PAY_LPCOST` decorated with `lpDelta` (Standardisation 2) | `AnimationCompleted({msgType ∈ LP_MSG_TYPES})` |
+| 4.1-REDO | `TargetedZoneKeysProjection` | `MSG_BECOME_TARGET` (FIELD locations only, union accumulation) | `AnimationPhaseCompleted({phase: 'reticle-pulse'})` (Standardisation 1) |
+| 3.2-REDO | `ChainResolutionAnnounceProjection` | `AnimationPhaseCompleted({phase: 'banner-announce'})` (parallel emit by `handleChainSolving`) | `MSG_CHAIN_END` + applyReset |
 
-**Drops (signaux NON migrés en projection, par design)** — voir la
-section "Doctrine projection vs signal manager" ci-dessous pour les
-critères. Quatre cas droppés en β.3 :
+**Drops (signaux définitivement NON migrés en projection, par
+design)** — voir la section "Doctrine projection vs signal manager"
+ci-dessous pour les critères. Deux cas droppés en β.3 :
 - `chainOverlayBoardChanged` (Lot 2.1) — supprimé, remplacé par
   `chainManager.hasBufferedEvents` (getter dérivable, équivalent
   strict au moment de la lecture par `replayAndPause`).
@@ -351,13 +353,15 @@ critères. Quatre cas droppés en β.3 :
   jamais set en prod). 3 mécaniques alternatives couvrent reveal :
   chain-tagged hand badges, `confirmCardsInHand` flip,
   `revealCardOnDeck`.
-- `chainResolutionAnnounce` (Lot 3.2) — dual-purpose (UI banner +
-  predicat sync interne au `handleSolving`). Reste dans son manager
-  jusqu'au split sync/projection prévu en β.x.
-- `targetedZoneKeys` (Lot 4.1) — sub-step `setTimeout(holdMs)` qui
-  clear AVANT le `AnimationCompleted` total (qui inclut le fade-out
-  des pile floats). Migrable via `phaseWait` (Standardisation 1),
-  prévu en β.x.
+
+**Cas dual-purpose résolu (Lot 3.2-REDO)** —
+`chainResolutionAnnounce` était un signal *dual-use* : Effect D
+réactif côté UI ET predicat sync côté `handleSolving`. Migré en
+splittant les deux mécaniques (cf. section dédiée ci-dessous) :
+projection pour la surface réactive, `_announcePending: boolean`
+privé pour le predicat sync. Les deux mécaniques sont alimentées
+par le même `pauseMs` setTimeout (en parallèle), avec drift ≤1
+microtask.
 
 Le pattern `_entryAnimInProgress` du composant chain-overlay a aussi
 été dropé (mirror de `entryTimerId !== null`, Lot 2.1bis) + le
@@ -491,6 +495,56 @@ SYNCHRONOUS reader is introduced, either wrap in
 effect/computed/timer, OR break the abstraction with a sync-tap
 method (discuss before).
 
+**`ChainResolutionAnnounceProjection`** (Lot 3.2-REDO) —
+`projections/chain-resolution-announce.projection.ts`. Tracks the
+"Chain Resolution" banner gate (`boolean`). Set by
+`AnimationPhaseCompleted({phase:'banner-announce',
+msgType:'MSG_CHAIN_SOLVING'})` emitted by the orchestrator's
+`handleChainSolving` deferred branch in PARALLEL with the manager's
+existing `scheduleBannerAnnounce(pauseMs)` setTimeout. Cleared by
+`MSG_CHAIN_END` / applyReset. **Dual-purpose resolution**: the
+legacy `chainManager.chainResolutionAnnounce` signal served BOTH a
+reactive UI gate (Effect D + templates) AND a sync predicate inside
+`handleSolving`. Lot 3.2-REDO splits the two:
+- The reactive surface is this projection (templates read
+  `chainManager.chainResolutionAnnounce.value()`, Effect D reads it
+  reactively).
+- The sync predicate reads a private
+  `chainManager._announcePending: boolean`, fed by the SAME
+  `scheduleBannerAnnounce(pauseMs)` timer (which now sets the
+  mirror directly instead of `set(true)`).
+The two flips happen on the same wall-clock `pauseMs`; the
+projection lags by ≤1 microtask (the EventStream effect tick), which
+is irrelevant for UI readers but would matter for a sync predicate —
+hence the dual mechanism. The manager exposes a public
+`get isAnnouncePending(): boolean` for test introspection.
+
+### Lot 4 projection — RMW + sub-step boundary
+
+**`TargetedZoneKeysProjection`** (Lot 4.1-REDO) —
+`projections/targeted-zone-keys.projection.ts`. Tracks the FIELD
+zone keys (`${zoneId}-${relPlayer}`) targeted by an in-flight
+MSG_BECOME_TARGET cascade. Pile-zone targets (HAND/GY/Banished/Extra/
+Deck/Overlay) are filtered out — pile-zone targets are surfaced as
+float overlays by `TargetIndicatorManager` (separate concern; pile
+zones only render their top card).
+- Set path: `MSG_BECOME_TARGET` → union the FIELD keys (MZONE/SZONE
+  only) onto the running set. Accumulation REQUIRED across
+  back-to-back MSG_BECOME_TARGET (one per card, common when an
+  effect targets a group).
+- Clear path: `AnimationPhaseCompleted({phase:'reticle-pulse',
+  msgType:'MSG_BECOME_TARGET'})` emitted by the handler via
+  `phaseWait('reticle-pulse', holdMs, 'MSG_BECOME_TARGET')`.
+- applyReset → set empty.
+
+The handler `handleBecomeTarget` keeps the pile-float side-effect
+(`targetIndicator.spawnPileFloats`) and the numeric duration return
+(stagger vs final hold); it no longer reads/writes the projection
+state, and the inline `setTimeout(clear, holdMs)` is replaced by the
+fire-and-forget `void phaseWait(...)`. The pile-float fade-out
+outlives the reticle pulse — `AnimationPhaseCompleted` clears the
+field reticles at the pulse boundary, the pile floats fade past it.
+
 ### Standardisation 1 — `phaseWait` + `AnimationPhaseCompleted`
 
 `phaseWait(phase: string, durationMs: number, msgType: string):
@@ -553,9 +607,21 @@ Not every signal in the pipeline is a candidate projection. The
    clears via `setTimeout(...)` mid-handler (BEFORE the final
    `AnimationCompleted`), it needs Standardisation 1 (`phaseWait` +
    `AnimationPhaseCompleted`) to become migrable. Otherwise it
-   stays in its manager. Examples migrated: `swapGraveDeckKeys`.
-   Examples still pending: `chainResolutionAnnounce` (dual-purpose
-   UI + state-machine sync), `targetedZoneKeys` (RMW + sub-step).
+   stays in its manager. Examples migrated: `swapGraveDeckKeys`
+   (phase `'glow'`), `targetedZoneKeys` (phase `'reticle-pulse'`,
+   Lot 4.1-REDO).
+
+3-bis. **Dual-purpose signal — reactive UI + sync predicate** —
+   when a single signal serves BOTH a reactive Angular template /
+   effect AND a synchronous predicate inside a manager method, a
+   straight migration is impossible (the projection's
+   effect-driven update lags by ≥1 microtask, breaking the sync
+   read). Resolution pattern (Lot 3.2-REDO): split into a
+   projection (reactive surface) + a private `boolean` mirror on
+   the manager (sync surface), both fed by the SAME timer in
+   parallel. Templates migrate to the projection;
+   sync-predicate reads switch to the private mirror via a public
+   getter for tests. Example migrated: `chainResolutionAnnounce`.
 
 4. **External state dependency** — when a signal value depends on
    state outside the projection (e.g., LP's `fromLp` depending on
@@ -749,8 +815,9 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
 - **`TargetIndicatorManager`** — `MSG_BECOME_TARGET` reticles for cards
   inside pile zones (GY, Banished, Extra Deck). Pile zones only render
   their top card, so a separate float layer is needed to point at
-  sequence > 0 cards. Field-zone targets stay on the orchestrator's
-  `targetedZoneKeys` signal.
+  sequence > 0 cards. Field-zone targets live on the orchestrator's
+  `targetedZoneKeys` projection (Lot 4.1-REDO,
+  `BaseProjection<ReadonlySet<string>>`).
 - **`BufferReplayBuilder`** — owns the 3-pass batch construction for
   `replayBuffer` (see "Buffer Replay Batch Construction" section below).
   `build(buffer)` returns `{ batch, releaseSessionLocks }`. The
