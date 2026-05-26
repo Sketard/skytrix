@@ -101,6 +101,12 @@ front/playwright/.cache/
 _bmad-output/responsive-audit-*/frames/
 _bmad-output/responsive-audit-*/snapshots/
 
+# Debug-replay harness artifacts — entire output is reproducible by
+# re-running the e2e spec (cf. front/e2e/debug-replay-harness.ts).
+# Frames, snapshots, console logs, and the generated report.md are all
+# transient investigation outputs.
+_bmad-output/debug-replay/
+
 # OS
 .DS_Store
 Thumbs.db
