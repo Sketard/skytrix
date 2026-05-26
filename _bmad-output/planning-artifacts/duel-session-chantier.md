@@ -15,7 +15,7 @@ review_artifacts:
   - _bmad-output/poc-projection/decision.md (POC exécuté, S3 retenue)
   - bug-solo-sequence.md (test de victoire bug SOLO)
   - bug-cost-before-overlay-sequence.md (test de victoire cost-before-overlay)
-  - deferred-effects-catalogue.md (catalogue 11 cas pour calibrer §3.7)
+  - deferred-effects-catalogue.md (catalogue 13 cas pour calibrer §3.7 — 11 cas classiques DEP + 1 cas Flow-rewrite DEP étendu pass 3 + 1 cas Sequential timer gating runner pass 4, 2026-05-26)
 ---
 
 # Chantier — Refonte de la pipeline d'animation
@@ -551,10 +551,12 @@ La projection `overlayVisible` est triviale : *"le dernier
 
 **Le processor d'effets différés** :
 - Observe le flux complet et y produit les événements `DeferredEffect`
-  et `EffectReady`.
-- Contient une **table de règles métier** — 11 règles initiales
-  (2 passes Explore), cf. `deferred-effects-catalogue.md`, réparties en
-  **7 familles** :
+  et `EffectReady`. Pour la famille "Flow rewrite" (cas #12), peut
+  aussi **absorber** des events du flux (drop du routing aval) — API
+  étendue, cf. §3.7bis test #5.
+- Contient une **table de règles métier** — 12 règles DEP
+  (3 passes Explore — 11 cas classiques + 1 cas Flow-rewrite), cf.
+  `deferred-effects-catalogue.md`, réparties en **8 familles** :
   1. **Cost-deferral** (cas #1, #9) — overlay/effect attend la fin du
      MSG_MOVE cost ou MSG_PAY_LPCOST
   2. **Summon + trigger** (cas #2, #4) — trigger effect attend la fin
@@ -569,8 +571,29 @@ La projection `overlayVisible` est triviale : *"le dernier
      la fin de sa propre animation
   7. **Cleanup post-chain** (cas #11) — élément visuel attend
      `AnimationCompleted` du fade-out avant clear
+  8. **Flow rewrite** (cas #12) — le processor absorbe N events réels
+     du flux ET synthétise N events virtuels routés différemment.
+     Famille unique pour l'instant ; si un 2e cas émerge, envisager
+     un processor dédié `FlowRewriteProcessor`. Bug visuel résolu :
+     ex-matériaux XYZ qui "flashent dans le GY à tour de rôle" quand
+     l'XYZ quitte le terrain (toute raison — destruction, tribut,
+     matériel de Link/Synchro/Xyz/Fusion, return-to-deck, banishment).
 - Est testable indépendamment (entrées : flux, sortie : événements
   produits — fonction pure).
+
+**9e famille hors DEP — Sequential timer gating** (cas #13, pass 4,
+2026-05-26). Cette famille **ne vit pas dans le DEP** parce que ce
+n'est pas une corrélation cross-event mais un timer self-contained.
+Implémentée comme nouvelle directive `announcement` dans le
+`QueueRunner` au même niveau que `barrier` / `await-signal` / `lp`.
+Couvre les annonces visuelles (phase announcements DRAW/STANDBY/...,
+chain resolution banner) qui doivent bloquer le dispatch des events
+suivants pendant leur durée d'affichage. Bug résolu : annonces
+aujourd'hui non-bloquantes qui tournent en parallèle des prompts du
+serveur (user peut normal-summon pendant "DRAW PHASE"). Migration
+des deux call-sites existants (`PhaseAnnouncementService`,
+`ChainResolutionAnnounceProjection`) vers la nouvelle directive.
+Cf. `deferred-effects-catalogue.md §1ter`.
 - Est **l'unique endroit** dans l'architecture qui contient la
   connaissance YGO de *"qui attend qui"*. Cette spécialisation cohabite
   avec celle du filtre serveur (sanitization) et du processor de
@@ -600,9 +623,9 @@ l'overlay component, parfois dans une FIFO de pending entries). Le
 mécanisme ε3 le nomme une fois pour toutes. Démonstration mécanique :
 cf. `bug-cost-before-overlay-sequence.md`.
 
-#### 3.7bis Tests obligatoires du DeferredEffectProcessor
+#### 3.7bis Tests obligatoires du DeferredEffectProcessor + directive runner annonce
 
-Quatre tests automatisables couvrent les 7 familles du catalogue
+Six tests automatisables couvrent les 9 familles du catalogue
 (cas représentatif de la famille la plus risquée) :
 
 1. **Cas #1 — overlay-show + cost (Cost-deferral)** — déjà spécifié
@@ -618,6 +641,30 @@ Quatre tests automatisables couvrent les 7 familles du catalogue
    MSG_BECOME_TARGET sur card en GY → float reticle visible →
    MSG_CHAIN_SOLVING → assert float fade-out complet avant clear
    `targetedZoneKeys`.
+5. **Cas #12 — xyz-leave-with-materials (Flow rewrite)** —
+   ajouté pass 3 (2026-05-26). XYZ avec 2 matériaux utilisé comme
+   matériel de Link summon → assert (a) absorption des `MSG_MOVE
+   GRAVE→GRAVE reason=0x600` (drop du routing) ET (b) émission de
+   travels matériaux `OVERLAY→GRAVE` synthétiques visibles pendant le
+   travel XYZ. Cf. `deferred-effects-catalogue.md §1bis` pour la
+   spécificité du pattern Flow rewrite et l'API étendue du DEP
+   (callback peut retourner `{kind:'absorb'}` pour drop un event).
+6. **Cas #13 — sequential-announcement-gating (Sequential timer gating)** —
+   ajouté pass 4 (2026-05-26). **Implémenté côté `QueueRunner`, pas
+   DEP.** Deux scénarios :
+   - **Chain banner** : multi-link chain (CL2 sur CL1) → assert
+     bannière "Chain Resolution" visible PENDANT son timer →
+     assert overlay de résolution PAS visible pendant l'annonce →
+     fin du timer → assert bannière disparaît ET overlay apparaît
+     dans la foulée.
+   - **Phase announcement** : enchaînement DRAW → MAIN1 → assert que
+     `SELECT_IDLECMD` reçu du serveur PENDANT l'annonce "DRAW PHASE"
+     n'est pas dispatché au `PromptDerivationService` → fin du timer
+     → assert dispatch effectif et menu d'action visible.
+   Test d'isolation : burst de 3 phase changes consécutifs (DRAW →
+   STANDBY → MAIN1) → assert sérialisation (durée totale ~6000ms,
+   aucun event dispatché entre annonces). Cf.
+   `deferred-effects-catalogue.md §1ter`.
 
 Plus les **4 scénarios de casse** identifiés à l'arbitrage R6 (à
 couvrir au niveau des projections consommatrices, pas du processor
@@ -858,7 +905,7 @@ de la section 3. Les verdicts sont :
 | 8 | `BattleAnimationTracker` | Attack line + clash impact, pending attack | Wrappé | 1-2j | Même pattern que LP tracker. Signal `pendingAttack` = projection. Scope `PERSPECTIVE_LIFETIME`. |
 | 9 | `TargetIndicatorManager` | Reticles pour cards dans pile zones (GY, Banished, Extra) | Conservé | 0-1j | Spécialisé, sain. Mineure : vérifier qu'aucun float ne fuite via `FloatRegistryService`. |
 | 10 | `BufferReplayBuilder` | 3-pass batch construction pour replayBuffer | **Jeté** | −5j (gain) | Son rôle disparaît : avec un flux unique qui contient les événements de pipeline (3.3) et des frontières causales (3.8), il n'y a plus besoin de re-bâtir un batch isolé. Le flux **est** le buffer. |
-| 11 | `QueueRunner` | Boucle async, lifecycle primitives, finalize | Conservé + wrapper | 1-3j | Verdict de l'investigation R2. Ajout : callback `onInternalEvent(name, event)` dans `QueueRunnerDeps` pour qu'il émette `AnimationStarted/Completed` sur le flux ; déclaration de scope category sur ses 5 primitives. C'est le **moteur de transport** nommé par le principe 3.2. |
+| 11 | `QueueRunner` | Boucle async, lifecycle primitives, finalize | Conservé + wrapper + directive announcement | 1-3j + 1-2j pour la directive annonce | Verdict de l'investigation R2. Ajout : (a) callback `onInternalEvent(name, event)` dans `QueueRunnerDeps` pour qu'il émette `AnimationStarted/Completed` sur le flux ; déclaration de scope category sur ses 5 primitives. (b) Nouvelle directive `announcement` (cas #13 du catalogue, pass 4 2026-05-26) au même niveau que `barrier` / `await-signal` / `lp` : set la projection consommatrice, await `durationMs`, clear la projection, dispatch suivant. Migration des deux call-sites `PhaseAnnouncementService` et `ChainResolutionAnnounceProjection`. C'est le **moteur de transport** nommé par le principe 3.2. |
 | 12 | `DuelContext` | Contexte partagé (player index, speed, board active, reduced motion) | Conservé | 0j | Configuration pure, pas d'état observable. Inchangé. |
 | 13 | `CardTravelEngine` | Animations de travel (géométrie, keyframes, registry de zones) | Conservé + perspective | 1j (hors POC) | Cœur du rendu. Mineure : accepter l'injection de la perspective comme attribut de contexte (transform CSS sur container). Voir POC projection §5.2. |
 | 14 | `BoardEffectsService` | Effets visuels (impact, dust, preDestroy, activate) | Wrappé | 1-2j | Conservé. Ses timers internes restent du *transport state* (3.2). Ajouter logging des effects lancés (debuggabilité). |
@@ -877,7 +924,7 @@ couche de projection.
 
 | Composant nouveau | Rôle | Principe rattaché | Effort |
 |-------------------|------|-------------------|--------|
-| `DeferredEffectProcessor` | Matérialise les corrélations cross-event. Émet `DeferredEffect(name, triggerRef, awaitingRef)` et `EffectReady(name, triggerRef)`. Table de règles métier YGO (overlay attend cost, etc.). Composant pur, testable isolément. | 3.7 (ε3) | 3-4j |
+| `DeferredEffectProcessor` | Matérialise les corrélations cross-event. Émet `DeferredEffect(name, triggerRef, awaitingRef)` et `EffectReady(name, triggerRef)`. Table de règles métier YGO (overlay attend cost, etc.). 12 règles initiales — 11 cas classiques + 1 cas Flow-rewrite (#12 xyz-leave-with-materials) qui exige une API étendue (callback peut retourner `{kind:'absorb'}` en plus de `EffectReady`). Composant pur, testable isolément. | 3.7 (ε3) | 3-4j (+0.5j pour l'API étendue du cas #12) |
 | `BoundaryProcessor` | Détecte les transitions causales et émet les frontières (`ChainStarted/Ended`, `TurnStarted/Ended`, `PhaseStarted/Ended`). Observe le flux WS brut. | 3.8 (γ2) | 2-3j |
 | `PerspectiveProjector` | Couche de projection visuelle au-dessus du pipeline. Applique un transform CSS sur le container racine du board ; gère le switch SOLO sans recalcul en cours d'animation. Stratégie d'implémentation fixée par le POC. | §5.2 + principe 1 | 3-5j (POC inclus) |
 
@@ -896,16 +943,20 @@ chacune testable indépendamment.
 
 **Phase β — Émergence des nouveaux processors (~3-4 semaines)**
 - `BoundaryProcessor` : émet `ChainStarted/Ended` etc. sur le flux
-- `DeferredEffectProcessor` : émet `DeferredEffect` / `EffectReady`
+- `DeferredEffectProcessor` : émet `DeferredEffect` / `EffectReady`. Inclut **les 12 règles DEP du catalogue** (`deferred-effects-catalogue.md`), dont le cas #12 (xyz-leave-with-materials, famille Flow-rewrite) qui résout les bugs visuels β.3 #1 (matériaux XYZ vers EXTRA) et #2 (flash GRAVE→GRAVE des ex-matériaux quand l'XYZ quitte le terrain). L'API du DEP doit supporter `{kind:'absorb'}` (drop d'event) en plus de `EffectReady`.
+- **`QueueRunner` étendu — directive `announcement`** (cas #13, famille Sequential timer gating). Nouvelle directive au niveau de `barrier` / `await-signal` / `lp`. Migration de `PhaseAnnouncementService.show(...)` et de `ChainResolutionAnnounceProjection`'s `phaseWait('banner-announce')` vers cette directive. Bloque le dispatch des events suivants pendant la durée de l'annonce. Résout le bug β.3 bannière "Chain Resolution" qui reste collée toute la résolution + le bug game-state où l'utilisateur peut normal-summon pendant l'annonce "DRAW PHASE".
 - `BufferReplayBuilder` jeté (son rôle est absorbé par le flux unique)
 - Test cost-before-overlay (cf. `bug-cost-before-overlay-sequence.md`) doit passer
+- Test xyz-leave-with-materials (cf. `deferred-effects-catalogue.md §1bis + §4 test #5`) doit passer
+- Test sequential-announcement-gating (cf. `deferred-effects-catalogue.md §1ter + §4 test #6`) doit passer
 - Validation : tests replay + PvP, regression check sur les chains complexes
 
 **Phase γ — Couche de projection + refonte SOLO (~2 semaines)**
 - POC projection exécuté (✅ statué, stratégie S3 retenue, cf. §5.2 et `_bmad-output/poc-projection/decision.md`)
 - `PerspectiveProjector` implémenté selon S3 (coords container-relative + re-parent floats sous `.board-host`, 5-6.5j chiffré)
-- `SoloDuelOrchestratorService` reformé : **single DuelEventProcessor par duel** (au lieu de deux processors parallèles dans la version actuelle) + événement `PerspectiveSwitched` émis sur le flux. C'est ce changement structurel qui élimine la divergence d'état documentée par `bug-solo-sequence.md §4` (T5 du single-processor reste inchangé au switch).
+- `SoloDuelOrchestratorService` reformé : **single DuelEventProcessor par duel** (au lieu de deux processors parallèles dans la version actuelle) + événement `PerspectiveSwitched` émis sur le flux. C'est ce changement structurel qui élimine la divergence d'état documentée par `bug-solo-sequence.md §4` (T5 du single-processor reste inchangé au switch). **Résout aussi le bug β.3 #3b** (chain links collés sur les cartes après résolution sur l'autre perspective — manifeste de la divergence d'état entre deux processors).
 - Test bug SOLO (séquence T0-T10 de `bug-solo-sequence.md §2`) doit passer
+- **Évaluation backlog β.3 bug #1** (matériaux XYZ summon volant vers EXTRA) : avec le flux unifié de γ, l'interception du pattern devient plus simple (un seul routeur MSG_MOVE à modifier). Décider en début de phase γ si on absorbe ce fix ici (extension du cas #12 → généralisation Flow-rewrite pour `MSG_MOVE MZONE→EXTRA toSeq=7` quand un MSG_MOVE `EXTRA→MZONE` du même cardCode suit), ou si on le repousse en δ (post-livraison).
 - Validation : tests SOLO PvP + perspective switch in-flight
 
 **Spike α-prérequis — Info hiding dynamique** (1-2j, parallèle phase α) :
