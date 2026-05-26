@@ -1,3 +1,9 @@
+/* eslint-disable skytrix-pipeline/pipeline-signal-tagged --
+   why: signals declared in this file are TestBed stubs (mocks of the
+   real pipeline shape). They are not pipeline signals at runtime;
+   the §3.2 tagging convention (transport / environment / projection)
+   targets the real classes only. (α.7b.1, 2026-05-25) */
+
 import { signal, WritableSignal } from '@angular/core';
 import { TestBed, fakeAsync, flush } from '@angular/core/testing';
 import { DrawSequenceManager } from './draw-sequence-manager';
