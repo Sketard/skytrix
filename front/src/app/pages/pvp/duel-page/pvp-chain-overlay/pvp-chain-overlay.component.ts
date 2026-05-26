@@ -4,7 +4,9 @@ import {
   computed,
   DestroyRef,
   effect,
+  type EffectRef,
   inject,
+  Injector,
   input,
   signal,
   untracked,
@@ -85,6 +87,7 @@ export class PvpChainOverlayComponent {
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly logger = inject(DuelLogger);
   private readonly artService = inject(DuelCardArtService);
+  private readonly injector = inject(Injector);
 
   readonly activeChainLinks = this.dataSource.activeChainLinks;
   readonly phase = this.dataSource.chainPhase;
@@ -137,6 +140,15 @@ export class PvpChainOverlayComponent {
   private readonly _lastAnnouncedNegated = signal(false);
 
   private readonly activeTimers = new Set<ReturnType<typeof setTimeout>>();
+
+  /**
+   * β.3 Lot 1b — pending effect that watches `overlayShowReady` to
+   * fire the deferred show sequence (`_runOverlayShowSequence`) the
+   * moment the DEP signals readiness for the current chain.
+   * Cleared+re-installed on each new chain link so a burst of
+   * MSG_CHAINING does not stack effects.
+   */
+  private _overlayShowEffectRef: EffectRef | null = null;
 
   /**
    * Aborts the in-flight `onChainLinkResolved` async chain on chain end /
@@ -220,6 +232,11 @@ export class PvpChainOverlayComponent {
       this._resolutionAbort?.abort();
       this.activeTimers.forEach(id => clearTimeout(id));
       this.activeTimers.clear();
+      // β.3 Lot 1b — tear down the pending overlay-show effect on
+      // component destroy. The injector's DestroyRef would propagate
+      // anyway, but explicit destroy keeps the lifecycle obvious.
+      this._overlayShowEffectRef?.destroy();
+      this._overlayShowEffectRef = null;
     });
 
     // Effect A — main chain logic + building announcements
@@ -417,20 +434,91 @@ export class PvpChainOverlayComponent {
     this.enteringCardIndex.set(newestLink.chainIndex);
     this.scheduleTimeout(() => this.enteringCardIndex.set(-1), this.durations().entry);
 
-    // Burst detection: if entry anim still in progress, skip fade-out/fade-in cycle
+    // Burst detection: if entry anim still in progress, skip fade-out/fade-in cycle.
+    // The previously-running show sequence already set overlayVisible=true; the new
+    // link just needs a refreshed fade-out timer. No gating needed here — the
+    // overlay is already up.
     if (this._entryAnimInProgress()) {
       this.cancelEntryTimer();
       this.scheduleFadeOutAfterEntry();
       return;
     }
 
-    // Normal flow: show overlay, animate entry, then fade out
+    // β.3 Lot 1b — defer the "show overlay" set until the DEP signals
+    // readiness for this chain. The `overlayShowReady` projection
+    // accumulates chainIds for which `EffectReady('overlay-show:chain-<N>')`
+    // (or `EffectAbandoned` as graceful-degradation fallback) has been
+    // emitted on the stream. If the projection already has this
+    // chainIndex (the cost MSG_MOVE's animation finished before this
+    // MSG_CHAINING arrived — pathological but legal), fire immediately.
+    // Otherwise, install a one-shot effect that fires the moment the
+    // projection signals readiness; the effect cancels itself on first
+    // fire and on the next chain link to avoid stacking.
+    this._gateOverlayShowOnReady(newestLink.chainIndex);
+  }
+
+  /**
+   * β.3 Lot 1b — the "show overlay" sequence, extracted so it can be
+   * called either synchronously (projection already ready) or
+   * asynchronously (deferred by the gating effect). Sets
+   * `overlayVisible=true`, marks the entry animation in progress, and
+   * schedules the fade-out after the construct animation completes.
+   * Idempotent in the sense that re-calling it while
+   * `_entryAnimInProgress` is true is a no-op — the burst path above
+   * handles the "another link arrived" case.
+   */
+  private _runOverlayShowSequence(): void {
     this._overlayShownDuringBuild.set(true);
     this.overlayVisible.set(true);
     this._entryAnimInProgress.set(true);
     this.chainManager.chainEntryAnimating.set(true);
-    this.scheduleTimeout(() => this.chainManager.chainEntryAnimating.set(false), this.durations().constructAppear);
+    this.scheduleTimeout(
+      () => this.chainManager.chainEntryAnimating.set(false),
+      this.durations().constructAppear,
+    );
     this.scheduleFadeOutAfterEntry();
+  }
+
+  /**
+   * β.3 Lot 1b — gate `_runOverlayShowSequence` on the
+   * `overlayShowReady` projection. If `chainIndex` is already in the
+   * ready set, fire synchronously (no deferral needed). Otherwise,
+   * install a one-shot effect that watches the projection's value
+   * and fires the sequence the moment `chainIndex` appears.
+   *
+   * Any previous gating effect is destroyed before installing the
+   * new one — a burst of MSG_CHAINING would otherwise stack effects,
+   * each firing on the same readiness flip and triggering the show
+   * sequence multiple times.
+   *
+   * Fallback path: `OverlayShowReadyProjection` treats
+   * `EffectAbandoned` (timeout / checkpoint) as "ready" too, so a
+   * DEP rule that never sees its `awaitingPredicate` matched still
+   * unblocks the overlay after `DEFERRED_TIMEOUT_MS` (5s) instead of
+   * leaving the overlay invisible forever.
+   */
+  private _gateOverlayShowOnReady(chainIndex: number): void {
+    this._overlayShowEffectRef?.destroy();
+    this._overlayShowEffectRef = null;
+
+    if (this.orchestrator.overlayShowReady.isReady(chainIndex)) {
+      this._runOverlayShowSequence();
+      return;
+    }
+
+    this._overlayShowEffectRef = effect(() => {
+      const ready = this.orchestrator.overlayShowReady.value();
+      if (!ready.has(chainIndex)) return;
+      // One-shot: destroy this effect from outside the effect body to
+      // avoid re-entrance, then run the sequence in `untracked` so the
+      // signal reads inside the sequence don't tie this effect to extra
+      // dependencies (it's about to be destroyed anyway).
+      untracked(() => {
+        this._overlayShowEffectRef?.destroy();
+        this._overlayShowEffectRef = null;
+        this._runOverlayShowSequence();
+      });
+    }, { injector: this.injector });
   }
 
   private scheduleFadeOutAfterEntry(): void {
@@ -557,6 +645,14 @@ export class PvpChainOverlayComponent {
   private onChainEnd(): void {
     this.overlayVisible.set(false);
     this.clearAllTimers();
+    // β.3 Lot 1b — drop any pending "wait for overlay-show ready"
+    // effect. A chain that ends before its overlay-show readiness fires
+    // (e.g. very fast negation chain that resolves before the cost
+    // animation completes — pathological but legal) must not leave the
+    // effect dangling: it would fire on the NEXT chain's readiness
+    // flip and pop a stale overlay.
+    this._overlayShowEffectRef?.destroy();
+    this._overlayShowEffectRef = null;
     this._resolutionStarted.set(false);
     this._resolvingInFlight.set(false);
     this._exitPulseInFlight.set(false);

@@ -101,6 +101,19 @@ describe('PvpChainOverlayComponent', () => {
     mockOrchestrator.chainExitDuration.and.returnValue(800);
     mockOrchestrator.replayBuffer.and.returnValue(Promise.resolve());
 
+    // β.3 Lot 1b — overlayShowReady stub. The component reads
+    // `orchestrator.overlayShowReady.isReady(chainIndex)` in onNewChainLink
+    // and watches `.value()` in the deferred-show effect. The default
+    // stub returns true for every chainId so existing chain-overlay
+    // specs (which predate the gating) keep their pre-β.3 behaviour
+    // (show overlay synchronously). β.3-specific specs that test the
+    // gating itself should override this stub locally.
+    const overlayShowReadyStub = {
+      value: signal<ReadonlySet<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])),
+      isReady: (_chainId: number) => true,
+    };
+    (mockOrchestrator as unknown as { overlayShowReady: typeof overlayShowReadyStub }).overlayShowReady = overlayShowReadyStub;
+
     mockChainManager = {
       chainEntryAnimating: signal(false),
       chainResolutionAnnounce: signal(false),

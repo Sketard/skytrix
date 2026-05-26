@@ -106,6 +106,18 @@ export interface QueueRunnerDeps {
    * buffer) and the runner should drop it without further processing.
    */
   handleEntry: (event: GameEvent) => EventResult | 'divert';
+  /**
+   * β.3 — returns the stream ref the orchestrator assigned to the most
+   * recent `handleEntry` call, or `null` if the event was diverted /
+   * buffered and never pushed to the stream. The runner reads this
+   * AFTER `handleEntry` returns and forwards it to `onStepSettled` so
+   * the orchestrator can emit `AnimationCompleted({ref, msgType})` at
+   * the real wall-clock end of the awaited step.
+   * Defaults to `() => null` (back-compat — pre-β.3 deps work but
+   * `onStepSettled` receives `ref=-1` which the orchestrator's emit
+   * helper treats as "skip emit").
+   */
+  getLastDispatchedRef?: () => number | null;
   /** Directive dispatch (`group`, `barrier`, `lp`, `batch-end`, `await-signal`). */
   processDirective: (entry: QueueDirective) => Promise<'continue' | 'pause'>;
   /** Collapse-mode side effect — applied per dropped event without animating. */
@@ -116,8 +128,23 @@ export interface QueueRunnerDeps {
   preReplayBuffer: () => Promise<void>;
   /** Pre-lock pass before every tick — the runner calls this once per loop turn. */
   preLockQueuedSources: () => void;
-  /** Per-step settle hook — runs after every awaited step (LP commit + zone reset). */
-  onStepSettled: () => void;
+  /**
+   * Per-step settle hook — runs after every awaited step (LP commit +
+   * zone reset).
+   *
+   * β.3 — receives the `event` and `ref` of the business event whose
+   * await just resolved. Lets the orchestrator emit
+   * `AnimationCompleted({ref, msgType})` at the REAL wall-clock end of
+   * the travel/timer (not synchronously at dispatch time like β.2b did).
+   * The DEP can then close `EffectReady` at the moment the user
+   * actually sees the cost finish — which is what the cost-before-overlay
+   * test of victory requires for the visual to land correctly.
+   *
+   * `ref` is the stream ref the orchestrator assigned at
+   * `pushToStream(event)`; the runner does not own a counter, it
+   * forwards whatever the dispatcher captured at handleEntry time.
+   */
+  onStepSettled: (event: GameEvent, ref: number) => void;
   /** Finalize hook — runs in the `case 'finalize'` branch BEFORE `onIsRunningChange(false)`. */
   onFinalize: () => void;
   /** Signal-runner-state changes back to the orchestrator (exposed `isAnimating`). */
@@ -562,6 +589,12 @@ export class QueueRunner {
       return 'continue';
     }
 
+    // β.3 — capture the stream ref synchronously, RIGHT after handleEntry
+    // returned (the orchestrator's side-channel `_transport_lastDispatchedRef`
+    // is overwritten by the NEXT handleEntry, so we must snapshot it now).
+    // Forwarded to `onStepSettled` after the await resolves.
+    const ref = this.deps.getLastDispatchedRef?.() ?? -1;
+
     const resultLabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}ms`;
     this.trace('handleEntry', { type: event.type, result: resultLabel });
 
@@ -592,7 +625,7 @@ export class QueueRunner {
           this._guardTimer = null;
         }
       }
-      this.deps.onStepSettled();
+      this.deps.onStepSettled(event, ref);
       return 'continue';
     }
 
@@ -613,7 +646,7 @@ export class QueueRunner {
       });
     }
 
-    this.deps.onStepSettled();
+    this.deps.onStepSettled(event, ref);
     return 'continue';
   }
 

@@ -44,7 +44,7 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
-import { ScopeResetDispatcher, type ScopeCategory } from '../projections';
+import { OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -279,6 +279,22 @@ export class AnimationOrchestratorService {
    */
   private _transport_lastDispatchedRef: number | null = null;
 
+  /**
+   * β.3 Lot 1b — first production `BaseProjection<T>` consumer of the
+   * DEP flux. Tracks the set of `chainId`s for which the chain overlay
+   * is allowed to appear; gated on `EffectReady('overlay-show:chain-<N>')`
+   * from the DEP. Read by `pvp-chain-overlay.component.onNewChainLink`
+   * to defer the `overlayVisible=true` set until the cost MSG_MOVE's
+   * `AnimationCompleted` has landed on the stream. THIS is what makes
+   * the cost-before-overlay test of victory visible in the UI.
+   *
+   * Auto-registered + attached to the event stream in the constructor
+   * after the runner is wired (the registration goes through the same
+   * `scopeDispatcher` as the DEP, so PERSPECTIVE_LIFETIME resets clear
+   * it alongside the chain manager).
+   */
+  readonly overlayShowReady = new OverlayShowReadyProjection();
+
   /** Zone keys of cards currently being targeted (MSG_BECOME_TARGET). */
   readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
   /** Zone key of card with pulsing counter badge (MSG_ADD_COUNTER / MSG_REMOVE_COUNTER). */
@@ -326,14 +342,27 @@ export class AnimationOrchestratorService {
       logger: this.logger,
       injector: this.injector,
       handleEntry: ev => this._dispatchEvent(ev),
+      getLastDispatchedRef: () => this._transport_lastDispatchedRef,
       processDirective: entry => this.processDirective(entry),
       applyInstantAnimation: ev => this.applyInstantAnimation(ev),
       consumeDeferredSolving: () => this.chainManager.consumeDeferredSolving(),
       preReplayBuffer: () => this.replayBuffer(true),
       preLockQueuedSources: () => this.moveRouter.preLockQueuedSources(),
-      onStepSettled: () => {
+      onStepSettled: (event, ref) => {
         this.lpTracker.commitIfPending();
         this.animatingZone.set(null);
+        // β.3 — emit AnimationCompleted at the REAL wall-clock end of
+        // the awaited step. Pair with the AnimationStarted that
+        // `emitAnimationStarted` pushed synchronously at dispatch
+        // time. `ref === -1` (back-compat sentinel) or `null`
+        // side-channel means the event was diverted / buffered and
+        // never reached the stream — skip emit.
+        if (ref >= 0) {
+          this.pushToStream({
+            kind: 'animation', type: 'AnimationCompleted',
+            ref, msgType: event.type,
+          });
+        }
       },
       onFinalize: () => {
         this.finalizeAndCommit();
@@ -383,6 +412,18 @@ export class AnimationOrchestratorService {
     // the DEP simply never receives a reset there, which is fine for
     // the unit tests that exercise it directly.
     this.scopeDispatcher?.register(this.deferredProcessor);
+
+    // β.3 Lot 1b — register + attach the overlay-show-ready projection.
+    // Register first (so a checkpoint reset fired during attach can
+    // reach the projection); attach to the orchestrator's eventStream
+    // so the projection's `applyEvent` drains DEP + boundary events
+    // pushed AFTER attach. Events pushed BEFORE attach are missed by
+    // design (the projection starts from a clean slate; an in-flight
+    // overlay-show from a pre-bootstrap chain is lost — acceptable
+    // because the chain-overlay component's onChainEnd handler will
+    // hide it anyway when MSG_CHAIN_END arrives).
+    this.scopeDispatcher?.register(this.overlayShowReady);
+    this.overlayShowReady.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -631,6 +672,11 @@ export class AnimationOrchestratorService {
     // subscriber dies with the same scope so emitting closures would
     // only pollute a stream nobody reads.
     this.deferredProcessor.silentReset();
+    // β.3 Lot 1b — detach the projection's effect subscription. The
+    // injector's DestroyRef would handle this implicitly on page
+    // teardown, but explicit detach avoids relying on injector lifetime
+    // for a hard reset path.
+    this.overlayShowReady.detachEventStream();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -739,19 +785,28 @@ export class AnimationOrchestratorService {
   }
 
   /**
-   * β.2b — emit `AnimationStarted({ref, msgType})` + `AnimationCompleted({ref, msgType})`
-   * for the business event that `processEvent` just pushed (ref read
-   * from `_transport_lastDispatchedRef`). No-op if the side-channel is
-   * `null` (buffered / divert / no push happened). Both events go
-   * through `pushToStream` so the DEP observes them in arrival order
-   * and a chainTo rule sees them after the business event.
-   * SYNC emission for now — see the callsite comment for why.
+   * β.3 — emit `AnimationStarted({ref, msgType})` synchronously after
+   * `processEvent` returns. The matching `AnimationCompleted` is
+   * emitted by the runner's `onStepSettled` callback at the REAL
+   * wall-clock end of the awaited step (Promise.race resolve or
+   * setTimeout fire). This is the alignment the cost-before-overlay
+   * test of victory needs — sync emission would fire EffectReady
+   * immediately and the overlay would pop the same frame as the
+   * MSG_CHAINING, defeating the whole point.
+   *
+   * β.2b history: emitted BOTH events synchronously. Worked for the
+   * DEP-side test (relative order is correct) but the user-perceived
+   * timing was wrong because EffectReady fired the same frame as the
+   * cost MSG_MOVE. β.3 splits the pair: AnimationStarted stays sync,
+   * AnimationCompleted moves to onStepSettled.
+   *
+   * No-op if the side-channel is `null` (buffered / divert / no
+   * push happened).
    */
-  private emitAnimationLifecycle(msgType: string): void {
+  private emitAnimationStarted(msgType: string): void {
     const ref = this._transport_lastDispatchedRef;
     if (ref === null) return;
     this.pushToStream({ kind: 'animation', type: 'AnimationStarted', ref, msgType });
-    this.pushToStream({ kind: 'animation', type: 'AnimationCompleted', ref, msgType });
   }
 
   /**
@@ -861,17 +916,14 @@ export class AnimationOrchestratorService {
     const resultLabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}ms`;
     this.trace('processEvent', { type: event.type, result: resultLabel });
 
-    // β.2b — emit AnimationStarted + AnimationCompleted around this
-    // dispatch so DEP rules can pin a chainTo predicate to "the
-    // animation of THIS specific event finished". Sync emission for
-    // now — the DEP only needs the RELATIVE order on the stream to be
-    // correct (event → AnimationStarted → AnimationCompleted), not
-    // wall-clock alignment with the real travel. β.3 will hook the
-    // runner's onStepSettled so the AnimationCompleted matches the
-    // actual wall-clock completion (needed once a projection consumes
-    // EffectReady to gate a visual). Buffered events skip the wrap
+    // β.3 — emit AnimationStarted sync after dispatch; AnimationCompleted
+    // is emitted by the runner's `onStepSettled` callback at the REAL
+    // wall-clock end of the awaited step. This split is what makes the
+    // cost-before-overlay test of victory land correctly: EffectReady
+    // arrives at the moment the user actually sees the cost finish, not
+    // the same frame as the MSG_CHAINING. Buffered events skip the wrap
     // because the side-channel is null.
-    this.emitAnimationLifecycle(event.type);
+    this.emitAnimationStarted(event.type);
 
     // Release pre-locks after processing — animated branches consume them
     // in buildMoveContext (MSG_MOVE) so this is a no-op; for non-animated
@@ -927,6 +979,12 @@ export class AnimationOrchestratorService {
       case 'group': {
         this.trace('directive', { kind: 'group', count: entry.events.length, staggerMs: entry.staggerMs });
         const promises: Promise<void>[] = [];
+        // β.3 — capture each event's stream ref synchronously after its
+        // processEvent push, so AnimationCompleted can be emitted per
+        // event after the group's Promise.all resolves. Sync emission
+        // of AnimationCompleted (right after processEvent) would defeat
+        // the wall-clock alignment the cost-before-overlay fix needs.
+        const pendingCompletions: Array<{ event: GameEvent; ref: number }> = [];
         for (let i = 0; i < entry.events.length; i++) {
           if (i > 0 && entry.staggerMs) {
             await new Promise<void>(r => setTimeout(r, entry.staggerMs));
@@ -934,9 +992,9 @@ export class AnimationOrchestratorService {
           const result = this.processEvent(entry.events[i]);
           const rlabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}`;
           this.trace('groupEvent', { type: entry.events[i].type, result: rlabel, idx: i });
-          // β.2b — sync AnimationStarted/Completed wrap, see
-          // `_dispatchEvent` for the rationale.
-          this.emitAnimationLifecycle(entry.events[i].type);
+          this.emitAnimationStarted(entry.events[i].type);
+          const ref = this._transport_lastDispatchedRef;
+          if (ref !== null) pendingCompletions.push({ event: entry.events[i], ref });
           if (result instanceof Promise) promises.push(result);
           else if (result === 'async' && isDevMode()) {
             this.logger.warn('[GROUP] Event %s returned async — a barrier MUST follow this group', entry.events[i].type);
@@ -950,6 +1008,16 @@ export class AnimationOrchestratorService {
         this.trace('groupAwait', { promiseCount: promises.length, inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
         if (promises.length > 0) await Promise.all(promises);
         this.trace('groupDone', { inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
+        // β.3 — emit AnimationCompleted for every event in the group
+        // AFTER Promise.all resolves. DEP rules awaiting an
+        // AnimationCompleted with a specific ref now fire at the real
+        // wall-clock end of the group's animations.
+        for (const { event, ref } of pendingCompletions) {
+          this.pushToStream({
+            kind: 'animation', type: 'AnimationCompleted',
+            ref, msgType: event.type,
+          });
+        }
         this.animatingZone.set(null);
         this.lpTracker.animatingLpPlayer.set(null);
         return 'continue';

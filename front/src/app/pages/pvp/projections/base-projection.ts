@@ -1,4 +1,4 @@
-import type { Signal } from '@angular/core';
+import { effect, type EffectRef, type Injector, type Signal } from '@angular/core';
 
 import type { CheckpointPayload } from './checkpoint-payload';
 import type { FluxEvent } from './flux-event';
@@ -73,4 +73,73 @@ export abstract class BaseProjection<T> implements ResetTarget {
     invalidatedScopes: ReadonlySet<ScopeCategory>,
     checkpointPayload?: CheckpointPayload,
   ): void;
+
+  /**
+   * Index of the last event consumed from the attached `eventStream`.
+   * `_transport_*` per pipeline-signal-tagged convention — internal
+   * state, never read by templates.
+   *
+   * Reset to 0 when the stream signal observes a length REGRESSION
+   * (orchestrator wipe via `_eventStream.set([])` on rematch / seek);
+   * the projection's own `applyReset` is fired in parallel by the
+   * scope dispatcher, so the cursor + the value start fresh together.
+   */
+  private _transport_streamConsumedLength = 0;
+
+  /** Effect ref installed by `attachEventStream`. Held so a subsequent
+   *  `attachEventStream` call (defensive — should not happen in
+   *  production) or a manual `detachEventStream` can tear down the
+   *  previous subscription explicitly. */
+  private _transport_streamEffect: EffectRef | null = null;
+
+  /**
+   * β.3 Lot 1 — subscribe to the orchestrator's `eventStream` signal.
+   * Installs an Angular `effect()` that drains newly-pushed events
+   * through `applyEvent` exactly once each, in arrival order.
+   *
+   * The effect is idempotent across signal re-emits (signal may
+   * publish the same array reference when an unrelated dependency
+   * changes — defensive in practice). The `_transport_streamConsumedLength`
+   * cursor tracks the prefix already consumed.
+   *
+   * Stream-wipe path: when `events.length < cursor`, the orchestrator
+   * called `_eventStream.set([])` (resetAllState — rematch / seek).
+   * Sync the cursor back to 0 so the next push restarts from index 0;
+   * the projection's `applyReset` is fired in parallel by the scope
+   * dispatcher and is responsible for clearing the projection's
+   * `value` state.
+   *
+   * Required `injector` because `BaseProjection` is a plain class
+   * (constructable outside an injection context — e.g. in tests),
+   * so the `effect()` factory needs an explicit injector to attach
+   * its lifetime.
+   */
+  attachEventStream(
+    stream: Signal<readonly FluxEvent[]>,
+    injector: Injector,
+  ): void {
+    this._transport_streamEffect?.destroy();
+    this._transport_streamEffect = effect(() => {
+      const events = stream();
+      if (events.length < this._transport_streamConsumedLength) {
+        // Stream was cleared — sync the cursor back.
+        this._transport_streamConsumedLength = events.length;
+        return;
+      }
+      while (this._transport_streamConsumedLength < events.length) {
+        this.applyEvent(events[this._transport_streamConsumedLength]);
+        this._transport_streamConsumedLength++;
+      }
+    }, { injector });
+  }
+
+  /** Tear down the `attachEventStream` subscription. Angular's
+   *  `DestroyRef` would handle this on injector teardown, but holding
+   *  the ref lets specs opt into explicit teardown and lets the
+   *  orchestrator detach + re-attach if it ever needs to. */
+  detachEventStream(): void {
+    this._transport_streamEffect?.destroy();
+    this._transport_streamEffect = null;
+    this._transport_streamConsumedLength = 0;
+  }
 }

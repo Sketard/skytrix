@@ -8,3 +8,4 @@ export {
   expandInvalidatedScopes,
   type ScopeCategory,
 } from './scope';
+export { OverlayShowReadyProjection } from './overlay-show-ready.projection';

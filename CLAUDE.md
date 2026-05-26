@@ -319,6 +319,83 @@ cost is a DIFFERENT card (Solemn series banishing a board monster,
 Pot of Desires banishing 10 deck cards) — those would need per-card
 narrowing in β.x.
 
+## Projections Lot 1 (β.3, 2026-05-26)
+
+First production `BaseProjection<T>` consumer of the DEP flux + the
+wall-clock alignment of `AnimationStarted` / `AnimationCompleted`
+needed for the cost-before-overlay fix to be USER-VISIBLE (β.2b only
+made it DEP-correct, the visual overlay still popped early because the
+emission was sync at dispatch).
+
+### `OverlayShowReadyProjection`
+
+`projections/overlay-show-ready.projection.ts` — extends
+`BaseProjection<ReadonlySet<number>>`, scope `PERSPECTIVE_LIFETIME`.
+Accumulates the `chainId`s for which the overlay is allowed to appear:
+- `EffectReady('overlay-show:chain-<N>')` (from the DEP) → add N.
+- `EffectAbandoned('overlay-show:chain-<N>')` → also add N (graceful
+  degradation: a timeout / checkpoint means "stop waiting, just show
+  it"; better than a never-showing overlay).
+- `ChainEnded(N)` (boundary) → remove N.
+- `applyReset({PERSPECTIVE_LIFETIME})` → clear.
+
+Owned by `AnimationOrchestratorService` as a `readonly` field, auto-
+registered with the scope dispatcher AND attached to the orchestrator's
+`_eventStream` via `BaseProjection.attachEventStream(stream, injector)`.
+Detached in `destroy()`.
+
+### Consumer wiring — `pvp-chain-overlay.component`
+
+The `onNewChainLink` handler used to set `overlayVisible=true` SYNCHRONOUSLY
+on every MSG_CHAINING with link ≥ 2 — exactly the cost-before-overlay
+bug. β.3 splits the show into two helpers:
+- `_runOverlayShowSequence()` — the body that was inline (set overlay,
+  mark entry anim in progress, schedule fade-out).
+- `_gateOverlayShowOnReady(chainIndex)` — checks `orchestrator.overlayShowReady.isReady(chainIndex)`:
+  - True → fire `_runOverlayShowSequence` immediately (cost finished
+    before MSG_CHAINING — pathological but legal).
+  - False → install a one-shot `effect()` that watches
+    `overlayShowReady.value()` and fires the sequence the moment
+    `chainIndex` appears. The previous effect is destroyed on every new
+    chain link (no stacking on bursts) and on `onChainEnd` / destroyRef.
+
+The burst-detection path (entry anim still in progress) is unchanged —
+it doesn't gate, because the overlay is already up.
+
+### `BaseProjection.attachEventStream(stream, injector)` (β.3)
+
+`base-projection.ts` was extended with the glue every projection needs:
+an `effect()` that drains `stream()` through `applyEvent` in arrival
+order. The `_transport_streamConsumedLength` cursor + length-regression
+sync mirror the `DuelGameLogService.attachEventStream` pattern from
+palier 0 (the GLS predates β.3 and has its own copy — left as-is, β.x
+could DRY it). Required `injector` because `BaseProjection` is a plain
+class (constructable outside an injection context — e.g. in tests),
+so `effect()` needs an explicit injector.
+
+### Wall-clock `AnimationCompleted` alignment
+
+β.2b emitted both `AnimationStarted` and `AnimationCompleted` SYNCHRONOUSLY
+after `processEvent` returned — DEP-correct (relative order on the stream
+holds) but the user-visible timing was wrong because EffectReady fired
+the same frame as the cost MSG_MOVE. β.3 splits the pair:
+- `AnimationStarted({ref, msgType})` stays sync (right after dispatch).
+- `AnimationCompleted({ref, msgType})` is emitted by
+  `QueueRunner.onStepSettled(event, ref)` at the REAL wall-clock end of
+  the awaited step (Promise.race resolve OR setTimeout fire). The
+  callback signature was widened from `() => void` to
+  `(event, ref) => void`, and `QueueRunnerDeps.getLastDispatchedRef`
+  was added (optional, defaults to `() => null`) so the runner reads
+  the orchestrator's side-channel `_transport_lastDispatchedRef`
+  synchronously after `handleEntry` returns. Captured at that moment
+  so the NEXT handleEntry doesn't overwrite the ref before
+  `onStepSettled` fires.
+
+In a `group` directive, the inner events go through `processEvent`
+directly (not `handleEntryAndAwait`); a `pendingCompletions` array
+captures each event's ref + the `AnimationCompleted` is emitted for
+every event after the group's `Promise.all` resolves.
+
 ## Replay Board State Parity Rule
 
 Replay must provide equivalent intermediate board states so
