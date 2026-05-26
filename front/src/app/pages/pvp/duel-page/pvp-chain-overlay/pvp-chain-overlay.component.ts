@@ -116,8 +116,10 @@ export class PvpChainOverlayComponent {
    * `entryTimerId` and `activeTimers` stay POJO: they are resource handles,
    * not state.
    */
-  /** Whether card entry animation is in progress (for burst detection) */
-  private readonly _entryAnimInProgress = signal(false);
+  /** Burst-detection source of truth: non-null while a fade-out timer is
+   *  pending. Reset to `null` by `cancelEntryTimer()` AND by the timer's
+   *  own fire callback (`scheduleFadeOutAfterEntry`) so a fired-then-stale
+   *  handle can't fool the burst gate in `onNewChainLink`. */
   private entryTimerId: ReturnType<typeof setTimeout> | null = null;
   private readonly _previousLinkCount = signal(0);
   /** Track whether we've already handled the first resolving phase entry */
@@ -280,7 +282,6 @@ export class PvpChainOverlayComponent {
           this._resolutionStarted.set(true);
           // Cancel any pending building-phase fade-out to avoid race with resolution overlay
           this.cancelEntryTimer();
-          this._entryAnimInProgress.set(false);
           // Force clear entry animation gate — resolution takes over
           this.chainManager.chainEntryAnimating.set(false);
         }
@@ -356,7 +357,6 @@ export class PvpChainOverlayComponent {
       untracked(() => {
         if (announcing) {
           this.cancelEntryTimer();
-          this._entryAnimInProgress.set(false);
           this.overlayVisible.set(false);
         }
       });
@@ -437,8 +437,9 @@ export class PvpChainOverlayComponent {
     // Burst detection: if entry anim still in progress, skip fade-out/fade-in cycle.
     // The previously-running show sequence already set overlayVisible=true; the new
     // link just needs a refreshed fade-out timer. No gating needed here — the
-    // overlay is already up.
-    if (this._entryAnimInProgress()) {
+    // overlay is already up. `entryTimerId !== null` is the source of truth —
+    // β.3 Lot 2.1bis dropped the legacy `_entryAnimInProgress` mirror signal.
+    if (this.entryTimerId !== null) {
       this.cancelEntryTimer();
       this.scheduleFadeOutAfterEntry();
       return;
@@ -463,14 +464,13 @@ export class PvpChainOverlayComponent {
    * asynchronously (deferred by the gating effect). Sets
    * `overlayVisible=true`, marks the entry animation in progress, and
    * schedules the fade-out after the construct animation completes.
-   * Idempotent in the sense that re-calling it while
-   * `_entryAnimInProgress` is true is a no-op — the burst path above
-   * handles the "another link arrived" case.
+   * Idempotent in the sense that re-calling it while a fade-out timer
+   * is pending (`entryTimerId !== null`) is a no-op — the burst path
+   * above handles the "another link arrived" case.
    */
   private _runOverlayShowSequence(): void {
     this._overlayShownDuringBuild.set(true);
     this.overlayVisible.set(true);
-    this._entryAnimInProgress.set(true);
     this.chainManager.chainEntryAnimating.set(true);
     this.scheduleTimeout(
       () => this.chainManager.chainEntryAnimating.set(false),
@@ -523,7 +523,7 @@ export class PvpChainOverlayComponent {
 
   private scheduleFadeOutAfterEntry(): void {
     this.entryTimerId = this.scheduleTimeout(() => {
-      this._entryAnimInProgress.set(false);
+      this.entryTimerId = null;
       this.overlayVisible.set(false);
     }, this.durations().constructAppear);
   }
@@ -620,7 +620,7 @@ export class PvpChainOverlayComponent {
 
   private async replayAndPause(negated: boolean, aborted: AbortSignal): Promise<void> {
     if (negated) return;
-    if (this.chainManager.chainOverlayBoardChanged()) {
+    if (this.chainManager.hasBufferedEvents) {
       // replayBuffer is an external Promise we cannot abort — short-circuit
       // after it resolves if a cancel arrived in the meantime.
       await this.orchestrator.replayBuffer();
@@ -684,7 +684,6 @@ export class PvpChainOverlayComponent {
 
   private clearAllTimers(): void {
     this.cancelEntryTimer();
-    this._entryAnimInProgress.set(false);
     // Abort the in-flight resolution chain BEFORE clearing timers — its
     // waitForOrAbort calls listen for abort and self-clean. If we cleared
     // first the listeners would still fire (signal-then-timeout race).

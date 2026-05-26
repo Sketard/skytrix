@@ -164,17 +164,21 @@ describe('ChainResolutionManager', () => {
       expect(mgr.chainSolvedCount).toBe(1);
     });
 
-    it('should set chainOverlayBoardChanged when buffer has events', () => {
+    it('should expose hasBufferedEvents=true after solved when buffer has events', () => {
+      // β.3 Lot 2.1 — `chainOverlayBoardChanged` was a snapshot signal set
+      // at handleSolved; replaced by the live `hasBufferedEvents` getter.
+      // The replayAndPause consumer reads it right after SOLVED, before
+      // drainBuffer — at that point both surfaces coincide by construction.
       enterResolving(0);
       mgr.bufferIfResolving(move());
       exitLink(0);
-      expect(mgr.chainOverlayBoardChanged()).toBeTrue();
+      expect(mgr.hasBufferedEvents).toBeTrue();
     });
 
-    it('should set chainOverlayBoardChanged to false when buffer is empty', () => {
+    it('should expose hasBufferedEvents=false after solved when buffer is empty', () => {
       enterResolving(0);
       exitLink(0);
-      expect(mgr.chainOverlayBoardChanged()).toBeFalse();
+      expect(mgr.hasBufferedEvents).toBeFalse();
     });
   });
 
@@ -379,7 +383,6 @@ describe('ChainResolutionManager', () => {
       expect(mgr.chainResolutionAnnounce()).toBeFalse();
       expect(mgr.chainEntryAnimating()).toBeFalse();
       expect(mgr.chainPromptGateActive()).toBeFalse();
-      expect(mgr.chainOverlayBoardChanged()).toBeFalse();
       expect(mgr.chainOverlayReady()).toBeTrue();
       // H1: phase is the processor's responsibility — reset() does NOT flip it.
       // The orchestrator separately calls dataSource.applyChainEnd() / reset().

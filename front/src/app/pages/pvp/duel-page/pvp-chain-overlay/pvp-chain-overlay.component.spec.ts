@@ -45,7 +45,7 @@ describe('PvpChainOverlayComponent', () => {
     chainResolutionAnnounce: WritableSignal<boolean>;
     chainOverlayReady: WritableSignal<boolean>;
     chainPromptGateActive: WritableSignal<boolean>;
-    chainOverlayBoardChanged: WritableSignal<boolean>;
+    hasBufferedEvents: boolean;
     isWaitingForOverlay: boolean;
   };
 
@@ -119,7 +119,7 @@ describe('PvpChainOverlayComponent', () => {
       chainResolutionAnnounce: signal(false),
       chainOverlayReady: signal(true),
       chainPromptGateActive: signal(false),
-      chainOverlayBoardChanged: signal(false),
+      hasBufferedEvents: false,
       isWaitingForOverlay: false,
     };
 
@@ -332,7 +332,7 @@ describe('PvpChainOverlayComponent', () => {
         'resolving',
       );
       // Trigger link removal → onChainLinkResolved
-      mockChainManager.chainOverlayBoardChanged.set(false);
+      mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
 
       // chainOverlayReady set to false synchronously at start of onChainLinkResolved
@@ -343,13 +343,13 @@ describe('PvpChainOverlayComponent', () => {
       expect(mockChainManager.chainOverlayReady()).toBeTrue();
     }));
 
-    it('should call replayBuffer when chainOverlayBoardChanged + non-negated', fakeAsync(() => {
+    it('should call replayBuffer when hasBufferedEvents + non-negated', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
       setLinksAndPhase(
         [createLink(0), createLink(1, { resolving: true })],
         'resolving',
       );
-      mockChainManager.chainOverlayBoardChanged.set(true);
+      mockChainManager.hasBufferedEvents = true;
       setLinks([createLink(0)]);
       flush();
 
@@ -362,7 +362,7 @@ describe('PvpChainOverlayComponent', () => {
         [createLink(0), createLink(1, { resolving: true, negated: true })],
         'resolving',
       );
-      mockChainManager.chainOverlayBoardChanged.set(true);
+      mockChainManager.hasBufferedEvents = true;
       setLinks([createLink(0)]);
       flush();
 
@@ -381,7 +381,7 @@ describe('PvpChainOverlayComponent', () => {
         [createLink(0), createLink(1, { resolving: true })],
         'resolving',
       );
-      mockChainManager.chainOverlayBoardChanged.set(false);
+      mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
       flush();
 
@@ -703,7 +703,7 @@ describe('PvpChainOverlayComponent', () => {
         'resolving',
       );
       // Slow replay so onChainLinkResolved is in-flight
-      mockChainManager.chainOverlayBoardChanged.set(true);
+      mockChainManager.hasBufferedEvents = true;
       let resolveReplay: () => void = () => undefined;
       mockOrchestrator.replayBuffer.and.returnValue(
         new Promise<void>(r => { resolveReplay = r; }),
@@ -747,7 +747,7 @@ describe('PvpChainOverlayComponent', () => {
         [createLink(0), createLink(1, { resolving: true })],
         'resolving',
       );
-      mockChainManager.chainOverlayBoardChanged.set(false);
+      mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
 
       // chainOverlayReady set to false synchronously — proves the guard didn't block
@@ -762,7 +762,7 @@ describe('PvpChainOverlayComponent', () => {
         [createLink(0), createLink(1, { resolving: true })],
         'resolving',
       );
-      mockChainManager.chainOverlayBoardChanged.set(false);
+      mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
       const internal = component as unknown as { activeTimers: Set<unknown> };
       // Pre-cancel: resolution is mid-flow so timers are scheduled

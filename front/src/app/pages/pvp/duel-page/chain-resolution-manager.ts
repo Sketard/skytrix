@@ -61,7 +61,6 @@ export class ChainResolutionManager implements ResetTarget {
   // --- Public signals (overlay contract) ---
   readonly chainResolutionAnnounce = signal(false);
   readonly chainOverlayReady = signal<boolean>(true);
-  readonly chainOverlayBoardChanged = signal<boolean>(false);
   readonly chainEntryAnimating = signal<boolean>(false);
   readonly chainPromptGateActive = signal<boolean>(false);
 
@@ -147,7 +146,6 @@ export class ChainResolutionManager implements ResetTarget {
     this.assertTransition('SOLVED', !this._waitingForOverlay,
       'CHAIN_SOLVED while still waiting for overlay from previous link');
     const _msg = event as ChainSolvedMsg;
-    this.chainOverlayBoardChanged.set(this._bufferedBoardEvents.length > 0);
     this._chainSolvedCount++;
     this._waitingForOverlay = true;
     return 'async';
@@ -285,7 +283,6 @@ export class ChainResolutionManager implements ResetTarget {
     this.chainPromptGateActive.set(false);
     this.chainResolutionAnnounce.set(false);
     this.chainEntryAnimating.set(false);
-    this.chainOverlayBoardChanged.set(false);
     this.chainOverlayReady.set(true);
     this._deferredSolvingEvent = null;
     this._bannerTimeouts.forEach(t => clearTimeout(t));
