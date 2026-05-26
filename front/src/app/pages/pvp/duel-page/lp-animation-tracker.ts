@@ -1,9 +1,9 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import type { LpAnimData } from './pvp-lp-badge/pvp-lp-badge.component';
 import type { GameEvent } from '../types';
 import type { DamageMsg, PayLpCostMsg, Player, RecoverMsg } from '../duel-ws.types';
 import {
+  AnimatingLpProjection,
   ScopeResetDispatcher,
   type CheckpointPayload,
   type ResetTarget,
@@ -53,7 +53,21 @@ export class LpAnimationTracker implements ResetTarget {
   private _pendingLpCommits = new Set<Player>();
   private _cachedBaseLpDuration: number | null = null;
 
-  readonly animatingLpPlayer = signal<LpAnimData | null>(null);
+  /**
+   * β.3 Lot 2.2-REDO — the LP animation projection lives here so the
+   * orchestrator can call `animatingLpPlayerProjection` to wire the
+   * scope dispatcher + event stream once. Exposed as the `value`
+   * signal via the `animatingLpPlayer` alias below so PvP + replay
+   * templates keep their `()` call syntax.
+   */
+  readonly animatingLpPlayerProjection = new AnimatingLpProjection();
+
+  /** β.3 Lot 2.2-REDO — back-compat alias matching the legacy
+   *  `animatingLpPlayer = signal<LpAnimData | null>(null)` shape.
+   *  `pvp-lp-badge` + the orchestrator's defensive `set(null)` sites
+   *  used the writable signal directly; with the projection these are
+   *  gone (the projection self-clears via `AnimationCompleted`). */
+  readonly animatingLpPlayer = this.animatingLpPlayerProjection.value;
 
   get baseLpDuration(): number {
     if (this._cachedBaseLpDuration === null) {
@@ -63,15 +77,41 @@ export class LpAnimationTracker implements ResetTarget {
     return this._cachedBaseLpDuration;
   }
 
+  /**
+   * β.3 Standardisation 2 (2026-05-26) — pure read of the LP delta a
+   * MSG_DAMAGE/RECOVER/PAY_LPCOST is about to produce. Does NOT mutate
+   * `trackedLp`. Called by the orchestrator AT PUSH TIME (before
+   * `processLpEvent` mutates) to decorate the event clone with
+   * `lpDelta` so the projection can consume it without duplicating
+   * the tracker's state.
+   *
+   * `processLpEvent` is the mutating sibling — it re-derives the same
+   * delta and applies the mutation. Both methods agree by construction
+   * (same `relativePlayer` mapping, same arithmetic, same
+   * `baseLpDuration * speedMultiplier`).
+   */
+  peekLpDelta(player: number, amount: number, type: 'damage' | 'recover'): { fromLp: number; toLp: number; durationMs: number } {
+    const relativeIdx = this.ctx.relativePlayer(player);
+    const fromLp = this.trackedLp[relativeIdx] ?? 8000;
+    const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
+    const speedMultiplier = this.ctx.speedMultiplier();
+    const durationMs = Math.round(this.baseLpDuration * speedMultiplier);
+    return { fromLp, toLp, durationMs };
+  }
+
   processLpEvent(player: number, amount: number, type: 'damage' | 'recover'): number {
+    // β.3 Lot 2.2-REDO — the visual signal (fromLp/toLp/durationMs) is
+    // owned by `animatingLpPlayerProjection`, which self-sets when the
+    // orchestrator pushes the decorated MSG_DAMAGE/RECOVER/PAY_LPCOST
+    // on the stream (cf. `decorateLpEventForStream` + `peekLpDelta`).
+    // This method keeps its mutating role: advance `trackedLp`,
+    // register the pending commit, fire the a11y announce, return the
+    // runner's hold duration.
     const relativeIdx = this.ctx.relativePlayer(player);
     const fromLp = this.trackedLp[relativeIdx] ?? 8000;
     const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
     this.trackedLp[relativeIdx] = toLp;
 
-    const speedMultiplier = this.ctx.speedMultiplier();
-    const durationMs = Math.round(this.baseLpDuration * speedMultiplier);
-    this.animatingLpPlayer.set({ player, fromLp, toLp, type, durationMs });
     this._pendingLpCommits.add(relativeIdx as Player);
 
     const isOwn = player === this.ctx.ownPlayerIndex();
@@ -82,9 +122,13 @@ export class LpAnimationTracker implements ResetTarget {
   }
 
   /**
-   * Commit pending LP to rendered state and clear the animating signal.
+   * Commit pending LP to rendered state.
    * Called by the queue loop after an LP event's animation duration elapses.
    * No-op if nothing is pending.
+   *
+   * β.3 Lot 2.2-REDO — the projection's `value` is cleared by its own
+   * `AnimationCompleted` observation (emitted by `onStepSettled` for
+   * the LP message), not here.
    */
   commitIfPending(): void {
     if (this._pendingLpCommits.size === 0) return;
@@ -92,7 +136,6 @@ export class LpAnimationTracker implements ResetTarget {
       this.rbs.commitLp(p);
     }
     this._pendingLpCommits.clear();
-    this.animatingLpPlayer.set(null);
   }
 
   get hasPendingCommit(): boolean {
@@ -181,14 +224,16 @@ export class LpAnimationTracker implements ResetTarget {
       this.trackedLp = [...STARTING_LP] as [number, number];
       this._pendingLpCommits.clear();
     }
-    if (scopes.has('PERSPECTIVE_LIFETIME')) {
-      this.animatingLpPlayer.set(null);
-    }
+    // β.3 Lot 2.2-REDO — the `animatingLpPlayer` slice
+    // (PERSPECTIVE_LIFETIME) is now owned by
+    // `animatingLpPlayerProjection`, which is registered as its own
+    // `ResetTarget` with the dispatcher (PERSPECTIVE scope) and
+    // clears itself via its `applyReset`. The tracker's `applyReset`
+    // no longer touches the animation slice.
   }
 
   reset(): void {
     this.trackedLp = [...STARTING_LP] as [number, number];
     this._pendingLpCommits.clear();
-    this.animatingLpPlayer.set(null);
   }
 }

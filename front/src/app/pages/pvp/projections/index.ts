@@ -20,3 +20,7 @@ export {
   SwapGraveDeckProjection,
   type SwapGraveDeckProjectionDeps,
 } from './swap-grave-deck.projection';
+export {
+  AnimatingLpProjection,
+  type LpAnimData,
+} from './animating-lp.projection';

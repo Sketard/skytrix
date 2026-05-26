@@ -376,6 +376,43 @@ export class AnimationOrchestratorService {
    * tick later (acceptable since the projection will be cleared by
    * the dispatcher in the same scope).
    */
+  /**
+   * β.3 Standardisation 2 (2026-05-26) — decorate LP-class messages
+   * (`MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`) with `lpDelta:
+   * { fromLp, toLp, durationMs }` so the `AnimatingLpProjection`
+   * (Lot 2.2-REDO) can derive its visual state purely from the
+   * flux, without duplicating the tracker's `trackedLp` map.
+   *
+   * Pure — never mutates the input event. Returns the input
+   * unchanged for non-LP messages.
+   *
+   * The `peekLpDelta` is a pure read of the tracker's current state;
+   * the subsequent `processLpEvent` (called from the dispatch switch)
+   * re-derives the same values + applies the mutation. The two
+   * methods agree by construction (same arithmetic).
+   */
+  private decorateLpEventForStream(event: GameEvent): GameEvent {
+    switch (event.type) {
+      case 'MSG_DAMAGE': {
+        const msg = event as DamageMsg;
+        const lpDelta = this.lpTracker.peekLpDelta(msg.player, msg.amount, 'damage');
+        return { ...msg, lpDelta } as GameEvent;
+      }
+      case 'MSG_RECOVER': {
+        const msg = event as RecoverMsg;
+        const lpDelta = this.lpTracker.peekLpDelta(msg.player, msg.amount, 'recover');
+        return { ...msg, lpDelta } as GameEvent;
+      }
+      case 'MSG_PAY_LPCOST': {
+        const msg = event as PayLpCostMsg;
+        const lpDelta = this.lpTracker.peekLpDelta(msg.player, msg.amount, 'damage');
+        return { ...msg, lpDelta } as GameEvent;
+      }
+      default:
+        return event;
+    }
+  }
+
   private phaseWait(phase: string, durationMs: number, msgType: string): Promise<void> {
     const ref = this._transport_lastDispatchedRef;
     return new Promise<void>(resolve => {
@@ -448,10 +485,10 @@ export class AnimationOrchestratorService {
       onFinalize: () => {
         this.finalizeAndCommit();
         this.drawManager.resetHandAnimationState();
-        // β.3 Lot 2.6 — `animatingZone` projection cleared via
-        // AnimationCompleted in `onStepSettled`; the defensive set(null)
-        // here was redundant. No-op cleanup retained for LP only.
-        this.lpTracker.animatingLpPlayer.set(null);
+        // β.3 Lot 2.6 + 2.2-REDO — `animatingZone` AND
+        // `animatingLpPlayerProjection` both clear themselves via
+        // AnimationCompleted in `onStepSettled`. The legacy defensive
+        // `set(null)` doubles here are redundant and removed.
         const state = this.rbs.logicalState();
         if (state.players.length === 2) {
           this.lpTracker.syncFromBoardState(state.players[0].lp, state.players[1].lp);
@@ -534,6 +571,15 @@ export class AnimationOrchestratorService {
     // AnimationPhaseCompleted emitted by `phaseWait` in the handler.
     this.scopeDispatcher?.register(this.swapGraveDeckKeys);
     this.swapGraveDeckKeys.attachEventStream(this._eventStream, this.injector);
+
+    // β.3 Lot 2.2-REDO — animating-lp projection lives on the
+    // `lpTracker` but is registered + attached here so the
+    // orchestrator owns the wiring symmetrically with the other
+    // projections. The tracker still owns the mutating `trackedLp` +
+    // `_pendingLpCommits` lifecycle; the projection only owns the
+    // visual `LpAnimData | null` slice (PERSPECTIVE_LIFETIME).
+    this.scopeDispatcher?.register(this.lpTracker.animatingLpPlayerProjection);
+    this.lpTracker.animatingLpPlayerProjection.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -794,6 +840,7 @@ export class AnimationOrchestratorService {
     this.animatingZone.detachEventStream();
     this.isAnimating.detachEventStream();
     this.swapGraveDeckKeys.detachEventStream();
+    this.lpTracker.animatingLpPlayerProjection.detachEventStream();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -1139,9 +1186,9 @@ export class AnimationOrchestratorService {
             ref, msgType: event.type,
           });
         }
-        // β.3 Lot 2.6 — `animatingZone` projection observes the
-        // AnimationCompleted events above and clears itself.
-        this.lpTracker.animatingLpPlayer.set(null);
+        // β.3 Lot 2.6 + 2.2-REDO — `animatingZone` and
+        // `animatingLpPlayerProjection` both clear themselves on the
+        // AnimationCompleted events emitted above.
         return 'continue';
       }
       case 'barrier':
@@ -1151,6 +1198,14 @@ export class AnimationOrchestratorService {
         return 'continue';
       case 'lp':
         this.trace('directive', { kind: 'lp' });
+        // β.3 Lot 2.2-REDO — buffered LP replay path needs to feed the
+        // projection too. Decorate + push to the stream first (so the
+        // projection picks up the LP delta), THEN mutate via the
+        // tracker. Order matters: `peekLpDelta` inside
+        // `decorateLpEventForStream` reads the PRE-mutation trackedLp.
+        this._transport_lastDispatchedRef = this.pushToStream(
+          this.decorateLpEventForStream(entry.event),
+        );
         this.lpTracker.fireLpReplayEvent(entry.event);
         return 'continue';
       case 'batch-end':
@@ -1212,7 +1267,16 @@ export class AnimationOrchestratorService {
     // β.2b — stash the assigned ref on the side-channel so the caller
     // (`_dispatchEvent` / `processDirective.group`) can wrap the await
     // with `AnimationStarted/Completed({ref})` matching this event.
-    this._transport_lastDispatchedRef = this.pushToStream(event);
+    //
+    // β.3 Standardisation 2 (2026-05-26) — decorate LP messages with
+    // `lpDelta: { fromLp, toLp, durationMs }` BEFORE the push. The
+    // `peekLpDelta` is pure (reads `trackedLp` without mutating); the
+    // subsequent `processLpEvent` in the dispatch switch re-derives the
+    // same values and applies the mutation. Decoration is a shallow
+    // clone — the original event arg is never mutated, so any caller
+    // that retained a reference still sees the original shape.
+    const eventToPush = this.decorateLpEventForStream(event);
+    this._transport_lastDispatchedRef = this.pushToStream(eventToPush);
 
     switch (event.type) {
       case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);

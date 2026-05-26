@@ -38,9 +38,23 @@ describe('LpAnimationTracker', () => {
     Object.defineProperty(tracker, 'baseLpDuration', { get: () => 500 });
   });
 
-  describe('processLpEvent', () => {
-    it('should track damage and set animating data', () => {
-      tracker.processLpEvent(0, 3000, 'damage');
+  // β.3 Lot 2.2-REDO — pipeline-like helper: replicates what the
+  // orchestrator does at push time (decorate the event with the
+  // tracker's `peekLpDelta` output) and feeds it to the projection.
+  // Then mutates via processLpEvent to advance trackedLp. Mirrors the
+  // production flow without booting the orchestrator.
+  function pipeLpEvent(player: number, amount: number, type: 'damage' | 'recover'): void {
+    const lpDelta = tracker.peekLpDelta(player, amount, type);
+    const msgType = type === 'recover' ? 'MSG_RECOVER' : 'MSG_DAMAGE';
+    tracker.animatingLpPlayerProjection.applyEvent({
+      type: msgType, player, amount, lpDelta,
+    } as unknown as Parameters<typeof tracker.animatingLpPlayerProjection.applyEvent>[0]);
+    tracker.processLpEvent(player, amount, type);
+  }
+
+  describe('processLpEvent + peekLpDelta (pipeline-equivalent flow)', () => {
+    it('should track damage and set animating data via the projection', () => {
+      pipeLpEvent(0, 3000, 'damage');
       const anim = tracker.animatingLpPlayer();
       expect(anim).toBeTruthy();
       expect(anim!.fromLp).toBe(8000);
@@ -50,18 +64,18 @@ describe('LpAnimationTracker', () => {
     });
 
     it('should track recovery', () => {
-      tracker.processLpEvent(0, 2000, 'damage');
-      tracker.processLpEvent(0, 1000, 'recover');
+      pipeLpEvent(0, 2000, 'damage');
+      pipeLpEvent(0, 1000, 'recover');
       expect(tracker.animatingLpPlayer()!.toLp).toBe(7000);
     });
 
     it('should clamp damage at 0', () => {
-      tracker.processLpEvent(0, 99999, 'damage');
+      pipeLpEvent(0, 99999, 'damage');
       expect(tracker.animatingLpPlayer()!.toLp).toBe(0);
     });
 
     it('should track opponent LP separately (relative index 1)', () => {
-      tracker.processLpEvent(1, 500, 'damage');
+      pipeLpEvent(1, 500, 'damage');
       const lps = tracker.getTrackedLp();
       expect(lps[0]).toBe(8000); // own unchanged
       expect(lps[1]).toBe(7500); // opponent
@@ -88,10 +102,10 @@ describe('LpAnimationTracker', () => {
       expect(mockAnnouncer.announce).toHaveBeenCalledWith('Opponent LP: 7500');
     });
 
-    it('should compute durationMs using speedMultiplier', () => {
-      tracker.processLpEvent(0, 100, 'damage');
+    it('should compute durationMs using speedMultiplier (via peekLpDelta)', () => {
+      const delta = tracker.peekLpDelta(0, 100, 'damage');
       // speedMultiplier = 1, baseLpDuration = 500 → durationMs = 500
-      expect(tracker.animatingLpPlayer()!.durationMs).toBe(500);
+      expect(delta.durationMs).toBe(500);
     });
   });
 
@@ -117,20 +131,23 @@ describe('LpAnimationTracker', () => {
       expect(mockRbs.commitLp).toHaveBeenCalledTimes(1);
     });
 
-    it('should clear animatingLpPlayer signal after committing', () => {
-      tracker.processLpEvent(0, 100, 'damage');
+    it('β.3 Lot 2.2-REDO — commitIfPending NO LONGER touches the animation signal', () => {
+      // The projection is the source of truth for `animatingLpPlayer`.
+      // Its clear path is now `AnimationCompleted` on the stream,
+      // emitted by the runner's `onStepSettled` callback — NOT
+      // `commitIfPending` (which is a tracker concern).
+      pipeLpEvent(0, 100, 'damage');
       expect(tracker.animatingLpPlayer()).not.toBeNull();
       tracker.commitIfPending();
-      expect(tracker.animatingLpPlayer()).toBeNull();
+      // The visual signal stays set; only AnimationCompleted clears it.
+      expect(tracker.animatingLpPlayer()).not.toBeNull();
     });
 
-    it('should not touch animatingLpPlayer signal when nothing pending', () => {
-      tracker.processLpEvent(0, 100, 'damage');
-      tracker.discardPending();
-      // simulate signal still set by an in-flight animation
+    it('β.3 Lot 2.2-REDO — discardPending also does NOT touch the animation signal', () => {
+      pipeLpEvent(0, 100, 'damage');
       const before = tracker.animatingLpPlayer();
       expect(before).not.toBeNull();
-      tracker.commitIfPending();
+      tracker.discardPending();
       expect(tracker.animatingLpPlayer()).toBe(before);
     });
   });
@@ -144,7 +161,7 @@ describe('LpAnimationTracker', () => {
     });
 
     it('should NOT clear animatingLpPlayer signal (animation may still play)', () => {
-      tracker.processLpEvent(0, 100, 'damage');
+      pipeLpEvent(0, 100, 'damage');
       tracker.discardPending();
       expect(tracker.animatingLpPlayer()).not.toBeNull();
     });
@@ -177,22 +194,27 @@ describe('LpAnimationTracker', () => {
   });
 
   describe('fireLpReplayEvent', () => {
-    it('should delegate MSG_DAMAGE to processLpEvent', () => {
+    // β.3 Lot 2.2-REDO — `fireLpReplayEvent` is the tracker's
+    // **mutating** side (advance trackedLp, register pending commit,
+    // announce). The visual projection is fed separately by the
+    // orchestrator's `processDirective.case 'lp'` (which decorates +
+    // pushes to the stream right before calling
+    // `fireLpReplayEvent`). The unit tests below assert the mutation
+    // half; the projection side has its own spec.
+    it('should delegate MSG_DAMAGE to processLpEvent (trackedLp mutation)', () => {
       tracker.fireLpReplayEvent({ type: 'MSG_DAMAGE', player: 0, amount: 1000 } as GameEvent);
-      expect(tracker.animatingLpPlayer()!.type).toBe('damage');
-      expect(tracker.animatingLpPlayer()!.toLp).toBe(7000);
+      expect(tracker.getTrackedLp()[0]).toBe(7000);
+      expect(tracker.hasPendingCommit).toBeTrue();
     });
 
     it('should delegate MSG_RECOVER to processLpEvent', () => {
       tracker.fireLpReplayEvent({ type: 'MSG_RECOVER', player: 0, amount: 500 } as GameEvent);
-      expect(tracker.animatingLpPlayer()!.type).toBe('recover');
-      expect(tracker.animatingLpPlayer()!.toLp).toBe(8500);
+      expect(tracker.getTrackedLp()[0]).toBe(8500);
     });
 
     it('should delegate MSG_PAY_LPCOST as damage', () => {
       tracker.fireLpReplayEvent({ type: 'MSG_PAY_LPCOST', player: 0, amount: 2000 } as GameEvent);
-      expect(tracker.animatingLpPlayer()!.type).toBe('damage');
-      expect(tracker.animatingLpPlayer()!.toLp).toBe(6000);
+      expect(tracker.getTrackedLp()[0]).toBe(6000);
     });
   });
 
@@ -213,12 +235,23 @@ describe('LpAnimationTracker', () => {
   });
 
   describe('reset', () => {
-    it('should restore default state', () => {
+    it('should restore default state (trackedLp + pending)', () => {
       tracker.processLpEvent(0, 5000, 'damage');
       tracker.reset();
       expect(tracker.getTrackedLp()).toEqual([8000, 8000]);
       expect(tracker.hasPendingCommit).toBeFalse();
-      expect(tracker.animatingLpPlayer()).toBeNull();
+    });
+
+    it('β.3 Lot 2.2-REDO — reset does NOT touch the visual projection', () => {
+      // The visual projection is the source of truth for
+      // `animatingLpPlayer`; its lifecycle is driven by the
+      // `ScopeResetDispatcher` (not by the tracker's local reset).
+      // A bare `tracker.reset()` only handles the mutating state.
+      pipeLpEvent(0, 100, 'damage');
+      expect(tracker.animatingLpPlayer()).not.toBeNull();
+      tracker.reset();
+      // Projection slice survives — dispatcher would clear it via applyReset.
+      expect(tracker.animatingLpPlayer()).not.toBeNull();
     });
   });
 
