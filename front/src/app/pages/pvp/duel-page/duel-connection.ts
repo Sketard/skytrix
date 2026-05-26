@@ -593,7 +593,7 @@ export class DuelConnection {
     // probe field as a console.warn so the Playwright debug harness captures
     // it. TO REMOVE before merging Commit 0bis.
     if (message.type === 'MSG_MOVE' && (message as { _r8Probe?: unknown })._r8Probe) {
-      const probe = (message as { _r8Probe: { count: number; codes: number[]; fromLoc: number; fromSeq: number } })._r8Probe;
+      const probe = (message as unknown as { _r8Probe: { count: number; codes: number[]; fromLoc: number; fromSeq: number } })._r8Probe;
       const m = message as MoveMsg;
       console.warn('R8-PROBE MSG_MOVE post-process OVERLAY_CARD on source', JSON.stringify({
         card: m.cardName,
