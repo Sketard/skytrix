@@ -398,13 +398,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     buildOpponentHandChainData(this.chainLinksWithPending(), this.ownPlayerIndex(), this.wsService.chainPhase(), this.opponentHand()),
   );
   readonly opponentHandChainBadges = computed(() => this.opponentHandChainData().badges);
-  readonly opponentHandRevealedCards = computed<Map<number, number>>(() => {
-    const confirm = this.animationService.confirmRevealedCards();
-    if (confirm.size === 0) return this.opponentHandChainData().revealed;
-    const merged = new Map(this.opponentHandChainData().revealed);
-    for (const [k, v] of confirm) merged.set(k, v);
-    return merged;
-  });
+  readonly opponentHandRevealedCards = computed(() => this.opponentHandChainData().revealed);
 
   /** X-ray overlay keys for face-down cards owned by the current player (player always at index 0). */
   readonly revealedZoneKeys = computed<ReadonlySet<string>>(() => {

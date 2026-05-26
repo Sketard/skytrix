@@ -313,8 +313,6 @@ export class AnimationOrchestratorService {
   readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
   /** Zone keys of GY+DECK pulsing during SWAP_GRAVE_DECK. */
   readonly swapGraveDeckKeys = signal<ReadonlySet<string>>(new Set());
-  /** Temporary reveal map for MSG_CONFIRM_CARDS: opponent hand index → cardCode. */
-  readonly confirmRevealedCards = signal<ReadonlyMap<number, number>>(new Map());
 
   private get rbs() { return this.dataSource.renderedBoardState; }
 
@@ -747,7 +745,6 @@ export class AnimationOrchestratorService {
     this.scopeDispatcher?.dispatch(scopes);
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
-    this.confirmRevealedCards.set(new Map());
     this.targetedZoneKeys.set(new Set());
     this.targetIndicator.reset();
     // β.3 Lot 2.3 — `counterPulse` projection clears itself via
@@ -1246,7 +1243,6 @@ export class AnimationOrchestratorService {
     this.chainManager.handleEnd();
     this.moveRouter.releaseAllPreLocks();
     this.drawManager.clearDrawsCompleteCallback();
-    this.confirmRevealedCards.set(new Map());
     return CHAIN_END_SETTLE_MS;
   }
 

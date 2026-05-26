@@ -151,7 +151,6 @@ class StubPhaseAnnouncement {
 class StubAnimationOrchestrator {
   readonly isAnimating = signal(false);
   readonly animatingZone = signal<unknown>(null);
-  readonly confirmRevealedCards = signal<Map<number, number>>(new Map());
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
   readonly eventStream = signal<readonly unknown[]>([]);
   destroy = jasmine.createSpy('destroy');

@@ -164,7 +164,6 @@ class NoopEffectsStub {
 class StubAnimationOrchestrator {
   readonly isAnimating = signal(false);
   readonly animatingZone = signal<unknown>(null);
-  readonly confirmRevealedCards = signal<Map<number, number>>(new Map());
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
   readonly eventStream = signal<readonly unknown[]>([]);
   destroy = jasmine.createSpy('destroy');
@@ -764,11 +763,13 @@ describe('DuelPageComponent — playerHand + chain badges + revealed merge (C1.4
     expect(badges.get(0)).toBe(1); // chainIndex 0 → badge "1"
   });
 
-  it('opponentHandRevealedCards skips merge work when confirmRevealedCards is empty', () => {
-    // Optimisation invariant: when there's nothing in confirmRevealedCards,
-    // the computed returns the chain-derived map directly (object identity)
-    // — no new Map allocated. Pin reference equality to catch a refactor
-    // that replaces the early-return with an unconditional merge.
+  it('opponentHandRevealedCards exposes the chain-derived reveal map', () => {
+    // β.3 Lot 2.5 — `confirmRevealedCards` was an orphan signal (declared
+    // since the 89b761c4 big-bang refacto, never wired to any setter).
+    // The computed merged it over the chain-derived `revealed` Map; with
+    // the orphan dropped, the computed is a direct alias of
+    // `opponentHandChainData().revealed`. Pin the alias to catch a future
+    // regression that reintroduces a parallel reveal source.
     const p1Card = makeHandCard(801);
     ws.setRendered(makeStateWithHands([], [p1Card]));
     ws.ocgPlayerIndex.set(0);
@@ -776,31 +777,10 @@ describe('DuelPageComponent — playerHand + chain badges + revealed merge (C1.4
       makeChainLink({ chainIndex: 0, cardCode: 801, player: 1, sequence: 0 }),
     ]);
     ws.chainPhase.set('resolving');
-    anim.confirmRevealedCards.set(new Map());
 
     const out = component.opponentHandRevealedCards();
     expect(out.size).toBe(1);
     expect(out.get(0)).toBe(801);
-  });
-
-  it('opponentHandRevealedCards merges confirm over chain (confirm wins on shared keys)', () => {
-    // Two reveal sources for index 0: chain says cardCode 801, confirm says
-    // 999. The confirm should overwrite — its values are the latest
-    // server-confirmed reveals (e.g., when the opponent's card was
-    // played from hand and the server emitted CONFIRM_CARDS with the
-    // accurate cardCode). A future refactor that swaps the merge order
-    // (chain over confirm) would silently leak stale data.
-    const p1Card = makeHandCard(801);
-    ws.setRendered(makeStateWithHands([], [p1Card]));
-    ws.ocgPlayerIndex.set(0);
-    ws.activeChainLinks.set([
-      makeChainLink({ chainIndex: 0, cardCode: 801, player: 1, sequence: 0 }),
-    ]);
-    ws.chainPhase.set('resolving');
-    anim.confirmRevealedCards.set(new Map([[0, 999]]));
-
-    const out = component.opponentHandRevealedCards();
-    expect(out.get(0)).toBe(999);
   });
 });
 
