@@ -13,7 +13,6 @@
 // =============================================================================
 
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { Injector, runInInjectionContext } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { ScopeResetDispatcher } from '../projections';
@@ -59,24 +58,36 @@ describe('α.4b — managers as ResetTarget (integration)', () => {
   });
 
   describe('auto-registration at construction', () => {
-    it('LpAnimationTracker registers with scope DUEL_LIFETIME', () => {
+    // Each manager test spies on `dispatcher.register` BEFORE the manager
+    // is instantiated, then asserts the spy received that exact instance.
+    // This catches a constructor that forgets `this.dispatcher?.register(this)`
+    // — a `size >= 1` check would pass coincidentally if any other manager
+    // (or a previous test's leftover) had registered first.
+    it('LpAnimationTracker calls register with itself and declares DUEL_LIFETIME', () => {
+      const registerSpy = spyOn(dispatcher, 'register').and.callThrough();
       const lp = TestBed.inject(LpAnimationTracker);
-      expect(dispatcher.size).toBeGreaterThanOrEqual(1);
+      expect(registerSpy).toHaveBeenCalledWith(lp as unknown as ResetTarget);
       expect((lp as unknown as ResetTarget).scope).toBe('DUEL_LIFETIME');
     });
 
-    it('BattleAnimationTracker registers with scope PERSPECTIVE_LIFETIME', () => {
+    it('BattleAnimationTracker calls register with itself and declares PERSPECTIVE_LIFETIME', () => {
+      const registerSpy = spyOn(dispatcher, 'register').and.callThrough();
       const battle = TestBed.inject(BattleAnimationTracker);
+      expect(registerSpy).toHaveBeenCalledWith(battle as unknown as ResetTarget);
       expect((battle as unknown as ResetTarget).scope).toBe('PERSPECTIVE_LIFETIME');
     });
 
-    it('ChainResolutionManager registers with scope PERSPECTIVE_LIFETIME (most volatile slice)', () => {
+    it('ChainResolutionManager calls register with itself and declares PERSPECTIVE_LIFETIME (most volatile slice)', () => {
+      const registerSpy = spyOn(dispatcher, 'register').and.callThrough();
       const chain = TestBed.inject(ChainResolutionManager);
+      expect(registerSpy).toHaveBeenCalledWith(chain as unknown as ResetTarget);
       expect((chain as unknown as ResetTarget).scope).toBe('PERSPECTIVE_LIFETIME');
     });
 
-    it('DuelGameLogService registers with scope DUEL_LIFETIME', () => {
+    it('DuelGameLogService calls register with itself and declares DUEL_LIFETIME', () => {
+      const registerSpy = spyOn(dispatcher, 'register').and.callThrough();
       const log = TestBed.inject(DuelGameLogService);
+      expect(registerSpy).toHaveBeenCalledWith(log as unknown as ResetTarget);
       expect((log as unknown as ResetTarget).scope).toBe('DUEL_LIFETIME');
     });
 
@@ -174,12 +185,9 @@ describe('α.4b — managers as ResetTarget (integration)', () => {
         ],
       });
 
-      const injector = TestBed.inject(Injector);
-      runInInjectionContext(injector, () => {
-        const lp = TestBed.inject(LpAnimationTracker);
-        expect(lp).toBeTruthy();
-        expect((lp as unknown as ResetTarget).scope).toBe('DUEL_LIFETIME');
-      });
+      const lp = TestBed.inject(LpAnimationTracker);
+      expect(lp).toBeTruthy();
+      expect((lp as unknown as ResetTarget).scope).toBe('DUEL_LIFETIME');
     });
   });
 });
