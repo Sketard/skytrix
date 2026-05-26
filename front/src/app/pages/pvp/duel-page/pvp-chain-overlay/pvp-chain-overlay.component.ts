@@ -161,8 +161,10 @@ export class PvpChainOverlayComponent {
   private _resolutionAbort: AbortController | null = null;
 
   // --- Deferred entry animation (see Effect C) ---
-  private readonly _hasPendingEntry = signal(false);
-  private readonly _pendingPrevCount = signal(0);
+  // `null` = no pending entry. Single signal so the two pieces of state
+  // (presence + payload) can never desync — they were two booleans/numbers
+  // set, read and cleared in lockstep at three call sites.
+  private readonly _pendingEntry = signal<{ prevCount: number } | null>(null);
 
   // --- Animation durations (scaled by speedMultiplier) ---
   readonly durations = computed(() => {
@@ -260,8 +262,7 @@ export class PvpChainOverlayComponent {
           if (currentCount > prevCount && currentCount > 0) {
             // Defer entry animation while cost prompt is open (see Effect C for replay)
             if (this.promptActive()) {
-              this._hasPendingEntry.set(true);
-              this._pendingPrevCount.set(prevCount);
+              this._pendingEntry.set({ prevCount });
             } else {
               this.onNewChainLink(prevCount, links);
             }
@@ -369,11 +370,12 @@ export class PvpChainOverlayComponent {
       const isPromptActive = this.promptActive();
 
       untracked(() => {
-        if (!isPromptActive && this._hasPendingEntry()) {
-          this._hasPendingEntry.set(false);
+        const pending = this._pendingEntry();
+        if (!isPromptActive && pending) {
+          this._pendingEntry.set(null);
           const links = this.activeChainLinks();
           if (links.length > 0 && this.phase() !== 'idle') {
-            this.onNewChainLink(this._pendingPrevCount(), links);
+            this.onNewChainLink(pending.prevCount, links);
           }
         }
       });
@@ -662,8 +664,7 @@ export class PvpChainOverlayComponent {
     this.negatedResolvingIndex.set(-1);
     this._resolvingCardInfo.set(null);
     this._resolvingNegated.set(false);
-    this._hasPendingEntry.set(false);
-    this._pendingPrevCount.set(0);
+    this._pendingEntry.set(null);
 
     this._overlayShownDuringBuild.set(false);
     this._lastAnnouncedResolvingIndex.set(-1);
