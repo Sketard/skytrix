@@ -73,10 +73,9 @@ const REAL_CLOCK: DeferredClock = {
 };
 
 /**
- * A rule in the DEP's metier table. β.2a ships `RULES = []`; β.2b adds
- * the 10 catalogue cases. The shape is exposed so β.2b drops into this
- * file (or a sibling `deferred-effect-rules.ts`) without rewiring the
- * processor. See spec §3 for the full table.
+ * A rule in the DEP's metier table. β.2b populates `RULES` with the
+ * catalogue cases (`overlay-show`, `trigger-show`, …); see
+ * `deferred-effect-rules.ts`.
  *
  * - `trigger` decides whether the current `observe` event opens a new
  *   deferred. The rule is responsible for being narrow enough that
@@ -88,8 +87,13 @@ const REAL_CLOCK: DeferredClock = {
  * - `derivePredicate` describes the matcher that, when satisfied by a
  *   later flux event, closes the deferred.
  * - `chainTo` (optional) re-arms the deferred with a new predicate when
- *   the first match resolves — supports the compound flows
- *   (cost-then-animationCompleted, etc.) of §3.1.
+ *   the first match resolves — supports the compound flows of §3.1
+ *   (cost MSG_MOVE → AnimationCompleted of that same MSG_MOVE). The
+ *   callback receives the matched event AND its `ref` (assigned by the
+ *   orchestrator at `pushToStream` time) so the rule can build a
+ *   ref-targeted predicate like `{kind:'animation', type:
+ *   'AnimationCompleted', ref: matchedRef}`. Returning `null` falls
+ *   through to the normal `EffectReady` emission.
  */
 export interface DeferredRule {
   trigger: (event: FluxEvent) => boolean;
@@ -97,6 +101,7 @@ export interface DeferredRule {
   derivePredicate: (event: FluxEvent, triggerRef: number) => AwaitingPredicate;
   chainTo?: (
     matchedEvent: FluxEvent,
+    matchedRef: number,
     deferred: ActiveDeferredView,
   ) => AwaitingPredicate | null;
 }
@@ -112,15 +117,16 @@ export interface ActiveDeferredView {
 interface ActiveDeferred extends ActiveDeferredView {
   awaitingPredicate: AwaitingPredicate;
   timerId: ReturnType<typeof setTimeout>;
+  /** β.2b — the rule that opened this deferred. Stored so `tryRearm`
+   *  can reach `chainTo` in O(1) without scanning the rules table. */
+  rule: DeferredRule;
 }
 
 /**
- * β.2a metier table — INTENTIONALLY EMPTY. β.2b populates with the 10
- * catalogue cases (`overlay-show`, `trigger-show`, `search-reveal`,
- * `flip-summon-trigger`, `banish-seq`, `attack-impact`, `equip-stat`,
- * `xyz-attach`, `lp-cost`, `counter-pulse`). Case #11
- * (`pile-float-cleanup`) needs `TargetIndicatorManager` to emit on the
- * stream first — see spec §3.2.
+ * Default empty rule set. Production callers should pass the populated
+ * `RULES` from `deferred-effect-rules.ts` via the constructor's `rules`
+ * argument. Kept exported (and empty) so a DEP instantiated without an
+ * explicit `rules` argument (test seam, defensive prod) stays a no-op.
  */
 export const RULES: readonly DeferredRule[] = [];
 
@@ -130,9 +136,10 @@ export class DeferredEffectProcessor implements ResetTarget {
   /** Active deferreds keyed by `name`. Size N ≤ 11 in steady-state, so
    *  the per-event O(N) matcher pass is negligible. */
   private readonly _active = new Map<string, ActiveDeferred>();
-  /** Monotonic counter — assigned at each `observe` call. β.2a uses it
-   *  as the `triggerRef` for emitted `DeferredEffect`s; a projection
-   *  can correlate the triplet without name dependency. */
+  /** Monotonic counter used when `observe(event)` is called without an
+   *  explicit `ref` (test seam + back-compat path). Production callers
+   *  (the orchestrator) pass their own central ref via
+   *  `observe(event, ref)` and the internal counter is ignored. */
   private _nextRef = 0;
 
   /**
@@ -158,16 +165,23 @@ export class DeferredEffectProcessor implements ResetTarget {
    * Observe a flux event in arrival order. Two phases, strict order:
    *  (a) Drain — match the event against every active deferred's
    *      `awaitingPredicate`. Each match either re-arms the deferred
-   *      (via `chainTo`) or emits `EffectReady` + drops the entry.
+   *      (via `chainTo`, passing the captured `ref` so a rule can
+   *      target the matched event's animation completion) or emits
+   *      `EffectReady` + drops the entry.
    *  (b) Open — match the event against every rule's `trigger`. Each
    *      match opens a new deferred + emits `DeferredEffect`.
    *
    * (a) runs BEFORE (b) so a single event can both fulfill an existing
    * deferred AND trigger a new one of the same name without collision.
+   *
+   * `ref` is the monotonic counter assigned by the orchestrator's
+   * `pushToStream` — the SAME ref the matching `AnimationStarted` /
+   * `AnimationCompleted` events will carry, so a `chainTo` callback
+   * can construct a predicate `{kind:'animation', ref: matchedRef}`.
+   * If omitted (test seam) the DEP uses its own internal counter.
    */
-  observe(event: FluxEvent): void {
-    const ref = this._nextRef++;
-    this.drainMatchingDeferreds(event);
+  observe(event: FluxEvent, ref: number = this._nextRef++): void {
+    this.drainMatchingDeferreds(event, ref);
     this.openDeferredsForRules(event, ref);
   }
 
@@ -233,13 +247,13 @@ export class DeferredEffectProcessor implements ResetTarget {
   // Internals
   // ---------------------------------------------------------------------------
 
-  private drainMatchingDeferreds(event: FluxEvent): void {
+  private drainMatchingDeferreds(event: FluxEvent, ref: number): void {
     // Iterate over a snapshot so mid-iteration `_active.delete` + reopen
     // by `chainTo` are safe. Map insertion order is preserved by JS
     // semantics, so collisions later evict the older entry deterministically.
     for (const [name, deferred] of [...this._active]) {
       if (!this.matches(event, deferred.awaitingPredicate)) continue;
-      const rearmed = this.tryRearm(event, deferred);
+      const rearmed = this.tryRearm(event, ref, deferred);
       if (rearmed) continue;
       this.closeReady(name, deferred);
     }
@@ -285,7 +299,7 @@ export class DeferredEffectProcessor implements ResetTarget {
       DEFERRED_TIMEOUT_MS,
     );
     this._active.set(name, {
-      name, triggerRef: ref, awaitingPredicate: predicate, timerId,
+      name, triggerRef: ref, awaitingPredicate: predicate, timerId, rule,
     });
     this.emit({
       kind: 'deferred', type: 'DeferredEffect',
@@ -296,14 +310,18 @@ export class DeferredEffectProcessor implements ResetTarget {
   /** If the deferred's rule declares `chainTo` and the callback returns
    *  a fresh predicate, re-arm the deferred in place (same name + same
    *  `triggerRef`, fresh timer, no `EffectReady` emitted). Returns true
-   *  iff the deferred was re-armed. */
-  private tryRearm(event: FluxEvent, deferred: ActiveDeferred): boolean {
-    // β.2a has no rules, so chainTo lookup is structurally impossible
-    // (the deferred would have to have been opened by a rule, and there
-    // are none). Wire is in place for β.2b to populate.
-    const rule = this.findRuleForDeferred(deferred);
-    if (!rule?.chainTo) return false;
-    const nextPredicate = rule.chainTo(event, deferred);
+   *  iff the deferred was re-armed. `matchedRef` is the ref the matched
+   *  event carries on the stream — the rule typically embeds it in the
+   *  new predicate (e.g. `{kind:'animation', type:'AnimationCompleted',
+   *  ref: matchedRef}`) to pin the next step to the matched event's
+   *  animation completion. */
+  private tryRearm(
+    event: FluxEvent,
+    matchedRef: number,
+    deferred: ActiveDeferred,
+  ): boolean {
+    if (!deferred.rule.chainTo) return false;
+    const nextPredicate = deferred.rule.chainTo(event, matchedRef, deferred);
     if (nextPredicate === null) return false;
     this.clock.clearTimeout(deferred.timerId);
     deferred.awaitingPredicate = nextPredicate;
@@ -312,16 +330,6 @@ export class DeferredEffectProcessor implements ResetTarget {
       DEFERRED_TIMEOUT_MS,
     );
     return true;
-  }
-
-  /** Find the rule that opened `deferred` — used only by `tryRearm` to
-   *  reach the `chainTo` callback. β.2a returns undefined for every
-   *  deferred (no rules); β.2b will key rules by family/name so the
-   *  lookup is O(1) instead of O(rules). */
-  private findRuleForDeferred(_deferred: ActiveDeferred): DeferredRule | undefined {
-    // β.2a: no rules, no lookup possible. β.2b TODO: rule.matchesName?
-    // or store the rule reference on the ActiveDeferred at open time.
-    return undefined;
   }
 
   private closeReady(name: string, deferred: ActiveDeferred): void {

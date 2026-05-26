@@ -43,6 +43,7 @@ import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
 import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
+import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
 import { ScopeResetDispatcher, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
@@ -242,7 +243,41 @@ export class AnimationOrchestratorService {
   private readonly deferredProcessor = new DeferredEffectProcessor(
     e => this.pushDeferredToStream(e),
     () => this.logger,
+    undefined, // real clock (default)
+    DEFERRED_RULES, // β.2b — metier rules table
   );
+
+  /**
+   * β.2b — monotonic stream ref counter. Owned by the orchestrator so
+   * every event pushed via `pushToStream` carries a stable
+   * `streamRef` that:
+   *   · the DEP receives via `observe(event, ref)` and stores as the
+   *     `triggerRef` for any deferred the event opens;
+   *   · the orchestrator's own `_dispatchEvent` wraps with
+   *     `AnimationStarted(ref)` / `AnimationCompleted(ref)` so a rule's
+   *     `chainTo` can pin its next predicate to "the animation of THIS
+   *     specific business event finished" via
+   *     `{kind:'animation', type:'AnimationCompleted', ref: matchedRef}`.
+   * Reset on `_eventStream.set([])` (resetAllState — keeps the ref
+   * range bounded across rematch / state sync).
+   * _transport_*: internal-only, never read by UI / templates.
+   */
+  private _transport_nextStreamRef = 0;
+
+  /**
+   * β.2b — side-channel: the ref the LAST `pushToStream` call assigned
+   * during the currently-running `processEvent`. Read by `_dispatchEvent`
+   * + `processDirective.group` right after `processEvent` returns, to
+   * build `AnimationStarted/Completed({ref})` events around the await.
+   * Reset to `null` at the top of `processEvent` so a buffered event
+   * (which short-circuits before `pushToStream`) leaves the field at
+   * `null` — the caller then knows "no animation events needed for
+   * this dispatch".
+   * Safe because `processEvent` is fully synchronous from entry to
+   * return; the side-channel never holds across an `await`.
+   * _transport_*: internal-only.
+   */
+  private _transport_lastDispatchedRef: number | null = null;
 
   /** Zone keys of cards currently being targeted (MSG_BECOME_TARGET). */
   readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
@@ -660,12 +695,21 @@ export class AnimationOrchestratorService {
     // ordering reworked (drain dispatcher events before clearing, or
     // dispatch AFTER the clear with a fresh stream).
     this._eventStream.set([]);
+    // β.2b — restart the monotonic ref so a fresh duel / state-sync
+    // doesn't grow the ref unboundedly. Side-channel cleared for safety
+    // (the next `processEvent` resets it anyway, but a no-op dispatch
+    // wouldn't).
+    this._transport_nextStreamRef = 0;
+    this._transport_lastDispatchedRef = null;
   }
 
   /**
-   * β.2a — the single convergence point for any event that lands on the
-   * EventStream. Updates the stream signal AND feeds the DEP so it can
-   * match its `awaitingPredicate`s against the event. Call sites:
+   * β.2a / β.2b — the single convergence point for any event that lands
+   * on the EventStream. Assigns a monotonic `ref`, updates the stream
+   * signal, AND feeds the DEP so it can match its `awaitingPredicate`s
+   * against the event. Returns the assigned ref so callers that need
+   * to correlate downstream events (animation lifecycle wrap in
+   * `_dispatchEvent`) can pin them to the same value. Call sites:
    *   · in-queue tap inside `processEvent` (every MSG_* the orchestrator
    *     dispatches);
    *   · `notifyOutOfBandEvent` (events that bypass the animation queue
@@ -676,9 +720,11 @@ export class AnimationOrchestratorService {
    * Does NOT touch `dataSource.animationQueue()` — invariant
    * "`MSG_CHAIN_NEGATED` is NOT enqueued" stays true.
    */
-  private pushToStream(event: StreamEvent): void {
+  private pushToStream(event: StreamEvent): number {
+    const ref = this._transport_nextStreamRef++;
     this._eventStream.update(s => [...s, event]);
-    this.deferredProcessor.observe(event);
+    this.deferredProcessor.observe(event, ref);
+    return ref;
   }
 
   /**
@@ -690,6 +736,22 @@ export class AnimationOrchestratorService {
    */
   private pushDeferredToStream(event: StreamEvent): void {
     this._eventStream.update(s => [...s, event]);
+  }
+
+  /**
+   * β.2b — emit `AnimationStarted({ref, msgType})` + `AnimationCompleted({ref, msgType})`
+   * for the business event that `processEvent` just pushed (ref read
+   * from `_transport_lastDispatchedRef`). No-op if the side-channel is
+   * `null` (buffered / divert / no push happened). Both events go
+   * through `pushToStream` so the DEP observes them in arrival order
+   * and a chainTo rule sees them after the business event.
+   * SYNC emission for now — see the callsite comment for why.
+   */
+  private emitAnimationLifecycle(msgType: string): void {
+    const ref = this._transport_lastDispatchedRef;
+    if (ref === null) return;
+    this.pushToStream({ kind: 'animation', type: 'AnimationStarted', ref, msgType });
+    this.pushToStream({ kind: 'animation', type: 'AnimationCompleted', ref, msgType });
   }
 
   /**
@@ -799,6 +861,18 @@ export class AnimationOrchestratorService {
     const resultLabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}ms`;
     this.trace('processEvent', { type: event.type, result: resultLabel });
 
+    // β.2b — emit AnimationStarted + AnimationCompleted around this
+    // dispatch so DEP rules can pin a chainTo predicate to "the
+    // animation of THIS specific event finished". Sync emission for
+    // now — the DEP only needs the RELATIVE order on the stream to be
+    // correct (event → AnimationStarted → AnimationCompleted), not
+    // wall-clock alignment with the real travel. β.3 will hook the
+    // runner's onStepSettled so the AnimationCompleted matches the
+    // actual wall-clock completion (needed once a projection consumes
+    // EffectReady to gate a visual). Buffered events skip the wrap
+    // because the side-channel is null.
+    this.emitAnimationLifecycle(event.type);
+
     // Release pre-locks after processing — animated branches consume them
     // in buildMoveContext (MSG_MOVE) so this is a no-op; for non-animated
     // (result === 0) or async events (MSG_DRAW) it cleans up orphans.
@@ -860,6 +934,9 @@ export class AnimationOrchestratorService {
           const result = this.processEvent(entry.events[i]);
           const rlabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}`;
           this.trace('groupEvent', { type: entry.events[i].type, result: rlabel, idx: i });
+          // β.2b — sync AnimationStarted/Completed wrap, see
+          // `_dispatchEvent` for the rationale.
+          this.emitAnimationLifecycle(entry.events[i].type);
           if (result instanceof Promise) promises.push(result);
           else if (result === 'async' && isDevMode()) {
             this.logger.warn('[GROUP] Event %s returned async — a barrier MUST follow this group', entry.events[i].type);
@@ -910,6 +987,11 @@ export class AnimationOrchestratorService {
   // ---------------------------------------------------------------------------
 
   private processEvent(event: GameEvent): number | 'async' | Promise<void> {
+    // β.2b side-channel reset — the buffered short-circuit below skips
+    // `pushToStream`, so the field stays null and the caller knows not
+    // to emit AnimationStarted/Completed for this dispatch.
+    this._transport_lastDispatchedRef = null;
+
     // Buffer board-changing events during chain resolution, unless we are
     // currently dispatching an inline buffer replay — in that case events
     // must play through rather than be re-buffered (which would loop forever).
@@ -937,7 +1019,10 @@ export class AnimationOrchestratorService {
     //    animation dispatch.
     // β.2a — routes through `pushToStream` so the DEP observes the event
     // in the exact same arrival order projections see it.
-    this.pushToStream(event);
+    // β.2b — stash the assigned ref on the side-channel so the caller
+    // (`_dispatchEvent` / `processDirective.group`) can wrap the await
+    // with `AnimationStarted/Completed({ref})` matching this event.
+    this._transport_lastDispatchedRef = this.pushToStream(event);
 
     switch (event.type) {
       case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);

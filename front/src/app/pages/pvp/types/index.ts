@@ -15,4 +15,9 @@ export {
   DeferredFluxEvent,
   isDeferredFluxEvent,
 } from './deferred-effect.types';
+export {
+  AnimationStartedEvent, AnimationCompletedEvent,
+  AnimationFluxEvent,
+  isAnimationFluxEvent,
+} from './animation-flux-event.types';
 export { ConnectionStatus } from './connection-status.types';

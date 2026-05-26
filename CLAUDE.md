@@ -85,8 +85,8 @@ Two distinct flux coexist in the animation pipeline:
 - **`AnimationOrchestratorService.eventStream`** — every duel event in
   logical order (post-chain-buffer), the journal source. Wider
   `StreamEvent` union (`GameEvent | ChainNegatedMsg | WinMsg |
-  SelectCardMsg | BoundaryEvent | DeferredFluxEvent |
-  InternalTransportEvent`). β.2a refactored the push pipeline around a
+  SelectCardMsg | BoundaryEvent | DeferredFluxEvent | AnimationFluxEvent
+  | InternalTransportEvent`). β.2a refactored the push pipeline around a
   **single convergence point**: `AnimationOrchestratorService.pushToStream(event)`
   appends to `_eventStream` AND calls `deferredProcessor.observe(event)`.
   The DEP's own emissions go through `pushDeferredToStream` which
@@ -116,6 +116,10 @@ Two distinct flux coexist in the animation pipeline:
     `DeferredEffect/EffectReady/EffectAbandoned` via
     `pushDeferredToStream`. See the dedicated
     "DeferredEffectProcessor" section below.
+  · β.2b (2026-05-26) — the orchestrator emits
+    `AnimationStarted({ref, msgType})` + `AnimationCompleted({ref, msgType})`
+    around every dispatched business event (sync emit today, see the
+    DeferredEffectProcessor section for the β.3 follow-up).
 
 `DuelGameLogService` subscribes via `attachEventStream(stream)` — a
 `signal` effect that drains newly-pushed events through `notifyGameLog`
@@ -186,7 +190,7 @@ nobody reads. Use `forceClosure(reason)` from the adapter when a
 §3.6 checkpoint is the actual cause and the journal should see the
 closures.
 
-## DeferredEffectProcessor (β.2a, 2026-05-26)
+## DeferredEffectProcessor (β.2a + β.2b, 2026-05-26)
 
 `DeferredEffectProcessor` (`deferred-effect-processor.ts`) materialises
 cross-event temporal correlations as **explicit markers on the
@@ -202,13 +206,18 @@ pair that projections read off the flux. Cf. memory
 [[cost-before-overlay-failed-2026-05-25]] for the 4 prior attempts
 that motivated the rewrite.
 
-**β.2a ships INFRASTRUCTURE only**: the observe loop, the timer /
+**β.2a shipped INFRASTRUCTURE only**: the observe loop, the timer /
 collision / checkpoint / silentReset mechanics, the `ResetTarget`
-integration, and an **empty `RULES` table**. The DEP receives every
-flux event the orchestrator pushes (via `pushToStream`), but emits
-nothing because no rule matches. β.2b populates `RULES` with the 10
-catalogue cases; β.2c adds case #11 + the `TargetIndicatorManager`
-wiring.
+integration, and an empty `RULES` table.
+
+**β.2b adds the metier table**: 5 working rules + 5 documented stubs
+in `deferred-effect-rules.ts` (`overlay-show`, `trigger-show`,
+`attack-impact`, `lp-cost`, `counter-pulse`). The 5 stubs (#3
+search-reveal, #4 flip-summon-trigger, #5 banish-seq, #7 equip-stat,
+#8 xyz-attach) need either richer predicates or lookahead the
+flux-only DEP can't express — they're deferred to β.2b-bis / β.3.
+Case #11 (pile-float-cleanup) still awaits β.2c's
+`TargetIndicatorManager` stream wiring.
 
 **Three emitted event types**, all carrying `kind: 'deferred'`:
 - `DeferredEffect(name, triggerRef, awaitingPredicate)` — a rule's
@@ -271,6 +280,44 @@ the stream, closing the W1 code-review finding). The DEP's own
 emissions go through `pushDeferredToStream` which **bypasses the
 observe re-entry guard** — an emitted `EffectReady` must not be
 re-fed to the DEP that emitted it.
+
+**β.2b — central monotonic ref**: `pushToStream(event)` returns the
+monotonic `ref` it just assigned, and forwards `(event, ref)` to
+`deferredProcessor.observe`. The DEP stores the ref as the deferred's
+`triggerRef`; the orchestrator stashes it on a private side-channel
+(`_transport_lastDispatchedRef`) so `_dispatchEvent` /
+`processDirective.group` can emit `AnimationStarted({ref, msgType})`
++ `AnimationCompleted({ref, msgType})` around the business handler.
+A rule's `chainTo` callback receives `(matchedEvent, matchedRef,
+deferred)` and typically returns
+`{kind:'animation', type:'AnimationCompleted', ref: matchedRef}` so
+the deferred is closed only when the SPECIFIC matched event's
+animation completes. The ref counter resets in `resetAllState` so a
+rematch / state-sync starts fresh.
+
+**β.2b — AnimationStarted/Completed emission is SYNCHRONOUS** today:
+the orchestrator pushes both events immediately after `processEvent`
+returns. This keeps the DEP's relative-order semantics correct (the
+test of victory verifies the stream sequence, not wall-clock
+timing). β.3 will hook the runner's `onStepSettled` so the
+AnimationCompleted aligns with the actual travel completion — needed
+once a projection consumes EffectReady to gate a real visual.
+
+**β.2b — rule contract** (`deferred-effect-rules.ts`): each rule
+declares `trigger / deriveName / derivePredicate` and an optional
+`chainTo`. The rule reference is stored on the active deferred so
+`tryRearm` reaches `chainTo` in O(1). Five rules ship (#1 overlay-
+show compound, #2 trigger-show self-ref, #6 attack-impact, #9
+lp-cost, #10 counter-pulse); the other six are documented stubs
+inline (search the file for `**#3` through `**#11`).
+
+**β.2b — what overlay-show catches and misses**: the rule predicate
+narrows on `player + cardCode` of the chaining card. This covers
+hand traps activated as their own cost (Ash Blossom, Effect Veiler,
+Ghost Ogre, Maxx "C", Droll & Lock Bird). It MISSES chains whose
+cost is a DIFFERENT card (Solemn series banishing a board monster,
+Pot of Desires banishing 10 deck cards) — those would need per-card
+narrowing in β.x.
 
 ## Replay Board State Parity Rule
 

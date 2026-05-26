@@ -21,9 +21,11 @@ import {
   type ScopeCategory,
 } from '../projections';
 import type {
-  BoundaryEvent, DeferredFluxEvent, DuelState, StreamEvent,
+  AnimationFluxEvent, BoundaryEvent, DeferredFluxEvent, DuelState, StreamEvent,
 } from '../types';
-import { isBoundaryEvent, isDeferredFluxEvent } from '../types';
+import {
+  isAnimationFluxEvent, isBoundaryEvent, isDeferredFluxEvent,
+} from '../types';
 import type { InternalTransportEvent } from './queue-runner-events';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
@@ -40,7 +42,7 @@ import { EMPTY_DUEL_STATE } from '../types';
  */
 type JournalEvent = Exclude<
   StreamEvent,
-  BoundaryEvent | DeferredFluxEvent | InternalTransportEvent
+  BoundaryEvent | DeferredFluxEvent | AnimationFluxEvent | InternalTransportEvent
 >;
 
 /** Discriminate a runner internal transport event by its `kind` prefix.
@@ -291,6 +293,7 @@ export class DuelGameLogService implements ResetTarget {
     // builder actually consumed.
     if (isBoundaryEvent(event)) return;
     if (isDeferredFluxEvent(event)) return;
+    if (isAnimationFluxEvent(event)) return;
     if (isInternalTransportEvent(event)) return;
     this.tappedEvents.push(event);
     this.ingest(event);
