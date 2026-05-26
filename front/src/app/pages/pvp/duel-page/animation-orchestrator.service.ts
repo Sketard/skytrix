@@ -42,6 +42,7 @@ import { DuelToastService } from './duel-toast.service';
 import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
 import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
+import { ScopeResetDispatcher, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -95,6 +96,16 @@ export class AnimationOrchestratorService {
    * suite (which does not provide the service) keeps compiling.
    */
   private readonly gameLog = inject(DuelGameLogService, { optional: true });
+  /**
+   * α.5 — the duel-page-scoped `ScopeResetDispatcher`. Used by
+   * `resetForSwitch` (dispatches PERSPECTIVE_LIFETIME) and `onStateSync`
+   * (dispatches DUEL_LIFETIME) to fan-out resets to the 4 `ResetTarget`
+   * managers (Chain, Lp, Battle, Log). `{ optional: true }` for the
+   * same reason as `gameLog` — the orchestrator's own spec suite
+   * (`animation-orchestrator.service.spec.ts`) does not provide it.
+   * Cf. duel-session-chantier.md §3.5.
+   */
+  private readonly scopeDispatcher = inject(ScopeResetDispatcher, { optional: true });
 
   // --- Public read-only signals ---
   private readonly _isAnimating = signal(false);
@@ -526,38 +537,49 @@ export class AnimationOrchestratorService {
     this.battleTracker.reset();
   }
 
-  /** Shared reset logic for both resetForSwitch and onStateSync.
+  /**
+   * Shared reset logic for both `resetForSwitch` and `onStateSync`.
+   * Caller passes the scope set to dispatch — α.5 replaces what used to
+   * be manual chains of `chainManager.reset()` / `lpTracker.reset()` /
+   * `battleTracker.reset()` with a single `dispatcher.dispatch(scopes)`
+   * driven by the 4 ResetTarget managers' declared scopes:
    *
-   *  ⚠️ DO NOT add `this.gameLog?.reset()` here. ⚠️
+   *   - `resetForSwitch` passes `{PERSPECTIVE_LIFETIME}` → hits Chain
+   *     (declared PERSPECTIVE) + Battle (PERSPECTIVE) only. Lp + Log
+   *     (DUEL_LIFETIME) survive the switch — the same duel viewed from
+   *     either side must share LP state + journal. The duel-session-
+   *     chantier §3.5 invalidation matrix is now mechanically enforced
+   *     instead of relying on a comment that "the line must not be
+   *     added back".
    *
-   *  This line was present pre-2026-05-25 and caused the SOLO PvP journal
-   *  to wipe on every switchPlayer (the same duel viewed from both sides
-   *  must share the journal — `resetForSwitch` runs at every swap of
-   *  conn0↔conn1). The line was removed, regressed once during a parallel
-   *  refactor on this file, and re-removed. If you find yourself wanting
-   *  to put it back: you don't. The journal lifecycle is OPPOSITE for the
-   *  two callers — preserve in `resetForSwitch`, clear in `onStateSync`:
+   *     Behaviour change from pre-α.5: `LpAnimationTracker.reset()` is
+   *     no longer called at SOLO switchPlayer. Safe because the BOARD_STATE
+   *     that immediately follows the switch re-syncs `trackedLp` via
+   *     `lpTracker.syncFromBoardState`, so the rendered LP values stay
+   *     accurate. Mid-chain `_pendingLpCommits` now correctly survive the
+   *     switch (cf. §3.5 LP scope rationale).
    *
-   *   · SOLO PvP `switchPlayer` → `resetForSwitch` resets the orchestrator
-   *     between conn0↔conn1, but the journal must persist.
-   *   · `onStateSync` clears the journal explicitly below — the STATE_SYNC
-   *     payload's `gameLogEntries` repopulates it via `restoreFromSnapshot`
-   *     (R8 rematch + F5 reconnect, 2026-05-25 story).
-   *   · Replay perspective flip clears the journal explicitly at the call
-   *     site (`replay-page.component.ts:abortAndClean`), which rebuilds it
-   *     via `rebuildUpTo`.
+   *   - `onStateSync` passes `{DUEL_LIFETIME}` → cascade hits all 4
+   *     managers (DUEL ⊃ CONNECTION ⊃ PERSPECTIVE). The journal is
+   *     cleared via `gameLog.applyReset` so the incoming STATE_SYNC
+   *     payload's `gameLogEntries` can repopulate from a clean slate
+   *     (R8 rematch + F5 reconnect path). No more explicit
+   *     `gameLog?.reset()` after the shared helper.
+   *
+   * Non-ResetTarget cleanups (drawManager, moveRouter, targetIndicator,
+   * toastService, transient signal sets) stay as explicit chains here —
+   * they aren't projection state, so they don't participate in the
+   * dispatcher. β.3+ will revisit which of these become projections.
    */
-  private resetAllState(): void {
+  private resetAllState(scopes: ReadonlySet<ScopeCategory>): void {
     this.clearTimersAndPolling();
     this._isAnimating.set(false);
     this.drawManager.reset();
     this.drawManager.clearTimeouts();
     this.animatingZone.set(null);
-    this.lpTracker.reset();
-    this.battleTracker.reset();
     this.finalizeAndCommit();
     this.rbs.commitAll(); // Lifecycle: force-sync all zones + clear locks
-    this.chainManager.reset();
+    this.scopeDispatcher?.dispatch(scopes);
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
     this.confirmRevealedCards.set(new Map());
@@ -589,7 +611,8 @@ export class AnimationOrchestratorService {
 
   resetForSwitch(): void {
     this.logger.log(DuelLogCategory.QUEUE, 'resetForSwitch — clearing all state & timeouts');
-    this.resetAllState();
+    // PERSPECTIVE_LIFETIME only — Lp + Log survive (cf. resetAllState doc).
+    this.resetAllState(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
     document.querySelectorAll<HTMLElement>('.pvp-deck-shuffle').forEach(el => {
       el.classList.remove('pvp-deck-shuffle');
       el.style.removeProperty('--pvp-shuffle-duration');
@@ -611,11 +634,11 @@ export class AnimationOrchestratorService {
       'onStateSync',
       `STATE_SYNC arrived mid-chain-resolve with ${this.dataSource.animationQueue().length} queued + buffered events — possible lock orphan`,
     );
-    this.resetAllState();
-    // Journal lifecycle is separate from animation state — see resetAllState
-    // doc. Clear it here so the STATE_SYNC payload's gameLogEntries can
-    // repopulate from a clean slate (R8 rematch + F5 reconnect path).
-    this.gameLog?.reset();
+    // DUEL_LIFETIME — cascade hits all 4 ResetTarget managers (Lp + Log
+    // included). The STATE_SYNC payload repopulates from a clean slate
+    // (R8 rematch + F5 reconnect path); no separate `gameLog?.reset()`
+    // needed — the dispatcher handles it.
+    this.resetAllState(new Set<ScopeCategory>(['DUEL_LIFETIME']));
   }
 
   // ---------------------------------------------------------------------------

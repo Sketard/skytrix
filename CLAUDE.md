@@ -684,6 +684,17 @@ elapses; `discardPending()` is the escape hatch when an upcoming
 semantics let batched LP events affecting both players (e.g. mass damage
 during chain resolution) commit correctly without dedup or ordering bugs.
 
+**Switch survival (α.5, 2026-05-25)** — `trackedLp` + `_pendingLpCommits`
+are `DUEL_LIFETIME` (cf. §3.5). A SOLO PvP `switchPlayer` (or replay
+perspective flip) goes through `AnimationOrchestratorService.resetForSwitch`
+which dispatches `{PERSPECTIVE_LIFETIME}` only — LP state is preserved.
+Safe because the BOARD_STATE that immediately follows the switch
+re-syncs `trackedLp` via `lpTracker.syncFromBoardState`. Mid-chain
+pending LP commits now correctly survive the switch (regression risk
+on the SOLO chain hygiene path, cf. memory
+`pvp-solo-chain-state-hygiene-2026-05-23`). `STATE_SYNC` / rematch
+dispatches `{DUEL_LIFETIME}` which cascades and fully clears LP state.
+
 ## Pre-computation Timeline Rules
 
 1. **Turn 0 ("Setup")** contains all events before the first `MSG_NEW_TURN`.
