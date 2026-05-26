@@ -5,7 +5,7 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
+import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, InactivityWarningMsg, MoveMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -589,6 +589,24 @@ export class DuelConnection {
 
   private handleMessage(message: ServerMessage): void {
     this.logger?.log(DuelLogCategory.PIPELINE, 'ws.recv type=%s', message.type);
+    // β.3 cas #12 — R8 PROBE TEMPORARY (2026-05-26) — surface the server-side
+    // probe field as a console.warn so the Playwright debug harness captures
+    // it. TO REMOVE before merging Commit 0bis.
+    if (message.type === 'MSG_MOVE' && (message as { _r8Probe?: unknown })._r8Probe) {
+      const probe = (message as { _r8Probe: { count: number; codes: number[]; fromLoc: number; fromSeq: number } })._r8Probe;
+      const m = message as MoveMsg;
+      console.warn('R8-PROBE MSG_MOVE post-process OVERLAY_CARD on source', JSON.stringify({
+        card: m.cardName,
+        cardCode: m.cardCode,
+        player: m.player,
+        toPlayer: m.toPlayer,
+        fromLoc: m.fromLocation, fromSeq: m.fromSequence,
+        toLoc: m.toLocation, toSeq: m.toSequence,
+        reason: '0x' + m.reason.toString(16),
+        probeOverlayCount: probe.count,
+        probeOverlayCodes: probe.codes,
+      }));
+    }
     this.onMessage?.(message);
     this.prefetchRevealedCards(message);
     switch (message.type) {

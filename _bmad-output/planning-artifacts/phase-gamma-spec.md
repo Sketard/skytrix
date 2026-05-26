@@ -989,10 +989,21 @@ refresh (le serveur les considère comme 2 reconnexions distinctes).
 Ordre non garanti. Deux STATE_SYNC consécutifs sur le processor partagé
 pourraient cascader 2 resets.
 
-**Mitigation** : dédup au niveau processor — `applyCheckpoint` mémorise
-le `roomId + sessionId + lastSeq` ou équivalent et ignore les
-checkpoints redondants dans une fenêtre courte (~500ms). Couvert par
-test T4.
+**Mitigation (actée 2026-05-26)** : **mesurer d'abord, déduper ensuite**.
+Le commit 4 ajoute un `logger.log(DuelLogCategory.PIPELINE, ...)` à
+chaque `applyCheckpoint` avec un résumé du payload (roomId, sessionId,
+seq, timestamp). Au premier test T4 réel, observer les 2 STATE_SYNC
+consécutifs et figer le predicat de dédup selon le résultat :
+
+- **Payloads strictement identiques** → dédup par hash payload + fenêtre
+  500ms (`lastCheckpointHash` + `lastCheckpointAt`).
+- **Payloads différents** (un par identité serveur, e.g. seq distinct)
+  → accepter les 2, garantir que le 2ème est idempotent (le second
+  `applyCheckpoint` applique le même état logique → no-op observable
+  côté projections).
+
+Predicat figé à T4 puis intégré au commit 5. Pas d'invention spéculative
+avant la mesure.
 
 ### R2 — Race switchPerspective ↔ message WS en transit
 
@@ -1027,9 +1038,9 @@ Unification = δ, hors scope γ.
 `REMATCH_STARTING`. Si un transport recoit le message 2× (retry serveur),
 on cascade 2 checkpoints.
 
-**Mitigation** : le processor ignore les checkpoints redondants par
-`lastCheckpointId` (cf. R1). Idempotence garantie. Couvert par T3
-(rematch nominal) + variante adversariale à ajouter en δ.
+**Mitigation** : applique le mécanisme figé à R1 (mesurer puis déduper
+ou idempotence). Couvert par T3 (rematch nominal) + variante
+adversariale à ajouter en δ.
 
 ### R5 — Transport-local accumulators désynchronisés
 
@@ -1070,31 +1081,36 @@ front/src/app/pages/pvp/` et trier les call sites. Probablement zéro
 en dehors de `SoloDuelOrchestratorService` + `DuelWebSocketService` +
 les specs, mais à vérifier.
 
-### R8 — Decision ouverte : 1 vs 2 classes transport
+### R8 — Architecture transport (acté : option C)
 
 **Risque** : extraire une classe abstraite `DuelTransport` partagée
 entre PvP normal et SOLO ajoute de l'abstraction. Garder
 `DuelConnection` (PvP normal) inchangée et créer `SoloTransport`
 indépendant duplique 60% du code (WS, tokens, ping/pong).
 
-**Options** :
+**Décision actée (2026-05-26)** : **option C — `DuelConnection`
+reconfigurable**. Un flag `usesSharedProcessor: boolean` au constructor.
+Si `true`, la connection prend un `DuelEventProcessor` injecté et
+s'abstient d'en instancier un. Si `false`, comportement actuel
+(processor propre).
 
-- **A** — `class DuelTransport` (abstrait) + `PvPDuelConnection extends DuelTransport`
-  + `SoloTransport extends DuelTransport`. Propre, mais touche le PvP
-  normal pour zéro bénéfice fonctionnel (PvP normal n'a pas de switch
-  perspective).
-- **B** — `DuelConnection` reste tel quel pour PvP normal.
-  `SoloTransport` est une nouvelle classe indépendante qui duplique
-  WS/tokens/ping. ~150 lignes de duplication.
-- **C** — `DuelConnection` reconfigurable : un flag `usesSharedProcessor:
-  boolean` au constructor. Si true, prend un processor injecté et
-  s'abstient d'en instancier un. Si false, comportement actuel.
+Implications pour le commit 3 :
+- La nouvelle classe `SoloTransport` est en fait une **instanciation
+  configurée** de `DuelConnection` (`usesSharedProcessor: true`), pas
+  une classe distincte. Le nommage "SoloTransport" reste comme alias
+  conceptuel dans la doc/§2 mais le type runtime est `DuelConnection`.
+- Le call site SOLO (`SoloDuelOrchestratorService.init`) instancie
+  `new DuelConnection(..., { usesSharedProcessor: true, sharedProcessor })`.
+- Le call site PvP normal reste inchangé (flag par défaut `false`).
 
-**Reco** : **C** pour γ. Une seule classe, un flag, dette technique
-minime. Si δ veut nettoyer en allant vers A (post-stabilisation), libre.
-B est rejetée (duplication = source de bugs futurs).
+Options A et B rejetées :
+- A (abstraction) — touche PvP normal pour zéro bénéfice fonctionnel.
+- B (duplication) — ~150 lignes de WS/tokens/ping copiées = source de
+  bugs futurs.
 
-**À acter par Axel au commit 3.**
+Si δ veut nettoyer en allant vers A post-stabilisation, le passage C→A
+se fait par extraction mécanique (les call sites consomment l'API
+publique, pas les internes).
 
 ### R9 — POC projection : surprise sur un trajet exotique
 
@@ -1108,24 +1124,33 @@ casser ces cas non-testés au POC.
 Si un cas casse, isoler en sous-commit avec test minimal de repro.
 Marge effort déjà incluse dans le chiffrage (12h ≈ 1.5j POC + marge).
 
-### R10 — DuelGameLogService au switch
+### R10 — DuelGameLogService au switch (acté : figé à l'émission)
 
 **Risque** : le journal est DUEL_LIFETIME, donc survit au switch. Mais
 le journal est aujourd'hui alimenté par le tap sur `orchestrator.eventStream`.
 Si la perspective change, les entrées suivantes du journal sont-elles
-"vues par P0" ou "vues par P1" ? Implication UX : un message
-"Opponent: Played Ash Blossom" devient "You played Ash Blossom" après switch ?
+"vues par P0" ou "vues par P1" ?
 
-**Mitigation** : par défaut, le journal préserve la phrase telle
-qu'elle a été émise (perspective au moment de l'événement). Le switch
-ne ré-écrit pas l'historique. Vérifier `DuelGameLogService` : son
-`notifyGameLog` capture-t-il une perspective relative au moment de
-l'append, ou lit-il `DuelContext.perspective()` au render ? Si lecture
-au render, **bug visuel** au switch : tout l'historique flippe d'auteur.
-Test T1 à étendre : "switch après un événement, vérifier que la ligne
-de journal reste 'Opponent: ...'".
+**Décision actée (2026-05-26)** : **journal figé à l'émission**. Le
+switch ne ré-écrit pas l'historique. Chaque ligne capture la phrase
+telle qu'elle a été émise sous la perspective du moment.
 
-**À investiguer en commit 7 (tests).**
+Justification : le journal est la chronique causale du duel. Une
+réécriture rétroactive ("Opponent: ..." qui devient "You: ..." après
+switch) casse l'idée de chronique immuable et est mentalement coûteux
+pour le lecteur. Si l'utilisateur veut "lire le duel sous P1", il
+switch *avant* de lire ; pas après.
+
+Implications code (à vérifier en commit 7) :
+- `DuelGameLogService.notifyGameLog` doit capturer la string formatée
+  (ou la perspective relative) à l'append, PAS à lire
+  `DuelContext.perspective()` au render. Si le code actuel lit au
+  render, c'est un bug latent à corriger au commit 7.
+- Test T1 étendu : "switch après un événement de journal, vérifier que
+  la ligne préfixée 'Opponent:' reste préfixée 'Opponent:' après le
+  flip" (et symétriquement pour 'You:').
+
+**À investiguer en commit 7 (tests), corriger si le code lit au render.**
 
 ---
 

@@ -350,6 +350,33 @@ function transformMove(msg: any): ServerMessage {
     } as never);
     reason = reasonInfo?.reason ?? 0;
   }
+  // β.3 cas #12 — R8 PROBE TEMPORARY (2026-05-26) — query OVERLAY_CARD on the
+  // SOURCE location post-duelProcess. Goal: confirm the invariant that, by the
+  // time transformMove runs, the overlays of an XYZ that just left MZONE are
+  // already gone (the query should return []). Field attached to the DTO is
+  // consumed by the front-side probe handler (logs via console.warn). TO REMOVE
+  // before merging Commit 0bis.
+  let _r8Probe: { count: number; codes: number[]; fromLoc: number; fromSeq: number } | undefined;
+  if (core && duel && msg.from.location === LOCATION.MZONE) {
+    try {
+      const probe = core.duelQuery(duel, {
+        flags: OcgQueryFlags.OVERLAY_CARD as number,
+        controller: msg.from.controller,
+        location: msg.from.location as number,
+        sequence: msg.from.sequence,
+        overlaySequence: 0,
+      } as never);
+      const codes = (probe?.overlayCards ?? []) as number[];
+      _r8Probe = {
+        count: codes.length,
+        codes,
+        fromLoc: msg.from.location as number,
+        fromSeq: msg.from.sequence,
+      };
+    } catch (err) {
+      _r8Probe = { count: -1, codes: [], fromLoc: msg.from.location as number, fromSeq: msg.from.sequence };
+    }
+  }
   return {
     type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card),
     player: msg.from.controller,
@@ -366,6 +393,7 @@ function transformMove(msg: any): ServerMessage {
     toPosition: msg.to.position as number as Position,
     isToken: isTokenCard(msg.card),
     reason,
+    ...(_r8Probe ? { _r8Probe } as any : {}),
   };
 }
 
