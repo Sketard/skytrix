@@ -319,13 +319,50 @@ cost is a DIFFERENT card (Solemn series banishing a board monster,
 Pot of Desires banishing 10 deck cards) — those would need per-card
 narrowing in β.x.
 
-## Projections Lot 1 (β.3, 2026-05-26)
+## Projections β.3 (Lots 1-4, 2026-05-26)
 
-First production `BaseProjection<T>` consumer of the DEP flux + the
+First production `BaseProjection<T>` family of the DEP flux + the
 wall-clock alignment of `AnimationStarted` / `AnimationCompleted`
 needed for the cost-before-overlay fix to be USER-VISIBLE (β.2b only
 made it DEP-correct, the visual overlay still popped early because the
 emission was sync at dispatch).
+
+**Lot inventory** — 6 projections live in `front/src/app/pages/pvp/projections/`,
+each `extends BaseProjection<T>` and is registered + attached on
+`_eventStream` by the orchestrator's constructor (search for
+`scopeDispatcher?.register`). All `PERSPECTIVE_LIFETIME` scope.
+
+| Lot | Projection | Source events | Clear path |
+|---|---|---|---|
+| 1 | `OverlayShowReadyProjection` | `EffectReady` / `EffectAbandoned` ('overlay-show:chain-N') from DEP | `ChainEnded(N)` boundary + applyReset |
+| 2.3 | `CounterPulseProjection` | `MSG_ADD_COUNTER` / `MSG_REMOVE_COUNTER` | `AnimationCompleted({msgType ∈ COUNTER_MSG_TYPES})` |
+| 2.6 | `AnimatingZoneProjection` | `MSG_FLIP_SUMMONING` / `MSG_CHANGE_POS` (FD→FU) / `MSG_CHAINING` (with zoneId) | `AnimationCompleted({msgType ∈ ZONE_MSG_TYPES})` |
+| 3.1 | `IsAnimatingProjection` | `runner-started` / `runner-stopped` (InternalTransportEvents) | applyReset |
+| 2.4-REDO | `SwapGraveDeckProjection` | `MSG_SWAP_GRAVE_DECK` | `AnimationPhaseCompleted({phase: 'glow'})` (Standardisation 1) |
+| 2.2-REDO | `AnimatingLpProjection` | `MSG_DAMAGE` / `MSG_RECOVER` / `MSG_PAY_LPCOST` decorated with `lpDelta` (Standardisation 2) | `AnimationCompleted({msgType ∈ LP_MSG_TYPES})` |
+
+**Drops (signaux NON migrés en projection, par design)** — voir la
+section "Doctrine projection vs signal manager" ci-dessous pour les
+critères. Quatre cas droppés en β.3 :
+- `chainOverlayBoardChanged` (Lot 2.1) — supprimé, remplacé par
+  `chainManager.hasBufferedEvents` (getter dérivable, équivalent
+  strict au moment de la lecture par `replayAndPause`).
+- `confirmRevealedCards` (Lot 2.5) — orphelin big-bang (déclaré
+  jamais set en prod). 3 mécaniques alternatives couvrent reveal :
+  chain-tagged hand badges, `confirmCardsInHand` flip,
+  `revealCardOnDeck`.
+- `chainResolutionAnnounce` (Lot 3.2) — dual-purpose (UI banner +
+  predicat sync interne au `handleSolving`). Reste dans son manager
+  jusqu'au split sync/projection prévu en β.x.
+- `targetedZoneKeys` (Lot 4.1) — sub-step `setTimeout(holdMs)` qui
+  clear AVANT le `AnimationCompleted` total (qui inclut le fade-out
+  des pile floats). Migrable via `phaseWait` (Standardisation 1),
+  prévu en β.x.
+
+Le pattern `_entryAnimInProgress` du composant chain-overlay a aussi
+été dropé (mirror de `entryTimerId !== null`, Lot 2.1bis) + le
+`hasLockedZones` signal redondant du RBS converti en getter dérivé de
+`_locks.size > 0` (Lot 4 cleanup).
 
 ### `OverlayShowReadyProjection`
 
@@ -395,6 +432,140 @@ In a `group` directive, the inner events go through `processEvent`
 directly (not `handleEntryAndAwait`); a `pendingCompletions` array
 captures each event's ref + the `AnimationCompleted` is emitted for
 every event after the group's `Promise.all` resolves.
+
+### Lot 2 projections — pure flux consumers
+
+**`CounterPulseProjection`** (Lot 2.3) —
+`projections/counter-pulse.projection.ts`. Tracks the zone key whose
+counter badge is pulsing. Constructor deps: `relativePlayer`,
+`reducedMotion`. Double-set null→key trick preserved for CSS animation
+restart on consecutive same-zone events (Object.is dedup would
+otherwise swallow). `handleCounter` reduced to gate + duration
+return.
+
+**`AnimatingZoneProjection`** (Lot 2.6) —
+`projections/animating-zone.projection.ts`. Tracks `{zoneId,
+animationType: 'flip' | 'activate', relativePlayerIndex}` for the
+field zone playing a flip or activate animation. Three handlers
+(`handleFlipSummoning`, `handleChangePos`, `handleChaining`) no
+longer call `setAnimatingZone(...)` — the projection self-sets.
+MSG_CHANGE_POS narrowing on face-down → face-up branch preserved;
+MSG_CHAINING narrowing on non-empty `locationToZoneId` preserved
+(HAND-activated cards already use `boardEffects.activateEffect` on
+the hand element).
+
+**`AnimatingLpProjection`** (Lot 2.2-REDO) —
+`projections/animating-lp.projection.ts`. Tracks `{player, fromLp,
+toLp, type, durationMs}` for the LP counter animation. The
+projection reads `lpDelta` from the decorated event (cf.
+Standardisation 2 below), so no `trackedLp` duplication on the
+projection side. Lives on the `LpAnimationTracker`; the
+`animatingLpPlayer` field on the tracker is now an alias for
+`animatingLpPlayerProjection.value` (back-compat for templates).
+
+**`SwapGraveDeckProjection`** (Lot 2.4-REDO) —
+`projections/swap-grave-deck.projection.ts`. Tracks `{GY-rel,
+DECK-rel}` keys during the glow sub-phase of `MSG_SWAP_GRAVE_DECK`.
+Cleared by `AnimationPhaseCompleted({phase: 'glow'})` emitted by
+`phaseWait` (cf. Standardisation 1 below) — the boundary between
+phase 1 (glow) and phase 2 (travel).
+
+### Lot 3 projections — transport surface
+
+**`IsAnimatingProjection`** (Lot 3.1) —
+`projections/is-animating.projection.ts`. Tracks the `QueueRunner`'s
+`_isRunning` flag via `runner-started` / `runner-stopped`
+InternalTransportEvents (absorbed onto the stream by β.2a's W1
+finding). The `onIsRunningChange` callback no longer sets a signal
+— it only fires `dataSource.setAnimating(running)` (imperative
+side-effect that drives `advanceStep` in replay).
+
+**Sync vs async timing audit** — the legacy `_isAnimating.set(...)`
+flipped synchronously with the runner; the projection observes the
+flip through an Angular `effect()` (one micro-task lag). Four
+audited readers tolerate the lag: `PollDropWatchdog.arm()` getter
+(poll-driven), chain-resume effect (reactive to
+`chainOverlayReady`), prompt-derivation computed (reactive),
+animation-bridge effect (reactive to `logicalState`). If a NEW
+SYNCHRONOUS reader is introduced, either wrap in
+effect/computed/timer, OR break the abstraction with a sync-tap
+method (discuss before).
+
+### Standardisation 1 — `phaseWait` + `AnimationPhaseCompleted`
+
+`phaseWait(phase: string, durationMs: number, msgType: string):
+Promise<void>` on the orchestrator combines a tracked
+`scheduleTimeout` wait + a stream push. Emits
+`AnimationPhaseCompletedEvent({kind: 'animation', type:
+'AnimationPhaseCompleted', phase, msgType, ref})` once the timer
+fires. The `ref` is captured from `_transport_lastDispatchedRef` at
+phaseWait call time (synchronous prefix of the async handler — the
+side-channel is still pinned to the parent business event before
+any await).
+
+**Use-case**: handlers with INTERNAL sub-phases ending before the
+overall animation completes (`MSG_SWAP_GRAVE_DECK`'s glow finishes
+mid-handler before the travel). Projections observing the phase
+boundary clear at the sub-step instead of waiting for the runner's
+final `AnimationCompleted`.
+
+**Caller's responsibility**: playback-speed scaling of `durationMs`
+(typically via `ctx.scaledDuration(BASE, MIN)`) — symmetric with the
+runner's already-scaled durations.
+
+### Standardisation 2 — `decorateLpEventForStream` + `peekLpDelta`
+
+`LpAnimationTracker.peekLpDelta(player, amount, type) → {fromLp,
+toLp, durationMs}` is a pure read of the tracker's `trackedLp` —
+NEVER mutates. The orchestrator's
+`decorateLpEventForStream(event)` shallow-clones MSG_DAMAGE /
+MSG_RECOVER / MSG_PAY_LPCOST with `lpDelta` attached, called BEFORE
+`pushToStream` in `processEvent`. The dispatch switch subsequently
+calls `processLpEvent` which re-uses the SAME `_computeLpArithmetic`
+private helper (R1 mitigation) and applies the mutation.
+
+**Order contract** — `peekLpDelta` MUST run BEFORE
+`processLpEvent`. If swapped, `fromLp === toLp` → silent animation
+freeze. Pinned by the spec
+`lp-animation-tracker.spec.ts` "β.3 R4" test pair (positive +
+regression). The orchestrator's `processDirective.case 'lp'` path
+follows the same contract for buffered LP replay.
+
+### Doctrine — projection vs signal manager
+
+Not every signal in the pipeline is a candidate projection. The
+β.3 chasse aux sorcières established two rules:
+
+1. **A projection is dérivable du FLUX** — its value is a pure
+   function of `(EventStream history, perspective, environment)`.
+   Adding `BaseProjection<T>` is correct when the source data lives
+   in events the pipeline already pushes.
+
+2. **A signal manager is dérivable du STATE** — its value is a
+   pure function of internal mutable state (a Map, a buffer, a
+   counter) that lives in a manager. Examples that stayed managers
+   in β.3: `chainOverlayBoardChanged` (was a mirror of
+   `_bufferedBoardEvents.length > 0` — replaced by
+   `hasBufferedEvents` getter). `hasLockedZones` on the RBS (now a
+   getter `_locks.size > 0`).
+
+3. **Sub-step timers internal to a handler** — when a signal
+   clears via `setTimeout(...)` mid-handler (BEFORE the final
+   `AnimationCompleted`), it needs Standardisation 1 (`phaseWait` +
+   `AnimationPhaseCompleted`) to become migrable. Otherwise it
+   stays in its manager. Examples migrated: `swapGraveDeckKeys`.
+   Examples still pending: `chainResolutionAnnounce` (dual-purpose
+   UI + state-machine sync), `targetedZoneKeys` (RMW + sub-step).
+
+4. **External state dependency** — when a signal value depends on
+   state outside the projection (e.g., LP's `fromLp` depending on
+   `trackedLp`), the orchestrator decorates the event at push time
+   so the projection consumes a self-contained payload
+   (Standardisation 2 pattern).
+
+A signal that doesn't fit (1) and can't be made to fit via
+Standardisation 1 or 2 isn't a candidate projection — it stays in
+its manager and is documented in this file's drop list.
 
 ## Replay Board State Parity Rule
 
