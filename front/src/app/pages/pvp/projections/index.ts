@@ -16,3 +16,7 @@ export {
   type AnimatingZoneProjectionDeps,
 } from './animating-zone.projection';
 export { IsAnimatingProjection } from './is-animating.projection';
+export {
+  SwapGraveDeckProjection,
+  type SwapGraveDeckProjectionDeps,
+} from './swap-grave-deck.projection';

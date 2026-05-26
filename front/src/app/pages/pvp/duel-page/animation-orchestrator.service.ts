@@ -44,7 +44,7 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
-import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
+import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -326,8 +326,18 @@ export class AnimationOrchestratorService {
 
   /** Zone keys of cards currently being targeted (MSG_BECOME_TARGET). */
   readonly targetedZoneKeys = signal<ReadonlySet<string>>(new Set());
-  /** Zone keys of GY+DECK pulsing during SWAP_GRAVE_DECK. */
-  readonly swapGraveDeckKeys = signal<ReadonlySet<string>>(new Set());
+  /**
+   * β.3 Lot 2.4-REDO — pulse glow on `GY-rel` + `DECK-rel` zones
+   * during the glow sub-phase of `MSG_SWAP_GRAVE_DECK`. Cleared by
+   * `AnimationPhaseCompleted({phase: 'glow'})` emitted by the
+   * handler via `phaseWait('glow', glowMs, 'MSG_SWAP_GRAVE_DECK')`
+   * — the boundary between the glow phase and the travel phase.
+   * Templates read `swapGraveDeckKeys.value()` directly.
+   */
+  readonly swapGraveDeckKeys = new SwapGraveDeckProjection({
+    relativePlayer: (abs: number) => this.ctx.relativePlayer(abs),
+    reducedMotion: () => this.ctx.reducedMotion(),
+  });
 
   private get rbs() { return this.dataSource.renderedBoardState; }
 
@@ -335,6 +345,50 @@ export class AnimationOrchestratorService {
     const id = setTimeout(fn, ms);
     this.animationTimeouts.push(id);
     return id;
+  }
+
+  /**
+   * β.3 Standardisation 1 (2026-05-26) — wait for a sub-phase duration,
+   * then emit `AnimationPhaseCompleted({phase, msgType, ref})` on the
+   * stream. Projections observing the phase boundary react via the
+   * usual `applyEvent` path.
+   *
+   * **Contract**:
+   * - `durationMs` is wall-clock; the caller is responsible for
+   *   playback-speed scaling (typically via
+   *   `ctx.scaledDuration(BASE, MIN)`) — symmetric with the runner's
+   *   own `setTimeout` in `handleEntryAndAwait` which already gets
+   *   already-scaled durations.
+   * - `ref` is captured from `_transport_lastDispatchedRef` at the
+   *   moment of emission (NOT at call time). The handler's body runs
+   *   inside a single `processEvent` dispatch, so the side-channel is
+   *   still pinned to the parent business event when `phaseWait`
+   *   awaits — no race with a NEXT handler overwriting it (the
+   *   runner waits for the handler's Promise to resolve before
+   *   advancing).
+   * - If `ref === null` (event was diverted / buffered), skip the
+   *   emit — there's no parent ref to correlate with.
+   *
+   * **Cancellation**: the underlying setTimeout is tracked via
+   * `scheduleTimeout` so `clearTimersAndPolling` aborts it on a hard
+   * reset. The await still resolves naturally when the timer fires;
+   * in the cancelled case the projection sees the phase event one
+   * tick later (acceptable since the projection will be cleared by
+   * the dispatcher in the same scope).
+   */
+  private phaseWait(phase: string, durationMs: number, msgType: string): Promise<void> {
+    const ref = this._transport_lastDispatchedRef;
+    return new Promise<void>(resolve => {
+      this.scheduleTimeout(() => {
+        if (ref !== null && ref >= 0) {
+          this.pushToStream({
+            kind: 'animation', type: 'AnimationPhaseCompleted',
+            phase, msgType, ref,
+          });
+        }
+        resolve();
+      }, durationMs);
+    });
   }
 
   private finalizeAndCommit(): void {
@@ -474,6 +528,12 @@ export class AnimationOrchestratorService {
     // surface via `runner-started` / `runner-stopped` on the stream.
     this.scopeDispatcher?.register(this.isAnimating);
     this.isAnimating.attachEventStream(this._eventStream, this.injector);
+
+    // β.3 Lot 2.4-REDO — swap-grave-deck projection: tracks the GY+DECK
+    // pulse during MSG_SWAP_GRAVE_DECK's glow sub-phase, cleared by
+    // AnimationPhaseCompleted emitted by `phaseWait` in the handler.
+    this.scopeDispatcher?.register(this.swapGraveDeckKeys);
+    this.swapGraveDeckKeys.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -733,6 +793,7 @@ export class AnimationOrchestratorService {
     this.counterPulse.detachEventStream();
     this.animatingZone.detachEventStream();
     this.isAnimating.detachEventStream();
+    this.swapGraveDeckKeys.detachEventStream();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -789,9 +850,9 @@ export class AnimationOrchestratorService {
     this.moveRouter.releaseAllPreLocks();
     this.targetedZoneKeys.set(new Set());
     this.targetIndicator.reset();
-    // β.3 Lot 2.3 — `counterPulse` projection clears itself via
-    // `applyReset` driven by the scopeDispatcher.dispatch above.
-    this.swapGraveDeckKeys.set(new Set());
+    // β.3 Lot 2.3 + 2.4-REDO — `counterPulse` + `swapGraveDeckKeys`
+    // projections clear themselves via `applyReset` driven by the
+    // scopeDispatcher.dispatch above (PERSPECTIVE_LIFETIME scope).
     this.toastService.clear();
     // β.2a note — any `EffectAbandoned(checkpoint)` emitted by the DEP
     // during `dispatch(scopes)` above lands here BEFORE the clear, so
@@ -1438,15 +1499,17 @@ export class AnimationOrchestratorService {
     });
   }
 
-  private processSwapGraveDeckEvent(msg: SwapGraveDeckMsg): Promise<void> | 0 {
-    if (this.ctx.reducedMotion()) return 0;
+  private async processSwapGraveDeckEvent(msg: SwapGraveDeckMsg): Promise<void> {
+    // β.3 Lot 2.4-REDO — `swapGraveDeckKeys` projection self-sets on
+    // MSG_SWAP_GRAVE_DECK via the EventStream tap. Reduced-motion gate
+    // mirrored on both sides (here for runtime short-circuit; in the
+    // projection for the visual side). Handler keeps the lock + travel
+    // orchestration and emits `AnimationPhaseCompleted({phase:'glow'})`
+    // via `phaseWait` to clear the pulse at the glow→travel boundary.
+    if (this.ctx.reducedMotion()) return;
     const rel = this.ctx.relativePlayer(msg.player);
     const gyKey = `GY-${rel}`;
     const deckKey = `DECK-${rel}`;
-
-    // Phase 1: glow pulse on both zones (force signal change for consecutive events)
-    this.swapGraveDeckKeys.set(new Set());
-    this.swapGraveDeckKeys.set(new Set([gyKey, deckKey]));
 
     const glowMs = this.ctx.scaledDuration(SWAP_GRAVE_DECK_GLOW_MS, SWAP_GRAVE_DECK_GLOW_MIN_MS);
     const travelMs = this.ctx.scaledDuration(SWAP_GRAVE_DECK_TRAVEL_MS, SWAP_GRAVE_DECK_TRAVEL_MIN_MS);
@@ -1454,16 +1517,17 @@ export class AnimationOrchestratorService {
     const lockGy = this.rbs.lockZone(gyKey);
     const lockDeck = this.rbs.lockZone(deckKey);
 
-    return new Promise<void>(resolve => {
-      this.scheduleTimeout(() => {
-        this.swapGraveDeckKeys.set(new Set());
-        // Phase 2: single travel DECK→GY (card back) — GY update implied by commit
-        this.cardTravelEngine.travel(deckKey, gyKey, '', { duration: travelMs, showBack: true }).then(
-          () => { lockGy.commit(); lockDeck.commit(); resolve(); },
-          () => { lockGy.release(); lockDeck.release(); resolve(); },
-        );
-      }, glowMs);
-    });
+    // Phase 1: glow pulse — projection clears itself on AnimationPhaseCompleted.
+    await this.phaseWait('glow', glowMs, 'MSG_SWAP_GRAVE_DECK');
+    // Phase 2: single travel DECK→GY (card back) — GY update implied by commit.
+    try {
+      await this.cardTravelEngine.travel(deckKey, gyKey, '', { duration: travelMs, showBack: true });
+      lockGy.commit();
+      lockDeck.commit();
+    } catch {
+      lockGy.release();
+      lockDeck.release();
+    }
   }
 
   private processShuffleDeckEvent(msg: ShuffleDeckMsg): number {
