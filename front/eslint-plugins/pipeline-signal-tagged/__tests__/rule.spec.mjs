@@ -43,22 +43,24 @@ ruleTester.run('pipeline-signal-tagged', rule, {
       filename: pvpFile('foo.ts'),
       code: `import { signal } from '@angular/core'; const themeSource = signal<'a' | 'b'>('a');`,
     },
-    // (c) — class extends BaseProjection
+    // (c) — class extends BaseProjection (import required)
     {
       filename: pvpFile('foo.ts'),
       code: `
         import { signal } from '@angular/core';
+        import { BaseProjection } from './projections';
         class FooProj extends BaseProjection<number> {
           readonly anything = signal(0);
           private _alsoFine = signal(true);
         }
       `,
     },
-    // (c) — class implements ResetTarget (α.4a — slim contract)
+    // (c) — class implements ResetTarget (α.4a — slim contract, import required)
     {
       filename: pvpFile('foo.ts'),
       code: `
         import { signal } from '@angular/core';
+        import { ResetTarget } from './projections';
         class FooManager implements ResetTarget {
           readonly state = signal(0);
           private internal = signal(false);
@@ -70,8 +72,32 @@ ruleTester.run('pipeline-signal-tagged', rule, {
       filename: pvpFile('foo.ts'),
       code: `
         import { signal } from '@angular/core';
+        import { ResetTarget } from './projections';
         class FooManager implements OnDestroy, ResetTarget {
           readonly state = signal(0);
+        }
+      `,
+    },
+    // (c) — anonymous `return signal()` inside a tagged class method is OK.
+    {
+      filename: pvpFile('foo.ts'),
+      code: `
+        import { signal } from '@angular/core';
+        import { ResetTarget } from './projections';
+        class FooManager implements ResetTarget {
+          private makeChild() { return signal(0); }
+        }
+      `,
+    },
+    // (c) — `this.x = signal()` inside a constructor of a tagged class is OK.
+    {
+      filename: pvpFile('foo.ts'),
+      code: `
+        import { signal } from '@angular/core';
+        import { ResetTarget } from './projections';
+        class FooManager implements ResetTarget {
+          x: any;
+          constructor() { this.x = signal(0); }
         }
       `,
     },
@@ -116,11 +142,52 @@ ruleTester.run('pipeline-signal-tagged', rule, {
       `,
       errors: [{ messageId: 'untaggedSignal', data: { name: 'bar' } }],
     },
-    // Anonymous signal call
+    // Anonymous signal call (no enclosing tagged class)
     {
       filename: pvpFile('foo.ts'),
       code: `import { signal } from '@angular/core'; function f() { return signal(0); }`,
       errors: [{ messageId: 'untaggedAnonymousSignal' }],
+    },
+    // P8 fix #1 — historic `transport_*` (no leading underscore) is NO
+    // longer accepted; only the strict `_transport_*` form matches.
+    {
+      filename: pvpFile('foo.ts'),
+      code: `import { signal } from '@angular/core'; const transport_foo = signal(0);`,
+      errors: [{ messageId: 'untaggedSignal', data: { name: 'transport_foo' } }],
+    },
+    // P8 fix #2 — `*Source` suffix inside a function body is NOT a valid
+    // @Environment tag (the loophole that let local variables get a free pass).
+    {
+      filename: pvpFile('foo.ts'),
+      code: `import { signal } from '@angular/core'; function f() { const mySource = signal(0); return mySource; }`,
+      errors: [{ messageId: 'untaggedSignal', data: { name: 'mySource' } }],
+    },
+    // P8 fix #3 — `this.x = signal()` inside a non-tagged class is reported
+    // (previously fell through `callTargetName === null` → anonymous).
+    {
+      filename: pvpFile('foo.ts'),
+      code: `
+        import { signal } from '@angular/core';
+        class Regular {
+          x: any;
+          constructor() { this.x = signal(0); }
+        }
+      `,
+      errors: [{ messageId: 'untaggedSignal', data: { name: 'x' } }],
+    },
+    // P8 fix #4 — class named `BaseProjection` declared LOCALLY (no import
+    // from projections/) does NOT confer the tag on its signal members.
+    // Guards against shadowing the canonical type with a same-named class.
+    {
+      filename: pvpFile('foo.ts'),
+      code: `
+        import { signal } from '@angular/core';
+        class BaseProjection<T> { value!: T; }
+        class FakeProj extends BaseProjection<number> {
+          readonly leak = signal(0);
+        }
+      `,
+      errors: [{ messageId: 'untaggedSignal', data: { name: 'leak' } }],
     },
   ],
 });

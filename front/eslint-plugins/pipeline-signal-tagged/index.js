@@ -90,18 +90,43 @@ const pipelineSignalTagged = {
     const classBodyIsProjection = new WeakMap();
 
     /**
+     * Track whether the file imports `BaseProjection` and/or `ResetTarget`
+     * from the canonical `projections/` barrel. Used as a guard against
+     * a local class declaration shadowing the type names (e.g. a test
+     * file that defines its own `class BaseProjection { ... }` would
+     * otherwise be auto-tagged silently). If neither symbol is imported,
+     * `classIsProjectionLike` returns false regardless of class shape.
+     *
+     * Populated by the `ImportDeclaration` visitor.
+     */
+    const importedProjectionNames = new Set();
+
+    /**
      * Return true if the signal call is allowed by tag conventions.
      * `name` is the declarator/property identifier; `parentClassBody` is
-     * the enclosing class body (or null for module-scope declarations).
+     * the enclosing class body (or null for module-scope declarations);
+     * `isModuleScope` says the signal is declared at top level (not
+     * inside a function/method body) — required for option (b).
      */
-    function isTaggedSignal(name, parentClassBody) {
-      if (!name) return false;
-      // (a) transport state — leading underscore + transport_ marker.
-      if (/^_?transport_/.test(name) || /^_transport_/.test(name)) return true;
-      // (b) environment source — name ends with `Source`.
-      if (/Source$/.test(name)) return true;
-      // (c) projection-owned — enclosing class extends BaseProjection.
+    function isTaggedSignal(name, parentClassBody, isModuleScope) {
+      // (c) projection-owned — enclosing class is tagged. Works for both
+      // named-declarator signals AND anonymous ones (return / argument)
+      // inside such a class.
       if (parentClassBody && classBodyIsProjection.get(parentClassBody)) return true;
+      // Without a name, options (a)+(b) can't apply.
+      if (!name) return false;
+      // (a) transport state — strict `_transport_` prefix. The historic
+      // alternative `transport_*` (no leading underscore) was rejected
+      // 2026-05-26 — it never appeared in practice and matched the
+      // convention's documented form less precisely.
+      if (/^_transport_/.test(name)) return true;
+      // (b) environment source — name ends with `Source`. ONLY valid at
+      // module scope (or as a class field that's NOT inside a method).
+      // A local `const mySource = signal(...)` inside a method body is
+      // the most common false-pass; restricting to module-scope kills it
+      // without hurting the documented use case (top-level @Environment
+      // hooks).
+      if (isModuleScope && /Source$/.test(name)) return true;
       return false;
     }
 
@@ -113,6 +138,26 @@ const pipelineSignalTagged = {
         cur = cur.parent;
       }
       return null;
+    }
+
+    /**
+     * True when `node` is declared at module scope — i.e. no enclosing
+     * function/method/arrow between the call and the Program node. A
+     * class PropertyDefinition counts as module-scope for this purpose
+     * (it executes once at instantiation, like a top-level const, and
+     * is a place where `*Source` legitimately appears).
+     */
+    function isModuleScope(node) {
+      let cur = node.parent;
+      while (cur) {
+        if (cur.type === 'FunctionDeclaration'
+          || cur.type === 'FunctionExpression'
+          || cur.type === 'ArrowFunctionExpression'
+          || cur.type === 'MethodDefinition') return false;
+        if (cur.type === 'Program') return true;
+        cur = cur.parent;
+      }
+      return false;
     }
 
     /** Get the identifier name a signal() call is assigned to. */
@@ -131,6 +176,18 @@ const pipelineSignalTagged = {
       if (parent.type === 'Property' && parent.key?.type === 'Identifier') {
         return parent.key.name;
       }
+      // `this.foo = signal(...)` / `foo = signal(...)` — late-bound
+      // assignment, surfaces inside constructors / initialisers. Reports
+      // the LHS member/identifier name so the tag check can run.
+      if (parent.type === 'AssignmentExpression' && parent.right === callExpr) {
+        const lhs = parent.left;
+        if (lhs?.type === 'MemberExpression' && lhs.property?.type === 'Identifier') {
+          return lhs.property.name;
+        }
+        if (lhs?.type === 'Identifier') {
+          return lhs.name;
+        }
+      }
       return null;
     }
 
@@ -141,6 +198,10 @@ const pipelineSignalTagged = {
      * superset of `ResetTarget`, and the lint treats both as the same
      * "class membership is the tag" signal (option c in the rule's
      * docstring).
+     *
+     * Guard against name shadowing: if the file does not import the
+     * referenced symbol from `projections/`, a local declaration with
+     * the same name does NOT auto-tag the class.
      */
     function classIsProjectionLike(node) {
       const sc = node.superClass;
@@ -148,15 +209,44 @@ const pipelineSignalTagged = {
         (sc?.type === 'Identifier' && sc.name === 'BaseProjection') ||
         (sc?.type === 'CallExpression' && sc.callee?.name === 'BaseProjection') ||
         (sc?.type === 'TSInstantiationExpression' && sc.expression?.name === 'BaseProjection');
-      if (extendsBaseProjection) return true;
+      if (extendsBaseProjection && importedProjectionNames.has('BaseProjection')) return true;
       // `implements ResetTarget` — TypeScript-ESLint surfaces this as
       // node.implements: TSClassImplements[] with .expression?.name.
       const impls = /** @type {Array<{expression?: {name?: string}}>|undefined} */ (node.implements);
-      if (impls?.some(impl => impl.expression?.name === 'ResetTarget')) return true;
+      if (impls?.some(impl => impl.expression?.name === 'ResetTarget')
+          && importedProjectionNames.has('ResetTarget')) {
+        return true;
+      }
       return false;
     }
 
     return {
+      'ImportDeclaration'(node) {
+        // Count imports of `BaseProjection` / `ResetTarget` from canonical
+        // sources. Accept either the barrel (`.../projections`) or the
+        // module files themselves (`./base-projection`, `./reset-target`)
+        // so files INSIDE `projections/` (specs, internal modules) are
+        // not falsely treated as shadowing. Cross-package imports
+        // (`@angular/core`, `rxjs`, …) cannot bring these symbols.
+        const src = node.source?.value;
+        if (typeof src !== 'string') return;
+        const isProjectionSource = src.includes('projections')
+          || src.includes('base-projection')
+          || src.includes('reset-target');
+        if (!isProjectionSource) return;
+        for (const spec of node.specifiers ?? []) {
+          if (spec.type === 'ImportSpecifier' && spec.imported?.type === 'Identifier') {
+            const importedName = spec.imported.name;
+            if (importedName === 'BaseProjection' || importedName === 'ResetTarget') {
+              // We index by the *imported* name (not the local alias) —
+              // the class declarations reference the original name unless
+              // aliased, which is the case in practice across pvp/.
+              importedProjectionNames.add(importedName);
+            }
+          }
+        }
+      },
+
       'ClassDeclaration'(node) {
         if (!node.body) return;
         classBodyIsProjection.set(node.body, classIsProjectionLike(node));
@@ -175,15 +265,17 @@ const pipelineSignalTagged = {
         if (node.callee?.type !== 'Identifier' || node.callee.name !== 'signal') return;
         const name = callTargetName(node);
         const parentClassBody = findEnclosingClassBody(node);
+        const moduleScoped = isModuleScope(node);
         if (name === null) {
-          // Anonymous `signal()` — e.g. passed directly as an argument or
-          // returned from a function. Either is suspicious in this chantier;
-          // flag it with the dedicated message so the user knows to assign
-          // it to a named declaration before tagging.
+          // Anonymous `signal()` — passed directly as an argument or
+          // returned from a function. Tag-by-class-membership still
+          // applies (a projection class may return `signal()` from a
+          // helper method). If the enclosing class is tagged we pass.
+          if (isTaggedSignal(null, parentClassBody, moduleScoped)) return;
           context.report({ node, messageId: 'untaggedAnonymousSignal' });
           return;
         }
-        if (isTaggedSignal(name, parentClassBody)) return;
+        if (isTaggedSignal(name, parentClassBody, moduleScoped)) return;
         context.report({ node, messageId: 'untaggedSignal', data: { name } });
       },
     };
