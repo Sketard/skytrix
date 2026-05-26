@@ -248,6 +248,9 @@ class MockDataSource {
   prependToQueue(entries: QueueEntry[]): void {
     this._queue.set([...entries, ...this._queue()]);
   }
+  enqueueDirective(directive: QueueDirective): void {
+    this._queue.set([...this._queue(), directive]);
+  }
   removeAnimationAt(index: number): void {
     const q = this._queue();
     this._queue.set([...q.slice(0, index), ...q.slice(index + 1)]);

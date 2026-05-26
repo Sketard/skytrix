@@ -6,12 +6,43 @@ import type { RenderedBoardStateService } from './rendered-board-state.service';
 // Queue directive types (Phase 6)
 // ---------------------------------------------------------------------------
 
+/**
+ * β.3 — sequential-announcement-gating directive (catalogue ε3 cas #13,
+ * 2026-05-26). Bloque le dispatch des events suivants pendant
+ * `durationMs` d'affichage d'une annonce visuelle (phase / chain
+ * resolution / future banners). Le runner appelle `onShow()`
+ * synchronement, awaite `durationMs` (scalé par speedMultiplier),
+ * puis appelle `onClear()` avant de relâcher la queue. Une seule
+ * directive d'annonce active à la fois — la sérialisation est garantie
+ * par la queue elle-même.
+ *
+ * `source` est un identifiant logique (phase / chain-resolution / …)
+ * destiné au tracing + à la déduplication éventuelle si plusieurs sites
+ * de production enqueueraient des annonces concurrentes.
+ */
+export interface AnnouncementDirective {
+  kind: 'announcement';
+  source: string;
+  /**
+   * Total time the directive blocks the queue. `onShow` fires at
+   * `prePauseMs` (default 0) ; `onClear` fires at `durationMs`. The runner
+   * scales both via `ctx.scaledDuration` so playback-speed applies. Asymmetric
+   * pause + show lets the chain banner reproduce its 1000ms pre-pause +
+   * 2000ms visible-window timing inside a single directive.
+   */
+  durationMs: number;
+  prePauseMs?: number;
+  onShow: () => void;
+  onClear: () => void;
+}
+
 export type QueueDirective =
   | { kind: 'group'; events: GameEvent[]; staggerMs?: number }
   | { kind: 'barrier' }
   | { kind: 'lp'; event: GameEvent }
   | { kind: 'batch-end'; resolve: () => void }
-  | { kind: 'await-signal'; signal: Signal<boolean> };
+  | { kind: 'await-signal'; signal: Signal<boolean> }
+  | AnnouncementDirective;
 
 export type QueueEntry = GameEvent | QueueDirective;
 
@@ -44,6 +75,15 @@ export interface AnimationDataSource {
   dequeueAnimation(): QueueEntry | null;
   removeAnimationAt(index: number): void;
   prependToQueue(entries: QueueEntry[]): void;
+  /**
+   * β.3 cas #13 (2026-05-26) — append-side enqueue for directives produced
+   * outside the message pipeline (phase announcement, future banners).
+   * Differs from `prependToQueue` in that it adds to the TAIL — incoming
+   * server events keep priority over a presentation gate. The runner
+   * picks the directive up on the next tick after the current queue
+   * drains.
+   */
+  enqueueDirective(directive: QueueDirective): void;
   setAnimating(animating: boolean): void;
   applyChainSolving(chainIndex: number): void;
   applyChainSolved(chainIndex: number): void;

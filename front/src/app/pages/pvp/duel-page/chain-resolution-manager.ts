@@ -95,7 +95,6 @@ export class ChainResolutionManager implements ResetTarget {
   private _bufferedBoardEvents: GameEvent[] = [];
   private _replayTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _deferredSolvingEvent: GameEvent | null = null;
-  private _bannerTimeouts: ReturnType<typeof setTimeout>[] = [];
   /**
    * β.3 Lot 3.2-REDO — sync mirror of `chainResolutionAnnounce` for the
    * `handleSolving` predicate. See the comment on the projection above
@@ -158,16 +157,18 @@ export class ChainResolutionManager implements ResetTarget {
   }
 
   /**
-   * Schedule the banner announce after a pause. Returns the timeout ID
-   * for the orchestrator to track. β.3 Lot 3.2-REDO: this sets the SYNC
-   * mirror `_announcePending`; the orchestrator separately schedules a
-   * `phaseWait('banner-announce', pauseMs, 'MSG_CHAIN_SOLVING')` so the
-   * projection (reactive surface) flips on the same wall-clock pauseMs.
+   * β.3 cas #13 (2026-05-26) — set the SYNC mirror `_announcePending`
+   * synchronously. Called by the orchestrator's `announcement` directive
+   * `onShow` callback at the same wall-clock moment as the directive
+   * emits `AnimationPhaseCompleted({phase:'banner-announce'})` on the
+   * stream, so the projection (reactive surface) and this sync mirror
+   * agree to within one microtask.
+   *
+   * Replaces the legacy `scheduleBannerAnnounce(pauseMs)` (its own
+   * setTimeout) — the directive now owns the timer.
    */
-  scheduleBannerAnnounce(pauseMs: number): ReturnType<typeof setTimeout> {
-    const tid = setTimeout(() => { this._announcePending = true; }, pauseMs);
-    this._bannerTimeouts.push(tid);
-    return tid;
+  markAnnouncePending(): void {
+    this._announcePending = true;
   }
 
   /**
@@ -333,14 +334,13 @@ export class ChainResolutionManager implements ResetTarget {
     this.chainEntryAnimating.set(false);
     this.chainOverlayReady.set(true);
     this._deferredSolvingEvent = null;
-    this._bannerTimeouts.forEach(t => clearTimeout(t));
-    this._bannerTimeouts = [];
   }
 
-  /** Clear banner + replay timeouts (called by orchestrator's resetForSwitch, onStateSync, destroy). */
+  /** Clear replay timeouts (called by orchestrator's resetForSwitch, onStateSync, destroy).
+   *  β.3 cas #13 — banner timeouts are no longer owned here ; the
+   *  `announcement` directive registers its setTimeouts via
+   *  `orchestrator.scheduleTimeout` which `clearTimersAndPolling` aborts. */
   clearTimeouts(): void {
-    this._bannerTimeouts.forEach(t => clearTimeout(t));
-    this._bannerTimeouts = [];
     this._replayTimeouts.forEach(t => clearTimeout(t));
     this._replayTimeouts = [];
   }

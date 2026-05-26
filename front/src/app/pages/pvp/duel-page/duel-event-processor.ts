@@ -199,6 +199,13 @@ export class DuelEventProcessor {
     this._animationQueue.update(q => [...entries, ...q]);
   }
 
+  /** β.3 cas #13 — append-side enqueue (typically an `announcement`
+   *  directive produced outside the message pipeline). Server events
+   *  already in queue keep priority. */
+  enqueueDirective(directive: QueueEntry): void {
+    this._animationQueue.update(q => [...q, directive]);
+  }
+
   applyChainSolving(chainIndex: number): void {
     this._chainPhase.set('resolving');
     this._activeChainLinks.update(links =>

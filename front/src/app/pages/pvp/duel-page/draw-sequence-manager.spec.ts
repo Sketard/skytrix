@@ -74,6 +74,7 @@ describe('DrawSequenceManager', () => {
       dequeueAnimation: () => null,
       removeAnimationAt: (i: number) => queue.update(q => q.filter((_, idx) => idx !== i)),
       prependToQueue: (entries: QueueEntry[]) => queue.update(q => [...entries, ...q]),
+      enqueueDirective: () => undefined,
       setAnimating: () => undefined,
       applyChainSolving: () => undefined,
       applyChainSolved: () => undefined,

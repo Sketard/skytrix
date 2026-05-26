@@ -354,18 +354,19 @@ describe('ChainResolutionManager', () => {
     });
   });
 
-  describe('scheduleBannerAnnounce', () => {
-    // β.3 Lot 3.2-REDO — the timer now sets the sync mirror
-    // `_announcePending`; the reactive surface (`chainResolutionAnnounce`,
-    // now a projection) flips separately when the orchestrator emits
-    // AnimationPhaseCompleted on the EventStream. Tests assert the sync
-    // mirror; the projection's behavior is covered in its own spec.
-    it('should set isAnnouncePending after delay', fakeAsync(() => {
+  describe('markAnnouncePending', () => {
+    // β.3 cas #13 (2026-05-26) — the legacy `scheduleBannerAnnounce`
+    // setTimeout is removed: the `announcement` directive (owned by the
+    // orchestrator) is the timer, and calls this method synchronously
+    // from its `onShow` callback. The reactive surface
+    // (`chainResolutionAnnounce`, a projection) flips on the parallel
+    // `AnimationPhaseCompleted` stream push; the projection's behavior
+    // is covered in its own spec.
+    it('should set isAnnouncePending synchronously', () => {
       expect(mgr.isAnnouncePending).toBeFalse();
-      mgr.scheduleBannerAnnounce(10);
-      tick(10);
+      mgr.markAnnouncePending();
       expect(mgr.isAnnouncePending).toBeTrue();
-    }));
+    });
   });
 
   describe('reset', () => {
@@ -400,8 +401,7 @@ describe('ChainResolutionManager', () => {
   });
 
   describe('clearTimeouts', () => {
-    it('should clear banner and replay timeouts', () => {
-      mgr.scheduleBannerAnnounce(9999);
+    it('should clear replay timeouts (banner timers now owned by orchestrator directive)', () => {
       mgr.addReplayTimeout(setTimeout(() => {}, 9999));
       mgr.clearTimeouts();
       expect(mgr.hasActiveReplayTimeouts).toBeFalse();

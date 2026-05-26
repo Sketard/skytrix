@@ -73,6 +73,7 @@ describe('TargetIndicatorManager', () => {
       dequeueAnimation: () => null,
       removeAnimationAt: () => undefined,
       prependToQueue: () => undefined,
+      enqueueDirective: () => undefined,
       setAnimating: () => undefined,
       applyChainSolving: () => undefined,
       applyChainSolved: () => undefined,

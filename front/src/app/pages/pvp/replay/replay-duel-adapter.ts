@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 
-import { syncAfterBoardState, type AnimationDataSource, type QueueEntry } from '../duel-page/animation-data-source';
+import { syncAfterBoardState, type AnimationDataSource, type QueueDirective, type QueueEntry } from '../duel-page/animation-data-source';
 import { DuelEventProcessor } from '../duel-page/duel-event-processor';
 import { DuelLogCategory, DuelLogger } from '../duel-page/duel-logger';
 import { RenderedBoardStateService, type BoardStateView } from '../duel-page/rendered-board-state.service';
@@ -46,6 +46,10 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
 
   prependToQueue(entries: QueueEntry[]): void {
     this.processor.prependToQueue(entries);
+  }
+
+  enqueueDirective(directive: QueueDirective): void {
+    this.processor.enqueueDirective(directive);
   }
 
   setAnimating(animating: boolean): void {

@@ -165,6 +165,7 @@ describe('peekAndDequeueMatching', () => {
       dequeueAnimation: () => null,
       removeAnimationAt: removeSpy as (idx: number) => void,
       prependToQueue: () => undefined,
+      enqueueDirective: () => undefined,
       setAnimating: () => undefined,
       applyChainSolving: () => undefined,
       applyChainSolved: () => undefined,

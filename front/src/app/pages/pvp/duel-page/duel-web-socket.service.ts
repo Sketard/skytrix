@@ -4,7 +4,7 @@ import { DuelConnection, ResponseData } from './duel-connection';
 import { DebugLogService } from './debug-log.service';
 import { DuelLogger } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
-import type { AnimationDataSource, QueueEntry } from './animation-data-source';
+import type { AnimationDataSource, QueueDirective, QueueEntry } from './animation-data-source';
 import type { StreamEvent } from '../types';
 
 export { ResponseData } from './duel-connection';
@@ -156,6 +156,10 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
 
   prependToQueue(entries: QueueEntry[]): void {
     this._activeConnection().prependToQueue(entries);
+  }
+
+  enqueueDirective(directive: QueueDirective): void {
+    this._activeConnection().enqueueDirective(directive);
   }
 
   clearAnimationQueue(): void {

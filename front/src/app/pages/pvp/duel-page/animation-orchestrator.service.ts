@@ -1322,6 +1322,36 @@ export class AnimationOrchestratorService {
         const alreadyResolved = this.runner.installAwaitSignal(entry.signal);
         return alreadyResolved ? 'continue' : 'pause';
       }
+      case 'announcement': {
+        // β.3 cas #13 (2026-05-26) — sequential-announcement-gating. Bloque
+        // le dispatch des events suivants pendant `durationMs` d'affichage
+        // d'une annonce visuelle (phase / chain resolution / future
+        // banners). Timing :
+        //   t=0           : entrée dans la directive.
+        //   t=prePauseMs  : `onShow()` set la surface consommatrice (signal
+        //                   d'un service / projection mirror).
+        //   t=durationMs  : `onClear()` la remet à null, return 'continue'.
+        // Les deux timers passent par `scheduleTimeout` (tracked dans
+        // `animationTimeouts`) pour qu'un `clearTimersAndPolling`
+        // (rematch / state-sync / destroy) les coupe et la directive sorte
+        // sans rester suspendue indéfiniment.
+        const totalMs = this.ctx.scaledDuration(entry.durationMs);
+        const preMs = entry.prePauseMs ? this.ctx.scaledDuration(entry.prePauseMs) : 0;
+        const showMs = Math.max(0, totalMs - preMs);
+        this.trace('directive', { kind: 'announcement', source: entry.source, totalMs, preMs });
+        if (preMs > 0) {
+          await new Promise<void>(resolve => { this.scheduleTimeout(resolve, preMs); });
+        }
+        entry.onShow();
+        try {
+          await new Promise<void>(resolve => {
+            this.scheduleTimeout(resolve, showMs);
+          });
+        } finally {
+          entry.onClear();
+        }
+        return 'continue';
+      }
       default:
         this.logger.warn('Unknown directive kind: %o', entry);
         return 'continue';
@@ -1494,19 +1524,47 @@ export class AnimationOrchestratorService {
     this.targetIndicator.cleanup();
     const result = this.chainManager.handleSolving(msg);
     if (result.deferred) {
-      const pauseMs = this.ctx.scaledDuration(CHAIN_BANNER_PAUSE_MS);
-      const tid = this.chainManager.scheduleBannerAnnounce(pauseMs);
-      this.animationTimeouts.push(tid);
-      // β.3 Lot 3.2-REDO — emit the phase event in parallel so the
-      // `chainResolutionAnnounce` projection (templates + Effect D)
-      // flips reactive at the same wall-clock moment as the manager's
-      // private sync mirror (`_announcePending`). Fire-and-forget: the
-      // returned Promise is irrelevant; only the EventStream push
-      // matters. Both timers are tracked + cleared by their respective
-      // cleanup paths (animationTimeouts for phaseWait, _bannerTimeouts
-      // for the manager).
-      void this.phaseWait('banner-announce', pauseMs, 'MSG_CHAIN_SOLVING');
-      return CHAIN_BANNER_DEFERRED_BUDGET_MS;
+      // β.3 cas #13 (2026-05-26) — sequential-announcement-gating. The
+      // multi-link chain banner is now expressed as an `announcement`
+      // directive prepended right after this handler returns. The
+      // directive blocks the dispatch of the deferred MSG_CHAIN_SOLVING
+      // (which sits in `_deferredSolvingEvent`) until the banner clears
+      // — the OLD `CHAIN_BANNER_DEFERRED_BUDGET_MS` hold no longer
+      // gates it. Timing inside the directive :
+      //   t=0..prePauseMs : silent pause (chain entry visible, no banner).
+      //   t=prePauseMs    : onShow flips `_announcePending` (sync mirror)
+      //                     + emits `AnimationPhaseCompleted` so the
+      //                     `chainResolutionAnnounce` projection
+      //                     (templates + Effect D) flips reactive.
+      //   t=durationMs    : onClear emits `MSG_CHAIN_END`-shaped flux NO,
+      //                     just resets the mirror. The projection clears
+      //                     on the next MSG_CHAIN_END.
+      // The single source of timing replaces the previous (handler hold
+      // + phaseWait + scheduleBannerAnnounce) trio.
+      const pauseMs = CHAIN_BANNER_PAUSE_MS;
+      this.dataSource.prependToQueue([{
+        kind: 'announcement',
+        source: 'chain-resolution',
+        durationMs: CHAIN_BANNER_DEFERRED_BUDGET_MS,
+        prePauseMs: pauseMs,
+        onShow: () => {
+          this.chainManager.markAnnouncePending();
+          // Push the phase event so the projection observes via the
+          // stream (same wall-clock as the manager's sync mirror flip,
+          // ≤1 microtask apart). Ref is `null` here — the announcement
+          // directive does not carry a parent business event ref.
+          this.pushToStream({
+            kind: 'animation', type: 'AnimationPhaseCompleted',
+            ref: -1, phase: 'banner-announce', msgType: 'MSG_CHAIN_SOLVING',
+          });
+        },
+        // The projection self-clears on `MSG_CHAIN_END` (its existing
+        // contract). The sync mirror is reset by `chainManager.handleSolving`
+        // / `reset()` — onClear is a no-op so the banner stays visible
+        // until the chain naturally ends.
+        onClear: () => undefined,
+      }]);
+      return 0;
     }
     this.dataSource.applyChainSolving(msg.chainIndex);
     const exitDelay = this.chainManager.chainSolvedCount > 0 ? this.chainExitDuration() : 0;

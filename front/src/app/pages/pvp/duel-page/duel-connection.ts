@@ -1,6 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState, StreamEvent } from '../types';
-import { syncAfterBoardState, type QueueEntry } from './animation-data-source';
+import { syncAfterBoardState, type QueueDirective, type QueueEntry } from './animation-data-source';
 import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
@@ -343,6 +343,10 @@ export class DuelConnection {
 
   prependToQueue(entries: QueueEntry[]): void {
     this.processor.prependToQueue(entries);
+  }
+
+  enqueueDirective(directive: QueueDirective): void {
+    this.processor.enqueueDirective(directive);
   }
 
   skipPendingAnimations(): void {
