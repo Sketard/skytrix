@@ -149,7 +149,8 @@ class StubPhaseAnnouncement {
 }
 
 class StubAnimationOrchestrator {
-  readonly isAnimating = signal(false);
+  // β.3 Lot 3.1 — `isAnimating` is now a projection on the real service.
+  readonly isAnimating = { value: signal(false) };
   readonly animatingZone = signal<unknown>(null);
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
   readonly eventStream = signal<readonly unknown[]>([]);

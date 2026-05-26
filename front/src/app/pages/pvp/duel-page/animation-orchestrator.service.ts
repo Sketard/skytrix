@@ -44,7 +44,7 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
-import { AnimatingZoneProjection, CounterPulseProjection, OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
+import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -110,8 +110,16 @@ export class AnimationOrchestratorService {
   private readonly scopeDispatcher = inject(ScopeResetDispatcher, { optional: true });
 
   // --- Public read-only signals ---
-  private readonly _isAnimating = signal(false);
-  readonly isAnimating = this._isAnimating.asReadonly();
+  /**
+   * β.3 Lot 3.1 — `_isRunning` lifecycle exposed as a projection of
+   * the EventStream's `runner-started` / `runner-stopped` transport
+   * events (emitted by `QueueRunner.setRunning` via
+   * `onInternalEvent`, absorbed onto `_eventStream` since β.2a).
+   * PERSPECTIVE_LIFETIME scope. Templates / computed / effects read
+   * `isAnimating.value()`; the legacy `isAnimating()` callable alias
+   * is exposed below for back-compat.
+   */
+  readonly isAnimating = new IsAnimatingProjection();
 
   /**
    * β.3 Lot 2.6 — pulse glow on a field zone whose card just flipped
@@ -160,7 +168,7 @@ export class AnimationOrchestratorService {
     () => ({
       isResolving: this.dataSource.chainPhase() === 'resolving',
       queueLen: this.dataSource.animationQueue().length,
-      isAnimating: this._isAnimating(),
+      isAnimating: this.isAnimating.value(),
       hasPendingPrompt: this.dataSource.pendingPrompt() !== null,
     }),
     () => this.firePollDropRegression(),
@@ -396,7 +404,10 @@ export class AnimationOrchestratorService {
         }
       },
       onIsRunningChange: running => {
-        this._isAnimating.set(running);
+        // β.3 Lot 3.1 — the `isAnimating` projection self-tracks via
+        // `runner-started` / `runner-stopped` on the stream. This
+        // callback now only fires the imperative `setAnimating` on the
+        // adapter (drives `advanceStep` in replay).
         this.dataSource.setAnimating(running);
       },
       decisionInputs: () => ({
@@ -419,7 +430,7 @@ export class AnimationOrchestratorService {
     // Resume effect: when overlay signals ready, resume queue processing.
     // Handles the negated/no-buffer case where replayBuffer is NOT called.
     this.chainManager.initResumeEffect(() => {
-      if (this._isAnimating()) this.runner.notifyEnqueue();
+      if (this.isAnimating.value()) this.runner.notifyEnqueue();
     });
     // Wire draw manager queue resume callback
     this.drawManager.initQueueResumeCallback(() => this.runner.notifyEnqueue());
@@ -457,6 +468,12 @@ export class AnimationOrchestratorService {
     // animation on a field zone. PERSPECTIVE_LIFETIME scope.
     this.scopeDispatcher?.register(this.animatingZone);
     this.animatingZone.attachEventStream(this._eventStream, this.injector);
+
+    // β.3 Lot 3.1 — is-animating projection: lifts the runner's
+    // `_isRunning` flag to a §3.5 PERSPECTIVE_LIFETIME projectable
+    // surface via `runner-started` / `runner-stopped` on the stream.
+    this.scopeDispatcher?.register(this.isAnimating);
+    this.isAnimating.attachEventStream(this._eventStream, this.injector);
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -694,7 +711,10 @@ export class AnimationOrchestratorService {
    */
   destroy(): void {
     this.clearTimersAndPolling();
-    this._isAnimating.set(false);
+    // β.3 Lot 3.1 — `isAnimating` projection flips false via the
+    // `runner-stopped` event that `runner.requestStop()` (called by
+    // `clearTimersAndPolling` above) emits. The legacy
+    // `_isAnimating.set(false)` line was redundant.
     this.chainManager.reset();
     this.lpTracker.reset();
     this.battleTracker.reset();
@@ -712,6 +732,7 @@ export class AnimationOrchestratorService {
     this.overlayShowReady.detachEventStream();
     this.counterPulse.detachEventStream();
     this.animatingZone.detachEventStream();
+    this.isAnimating.detachEventStream();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -753,7 +774,10 @@ export class AnimationOrchestratorService {
    */
   private resetAllState(scopes: ReadonlySet<ScopeCategory>): void {
     this.clearTimersAndPolling();
-    this._isAnimating.set(false);
+    // β.3 Lot 3.1 — `isAnimating` projection flips false via the
+    // `runner-stopped` event emitted by `clearTimersAndPolling →
+    // runner.requestStop()` above + via scopeDispatcher applyReset
+    // below (PERSPECTIVE_LIFETIME scope).
     this.drawManager.reset();
     this.drawManager.clearTimeouts();
     // β.3 Lot 2.6 — `animatingZone` projection cleared via the

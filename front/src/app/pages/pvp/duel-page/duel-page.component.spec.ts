@@ -162,7 +162,10 @@ class NoopEffectsStub {
 /** Stub for AnimationOrchestratorService — only the few signals/methods the
  *  component reads/calls. Component owns no animation logic itself. */
 class StubAnimationOrchestrator {
-  readonly isAnimating = signal(false);
+  // β.3 Lot 3.1 — `isAnimating` is now a projection on the real service;
+  // expose a matching `{ value: WritableSignal }` shape so tests can drive
+  // it via `.value.set(...)` instead of the legacy `.set(...)`.
+  readonly isAnimating = { value: signal(false) };
   readonly animatingZone = signal<unknown>(null);
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
   readonly eventStream = signal<readonly unknown[]>([]);
@@ -613,7 +616,7 @@ describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
 
   it('does not send ANIMATIONS_DONE when no pending prompt and not animating', () => {
     ws.pendingPrompt.set(null);
-    anim.isAnimating.set(false);
+    anim.isAnimating.value.set(false);
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
   });
@@ -622,14 +625,14 @@ describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
     // Gate: server timer waits until the visible animation queue drains.
     // Setting isAnimating=true before the prompt arrives means we should
     // never have fired before this point.
-    anim.isAnimating.set(true);
+    anim.isAnimating.value.set(true);
     ws.pendingPrompt.set({ type: 'SELECT_CARD' });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
   });
 
   it('sends ANIMATIONS_DONE exactly once when a prompt arrives while idle', () => {
-    anim.isAnimating.set(false);
+    anim.isAnimating.value.set(false);
     ws.pendingPrompt.set({ type: 'SELECT_CARD' });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
@@ -638,18 +641,18 @@ describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
   it('fires after isAnimating flips true→false with a pending prompt (queue drained mid-flow)', () => {
     // Realistic flow: prompt arrives while orchestrator is still draining
     // the animation queue, then drain completes and isAnimating flips off.
-    anim.isAnimating.set(true);
+    anim.isAnimating.value.set(true);
     ws.pendingPrompt.set({ type: 'SELECT_CARD' });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
 
-    anim.isAnimating.set(false);
+    anim.isAnimating.value.set(false);
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
   });
 
   it('fires after pendingPrompt flips null→{prompt} while not animating (prompt arrives last)', () => {
-    anim.isAnimating.set(false);
+    anim.isAnimating.value.set(false);
     ws.pendingPrompt.set(null);
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).not.toHaveBeenCalled();

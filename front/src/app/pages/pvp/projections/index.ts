@@ -15,3 +15,4 @@ export {
   type AnimatingZoneData,
   type AnimatingZoneProjectionDeps,
 } from './animating-zone.projection';
+export { IsAnimatingProjection } from './is-animating.projection';
