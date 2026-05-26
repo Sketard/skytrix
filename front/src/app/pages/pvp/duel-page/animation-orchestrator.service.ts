@@ -527,14 +527,25 @@ export class AnimationOrchestratorService {
     this._preActivationDrainScheduled = false;
   }
 
+  /**
+   * Component-scoped teardown. The 4 ResetTarget managers (Chain, Lp,
+   * Battle, Log) are themselves component-scoped, so they die with this
+   * service — explicit `reset()` calls here are defense-in-depth against
+   * carried-over timers / live announcers / cached objects, not state
+   * leaks (the DI graph already collects them). All four are listed
+   * symmetrically so a future ResetTarget added without updating this
+   * method is the only outlier instead of an asymmetric pair.
+   */
   destroy(): void {
     this.clearTimersAndPolling();
     this._isAnimating.set(false);
     this.chainManager.reset();
+    this.lpTracker.reset();
+    this.battleTracker.reset();
+    this.gameLog?.reset();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
-    this.battleTracker.reset();
   }
 
   /**
