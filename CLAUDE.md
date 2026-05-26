@@ -358,16 +358,32 @@ rule `skytrix-pipeline/pipeline-signal-tagged`
 Three tags + one escape hatch:
 
 1. **`_transport_<name>`** — internal transport state (queue pointers,
-   timer flags, debounce counters). Never read by UI templates.
+   timer flags, debounce counters). Never read by UI templates. **Strict
+   prefix** (P8 hardening 2026-05-26): `_transport_*` only, no
+   `transport_*` without leading underscore.
 2. **`<name>Source`** — `@Environment` input (OS setting, user prefs,
-   session config). Read-only from the pipeline's POV.
-3. **Property of a class that `extends BaseProjection<T>`** — every
-   other signal MUST live inside a registered projection (cf. α.2 +
-   α.4). The class membership is the tag.
+   session config). Read-only from the pipeline's POV. **Module-scope
+   only** (P8 hardening): a `*Source` declared inside a function/method
+   body is no longer a valid tag — close the loophole that let local
+   variables (`const mySource = signal(0)`) silently pass. Top-level
+   `const`/`readonly` properties stay valid.
+3. **Property of a class that `extends BaseProjection<T>` or
+   `implements ResetTarget`** — every other signal MUST live inside a
+   registered projection (cf. α.2 + α.4). The class membership is the
+   tag. **Import required** (P8 hardening): the tag class name must be
+   imported from `projections/` (barrel or `base-projection`/`reset-target`
+   directly). A local `class BaseProjection {}` declared in the same
+   file does NOT auto-tag — guards against shadowing the canonical type.
 4. **`// eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged`**
    — escape hatch for the rare legitimate exception. Add a `// why:`
    sibling comment explaining the carve-out (lint doesn't enforce the
    sibling — code review does).
+
+The rule also recognises late-bound assignment patterns inside a
+tagged class — `this.x = signal(...)` (constructor), `x = signal(...)`,
+and `return signal(...)` from a method body all inherit the class tag
+(P8 hardening). The previous rule treated them as anonymous and emitted
+`untaggedAnonymousSignal`.
 
 The rule has a **baseline** at
 `eslint-plugins/pipeline-signal-tagged/allowed-files.json` listing
@@ -417,7 +433,15 @@ for flux-state resets and read-only projections. Cf.
 - **`ScopeCategory`** (`scope.ts`) — `'SESSION_LIFETIME' |
   'DUEL_LIFETIME' | 'CONNECTION_LIFETIME' | 'PERSPECTIVE_LIFETIME'`.
   Ordered top-down in `SCOPE_HIERARCHY`. Invalidating a scope cascades
-  to every scope below it via `expandInvalidatedScopes(set)`.
+  to every scope below it via `expandInvalidatedScopes(set)`. **P9
+  hardening (2026-05-26)**: the algorithm anchors on the **shallowest**
+  (most durable) entry in the input and fills every scope strictly
+  below it — so non-contiguous inputs like `{SESSION, CONNECTION}`
+  expand to `{SESSION, DUEL, CONNECTION, PERSPECTIVE}` (DUEL no longer
+  silently dropped). Today's callsites pass single-element sets, so
+  the change is observation-equivalent for production; the new
+  contract becomes load-bearing when β.3 checkpoint payloads bundle
+  multiple boundary scopes.
 - **`ScopeResetDispatcher`** (`@Injectable`, provided at duel-page
   component level) — registry + fan-out. `register(target)` accepts
   any `ResetTarget` (including `BaseProjection` subclasses); checks
