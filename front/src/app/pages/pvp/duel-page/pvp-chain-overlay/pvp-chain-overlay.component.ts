@@ -144,13 +144,21 @@ export class PvpChainOverlayComponent {
   private readonly activeTimers = new Set<ReturnType<typeof setTimeout>>();
 
   /**
-   * β.3 Lot 1b — pending effect that watches `overlayShowReady` to
+   * β.3 Lot 1b — pending effects that watch `overlayShowReady` to
    * fire the deferred show sequence (`_runOverlayShowSequence`) the
-   * moment the DEP signals readiness for the current chain.
-   * Cleared+re-installed on each new chain link so a burst of
-   * MSG_CHAINING does not stack effects.
+   * moment the DEP signals readiness for the corresponding chainIndex.
+   *
+   * β.3 red-team finding #10 (2026-05-26) — keyed by `chainIndex`
+   * instead of a single ref. A burst of MSG_CHAINING (link N+1
+   * arriving while link N's gating effect has not yet fired) would
+   * previously overwrite the single ref, leaving link N's overlay
+   * lost forever. With the map, each chainIndex owns its own
+   * lifecycle. Entries are destroyed:
+   *   · synchronously when the effect fires (one-shot self-cleanup);
+   *   · in `onChainEnd` (full chain over → drop all pending);
+   *   · in the destroyRef hook (component teardown).
    */
-  private _overlayShowEffectRef: EffectRef | null = null;
+  private readonly _overlayShowEffectRefs = new Map<number, EffectRef>();
 
   /**
    * Aborts the in-flight `onChainLinkResolved` async chain on chain end /
@@ -236,11 +244,13 @@ export class PvpChainOverlayComponent {
       this._resolutionAbort?.abort();
       this.activeTimers.forEach(id => clearTimeout(id));
       this.activeTimers.clear();
-      // β.3 Lot 1b — tear down the pending overlay-show effect on
+      // β.3 Lot 1b — tear down every pending overlay-show effect on
       // component destroy. The injector's DestroyRef would propagate
       // anyway, but explicit destroy keeps the lifecycle obvious.
-      this._overlayShowEffectRef?.destroy();
-      this._overlayShowEffectRef = null;
+      // (β.3 red-team finding #10) the map can carry multiple entries
+      // when a burst of MSG_CHAINING was in flight; drop them all.
+      this._overlayShowEffectRefs.forEach(ref => ref.destroy());
+      this._overlayShowEffectRefs.clear();
     });
 
     // Effect A — main chain logic + building announcements
@@ -504,15 +514,19 @@ export class PvpChainOverlayComponent {
    * leaving the overlay invisible forever.
    */
   private _gateOverlayShowOnReady(chainIndex: number): void {
-    this._overlayShowEffectRef?.destroy();
-    this._overlayShowEffectRef = null;
+    // β.3 red-team finding #10 — each chainIndex owns its own pending
+    // effect. If this chainIndex already has an effect installed (rare:
+    // duplicate MSG_CHAINING for the same link), drop it before
+    // re-installing.
+    this._overlayShowEffectRefs.get(chainIndex)?.destroy();
+    this._overlayShowEffectRefs.delete(chainIndex);
 
     if (this.orchestrator.overlayShowReady.isReady(chainIndex)) {
       this._runOverlayShowSequence();
       return;
     }
 
-    this._overlayShowEffectRef = effect(() => {
+    const ref = effect(() => {
       const ready = this.orchestrator.overlayShowReady.value();
       if (!ready.has(chainIndex)) return;
       // One-shot: destroy this effect from outside the effect body to
@@ -520,11 +534,13 @@ export class PvpChainOverlayComponent {
       // signal reads inside the sequence don't tie this effect to extra
       // dependencies (it's about to be destroyed anyway).
       untracked(() => {
-        this._overlayShowEffectRef?.destroy();
-        this._overlayShowEffectRef = null;
+        const stored = this._overlayShowEffectRefs.get(chainIndex);
+        stored?.destroy();
+        this._overlayShowEffectRefs.delete(chainIndex);
         this._runOverlayShowSequence();
       });
     }, { injector: this.injector });
+    this._overlayShowEffectRefs.set(chainIndex, ref);
   }
 
   private scheduleFadeOutAfterEntry(): void {
@@ -651,14 +667,16 @@ export class PvpChainOverlayComponent {
   private onChainEnd(): void {
     this.overlayVisible.set(false);
     this.clearAllTimers();
-    // β.3 Lot 1b — drop any pending "wait for overlay-show ready"
-    // effect. A chain that ends before its overlay-show readiness fires
-    // (e.g. very fast negation chain that resolves before the cost
-    // animation completes — pathological but legal) must not leave the
-    // effect dangling: it would fire on the NEXT chain's readiness
-    // flip and pop a stale overlay.
-    this._overlayShowEffectRef?.destroy();
-    this._overlayShowEffectRef = null;
+    // β.3 Lot 1b — drop every pending "wait for overlay-show ready"
+    // effect. A chain that ends before any link's overlay-show
+    // readiness fires (e.g. very fast negation chain that resolves
+    // before the cost animation completes — pathological but legal)
+    // must not leave effects dangling: they would fire on the NEXT
+    // chain's readiness flip and pop stale overlays. (β.3 red-team
+    // finding #10) sweep the whole map — multiple in-flight links
+    // can each carry their own pending effect.
+    this._overlayShowEffectRefs.forEach(ref => ref.destroy());
+    this._overlayShowEffectRefs.clear();
     this._resolutionStarted.set(false);
     this._resolvingInFlight.set(false);
     this._exitPulseInFlight.set(false);

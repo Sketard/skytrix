@@ -966,13 +966,21 @@ export class AnimationOrchestratorService {
     // themselves via `applyReset` driven by the scopeDispatcher.dispatch
     // above (PERSPECTIVE_LIFETIME scope).
     this.toastService.clear();
-    // β.2a note — any `EffectAbandoned(checkpoint)` emitted by the DEP
-    // during `dispatch(scopes)` above lands here BEFORE the clear, so
-    // the journal subscriber's effect (one task) only sees the final
-    // empty array. Acceptable at β.2a because RULES is empty in prod;
-    // β.3+ projections that consume EffectAbandoned will need this
-    // ordering reworked (drain dispatcher events before clearing, or
-    // dispatch AFTER the clear with a fresh stream).
+    // β.2a note + β.3 red-team finding #5 (2026-05-26) — any
+    // `EffectAbandoned(checkpoint)` emitted by the DEP during
+    // `dispatch(scopes)` above lands here BEFORE the wipe, so the
+    // journal subscriber's effect (one task) only sees the final empty
+    // array. Bénin by accident at β.3: the projections that DO consume
+    // EffectAbandoned (e.g. OverlayShowReadyProjection's graceful-
+    // degradation fallback) receive their own `applyReset` immediately
+    // after the DEP's in the same `dispatch`, so their state is clean
+    // even if the EffectAbandoned event is lost.
+    //
+    // Backlog: see `_bmad-output/planning-artifacts/beta-3-backlog.md`
+    // §"Finding #5". Triggers for re-priorisation: a future projection
+    // that LEGITIMATELY needs to observe `EffectAbandoned(checkpoint)`
+    // (not just as fallback) — at which point a 2-pass dispatch +
+    // manual stream-effect flush will be required.
     this._eventStream.set([]);
     // β.2b — restart the monotonic ref so a fresh duel / state-sync
     // doesn't grow the ref unboundedly. Side-channel cleared for safety
@@ -1261,18 +1269,46 @@ export class AnimationOrchestratorService {
         await this.drawManager.awaitDrawsComplete();
         this.rbs.commitUnlocked();
         return 'continue';
-      case 'lp':
+      case 'lp': {
         this.trace('directive', { kind: 'lp' });
         // β.3 Lot 2.2-REDO — buffered LP replay path needs to feed the
         // projection too. Decorate + push to the stream first (so the
         // projection picks up the LP delta), THEN mutate via the
         // tracker. Order matters: `peekLpDelta` inside
         // `decorateLpEventForStream` reads the PRE-mutation trackedLp.
-        this._transport_lastDispatchedRef = this.pushToStream(
-          this.decorateLpEventForStream(entry.event),
-        );
+        const decorated = this.decorateLpEventForStream(entry.event);
+        const ref = this.pushToStream(decorated);
+        this._transport_lastDispatchedRef = ref;
         this.lpTracker.fireLpReplayEvent(entry.event);
+        // β.3 red-team finding #2 (2026-05-26) — the directive path
+        // returns 'continue' without going through `handleEntryAndAwait`,
+        // so the `QueueRunner.onStepSettled` callback (which emits
+        // `AnimationCompleted` for the standard dispatch path) never
+        // fires for buffered LP. Without this, `AnimatingLpProjection._data`
+        // stayed set indefinitely after a buffered LP event — visually
+        // harmless (the badge's RAF stops at t>=1) but contract-broken.
+        //
+        // Emit `AnimationStarted` synchronously and `AnimationCompleted`
+        // after a setTimeout matching the LP count duration. The
+        // decorator stashes the duration on the event under `lpDelta`
+        // (β.3 Standardisation 2); peek it for the timer length and
+        // fall back to the tracker's `baseLpDuration` if absent
+        // (defensive — should not happen since `decorateLpEventForStream`
+        // always populates it for LP-class messages).
+        if (ref !== null && ref >= 0) {
+          const msgType = entry.event.type;
+          this.emitAnimationStarted(msgType);
+          const lpDelta = (decorated as GameEvent & { lpDelta?: { durationMs?: number } }).lpDelta;
+          const durationMs = lpDelta?.durationMs ?? this.lpTracker.baseLpDuration;
+          this.scheduleTimeout(() => {
+            this.pushToStream({
+              kind: 'animation', type: 'AnimationCompleted',
+              ref, msgType,
+            });
+          }, durationMs);
+        }
         return 'continue';
+      }
       case 'batch-end':
         this.trace('directive', { kind: 'batch-end' });
         entry.resolve();
