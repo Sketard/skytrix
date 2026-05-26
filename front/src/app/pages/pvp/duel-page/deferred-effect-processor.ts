@@ -1,5 +1,5 @@
 // =============================================================================
-// deferred-effect-processor.ts — β.2a (2026-05-26)
+// deferred-effect-processor.ts — β.2a (2026-05-26) + β.3 cas #12 (2026-05-26)
 // -----------------------------------------------------------------------------
 // Materialises cross-event temporal correlations as explicit `DeferredEffect` /
 // `EffectReady` / `EffectAbandoned` markers on the duel's EventStream. The
@@ -8,12 +8,15 @@
 // `_bmad-output/planning-artifacts/duel-session-chantier.md §3.7` +
 // `_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
 //
-// β.2a ships the INFRASTRUCTURE only: the observe loop, the timer / collision
+// β.2a shipped the INFRASTRUCTURE only: the observe loop, the timer / collision
 // / checkpoint / silentReset mechanics, the `ResetTarget` integration, and an
-// EMPTY `RULES` table. The DEP receives every flux event the orchestrator
-// pushes (via `pushToStream`), but emits nothing because no rule matches.
-// β.2b populates `RULES` with the 10 catalogue cases; β.2c adds case #11 +
-// the `TargetIndicatorManager` wiring.
+// EMPTY `RULES` table. β.2b populated `RULES` with 5 working ObserverRule.
+//
+// β.3 cas #12 introduces a second rule family — `RewriterRule` — capable of
+// synthesizing virtual events at trigger time and absorbing later events
+// (drop the routing aval). See `ARCHITECTURE GUARD` block above
+// `RewriterRule` interface. Cf. spec
+// `_bmad-output/planning-artifacts/beta-3-case-12-xyz-leave-with-materials-spec.md`.
 //
 // **Plain class**, NOT `@Injectable`. Owned + constructed privately by the
 // `AnimationOrchestratorService` so the DEP observes the SAME `pushToStream`
@@ -29,7 +32,7 @@
 // `ScopeResetDispatcher` enforces this — a PERSPECTIVE-only dispatch
 // reaches no target whose scope is CONNECTION or deeper.
 //
-// **Timing model (β.2a)**: a deferred is opened by a rule's `trigger`,
+// **Timing model**: a deferred is opened by a rule's `trigger`,
 // optionally re-armed by `chainTo` (for compound predicates per §3.1),
 // closed by a matching flux event (`EffectReady`), evicted by collision
 // (`EffectAbandoned(timeout)` on the displaced entry), aged out by
@@ -49,6 +52,7 @@ import type {
   DeferredEffectEvent, DeferredFluxEvent,
   EffectAbandonedEvent, EffectReadyEvent, StreamEvent,
 } from '../types';
+import type { MoveMsg } from '../duel-ws.types';
 import { DEFERRED_TIMEOUT_MS } from './animation-constants';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import type { DuelLogger } from './duel-logger';
@@ -72,33 +76,56 @@ const REAL_CLOCK: DeferredClock = {
   clearTimeout: id => clearTimeout(id),
 };
 
+// ---------------------------------------------------------------------------
+// Rule type union (β.3 cas #12) — `ObserverRule | RewriterRule`
+// ---------------------------------------------------------------------------
+
 /**
- * A rule in the DEP's metier table. β.2b populates `RULES` with the
- * catalogue cases (`overlay-show`, `trigger-show`, …); see
- * `deferred-effect-rules.ts`.
- *
- * - `trigger` decides whether the current `observe` event opens a new
- *   deferred. The rule is responsible for being narrow enough that
- *   unrelated events don't trip it.
- * - `deriveName` produces a stable identifier — typically
- *   `'<family>:<chainIndex>'` or `'<family>:<cardCode>:<ref>'`. Names
- *   MUST be unique across simultaneously-open deferreds; collisions are
- *   an invariant violation surfaced via `duelAssert`.
- * - `derivePredicate` describes the matcher that, when satisfied by a
- *   later flux event, closes the deferred.
- * - `chainTo` (optional) re-arms the deferred with a new predicate when
- *   the first match resolves — supports the compound flows of §3.1
- *   (cost MSG_MOVE → AnimationCompleted of that same MSG_MOVE). The
- *   callback receives the matched event AND its `ref` (assigned by the
- *   orchestrator at `pushToStream` time) so the rule can build a
- *   ref-targeted predicate like `{kind:'animation', type:
- *   'AnimationCompleted', ref: matchedRef}`. Returning `null` falls
- *   through to the normal `EffectReady` emission.
+ * Champs partagés par toutes les rules — déclaratif, observable depuis
+ * le flux. Aucun side-effect, aucune ressource externe.
  */
-export interface DeferredRule {
+export interface BaseRule {
+  /**
+   * Décide si le `event` courant ouvre une nouvelle deferred. La rule
+   * est responsable d'être suffisamment narrow pour qu'un event sans
+   * rapport ne la déclenche pas.
+   */
   trigger: (event: FluxEvent) => boolean;
+  /**
+   * Identifiant stable de la deferred — typiquement
+   * `<family>:<chainIndex>` ou `<family>:<cardCode>:<ref>`. Les noms
+   * DOIVENT être uniques parmi les deferreds simultanément ouvertes ;
+   * une collision est une INVARIANT VIOLATION surfacée par `duelAssert`.
+   */
   deriveName: (event: FluxEvent, triggerRef: number) => string;
+  /**
+   * Décrit le matcher littéral que la deferred attend pour se fermer.
+   */
   derivePredicate: (event: FluxEvent, triggerRef: number) => AwaitingPredicate;
+}
+
+/**
+ * Rule classique (observer). Pure du point de vue du flux : lit, décide,
+ * marque. Pas de side-effect, pas de synthèse, pas d'absorption.
+ *
+ * Les 5 rules de β.2b (overlay-show, trigger-show, attack-impact,
+ * lp-cost, counter-pulse) sont tous des ObserverRule. Le discriminant
+ * `kind?: 'observer'` est OPTIONNEL — un rule sans `kind` est traité
+ * comme `ObserverRule`. Garantit la compat ascendante stricte sur les
+ * 5 rules existants : aucune migration de leur code nécessaire à β.3.
+ */
+export interface ObserverRule extends BaseRule {
+  kind?: 'observer';
+  /**
+   * Re-arm la deferred avec un nouveau predicate (compound flow) ou la
+   * close (retourner `null` = close + EffectReady).
+   *
+   * `matchedRef` est la valeur que portait le matched event au push
+   * sur le stream — typiquement embarqué dans le nouveau predicate
+   * (e.g. `{kind:'animation', type:'AnimationCompleted', ref:
+   * matchedRef}`) pour pinner la prochaine étape sur l'animation du
+   * matched event.
+   */
   chainTo?: (
     matchedEvent: FluxEvent,
     matchedRef: number,
@@ -106,20 +133,211 @@ export interface DeferredRule {
   ) => AwaitingPredicate | null;
 }
 
+/**
+ * ⚠️ ARCHITECTURE GUARD (β.3 cas #12, 2026-05-26)
+ *
+ * `RewriterRule` est la famille « Flow rewrite » (catalogue ε3 §1bis).
+ * Elle ROMPT l'invariant pure-observer du DEP : elle synthétise des
+ * events virtuels via `onTrigger` (side-effect sortant) et absorbe des
+ * events ultérieurs via `chainTo` retournant `{kind: 'absorb'}` /
+ * `{kind: 'absorb-and-close'}` (side-effect entrant — drop du routing
+ * aval).
+ *
+ * Aujourd'hui UN SEUL RewriterRule existe : `xyzLeaveWithMaterials`.
+ *
+ * AVANT D'AJOUTER UN 2e RewriterRule — REVUE D'ARCHI OBLIGATOIRE.
+ * Rule of Three : à 2 cas du même genre, extraire un processor séparé
+ * `FlowRewriteProcessor` est probablement la meilleure réponse, plutôt
+ * que d'élargir la famille rewriter dans le DEP.
+ *
+ * Le test invariant `deferred-effect-rules.spec.ts`
+ *   "β.3 cas #12 — at most one RewriterRule allowed without architecture review"
+ * verrouille cette garde au build CI (compile-test time).
+ *
+ * Cf. décisions A1 + B2 architecture review β.3 cas #12.
+ * Cf. spec d'impl `beta-3-case-12-xyz-leave-with-materials-spec.md`
+ *   §2.1 + §10 hors-scope.
+ */
+export interface RewriterRule extends BaseRule {
+  kind: 'rewriter';
+
+  /**
+   * Side-effect au moment du trigger. Acquiert des ressources (locks,
+   * etc.) + synthétise des events virtuels via le sink. Retourne
+   * `{payload?}` — le payload sera porté tel quel par la deferred et
+   * passé à `chainTo` (lecture seule pour le DEP, mutable côté rule)
+   * et à `onClose?` (libération de ressources).
+   */
+  onTrigger: (
+    event: FluxEvent,
+    triggerRef: number,
+    sinks: RuleSinks,
+  ) => { payload?: unknown };
+
+  /**
+   * Hook de libération appelé sur TOUS les chemins de fermeture de la
+   * deferred :
+   *   - `'matched'`     — `chainTo` a retourné `null` / `absorb-and-close`.
+   *   - `'timeout'`     — `DEFERRED_TIMEOUT_MS` écoulé sans match.
+   *   - `'checkpoint'`  — `applyReset({CONNECTION_LIFETIME})`.
+   *
+   * Pattern try/finally formalisé au niveau du contrat de rule —
+   * permet de release un lock / un timer / un float préparé sans
+   * fuite, peu importe le chemin. `silentReset` NE l'appelle PAS
+   * (intentionnel — le stream subscriber meurt avec le même scope,
+   * émettre une closure polluerait un stream que personne ne lit).
+   */
+  onClose?: (
+    payload: unknown,
+    reason: CloseReason,
+  ) => void;
+
+  /**
+   * Verdict étendu — peut retourner les verbes classiques
+   * (`AwaitingPredicate` / `null`) OU les nouveaux verbes
+   * d'absorption.
+   */
+  chainTo: (
+    matchedEvent: FluxEvent,
+    matchedRef: number,
+    deferred: ActiveDeferredView,
+  ) => RewriterVerdict;
+}
+
+/**
+ * Verdict retourné par `RewriterRule.chainTo`. Discrimination par valeurs
+ * spécifiques `'absorb'` / `'absorb-and-close'` AVANT typage comme
+ * `AwaitingPredicate` — cf. `interpretRewriterVerdict` ci-dessous.
+ *
+ * - `AwaitingPredicate` (truthy, peut avoir un champ `kind` qui n'est
+ *   PAS `'absorb'` ni `'absorb-and-close'`) → re-arm.
+ * - `null` → close + EffectReady.
+ * - `{kind: 'absorb'}` → drop le routing aval, deferred reste ouverte.
+ * - `{kind: 'absorb-and-close'}` → drop le routing aval + close + EffectReady.
+ */
+export type RewriterVerdict =
+  | AwaitingPredicate
+  | null
+  | { kind: 'absorb' }
+  | { kind: 'absorb-and-close' };
+
+export type DeferredRule = ObserverRule | RewriterRule;
+
+/** Raisons de fermeture d'une deferred — passées à `RewriterRule.onClose?`. */
+export type CloseReason = 'matched' | 'timeout' | 'checkpoint';
+
+// ---------------------------------------------------------------------------
+// RuleSinks (β.3 cas #12) — surface d'effet pour les RewriterRule
+// ---------------------------------------------------------------------------
+
+/**
+ * Sinks exposés aux `RewriterRule` au moment de `onTrigger`.
+ * Intentionnellement minimal — chaque méthode est un POINT DE COUPLAGE
+ * du DEP avec le reste de l'app. Ajouter une méthode = inviter un
+ * nouveau use case ; à faire en revue d'archi, pas opportunément.
+ *
+ * Le sink par défaut (`NO_OP_SINKS`) fait rien — utilisable comme test
+ * seam et en prod tant qu'aucun `RewriterRule` n'est défini. Le wiring
+ * réel (vers `dataSource.enqueueVirtualMoves` + `rbs.lockZone`) est
+ * fait par l'orchestrator au Commit 2.
+ *
+ * Résolution Q5 audit Commit 1 (Axel 2026-05-26) — 2 méthodes.
+ * `lockZone(zoneId, absolutePlayer)` accepte un index absolu ; la
+ * conversion absolu→relatif est INTERNE au sink (via
+ * `ctx.relativePlayer`). La rule reste agnostique de la convention
+ * DOM `${zoneId}-${relPlayer}`.
+ */
+export interface RuleSinks {
+  /**
+   * Enqueue N events virtuels APRÈS l'event courant en cours de
+   * dispatch, AVANT les events suivants déjà enqueués mais pas encore
+   * dispatchés. Si appelé en dehors d'un dispatch (queue vide),
+   * insère en tête de queue.
+   *
+   * Les events fournis DOIVENT être taggués virtuels via
+   * `tagAsVirtual` du `virtual-event-registry` (cf. §4.6 spec cas #12).
+   */
+  enqueueVirtualMoves: (events: readonly MoveMsg[]) => void;
+
+  /**
+   * Acquiert un lock ref-compté externe sur la zone identifiée par
+   * `(zoneId, absolutePlayer)`. Le sink fait la conversion
+   * absolu→relatif via `ctx.relativePlayer` et construit la zone key
+   * DOM `${zoneId}-${relPlayer}` en interne.
+   *
+   * Le rule DOIT release ce lock via le hook `onClose?(payload, reason)`
+   * — sur les 3 chemins (matched / timeout / checkpoint). Pattern
+   * try/finally encodé par l'API. Sans release, fuite de lock = zone
+   * jamais re-committée = bug visuel persistant.
+   *
+   * Le lock externe est superposable aux locks internes que les
+   * handlers acquièrent eux-mêmes — c'est du ref-counting, donc
+   * indépendant. La zone reste rendered DOM tant que l'un OU l'autre
+   * est actif.
+   */
+  lockZone: (zoneId: number, absolutePlayer: number) => ZoneLock;
+}
+
+/**
+ * Sentinel pour les zones lockables. La méthode `release()` peut être
+ * appelée plusieurs fois sans erreur (idempotent) — aide pour les
+ * branches `onClose?` qui peuvent être appelées sur plusieurs chemins
+ * fermant la même deferred (matched + checkpoint en cascade dans un
+ * burst).
+ *
+ * Différent de `RenderedBoardStateService.ZoneLock` (qui expose aussi
+ * `commit()`) — ce ZoneLock-ci est minimaliste, dédié au DEP. Le sink
+ * réel (Commit 2) wrappe le `RenderedBoardStateService.ZoneLock` et
+ * n'expose que `release()` (le commit est implicite à la dernière
+ * release par ref-counting).
+ */
+export interface ZoneLock {
+  release: () => void;
+}
+
+/**
+ * Default sinks — no-op pour tests + back-compat tant qu'aucun
+ * `RewriterRule` n'est défini en prod. Le constructor du DEP les
+ * utilise par défaut, ce qui garantit qu'une instanciation sans
+ * sinks (test legacy 4-args, prod si pas encore wired) ne casse rien
+ * et n'a aucun side-effect.
+ */
+export const NO_OP_SINKS: RuleSinks = {
+  enqueueVirtualMoves: () => { /* wired by orchestrator in prod (Commit 2) */ },
+  lockZone: () => ({ release: () => { /* no-op */ } }),
+};
+
+// ---------------------------------------------------------------------------
+// ActiveDeferred — état interne portant payload + rule
+// ---------------------------------------------------------------------------
+
 /** Read-only view passed to `chainTo` — lets a rule peek at the
  *  deferred without mutating the DEP's internal state. */
 export interface ActiveDeferredView {
   readonly name: string;
   readonly triggerRef: number;
   readonly awaitingPredicate: AwaitingPredicate;
+  /**
+   * β.3 cas #12 — opaque pour le DEP (lecture seule depuis sa
+   * perspective), mutable côté rule. Stocké au moment de `openDeferred`
+   * via `RewriterRule.onTrigger` qui retourne `{payload?}`. Passé à
+   * `chainTo` et à `onClose?` tel quel. Permet de porter un état
+   * inter-events (compteur de matériaux restants, lock acquis, etc.)
+   * sans que le DEP ait à le connaître.
+   */
+  readonly payload?: unknown;
 }
 
 interface ActiveDeferred extends ActiveDeferredView {
   awaitingPredicate: AwaitingPredicate;
   timerId: ReturnType<typeof setTimeout>;
-  /** β.2b — the rule that opened this deferred. Stored so `tryRearm`
-   *  can reach `chainTo` in O(1) without scanning the rules table. */
+  /** The rule that opened this deferred. Stored so `tryRearm` / close
+   *  / abandon paths can reach `chainTo` / `onClose?` in O(1) without
+   *  scanning the rules table. */
   rule: DeferredRule;
+  /** Mutable payload — un rule peut le muter au fil des `chainTo`
+   *  (decrement counters, etc.). */
+  payload?: unknown;
 }
 
 /**
@@ -153,12 +371,17 @@ export class DeferredEffectProcessor implements ResetTarget {
    *              `setTimeout`/`clearTimeout`.
    * @param rules Optional rule table override (test injection). Production
    *              uses the module-level `RULES` constant.
+   * @param sinks β.3 cas #12 — sinks exposés aux `RewriterRule` au
+   *              moment de `onTrigger`. Default `NO_OP_SINKS` (back-
+   *              compat + tests legacy). Production (Commit 2) wire
+   *              `dataSource.enqueueVirtualMoves` + `rbs.lockZone`.
    */
   constructor(
     private readonly emit: (event: DeferredFluxEvent) => void,
     private readonly getLogger: () => DuelLogger | undefined = () => undefined,
     private readonly clock: DeferredClock = REAL_CLOCK,
     private readonly rules: readonly DeferredRule[] = RULES,
+    private readonly sinks: RuleSinks = NO_OP_SINKS,
   ) {}
 
   /**
@@ -166,10 +389,13 @@ export class DeferredEffectProcessor implements ResetTarget {
    *  (a) Drain — match the event against every active deferred's
    *      `awaitingPredicate`. Each match either re-arms the deferred
    *      (via `chainTo`, passing the captured `ref` so a rule can
-   *      target the matched event's animation completion) or emits
-   *      `EffectReady` + drops the entry.
+   *      target the matched event's animation completion), emits
+   *      `EffectReady` + drops the entry, OR (β.3 cas #12) absorbs
+   *      the event from routing aval (RewriterRule only).
    *  (b) Open — match the event against every rule's `trigger`. Each
-   *      match opens a new deferred + emits `DeferredEffect`.
+   *      match opens a new deferred + emits `DeferredEffect`. For
+   *      `RewriterRule`, also calls `onTrigger(event, ref, sinks)` and
+   *      stores the returned `payload` on the active deferred.
    *
    * (a) runs BEFORE (b) so a single event can both fulfill an existing
    * deferred AND trigger a new one of the same name without collision.
@@ -179,10 +405,20 @@ export class DeferredEffectProcessor implements ResetTarget {
    * `AnimationCompleted` events will carry, so a `chainTo` callback
    * can construct a predicate `{kind:'animation', ref: matchedRef}`.
    * If omitted (test seam) the DEP uses its own internal counter.
+   *
+   * @returns `{absorbed: true}` if at least one `RewriterRule` deferred
+   *          absorbed the event (the orchestrator should SKIP the
+   *          routing aval + emit synthetic `AnimationStarted` /
+   *          `AnimationCompleted` markers for stream consistency).
+   *          `{absorbed: false}` otherwise — the common case.
    */
-  observe(event: FluxEvent, ref: number = this._nextRef++): void {
-    this.drainMatchingDeferreds(event, ref);
+  observe(
+    event: FluxEvent,
+    ref: number = this._nextRef++,
+  ): { absorbed: boolean } {
+    const drainResult = this.drainMatchingDeferreds(event, ref);
     this.openDeferredsForRules(event, ref);
+    return drainResult;
   }
 
   // ---------------------------------------------------------------------------
@@ -194,6 +430,8 @@ export class DeferredEffectProcessor implements ResetTarget {
    *   - `CONNECTION_LIFETIME` present (STATE_SYNC / RematchStarted) →
    *     emit `EffectAbandoned(reason='checkpoint')` for every active
    *     deferred (in insertion order), then clear `_active` + timers.
+   *     Each `RewriterRule.onClose?(payload, 'checkpoint')` is called
+   *     BEFORE the emit (β.3 cas #12, decision D2 — release garanti).
    *   - Otherwise (e.g. PERSPECTIVE_LIFETIME) → no-op. The dispatcher's
    *     own scope filter already prevents the call in PERSPECTIVE-only
    *     dispatches, but the guard is kept for clarity + defense in
@@ -212,14 +450,16 @@ export class DeferredEffectProcessor implements ResetTarget {
 
   /**
    * Silent reset — drops every active deferred + clears every timer
-   * WITHOUT emitting `EffectAbandoned`. Mirror of
-   * `BoundaryProcessor.silentReset()`: called by
-   * `DuelEventProcessor.reset()` on hard teardown (duel destroy / fresh
-   * start) where the stream subscriber dies with the same scope, so
-   * emitting closures would only pollute a stream nobody reads.
+   * WITHOUT emitting `EffectAbandoned` and WITHOUT calling
+   * `RewriterRule.onClose?`. Mirror of `BoundaryProcessor.silentReset()`:
+   * called by `DuelEventProcessor.reset()` on hard teardown (duel
+   * destroy / fresh start) where the stream subscriber dies with the
+   * same scope, so emitting closures would only pollute a stream
+   * nobody reads.
    *
    * Use `applyReset({CONNECTION_LIFETIME})` from a §3.6 checkpoint when
-   * the journal SHOULD see the closures.
+   * the journal SHOULD see the closures + the rules SHOULD release
+   * their resources.
    */
   silentReset(): void {
     for (const deferred of this._active.values()) {
@@ -247,16 +487,71 @@ export class DeferredEffectProcessor implements ResetTarget {
   // Internals
   // ---------------------------------------------------------------------------
 
-  private drainMatchingDeferreds(event: FluxEvent, ref: number): void {
+  private drainMatchingDeferreds(
+    event: FluxEvent,
+    ref: number,
+  ): { absorbed: boolean } {
+    let absorbed = false;
     // Iterate over a snapshot so mid-iteration `_active.delete` + reopen
     // by `chainTo` are safe. Map insertion order is preserved by JS
     // semantics, so collisions later evict the older entry deterministically.
     for (const [name, deferred] of [...this._active]) {
       if (!this.matches(event, deferred.awaitingPredicate)) continue;
-      const rearmed = this.tryRearm(event, ref, deferred);
-      if (rearmed) continue;
-      this.closeReady(name, deferred);
+
+      // β.3 cas #12 — branchement par `kind` du rule. RewriterRule
+      // peut retourner les nouveaux verbes 'absorb' / 'absorb-and-close'
+      // en plus des verbes classiques (AwaitingPredicate / null).
+      if (deferred.rule.kind === 'rewriter') {
+        const verdict = deferred.rule.chainTo(event, ref, deferred);
+        const action = this.interpretRewriterVerdict(verdict);
+        switch (action.kind) {
+          case 'rearm':
+            this.rearmInPlace(deferred, action.predicate);
+            break;
+          case 'close':
+            this.closeReady(name, deferred, 'matched');
+            break;
+          case 'absorb':
+            absorbed = true;
+            break;
+          case 'absorb-and-close':
+            absorbed = true;
+            this.closeReady(name, deferred, 'matched');
+            break;
+        }
+      } else {
+        // ObserverRule (legacy) — chainTo retourne AwaitingPredicate |
+        // null | undefined. Aucun changement de comportement vs β.2b.
+        const rearmed = this.tryRearmObserver(event, ref, deferred);
+        if (rearmed) continue;
+        this.closeReady(name, deferred, 'matched');
+      }
     }
+    return { absorbed };
+  }
+
+  /**
+   * β.3 cas #12 — discrimine le `RewriterVerdict`. Test sur valeurs
+   * spécifiques `'absorb'` / `'absorb-and-close'` AVANT typage comme
+   * `AwaitingPredicate` — résolution Q2 audit (Axel 2026-05-26,
+   * Option B). Un `AwaitingPredicate` peut LUI AUSSI avoir un champ
+   * `kind` (e.g. `{kind: 'animation', type: 'AnimationCompleted',
+   * ref: 42}` est un rearm valide), donc l'ordre de test est
+   * critique.
+   */
+  private interpretRewriterVerdict(
+    verdict: RewriterVerdict,
+  ):
+    | { kind: 'close' }
+    | { kind: 'absorb' }
+    | { kind: 'absorb-and-close' }
+    | { kind: 'rearm'; predicate: AwaitingPredicate }
+  {
+    if (verdict === null) return { kind: 'close' };
+    const k = (verdict as { kind?: string }).kind;
+    if (k === 'absorb') return { kind: 'absorb' };
+    if (k === 'absorb-and-close') return { kind: 'absorb-and-close' };
+    return { kind: 'rearm', predicate: verdict as AwaitingPredicate };
   }
 
   private openDeferredsForRules(event: FluxEvent, ref: number): void {
@@ -298,8 +593,20 @@ export class DeferredEffectProcessor implements ResetTarget {
       () => this.timeoutAbandon(name),
       DEFERRED_TIMEOUT_MS,
     );
+
+    // β.3 cas #12 — call `onTrigger` for RewriterRule (side-effects:
+    // enqueue virtuals, acquire locks). Returns the payload to store
+    // on the active deferred. Done AFTER the timer is armed so a
+    // synchronous re-entry from a sink (unlikely but defensive) finds
+    // the deferred ready.
+    let payload: unknown | undefined;
+    if (rule.kind === 'rewriter') {
+      const result = rule.onTrigger(event, ref, this.sinks);
+      payload = result.payload;
+    }
+
     this._active.set(name, {
-      name, triggerRef: ref, awaitingPredicate: predicate, timerId, rule,
+      name, triggerRef: ref, awaitingPredicate: predicate, timerId, rule, payload,
     });
     this.emit({
       kind: 'deferred', type: 'DeferredEffect',
@@ -307,34 +614,53 @@ export class DeferredEffectProcessor implements ResetTarget {
     } satisfies DeferredEffectEvent);
   }
 
-  /** If the deferred's rule declares `chainTo` and the callback returns
-   *  a fresh predicate, re-arm the deferred in place (same name + same
-   *  `triggerRef`, fresh timer, no `EffectReady` emitted). Returns true
-   *  iff the deferred was re-armed. `matchedRef` is the ref the matched
-   *  event carries on the stream — the rule typically embeds it in the
-   *  new predicate (e.g. `{kind:'animation', type:'AnimationCompleted',
-   *  ref: matchedRef}`) to pin the next step to the matched event's
-   *  animation completion. */
-  private tryRearm(
+  /**
+   * Re-arm un deferred ObserverRule via son `chainTo` optionnel.
+   * Renvoie `true` ssi la deferred a été re-armée (chainTo défini ET
+   * retournant un nouveau predicate).
+   */
+  private tryRearmObserver(
     event: FluxEvent,
     matchedRef: number,
     deferred: ActiveDeferred,
   ): boolean {
+    if (deferred.rule.kind === 'rewriter') return false; // type-narrow guard
     if (!deferred.rule.chainTo) return false;
     const nextPredicate = deferred.rule.chainTo(event, matchedRef, deferred);
     if (nextPredicate === null) return false;
+    this.rearmInPlace(deferred, nextPredicate);
+    return true;
+  }
+
+  /**
+   * Re-arm un deferred IN PLACE — fresh timer, fresh predicate, même
+   * nom + même triggerRef. NE PAS appeler `onClose?` (la deferred
+   * n'est pas fermée).
+   */
+  private rearmInPlace(deferred: ActiveDeferred, nextPredicate: AwaitingPredicate): void {
     this.clock.clearTimeout(deferred.timerId);
     deferred.awaitingPredicate = nextPredicate;
     deferred.timerId = this.clock.setTimeout(
       () => this.timeoutAbandon(deferred.name),
       DEFERRED_TIMEOUT_MS,
     );
-    return true;
   }
 
-  private closeReady(name: string, deferred: ActiveDeferred): void {
+  private closeReady(
+    name: string,
+    deferred: ActiveDeferred,
+    reason: CloseReason,
+  ): void {
     this.clock.clearTimeout(deferred.timerId);
     this._active.delete(name);
+
+    // β.3 cas #12 — release des ressources du rule (lock, timer, etc.)
+    // AVANT l'émission de l'EffectReady, pour que tout consumer du flux
+    // qui observe l'EffectReady voie un état déjà nettoyé.
+    if (deferred.rule.kind === 'rewriter') {
+      deferred.rule.onClose?.(deferred.payload, reason);
+    }
+
     this.emit({
       kind: 'deferred', type: 'EffectReady',
       name, triggerRef: deferred.triggerRef,
@@ -346,6 +672,13 @@ export class DeferredEffectProcessor implements ResetTarget {
     if (!deferred) return;
     this.clock.clearTimeout(deferred.timerId);
     this._active.delete(name);
+
+    // β.3 cas #12 — release aussi sur timeout / checkpoint. Garantie
+    // no-leak peu importe le chemin de fermeture.
+    if (deferred.rule.kind === 'rewriter') {
+      deferred.rule.onClose?.(deferred.payload, reason);
+    }
+
     this.emit({
       kind: 'deferred', type: 'EffectAbandoned',
       name, triggerRef: deferred.triggerRef, reason,
