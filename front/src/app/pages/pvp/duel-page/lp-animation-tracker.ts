@@ -148,10 +148,26 @@ export class LpAnimationTracker implements ResetTarget {
    * the two slices declaratively:
    *   - DUEL_LIFETIME present → clear trackedLp + pending commits
    *   - PERSPECTIVE_LIFETIME present → clear the in-flight animation
-   * The hierarchical cascade (§3.5) means a DUEL reset always also
-   * carries PERSPECTIVE, so both branches fire — equivalent to the
-   * legacy `reset()`. A PerspectiveSwitched (PERSPECTIVE only) clears
-   * the animation but preserves trackedLp + pending commits.
+   *
+   * The declared `scope = DUEL_LIFETIME` means a PerspectiveSwitched
+   * (PERSPECTIVE only) does NOT reach this `applyReset` at all — the
+   * dispatcher only fans out to targets whose scope is in the *expanded*
+   * invalidated set, and PERSPECTIVE expansion = {PERSPECTIVE} alone
+   * (PERSPECTIVE is the most volatile rung, nothing strictly below).
+   * The PERSPECTIVE branch below thus fires only as defense-in-depth
+   * when a wider reset (DUEL_LIFETIME) cascades through this target —
+   * DUEL expansion = {DUEL, CONNECTION, PERSPECTIVE}, so both branches
+   * run, which is equivalent to the legacy `reset()`.
+   *
+   * **Known dette (party-mode 2026-05-26, Murat finding #3).** With LP
+   * declared DUEL_LIFETIME, an `animatingLpPlayer` in flight at the
+   * moment of a SOLO `switchPlayer` is NOT cleared by the dispatcher
+   * (the PERSPECTIVE branch is unreached). In practice this is benign
+   * because SOLO switches happen at prompt boundaries with the queue
+   * already drained — but the invariant is unguarded. Proper fix
+   * deferred to β when `BoundaryProcessor` emits typed switch events
+   * and the orchestrator can clear `animatingLpPlayer` explicitly at
+   * `resetForSwitch`, rather than relying on scope semantics.
    *
    * `checkpointPayload` is currently unused (LP state will re-seed
    * from the BOARD_STATE payload directly via `syncFromBoardState`
