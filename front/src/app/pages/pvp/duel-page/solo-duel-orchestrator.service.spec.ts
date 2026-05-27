@@ -152,6 +152,18 @@ describe('SoloDuelOrchestratorService (γ commit 3)', () => {
   });
 });
 
+describe('PerspectiveEvent type guard (γ commit 5)', () => {
+  it('isPerspectiveEvent narrows on `kind === "perspective"`', async () => {
+    const { isPerspectiveEvent } = await import('../types/perspective-event.types');
+    const event = { kind: 'perspective', type: 'PerspectiveSwitched', from: 0, to: 1 } as const;
+    expect(isPerspectiveEvent(event)).toBeTrue();
+    expect(isPerspectiveEvent({ kind: 'boundary', type: 'ChainStarted', chainId: 1 })).toBeFalse();
+    expect(isPerspectiveEvent({ type: 'MSG_MOVE' })).toBeFalse();
+    expect(isPerspectiveEvent(null)).toBeFalse();
+    expect(isPerspectiveEvent(undefined)).toBeFalse();
+  });
+});
+
 /** Minimal connection stub for switchPerspective + cleanup wiring. */
 function makeStubConnection(): {
   connectionStatus: () => 'connected';

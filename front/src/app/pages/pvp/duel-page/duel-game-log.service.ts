@@ -21,10 +21,12 @@ import {
   type ScopeCategory,
 } from '../projections';
 import type {
-  AnimationFluxEvent, BoundaryEvent, DeferredFluxEvent, DuelState, StreamEvent,
+  AnimationFluxEvent, BoundaryEvent, DeferredFluxEvent, DuelState,
+  PerspectiveEvent, StreamEvent,
 } from '../types';
 import {
   isAnimationFluxEvent, isBoundaryEvent, isDeferredFluxEvent,
+  isPerspectiveEvent,
 } from '../types';
 import type { InternalTransportEvent } from './queue-runner-events';
 import { GameLogBuilder } from '../game-log/game-log-builder';
@@ -37,12 +39,15 @@ import { EMPTY_DUEL_STATE } from '../types';
  * cross-event correlation markers consumed by projections, never by
  * the legacy builder) and `InternalTransportEvent` (the runner
  * lifecycle markers absorbed onto the stream at β.2a — see
- * `game-event.types.ts`). The alias makes the intent explicit at the
- * `ingest` / `captureOpponentActivation` call sites.
+ * `game-event.types.ts`). γ commit 5 excludes `PerspectiveEvent`
+ * (UI-level marker driving the projection reset, not a journal entry).
+ * R10 (§8 spec) handles "switch flips You/Opponent in the historical
+ * lines" via a reactive computed on `DuelContext.perspectiveSource`,
+ * NOT by injecting the switch event into the builder.
  */
 type JournalEvent = Exclude<
   StreamEvent,
-  BoundaryEvent | DeferredFluxEvent | AnimationFluxEvent | InternalTransportEvent
+  BoundaryEvent | DeferredFluxEvent | AnimationFluxEvent | InternalTransportEvent | PerspectiveEvent
 >;
 
 /** Discriminate a runner internal transport event by its `kind` prefix.
@@ -300,6 +305,7 @@ export class DuelGameLogService implements ResetTarget {
     if (isDeferredFluxEvent(event)) return;
     if (isAnimationFluxEvent(event)) return;
     if (isInternalTransportEvent(event)) return;
+    if (isPerspectiveEvent(event)) return;
     this.tappedEvents.push(event);
     this.ingest(event);
     this.captureOpponentActivation(event);

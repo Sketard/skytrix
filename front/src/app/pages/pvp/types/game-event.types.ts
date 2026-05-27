@@ -33,6 +33,7 @@ import type { BoundaryEvent } from './boundary-event.types';
 import type { DeferredFluxEvent } from './deferred-effect.types';
 import type { AnimationFluxEvent } from './animation-flux-event.types';
 import type { InternalTransportEvent } from '../duel-page/queue-runner-events';
+import type { PerspectiveEvent } from './perspective-event.types';
 
 export type GameEvent =
   | MoveMsg
@@ -113,4 +114,5 @@ export type StreamEvent =
   | BoundaryEvent
   | DeferredFluxEvent
   | AnimationFluxEvent
-  | InternalTransportEvent;
+  | InternalTransportEvent
+  | PerspectiveEvent;

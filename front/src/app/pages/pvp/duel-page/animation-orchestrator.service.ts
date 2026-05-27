@@ -1098,24 +1098,55 @@ export class AnimationOrchestratorService {
   }
 
   /**
-   * γ commit 3 — stub volontairement vide. Le commit 5 ajoute
-   * l'émission `PerspectiveSwitched(from, to)` sur le flux + le
-   * dispatch `applyReset({PERSPECTIVE_LIFETIME})` via
-   * `ScopeResetDispatcher`. Aujourd'hui, le service SOLO appelle
-   * cette méthode dans `switchPerspective` pour matérialiser le
-   * contrat — au commit 5 elle deviendra l'unique source de reset
-   * PERSPECTIVE_LIFETIME au lieu de `resetForSwitch`.
+   * γ commit 5 — émission de `PerspectiveSwitched(from, to)` sur le
+   * flux + dispatch `applyReset({PERSPECTIVE_LIFETIME})` via
+   * `ScopeResetDispatcher`. Source UNIQUE de reset PERSPECTIVE_LIFETIME
+   * pour le SOLO orchestrator. La méthode `resetForSwitch` plus ancienne
+   * reste comme escape hatch (rematch effect en attendant que le
+   * commit 5 cascade le rematch lui-même via un checkpoint dédié), à
+   * retirer définitivement au commit 8.
    *
-   * Le `from`/`to` est passé en argument pour que le payload
-   * stream du commit 5 soit déjà disponible sans changer la
-   * signature côté SOLO. Pas de typage `0 | 1` strict ici parce
-   * qu'on accepte aussi des numbers (le service SOLO les construit
-   * via `from === 0 ? 1 : 0` qui revient au compilateur en
-   * `number`).
+   * Ordering garanti (cf. §4.5 spec) :
+   *   1. `pushToStream` écrit l'event sur `_eventStream` (atomique).
+   *   2. Le `BaseProjection.attachEventStream` `effect()` voit le
+   *      nouvel event sur le tick suivant et le passe à `applyEvent`
+   *      (chaque projection narrow via `kind === 'perspective'`).
+   *   3. `scopeDispatcher.dispatch({PERSPECTIVE_LIFETIME})` est appelé
+   *      ici SYNCHRONEMENT, après le `pushToStream`. Tous les
+   *      `ResetTarget` registered (cf. CLAUDE.md "Orchestrator
+   *      Decomposition" + α.4b) reçoivent `applyReset` ; les
+   *      projections PERSPECTIVE_LIFETIME (BattleAnimationTracker,
+   *      animatingLpPlayer, targetedZoneKeys, swapGraveDeckKeys,
+   *      animatingZone, counterPulse, isAnimating,
+   *      chainResolutionAnnounce, overlayShowReady) reset au passage.
+   *
+   * Ne déclenche PAS (CONNECTION_LIFETIME ou plus haut, par construction) :
+   *   · `DuelEventProcessor` (activeChainLinks, chainPhase, pendingChainEntry, buffer)
+   *   · `RenderedBoardStateService` (locks)
+   *   · `DeferredEffectProcessor` (pas d'`EffectAbandoned` — cf. §3.7bis
+   *     chantier ; le DEP est CONNECTION_LIFETIME, son scope `applyReset`
+   *     ne s'active qu'à STATE_SYNC / Rematch)
+   *   · `LpAnimationTracker.trackedLp + _pendingLpCommits` (DUEL_LIFETIME)
+   *   · `DuelGameLogService` (DUEL_LIFETIME — R10 acté §8 : journal réactif
+   *     au render, l'historique re-flippe You/Opponent au switch sans
+   *     reset du contenu)
+   *   · `BoundaryProcessor` (CONNECTION_LIFETIME, pas de `forceClosure`
+   *     parce qu'un switch n'est pas un checkpoint)
    */
-  notifyPerspectiveSwitch(_from: 0 | 1, _to: 0 | 1): void {
-    // commit 5 : push `PerspectiveSwitched` sur _eventStream via
-    // pushToStream → ScopeResetDispatcher.dispatch({PERSPECTIVE_LIFETIME}).
+  notifyPerspectiveSwitch(from: 0 | 1, to: 0 | 1): void {
+    this.pushToStream({
+      kind: 'perspective',
+      type: 'PerspectiveSwitched',
+      from,
+      to,
+    });
+    // Dispatch reset PERSPECTIVE_LIFETIME. Pendant la transition β.x
+    // (resetForSwitch encore référencé par le rematch effect SOLO),
+    // les deux mécanismes coexistent — un switch passe ici, un
+    // rematch passe encore par resetForSwitch.
+    this.scopeDispatcher?.dispatch(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
+    this.logger.log(DuelLogCategory.PIPELINE,
+      'notifyPerspectiveSwitch %d → %d → dispatch({PERSPECTIVE_LIFETIME})', from, to);
   }
 
   resetForSwitch(): void {

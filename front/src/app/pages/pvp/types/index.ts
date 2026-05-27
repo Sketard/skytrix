@@ -20,4 +20,8 @@ export {
   AnimationFluxEvent,
   isAnimationFluxEvent,
 } from './animation-flux-event.types';
+export {
+  PerspectiveEvent, PerspectiveSwitchedEvent,
+  isPerspectiveEvent,
+} from './perspective-event.types';
 export { ConnectionStatus } from './connection-status.types';
