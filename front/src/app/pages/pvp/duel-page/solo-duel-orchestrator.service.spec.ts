@@ -21,7 +21,11 @@ import { ReducedMotionService } from '../../../services/reduced-motion.service';
 describe('SoloDuelOrchestratorService (γ commit 3)', () => {
   let service: SoloDuelOrchestratorService;
   let animService: { processor: DuelEventProcessor; resetForSwitch: jasmine.Spy; notifyPerspectiveSwitch: jasmine.Spy };
-  let wsService: { setActiveConnection: jasmine.Spy; pendingPrompt: () => unknown };
+  let wsService: {
+    bindSharedProcessor: jasmine.Spy;
+    bindTransports: jasmine.Spy;
+    pendingPrompt: () => unknown;
+  };
   let duelCtx: DuelContext;
   let pendingPromptSignal: ReturnType<typeof signal<unknown>>;
 
@@ -37,7 +41,10 @@ describe('SoloDuelOrchestratorService (γ commit 3)', () => {
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
     };
     wsService = {
-      setActiveConnection: jasmine.createSpy('setActiveConnection'),
+      // γ commit 4 — `setActiveConnection` removed. SOLO calls
+      // `bindSharedProcessor` + `bindTransports` once at init.
+      bindSharedProcessor: jasmine.createSpy('bindSharedProcessor'),
+      bindTransports: jasmine.createSpy('bindTransports'),
       pendingPrompt: () => pendingPromptSignal(),
     };
 

@@ -75,7 +75,12 @@ export class DuelConnection {
    * `DuelTransport`. La même `DuelConnection` se reconfigure via le
    * constructor option. PvP-normal n'est pas impacté.
    */
-  private readonly processor: DuelEventProcessor;
+  // γ commit 4 — exposed (readonly) so `DuelWebSocketService` can resolve
+  // chain-state reads (`activeChainLinks`, `chainPhase`, `pendingChainEntry`,
+  // `animationQueue`) directly from the processor. PvP-normal default
+  // connection: this is its locally-owned processor. SOLO connections:
+  // points at the shared `AnimationOrchestratorService.processor`.
+  readonly processor: DuelEventProcessor;
   private readonly rbs = new RenderedBoardStateService();
   /** Full RBS — write/control surface used by AnimationDataSource (orchestrator + managers). */
   readonly renderedBoardState = this.rbs;
@@ -254,7 +259,8 @@ export class DuelConnection {
    * Palier 0 — attach the EventStream sink (orchestrator's
    * `notifyOutOfBandEvent`). Wires the processor's `onEvent` callback so
    * `MSG_CHAIN_NEGATED` surfaces in the stream too. Idempotent — calling
-   * again replaces the previous sink (used by `setActiveConnection`).
+   * again replaces the previous sink (re-applied by `bindTransports`
+   * on a SOLO init or rematch). γ commit 4 dropped `setActiveConnection`.
    */
   attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
     this._outOfBandSink = sink;

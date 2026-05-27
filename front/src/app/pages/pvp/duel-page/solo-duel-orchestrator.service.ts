@@ -134,27 +134,22 @@ export class SoloDuelOrchestratorService {
     conn0.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);
     conn1.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);
 
-    // STATE_SYNC route vers le processor partagé via wsService — un
-    // seul checkpoint à traiter, plus de double-reset façon ancien
-    // code (cf. R1 + R4 spec §8). Logger PIPELINE est ajouté au
-    // commit 4 pour mesurer l'ordre de réception des 2 STATE_SYNC.
-    conn0.onStateSync = (msg) => this.wsService.onStateSync?.(msg);
-    conn1.onStateSync = (msg) => this.wsService.onStateSync?.(msg);
-
     this._connections.set([conn0, conn1]);
     conn0.connect(token1);
     conn1.connect(token2);
 
-    // Perspective initiale = 0 (own player at bottom). DuelContext
-    // est `configure()`-d par le composant duel-page avant l'init
-    // SOLO ; le signal `perspective` est créé par défaut à 0 (cf.
-    // duel-context.ts), pas besoin d'écriture explicite ici.
-
-    // wsService route ses lectures vers conn0 jusqu'au commit 4 qui
-    // supprimera `_activeConnection`. À ce moment-là le wsService
-    // lira `sharedProcessor` directement et les `_transports[idx]`
-    // pour les accumulateurs transport-local.
-    this.wsService.setActiveConnection(conn0);
+    // γ commit 4 — wsService routing :
+    //   · bindSharedProcessor → les lectures partagées (chain machine
+    //     + animation queue) viennent du processor unique.
+    //   · bindTransports → les lectures transport-local
+    //     (pendingPrompt, timerState, rematchState, …) viennent de
+    //     `_transports[perspective()]`, et le wsService câble lui-même
+    //     les `onStateSync` des 2 connections avec un log PIPELINE
+    //     pour R1 (mesure dédup checkpoint).
+    // Perspective initiale = 0 (own player at bottom, default du
+    // signal DuelContext.perspectiveSource).
+    this.wsService.bindSharedProcessor(sharedProcessor);
+    this.wsService.bindTransports(conn0, conn1);
 
     this.setupRematchEffects();
   }
@@ -196,21 +191,19 @@ export class SoloDuelOrchestratorService {
     this.animationService.notifyPerspectiveSwitch(from, to);
 
     // Flip CSS-driven (le board-host transform sera ajouté au commit 6).
+    // Le wsService re-évalue ses computed transport-local sur cette
+    // mutation (via `active()` qui lit `_transport_connections[perspective()]`).
     this.duelCtx.perspective().set(to);
 
-    // Le wsService lit toujours `_activeConnection` jusqu'au commit
-    // 4. Maintenir le routing cohérent avec la perspective courante,
-    // sans appel à `clearAnimationQueueOnly` (le processor est unique,
-    // rien à clear) et sans `clearLastSelections` (les
-    // accumulateurs prompt-flow sont transport-local et n'ont pas à
-    // être vidés au switch — ils restent attachés à leur identité
-    // serveur, le wsService les lira via `_transports[perspective]`
-    // au commit 4).
-    this.wsService.setActiveConnection(c[to]);
-    // setBoardActive est requis pour que la nouvelle connection
-    // active bufferise BOARD_STATE correctement (cf. ancien code,
-    // sans cet appel le board re-rendrait avec `boardActive=false`
-    // après le switch).
+    // Pas de `setActiveConnection` — supprimé au commit 4. Pas de
+    // `clearAnimationQueueOnly` (le processor est unique, rien à
+    // clear). Pas de `clearLastSelections` (accumulateurs prompt-flow
+    // transport-local — restent attachés à leur identité serveur, le
+    // wsService les lira via `_transports[perspective()]`).
+    // `setBoardActive(true)` reste pour le transport entrant : sans
+    // cet appel, une connection qui n'a jamais reçu son BOARD_STATE
+    // initial garderait `_boardActive=false` et bufferiserait ses
+    // BOARD_CHANGING events au lieu de les jouer.
     c[to].setBoardActive(true);
 
     // Debounce post-transition (durée alignée sur la future
@@ -259,8 +252,10 @@ export class SoloDuelOrchestratorService {
           // sera étendu en DUEL_LIFETIME cascade au commit 5).
           this.animationService.resetForSwitch();
           // Perspective P0 par convention en début de nouvelle partie.
+          // Le wsService re-route ses lectures transport-local sur
+          // _transports[0] via active() ; aucune `setActiveConnection`
+          // requise (commit 4).
           this.duelCtx.perspective().set(0);
-          this.wsService.setActiveConnection(c[0]);
           c[0].resetRematchStarting();
           c[1].resetRematchStarting();
           this._rematchReset.update(v => v + 1);
