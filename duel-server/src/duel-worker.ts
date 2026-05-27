@@ -23,6 +23,7 @@ import { installWasmHook, uninstallWasmHook, locateWasmMemory, snapshotAvailable
 import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, InitForkMessage } from './types.js';
 import { filterMessage } from './message-filter.js';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
+import { capturePreProcessOverlays, readOverlayMaterialsForMove, type PreProcessOverlayKey } from './pre-process-overlays.js';
 import { CardDbCache } from './card-db-cache.js';
 import { resolveDeckLoadOrder, normalizeReplayDeck } from './deck-load-order.js';
 import { runReplayPreComputation, SELECT_MESSAGE_TYPES } from './replay-precompute.js';
@@ -338,7 +339,10 @@ function locName(loc: number): string { return LOC_NAME[loc] ?? `0x${loc.toStrin
 // scannable in one screen. Helpers close over module-level state
 // (`getCardName`, `systemStrings`, `core`, `duel`, etc.) — not exported.
 
-function transformMove(msg: any): ServerMessage {
+function transformMove(
+  msg: any,
+  preProcessOverlays?: Map<PreProcessOverlayKey, number[]>,
+): ServerMessage {
   let reason = 0;
   if (core && duel && msg.to.location as number !== 0) {
     const reasonInfo = core.duelQuery(duel, {
@@ -350,33 +354,20 @@ function transformMove(msg: any): ServerMessage {
     } as never);
     reason = reasonInfo?.reason ?? 0;
   }
-  // β.3 cas #12 — R8 PROBE TEMPORARY (2026-05-26) — query OVERLAY_CARD on the
-  // SOURCE location post-duelProcess. Goal: confirm the invariant that, by the
-  // time transformMove runs, the overlays of an XYZ that just left MZONE are
-  // already gone (the query should return []). Field attached to the DTO is
-  // consumed by the front-side probe handler (logs via console.warn). TO REMOVE
-  // before merging Commit 0bis.
-  let _r8Probe: { count: number; codes: number[]; fromLoc: number; fromSeq: number } | undefined;
-  if (core && duel && msg.from.location === LOCATION.MZONE) {
-    try {
-      const probe = core.duelQuery(duel, {
-        flags: OcgQueryFlags.OVERLAY_CARD as number,
-        controller: msg.from.controller,
-        location: msg.from.location as number,
-        sequence: msg.from.sequence,
-        overlaySequence: 0,
-      } as never);
-      const codes = (probe?.overlayCards ?? []) as number[];
-      _r8Probe = {
-        count: codes.length,
-        codes,
-        fromLoc: msg.from.location as number,
-        fromSeq: msg.from.sequence,
-      };
-    } catch (err) {
-      _r8Probe = { count: -1, codes: [], fromLoc: msg.from.location as number, fromSeq: msg.from.sequence };
-    }
-  }
+
+  // β.3 cas #12 (Commit 0bis) — read overlayMaterials from the pre-process
+  // snapshot when the card leaves MZONE. The snapshot was captured BEFORE
+  // duelProcess applied the mutation, so the overlays of the now-departed
+  // XYZ remain accessible. Non-MZONE sources skipped — SZONE/HAND/DECK/EXTRA
+  // never hold XYZ materials.
+  const overlayMaterials = readOverlayMaterialsForMove(
+    preProcessOverlays,
+    msg.from.location as number,
+    msg.from.controller as 0 | 1,
+    msg.from.sequence as number,
+    LOCATION.MZONE as number,
+  );
+
   return {
     type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card),
     player: msg.from.controller,
@@ -393,7 +384,7 @@ function transformMove(msg: any): ServerMessage {
     toPosition: msg.to.position as number as Position,
     isToken: isTokenCard(msg.card),
     reason,
-    ...(_r8Probe ? { _r8Probe } as any : {}),
+    ...(overlayMaterials ? { overlayMaterials } : {}),
   };
 }
 
@@ -545,7 +536,10 @@ function transformSelectUnselect(msg: any): ServerMessage {
   };
 }
 
-function transformMessage(msg: OcgMessage): ServerMessage | null {
+function transformMessage(
+  msg: OcgMessage,
+  preProcessOverlays?: Map<PreProcessOverlayKey, number[]>,
+): ServerMessage | null {
   if (msg.type === OcgMessageType.MOVE) {
     const m = msg as any;
     dlog.debug('OCG-ORDER MOVE', { card: getCardName(m.card), code: m.card, from: `${locName(m.from.location)}/seq${m.from.sequence}`, to: `${locName(m.to.location)}/seq${m.to.sequence}`, player: m.from.controller });
@@ -567,7 +561,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return { type: 'MSG_DRAW', player: msg.player as Player, cards: msg.drawn.map(d => d.code) };
 
     case OcgMessageType.MOVE:
-      return transformMove(msg);
+      return transformMove(msg, preProcessOverlays);
 
     case OcgMessageType.DAMAGE:
       return { type: 'MSG_DAMAGE', player: msg.player as Player, amount: msg.amount };
@@ -1232,6 +1226,16 @@ function runDuelLoop(): void {
       setTimeout(() => process.exit(1), 1000);
     }, WATCHDOG_TIMEOUT_MS);
 
+    // β.3 cas #12 (Commit 0bis) — capture MZONE overlayMaterials BEFORE
+    // duelProcess applies the next batch of mutations. A post-process query
+    // on the source MZONE of a just-departed XYZ returns [] (R8 invariant);
+    // the snapshot is the only way for `transformMove` to surface the
+    // matériaux on the outgoing MSG_MOVE.
+    const preProcessOverlays = duelInstr.time(
+      'preProcessOverlays',
+      () => capturePreProcessOverlays(core!, duel!, dlog),
+    );
+
     let status: number;
     try {
       status = duelInstr.time('duelProcess', () => core!.duelProcess(duel!));
@@ -1278,8 +1282,9 @@ function runDuelLoop(): void {
       // DEBUG: Log every OCGCore message
       dlog.debug('OCG message', { type: OcgMessageType[msg.type] ?? msg.type });
 
-      // Transform and forward
-      const dto = transformMessage(msg);
+      // Transform and forward — preProcessOverlays surfaces overlayMaterials
+      // on MSG_MOVE for XYZ leaving MZONE (β.3 cas #12 Commit 0bis).
+      const dto = transformMessage(msg, preProcessOverlays);
       if (dto) {
         if (dto.type === 'MSG_MOVE') {
           dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });

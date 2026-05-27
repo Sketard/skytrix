@@ -39,11 +39,11 @@ describe('duel-instrumentation', () => {
       expect(() => instr.time('duelProcess', () => { throw new Error('boom'); })).toThrow('boom');
     });
 
-    it('snapshot exposes all six buckets', () => {
+    it('snapshot exposes all seven buckets', () => {
       const buckets = instr.snapshot().buckets.map((b) => b.bucket).sort();
       expect(buckets).toEqual([
         'buildBoardState', 'duelProcess', 'filterMessage',
-        'getCardName', 'serialize', 'workerColdStart',
+        'getCardName', 'preProcessOverlays', 'serialize', 'workerColdStart',
       ]);
     });
   });

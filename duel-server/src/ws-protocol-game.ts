@@ -37,6 +37,30 @@ export interface MoveMsg {
   isToken: boolean;
   reason: number;
   /**
+   * β.3 cas #12 (2026-05-26, Commit 0bis) — overlayMaterials of the SOURCE
+   * card AT THE MOMENT OF THE MSG_MOVE. Captured server-side in a
+   * pre-`duelProcess` snapshot, BEFORE OCGCore applies the mutation that
+   * removes the XYZ from MZONE. Without this field, the materials cannot be
+   * recovered: a post-process OVERLAY_CARD query on the source MZONE returns
+   * [] because the XYZ is already gone (R8 invariant, validated empirically
+   * 2026-05-26).
+   *
+   * Emitted only when:
+   *   (a) the card has a non-empty overlay (length > 0), AND
+   *   (b) it leaves a MZONE field zone (no capture for SZONE / HAND / DECK /
+   *       EXTRA — those locations never hold XYZ materials).
+   *
+   * Optional — absent in the vast majority of MSG_MOVE payloads so the
+   * common case stays cheap (~99% of moves concern non-XYZ cards or cards
+   * without materials). Backward-compatible: replays predating this commit
+   * have no field; `m.overlayMaterials ?? []` covers them.
+   *
+   * Read by the DEP rule `xyzLeaveWithMaterials` (Commit 1) to synthesize
+   * the OVERLAY→GRAVE virtual MSG_MOVE events that drive the float
+   * animation. See `beta-3-case-12-xyz-leave-with-materials-spec.md §4`.
+   */
+  overlayMaterials?: number[];
+  /**
    * Board-state snapshot captured immediately AFTER this event was applied
    * server-side. Populated by the replay precompute for BOARD_CHANGING events
    * that fire during `chainPhase === 'resolving'`, so the client's buffer
