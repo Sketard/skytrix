@@ -13,6 +13,7 @@ import { DrawSequenceManager } from './draw-sequence-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import type { ZoneLock } from './rendered-board-state.service';
+import { REASON_DESTROY } from './ocgcore-reason-flags';
 
 /** Pre-computed context for a single MSG_MOVE event — shared across all branch methods. */
 interface MoveContext {
@@ -146,7 +147,7 @@ export class MoveAnimationRouter {
 
     if ((mc.from === LOCATION.MZONE || mc.from === LOCATION.SZONE)
       && (mc.to === LOCATION.GRAVE || mc.to === LOCATION.BANISHED || mc.to === LOCATION.EXTRA)) {
-      const isDestroy = (mc.msg.reason & 0x1) !== 0;
+      const isDestroy = (mc.msg.reason & REASON_DESTROY) !== 0;
       return isDestroy ? this.leaveFieldDestroy(mc) : this.leaveFieldNonDestroy(mc);
     }
 

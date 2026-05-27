@@ -1,19 +1,23 @@
 // =============================================================================
-// ocgcore-reason-flags.ts — β.3 cas #12 (2026-05-26)
+// ocgcore-reason-flags.ts — back mirror (β.3 cas #12 R9 fix, 2026-05-26)
 // -----------------------------------------------------------------------------
 // OCGCore reason bitfield constants. Source de vérité authoritative :
 // `duel-server/data/scripts_full/constant.lua:125-152`.
 //
-// Isolé du fichier `animation-constants.ts` à dessein — la knowledge YGO
-// (REASON_*) n'a rien à voir avec les durations d'animation. Cf. décision
-// D2 architecture review β.3 cas #12.
+// Miroir back de `front/src/app/pages/pvp/duel-page/ocgcore-reason-flags.ts`.
+// Les valeurs sont strictement identiques aux macros C OCGCore exposées par
+// `@n1xx1/ocgcore-wasm` sur `OcgQueryFlags.REASON`.
 //
-// ⚠️ Le wasm `@n1xx1/ocgcore-wasm` émet ces valeurs telles quelles sur
-// la query `OcgQueryFlags.REASON`. NE PAS confondre avec les constantes
-// (fausses) déclarées dans `duel-server/src/game-log/game-log-builder.ts`
-// et `duel-server/src/replay-precompute.ts` (REASON_FUSION=0x8 au lieu
-// de 0x40000, REASON_XYZ=0x40 au lieu de 0x200000, etc.) — bug pré-
-// existant orthogonal, signalé dans R9 spec cas #12.
+// ⚠️ Historique (R9 spec cas #12) — `game-log-builder.ts`,
+// `replay-precompute.ts` ET `front/src/app/pages/pvp/game-log/game-log-builder.ts`
+// déclaraient leur propres constantes locales avec des valeurs FAUSSES
+// (REASON_FUSION=0x8 au lieu de 0x40000, REASON_XYZ=0x40 au lieu de 0x200000,
+// REASON_LINK=0x80 au lieu de 0x10000000, etc.). Conséquence : toutes les
+// branches Fusion/Synchro/XYZ/Link/Ritual des labels de summon ne se
+// déclenchaient JAMAIS en prod (le `reason` émis par le wasm est la VRAIE
+// valeur, qui &-mask jamais avec les fausses constantes locales). Les specs
+// validaient le bug avec des fixtures portant les fausses valeurs aussi.
+// Fix : un module unique back + un miroir front, plus de constantes locales.
 // =============================================================================
 
 export const REASON_DESTROY     = 0x1;
@@ -48,12 +52,8 @@ export const EXTRA_DECK_SUMMON =
   REASON_FUSION | REASON_SYNCHRO | REASON_XYZ | REASON_LINK;
 
 /**
- * Cas #12 — exactement le mask émis par OCGCore pour le settling
- * position des ex-matériaux d'XYZ une fois l'XYZ parti
+ * β.3 cas #12 — exact mask OCGCore émet pour le settling position des
+ * ex-matériaux d'XYZ une fois l'XYZ parti
  * (`GRAVE → GRAVE reason = REASON_RULE | REASON_LOST_TARGET = 0x600`).
- *
- * À vérifier en pass 1 d'implémentation Commit 0bis (R1 spec) que la
- * valeur réelle émise correspond bien à `0x600` strict (et non un
- * mask incluant des bits supplémentaires).
  */
 export const REASON_XYZ_MATERIAL_SETTLE = REASON_RULE | REASON_LOST_TARGET; // 0x600

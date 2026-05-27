@@ -32,24 +32,19 @@ import type {
   MoveEntry,
   PostureKind,
 } from './game-log-types.js';
-
-// -----------------------------------------------------------------------------
-// MSG_MOVE `reason` bitmask — mirrors replay-precompute.ts (kept local to
-// preserve purity; values are OCGCore card_data.h reason flags).
-// -----------------------------------------------------------------------------
-const REASON_RELEASE = 0x2;
-const REASON_FUSION = 0x8;
-const REASON_RITUAL = 0x10;
-const REASON_SYNCHRO = 0x20;
-const REASON_XYZ = 0x40;
-const REASON_LINK = 0x80;
-const REASON_DISCARD = 0x400;
-const REASON_SUMMON = 0x800;
-const REASON_SPSUMMON = 0x1000;
-const REASON_MATERIAL = 0x10000;
-
-const EXTRA_DECK_SUMMON =
-  REASON_FUSION | REASON_SYNCHRO | REASON_XYZ | REASON_LINK;
+// β.3 cas #12 R9 fix (2026-05-26) — replace the locally-declared (FAUX!)
+// REASON_* constants with the authoritative values from constant.lua. Cf.
+// `ocgcore-reason-flags.ts` for the full history. The old local values
+// matched the wasm `reason` field NEVER → every Fusion/Synchro/XYZ/Link/
+// Ritual summon fell through the bitmask switch and was labeled as a plain
+// move. Same fix landed on `replay-precompute.ts` and `front/.../game-log/
+// game-log-builder.ts` in the same commit (3 sibling miroirs converged on
+// the shared module).
+import {
+  REASON_RELEASE, REASON_FUSION, REASON_RITUAL, REASON_SYNCHRO, REASON_XYZ,
+  REASON_LINK, REASON_DISCARD, REASON_SUMMON, REASON_SPSUMMON, REASON_MATERIAL,
+  EXTRA_DECK_SUMMON,
+} from '../ocgcore-reason-flags.js';
 
 /**
  * A card candidate from a `SELECT_CARD` prompt — the secondary source for

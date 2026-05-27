@@ -279,8 +279,13 @@ describe('GameLogBuilder — five-block grammar', () => {
   });
 
   it('Extra-Deck summon → reason decoded as a Link summon verb', () => {
-    expect(isExtraDeckSummon(0x80)).toBe(true); // REASON_LINK
-    expect(isExtraDeckSummon(0x800)).toBe(false); // REASON_SUMMON (normal)
+    // β.3 cas #12 R9 fix (2026-05-26) — REASON_LINK is 0x10000000 (the real
+    // OCGCore value from constant.lua), not 0x80 which was the FAUX local
+    // constant the file used before the fix. REASON_SPSUMMON is 0x800 (was
+    // mislabeled as REASON_SUMMON in the old fixture — that was also wrong:
+    // real REASON_SUMMON is 0x10).
+    expect(isExtraDeckSummon(0x10000000)).toBe(true); // REASON_LINK
+    expect(isExtraDeckSummon(0x10)).toBe(false); // REASON_SUMMON (normal, real value)
     const states = [
       state(board(1, 'MAIN1'), [
         openingDraw(0),
@@ -298,7 +303,7 @@ describe('GameLogBuilder — five-block grammar', () => {
           toSequence: 5, // EMZ
           toPosition: 1,
           isToken: false,
-          reason: 0x80, // REASON_LINK
+          reason: 0x10000000, // REASON_LINK (real OCGCore value, R9 fix)
         },
       ]),
     ];

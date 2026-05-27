@@ -1,6 +1,7 @@
 import type { OcgCoreSync, OcgDuelHandle, OcgMessage } from '@n1xx1/ocgcore-wasm';
 import { OcgMessageType, OcgProcessResult } from '@n1xx1/ocgcore-wasm';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
+import { capturePreProcessOverlays, type PreProcessOverlayKey } from './pre-process-overlays.js';
 import { filterMessage } from './message-filter.js';
 import type { DuelLogger } from './logger.js';
 import type { InitReplayMessage } from './types.js';
@@ -66,17 +67,18 @@ const PHASE_LABELS: Record<number, string> = {
   128: 'Battle Phase', 256: 'Main Phase 2', 512: 'End Phase',
 };
 
-// OCGCore reason bitmask flags (from card_data.h)
-const REASON_DESTROY   = 0x1;
-const REASON_RELEASE   = 0x2;
-const REASON_FUSION    = 0x8;
-const REASON_RITUAL    = 0x10;
-const REASON_SYNCHRO   = 0x20;
-const REASON_XYZ       = 0x40;
-const REASON_LINK      = 0x80;
-const REASON_DISCARD   = 0x400;
-const REASON_SUMMON    = 0x800;
-const REASON_SPSUMMON  = 0x1000;
+// β.3 cas #12 R9 fix (2026-05-26) — REASON_* now imported from the
+// authoritative shared module. The old local declarations carried FAUX
+// values (REASON_FUSION=0x8 vs real 0x40000, REASON_XYZ=0x40 vs real
+// 0x200000, …) which never &-matched the real wasm `reason` field — every
+// Fusion/Synchro/XYZ/Link summon fell through `describeMoveLabel` and
+// landed in the `Send to GY` / generic-move fallback instead of its
+// specific verb. Cf. `ocgcore-reason-flags.ts` for the full constant table
+// sourced from `constant.lua:125-152`.
+import {
+  REASON_DESTROY, REASON_RELEASE, REASON_FUSION, REASON_RITUAL, REASON_SYNCHRO,
+  REASON_XYZ, REASON_LINK, REASON_DISCARD, REASON_SUMMON, REASON_SPSUMMON,
+} from './ocgcore-reason-flags.js';
 
 const DEFAULT_MAX_ITERATIONS = 100_000;
 
@@ -179,7 +181,7 @@ export interface ReplayPrecomputeDeps {
   duelId: string;
   dlog: DuelLogger;
   port: PortLike;
-  transformMessage: (msg: OcgMessage) => ServerMessage | null;
+  transformMessage: (msg: OcgMessage, preProcessOverlays?: Map<PreProcessOverlayKey, number[]>) => ServerMessage | null;
   updateState: (msg: OcgMessage) => void;
   buildBoardState: () => ServerMessage;
   cleanup: () => void;
@@ -297,6 +299,12 @@ export function runReplayPreComputation(
       return;
     }
 
+    // β.3 cas #12 (Commit 0bis) — capture MZONE overlayMaterials BEFORE
+    // duelProcess applies the next batch of mutations. Identical mechanism
+    // to runDuelLoop — the replay precompute reruns OCGCore and emits the
+    // same MSG_MOVE family the live worker emits.
+    const preProcessOverlays = capturePreProcessOverlays(core, duel, dlog);
+
     let status: number;
     try {
       status = core.duelProcess(duel);
@@ -351,8 +359,10 @@ export function runReplayPreComputation(
         dlog.debug('Replay turn started', { turn: currentTurn });
       }
 
-      // Translate via message pipeline + omniscient filter
-      const translated = transformMessage(rawMsg);
+      // Translate via message pipeline + omniscient filter — pass the
+      // pre-process overlay snapshot so XYZ leaving MZONE carry their
+      // matériaux on the resulting MSG_MOVE (β.3 cas #12 Commit 0bis).
+      const translated = transformMessage(rawMsg, preProcessOverlays);
       if (translated) {
         const filtered = filterMessage(translated, 0 as Player, true); // omniscient
         if (filtered) {

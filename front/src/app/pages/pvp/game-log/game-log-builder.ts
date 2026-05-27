@@ -37,23 +37,19 @@ import type {
   PostureKind,
 } from './game-log-types';
 
-// -----------------------------------------------------------------------------
-// MSG_MOVE `reason` bitmask — mirrors replay-precompute.ts (kept local to
-// preserve purity; values are OCGCore card_data.h reason flags).
-// -----------------------------------------------------------------------------
-const REASON_RELEASE = 0x2;
-const REASON_FUSION = 0x8;
-const REASON_RITUAL = 0x10;
-const REASON_SYNCHRO = 0x20;
-const REASON_XYZ = 0x40;
-const REASON_LINK = 0x80;
-const REASON_DISCARD = 0x400;
-const REASON_SUMMON = 0x800;
-const REASON_SPSUMMON = 0x1000;
-const REASON_MATERIAL = 0x10000;
-
-const EXTRA_DECK_SUMMON =
-  REASON_FUSION | REASON_SYNCHRO | REASON_XYZ | REASON_LINK;
+// β.3 cas #12 R9 fix (2026-05-26) — REASON_* now imported from the shared
+// authoritative module (mirrors the back-side fix on `duel-server/src/
+// game-log/game-log-builder.ts` + `replay-precompute.ts`). The old local
+// constants carried FAUX values (REASON_FUSION=0x8 vs real 0x40000, etc.)
+// which never &-matched the real wasm `reason` bitfield — every Fusion/
+// Synchro/XYZ/Link/Ritual summon fell through `summonVerb`'s switch and
+// got labeled as a plain `move` (fallback ligne ~1249). Cf.
+// `ocgcore-reason-flags.ts` for the full constant table from constant.lua.
+import {
+  REASON_RELEASE, REASON_FUSION, REASON_RITUAL, REASON_SYNCHRO, REASON_XYZ,
+  REASON_LINK, REASON_DISCARD, REASON_SUMMON, REASON_SPSUMMON, REASON_MATERIAL,
+  EXTRA_DECK_SUMMON,
+} from '../duel-page/ocgcore-reason-flags';
 
 /**
  * A card candidate from a `SELECT_CARD` prompt — the secondary source for
