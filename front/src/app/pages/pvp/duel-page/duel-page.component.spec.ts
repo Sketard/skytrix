@@ -180,7 +180,12 @@ class StubAnimationOrchestrator {
 class StubSoloOrchestrator {
   readonly connections = signal<readonly { timerStatePerPlayer: () => readonly [TimerStateMsg | null, TimerStateMsg | null] }[] | null>(null);
   readonly activePlayerIndex = signal(0);
+  readonly perspectiveIndex = signal(0);
   init = jasmine.createSpy('init');
+  // γ commit 3 — `switchPlayer` renamed to `switchPerspective`. Both
+  // spies kept so the stub absorbs any residual call-site during the
+  // transition (commit 8 cleanup removes the alias on the real service).
+  switchPerspective = jasmine.createSpy('switchPerspective');
   switchPlayer = jasmine.createSpy('switchPlayer');
 }
 
@@ -880,14 +885,15 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
       expect(tab.broadcast).toHaveBeenCalledTimes(1);
       expect(orch.init).toHaveBeenCalledOnceWith('stored-tok-1', 'stored-tok-2');
       expect(room.decklistId).toBe(42);
-      expect(orch.switchPlayer).not.toHaveBeenCalled(); // restoredPlayer=0
+      expect(orch.switchPerspective).not.toHaveBeenCalled(); // restoredPlayer=0
     });
   });
 
-  it('solo mode with stored activePlayer=1 → orchestrator.switchPlayer() called once', () => {
+  it('solo mode with stored activePlayer=1 → orchestrator.switchPerspective() called once', () => {
     // After a tab survives a switch-to-player-2 mid-duel, the
     // sessionStorage payload carries activePlayer=1. The component
-    // restores it by re-running switchPlayer once after init.
+    // restores it by re-running switchPerspective once after init.
+    // (γ commit 3 renamed switchPlayer → switchPerspective.)
     sessionStorage.setItem('solo-duel-tokens-r3', JSON.stringify({
       wsToken1: 'tk1', wsToken2: 'tk2', activePlayer: 1, decklistId: null,
     }));
@@ -895,7 +901,7 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
     withHistoryState({}, () => {
       const fixture = TestBed.createComponent(DuelPageComponent);
       const orch = pickSoloOrch(fixture);
-      expect(orch.switchPlayer).toHaveBeenCalledTimes(1);
+      expect(orch.switchPerspective).toHaveBeenCalledTimes(1);
     });
   });
 

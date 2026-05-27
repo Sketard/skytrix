@@ -4,13 +4,47 @@ import { DuelConnection } from './duel-connection';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { DebugLogService } from './debug-log.service';
-import { DuelLogger } from './duel-logger';
+import { DuelLogger, DuelLogCategory } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
+import { DuelContext } from './duel-context';
 
+/**
+ * γ commit 3 (2026-05-26) — single-processor SOLO refondu (§2 phase-gamma-spec.md).
+ *
+ * Refonte structurelle : les 2 `DuelConnection` instanciées en SOLO
+ * partagent désormais le `DuelEventProcessor` unique de
+ * `AnimationOrchestratorService.processor` (commit 2). Plus de double
+ * processor désynchronisé au switch — c'est ce qui élimine par
+ * construction le bug `bug-solo-sequence.md` (chain orpheline sur la
+ * connection sortante).
+ *
+ * Sémantique du switch :
+ *   - `switchPerspective()` (anciennement `switchPlayer`) ne bascule
+ *     PAS de processor : il modifie la valeur courante de
+ *     `DuelContext.perspective()`.
+ *   - L'état chain (activeChainLinks, chainPhase, pendingChainEntry,
+ *     buffer chain) survit au switch (CONNECTION_LIFETIME).
+ *   - Les projections PERSPECTIVE_LIFETIME (LP animatingPlayer, battle
+ *     attack, target reticles, etc.) seront reset par le dispatch
+ *     `applyReset({PERSPECTIVE_LIFETIME})` câblé au commit 5
+ *     (PerspectiveSwitched event sur le flux + ScopeResetDispatcher).
+ *
+ * Pour ce commit 3, `notifyPerspectiveSwitch` est un stub volontairement
+ * vide (TODO commit 5). Le service expose déjà `switchPerspective()` +
+ * le signal de perspective sur `DuelContext`, ce qui permet aux
+ * consommateurs (composant duel-page, effect d'historique, futur
+ * `PerspectiveProjector` au commit 6) de tracer le signal dès maintenant.
+ *
+ * R8 acté : pas de classe `SoloTransport` distincte. La même
+ * `DuelConnection` se reconfigure via l'option `sharedProcessor` (§8
+ * spec). Les 30 lignes de WS/tokens/ping/pong restent partagées entre
+ * PvP normal et SOLO.
+ */
 @Injectable()
 export class SoloDuelOrchestratorService {
   private readonly wsService = inject(DuelWebSocketService);
   private readonly animationService = inject(AnimationOrchestratorService);
+  private readonly duelCtx = inject(DuelContext);
   private readonly debugLog = inject(DebugLogService);
   private readonly logger = inject(DuelLogger);
   private readonly artService = inject(DuelCardArtService);
@@ -18,123 +52,235 @@ export class SoloDuelOrchestratorService {
   private readonly injector = inject(Injector);
 
   enabled = false;
+
+  // ───────────────────────────────────────────────
+  //  Transports WS (réseau) — restent dédoublés
+  // ───────────────────────────────────────────────
+  // 2 sockets parce que le serveur tient 2 identités joueur (un
+  // SELECT_IDLECMD ne s'envoie qu'au joueur actif côté serveur).
+  // CRITIQUE : ces 2 DuelConnection partagent le DuelEventProcessor
+  // unique de l'orchestrator via l'option `sharedProcessor` (§2.3 +
+  // §8 R8). Plus de divergence d'état possible au switch.
   private _connections = signal<[DuelConnection, DuelConnection] | null>(null);
   readonly connections = this._connections.asReadonly();
-  readonly activePlayerIndex = signal<0 | 1>(0);
+
+  // ───────────────────────────────────────────────
+  //  Perspective — projection visuelle unique
+  // ───────────────────────────────────────────────
+  // Source unique de vérité = `DuelContext.perspective()` (signal
+  // ajouté ci-dessous). Le service expose l'indice en lecture seule
+  // pour les composants qui ne veulent pas injecter DuelContext.
+  // Back-compat : l'ancien `activePlayerIndex` est un alias en
+  // lecture seule sur le même signal, le temps que le commit 4
+  // migre les consommateurs vers `perspectiveIndex` / le wsService.
+  readonly perspectiveIndex = computed(() => this.duelCtx.perspective()());
+  readonly activePlayerIndex = this.perspectiveIndex;
+
+  // Debounce post-switch : empêche un double-click pendant la
+  // transition CSS (~250ms, commit 6). Le composant duel-page tient
+  // aussi son propre `switching` signal pour le bouton — celui-ci
+  // protège l'orchestrator des ré-entrées programmées (rematch
+  // restoration consécutive, par exemple).
+  private _switching = signal(false);
+  readonly switching = this._switching.asReadonly();
+
+  // ───────────────────────────────────────────────
+  //  Connectivité
+  // ───────────────────────────────────────────────
+  readonly connectionLost = computed(() => {
+    const c = this._connections();
+    return c !== null && (c[0].connectionStatus() === 'lost'
+                       || c[1].connectionStatus() === 'lost');
+  });
+
+  // Rematch reset counter — sert au routing des effets de bord
+  // (timers, animations) qui doivent se ré-initialiser à chaque
+  // nouvelle partie.
   private _rematchReset = signal(0);
   readonly rematchReset = this._rematchReset.asReadonly();
-
-  readonly connectionLost = computed(() => {
-    const conns = this._connections();
-    return conns !== null && (conns[0].connectionStatus() === 'lost' || conns[1].connectionStatus() === 'lost');
-  });
 
   constructor() {
     this.destroyRef.onDestroy(() => this.cleanup());
   }
 
+  // ───────────────────────────────────────────────
+  //  Initialisation
+  // ───────────────────────────────────────────────
   init(token1: string, token2: string): void {
     this.enabled = true;
-    const conn0 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p1', this.logger);
-    const conn1 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p2', this.logger);
-    // Share the art service so the prefetch dedup Set is unified — switching
-    // players doesn't re-prefetch the same cards.
+
+    // Le processor unique vit sur AnimationOrchestratorService
+    // (commit 2). On le passe aux deux connections via l'option
+    // ctor `sharedProcessor` — chacune l'utilise au lieu d'en
+    // instancier un. C'est l'inversion d'instanciation qui rend le
+    // bug SOLO impossible par construction (§1 + §4 bug-solo-sequence.md).
+    const sharedProcessor = this.animationService.processor;
+    const conn0 = new DuelConnection(
+      environment.wsUrl, true, 'duel-reconnect-token-p1', this.logger,
+      { sharedProcessor },
+    );
+    const conn1 = new DuelConnection(
+      environment.wsUrl, true, 'duel-reconnect-token-p2', this.logger,
+      { sharedProcessor },
+    );
+
+    // Art service partagé pour le dédup de prefetch entre les 2 sockets.
     conn0.artService = this.artService;
     conn1.artService = this.artService;
 
-    // Set callbacks on both connections
+    // Hooks debug.
     conn0.onMessage = msg => this.debugLog.logServerMessage(msg);
     conn1.onMessage = msg => this.debugLog.logServerMessage(msg);
     conn0.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);
     conn1.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);
+
+    // STATE_SYNC route vers le processor partagé via wsService — un
+    // seul checkpoint à traiter, plus de double-reset façon ancien
+    // code (cf. R1 + R4 spec §8). Logger PIPELINE est ajouté au
+    // commit 4 pour mesurer l'ordre de réception des 2 STATE_SYNC.
     conn0.onStateSync = (msg) => this.wsService.onStateSync?.(msg);
     conn1.onStateSync = (msg) => this.wsService.onStateSync?.(msg);
 
     this._connections.set([conn0, conn1]);
     conn0.connect(token1);
     conn1.connect(token2);
+
+    // Perspective initiale = 0 (own player at bottom). DuelContext
+    // est `configure()`-d par le composant duel-page avant l'init
+    // SOLO ; le signal `perspective` est créé par défaut à 0 (cf.
+    // duel-context.ts), pas besoin d'écriture explicite ici.
+
+    // wsService route ses lectures vers conn0 jusqu'au commit 4 qui
+    // supprimera `_activeConnection`. À ce moment-là le wsService
+    // lira `sharedProcessor` directement et les `_transports[idx]`
+    // pour les accumulateurs transport-local.
     this.wsService.setActiveConnection(conn0);
 
     this.setupRematchEffects();
   }
 
-  switchPlayer(): void {
-    const conns = this._connections();
-    if (!conns) return;
-
-    const outgoingIndex = this.activePlayerIndex();
-    const newIndex: 0 | 1 = outgoingIndex === 0 ? 1 : 0;
-
-    // Queue-only clear — NOT a full processor reset. A SOLO switch during
-    // chain resolution must preserve `activeChainLinks` + `chainPhase` on
-    // both connections so the server's CHAIN_SOLVED/END messages arriving
-    // after the swap land on a coherent client state machine (Arthalion
-    // bug, 2026-05-24 — see clearAnimationQueueOnly docstring).
-    conns[outgoingIndex].clearAnimationQueueOnly();
-    // Clear the incoming connection's accumulated animation queue — it has been
-    // receiving events since game start (MSG_DRAW, MSG_MOVE, etc.) but its RBS
-    // is already fully committed (_boardActive was false → every BOARD_STATE
-    // called commitAll). Without this, resetForSwitch resets _initialDrawDone
-    // and the stale MSG_DRAW events re-trigger the initial draw animation on
-    // top of already-visible cards.
-    conns[newIndex].clearAnimationQueueOnly();
-    // M16: drop prompt-flow accumulators on both sides. Otherwise the
-    // outgoing connection's lastConfirmedCards/lastSelectedCards persist
-    // until its next sendResponse, and would surface in the next prompt's
-    // "revealed cards" panel after switching back.
-    conns[outgoingIndex].clearLastSelections();
-    conns[newIndex].clearLastSelections();
-    this.animationService.resetForSwitch();
-    this.activePlayerIndex.set(newIndex);
-    this.wsService.setActiveConnection(conns[newIndex]);
-    // Ensure the incoming connection buffers BOARD_STATE instead of applying it immediately.
-    // setBoardActive is only called once at game start (on P1's connection), so P2 would
-    // otherwise apply every BOARD_STATE instantly, bypassing the animation masking system.
-    conns[newIndex].setBoardActive(true);
-  }
-
-  cleanup(): void {
-    const conns = this._connections();
-    if (conns) {
-      conns[0].clearStorageToken();
-      conns[1].clearStorageToken();
-      conns[0].cleanup();
-      conns[1].cleanup();
+  // ───────────────────────────────────────────────
+  //  Switch de perspective
+  // ───────────────────────────────────────────────
+  /**
+   * Bascule la perspective visuelle (P0 ↔ P1). Le processor n'est
+   * PAS muté — ni `activeChainLinks`, ni `chainPhase`, ni les locks,
+   * ni la queue d'animation. C'est la sémantique cible du chantier
+   * (§1.2 spec). La projection visuelle complète arrive au commit 6
+   * (PerspectiveProjector, rotate(180deg) sur `.board-host`).
+   *
+   * Le payload d'événement `PerspectiveSwitched` + le dispatch
+   * `applyReset({PERSPECTIVE_LIFETIME})` arrivent au commit 5 ; ici
+   * `notifyPerspectiveSwitch` est un stub volontairement vide.
+   *
+   * Convention §5.2 POC : pas de switch pendant prompt actif. La
+   * garde sur `wsService.pendingPrompt()` est ajoutée ici pour
+   * matérialiser la convention dès le commit 3 (test T10 sera vert
+   * sans modif au commit 7).
+   */
+  switchPerspective(): void {
+    const c = this._connections();
+    if (!c) return;
+    if (this._switching()) return;
+    if (this.wsService.pendingPrompt() !== null) {
+      this.logger.log(DuelLogCategory.PIPELINE, 'switchPerspective skipped: prompt active');
+      return;
     }
+    const from = this.duelCtx.perspective()() as 0 | 1;
+    const to: 0 | 1 = from === 0 ? 1 : 0;
+    this._switching.set(true);
+
+    // Stub commit 5 : émission de PerspectiveSwitched sur le flux +
+    // dispatch reset PERSPECTIVE_LIFETIME. Aujourd'hui no-op — le
+    // call site existe et matérialise le contrat.
+    this.animationService.notifyPerspectiveSwitch(from, to);
+
+    // Flip CSS-driven (le board-host transform sera ajouté au commit 6).
+    this.duelCtx.perspective().set(to);
+
+    // Le wsService lit toujours `_activeConnection` jusqu'au commit
+    // 4. Maintenir le routing cohérent avec la perspective courante,
+    // sans appel à `clearAnimationQueueOnly` (le processor est unique,
+    // rien à clear) et sans `clearLastSelections` (les
+    // accumulateurs prompt-flow sont transport-local et n'ont pas à
+    // être vidés au switch — ils restent attachés à leur identité
+    // serveur, le wsService les lira via `_transports[perspective]`
+    // au commit 4).
+    this.wsService.setActiveConnection(c[to]);
+    // setBoardActive est requis pour que la nouvelle connection
+    // active bufferise BOARD_STATE correctement (cf. ancien code,
+    // sans cet appel le board re-rendrait avec `boardActive=false`
+    // après le switch).
+    c[to].setBoardActive(true);
+
+    // Debounce post-transition (durée alignée sur la future
+    // transition CSS .board-host transform 250ms + marge).
+    setTimeout(() => this._switching.set(false), 300);
   }
 
+  /**
+   * Back-compat : ancien nom public. Délègue à `switchPerspective`.
+   * Les call sites consommateurs (duel-page.component.ts:622, 828)
+   * sont migrés vers le nouveau nom dans le même commit ; cet alias
+   * reste pour les éventuels appels résiduels et les specs en
+   * transition. À retirer au commit 8 (cleanup).
+   */
+  switchPlayer(): void {
+    this.switchPerspective();
+  }
+
+  // ───────────────────────────────────────────────
+  //  Rematch
+  // ───────────────────────────────────────────────
+  /**
+   * Quand les 2 transports reçoivent REMATCH_STARTING, on déclenche
+   * un seul reset orchestrator (`resetForSwitch` aujourd'hui, sera
+   * remplacé par `applyCheckpoint({RematchStarted})` au commit 5).
+   * Plus de double-reset façon ancien code (1 par connection × 2 =
+   * 2 cascades indépendantes).
+   */
   private setupRematchEffects(): void {
-    const conns = this._connections();
-    if (!conns) return;
+    const c = this._connections();
+    if (!c) return;
 
     runInInjectionContext(this.injector, () => {
-      // Effect 1: auto-accept rematch on the connection that receives REMATCH_INVITATION
+      // Auto-accept rematch invitation côté transport (un par identité).
       effect(() => {
-        const state0 = conns[0].rematchState();
-        const state1 = conns[1].rematchState();
-        if (state0 === 'invited') {
-          conns[0].sendRematchRequest();
-        }
-        if (state1 === 'invited') {
-          conns[1].sendRematchRequest();
-        }
+        if (c[0].rematchState() === 'invited') c[0].sendRematchRequest();
+        if (c[1].rematchState() === 'invited') c[1].sendRematchRequest();
       }, { allowSignalWrites: true });
 
-      // Effect 2: handle rematch reset when both connections receive REMATCH_STARTING
+      // Quand les deux transports voient REMATCH_STARTING :
       effect(() => {
-        const starting0 = conns[0].rematchStarting();
-        const starting1 = conns[1].rematchStarting();
-        if (starting0 && starting1) {
-          conns[0].skipPendingAnimations();
-          conns[1].skipPendingAnimations();
-          this.activePlayerIndex.set(0);
-          this.wsService.setActiveConnection(conns[0]);
+        const s0 = c[0].rematchStarting();
+        const s1 = c[1].rematchStarting();
+        if (s0 && s1) {
+          // Un seul reset orchestrator (PERSPECTIVE_LIFETIME aujourd'hui ;
+          // sera étendu en DUEL_LIFETIME cascade au commit 5).
           this.animationService.resetForSwitch();
-          conns[0].resetRematchStarting();
-          conns[1].resetRematchStarting();
-          this._rematchReset.update(c => c + 1);
+          // Perspective P0 par convention en début de nouvelle partie.
+          this.duelCtx.perspective().set(0);
+          this.wsService.setActiveConnection(c[0]);
+          c[0].resetRematchStarting();
+          c[1].resetRematchStarting();
+          this._rematchReset.update(v => v + 1);
         }
       }, { allowSignalWrites: true });
     });
+  }
+
+  // ───────────────────────────────────────────────
+  //  Teardown
+  // ───────────────────────────────────────────────
+  cleanup(): void {
+    const c = this._connections();
+    if (c) {
+      c[0].clearStorageToken();
+      c[1].clearStorageToken();
+      c[0].cleanup();
+      c[1].cleanup();
+    }
+    // Processor unique : cleanup pris en charge par
+    // AnimationOrchestratorService.destroy() (déjà câblé par destroyRef).
   }
 }

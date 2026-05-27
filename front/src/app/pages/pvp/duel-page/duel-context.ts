@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal, type WritableSignal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { ReducedMotionService } from '../../../services/reduced-motion.service';
@@ -26,6 +26,37 @@ export class DuelContext {
    * so PvP, Replay and the Preferences page all share one source of truth.
    */
   readonly reducedMotion = inject(ReducedMotionService).enabled;
+
+  /**
+   * γ commit 3 — perspective visuelle du board. Source unique de
+   * vérité pour la projection (POC §1 décision S3 + §4 algorithme).
+   *   - `0` = own player at bottom (default).
+   *   - `1` = flipped (own at top — appliqué via `rotate(180deg)` sur
+   *     `.board-host` au commit 6).
+   *
+   * Tag α.1 `perspectiveSource` (suffix `Source`) : du POV du pipeline
+   * animation, cette valeur est un INPUT contextuel (cf. CLAUDE.md
+   * "Pipeline Signal Tagging Convention"). Le pipeline LIT — il dérive
+   * `cardBaseRotation` (commit 6) et les projections perspective-aware
+   * Mode B. L'écriture provient d'EN DEHORS du pipeline :
+   * `SoloDuelOrchestratorService.switchPerspective()` et le rematch
+   * effect (qui reset à 0). En PvP normal / replay, le signal reste à
+   * 0 — la perspective y est figée à l'identité serveur du viewer.
+   *
+   * Le signal est CONNECTION_LIFETIME (cf. spec §3.5) : il survit à
+   * un switch (par définition c'est lui qui PORTE le switch), mais un
+   * STATE_SYNC / RematchStarted le reset à 0 via le setupRematchEffects
+   * de SoloDuelOrchestratorService.
+   *
+   * Getter renvoie le WritableSignal pour préserver l'API "le SOLO écrit
+   * via `.set(...)`, les lecteurs appellent `()` directement". Si γ
+   * révèle que la mutabilité fuit hors du SOLO orchestrator (un
+   * composant qui set sans passer par switchPerspective), δ remplacera
+   * ce getter par une méthode dédiée `setPerspective` + un retour
+   * `Signal<0|1>` readonly.
+   */
+  readonly perspectiveSource = signal<0 | 1>(0);
+  perspective(): WritableSignal<0 | 1> { return this.perspectiveSource; }
 
   ownPlayerIndex(): number { return this._ownPlayerIndex(); }
   speedMultiplier(): number { return this._speedMultiplier(); }

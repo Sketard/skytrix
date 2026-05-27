@@ -619,7 +619,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
         this.tabGuard.init(code);
         this.tabGuard.broadcast();
         this.orchestrator.init(wsToken1, wsToken2);
-        if (restoredPlayer === 1) this.orchestrator.switchPlayer();
+        if (restoredPlayer === 1) this.orchestrator.switchPerspective();
         this.roomService.forceState('connecting');
         this.soloEffects.initSolo({ soloTokensKey, wsToken1, wsToken2, roomService: this.roomService, thumbnailsReady: this.thumbnailsReady });
       }
@@ -825,7 +825,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   switchPlayerWithTransition(): void {
     if (this.switching()) return;
     this.switching.set(true);
-    this.orchestrator.switchPlayer();
+    this.orchestrator.switchPerspective();
     this.switchTimer = setTimeout(() => this.switching.set(false), SOLO_SWITCH_PLAYER_MS);
   }
 

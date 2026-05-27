@@ -1097,6 +1097,27 @@ export class AnimationOrchestratorService {
     this.pushToStream(event);
   }
 
+  /**
+   * γ commit 3 — stub volontairement vide. Le commit 5 ajoute
+   * l'émission `PerspectiveSwitched(from, to)` sur le flux + le
+   * dispatch `applyReset({PERSPECTIVE_LIFETIME})` via
+   * `ScopeResetDispatcher`. Aujourd'hui, le service SOLO appelle
+   * cette méthode dans `switchPerspective` pour matérialiser le
+   * contrat — au commit 5 elle deviendra l'unique source de reset
+   * PERSPECTIVE_LIFETIME au lieu de `resetForSwitch`.
+   *
+   * Le `from`/`to` est passé en argument pour que le payload
+   * stream du commit 5 soit déjà disponible sans changer la
+   * signature côté SOLO. Pas de typage `0 | 1` strict ici parce
+   * qu'on accepte aussi des numbers (le service SOLO les construit
+   * via `from === 0 ? 1 : 0` qui revient au compilateur en
+   * `number`).
+   */
+  notifyPerspectiveSwitch(_from: 0 | 1, _to: 0 | 1): void {
+    // commit 5 : push `PerspectiveSwitched` sur _eventStream via
+    // pushToStream → ScopeResetDispatcher.dispatch({PERSPECTIVE_LIFETIME}).
+  }
+
   resetForSwitch(): void {
     this.logger.log(DuelLogCategory.QUEUE, 'resetForSwitch — clearing all state & timeouts');
     // PERSPECTIVE_LIFETIME only — Lp + Log survive (cf. resetAllState doc).
