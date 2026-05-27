@@ -43,6 +43,7 @@ import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
 import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
+import { DuelEventProcessor } from './duel-event-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
 import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, TargetedZoneKeysProjection, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
@@ -108,6 +109,25 @@ export class AnimationOrchestratorService {
    * Cf. duel-session-chantier.md §3.5.
    */
   private readonly scopeDispatcher = inject(ScopeResetDispatcher, { optional: true });
+
+  /**
+   * γ commit 2 — single shared `DuelEventProcessor` owned by the
+   * orchestrator. Exposes the chain state machine + animation queue
+   * (`activeChainLinks`, `chainPhase`, `pendingChainEntry`,
+   * `animationQueue`) so a connection / transport that opts into the
+   * shared model passes this instance through its `sharedProcessor`
+   * constructor option (cf. `DuelConnection` ctor).
+   *
+   * Commit 2 only EXPOSES the instance — no consumer has been migrated
+   * yet. The PvP-normal + SOLO + replay wirings still instantiate their
+   * own processor as today. Commits 3 (SOLO refondu) + 4 (wsService)
+   * will switch SOLO transports + wsService reads to read this one.
+   * Replay-adapter keeps its own processor (independent scope).
+   *
+   * Logger is bound to the same `DuelLogger` the orchestrator uses, so
+   * `PIPELINE` / `CHAIN` trace lines are uniformly tagged.
+   */
+  readonly processor: DuelEventProcessor;
 
   // --- Public read-only signals ---
   /**
@@ -484,6 +504,13 @@ export class AnimationOrchestratorService {
   }
 
   constructor() {
+    // γ commit 2 — own the shared DuelEventProcessor. Logger is wired at
+    // construction so PIPELINE / CHAIN traces emitted by the processor
+    // appear under the orchestrator's logger sink. Consumers (DuelConnection
+    // with `sharedProcessor` option) read this instance and bind it on
+    // their side; commits 3+ will switch SOLO + wsService to do so.
+    this.processor = new DuelEventProcessor();
+    this.processor.logger = this.logger;
     // Wire FloatRegistry for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
     this.rbs.attachFloatRegistry(this.floatRegistry);
     // Scale RBS lock safety timeouts with playback speed so slow replay

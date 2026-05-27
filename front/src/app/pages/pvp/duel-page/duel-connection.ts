@@ -63,7 +63,19 @@ export class DuelConnection {
    * a synthetic MSG_WIN from `winner` + `winReasonCode`).
    */
   private _outOfBandSink?: (event: StreamEvent) => void;
-  private readonly processor = new DuelEventProcessor();
+  /**
+   * Chain state machine + animation queue. Either instantiated locally
+   * (default PvP-normal / replay-not-using-this-class case) or injected
+   * from outside via the `sharedProcessor` constructor option (γ commit 3+
+   * — `AnimationOrchestratorService` owns a single instance, both SOLO
+   * transports share it, eliminating the multi-processor divergence
+   * documented in `bug-solo-sequence.md`).
+   *
+   * R8 acté (phase-gamma-spec.md §8) : pas de classe abstraite
+   * `DuelTransport`. La même `DuelConnection` se reconfigure via le
+   * constructor option. PvP-normal n'est pas impacté.
+   */
+  private readonly processor: DuelEventProcessor;
   private readonly rbs = new RenderedBoardStateService();
   /** Full RBS — write/control surface used by AnimationDataSource (orchestrator + managers). */
   readonly renderedBoardState = this.rbs;
@@ -101,15 +113,24 @@ export class DuelConnection {
 
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
   readonly hintContext = this._hintContext.asReadonly();
-  readonly animationQueue = this.processor.animationQueue;
+  // γ commit 2 — these 5 signal aliases (animationQueue, activeChainLinks,
+  // chainPhase, hasPendingChainEntry, pendingChainEntry) used to be field
+  // initialisers reading `this.processor.X` at class-init time. Now that
+  // `processor` is assigned in the constructor (so it can resolve a shared
+  // instance via `options.sharedProcessor`), TS would flag a use-before-init.
+  // Getters defer resolution to first read — by then the constructor has
+  // run and `this.processor` points at the final instance. The Signal
+  // identity is preserved across reads, so existing consumers (`computed`
+  // tracking, `effect` subscriptions) keep their dependency edges.
+  get animationQueue() { return this.processor.animationQueue; }
   readonly timerState = this._timerState.asReadonly();
   readonly timerStatePerPlayer = this._timerStatePerPlayer.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
   readonly protocolMismatch = this._protocolMismatch.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
   readonly disconnectGraceSec = this._disconnectGraceSec.asReadonly();
-  readonly activeChainLinks = this.processor.activeChainLinks;
-  readonly chainPhase = this.processor.chainPhase;
+  get activeChainLinks() { return this.processor.activeChainLinks; }
+  get chainPhase() { return this.processor.chainPhase; }
   readonly duelResult = this._duelResult.asReadonly();
   readonly diceResult = this._diceResult.asReadonly();
   readonly diceInProgress = this._diceInProgress.asReadonly();
@@ -173,8 +194,10 @@ export class DuelConnection {
     return this._confirmedCardsByChain.get(idx) ?? [];
   }
 
-  readonly hasPendingChainEntry = this.processor.hasPendingChainEntry;
-  readonly pendingChainEntry = this.processor.pendingChainEntry;
+  // γ commit 2 — getters (same reason as animationQueue / activeChainLinks /
+  // chainPhase above): the processor is now assigned in the constructor.
+  get hasPendingChainEntry() { return this.processor.hasPendingChainEntry; }
+  get pendingChainEntry() { return this.processor.pendingChainEntry; }
 
   // --- Hint consumed flag ---
   // Set after a prompt response is sent. Prevents stale cardName from a previous
@@ -240,7 +263,13 @@ export class DuelConnection {
 
   private readonly storageKey: string;
 
-  constructor(wsUrlBase: string, autoReconnect: boolean, storageKey = 'duel-reconnect-token', logger?: DuelLogger) {
+  constructor(
+    wsUrlBase: string,
+    autoReconnect: boolean,
+    storageKey = 'duel-reconnect-token',
+    logger?: DuelLogger,
+    options?: { sharedProcessor?: DuelEventProcessor },
+  ) {
     if (wsUrlBase.startsWith('/')) {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       this.wsUrlBase = `${proto}//${location.host}${wsUrlBase}`;
@@ -250,6 +279,7 @@ export class DuelConnection {
     this._autoReconnect = autoReconnect;
     this.storageKey = storageKey;
     this.logger = logger;
+    this.processor = options?.sharedProcessor ?? new DuelEventProcessor();
     this.processor.logger = logger;
     this.rbs.logger = logger;
   }
