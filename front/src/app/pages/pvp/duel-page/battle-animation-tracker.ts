@@ -175,12 +175,16 @@ export class BattleAnimationTracker implements ResetTarget {
   }
 
   private playClashImpact(targetEl: HTMLElement, duration: number): void {
-    const rect = targetEl.getBoundingClientRect();
+    // γ commit 6 — viewport rect → container-local via the engine's
+    // helper, then `position: absolute` so the flash is a positioned
+    // child of the container (`.board-host`) and projects through any
+    // parent transform.
+    const rect = this.cardTravelEngine.getLocalRect(targetEl.getBoundingClientRect());
     const container = this.cardTravelEngine.getContainer();
 
     const flash = document.createElement('div');
     flash.style.cssText = `
-      position: fixed;
+      position: absolute;
       pointer-events: none;
       z-index: 51;
       left: ${rect.left}px;

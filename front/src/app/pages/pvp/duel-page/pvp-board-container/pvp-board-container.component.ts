@@ -17,6 +17,7 @@ import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
 import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 import { DuelThemeService } from '../duel-theme.service';
+import { DuelContext } from '../duel-context';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -89,6 +90,20 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   /** Active duel theme — drives `.board-host[data-theme]` cascade. Wave 3 Sprint 2. */
   protected readonly theme = inject(DuelThemeService).currentTheme;
 
+  /**
+   * γ commit 6 — perspective signal driving the `.board-host` flip
+   * transform. Read from `DuelContext` (the single source of truth set
+   * by `SoloDuelOrchestratorService.switchPerspective`). `{ optional:
+   * true }` for the preview embeddings that don't provide DuelContext;
+   * a missing context defaults to perspective=0 (no flip), preserving
+   * legacy behavior. */
+  private readonly duelCtx = inject(DuelContext, { optional: true });
+  protected readonly boardTransform = computed(() => {
+    const p = this.duelCtx?.perspectiveSource() ?? 0;
+    return p === 1 ? 'rotate(180deg)' : 'rotate(0deg)';
+  });
+  protected readonly boardFlipped = computed(() => (this.duelCtx?.perspectiveSource() ?? 0) === 1);
+
   /** Dev hub state — `forcedReadOnly` and `forcedOpponentDisconnected` overrides
    *  read here. Production-safe via `_signal()` no-op setters. */
   private readonly devState = inject(DuelDevStateService);
@@ -122,6 +137,19 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     if (this.preview()) return;
     this.cardTravelEngine.registerZoneResolver(this.getZoneElement.bind(this));
+    // γ commit 6 — register `.board-host` as the float / overlay
+    // container. Required for the perspective flip (POC §1 décision
+    // S3) : floats are `position:absolute` children of this element
+    // so the browser projects them through any parent transform. The
+    // queryselector is scoped to the component's host so preview
+    // miniatures (which set `preview=true` and skip the whole
+    // registration) don't override the live duel's container.
+    const boardHost = (this.elementRef.nativeElement as HTMLElement).querySelector<HTMLElement>('.board-host');
+    if (boardHost) {
+      this.cardTravelEngine.registerContainer(boardHost);
+    } else {
+      this._logger?.warn('PvpBoardContainerComponent: `.board-host` not found at ngAfterViewInit — floats will use the default container');
+    }
   }
 
   getZoneElement(zoneKey: string): HTMLElement | null {

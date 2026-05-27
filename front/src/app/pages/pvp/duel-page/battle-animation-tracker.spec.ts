@@ -40,7 +40,7 @@ describe('BattleAnimationTracker', () => {
     containerEl = document.createElement('div');
 
     mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
-      'getZoneElement', 'getContainer', 'createLineBetween',
+      'getZoneElement', 'getContainer', 'createLineBetween', 'getLocalRect',
     ]);
     mockCardTravel.getZoneElement.and.callFake((key: string) => {
       if (key.startsWith('M')) return attackerEl;
@@ -49,6 +49,8 @@ describe('BattleAnimationTracker', () => {
     });
     mockCardTravel.getContainer.and.returnValue(containerEl);
     mockCardTravel.createLineBetween.and.returnValue(lineEl);
+    // γ commit 6 — identity stub: spec rects are already in test-local frame.
+    mockCardTravel.getLocalRect.and.callFake((r: DOMRect) => r);
 
     mockCtx = jasmine.createSpyObj<DuelContext>('DuelContext', [
       'relativePlayer', 'scaledDuration', 'announceEvent',

@@ -44,11 +44,18 @@ describe('BoardEffectsService', () => {
     ({ restore: restoreAnimate } = patchAnimateOnElementProto());
 
     mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
-      'getZoneElement', 'getContainer', 'toAbsoluteUrl',
+      'getZoneElement', 'getContainer', 'toAbsoluteUrl', 'getLocalRect',
     ]);
     mockCardTravel.getContainer.and.returnValue(container);
     mockCardTravel.getZoneElement.and.returnValue(zoneEl);
     mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
+    // γ commit 6 — BoardEffectsService now converts viewport rects to
+    // container-local via cardTravel.getLocalRect. The specs pre-define
+    // their zone rects directly in the test's local frame (container is
+    // appended fresh in beforeEach and its rect.left/top depend on the
+    // headless layout), so the identity stub is appropriate — assertions
+    // against `rect.left + shiftX` etc. remain valid.
+    mockCardTravel.getLocalRect.and.callFake((r: DOMRect) => r);
 
     TestBed.configureTestingModule({
       providers: [

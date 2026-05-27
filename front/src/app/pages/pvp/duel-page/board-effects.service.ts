@@ -50,14 +50,20 @@ export class BoardEffectsService implements OnDestroy {
     return this._reducedMotionSvc.enabled();
   }
 
-  /** Radial glow contraction + dark sink overlay — shared by GY absorption and banish rift. */
+  /** Radial glow contraction + dark sink overlay — shared by GY absorption and banish rift.
+   *
+   * γ commit 6 — `rect` is now in CONTAINER-LOCAL coords (the caller in
+   * `CardTravelEngine.travel()` ran `toLocalRect` before passing it).
+   * Overlays use `position: absolute` so they project through the
+   * container's perspective transform; `appendChild` to `getContainer()`
+   * anchors them. */
   zoneImpactEffect(rect: DOMRect, color: string, duration = 400): void {
     if (this._reducedMotion) return;
     const pad = 4;
 
     const glow = document.createElement('div');
     glow.style.cssText = `
-      position:fixed; pointer-events:none; z-index:901;
+      position:absolute; pointer-events:none; z-index:901;
       left:${rect.left - pad}px; top:${rect.top - pad}px;
       width:${rect.width + pad * 2}px; height:${rect.height + pad * 2}px;
       border-radius:4px;
@@ -72,7 +78,7 @@ export class BoardEffectsService implements OnDestroy {
 
     const sink = document.createElement('div');
     sink.style.cssText = `
-      position:fixed; pointer-events:none; z-index:900;
+      position:absolute; pointer-events:none; z-index:900;
       left:${rect.left}px; top:${rect.top}px;
       width:${rect.width}px; height:${rect.height}px;
       border-radius:4px;
@@ -86,7 +92,11 @@ export class BoardEffectsService implements OnDestroy {
     this.trackOverlay(sink, sinkAnim);
   }
 
-  /** Dust particles expelled from the zone edges on slam impact. */
+  /** Dust particles expelled from the zone edges on slam impact.
+   *
+   * γ commit 6 — `rect` reçu en CONTAINER-LOCAL coords (passed by
+   * `CardTravelEngine.travel`'s `onLand` closure with the already-
+   * converted `rawDestRect`). Particles use `position: absolute`. */
   slamDustParticles(rect: DOMRect): void {
     if (this._reducedMotion) return;
     const cx = rect.left + rect.width / 2;
@@ -105,7 +115,7 @@ export class BoardEffectsService implements OnDestroy {
       const size = 4 + Math.random() * 5;
       const p = document.createElement('div');
       p.style.cssText = `
-        position:fixed; pointer-events:none; z-index:900;
+        position:absolute; pointer-events:none; z-index:900;
         left:${x - size / 2}px; top:${y - size / 2}px;
         width:${size}px; height:${size}px;
         border-radius:50%;
@@ -134,7 +144,8 @@ export class BoardEffectsService implements OnDestroy {
   preDestroyEffect(srcEl: HTMLElement, cardImageUrl: string | null, duration = 400): Promise<void> {
     if (this._reducedMotion) return Promise.resolve();
 
-    const rect = toCardRect(srcEl.getBoundingClientRect());
+    // γ commit 6 — viewport rect → container-local via getLocalRect.
+    const rect = toCardRect(this.cardTravel.getLocalRect(srcEl.getBoundingClientRect()));
     if (rect.width === 0) return Promise.resolve();
 
     const w = rect.width;
@@ -142,7 +153,7 @@ export class BoardEffectsService implements OnDestroy {
 
     const overlay = document.createElement('div');
     overlay.style.cssText = `
-      position:fixed; pointer-events:none; z-index:900;
+      position:absolute; pointer-events:none; z-index:900;
       left:${rect.left}px; top:${rect.top}px;
       width:${w}px; height:${h}px;
       border-radius:4px; overflow:hidden;
@@ -215,20 +226,23 @@ export class BoardEffectsService implements OnDestroy {
     );
   }
 
-  /** Activation burst: white flash explosion + golden spark particles radiating outward. ~500ms total. */
+  /** Activation burst: white flash explosion + golden spark particles radiating outward. ~500ms total.
+   *
+   * γ commit 6 — `el`'s viewport rect converted to container-local via
+   * `getLocalRect`. All overlays use `position: absolute`. */
   activateEffect(target: string | HTMLElement, duration = 500): Promise<void> {
     if (this._reducedMotion) return Promise.resolve();
     const el = typeof target === 'string' ? this.cardTravel.getZoneElement(target) : target;
     if (!el) return Promise.resolve();
 
-    const rect = el.getBoundingClientRect();
+    const rect = this.cardTravel.getLocalRect(el.getBoundingClientRect());
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const pad = 16;
 
     const flash = document.createElement('div');
     flash.style.cssText = `
-      position:fixed; pointer-events:none; z-index:901;
+      position:absolute; pointer-events:none; z-index:901;
       left:${rect.left - pad}px; top:${rect.top - pad}px;
       width:${rect.width + pad * 2}px; height:${rect.height + pad * 2}px;
       border-radius:8px;
@@ -245,7 +259,7 @@ export class BoardEffectsService implements OnDestroy {
     const starSize = Math.max(rect.width, rect.height) * 1.4;
     const star = document.createElement('div');
     star.style.cssText = `
-      position:fixed; pointer-events:none; z-index:901;
+      position:absolute; pointer-events:none; z-index:901;
       left:${cx - starSize / 2}px; top:${cy - starSize / 2}px;
       width:${starSize}px; height:${starSize}px;
       clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
@@ -268,7 +282,7 @@ export class BoardEffectsService implements OnDestroy {
         ? `rgba(255,${180 + Math.random() * 60},${50 + Math.random() * 50},0.9)`
         : `rgba(100,${200 + Math.random() * 55},255,0.9)`;
       p.style.cssText = `
-        position:fixed; pointer-events:none; z-index:902;
+        position:absolute; pointer-events:none; z-index:902;
         left:${cx - size / 2}px; top:${cy - size / 2}px;
         width:${size}px; height:${size}px;
         border-radius:50%;
@@ -311,12 +325,13 @@ export class BoardEffectsService implements OnDestroy {
     if (this._reducedMotion) return;
     const zoneEl = this.cardTravel.getZoneElement(zoneKey);
     if (!zoneEl) return;
-    const rect = toCardRect(zoneEl.getBoundingClientRect());
+    // γ commit 6 — viewport rect → container-local.
+    const rect = toCardRect(this.cardTravel.getLocalRect(zoneEl.getBoundingClientRect()));
     if (rect.width === 0) return;
 
     const div = document.createElement('div');
     div.style.cssText = `
-      position: fixed; pointer-events: none;
+      position: absolute; pointer-events: none;
       z-index: 900;
       left: ${rect.left}px; top: ${rect.top}px;
       width: ${rect.width}px; height: ${rect.height}px;
@@ -404,7 +419,8 @@ export class BoardEffectsService implements OnDestroy {
     if (this._reducedMotion) return;
     const zoneEl = this.cardTravel.getZoneElement(zoneKey);
     if (!zoneEl) return;
-    const rect = toCardRect(zoneEl.getBoundingClientRect());
+    // γ commit 6 — viewport rect → container-local.
+    const rect = toCardRect(this.cardTravel.getLocalRect(zoneEl.getBoundingClientRect()));
     if (rect.width === 0) return;
 
     // Hide the real board card for the whole reveal so the flipping overlay
@@ -417,7 +433,7 @@ export class BoardEffectsService implements OnDestroy {
 
     const div = document.createElement('div');
     div.style.cssText = `
-      position: fixed; pointer-events: none;
+      position: absolute; pointer-events: none;
       z-index: 900;
       left: ${rect.left}px; top: ${rect.top}px;
       width: ${rect.width}px; height: ${rect.height}px;
@@ -437,7 +453,7 @@ export class BoardEffectsService implements OnDestroy {
 
     const glowEl = document.createElement('div');
     glowEl.style.cssText = `
-      position: fixed; pointer-events: none; z-index: 899;
+      position: absolute; pointer-events: none; z-index: 899;
       left: ${rect.left - 8}px; top: ${rect.top - 8}px;
       width: ${rect.width + 16}px; height: ${rect.height + 16}px;
       border-radius: 8px; opacity: 0;
@@ -518,7 +534,8 @@ export class BoardEffectsService implements OnDestroy {
    */
   async revealOpponentHandCard(handEl: HTMLElement, cardImageUrl: string, detachMs: number): Promise<void> {
     if (this._reducedMotion) return;
-    const rect = toCardRect(handEl.getBoundingClientRect());
+    // γ commit 6 — viewport rect → container-local.
+    const rect = toCardRect(this.cardTravel.getLocalRect(handEl.getBoundingClientRect()));
     if (rect.width === 0) return;
 
     // Hide the real hand card for the whole reveal so the flipping overlay
@@ -533,7 +550,7 @@ export class BoardEffectsService implements OnDestroy {
 
     const div = document.createElement('div');
     div.style.cssText = `
-      position: fixed; pointer-events: none;
+      position: absolute; pointer-events: none;
       z-index: 1100;
       left: ${rect.left}px; top: ${rect.top}px;
       width: ${rect.width}px; height: ${rect.height}px;
@@ -598,7 +615,8 @@ export class BoardEffectsService implements OnDestroy {
     if (this._reducedMotion) return null;
     const zoneEl = this.cardTravel.getZoneElement(zoneKey);
     if (!zoneEl) return null;
-    const rect = zoneEl.getBoundingClientRect();
+    // γ commit 6 — viewport rect → container-local.
+    const rect = this.cardTravel.getLocalRect(zoneEl.getBoundingClientRect());
     const liftY = rect.height * 0.5 + cascadeIndex * cascadeYPx;
     const shiftX = cascadeIndex * cascadeXPx;
 
@@ -606,7 +624,7 @@ export class BoardEffectsService implements OnDestroy {
     div.dataset['targetFloat'] = 'true';
     div.dataset['zoneKey'] = zoneKey;
     div.style.cssText = `
-      position: fixed;
+      position: absolute;
       pointer-events: none;
       z-index: 900;
       left: ${rect.left + shiftX}px;

@@ -52,6 +52,15 @@ describe('CardTravelEngine', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
+    // γ commit 6 — fix the container's rect at viewport origin (0,0)
+    // so `toLocalRect` is a no-op for the zone rects defined via
+    // `makeZoneEl` (which the specs assert against in absolute terms).
+    // In karma+headless Chrome, an empty div in the body has a
+    // non-zero rect (e.g. ~455px) that would otherwise offset the
+    // expected coords by the container's position.
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => new DOMRect(0, 0, 0, 0),
+    });
 
     // Force prefers-reduced-motion: no-preference so ReducedMotionService
     // resolves `enabled()` to false. `_reducedMotion` now reads that service

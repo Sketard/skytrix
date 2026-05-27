@@ -551,7 +551,10 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
       isBoardActive: () => this.roomState() === 'active',
     });
-    this.cardTravelEngine.registerContainer(this.elementRef.nativeElement);
+    // γ commit 6 — `registerContainer` moved to `PvpBoardContainerComponent.ngAfterViewInit`,
+    // which queries `.board-host` (the perspective-flippable subtree).
+    // Floats now sit INSIDE the transform so the browser projects them
+    // through the board's `rotate(180deg)` in SOLO perspective=1.
     this.cardInspection.init(this.cardDataCache);
 
     // --- Game Log wiring (Lot 2d / R10 — Palier 0 EventStream) ---

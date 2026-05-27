@@ -78,9 +78,59 @@ export class CardTravelEngine implements OnDestroy {
     return this._boardEffects;
   }
 
-  /** Register the container element for travel cards (defaults to document.body). */
+  /** Register the container element for travel cards (defaults to document.body).
+   *
+   * γ commit 6 — `_container` MUST point at `.board-host` so floats sit
+   * INSIDE the perspective-flipped subtree. With `_container = body`,
+   * floats lived in the viewport coordinate system and their
+   * `position:fixed; left:X; top:Y` was independent of any parent
+   * `transform: rotate(180deg)` — the cards would fly the wrong way in
+   * a flipped perspective. Now that floats are `position:absolute`
+   * children of `_container` with container-local coords, the browser
+   * naturally projects them through the container's transform.
+   *
+   * The container is REQUIRED to have `position: relative` (or any
+   * non-static positioning) for `position:absolute` children to anchor.
+   * `.board-host` already declares `position: relative` (cf.
+   * `_duel-tokens.scss`); other containers (preview miniatures, solo
+   * simulator) MUST mirror this.
+   */
   registerContainer(el: HTMLElement): void {
     this._container = el;
+  }
+
+  /**
+   * γ commit 6 — convert a viewport-coord `DOMRect` to container-local
+   * coords by subtracting the container's `getBoundingClientRect()`
+   * origin. Used by every site that places a float as a positioned
+   * child of `_container` (createFloatingElement, createLineBetween,
+   * and the BoardEffectsService overlays via `getLocalRect`).
+   *
+   * Safe even when `_container === document.body` (legacy default):
+   * `body.getBoundingClientRect()` returns `{left:0, top:0, ...}` at
+   * a non-scrolled top of page, so the subtraction is a no-op. When
+   * the page is scrolled the body rect has negative top — the
+   * subtraction would offset to the visible portion, but since legacy
+   * call sites used `position:fixed` (viewport-anchored, scroll-independent)
+   * the math worked. Now that we switch to `position:absolute`, the
+   * subtraction MUST land relative to a positioned ancestor — the
+   * `.board-host` registration guarantees this.
+   */
+  private toLocalRect(viewportRect: DOMRect): DOMRect {
+    const containerRect = this._container.getBoundingClientRect();
+    return new DOMRect(
+      viewportRect.left - containerRect.left,
+      viewportRect.top - containerRect.top,
+      viewportRect.width,
+      viewportRect.height,
+    );
+  }
+
+  /** γ commit 6 — exposed for sibling services (BoardEffectsService,
+   *  BattleAnimationTracker) that build their own overlays anchored to
+   *  zones. Same semantics as `toLocalRect`, but public. */
+  getLocalRect(viewportRect: DOMRect): DOMRect {
+    return this.toLocalRect(viewportRect);
   }
 
   registerZoneResolver(fn: (zoneKey: string) => HTMLElement | null): void {
@@ -109,8 +159,13 @@ export class CardTravelEngine implements OnDestroy {
     style: { color: string; height?: number; shadow?: string },
   ): HTMLDivElement | null {
     if (!srcEl || !dstEl) return null;
-    const sRect = srcEl.getBoundingClientRect();
-    const dRect = dstEl.getBoundingClientRect();
+    // γ commit 6 — viewport rects converted to container-local before
+    // computing endpoints. The line is a positioned child of
+    // `_container` so its `position: absolute` references the
+    // container's origin, and the parent transform flips the line
+    // visually alongside the cards.
+    const sRect = this.toLocalRect(srcEl.getBoundingClientRect());
+    const dRect = this.toLocalRect(dstEl.getBoundingClientRect());
     const sx = sRect.left + sRect.width / 2;
     const sy = sRect.top + sRect.height / 2;
     const dx = dRect.left + dRect.width / 2;
@@ -121,7 +176,7 @@ export class CardTravelEngine implements OnDestroy {
 
     const line = document.createElement('div');
     line.style.cssText = `
-      position: fixed; pointer-events: none; z-index: 50;
+      position: absolute; pointer-events: none; z-index: 50;
       left: ${sx}px; top: ${sy - h / 2}px;
       width: ${length}px; height: ${h}px;
       transform-origin: 0 50%; transform: rotate(${angle}deg);
@@ -155,11 +210,14 @@ export class CardTravelEngine implements OnDestroy {
       return Promise.resolve();
     }
 
-    // When srcRotateZ is set the source card is visually rotated (e.g. defense position).
-    // getBoundingClientRect() returns the AABB which has swapped width/height.
-    // Strip the transform momentarily to read the true un-rotated rect.
+    // γ commit 6 — coords lecture : viewport via getBoundingClientRect.
+    // Coords écriture : container-local via toLocalRect. La transition
+    // entre les deux se fait UNE FOIS ici, après readRect et avant le
+    // placement / calcul de keyframes — la suite du flux travaille en
+    // container-local pur (position:absolute des floats).
     const srcRotateZ = options.srcRotateZ ?? 0;
-    const rawSourceRect = this.readRect(sourceEl, !!srcRotateZ);
+    const rawSourceRectViewport = this.readRect(sourceEl, !!srcRotateZ);
+    const rawSourceRect = this.toLocalRect(rawSourceRectViewport);
     const sourceRect = toCardRect(rawSourceRect);
 
     // Detect destination fan rotation BEFORE reading its rect.
@@ -175,7 +233,8 @@ export class CardTravelEngine implements OnDestroy {
       if (matchTY) destTranslateY = parseFloat(matchTY[1]);
     }
 
-    const rawDestRect = this.readRect(destEl, !!destRotateZ);
+    const rawDestRectViewport = this.readRect(destEl, !!destRotateZ);
+    const rawDestRect = this.toLocalRect(rawDestRectViewport);
 
     const cardDestRect = toCardRect(rawDestRect);
 
@@ -296,8 +355,13 @@ export class CardTravelEngine implements OnDestroy {
 
   private createFloatingElement(sourceRect: DOMRect, cardImage: string, options: TravelOptions): HTMLDivElement {
     const div = document.createElement('div');
+    // γ commit 6 — `position: absolute` + container-local coords. The
+    // float is a positioned child of `_container` (`.board-host` in
+    // production), so the browser projects it through any parent
+    // transform (perspective flip in SOLO). `sourceRect` is already
+    // container-local at this point (toLocalRect ran in `travel()`).
     div.style.cssText = `
-      position: fixed;
+      position: absolute;
       pointer-events: none;
       will-change: transform, opacity;
       z-index: 900; /* $z-pvp-card-travel — must stay below $z-pvp-chain-overlay (950) */

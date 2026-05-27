@@ -98,11 +98,31 @@ export class DuelContext {
 
   /**
    * Base rotation (degrees) for floating card elements (travel floats, overlays).
-   * Cards face their owner: 180° for opponent cards, 0° for own.
-   * Returns undefined when 0 so callers can use `baseRotateZ: ctx.cardBaseRotation(rel)`.
+   * Cards face their owner: rendered upright on the owner's side of the board.
+   *
+   * γ commit 6 — perspective-aware (option B.1 POC §2). Composition
+   * mathématique post-flip parent à 180° :
+   *   - perspective=0 (default, own at bottom) :
+   *       own  (relPlayer=0) art à 0°  × 0° board     = 0°   → upright pour le viewer
+   *       opp  (relPlayer=1) art à 180° × 0° board    = 180° → upright pour l'opp
+   *   - perspective=1 (flipped, own au top après transform 180° du `.board-host`) :
+   *       own  (relPlayer=0) art à 180° × 180° board  = 360° = 0° → upright pour le viewer
+   *       opp  (relPlayer=1) art à 0°   × 180° board  = 180° → upright pour l'opp
+   *
+   * Sans cette logique, Option A (suppression) recrée le bug actuel inversé
+   * (opp art à l'endroit pour le viewer côté joueur, illisible) en
+   * perspective=0 ; ou (post-flip) joueur art upside-down après le switch.
+   * Cf. POC `decision.md` §2.
+   *
+   * Returns undefined when 0 so callers can use
+   * `baseRotateZ: ctx.cardBaseRotation(rel)` (option type:
+   * `number | undefined`).
    */
   cardBaseRotation(relPlayer: number): number | undefined {
-    return relPlayer === 1 ? 180 : undefined;
+    const flipped = this.perspectiveSource() === 1;
+    const isOwn = relPlayer === 0;
+    if (flipped) return isOwn ? 180 : undefined;
+    return isOwn ? undefined : 180;
   }
 
   /** CSS rotateZ fragment for float stabilization (e.g. 'rotateZ(180deg)'). Empty string when 0. */
