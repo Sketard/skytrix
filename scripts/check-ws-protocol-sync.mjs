@@ -69,6 +69,13 @@ function normalizeGameLog(content) {
     .replace(/from '\.\.\/ws-protocol\.js'/g, "from '../duel-ws.types'")
     // game-log cross-import: './game-log-types.js' → './game-log-types'
     .replace(/from '\.\/(game-log-\w+)\.js'/g, "from './$1'")
+    // β.3 cas #12 R9 (2026-05-26) — `ocgcore-reason-flags.ts` lives at the
+    // protocol root on the back (`duel-server/src/`) but inside the duel
+    // page namespace on the front (`front/src/app/pages/pvp/duel-page/`).
+    // The game-log builder reaches it via `..` either way, but the front
+    // hops back DOWN into `duel-page/` afterwards. Rewrite the back form
+    // to the front form so the two copies reduce to byte-identical.
+    .replace(/from '\.\.\/ocgcore-reason-flags\.js'/g, "from '../duel-page/ocgcore-reason-flags'")
     // front-side already in target form — idempotent
     ;
 }

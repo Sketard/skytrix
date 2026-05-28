@@ -32,14 +32,15 @@ import type {
   MoveEntry,
   PostureKind,
 } from './game-log-types.js';
-// β.3 cas #12 R9 fix (2026-05-26) — replace the locally-declared (FAUX!)
-// REASON_* constants with the authoritative values from constant.lua. Cf.
-// `ocgcore-reason-flags.ts` for the full history. The old local values
-// matched the wasm `reason` field NEVER → every Fusion/Synchro/XYZ/Link/
-// Ritual summon fell through the bitmask switch and was labeled as a plain
-// move. Same fix landed on `replay-precompute.ts` and `front/.../game-log/
-// game-log-builder.ts` in the same commit (3 sibling miroirs converged on
-// the shared module).
+
+// β.3 cas #12 R9 fix (2026-05-26) — REASON_* now imported from the shared
+// authoritative module (mirrors the back-side fix on `duel-server/src/
+// game-log/game-log-builder.ts` + `replay-precompute.ts`). The old local
+// constants carried FAUX values (REASON_FUSION=0x8 vs real 0x40000, etc.)
+// which never &-matched the real wasm `reason` bitfield — every Fusion/
+// Synchro/XYZ/Link/Ritual summon fell through `summonVerb`'s switch and
+// got labeled as a plain `move` (fallback ligne ~1249). Cf.
+// `ocgcore-reason-flags.ts` for the full constant table from constant.lua.
 import {
   REASON_RELEASE, REASON_FUSION, REASON_RITUAL, REASON_SYNCHRO, REASON_XYZ,
   REASON_LINK, REASON_DISCARD, REASON_SUMMON, REASON_SPSUMMON, REASON_MATERIAL,
