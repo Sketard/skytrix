@@ -313,31 +313,16 @@ describe('γ T2 — bug-solo-sequence §2 replayed against shared processor (UNI
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// T7 — Replay non-regression : the replay-page does NOT invoke notifyPerspectiveSwitch
+// T7 — Replay non-regression : moved to the static check script
+// `scripts/check-perspective-isolation.mjs`, wired in duel-server's prebuild.
+//
+// γ post-review M10 (2026-05-28) — the previous Karma-side T7 only asserted
+// `expect(adapterModule.ReplayDuelAdapter).toBeDefined()` which proves
+// nothing about the actual invariant ("SoloDuelOrchestratorService is the
+// SOLE caller of notifyPerspectiveSwitch"). Karma cannot grep the FS ; the
+// real check now lives as a Node script grepping every .ts under front/src
+// and failing CI fast on a violation.
 // ─────────────────────────────────────────────────────────────────────────────
-
-describe('γ T7 — replay non-regression', () => {
-  it('SoloDuelOrchestratorService.switchPerspective is the ONLY caller of notifyPerspectiveSwitch', async () => {
-    // Static grep — proves there's no orphan caller in the front codebase.
-    // The expectation is one occurrence: solo-duel-orchestrator.service.ts.
-    // (The orchestrator's `notifyPerspectiveSwitch` declaration itself is
-    // matched by the pattern, which is why we expect exactly one CALL.)
-    //
-    // We can't easily grep at runtime; instead we encode the invariant as:
-    // ReplayDuelAdapter is imported and its public API surface does NOT
-    // expose anything that calls `notifyPerspectiveSwitch`. This is a
-    // structural assertion via TypeScript imports — if a future commit
-    // adds a replay-side caller, the import below + the static assert
-    // becomes the breadcrumb to revisit T7.
-    const adapterModule = await import('../replay/replay-duel-adapter');
-    expect(adapterModule.ReplayDuelAdapter).toBeDefined();
-    // The replay adapter has its own `processor` and emits its own stream
-    // — by construction it cannot reach the SOLO orchestrator's
-    // notifyPerspectiveSwitch (different injector, different scope).
-    // If this changes in δ (unified perspective signal), the T7 contract
-    // needs an explicit re-evaluation.
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // T9 — Debounce confirmation : after 300ms, switch re-enabled
