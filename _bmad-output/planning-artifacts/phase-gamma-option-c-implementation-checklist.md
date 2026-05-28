@@ -359,11 +359,11 @@ per-perspective. **Le commit le plus dense de PR2** (~3.5j).
 > au lieu de 7 a-g checklist (les sub-commits a-g sont des scopes spec,
 > pas des frontières compile/test) :
 >
-> - **c4.1 ✅ 2026-05-28** — PerspectiveSlot extracted + `_slots: [Slot, Slot]` + 8 getters `getXxxFor(p)` + `soloMode` public field + optional `duelCtx?` ctor injection + **dual-write strict** sur 14 mutation sites. Legacy reste source de vérité. Code review BMad : 4 patches appliqués (F1 `_slotFor` bound check helper + F3 FIRST_PLAYER_RESULT clear-both + F10 REMATCH_STARTING hintContext/inactivityWarning clear slot + F12 DUEL_END hintContext clear slot). 1588 specs verts. A39 escaladé (cf. c5 ci-dessous).
-> - **c4.2** — bascule dual-write → slot-only sur handleMessage + A34 intra-slot consumé + A8.1/A8.2 consume.
-> - **c4.3** — sendResponse(`forPlayer`) slot-clear (A22) + `_lastSentForPlayer` memoize (A9) + 7 signatures sendXxx.
-> - **c4.4** — REMATCH_STARTING `_boardActive=false` (A23) + BOARD_STATE swap (A17) + `case 'ERROR'` (A32 front).
-> - **c4.5** — serveur `PSEUDO_PAIRWISE_SOLO_ROUTED` peuplé (A28 contenu).
+> - **c4.1 ✅ 2026-05-28** (commit `182bd634`) — PerspectiveSlot extracted + `_slots: [Slot, Slot]` + 8 getters `getXxxFor(p)` + `soloMode` public field + optional `duelCtx?` ctor injection + **dual-write strict** sur 14 mutation sites. Legacy reste source de vérité. Code review BMad : 4 patches appliqués (F1 `_slotFor` bound check helper + F3 FIRST_PLAYER_RESULT clear-both + F10 REMATCH_STARTING hintContext/inactivityWarning clear slot + F12 DUEL_END hintContext clear slot). 1588 specs verts. A39 escaladé (cf. c5 ci-dessous).
+> - **c4.2 ✅ 2026-05-28** (commit `6d8be003`) — bascule dual-write → slot-only sur handleMessage + A34 intra-slot consumé + A8.1/A8.2 consume. Public aliases re-implémentés en `computed(() => _slots[0].xxx())`. Code review BMad : 0 patches, 1 escalade A39-bis (HINT broadcast public, cf. c5).
+> - **c4.3 ✅ 2026-05-28** (commit `fea91a2c`) — sendResponse(`forPlayer`) slot-clear (A22) + `_lastSentForPlayer` memoize (A9) + 7 signatures sendXxx. Helper privé `_tagForPlayer`. Auditor 0 findings.
+> - **c4.4 ✅ 2026-05-28** (commit `23ee7d60`) — REMATCH_STARTING `_boardActive=false` (A23) + BOARD_STATE swap (A17) + `case 'ERROR'` (A32 front). Extraction `swapBoardState` helper partagé (`pvp/board-state-swap.ts`). Code review BMad : 3 patches (BH-1 swap avant onMessage + BH-3 duelAssert invariant + BH-6 logger.warn ERROR). 1 defer BH-9 → PR2 c7 Playwright Scenario C.
+> - **c4.5 ✅ 2026-05-28** — serveur `PSEUDO_PAIRWISE_SOLO_ROUTED` peuplé (A28 contenu) avec 4 types : WAITING_RESPONSE, INACTIVITY_WARNING, ERROR, REMATCH_INVITATION. Test verrou contenu + size=4. 1540 duel-server tests verts (+1).
 
 **Fichiers touchés** :
 
@@ -832,7 +832,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 ### Passage 3 (A27-A38)
 
 - [ ] **A27** — PR2 c6b + c6e — Rematch SOLO court-circuit (front + server).
-- [x] **A28** — PR1 c2b (vide ✅ 2026-05-28) + PR2 c4f (peuplé) — Whitelist routing.
+- [x] **A28** — PR1 c2b (vide ✅ 2026-05-28) + PR2 c4.5 (peuplé ✅ 2026-05-28) — Whitelist routing.
 - [ ] **A29** — PR2 c6bis — resendPendingPrompt × 2.
 - [ ] **A30** — PR2 c6bis — WORKER_CANCEL_DONE routing.
 - [x] **A31** — PR1 c3 — Post-duel grace cleanup SOLO (via `rematchTimeout` armé en SOLO). ✅ 2026-05-28

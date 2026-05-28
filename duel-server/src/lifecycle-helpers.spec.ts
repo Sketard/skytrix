@@ -79,17 +79,35 @@ describe('lifecycle-helpers — γ Option C A3 + A28', () => {
     });
 
     it('SOLO + socket 1 + type NOT in whitelist: returns "noop"', () => {
-      // PR1 ships an empty whitelist; every type is no-op on socket 1.
+      // Non-whitelisted types are no-op on socket 1 (the broadcast loop
+      // already covered the send via socket 0 — see lifecycle-helpers.ts
+      // jsdoc on PSEUDO_PAIRWISE_SOLO_ROUTED).
       expect(decideSoloRouting(true, 1, 'TIMER_STATE')).toBe('noop');
-      expect(decideSoloRouting(true, 1, 'WAITING_RESPONSE')).toBe('noop');
       expect(decideSoloRouting(true, 1, 'DUEL_STARTING')).toBe('noop');
       expect(decideSoloRouting(true, 1, 'BOARD_STATE')).toBe('noop');
     });
 
-    // Documented invariant: the whitelist is empty in PR1 — PR2 commit 4
-    // populates it. Locking the size catches an accidental early bump.
-    it('PR1 keeps the SOLO routing whitelist empty (PR2 c4 populates it)', () => {
-      expect(PSEUDO_PAIRWISE_SOLO_ROUTED.size).toBe(0);
+    // γ Option C A28 (PR2 c4.5, 2026-05-28) — the 4 whitelisted types route
+    // to socket 0 from socket 1 in SOLO multiplex. The front consumer reads
+    // the slot tag (`message.player` / `message.targetPlayer`) and routes
+    // into the correct PerspectiveSlot.
+    it('SOLO + socket 1 + type IN whitelist: returns "route-to-0"', () => {
+      expect(decideSoloRouting(true, 1, 'WAITING_RESPONSE')).toBe('route-to-0');
+      expect(decideSoloRouting(true, 1, 'INACTIVITY_WARNING')).toBe('route-to-0');
+      expect(decideSoloRouting(true, 1, 'ERROR')).toBe('route-to-0');
+      expect(decideSoloRouting(true, 1, 'REMATCH_INVITATION')).toBe('route-to-0');
+    });
+
+    // Documented invariant: the whitelist is populated at PR2 c4.5 with
+    // EXACTLY these 4 types. Locking the contents catches an accidental
+    // bump (a new type added requires updating CLAUDE.md + the front
+    // PerspectiveSlot routing per spec §6.2).
+    it('PR2 c4.5 SOLO routing whitelist contains exactly the 4 expected types', () => {
+      expect(PSEUDO_PAIRWISE_SOLO_ROUTED.size).toBe(4);
+      expect(PSEUDO_PAIRWISE_SOLO_ROUTED.has('WAITING_RESPONSE')).toBe(true);
+      expect(PSEUDO_PAIRWISE_SOLO_ROUTED.has('INACTIVITY_WARNING')).toBe(true);
+      expect(PSEUDO_PAIRWISE_SOLO_ROUTED.has('ERROR')).toBe(true);
+      expect(PSEUDO_PAIRWISE_SOLO_ROUTED.has('REMATCH_INVITATION')).toBe(true);
     });
   });
 

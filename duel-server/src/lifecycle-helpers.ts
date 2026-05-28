@@ -47,11 +47,37 @@ export function isFullyDisconnected(session: ActiveDuelSession): boolean {
  * not in this set becomes a no-op (the broadcast loop already sent it to
  * socket 0 once).
  *
- * Empty in PR1 to keep the phase strictly additive: γ clients (still using
- * two sockets at deploy time) see zero routing change. PR2 commit 4
- * populates the set when the front's PerspectiveSlot machinery lands.
+ * **Populated in PR2 commit 4.5 (2026-05-28)** — the 4 message types whose
+ * SOLO multiplex client uses the tag (`.player` / `.targetPlayer`) to route
+ * into the correct `PerspectiveSlot`:
+ *
+ * - `'WAITING_RESPONSE'`     : carries `targetPlayer?: 0|1` (A8.2). The front's
+ *                              `DuelConnection` writes `_slots[targetPlayer]`.
+ * - `'INACTIVITY_WARNING'`   : carries `player?: 0|1` (A8.1). The front writes
+ *                              `_slots[player]`.
+ * - `'ERROR'`                : carries `player?: 0|1` (PR1 c1b). The front
+ *                              writes a global `_lastError` (perspective-
+ *                              agnostic toast), but the routing-to-0 is still
+ *                              required so the SOLO socket 0 receives the
+ *                              error originating from the slot 1 user action
+ *                              (e.g. a SOLO `forPlayer` validation strike).
+ * - `'REMATCH_INVITATION'`   : the SOLO court-circuit (A27) means the server
+ *                              skips emitting it most of the time, but the
+ *                              routing is whitelisted defensively so a future
+ *                              code path that does emit it doesn't silently
+ *                              drop the slot-1 send.
+ *
+ * Other broadcast types (BOARD_STATE, MSG_*, CHAIN_*, REMATCH_STARTING,
+ * DUEL_END, etc.) are handled by the omniscient broadcast loop (A1+A10+A11)
+ * which sends each to socket 0 ONCE with full omniscient visibility, so the
+ * `sendToPlayer` slot-1 emission is correctly a no-op.
  */
-export const PSEUDO_PAIRWISE_SOLO_ROUTED: ReadonlySet<ServerMessage['type']> = new Set([]);
+export const PSEUDO_PAIRWISE_SOLO_ROUTED: ReadonlySet<ServerMessage['type']> = new Set([
+  'WAITING_RESPONSE',
+  'INACTIVITY_WARNING',
+  'ERROR',
+  'REMATCH_INVITATION',
+]);
 
 /**
  * γ Option C A1bis + A20 — assemble the `DUEL_STARTING` payload for one
