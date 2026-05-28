@@ -107,6 +107,14 @@ export function disposeFirstPlayer(session: ActiveDuelSession): void {
  * stalled player — the value just isn't user-triggered).
  */
 export function startFirstPlayerPhase(session: ActiveDuelSession, round = 0): void {
+  // γ Option C A36 — SOLO multiplex skips the dice pre-duel phase
+  // unconditionally (server.ts:584 and server.ts:1080 short-circuit to
+  // startDuelWithOrder(session, 0)). Reaching this entry in SOLO means a
+  // call site forgot the branch; throw so the regression surfaces in tests
+  // instead of silently sending DICE_ROLL to a phantom player 1.
+  if (session.soloMode) {
+    throw new Error('first-player-coordinator: startFirstPlayerPhase unreachable in SOLO multiplex');
+  }
   const cfg = getCfg();
   session.phase = 'ROLLING_DICE';
   session.firstPlayerState = { rolls: [null, null], timers: [], round, resolvedWinner: null };

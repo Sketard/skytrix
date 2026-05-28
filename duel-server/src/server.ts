@@ -110,6 +110,7 @@ import {
   handleClientMessage,
 } from './client-message-router.js';
 import { validateClientMessageForPlayer } from './client-message-validator.js';
+import { isReadyToStart, isFullyDisconnected, decideSoloRouting, buildDuelStartingMessage } from './lifecycle-helpers.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -481,21 +482,25 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       gameLog: createSessionGameLog(),
     };
 
-    // Store in active duels and pending tokens
-    sessionManager.register(session, [token0, token1]);
+    // Store in active duels and pending tokens. γ Option C A6 — SOLO multiplex
+    // issues a single token; socket 0 plays both perspectives. token1 is left
+    // unallocated so the client can't use it (and SessionManager won't accept it).
+    const tokens: readonly [string] | readonly [string, string] =
+      soloMode ? [token0] : [token0, token1];
+    sessionManager.register(session, tokens);
 
     // H17 — Connection timeout: if no players connect within 60s, clean up
     const CONNECTION_TIMEOUT_MS = 60_000;
     setTimeout(() => {
       const s = sessionManager.get(duelId);
-      if (s && s.players.every(p => !p.connected)) {
+      if (s && isFullyDisconnected(s)) {
         logger.log('Connection timeout — no players connected, cleaning up', { duelId });
         safeTerminateWorker(s);
         cleanupDuelSession(s);
       }
     }, CONNECTION_TIMEOUT_MS);
 
-    json(res, 201, { duelId, wsTokens: [token0, token1] });
+    json(res, 201, { duelId, wsTokens: tokens });
     return;
   }
 
@@ -632,8 +637,15 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
   // Tell each player their OCGCore index (after potential swap). Each side
   // receives only their own decklist's card codes — sending the union would
   // let the opponent's deck be reconstructed from the upfront image prefetch.
-  sendToPlayer(session, 0, { type: 'DUEL_STARTING', playerIndex: 0, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, 0) });
-  sendToPlayer(session, 1, { type: 'DUEL_STARTING', playerIndex: 1, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, 1) });
+  // γ Option C A1bis — SOLO multiplex sends a single DUEL_STARTING on socket 0
+  // carrying BOTH decks (the user is both players; both perspectives need
+  // their images pre-fetched). PvP normal stays per-player.
+  if (session.soloMode) {
+    sendToPlayer(session, 0, buildDuelStartingMessage(session, 0));
+  } else {
+    sendToPlayer(session, 0, buildDuelStartingMessage(session, 0));
+    sendToPlayer(session, 1, buildDuelStartingMessage(session, 1));
+  }
 
   // Spawn worker
   const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
@@ -686,7 +698,13 @@ function sendToPlayer(session: ActiveDuelSession, playerIndex: 0 | 1, message: S
   if (message.type === 'STATE_SYNC' && !message.gameLogEntries && session.gameLog) {
     message = { ...message, gameLogEntries: entriesForPlayer(session.gameLog, playerIndex) };
   }
-  safeSend(session.players[playerIndex].ws, message);
+
+  // γ Option C A1 + A28 — SOLO multiplex routes via the pure decision in
+  // lifecycle-helpers so it stays unit-testable without booting the server.
+  const decision = decideSoloRouting(session.soloMode, playerIndex, message.type);
+  if (decision === 'noop') return;
+  const targetWs = decision === 'route-to-0' ? session.players[0].ws : session.players[playerIndex].ws;
+  safeSend(targetWs, message);
 }
 
 
@@ -1073,8 +1091,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     resendPendingPrompt(session, playerIndex);
   }
 
-  // Check if both players are connected — trigger pre-duel RPS or fork resume
-  if (session.players[0].connected && session.players[1].connected) {
+  // Check if the session is ready to start — trigger pre-duel RPS or fork resume.
+  // SOLO multiplex only needs socket 0 connected; PvP normal needs both.
+  if (isReadyToStart(session)) {
     logger.log('Both players connected', { duelId: session.duelId });
     if (session.phase === 'WAITING_PLAYERS') {
       if (session.soloMode) {
@@ -1149,8 +1168,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       const opponentIndex: Player = live === 0 ? 1 : 0;
       sendToPlayer(session!, opponentIndex, { type: 'REMATCH_CANCELLED', reason: 'opponent_left' });
 
-      // If both players disconnected after duel end, cleanup
-      if (!session!.players[0].connected && !session!.players[1].connected) {
+      // If the session is fully disconnected after duel end, cleanup.
+      // SOLO multiplex only needs socket 0 down; PvP needs both.
+      if (isFullyDisconnected(session!)) {
         cleanupDuelSession(session!);
       }
     }
@@ -1183,8 +1203,10 @@ function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void
     return;
   }
 
-  // Re-send OCGCore player index (lost on page refresh)
-  sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, playerIndex) } as ServerMessage);
+  // Re-send OCGCore player index (lost on page refresh).
+  // γ Option C A20 — SOLO reconnect mirrors the initial site: ship both decks
+  // so the front rebuilds its prefetch cache for both perspectives.
+  sendToPlayer(session, playerIndex, buildDuelStartingMessage(session, playerIndex));
   if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
     const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
     const filtered = filterMessage(stateSync, playerIndex);

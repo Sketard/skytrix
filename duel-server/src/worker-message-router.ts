@@ -264,7 +264,18 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
     session.awaitingResponse[targetPlayer] = true;
     session.promptSentAt[targetPlayer] = Date.now();
     const opponentOfTarget: 0 | 1 = targetPlayer === 0 ? 1 : 0;
-    send(session, opponentOfTarget, { type: 'WAITING_RESPONSE' });
+    // γ Option C A19 — `targetPlayer` lets the SOLO multiplex front route
+    // WAITING_RESPONSE to the right perspective slot. Populated in both modes
+    // for protocol consistency; PvP normal front ignores the field.
+    //
+    // SOLO routing note — in PR1 this send is intentionally a no-op when the
+    // opponent slot is player 1, because `PSEUDO_PAIRWISE_SOLO_ROUTED` is
+    // empty (PR1 stays strictly additive). PR2 commit 4f populates the
+    // whitelist with 'WAITING_RESPONSE' so the SOLO front's PerspectiveSlot
+    // machinery starts seeing it. The send is kept here unconditionally so
+    // PvP parity is structural and the routing decision lives in ONE place
+    // (`decideSoloRouting`), not in scattered per-callsite branches.
+    send(session, opponentOfTarget, { type: 'WAITING_RESPONSE', targetPlayer: opponentOfTarget });
     scheduleTimerStart(session, targetPlayer);
     startInactivityTimer(session, targetPlayer);
     // P0-3bis.3 — a fresh IDLECMD/BATTLECMD = new rollback boundary.
@@ -277,6 +288,31 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
   // Phase 0b instrumentation: filterMessage runs twice per outbound message
   // (once per player) — finding D-C3. time() is a no-op unless
   // DUEL_INSTRUMENT=1; see duel-instrumentation.ts.
+  //
+  // γ Option C A1 + A10 — in SOLO multiplex the user is both players, so a
+  // single omniscient filter pass replaces the per-player loop. The per-slot
+  // perspective swap happens client-side on `switchPerspective` (the front
+  // re-applies `swapBoardState` when the active slot is player 1).
+  // A11 — DICE_RESULT never reaches here in SOLO (A36 guards
+  // `startFirstPlayerPhase`), so the omniscient pass does not have to worry
+  // about its per-player swap.
+  if (session.soloMode) {
+    const filtered = duelInstr.time('filterMessage', () => filterMessage(message, 0, true));
+    if (!filtered) return;
+    if (isSelectMessage(message)) {
+      const targetPlayer = (message as { player: Player }).player;
+      session.lastSentPrompt[targetPlayer] = filtered;
+    }
+    if (message.type === 'MSG_HINT') {
+      // MSG_HINT carries the deciding player as `message.player`; index the
+      // hint cache by it so a SOLO reconnect resends the right slot's hint.
+      const hintPlayer = (message as { player: Player }).player;
+      session.lastSentHint[hintPlayer] = filtered;
+    }
+    send(session, 0, filtered);
+    return;
+  }
+
   for (const playerIndex of [0, 1] as const) {
     const filtered = duelInstr.time('filterMessage', () => filterMessage(message, playerIndex));
     if (filtered) {

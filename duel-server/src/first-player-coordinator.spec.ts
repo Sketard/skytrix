@@ -136,6 +136,15 @@ describe('first-player-coordinator', () => {
   // ==========================================================================
 
   describe('startFirstPlayerPhase', () => {
+    // γ Option C A36 — SOLO multiplex never reaches this entry; throw guards.
+    it('throws in SOLO multiplex (unreachable by construction; server.ts short-circuits)', () => {
+      s.soloMode = true;
+      expect(() => startFirstPlayerPhase(s)).toThrow(/unreachable in SOLO multiplex/);
+      // No DICE_ROLL emitted; no phase mutation.
+      expect(s.phase).not.toBe('ROLLING_DICE');
+      expect(spy.sent).toHaveLength(0);
+    });
+
     it('sets phase=ROLLING_DICE, builds firstPlayerState, sends DICE_ROLL to both', () => {
       startFirstPlayerPhase(s);
 

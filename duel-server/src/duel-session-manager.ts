@@ -34,13 +34,17 @@ export class DuelSessionManager {
   private readonly reconnectTokens = new Map<string, { duelId: string; playerIndex: Player }>();
 
   /**
-   * Install a freshly constructed session and its 2 pending wsTokens.
-   * Used by both PvP `POST /api/duels` and the fork-solo bridge.
+   * Install a freshly constructed session and its pending wsTokens.
+   * Used by PvP `POST /api/duels` (2 tokens), the fork-solo bridge (2 tokens),
+   * and γ Option C A6 SOLO multiplex (1 token — socket 0 plays both
+   * perspectives, no token issued for player 1).
    */
-  register(session: ActiveDuelSession, wsTokens: [string, string]): void {
+  register(session: ActiveDuelSession, wsTokens: readonly [string] | readonly [string, string]): void {
     this.activeDuels.set(session.duelId, session);
     this.pendingTokens.set(wsTokens[0], { duelId: session.duelId, playerIndex: 0 });
-    this.pendingTokens.set(wsTokens[1], { duelId: session.duelId, playerIndex: 1 });
+    if (wsTokens.length === 2) {
+      this.pendingTokens.set(wsTokens[1], { duelId: session.duelId, playerIndex: 1 });
+    }
   }
 
   /**

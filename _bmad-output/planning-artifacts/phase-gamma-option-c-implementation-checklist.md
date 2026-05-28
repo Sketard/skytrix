@@ -141,68 +141,103 @@ nom + invariant "PvP ignore le champ" load-bearing pour les commits aval).
 ### Commit 2 — Server SOLO branches (A1 + A1bis + A10 + A11 + A28 vide + A19 + A20 + A36 + A6 + A3)
 
 **Scope** : tout le routage SOLO côté serveur, mais **A28 whitelist VIDE**
-(mécanique en place sans contenu). PR1 strictement additif.
+(mécanique en place sans contenu). PR1 strictement additif côté PvP normal.
+
+> **⚠️ SOLO QuickDuel cassé temporairement entre PR1 et PR2**.
+> A6 fait passer le POST `quick-duel` à 1 token. Le front actuel rejette
+> `wsToken2 undefined` (`duel-page.component.ts:599/614 → SOLO_SESSION_EXPIRED`).
+> Le SOLO redevient fonctionnel à PR2 commit 6 avec l'orchestrator
+> mono-connection. Acté avec Axel le 2026-05-28 : PvP normal + replays +
+> autres pages inchangés, et PR1/PR2 vivent dans la même branche
+> `feat/gamma-option-c` donc pas de gap en production.
+> Le bug E1 (combinedGraceTimer faux positif sur SOLO disconnect) est une
+> conséquence du même fait — il ne se déclenche pas en PR1 puisqu'aucun
+> SOLO front mono-connection n'existe encore. À auditer formellement
+> dans commit 3 (qui réécrit déjà `ws.on('close')` pour SOLO).
 
 **Fichiers touchés** :
 
-#### 2a — Broadcast loop omniscient (A1 + A10 + A11)
-- [ ] `duel-server/src/worker-message-router.ts:280-291` — brancher
-      `if (session.soloMode)` → 1 envoi avec `filterMessage(_, 0, true)`.
-- [ ] Commentaire A10 inline : "user is both players in SOLO".
-- [ ] **A36** — `first-player-coordinator.ts:578-584` : ajouter
-      `duelAssert(!session.soloMode, 'first-player-coordinator',
-      'unreachable in SOLO')` en tête de `startFirstPlayerPhase`.
+#### 2a — Broadcast loop omniscient (A1 + A10 + A11) ✅ 2026-05-28
+- [x] `duel-server/src/worker-message-router.ts:280-298` — branche SOLO
+      qui appelle `filterMessage(_, 0, true)` et caches indexées par
+      `message.player`. Commentaires A10 + A11 inline.
+- [x] **A36** — `first-player-coordinator.ts:109` : `throw new Error(...)`
+      en tête de `startFirstPlayerPhase` (pas de `duelAssert` côté serveur ;
+      throw direct = même effet — surface en tests + bloque la fonction).
+- [x] **Bonus (defer review #3 PR1 c1b)** — `message-filter.ts` :
+      passthrough `INACTIVITY_WARNING` + `ERROR` (défensif, PR2 c4f les
+      enverra par broadcast via A28).
 
-#### 2b — `sendToPlayer` no-op-on-1 + A28 whitelist (vide)
-- [ ] `duel-server/src/server.ts:673-689` — `sendToPlayer` :
-  - [ ] STATE_SYNC `gameLogEntries` branche (déjà en place — vérifier).
-  - [ ] `if (session.soloMode && playerIndex === 1)` :
-    - [ ] `if (PSEUDO_PAIRWISE_SOLO_ROUTED.has(message.type)) { safeSend(players[0].ws, message); return; }`
-    - [ ] sinon `return` (no-op-on-1 pour broadcasts purs).
-  - [ ] **`PSEUDO_PAIRWISE_SOLO_ROUTED` déclaré comme `Set` VIDE en haut
-        de fichier**. Commentaire : "Populated in PR2 commit 4 — keeps
-        PR1 strictly additive (no routing change for γ clients)".
+#### 2b — `sendToPlayer` no-op-on-1 + A28 whitelist (vide) ✅ 2026-05-28
+- [x] `duel-server/src/server.ts:sendToPlayer` : utilise `decideSoloRouting`
+      (fonction pure dans `lifecycle-helpers.ts`) qui retourne `'send'`,
+      `'route-to-0'` ou `'noop'`. Logique unit-testée sans booter le serveur.
+- [x] **`PSEUDO_PAIRWISE_SOLO_ROUTED`** déclaré dans `lifecycle-helpers.ts`
+      comme `ReadonlySet<ServerMessage['type']>` vide. Test verrouille
+      `.size === 0` pour catcher un bump accidentel.
 
-#### 2c — DUEL_STARTING + WAITING_RESPONSE émissions SOLO
-- [ ] **A1bis** — `server.ts:634-635` (site initial) : branche `soloMode`
-      ⇒ 1 envoi avec `bothCardCodes: [extract(0), extract(1)]`.
-- [ ] **A20** — `server.ts:1176` (site reconnect via `sendStateSnapshot`) :
-      même branche SOLO avec `bothCardCodes`.
-- [ ] **A19** — `worker-message-router.ts:266-267` : branche `soloMode`
-      ⇒ `send(session, 0, { type: 'WAITING_RESPONSE', targetPlayer:
-      opponentOfTarget })`. PvP normal : populate `targetPlayer` aussi
-      (cohérence protocole).
+#### 2c — DUEL_STARTING + WAITING_RESPONSE émissions SOLO ✅ 2026-05-28
+- [x] **A1bis** + **A20** — `buildDuelStartingMessage(session, playerIndex)`
+      dans `lifecycle-helpers.ts` (fonction pure, single source of truth).
+      Site initial + site reconnect (`sendStateSnapshot`) l'utilisent.
+- [x] **A1bis** type — `DuelStartingMsg.bothCardCodes?: [number[], number[]]`
+      (tuple plus strict que le `number[][]` de la spec — assignable et
+      protocole-significatif). Mirror front sync.
+- [x] **A19** — `worker-message-router.ts` populate `targetPlayer` sur
+      `WAITING_RESPONSE` **dans les 2 modes** (cohérence protocole).
 
-#### 2d — POST quick-duel + session register SOLO 1-token
-- [ ] **A6** — `server.ts:484` : `const tokens = soloMode ? [token0] :
-      [token0, token1]; sessionManager.register(session, tokens);`.
-- [ ] `server.ts:497` : POST response SOLO → `wsTokens: [token0]`.
-- [ ] `front/src/app/pages/pvp/services/room-api.service.ts` : marquer
-      `wsToken2?: string` optionnel (back-compat transitoire, supprimé en δ).
+#### 2d — POST quick-duel + session register SOLO 1-token ✅ 2026-05-28
+- [x] **A6** — `server.ts:POST /api/duels` :
+      `const tokens: readonly [string] | readonly [string, string] =
+      soloMode ? [token0] : [token0, token1];`
+- [x] `sessionManager.register` signature élargie à
+      `readonly [string] | readonly [string, string]`. 2e token registered
+      seulement si présent.
+- [x] POST response : `wsTokens: tokens` (tableau de 1 ou 2).
+- [x] `front/src/app/pages/pvp/room-api.service.ts` : `wsToken2?: string`
+      optionnel avec JSDoc "transitional, dropped in δ".
+- [x] **Spring Boot** (`back/.../RoomService.java`) :
+      `validateDuelResponse(response, minTokens)` overloadé.
+      `quickDuel` lit `wsTokens.length == 1` pour le bypass SOLO + écrit
+      `wsToken2 = null` (entity nullable). PvP `startDuel` reste minTokens=2.
 
-#### 2e — Lifecycle helpers (A3)
-- [ ] Nouveau fichier `duel-server/src/lifecycle-helpers.ts` (ou inline
-      dans `server.ts`) :
-  - [ ] `isReadyToStart(session): boolean`.
-  - [ ] `isFullyDisconnected(session): boolean`.
-- [ ] `server.ts:1076` — `if (isReadyToStart(session))` au lieu de
-      `players[0].connected && players[1].connected`.
-- [ ] `server.ts:1142` — `if (isFullyDisconnected(session))`.
-- [ ] `server.ts:490` — `s.players.every(p => !p.connected)` →
-      `isFullyDisconnected(s)`.
+#### 2e — Lifecycle helpers (A3) ✅ 2026-05-28
+- [x] Nouveau fichier `duel-server/src/lifecycle-helpers.ts` :
+      `isReadyToStart`, `isFullyDisconnected`, `PSEUDO_PAIRWISE_SOLO_ROUTED`,
+      `decideSoloRouting`, `buildDuelStartingMessage`.
+- [x] `server.ts:491` — connection timeout : `isFullyDisconnected(s)`.
+- [x] `server.ts:1078` — both-connected gate : `isReadyToStart(session)`.
+- [x] `server.ts:1153` — post-duel disconnect cleanup : `isFullyDisconnected`.
+- [x] Sites `timer-management.ts:352` + `fork-handlers.ts:120` audités :
+      timer-management est SOLO-reachable en PR2 (bug E1 differé au c3) ;
+      fork-handlers n'est PAS SOLO-reachable. **Pas de bug en PR1**.
 
 **Specs verts** :
-- [ ] `T-S1` — soloMode broadcast omniscient (1 send, filterMessage(_,0,true)).
-- [ ] `T-S3` — POST SOLO returns 1 token.
-- [ ] `T-S4` — lastSentPrompt indexed by message.player.
-- [ ] `T-S5` — sendToPlayer no-op-on-1 in SOLO.
-- [ ] `T-S7` — isReadyToStart in SOLO with 1 connected player.
-- [ ] `T-S9` — DUEL_STARTING in SOLO carries bothCardCodes.
-- [ ] `T-S11` — WAITING_RESPONSE in SOLO routed to socket 0.
-- [ ] `T-S12` — DUEL_STARTING reconnect in SOLO carries bothCardCodes.
-- [ ] Tous les specs PvP normal restent verts.
+- [x] `T-S1` — SOLO broadcast omniscient (1 send, MSG_DRAW preserves
+      cardCodes when target=1, proving `omniscient=true` was passed).
+- [x] `T-S3` — `DuelSessionManager.register` accepts 1 token in SOLO ;
+      "would-be-token-1" stays unknown.
+- [x] `T-S4` — `lastSentPrompt[message.player]` cached (target=0 AND
+      target=1 verified).
+- [x] `T-S5` — `decideSoloRouting` returns `'send' | 'route-to-0' | 'noop'`
+      correctly. Whitelist size = 0 locked.
+- [x] `T-S7` — `isReadyToStart` SOLO: socket 0 alone is enough.
+- [x] `T-S9` — `buildDuelStartingMessage` SOLO emits `bothCardCodes` tuple.
+- [x] `T-S11` — `WAITING_RESPONSE` populates `targetPlayer` (opponent of
+      prompted) in BOTH modes.
+- [x] `T-S12` — `buildDuelStartingMessage` SOLO with `playerIndex=1`
+      (reconnect path) still emits `bothCardCodes`.
+- [x] **Bonus T-S8** — `isFullyDisconnected` (originally c3 scope).
+- [x] **A36** — `startFirstPlayerPhase` throws on SOLO + 0 DICE_ROLL emitted.
+- [x] Tous les specs existants verts : **76 fichiers / 1516 → 77 fichiers /
+      1536 specs duel-server, +20 nouveaux**. Front : **1588 specs (inchangé)**.
+      Spring Boot : **17 specs (inchangé)**.
 
-**Diff attendu** : ~350 LOC, ~5 fichiers serveur.
+**Diff réel** : ~460 LOC, 14 fichiers (10 duel-server + 1 Java + 2 front + 1
+checklist). Plus que ~350 attendus à cause :
+- `lifecycle-helpers.ts` + `.spec.ts` (~230 LOC) — choisi pour la testabilité ;
+- 4 specs étendues côté duel-server au lieu d'inline dans 1 fichier ;
+- JSDoc WHY load-bearing sur le protocole + Spring.
 
 ---
 
@@ -600,21 +635,21 @@ ligne au fil de l'implémentation pour garantir 38/38.
 
 ### Passage 1 (A1-A17)
 
-- [ ] **A1** — PR1 c2b — `sendToPlayer` no-op-on-1.
-- [ ] **A1bis** — PR1 c2c — DUEL_STARTING SOLO initial `bothCardCodes`.
+- [x] **A1** — PR1 c2b — `sendToPlayer` no-op-on-1. ✅ 2026-05-28
+- [x] **A1bis** — PR1 c2c — DUEL_STARTING SOLO initial `bothCardCodes`. ✅ 2026-05-28
 - [x] **A2** — PR1 c1 — Validation stricte `forPlayer` PvP rejected. ✅ 2026-05-28
 - [x] **A2bis** — PR1 c1 — CANCEL rate-limit lâche SOLO documenté. ✅ 2026-05-28
-- [ ] **A3** — PR1 c2e — Lifecycle helpers.
+- [x] **A3** — PR1 c2e — Lifecycle helpers. ✅ 2026-05-28
 - [ ] **A4** — PR2 c6b — setupRematchEffect 1-connection.
 - [ ] **A5** — PR2 c6c, c6d — Perspective localStorage persist + clear.
-- [ ] **A6** — PR1 c2d — Session register 1 token SOLO.
+- [x] **A6** — PR1 c2d — Session register 1 token SOLO. ✅ 2026-05-28
 - [ ] **A7** — Méta (découpe 2 PRs) — acté.
 - [ ] **A8** — PR2 c4a — PerspectiveSlot 8 fields (A33 reclasse `_lastDrawAnnouncedHash` global).
 - [x] **A8.1** — PR1 c1b — `InactivityWarningMsg.player`. ✅ 2026-05-28
 - [x] **A8.2** — PR1 c1b — `WaitingResponseMsg.targetPlayer`. ✅ 2026-05-28
 - [ ] **A9** — PR2 c4c, c5 — `lastSentForPlayer` memoize.
-- [ ] **A10** — PR1 c2a — Doctrine omniscient SOLO commentée.
-- [ ] **A11** — PR1 c2a — DICE_RESULT skip SOLO clarifié.
+- [x] **A10** — PR1 c2a — Doctrine omniscient SOLO commentée. ✅ 2026-05-28
+- [x] **A11** — PR1 c2a — DICE_RESULT skip SOLO clarifié. ✅ 2026-05-28
 - [ ] **A12** — Méta (PR2 atomique) — acté.
 - [ ] **A13** — PR2 c6f — Banner cross-slot.
 - [ ] **A14** — PR2 c6c — `setBoardActive` supprimé.
@@ -625,8 +660,8 @@ ligne au fil de l'implémentation pour garantir 38/38.
 ### Passage 2 (A18-A26)
 
 - [ ] **A18** — PR1 c3 — `ws.on('close')` SOLO sans grace.
-- [ ] **A19** — PR1 c2c — WAITING_RESPONSE émission SOLO.
-- [ ] **A20** — PR1 c2c — DUEL_STARTING reconnect SOLO.
+- [x] **A19** — PR1 c2c — WAITING_RESPONSE émission SOLO. ✅ 2026-05-28
+- [x] **A20** — PR1 c2c — DUEL_STARTING reconnect SOLO. ✅ 2026-05-28
 - [ ] **A21** — PR2 c5 — `sendXxx` garde SOLO-only.
 - [ ] **A22** — PR2 c4c — `sendResponse` clear slot.
 - [ ] **A23** — PR2 c4d — REMATCH_STARTING `_boardActive=false`.
@@ -637,7 +672,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 ### Passage 3 (A27-A38)
 
 - [ ] **A27** — PR2 c6b + c6e — Rematch SOLO court-circuit (front + server).
-- [ ] **A28** — PR1 c2b (vide) + PR2 c4f (peuplé) — Whitelist routing.
+- [x] **A28** — PR1 c2b (vide ✅ 2026-05-28) + PR2 c4f (peuplé) — Whitelist routing.
 - [ ] **A29** — PR2 c6bis — resendPendingPrompt × 2.
 - [ ] **A30** — PR2 c6bis — WORKER_CANCEL_DONE routing.
 - [ ] **A31** — PR1 c3 — Post-duel grace cleanup SOLO.
@@ -645,7 +680,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [ ] **A33** — PR2 c4a — `_lastDrawAnnouncedHash` reste GLOBAL.
 - [ ] **A34** — PR2 c4b — MSG_HINT inheritance intra-slot.
 - [ ] **A35** — PR2 c6f — i18n keys banner.
-- [ ] **A36** — PR1 c2a — `duelAssert(!soloMode)` first-player-coordinator.
+- [x] **A36** — PR1 c2a — `throw` (pas de `duelAssert` côté serveur) first-player-coordinator. ✅ 2026-05-28
 - [ ] **A37** — PR1 c1b (proto ✅ 2026-05-28) + PR2 c5 (fallback front).
 - [ ] **A38** — Méta (estimate ~18.75j) — n/a code.
 

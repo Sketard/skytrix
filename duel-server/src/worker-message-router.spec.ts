@@ -510,4 +510,127 @@ describe('worker-message-router', () => {
       expect((s.lastSentHint[0] as ServerMessage).type).toBe('MSG_HINT');
     });
   });
+
+  // ==========================================================================
+  // γ Option C — broadcastMessage in SOLO multiplex (A1 + A10 + A11 + T-S1 + T-S4)
+  // ==========================================================================
+
+  describe('γ Option C — broadcastMessage in SOLO multiplex', () => {
+    // T-S1 — broadcast omniscient in SOLO (single send, omniscient filter)
+    it('emits ONE message routed to socket 0 (per-player loop is bypassed)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+
+      broadcastMessage(s, makeBoardStateMsg(0, 1));
+
+      expect(spy.sent).toHaveLength(1);
+      expect(spy.sent[0]!.player).toBe(0);
+      expect(spy.sent[0]!.message.type).toBe('BOARD_STATE');
+    });
+
+    // T-S1 omniscient flag assertion — MSG_DRAW is sanitized (cards nulled) when
+    // the recipient is NOT the drawing player in non-omniscient mode; in
+    // omniscient mode the cardCodes pass through. Asserting the cards survive
+    // the SOLO filter pass for player 1's draw is direct proof that the SOLO
+    // branch passed `omniscient=true` to filterMessage.
+    it('SOLO broadcast uses omniscient filter (player 1 MSG_DRAW reaches socket 0 with cardCodes intact)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+
+      const drawMsg = {
+        type: 'MSG_DRAW',
+        player: 1,
+        cards: [{ cardCode: 1234, position: 0, location: 1, sequence: 0, controller: 1, isOverlay: false, overlaySeq: 0, hidden: false }],
+      } as unknown as ServerMessage;
+
+      broadcastMessage(s, drawMsg);
+
+      expect(spy.sent).toHaveLength(1);
+      expect(spy.sent[0]!.player).toBe(0);
+      const sentDraw = spy.sent[0]!.message as Extract<ServerMessage, { type: 'MSG_DRAW' }>;
+      // Non-omniscient would have returned `{ ..., cards: cards.map(() => null) }`.
+      // Omniscient preserves the original cards array — cardCode intact.
+      expect(sentDraw.cards[0]).not.toBeNull();
+      expect((sentDraw.cards[0] as { cardCode: number }).cardCode).toBe(1234);
+    });
+
+    it('preserves the per-player loop in PvP normal (2 sends)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = false;
+
+      broadcastMessage(s, makeBoardStateMsg(0, 1));
+
+      const sent = allMessagesOfType(spy, 'BOARD_STATE');
+      expect(sent).toHaveLength(2);
+      expect(sent.map(m => m.player).sort()).toEqual([0, 1]);
+    });
+
+    // T-S4 — lastSentPrompt indexed by message.player (not by the loop index)
+    it('caches SELECT_* on lastSentPrompt[message.player] in SOLO (target=1 → cache at index 1)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+
+      broadcastMessage(s, { type: 'SELECT_CARD', player: 1, cards: [] } as unknown as ServerMessage);
+
+      expect(s.lastSentPrompt[1]).toBeDefined();
+      expect(s.lastSentPrompt[0]).toBeNull();
+      expect((s.lastSentPrompt[1] as ServerMessage).type).toBe('SELECT_CARD');
+    });
+
+    // T-S4 symmetric — target=0 caches at [0], leaves [1] null
+    it('caches SELECT_* on lastSentPrompt[0] in SOLO when target=0 (and [1] stays null)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+
+      broadcastMessage(s, { type: 'SELECT_CARD', player: 0, cards: [] } as unknown as ServerMessage);
+
+      expect(s.lastSentPrompt[0]).toBeDefined();
+      expect(s.lastSentPrompt[1]).toBeNull();
+      expect((s.lastSentPrompt[0] as ServerMessage).type).toBe('SELECT_CARD');
+    });
+
+    it('caches MSG_HINT on lastSentHint[message.player] in SOLO (no per-player duplication)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+
+      broadcastMessage(s, { type: 'MSG_HINT', player: 1, hint: 1, value: 0 } as unknown as ServerMessage);
+
+      expect(s.lastSentHint[1]).toBeDefined();
+      expect(s.lastSentHint[0]).toBeNull();
+    });
+
+    // T-S11 — WAITING_RESPONSE.targetPlayer populated server-side
+    it('WAITING_RESPONSE carries `targetPlayer` (the opponent of the prompted player) in BOTH modes', () => {
+      // PvP normal
+      const spyPvp = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spyPvp));
+      const sPvp = makeSession();
+      broadcastMessage(sPvp, { type: 'SELECT_CARD', player: 1, cards: [] } as unknown as ServerMessage);
+      const waitingPvp = findMessage(spyPvp, 'WAITING_RESPONSE');
+      expect(waitingPvp).toBeDefined();
+      expect((waitingPvp!.message as { targetPlayer?: 0 | 1 }).targetPlayer).toBe(0);
+
+      // SOLO
+      const spySolo = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spySolo));
+      const sSolo = makeSession();
+      sSolo.soloMode = true;
+      broadcastMessage(sSolo, { type: 'SELECT_CARD', player: 0, cards: [] } as unknown as ServerMessage);
+      const waitingSolo = findMessage(spySolo, 'WAITING_RESPONSE');
+      expect(waitingSolo).toBeDefined();
+      expect((waitingSolo!.message as { targetPlayer?: 0 | 1 }).targetPlayer).toBe(1);
+    });
+  });
 });

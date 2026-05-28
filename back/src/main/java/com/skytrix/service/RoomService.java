@@ -365,11 +365,15 @@ public class RoomService {
                     dto.getTurnTimeSecs()
             );
 
-            validateDuelResponse(response);
+            // γ Option C A6 — SOLO multiplex returns a single wsToken; PvP
+            // normal still returns 2. The p2First swap is a no-op when there
+            // is no token2 to swap.
+            validateDuelResponse(response, 1);
+            var wsTokens = response.getWsTokens();
+            var soloMultiplex = wsTokens.length == 1;
 
-            // Swap wsTokens so token1 always maps to P1's connection, token2 to P2's.
-            var token1 = p2First ? response.getWsTokens()[1] : response.getWsTokens()[0];
-            var token2 = p2First ? response.getWsTokens()[0] : response.getWsTokens()[1];
+            var token1 = !soloMultiplex && p2First ? wsTokens[1] : wsTokens[0];
+            var token2 = soloMultiplex ? null : (p2First ? wsTokens[0] : wsTokens[1]);
 
             room.setDuelServerId(response.getDuelId());
             room.setWsToken1(token1);
@@ -504,7 +508,16 @@ public class RoomService {
     }
 
     private void validateDuelResponse(DuelCreationResponse response) {
-        if (response == null || response.getWsTokens() == null || response.getWsTokens().length < 2) {
+        validateDuelResponse(response, 2);
+    }
+
+    /**
+     * γ Option C A6 — SOLO multiplex returns a single wsToken (socket 0 plays
+     * both perspectives); PvP normal still expects 2. Callers pass the minimum
+     * arity they require; the default overload above keeps PvP at 2.
+     */
+    private void validateDuelResponse(DuelCreationResponse response, int minTokens) {
+        if (response == null || response.getWsTokens() == null || response.getWsTokens().length < minTokens) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Invalid duel server response");
         }
         if (response.getDuelId() == null) {

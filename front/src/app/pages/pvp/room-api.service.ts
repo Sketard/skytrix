@@ -6,7 +6,10 @@ import { RoomDTO } from './room.types';
 export interface QuickDuelResponse {
   roomCode: string;
   wsToken1: string;
-  wsToken2: string;
+  /** Absent in γ Option C SOLO multiplex — socket 0 plays both perspectives.
+   *  Transitional optionality, to be dropped in phase δ once SOLO 1-token is
+   *  the only path. */
+  wsToken2?: string;
 }
 
 interface EventSourceHandlers<T> {

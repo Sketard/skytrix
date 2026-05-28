@@ -94,6 +94,18 @@ describe('DuelSessionManager', () => {
       expect(mgr.has('b')).toBe(true);
       expect(mgr.consumePendingToken('tb0').kind).toBe('ok');
     });
+
+    // T-S3 — γ Option C A6 — SOLO multiplex registers a single token for socket 0
+    it('SOLO: register with 1 token issues a pending token for playerIndex 0 only', () => {
+      const s = makeSession('solo');
+      mgr.register(s, ['solo-t0']);
+
+      expect(mgr.size()).toBe(1);
+      const r0 = mgr.consumePendingToken('solo-t0');
+      expect(r0).toEqual({ kind: 'ok', session: s, playerIndex: 0 });
+      // No token1 was ever issued — an arbitrary "would-be-token-1" stays unknown.
+      expect(mgr.consumePendingToken('solo-t1')).toEqual({ kind: 'unknown' });
+    });
   });
 
   describe('consumePendingToken', () => {

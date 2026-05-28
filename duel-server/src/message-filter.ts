@@ -214,6 +214,13 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
     case 'FIRST_PLAYER_RESULT':
     case 'DUEL_STARTING':
     case 'CHAIN_STATE':
+    // γ Option C — these reach broadcastMessage in SOLO multiplex when
+    // sendToPlayer routes them via the PSEUDO_PAIRWISE_SOLO_ROUTED whitelist.
+    // Without an explicit passthrough they would hit the default-drop +
+    // logger.error arm. Listed defensively even though the populating commits
+    // (PR2 c4f for the whitelist contents) post-date this one.
+    case 'INACTIVITY_WARNING':
+    case 'ERROR':
       return message;
 
     // --- Default: DROP unknown types (fail-safe: prefer missing display over info leak) ---

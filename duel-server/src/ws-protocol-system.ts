@@ -109,6 +109,11 @@ export interface DuelStartingMsg {
   traceId: string;
   /** Unique card codes from both decklists — for upfront image prefetch. */
   cardCodes: number[];
+  /** γ Option C A1bis — populated only in SOLO multiplex (`[deck0, deck1]`).
+   *  The front pre-fetches both perspectives' images so a `switchPerspective`
+   *  does not flash uncached cards. PvP normal omits the field — each side
+   *  only ever sees its own deck. */
+  bothCardCodes?: [number[], number[]];
 }
 
 /** Server → client warmup hint emitted right before FIRST_PLAYER_RESULT.
