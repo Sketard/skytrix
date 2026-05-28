@@ -255,16 +255,12 @@ function isXyzLeaveWithMaterials(e: StreamEvent): e is MoveMsg {
 
 /**
  * Helper défensif : retourne `[]` si `overlayMaterials` est absent du
- * `MoveMsg` (cas pré-Commit 0bis, ou non-XYZ). Post-Commit 0bis, le
- * serveur peuple le champ via la query `OcgQueryFlags.OVERLAY_CARD`
- * capturée AVANT mutation OCGCore (snapshot pré-process).
- *
- * Note : `overlayMaterials` n'est PAS encore dans le type `MoveMsg`
- * front (Commit 0bis pas mergé) — d'où le cast via `unknown`. Une fois
- * Commit 0bis mergé, le cast deviendra inutile.
+ * `MoveMsg` (non-XYZ). Le serveur peuple le champ via la query
+ * `OcgQueryFlags.OVERLAY_CARD` capturée AVANT mutation OCGCore
+ * (snapshot pré-process — cf. duel-server/src/pre-process-overlays.ts).
  */
 function readOverlayMaterialsAtTrigger(m: MoveMsg): readonly number[] {
-  return (m as unknown as { overlayMaterials?: number[] }).overlayMaterials ?? [];
+  return m.overlayMaterials ?? [];
 }
 
 /**
@@ -287,7 +283,13 @@ interface XyzLeavePayload {
   remaining: number;
 }
 
-const xyzLeaveWithMaterials: RewriterRule = {
+/**
+ * Exporté pour le garde architectural (T-V10) qui valide l'identité
+ * exacte de l'unique rewriter shipped à β.3, par référence. Sans
+ * export, le test devait se rabattre sur une heuristique de nom
+ * (préfixe `xyz-leave:`) contournable en renommant.
+ */
+export const xyzLeaveWithMaterials: RewriterRule = {
   kind: 'rewriter',
 
   trigger: isXyzLeaveWithMaterials,

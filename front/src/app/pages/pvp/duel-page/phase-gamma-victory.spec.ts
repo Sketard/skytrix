@@ -383,7 +383,7 @@ describe('γ R10 — DuelGameLogService re-relativises journal on perspective fl
   it('gameLog.setPerspective(absolute) rebuilds entries from retained events', () => {
     // The duel-page wires this via `effect(() => this.gameLog.setPerspective(this.ownPlayerIndex()))`
     // at duel-page.component.ts:575. `ownPlayerIndex` in SOLO is the SOLO
-    // orchestrator's `activePlayerIndex` which is a computed over
+    // orchestrator's `perspectiveIndex` which is a computed over
     // DuelContext.perspective(). Switching flips perspective → ownPlayerIndex
     // re-evaluates → effect calls setPerspective → builder rebuilds.
     //

@@ -70,12 +70,10 @@ describe('SoloDuelOrchestratorService (γ commit 3)', () => {
     duelCtx = TestBed.inject(DuelContext);
   });
 
-  it('exposes perspectiveIndex / activePlayerIndex aliases reading DuelContext.perspective', () => {
+  it('exposes perspectiveIndex reading DuelContext.perspective', () => {
     expect(service.perspectiveIndex()).toBe(0);
-    expect(service.activePlayerIndex()).toBe(0);
     duelCtx.perspective().set(1);
     expect(service.perspectiveIndex()).toBe(1);
-    expect(service.activePlayerIndex()).toBe(1);
   });
 
   it('switchPerspective is no-op when no connections initialised', () => {

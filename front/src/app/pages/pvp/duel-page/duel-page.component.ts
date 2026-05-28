@@ -249,7 +249,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     }
     const conns = this.orchestrator.connections();
     if (!conns) return this.timerState();
-    const activeIdx = this.orchestrator.activePlayerIndex();
+    const activeIdx = this.orchestrator.perspectiveIndex();
     return conns[activeIdx].timerStatePerPlayer()[activeIdx] ?? this.timerState();
   });
 
@@ -362,7 +362,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   // In solo mode, tracks the active connection's player index so the board and badges
   // render from the correct perspective after switching players.
   readonly ownPlayerIndex = computed(() => {
-    if (this.isSoloMode()) return this.orchestrator.activePlayerIndex();
+    if (this.isSoloMode()) return this.orchestrator.perspectiveIndex();
     return this.wsService.ocgPlayerIndex() ?? 0;
   });
 

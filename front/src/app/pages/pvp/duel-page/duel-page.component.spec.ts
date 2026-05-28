@@ -179,7 +179,6 @@ class StubAnimationOrchestrator {
 /** Stub for SoloDuelOrchestratorService. */
 class StubSoloOrchestrator {
   readonly connections = signal<readonly { timerStatePerPlayer: () => readonly [TimerStateMsg | null, TimerStateMsg | null] }[] | null>(null);
-  readonly activePlayerIndex = signal(0);
   readonly perspectiveIndex = signal(0);
   init = jasmine.createSpy('init');
   switchPerspective = jasmine.createSpy('switchPerspective');
@@ -578,8 +577,8 @@ describe('DuelPageComponent — displayedTimerState multiplexing (C1.2)', () => 
     expect(component.displayedTimerState()).toBe(fallback);
   });
 
-  it('Solo + activePlayerIndex=1 reads connections[1].timerStatePerPlayer()[1]', () => {
-    // After switchPlayer(), the active connection is index 1 and its own
+  it('Solo + perspectiveIndex=1 reads connections[1].timerStatePerPlayer()[1]', () => {
+    // After switchPerspective(), the active connection is index 1 and its own
     // timer pool is at index 1 (server broadcasts both pools to each
     // connection). The active connection's pool — not the previous
     // active one — drives the displayed timer.
@@ -589,7 +588,7 @@ describe('DuelPageComponent — displayedTimerState multiplexing (C1.2)', () => 
     const conn1 = makeConnection(makeTimer('conn1-opp'), t1own);
     (component.isSoloMode as WritableSignal<boolean>).set(true);
     solo.connections.set([conn0, conn1] as unknown as ReturnType<typeof solo.connections>);
-    solo.activePlayerIndex.set(1);
+    solo.perspectiveIndex.set(1);
     expect(component.displayedTimerState()).toBe(t1own);
   });
 });

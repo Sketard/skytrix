@@ -38,11 +38,19 @@ export type ResponseData = Record<string, unknown>;
  * MSG_CHAIN_SOLVING, or the next MSG_CHAINING). This ensures cards requiring cost payment
  * complete their cost prompts BEFORE appearing in the chain overlay visually.
  *
- * ## Solo mode dual connections
+ * ## Solo mode dual connections (γ, 2026-05-27)
  *
- * In solo mode, two DuelConnection instances exist (one per player). The server broadcasts
- * all messages to both. Only the active connection's queue is processed by the orchestrator;
- * the inactive connection accumulates events and replays them on player switch.
+ * In solo mode, two DuelConnection instances exist (one per player). Both share the same
+ * `DuelEventProcessor` instance — injected via the `sharedProcessor` constructor option
+ * by `SoloDuelOrchestratorService.init`. Each transport pushes its WS messages into the
+ * SAME processor, so a `switchPerspective` no longer routes future messages to a different
+ * processor (the cardinal γ invariant that eliminated the multi-processor divergence
+ * documented in `bug-solo-sequence.md`).
+ *
+ * Transport-local state (the message accumulators below: `_lastConfirmedCards`,
+ * `_confirmedCardsByChain`, `_lastTurnPlayer`, `_lastTurnCount`,
+ * `_lastDrawAnnouncedHash`, prompt streak) remains per-instance — each socket
+ * tracks its own perspective's prompt/announce flow.
  */
 export class DuelConnection {
   // --- Signals (13 pairs) ---
@@ -190,7 +198,7 @@ export class DuelConnection {
   // currently-prompting link. Without this, a mid-chain reload (F5) replays the
   // CONFIRMs of an already-resolved link into a later link's prompt header.
   // Cleared on MSG_CHAIN_END (mirrors server-side activeChainLinks reset),
-  // STATE_SYNC, DUEL_END, REMATCH_STARTING, sendResponse, clearLastSelections.
+  // STATE_SYNC, DUEL_END, REMATCH_STARTING, sendResponse.
   private _confirmedCardsByChain = new Map<number, CardInfo[]>();
   /** Returns the reveals tagged with the given chainIndex, or the flat buffer
    *  (legacy behavior) when idx is null. Empty array if no entry. */
@@ -410,43 +418,6 @@ export class DuelConnection {
   skipPendingAnimations(): void {
     this.processor.reset();
     this.rbs.commitAll();
-  }
-
-  /**
-   * Drop only the queued animations + force-sync RBS, preserving chain state
-   * (`activeChainLinks`, `chainPhase`, `pendingChainEntry`). Used by SOLO
-   * `switchPlayer` where the chain is mid-resolution server-side and both
-   * processors must stay aligned with the server's chain machine across the
-   * swap — wiping chain state here would leave `applyChainSolved` operating
-   * on `[]`, the overlay would never fire `onChainLinkResolved`, and the
-   * queue would stall on `pause-external` until safety timeouts fire
-   * (Arthalion bug, 2026-05-24).
-   *
-   * NOT for reconnect / STATE_SYNC / rematch — those expect a full
-   * `processor.reset()`. Use `skipPendingAnimations` there.
-   */
-  clearAnimationQueueOnly(): void {
-    this.processor.resetQueue();
-    this.rbs.commitAll();
-  }
-
-  /**
-   * Drop the prompt-flow accumulators (lastConfirmedCards, lastSelectedCards,
-   * promptType streak, hint-consumed flag). M16: solo swap must invoke this
-   * on the outgoing connection so the next time it becomes active, its
-   * stale CONFIRM/SELECT history doesn't bleed into the next prompt's
-   * "revealed cards" panel or exclusion accumulator.
-   *
-   * NOT called by skipPendingAnimations — that helper is also used in PvP
-   * reconnection paths where the buffers are intentionally preserved across
-   * a queue reset (server replays them).
-   */
-  clearLastSelections(): void {
-    this._lastConfirmedCards = [];
-    this._confirmedCardsByChain.clear();
-    this._lastSelectedCards = [];
-    this._lastSelectedPromptType = null;
-    this._hintCardConsumed = false;
   }
 
   setBoardActive(active: boolean): void {

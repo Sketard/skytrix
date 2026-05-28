@@ -118,6 +118,17 @@ const pairedFiles = [
     label: `game-log/${name} ↔ pvp/game-log/${name}`,
     normalizer: normalizeGameLog,
   })),
+  // β.3 cas #12 R9 (2026-05-27, post-review H5) — `ocgcore-reason-flags.ts`
+  // ships as a back+front mirror pair. The constants are bitfield literals
+  // (no imports, no path stems) so the identity normalizer suffices after
+  // `stripHeaderComment` strips the per-side header. Drift surfaces here
+  // BEFORE it can silently mask a future REASON_* bit.
+  {
+    backPath: 'duel-server/src/ocgcore-reason-flags.ts',
+    frontPath: 'front/src/app/pages/pvp/duel-page/ocgcore-reason-flags.ts',
+    label: 'ocgcore-reason-flags.ts ↔ duel-page/ocgcore-reason-flags.ts',
+    normalizer: (c) => c,
+  },
 ];
 
 let mismatch = false;

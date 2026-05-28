@@ -48,12 +48,8 @@ export const EXTRA_DECK_SUMMON =
   REASON_FUSION | REASON_SYNCHRO | REASON_XYZ | REASON_LINK;
 
 /**
- * Cas #12 — exactement le mask émis par OCGCore pour le settling
- * position des ex-matériaux d'XYZ une fois l'XYZ parti
+ * β.3 cas #12 — exact mask OCGCore émet pour le settling position des
+ * ex-matériaux d'XYZ une fois l'XYZ parti
  * (`GRAVE → GRAVE reason = REASON_RULE | REASON_LOST_TARGET = 0x600`).
- *
- * À vérifier en pass 1 d'implémentation Commit 0bis (R1 spec) que la
- * valeur réelle émise correspond bien à `0x600` strict (et non un
- * mask incluant des bits supplémentaires).
  */
 export const REASON_XYZ_MATERIAL_SETTLE = REASON_RULE | REASON_LOST_TARGET; // 0x600

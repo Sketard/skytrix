@@ -93,24 +93,6 @@ describe('DuelConnection — state setters', () => {
     expect(() => conn.setBoardActive(false)).not.toThrow();
   });
 
-  it('clearLastSelections clears all 5 prompt-flow buffers', () => {
-    const { conn } = makeConn();
-    // Prime the buffers via a CONFIRM_CARDS dispatch.
-    const card: CardInfo = {
-      cardCode: 42, name: 'X', player: 0 as Player,
-      location: 1, sequence: 0,
-    };
-    dispatch(conn, {
-      type: 'MSG_CONFIRM_CARDS', player: 0 as Player, cards: [card],
-    } as ConfirmCardsMsg);
-    expect(conn.lastConfirmedCards.length).toBe(1);
-
-    conn.clearLastSelections();
-    expect(conn.lastConfirmedCards).toEqual([]);
-    expect(conn.lastSelectedCards).toEqual([]);
-    // _confirmedCardsByChain is private; verify via accessor.
-    expect(conn.confirmedCardsForChainIndex(0)).toEqual([]);
-  });
 
   it('clearStorageToken removes the storage entry', () => {
     const storageKey = `duel-test-${Math.random().toString(36).slice(2, 10)}`;

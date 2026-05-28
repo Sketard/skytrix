@@ -114,25 +114,6 @@ export class DuelEventProcessor {
   }
 
   processMessage(msg: ServerMessage): void {
-    // β.3 cas #12 — R8 PROBE TEMPORARY (2026-05-26) — surface the server-side
-    // probe field as a console.warn so the Playwright debug harness captures
-    // it. Common to PvP live + Replay (both go through processMessage).
-    // TO REMOVE before merging Commit 0bis.
-    if (msg.type === 'MSG_MOVE' && (msg as { _r8Probe?: unknown })._r8Probe) {
-      const probe = (msg as unknown as { _r8Probe: { count: number; codes: number[]; fromLoc: number; fromSeq: number } })._r8Probe;
-      const m = msg as unknown as { cardName: string; cardCode: number; player: number; toPlayer: number; fromLocation: number; fromSequence: number; toLocation: number; toSequence: number; reason: number };
-      console.warn('R8-PROBE MSG_MOVE post-process OVERLAY_CARD on source ' + JSON.stringify({
-        card: m.cardName,
-        cardCode: m.cardCode,
-        player: m.player,
-        toPlayer: m.toPlayer,
-        fromLoc: m.fromLocation, fromSeq: m.fromSequence,
-        toLoc: m.toLocation, toSeq: m.toSequence,
-        reason: '0x' + m.reason.toString(16),
-        probeOverlayCount: probe.count,
-        probeOverlayCodes: probe.codes,
-      }));
-    }
     const qBefore = this._animationQueue().length;
     const phaseBefore = this._chainPhase();
     this.logger?.log(DuelLogCategory.PIPELINE, 'processMessage in: type=%s qLen=%d phase=%s',

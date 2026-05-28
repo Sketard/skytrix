@@ -69,12 +69,7 @@ export class SoloDuelOrchestratorService {
   // Source unique de vérité = `DuelContext.perspective()` (signal
   // ajouté ci-dessous). Le service expose l'indice en lecture seule
   // pour les composants qui ne veulent pas injecter DuelContext.
-  // `activePlayerIndex` est conservé comme alias public pour les
-  // composants pré-γ qui lisaient l'ancien nom (templates +
-  // duel-page.component.ts:365 isSoloMode branch) — l'alias est
-  // gratuit (assignement de signal), pas du code mort.
   readonly perspectiveIndex = computed(() => this.duelCtx.perspective()());
-  readonly activePlayerIndex = this.perspectiveIndex;
 
   // Debounce post-switch : empêche un double-click pendant la
   // transition CSS (~250ms, commit 6). Le composant duel-page tient
@@ -195,11 +190,10 @@ export class SoloDuelOrchestratorService {
     // mutation (via `active()` qui lit `_transport_connections[perspective()]`).
     this.duelCtx.perspective().set(to);
 
-    // Pas de `setActiveConnection` — supprimé au commit 4. Pas de
-    // `clearAnimationQueueOnly` (le processor est unique, rien à
-    // clear). Pas de `clearLastSelections` (accumulateurs prompt-flow
-    // transport-local — restent attachés à leur identité serveur, le
-    // wsService les lira via `_transports[perspective()]`).
+    // Pas de reset transport-local au switch — processor unique
+    // partagé (rien à clear côté chain), accumulateurs prompt-flow
+    // restent attachés à leur identité serveur (le wsService les lira
+    // via `_transports[perspective()]`).
     // `setBoardActive(true)` reste pour le transport entrant : sans
     // cet appel, une connection qui n'a jamais reçu son BOARD_STATE
     // initial garderait `_boardActive=false` et bufferiserait ses

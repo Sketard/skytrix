@@ -40,7 +40,7 @@ export class SoloModeEffectsService {
 
     // Persist active player index so refresh restores the same view
     effect(() => {
-      const activePlayer = this.orchestrator.activePlayerIndex();
+      const activePlayer = this.orchestrator.perspectiveIndex();
       untracked(() => {
         try { sessionStorage.setItem(config.soloTokensKey, JSON.stringify({ wsToken1: config.wsToken1, wsToken2: config.wsToken2, activePlayer })); } catch {}
       });
