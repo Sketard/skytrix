@@ -191,26 +191,37 @@ export interface WaitingResponseMsg {
 
 // =============================================================================
 // Client → Server Messages (non-prompt-response)
+//
+// SOLO multiplex (γ Option C) — every client→server message gains an optional
+// `forPlayer?: 0 | 1` tag, used by the SOLO multiplexer to route the message
+// to the perspective slot that emitted it. PvP normal MUST NOT set this field;
+// the server validates strictly and rejects PvP payloads with `forPlayer`
+// defined (A2 — possible impersonation attempt).
 // =============================================================================
 
 export interface SurrenderMsg {
   type: 'SURRENDER';
+  forPlayer?: 0 | 1;
 }
 
 export interface RematchRequestMsg {
   type: 'REMATCH_REQUEST';
+  forPlayer?: 0 | 1;
 }
 
 export interface RequestStateSyncMsg {
   type: 'REQUEST_STATE_SYNC';
+  forPlayer?: 0 | 1;
 }
 
 export interface ActivityPingMsg {
   type: 'ACTIVITY_PING';
+  forPlayer?: 0 | 1;
 }
 
 export interface AnimationsDoneMsg {
   type: 'ANIMATIONS_DONE';
+  forPlayer?: 0 | 1;
 }
 
 /**
@@ -227,8 +238,10 @@ export interface AnimationsDoneMsg {
  * not have sent it).
  *
  * The player is implicit (the connection's authenticated playerIndex);
- * no payload field is needed.
+ * no payload field is needed in PvP normal — SOLO multiplex tags
+ * `forPlayer` to identify which perspective slot triggered the cancel.
  */
 export interface CancelPromptSequenceMsg {
   type: 'CANCEL_PROMPT_SEQUENCE';
+  forPlayer?: 0 | 1;
 }

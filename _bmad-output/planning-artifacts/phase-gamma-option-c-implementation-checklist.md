@@ -41,35 +41,61 @@ references:
 > actif). PR1 mergée + déployée en isolation, on observe zéro régression
 > pendant ~1 release cycle avant d'attaquer PR2.
 
-### Commit 1 — `forPlayer` field + STRICT validation (A2 + A2bis)
+### Commit 1 — `forPlayer` field + STRICT validation (A2 + A2bis) ✅ LIVRÉ 2026-05-28
 
 **Scope** : étendre 7 ClientMessage avec `forPlayer?: 0|1`. Reject en PvP
 normal (security A2). SOLO uniquement.
 
 **Fichiers touchés** :
-- [ ] `duel-server/src/ws-protocol-prompts.ts` — ajouter `forPlayer?: 0|1`
-      à `PlayerResponseMsg`.
-- [ ] `duel-server/src/ws-protocol-system.ts` — ajouter `forPlayer?: 0|1`
-      à `SurrenderMsg`, `RematchRequestMsg`, `RequestStateSyncMsg`,
+- [x] `duel-server/src/ws-protocol-prompts.ts` — `forPlayer?: 0|1` sur les
+      22 variants de l'union discriminée `PlayerResponseMsg`.
+- [x] `duel-server/src/ws-protocol-system.ts` — `forPlayer?: 0|1` sur
+      `SurrenderMsg`, `RematchRequestMsg`, `RequestStateSyncMsg`,
       `ActivityPingMsg`, `AnimationsDoneMsg`, `CancelPromptSequenceMsg`.
-- [ ] `front/src/app/pages/pvp/duel-ws-types.ts` (mirror front) — sync
-      les mêmes 7 interfaces.
-- [ ] `duel-server/src/server.ts:1100-1117` — `ws.on('message')` handler :
-      lit `parsed.forPlayer`, valide stricte (A2), calcule `live`.
-- [ ] **A2bis** — `duel-server/src/client-message-router.ts:234-238` case
-      `CANCEL_PROMPT_SEQUENCE` : ajouter commentaire load-bearing
-      documentant que le rate-limit SOLO est bénignement bypassable.
+- [x] `front/src/app/pages/pvp/duel-ws-prompts.types.ts` (mirror front) — sync.
+- [x] `front/src/app/pages/pvp/duel-ws-system.types.ts` (mirror front) — sync.
+- [x] `duel-server/src/server.ts:1107-1127` — `ws.on('message')` délègue à
+      `validateClientMessageForPlayer` avant `handleClientMessage`. `parsed`
+      typé `unknown` (honnête au runtime, narrowed par le validator).
+- [x] **A2bis** — `duel-server/src/client-message-router.ts:234-241` case
+      `CANCEL_PROMPT_SEQUENCE` : commentaire load-bearing documentant le
+      bypass intentionnel + sa structure (PvP rejette au dispatch level).
+
+**Déviation justifiée (vs spec §3.3 inline)** :
+- [x] **Validator extrait** dans `duel-server/src/client-message-validator.ts`
+      (NEW, fonction pure `validateClientMessageForPlayer(parsed, soloMode,
+      currentPlayerIndex, duelId)`). Motif : testabilité unitaire sans
+      bootstrap WS + single call-site = clean code. Sémantique 1:1 avec la spec.
+- [x] **Tests T-S2 + T-S6 dans le nouveau spec** `client-message-validator.spec.ts`
+      (NEW) au lieu de `client-message-router.spec.ts` + `server.spec.ts`.
+      Cohérent avec la localisation du validator extrait.
+
+**Hardening post-review (BMad code review 2026-05-28, P1 + P2 patches)** :
+- [x] **Runtime narrow** `forPlayer` strictement `0 | 1` (rejette `2`, `-1`,
+      `null`, `false`, `'1'`, `NaN`, etc.) — sinon le cast TS du wire JSON
+      mentait et `live: 2` aurait misroute `session.players[2] === undefined`.
+- [x] **Non-object payload guard** — `JSON.parse("null")` / primitives /
+      arrays rejetés en amont, sinon `null.forPlayer` throws TypeError dans
+      `ws.on('message')`.
+- [x] **`RejectReason` exporté** comme type nommé pour exhaustiveness check
+      au call site (3 reasons : `non-object-payload` | `forPlayer-in-pvp-normal`
+      | `forPlayer-invalid`).
 
 **Specs verts** :
-- [ ] `client-message-router.spec.ts` : `T-S2 forPlayer override
-      currentPlayerIndex in SOLO`.
-- [ ] `server.spec.ts` (nouveau ou extension) : `T-S6 forPlayer rejected
-      with warn in PvP normal`.
-- [ ] Tous les specs existants front + back verts.
+- [x] `client-message-validator.spec.ts` (NEW) — T-S2 (5 cas SOLO) + T-S6
+      (4 cas PvP) + 4 cas non-object + 16 cas weird-value (`it.each`).
+- [x] `npm test` duel-server : **76 fichiers / 1516 specs verts** (+21 vs avant).
+- [x] `npm test` front : **1588 specs verts** (inchangé).
 
-**Sync check** : `scripts/check-ws-protocol-sync.mjs` passe.
+**Sync check** : `node scripts/check-ws-protocol-sync.mjs` passe.
 
-**Diff attendu** : ~120 LOC, 5 fichiers touchés.
+**Diff réel** : ~280 LOC, 8 fichiers (6 modifiés + 2 nouveaux).
+
+**Defers acceptés (hors scope commit 1)** :
+- **D1** Pas de compteur réel impersonation (seulement log warn) — à
+  reconsidérer si la spec ajoute un strike system.
+- **D3** `duelAssert(typeof session.soloMode === 'boolean')` — naturel
+  à brancher dans le commit 2 (A6 session register SOLO 1-token).
 
 ---
 
@@ -564,8 +590,8 @@ ligne au fil de l'implémentation pour garantir 38/38.
 
 - [ ] **A1** — PR1 c2b — `sendToPlayer` no-op-on-1.
 - [ ] **A1bis** — PR1 c2c — DUEL_STARTING SOLO initial `bothCardCodes`.
-- [ ] **A2** — PR1 c1 — Validation stricte `forPlayer` PvP rejected.
-- [ ] **A2bis** — PR1 c1 — CANCEL rate-limit lâche SOLO documenté.
+- [x] **A2** — PR1 c1 — Validation stricte `forPlayer` PvP rejected. ✅ 2026-05-28
+- [x] **A2bis** — PR1 c1 — CANCEL rate-limit lâche SOLO documenté. ✅ 2026-05-28
 - [ ] **A3** — PR1 c2e — Lifecycle helpers.
 - [ ] **A4** — PR2 c6b — setupRematchEffect 1-connection.
 - [ ] **A5** — PR2 c6c, c6d — Perspective localStorage persist + clear.

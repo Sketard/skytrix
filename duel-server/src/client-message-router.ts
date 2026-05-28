@@ -231,6 +231,14 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
         break;
       }
       const now = Date.now();
+      // γ Option C A2bis — load-bearing: in SOLO multiplex, the user could
+      // alternate `forPlayer: 0/1` on successive CANCEL_PROMPT_SEQUENCE to
+      // bypass this per-player rate limit (each `forPlayer` value gets its
+      // own `lastCancelAt[]` slot). Intentional and benign — SOLO is the
+      // user's own session, no abuse vector against a third party. PvP
+      // normal rejects `forPlayer` at the ws.on('message') dispatch level
+      // (see client-message-validator.ts), so this bypass is structurally
+      // unreachable in PvP.
       if (now - session.lastCancelAt[playerIndex] < cfg.cancelPromptRateLimitMs) {
         logger.warn('CANCEL_PROMPT_SEQUENCE rate-limited', {
           duelId: session.duelId, player: playerIndex,

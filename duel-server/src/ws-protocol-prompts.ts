@@ -295,26 +295,30 @@ export type SelectPromptType =
   | 'DICE_ROLL'
   | 'SELECT_FIRST_PLAYER';
 
+/** SOLO multiplex (γ Option C) — `forPlayer` tags PLAYER_RESPONSE with the
+ *  perspective slot that emitted it. PvP normal MUST NOT set this field;
+ *  server validates strictly and rejects PvP payloads with `forPlayer`
+ *  defined (A2 — possible impersonation attempt). */
 export type PlayerResponseMsg =
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_IDLECMD'; data: IdleCmdResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_BATTLECMD'; data: BattleCmdResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_CARD'; data: CardResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_CHAIN'; data: ChainResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_EFFECTYN'; data: EffectYnResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_YESNO'; data: YesNoResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_PLACE'; data: PlaceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_DISFIELD'; data: PlaceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_POSITION'; data: PositionResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_OPTION'; data: OptionResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_TRIBUTE'; data: TributeResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_SUM'; data: SumResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_UNSELECT_CARD'; data: ChainResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_COUNTER'; data: CounterResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SORT_CARD'; data: SortResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SORT_CHAIN'; data: SortResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_RACE'; data: AnnounceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_ATTRIB'; data: AnnounceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_CARD'; data: AnnounceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_NUMBER'; data: AnnounceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'DICE_ROLL'; data: DiceRollResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_FIRST_PLAYER'; data: SelectFirstPlayerResponse };
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_IDLECMD'; data: IdleCmdResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_BATTLECMD'; data: BattleCmdResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_CARD'; data: CardResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_CHAIN'; data: ChainResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_EFFECTYN'; data: EffectYnResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_YESNO'; data: YesNoResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_PLACE'; data: PlaceResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_DISFIELD'; data: PlaceResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_POSITION'; data: PositionResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_OPTION'; data: OptionResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_TRIBUTE'; data: TributeResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_SUM'; data: SumResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_UNSELECT_CARD'; data: ChainResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_COUNTER'; data: CounterResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SORT_CARD'; data: SortResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SORT_CHAIN'; data: SortResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_RACE'; data: AnnounceResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_ATTRIB'; data: AnnounceResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_CARD'; data: AnnounceResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_NUMBER'; data: AnnounceResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'DICE_ROLL'; data: DiceRollResponse; forPlayer?: 0 | 1 }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_FIRST_PLAYER'; data: SelectFirstPlayerResponse; forPlayer?: 0 | 1 };

@@ -109,6 +109,7 @@ import {
   isClientMessageRouterConfigured,
   handleClientMessage,
 } from './client-message-router.js';
+import { validateClientMessageForPlayer } from './client-message-validator.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -1105,16 +1106,26 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
   // WebSocket message handling
   ws.on('message', (data: Buffer) => {
-    let parsed: ClientMessage;
-    const live = currentPlayerIndex();
+    let parsed: unknown;
+    const captured = currentPlayerIndex();
     try {
       parsed = JSON.parse(data.toString());
     } catch {
-      logger.error('Invalid JSON from player', { duelId: session!.duelId, player: live });
+      logger.error('Invalid JSON from player', { duelId: session!.duelId, player: captured });
       return;
     }
 
-    handleClientMessage(session!, live, parsed);
+    // γ Option C A2 — validates `forPlayer` semantics + the payload shape.
+    // PvP normal rejects any `forPlayer` (impersonation guard); SOLO accepts
+    // a strict `0 | 1` as the routing override. Non-object payloads
+    // (`null`, primitives, arrays from JSON) are dropped here so the
+    // dispatch below can treat `parsed` as a structurally-valid message.
+    const validated = validateClientMessageForPlayer(
+      parsed, session!.soloMode, captured, session!.duelId,
+    );
+    if (validated.kind === 'reject') return;
+
+    handleClientMessage(session!, validated.live, parsed as ClientMessage);
   });
 
   ws.on('close', () => {
