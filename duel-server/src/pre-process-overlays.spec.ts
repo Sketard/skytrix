@@ -5,6 +5,8 @@ import {
   capturePreProcessOverlays,
   preProcessOverlayKey,
   readOverlayMaterialsForMove,
+  buildSettlingSourceFifo,
+  consumeSettlingSource,
 } from './pre-process-overlays.js';
 import { LOCATION } from './ws-protocol.js';
 
@@ -176,7 +178,7 @@ describe('capturePreProcessOverlays', () => {
 
   it('omits entries when overlayCards array is empty', () => {
     const scripted = new Map<string, unknown[]>([
-      ['0-4', [{ overlayCards: [] }, null]],
+      ['0-4', [{ overlayCards: [] }, null, null, null, null, null, null]],
       ['1-4', []],
     ]);
     const { core } = makeMockCore(scripted);
@@ -187,7 +189,7 @@ describe('capturePreProcessOverlays', () => {
   it('catches binding errors and logs a warn (graceful degradation)', () => {
     const warn = vi.fn();
     const scripted = new Map<string, unknown[]>([
-      ['0-4', [{ overlayCards: [555] }, null]],
+      ['0-4', [{ overlayCards: [555] }, null, null, null, null, null, null]],
       // P1 throws — capture aborts in the middle.
       ['1-4', []],
     ]);
@@ -206,7 +208,7 @@ describe('capturePreProcessOverlays', () => {
 
   it('skips non-array overlay fields (defensive against future binding changes)', () => {
     const scripted = new Map<string, unknown[]>([
-      ['0-4', [{ overlayCards: 'not-an-array' }, null]],
+      ['0-4', [{ overlayCards: 'not-an-array' }, null, null, null, null, null, null]],
       ['1-4', []],
     ]);
     const { core } = makeMockCore(scripted);
@@ -216,12 +218,102 @@ describe('capturePreProcessOverlays', () => {
 
   it('handles null entries inside the duelQueryLocation result (empty slots)', () => {
     const scripted = new Map<string, unknown[]>([
-      ['0-4', [null, { overlayCards: [42] }, null, null, null]],
+      ['0-4', [null, { overlayCards: [42] }, null, null, null, null, null]],
       ['1-4', []],
     ]);
     const { core } = makeMockCore(scripted);
     const snapshot = capturePreProcessOverlays(core, DUEL_HANDLE);
     expect(snapshot.get('0-1')).toEqual([42]);
     expect(snapshot.size).toBe(1);
+  });
+
+  // H7 post-review — the warn fires when MZONE returns an unexpected
+  // slot count (binding pivot to dense, or some future MR6 layout).
+  // Length-0 stays silent (legitimate empty / degraded path).
+  it('H7: warns on unexpected MZONE cards.length (binding-change canary)', () => {
+    const warn = vi.fn();
+    const scripted = new Map<string, unknown[]>([
+      // length 3 — neither 5 (pre-MR5) nor 7 (MR5).
+      ['0-4', [{ overlayCards: [101] }, null, null]],
+      ['1-4', []],
+    ]);
+    const { core } = makeMockCore(scripted);
+    capturePreProcessOverlays(core, DUEL_HANDLE, { warn });
+    expect(warn).toHaveBeenCalledOnce();
+    const [msg, data] = warn.mock.calls[0];
+    expect(msg).toContain('unexpected MZONE cards.length');
+    expect(data).toMatchObject({ player: 0, length: 3 });
+  });
+
+  it('H7: length-0 stays silent (degraded but valid)', () => {
+    const warn = vi.fn();
+    // Default empty fixture for both players.
+    const { core } = makeMockCore(new Map());
+    capturePreProcessOverlays(core, DUEL_HANDLE, { warn });
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+// ─── buildSettlingSourceFifo + consumeSettlingSource (B3) ───────────────────
+
+describe('buildSettlingSourceFifo (B3)', () => {
+  it('builds an empty FIFO from an empty snapshot', () => {
+    const fifo = buildSettlingSourceFifo(new Map());
+    expect(fifo.size).toBe(0);
+  });
+
+  it('groups cardCodes from one XYZ into the same source seq entry', () => {
+    const snapshot = new Map<`${0 | 1}-${number}`, number[]>([
+      ['0-3', [101, 202]],
+    ]);
+    const fifo = buildSettlingSourceFifo(snapshot);
+    expect(fifo.get(101)).toEqual([3]);
+    expect(fifo.get(202)).toEqual([3]);
+    expect(fifo.size).toBe(2);
+  });
+
+  it('aggregates per cardCode across multiple XYZ source seqs (B3 case)', () => {
+    // Two XYZ at seq 3 and seq 4 sharing cardCode 101 — the FIFO holds
+    // [3, 4] for that cardCode so consumeSettlingSource can pop them
+    // in order.
+    const snapshot = new Map<`${0 | 1}-${number}`, number[]>([
+      ['0-3', [101]],
+      ['0-4', [101]],
+    ]);
+    const fifo = buildSettlingSourceFifo(snapshot);
+    expect(fifo.get(101)).toEqual([3, 4]);
+  });
+
+  it('preserves snapshot iteration order (Map insertion order)', () => {
+    // Build the snapshot in a non-sorted-seq order to ensure the FIFO
+    // follows insertion order rather than sorting on the seq value.
+    const snapshot = new Map<`${0 | 1}-${number}`, number[]>([
+      ['0-5', [42]],
+      ['0-2', [42]],
+      ['1-0', [42]],
+    ]);
+    const fifo = buildSettlingSourceFifo(snapshot);
+    expect(fifo.get(42)).toEqual([5, 2, 0]);
+  });
+});
+
+describe('consumeSettlingSource (B3)', () => {
+  it('returns undefined for unknown cardCode', () => {
+    const fifo = new Map<number, number[]>();
+    expect(consumeSettlingSource(fifo, 999)).toBeUndefined();
+  });
+
+  it('returns undefined for empty list (all sources already consumed)', () => {
+    const fifo = new Map<number, number[]>([[101, []]]);
+    expect(consumeSettlingSource(fifo, 101)).toBeUndefined();
+  });
+
+  it('pops the head and mutates the list in place', () => {
+    const fifo = new Map<number, number[]>([[101, [3, 4]]]);
+    expect(consumeSettlingSource(fifo, 101)).toBe(3);
+    expect(fifo.get(101)).toEqual([4]);
+    expect(consumeSettlingSource(fifo, 101)).toBe(4);
+    expect(fifo.get(101)).toEqual([]);
+    expect(consumeSettlingSource(fifo, 101)).toBeUndefined();
   });
 });

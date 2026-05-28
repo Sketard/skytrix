@@ -1257,6 +1257,19 @@ function runDuelLoop(): void {
     // on the source MZONE of a just-departed XYZ returns [] (R8 invariant);
     // the snapshot is the only way for `transformMove` to surface the
     // matériaux on the outgoing MSG_MOVE.
+    //
+    // M1 limit (post-review, 2026-05-28) — the snapshot is taken once
+    // PER `duelProcess`, not per OCG event. `duelProcess` can batch
+    // multiple mutations (e.g. chain resolution with several MSG_MOVEs).
+    // The lookup `snapshot[controller-seq]` keyed by MZONE source seq is
+    // physically unique : each seq holds at most one card at any moment,
+    // so MSG_MOVE_XYZ→GY events that leave a unique seq during the batch
+    // find the right entry. The pathological case (a card ENTERS then
+    // LEAVES MZONE-N in the same duelProcess) would stale the snapshot
+    // for the second occupant. No known OCG scenario produces this
+    // sequence in one batch — flagged for future investigation if
+    // observed. If hit, the fix is to snapshot per OCG event (cost :
+    // an extra `duelQueryLocation` per MOVE event = N×~100µs).
     const preProcessOverlays = duelInstr.time(
       'preProcessOverlays',
       () => capturePreProcessOverlays(core!, duel!, dlog),

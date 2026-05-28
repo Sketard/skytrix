@@ -90,17 +90,26 @@ export type SettlingSourceFifo = Map<number, number[]>;
  * Snapshot iteration order is map insertion order (controller 0
  * then 1, MZONE seq ascending) — deterministic given the
  * `capturePreProcessOverlays` for-loop nesting.
+ *
+ * Mass-destruction bilatérale note : two XYZ on DIFFERENT controllers
+ * that share a material cardCode produce 2 entries `[seqA, seqB]` in
+ * the FIFO. The settling.player field could in principle disambiguate
+ * (P0's material settles to P0's GY, P1's to P1's), but the front-side
+ * rule chooses NOT to narrow on `player` — see M2 fix : Mind Control
+ * makes settling.player = OWNER ≠ controller. So the FIFO is
+ * `cardCode`-keyed alone, and the discriminating key is the source seq
+ * alone (sufficient because the snapshot captured per `(controller,
+ * seq)` so seqs across controllers never collide on a SINGLE MZONE seq
+ * — but DO collide in the FIFO if two different XYZ on different sides
+ * occupy the same seq number). That's the Q1 acknowledged limit.
  */
 export function buildSettlingSourceFifo(
   snapshot: Map<PreProcessOverlayKey, number[]>,
 ): SettlingSourceFifo {
   const fifo: SettlingSourceFifo = new Map();
   for (const [key, cardCodes] of snapshot) {
-    // Key format `${controller}-${sequence}` — we only need the seq for
-    // the settling tag. Two XYZ on different controllers (mass-destruction
-    // bilatérale) will see their settlings discriminated by `player` in
-    // the rule predicate AS WELL AS by `sourceMzoneSeq`, so seq alone
-    // suffices in the FIFO value.
+    // Key format `${controller}-${sequence}` — extract the seq for the
+    // settling tag.
     const dashIdx = key.indexOf('-');
     if (dashIdx < 0) continue;
     const seq = Number(key.slice(dashIdx + 1));
@@ -166,6 +175,21 @@ export function capturePreProcessOverlays(
         controller: player,
         location: LOCATION.MZONE as number,
       } as never);
+      // H7 post-review (2026-05-28) — defence in depth against a future
+      // binding change. The capture assumes `cards` is sparse and indexed
+      // by MZONE seq. MR5 = 5 monster + 2 EMZ = 7 slots. A short non-empty
+      // array (binding pivoted to dense) would silently skip slots and
+      // stale the snapshot for the missing seqs. Bound to 5/7 only —
+      // anything else (1..4 or 6 or 8+) triggers the warn so DevHub
+      // surfaces it. Length-0 is left silent — empty arrays are a valid
+      // "no slot data" signal that callers may legitimately pass
+      // (test fixtures, defensive degradation). Empirical check covered
+      // by `pre-process-overlays-wasm.spec.ts`.
+      if (cards.length !== 0 && cards.length !== 7 && cards.length !== 5) {
+        logger?.warn('[pre-process-overlays] unexpected MZONE cards.length', {
+          player, length: cards.length, expected: '5 (pre-MR5) or 7 (MR5)',
+        });
+      }
       for (let seq = 0; seq < cards.length; seq++) {
         const entry = cards[seq] as
           | { overlay_cards?: unknown; overlayCards?: unknown }
