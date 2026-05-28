@@ -45,6 +45,13 @@ export interface TimerStateMsg {
    *  render the progress bar against the real configured pool instead of a
    *  hard-coded fallback that miscalibrates short timers. */
   totalMs: number;
+  /** γ Option C A37 — populated server-side from
+   *  `session.timerContext.pendingPlayer` when a parked timer is waiting for
+   *  `ANIMATIONS_DONE`. Read by the SOLO multiplex front as a fallback for
+   *  `sendAnimationsDone.forPlayer` when `_lastSentForPlayer` is null
+   *  (bootstrap + early switch). Populated in both modes for consistency;
+   *  PvP normal front ignores the field. */
+  pendingPlayer?: Player;
 }
 
 // =============================================================================
@@ -183,10 +190,31 @@ export interface OpponentReconnectedMsg {
 export interface InactivityWarningMsg {
   type: 'INACTIVITY_WARNING';
   remainingSec: number;
+  /** γ Option C A8.1 — the player whose inactivity is being warned. Populated
+   *  in both modes for consistency; required by SOLO multiplex (A28 routing)
+   *  to dispatch the warning to the correct perspective slot. PvP normal
+   *  front ignores the field. */
+  player?: Player;
 }
 
 export interface WaitingResponseMsg {
   type: 'WAITING_RESPONSE';
+  /** γ Option C A8.2 — the player whose response is being waited on.
+   *  Populated in both modes for consistency; required by SOLO multiplex
+   *  (A19) which emits on socket 0 and needs the target perspective to
+   *  route to the right slot. PvP normal front ignores the field. */
+  targetPlayer?: Player;
+}
+
+/** γ Option C A32 — generic server-side error message. Pre-existing wire
+ *  shape (`{ type: 'ERROR', message }` from `client-message-router.ts:96`)
+ *  is now typed. `player` is populated by SOLO multiplex when the error
+ *  originated from a specific perspective slot (A28 routing-to-0 + slot tag);
+ *  unset for connection-scoped errors. PvP normal ignores `player`. */
+export interface ErrorMsg {
+  type: 'ERROR';
+  message: string;
+  player?: Player;
 }
 
 // =============================================================================

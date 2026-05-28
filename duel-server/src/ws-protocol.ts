@@ -42,7 +42,7 @@ import type {
   RematchInvitationMsg, RematchStartingMsg, RematchCancelledMsg,
   WorkerErrorMsg, StateSyncMsg, ChainStateMsg,
   SessionTokenMsg, SessionPhaseMsg, OpponentDisconnectedMsg, OpponentReconnectedMsg,
-  InactivityWarningMsg, WaitingResponseMsg,
+  InactivityWarningMsg, WaitingResponseMsg, ErrorMsg,
   SurrenderMsg, RematchRequestMsg, RequestStateSyncMsg,
   ActivityPingMsg, AnimationsDoneMsg, CancelPromptSequenceMsg,
 } from './ws-protocol-system.js';
@@ -115,7 +115,7 @@ export type ServerMessage =
   | AnnounceAttribMsg
   | AnnounceCardMsg
   | AnnounceNumberMsg
-  // System messages (19)
+  // System messages (20)
   | DuelEndMsg
   | TimerStateMsg
   | DiceRollPromptMsg
@@ -136,6 +136,7 @@ export type ServerMessage =
   | OpponentReconnectedMsg
   | InactivityWarningMsg
   | WaitingResponseMsg
+  | ErrorMsg
   // Replay messages (4)
   | ReplayBoardStatesMsg
   | ReplayMetadataMsg

@@ -99,30 +99,42 @@ normal (security A2). SOLO uniquement.
 
 ---
 
-### Commit 1b — Extensions protocole additives (A8.1 + A8.2 + A37 + ErrorMsg)
+### Commit 1b — Extensions protocole additives (A8.1 + A8.2 + A37 + ErrorMsg) ✅ LIVRÉ 2026-05-28
 
 **Scope** : 4 messages serveur étendus avec champs additifs optionnels
 (back-compat strict). Pas de logique, juste les types. Préparation pour
 PR1 commit 2 + PR2.
 
 **Fichiers touchés** :
-- [ ] `duel-server/src/ws-protocol-system.ts` :
-  - [ ] `InactivityWarningMsg` — ajouter `player?: 0|1` (A8.1).
-  - [ ] `WaitingResponseMsg` — ajouter `targetPlayer?: 0|1` (A8.2).
-  - [ ] `TimerStateMsg` — ajouter `pendingPlayer?: 0|1` (A37).
-  - [ ] **`ErrorMsg`** — créer le type (n'existe pas aujourd'hui ;
+- [x] `duel-server/src/ws-protocol-system.ts` :
+  - [x] `InactivityWarningMsg` — ajouter `player?: 0|1` (A8.1).
+  - [x] `WaitingResponseMsg` — ajouter `targetPlayer?: 0|1` (A8.2).
+  - [x] `TimerStateMsg` — ajouter `pendingPlayer?: 0|1` (A37).
+  - [x] **`ErrorMsg`** — créer le type (n'existe pas aujourd'hui ;
         `client-message-router.ts:96` envoie un `type:'ERROR'` non-typé).
         Shape : `{ type: 'ERROR'; message: string; player?: 0|1 }`.
         Inclure dans le union `ServerMessage` (`ws-protocol.ts:65`).
-- [ ] `front/src/app/pages/pvp/duel-ws-types.ts` (mirror front) — sync.
+- [x] `front/src/app/pages/pvp/duel-ws-system.types.ts` (mirror front) — sync.
+- [x] `front/src/app/pages/pvp/duel-ws.types.ts` (front index union) — sync.
 
 **Specs verts** :
-- [ ] Aucun spec nouveau requis (additif strict, optionnels back-compat).
-- [ ] Tous les specs existants verts.
+- [x] Aucun spec nouveau requis (additif strict, optionnels back-compat).
+- [x] `npm test` duel-server : **76 fichiers / 1516 specs verts** (inchangé).
+- [x] `npx ng test --watch=false --browsers=ChromeHeadless` front : **1588 specs verts** (inchangé).
 
-**Sync check** : `scripts/check-ws-protocol-sync.mjs` passe.
+**Sync check** : `scripts/check-ws-protocol-sync.mjs` passe (9 fichiers).
 
-**Diff attendu** : ~30 LOC, 2 fichiers.
+**Diff réel** : ~65 LOC, 4 fichiers (back + back-index + front + front-index).
+Le coût > ~30 LOC vient des JSDoc WHY (A37 / A8.1 / A8.2 / A32 cités par
+nom + invariant "PvP ignore le champ" load-bearing pour les commits aval).
+
+**Defers post-review (BMad code review 2026-05-28, 0 patch / 5 defer / 4 dismiss)** :
+- `duelAssert(msg.player !== undefined)` au SOLO read-site → PR2 commit 4b.
+- Test "field populated in both modes" → posé alongside la logique de populate (PR1 c2a/c2c/c3).
+- Passthrough `INACTIVITY_WARNING` + `ERROR` dans `message-filter.ts` → PR1 c2a (broadcast omniscient SOLO).
+- Wire-shape parity assertion pour `ErrorMsg` → meta-tooling, hors scope.
+- Rappel A1bis : `DuelStartingMsg.bothCardCodes?: number[][]` à ajouter au TYPE
+  EN MÊME TEMPS que la runtime emission au PR1 commit 2c (auditor flag).
 
 ---
 
@@ -598,8 +610,8 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [ ] **A6** — PR1 c2d — Session register 1 token SOLO.
 - [ ] **A7** — Méta (découpe 2 PRs) — acté.
 - [ ] **A8** — PR2 c4a — PerspectiveSlot 8 fields (A33 reclasse `_lastDrawAnnouncedHash` global).
-- [ ] **A8.1** — PR1 c1b — `InactivityWarningMsg.player`.
-- [ ] **A8.2** — PR1 c1b — `WaitingResponseMsg.targetPlayer`.
+- [x] **A8.1** — PR1 c1b — `InactivityWarningMsg.player`. ✅ 2026-05-28
+- [x] **A8.2** — PR1 c1b — `WaitingResponseMsg.targetPlayer`. ✅ 2026-05-28
 - [ ] **A9** — PR2 c4c, c5 — `lastSentForPlayer` memoize.
 - [ ] **A10** — PR1 c2a — Doctrine omniscient SOLO commentée.
 - [ ] **A11** — PR1 c2a — DICE_RESULT skip SOLO clarifié.
@@ -629,12 +641,12 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [ ] **A29** — PR2 c6bis — resendPendingPrompt × 2.
 - [ ] **A30** — PR2 c6bis — WORKER_CANCEL_DONE routing.
 - [ ] **A31** — PR1 c3 — Post-duel grace cleanup SOLO.
-- [ ] **A32** — PR1 c1b (ErrorMsg type) + PR2 c4g (toast) + PR2 c6e (sendToPlayer).
+- [ ] **A32** — PR1 c1b (ErrorMsg type ✅ 2026-05-28) + PR2 c4g (toast) + PR2 c6e (sendToPlayer).
 - [ ] **A33** — PR2 c4a — `_lastDrawAnnouncedHash` reste GLOBAL.
 - [ ] **A34** — PR2 c4b — MSG_HINT inheritance intra-slot.
 - [ ] **A35** — PR2 c6f — i18n keys banner.
 - [ ] **A36** — PR1 c2a — `duelAssert(!soloMode)` first-player-coordinator.
-- [ ] **A37** — PR1 c1b (proto) + PR2 c5 (fallback front).
+- [ ] **A37** — PR1 c1b (proto ✅ 2026-05-28) + PR2 c5 (fallback front).
 - [ ] **A38** — Méta (estimate ~18.75j) — n/a code.
 
 **38 amendments. À cocher 38 fois.**
