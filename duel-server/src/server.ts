@@ -138,6 +138,7 @@ const MAX_INVALID_RESPONSES = 5;
 let maxSolverConnections = 10; // overridden at boot from solver-config.json
 const MAX_SOLVER_CACHE_ENTRIES = 50;
 const SOLVER_RESULT_CACHE_TTL_MS = 5 * 60 * 1000;
+const REMATCH_EXPIRY_MS = 5 * 60 * 1000;
 const FILLER_CARD_ID = 43096270; // Alexandrite Dragon — vanilla filler for goldfish opponent
 
 const startTime = Date.now();
@@ -290,7 +291,7 @@ configureWorkerLifecycle({
   handleWorkerMessage,
   cleanupDuelSession,
   clearAllDuelTimers,
-  rematchExpiryMs: 5 * 60 * 1000,
+  rematchExpiryMs: REMATCH_EXPIRY_MS,
   onRematchExpired: rematchExpired,
 });
 
@@ -1158,18 +1159,36 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       pauseTurnTimer(session!);
       clearInactivityTimer(session!, live as Player);
 
+      // γ Option C A18 — SOLO multiplex has no opponent socket to notify and
+      // no grace period to start: there's only one user, and a closed socket
+      // = the page is gone. Skip OPPONENT_DISCONNECTED + startGracePeriod.
+      // `players[1].connected` is never written here (stays `false` for the
+      // whole duel — the canonical SOLO invariant). Reconnect still works:
+      // the user's next `wsToken` consumption lands at socket 0 via the
+      // normal handshake path and resendPendingPrompt re-arms the prompt.
+      if (session!.soloMode) return;
+
       // Story 3.3 — Notify opponent of disconnection
       const opponentIndex: Player = live === 0 ? 1 : 0;
       sendToPlayer(session!, opponentIndex, { type: 'OPPONENT_DISCONNECTED', gracePeriodSec: RECONNECT_GRACE_MS / 1000 });
 
       startGracePeriod(session!, live);
     } else {
+      // γ Option C A31 — post-duel SOLO close: preserve the rematch window.
+      // PvP normal cleans up once both sockets are down (`isFullyDisconnected`
+      // → cleanup), because no one is left to ask for a rematch. In SOLO the
+      // user might just be refreshing the tab during the rematch grace; the
+      // `rematchTimeout` (armed by `handleDuelEnd`) already owns the deadline,
+      // so let it fire `onRematchExpired` → `rematchExpired` → cleanup.
+      // Bypassing here would race against a legitimate reconnect.
+      if (session!.soloMode) return;
+
       // Post-duel disconnect: notify opponent rematch is cancelled
       const opponentIndex: Player = live === 0 ? 1 : 0;
       sendToPlayer(session!, opponentIndex, { type: 'REMATCH_CANCELLED', reason: 'opponent_left' });
 
       // If the session is fully disconnected after duel end, cleanup.
-      // SOLO multiplex only needs socket 0 down; PvP needs both.
+      // PvP normal needs both sockets down; SOLO has its own path above.
       if (isFullyDisconnected(session!)) {
         cleanupDuelSession(session!);
       }

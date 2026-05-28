@@ -241,31 +241,90 @@ checklist). Plus que ~350 attendus à cause :
 
 ---
 
-### Commit 3 — Lifecycle SOLO (A18 + A8 + A31 + isFullyDisconnected branché)
+### Commit 3 — Lifecycle SOLO (A18 + A31 + audit `players[1].connected`) ✅ LIVRÉ 2026-05-28
 
-**Scope** : `ws.on('close')` SOLO sans grace logic, post-duel grace cleanup.
+**Scope** : `ws.on('close')` SOLO sans grace logic, rematch grace en SOLO,
+audit `players[1].connected` clos.
 
 **Fichiers touchés** :
-- [ ] **A18** — `server.ts:1120-1146` `ws.on('close')` handler :
-  - [ ] Branche `if (session.soloMode)` : `pauseTurnTimer` +
-        `clearInactivityTimer`. **PAS** de `startGracePeriod`, **PAS**
-        de `OPPONENT_DISCONNECTED`, **PAS** de touche à `players[1].connected`.
-  - [ ] Branche else (PvP normal) : inchangée.
-- [ ] **A31** — `server.ts:1142` post-duel cleanup gate :
-      `if (session.soloMode && session.endedAt !== null && Date.now()
-      - session.endedAt < cfg.rematchExpiryMs) return;` avant le
-      `cleanupDuelSession(session)`.
-- [ ] Audit grep `players[1].connected` sur tout `duel-server/src/` :
-      lister toute lecture. Confirmer qu'aucun site ne fait une
-      assomption symétrique implicite qui casserait en SOLO multiplex
-      (où `players[1].connected` reste `false` à jamais).
+- [x] **A18** — `server.ts:ws.on('close')` handler :
+  - [x] Branche pré-end : `if (session.soloMode) return;` après
+        `pauseTurnTimer` + `clearInactivityTimer`. **Pas** de
+        `OPPONENT_DISCONNECTED`, **pas** de `startGracePeriod`, **pas** de
+        touche à `players[1].connected`. Le user solo n'a personne à
+        notifier ; la reconnexion passe par le handshake normal.
+  - [x] Branche post-end : `if (session.soloMode) return;` également. Le
+        cleanup post-duel SOLO est délégué au `rematchTimeout` (cf. A31).
+        Bypasser ici racerait contre une reconnexion légitime.
+  - [x] Branche else (PvP normal) : inchangée.
+
+- [x] **A31** — `worker-lifecycle.ts:handleDuelEnd` arme le `rematchTimeout`
+      **aussi en SOLO** (était skip pré-γ). Avec A18 qui bloque le cleanup
+      au close SOLO, c'est le seul mécanisme qui nettoie une session SOLO
+      post-duel : `onRematchExpired` → `rematchExpired` → `cleanupDuelSession`
+      au bout de `rematchExpiryMs` (5 min). En SOLO le `REMATCH_CANCELLED`
+      envoyé à socket 1 est no-op (whitelist A28 vide en PR1).
+
+- [x] **Constante magique extraite** — `server.ts` : `REMATCH_EXPIRY_MS = 5 * 60 * 1000`
+      au module-scope, utilisée par la `configureWorkerLifecycle` au lieu
+      du literal inline (pas d'incidence runtime, juste DRY).
+
+- [x] **Audit grep `players[1].connected`** sur `duel-server/src/` :
+  - [x] `server.ts:1077` → `isReadyToStart` (c2 ✅).
+  - [x] `server.ts:1153` → `isFullyDisconnected` (c2 ✅).
+  - [x] `server.ts:491` → `isFullyDisconnected` (c2 ✅).
+  - [x] **`fork-handlers.ts:120`** — fork-solo flow, **PAS SOLO-reachable**
+        (les forks utilisent leur propre lifecycle, jamais soloMode multiplex).
+        Aucune action requise.
+  - [x] **`timer-management.ts:352`** — `combinedGraceTimer` fallback. En
+        SOLO multiplex, `players[1].connected` est toujours `false` → le
+        prédicat évalue toujours vrai. **Bug E1 (BMad code review c2)
+        résolu par construction** : `startGracePeriod` n'est plus appelé
+        en SOLO grâce à A18, donc `combinedGraceTimer` n'est plus armé,
+        et la ligne 352 devient inatteignable. Pas de modif requise.
 
 **Specs verts** :
-- [ ] `T-S8` — isFullyDisconnected in SOLO.
-- [ ] `T-S10` — SOLO close skips grace logic (no combinedGraceTimer armed).
-- [ ] `T-S16` — post-duel grace cleanup SOLO.
+- [x] `T-S8` — `isFullyDisconnected` SOLO (déjà livré au c2 dans
+      `lifecycle-helpers.spec.ts`).
+- [x] `T-S16` — `handleDuelEnd` arme rematchTimer en SOLO
+      (`worker-lifecycle.spec.ts` ligne 297, test reécrit).
+- [ ] **T-S10** (SOLO `ws.on('close')` skips grace logic) — **defer e2e**.
+      Le close-handler est inline dans `server.ts ws.on('close')`, non
+      isolable sans booter le WS. La logique vit derrière 2 early returns
+      simples (`if (session.soloMode) return;`) ; couvrir par e2e Playwright
+      en PR2 c7 quand le harness intégration arrive.
 
-**Diff attendu** : ~80 LOC, ~2 fichiers.
+**Diff réel** : ~70 LOC, 3 fichiers (server.ts + worker-lifecycle.ts +
+worker-lifecycle.spec.ts).
+
+**Patches post-review (BMad code review 2026-05-28, 3 layers)** :
+- **E5 idempotency** — `handleDuelEnd` guard `if (session.endedAt !== null) return;`
+  en tête. Sinon un race TIMEOUT-after-MSG_WIN re-rentrait, overwrite
+  `rematchTimeout` et leakait le timer précédent. Le commentaire ligne 141-143
+  affirmait l'idempotence mais le body ne l'imposait pas. +1 test
+  `worker-lifecycle.spec.ts` "is idempotent on endedAt".
+- **L1** — restauration d'un one-liner `// PvP normal needs both sockets
+  down; SOLO has its own path above.` au-dessus du `isFullyDisconnected`
+  PvP branch (grep-ability pour les futurs audits SOLO/PvP).
+
+**Defers (hors scope c3 / PR1)** :
+- **E2 / E6** — `cleanupDuelSession` ne call PAS `safeTerminateWorker`,
+  et `MSG_WIN` naturel ne déclenche pas `requestReplayFromWorker`. Donc
+  un OCGCore worker survit jusqu'à `'exit'` naturel (rare) ou expiration
+  de `rematchTimeout` via `cleanupDuelSession` qui ne le tue pas non plus.
+  **Pré-existant** côté PvP normal. Aggravé en SOLO par γ A31 (5 min de
+  fenêtre rematch là où SOLO pré-γ vivait moins longtemps). À traiter
+  séparément hors PR1 — pas un blocage de merge.
+- **E4 (pas de TTL eviction)** — `DuelSessionManager` n'a pas de TTL ni
+  de `maxActiveDuels`. Une DoS surface existe (un attaquant qui boucle
+  quick-duel + close gonfle l'état serveur). Pré-existant ; γ ne crée
+  pas la surface, juste l'allonge légèrement. À adresser hors PR1.
+
+**Code review verdict** : 1 BLOCKER analysé (B1 — pas un leak, vérifié) +
+6 HIGH analysés (5 pré-existants hors scope ; E5 patché) + 3 MED/LOW
+patchés ou dismiss justifiés. 0 régression PvP normal. Tests : 1539
+specs verts (+3 vs c2 : T-S16 + idempotency + worker-message-router déjà
+au c2).
 
 ---
 
@@ -659,7 +718,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 
 ### Passage 2 (A18-A26)
 
-- [ ] **A18** — PR1 c3 — `ws.on('close')` SOLO sans grace.
+- [x] **A18** — PR1 c3 — `ws.on('close')` SOLO sans grace. ✅ 2026-05-28
 - [x] **A19** — PR1 c2c — WAITING_RESPONSE émission SOLO. ✅ 2026-05-28
 - [x] **A20** — PR1 c2c — DUEL_STARTING reconnect SOLO. ✅ 2026-05-28
 - [ ] **A21** — PR2 c5 — `sendXxx` garde SOLO-only.
@@ -675,7 +734,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A28** — PR1 c2b (vide ✅ 2026-05-28) + PR2 c4f (peuplé) — Whitelist routing.
 - [ ] **A29** — PR2 c6bis — resendPendingPrompt × 2.
 - [ ] **A30** — PR2 c6bis — WORKER_CANCEL_DONE routing.
-- [ ] **A31** — PR1 c3 — Post-duel grace cleanup SOLO.
+- [x] **A31** — PR1 c3 — Post-duel grace cleanup SOLO (via `rematchTimeout` armé en SOLO). ✅ 2026-05-28
 - [ ] **A32** — PR1 c1b (ErrorMsg type ✅ 2026-05-28) + PR2 c4g (toast) + PR2 c6e (sendToPlayer).
 - [ ] **A33** — PR2 c4a — `_lastDrawAnnouncedHash` reste GLOBAL.
 - [ ] **A34** — PR2 c4b — MSG_HINT inheritance intra-slot.

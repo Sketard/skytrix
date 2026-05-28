@@ -294,7 +294,12 @@ describe('worker-lifecycle', () => {
       expect(s.rematchTimeout).not.toBeNull();
     });
 
-    it('skips rematch arm for solo-mode sessions', () => {
+    // γ Option C A31 — T-S16 — SOLO sessions ARM the rematch timer (was
+    // skipped pre-γ). Combined with A18 ws.on('close') SOLO branch in
+    // server.ts, this is the only thing that cleans up a SOLO post-duel
+    // session: the user may refresh the tab during the rematch grace and
+    // expect to come back to the rematch invitation.
+    it('arms rematch timer for solo-mode sessions too (γ Option C A31 / T-S16)', () => {
       const spy = makeSpy();
       configureWorkerLifecycle(makeConfig(spy));
       const s = makeSession();
@@ -302,8 +307,32 @@ describe('worker-lifecycle', () => {
 
       handleDuelEnd(s);
 
-      expect(s.rematchTimeout).toBeNull();
+      expect(s.rematchTimeout).not.toBeNull();
       // Timers still cleared.
+      expect(spy.timerClears).toHaveLength(1);
+    });
+
+    // γ defensive (BMad code review c3 finding E5) — handleDuelEnd is idempotent
+    // on `endedAt`. A re-entry (TIMEOUT-after-MSG_WIN race) would otherwise
+    // overwrite `rematchTimeout` and leak the prior Node timer.
+    it('is idempotent on endedAt (second call leaves rematchTimeout untouched)', () => {
+      const spy = makeSpy();
+      configureWorkerLifecycle(makeConfig(spy));
+      const s = makeSession();
+
+      handleDuelEnd(s);
+      const firstEndedAt = s.endedAt;
+      const firstTimer = s.rematchTimeout;
+      expect(firstEndedAt).not.toBeNull();
+      expect(firstTimer).not.toBeNull();
+
+      // Advance the clock so the second call's Date.now() would differ.
+      vi.advanceTimersByTime(50);
+      handleDuelEnd(s);
+
+      expect(s.endedAt).toBe(firstEndedAt);
+      expect(s.rematchTimeout).toBe(firstTimer);
+      // No second clearAllDuelTimers call either.
       expect(spy.timerClears).toHaveLength(1);
     });
 

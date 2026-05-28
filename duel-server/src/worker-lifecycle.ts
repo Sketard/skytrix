@@ -144,12 +144,21 @@ export function attachWorkerHandlers(session: ActiveDuelSession): void {
  * this once per duel-end event.
  */
 export function handleDuelEnd(session: ActiveDuelSession): void {
+  // Idempotent on `endedAt` (the leading comment above said so, but the body
+  // did not enforce it). Re-entry through a TIMEOUT-after-MSG_WIN race would
+  // otherwise overwrite `rematchTimeout` and leak the prior Node timer —
+  // and `endedAt` would get bumped to the second timestamp.
+  if (session.endedAt !== null) return;
   const cfg = getCfg();
   session.endedAt = Date.now();
   cfg.clearAllDuelTimers(session);
-  if (!session.soloMode) {
-    session.rematchTimeout = setTimeout(() => cfg.onRematchExpired(session), cfg.rematchExpiryMs);
-  }
+  // γ Option C A31 — the rematch grace window applies to SOLO too: the user
+  // may have closed the tab during the rematch invitation and want to come
+  // back. PR1 c3 makes `ws.on('close')` SOLO-aware so the only thing that
+  // can fire `cleanupDuelSession` post-duel is this timer expiring naturally
+  // (`onRematchExpired`). Pre-γ SOLO had no rematch grace at all — the
+  // session was cleaned the instant the worker reported MSG_WIN.
+  session.rematchTimeout = setTimeout(() => cfg.onRematchExpired(session), cfg.rematchExpiryMs);
 }
 
 /**
