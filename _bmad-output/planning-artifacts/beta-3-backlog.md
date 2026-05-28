@@ -68,6 +68,12 @@ fallback) sera ajoutée.
 - Une règle DEP dont le `name` collide silencieusement avec une autre
   à cause d'un abandon manqué.
 
+**Re-audit 2026-05-28** : passe de chasse-aux-sorcières δ. Aucune
+projection consommatrice d'`EffectAbandoned` autrement qu'en fallback
+graceful-degradation. Aucune règle DEP ne collide structurellement (les
+6 règles livrées indexent par chainIndex / ref / cardCode uniques). La
+décision β.3 (conserver le comportement actuel) reste valide. Honoré.
+
 ---
 
 ## Findings ✅ fixés
@@ -81,6 +87,33 @@ matchant la durée LP). Commit dans Work Item 3.
 Fix : remplacé par `Map<chainIndex, EffectRef>`. Chaque chainIndex
 détient son propre effect ; cleanup explicite en `onChainEnd` (sweep
 de la map) + `destroyRef`. Commit dans Work Item 3.
+
+---
+
+## Finding #11 — pile-target-float-cleanup migration DEP
+
+**Statut** : 🟡 backlog honoré (audit δ 2026-05-28).
+
+**Symptôme attendu** : aucun. Le pattern actuel (`targetIndicator.cleanup()`
+sync dans `handleChainSolving` + `scheduleCleanup(holdMs)` safety net sur
+le dernier MSG_BECOME_TARGET + `TARGET_PILE_FLOAT_FADE_OUT_MS` fade
+durée) couvre les cas connus. La spec β.2c demandait une migration vers
+règle DEP via émission d'un event `TargetFloatCreated/Destroyed` sur le
+flux + règle pile-float-cleanup.
+
+**Audit δ 2026-05-28** : aucun bug observé. La migration apporterait
+de l'élégance architecturale (élimination d'un cleanup path ad-hoc) sans
+fixer de symptôme. Coût ~150-200 LOC + nouveau type d'event + tests
+T-V. Décision : honorer la décision β.2 de reporter à β.2c — non-livré
+en δ.
+
+**Triggers de re-priorisation** :
+- Bug observé de float reticle qui reste collé après chain résolution.
+- Race observée entre `scheduleCleanup(holdMs)` et `cleanup()` sync
+  (double cleanup malgré l'idempotence).
+- Nouveau use-case nécessitant le float manager comme source d'event
+  sur le flux (e.g., projection qui veut observer "y a-t-il un float
+  pile actif ?").
 
 ---
 
