@@ -355,6 +355,16 @@ au c2).
 **Scope** : refactor structurel `DuelConnection` pour héberger 2 slots
 per-perspective. **Le commit le plus dense de PR2** (~3.5j).
 
+> **Découpe interne actée 2026-05-28 (Amelia + Axel)** — 5 sub-commits
+> au lieu de 7 a-g checklist (les sub-commits a-g sont des scopes spec,
+> pas des frontières compile/test) :
+>
+> - **c4.1 ✅ 2026-05-28** — PerspectiveSlot extracted + `_slots: [Slot, Slot]` + 8 getters `getXxxFor(p)` + `soloMode` public field + optional `duelCtx?` ctor injection + **dual-write strict** sur 14 mutation sites. Legacy reste source de vérité. Code review BMad : 4 patches appliqués (F1 `_slotFor` bound check helper + F3 FIRST_PLAYER_RESULT clear-both + F10 REMATCH_STARTING hintContext/inactivityWarning clear slot + F12 DUEL_END hintContext clear slot). 1588 specs verts. A39 escaladé (cf. c5 ci-dessous).
+> - **c4.2** — bascule dual-write → slot-only sur handleMessage + A34 intra-slot consumé + A8.1/A8.2 consume.
+> - **c4.3** — sendResponse(`forPlayer`) slot-clear (A22) + `_lastSentForPlayer` memoize (A9) + 7 signatures sendXxx.
+> - **c4.4** — REMATCH_STARTING `_boardActive=false` (A23) + BOARD_STATE swap (A17) + `case 'ERROR'` (A32 front).
+> - **c4.5** — serveur `PSEUDO_PAIRWISE_SOLO_ROUTED` peuplé (A28 contenu).
+
 **Fichiers touchés** :
 
 #### 4a — Extraction `PerspectiveSlot`
@@ -450,11 +460,29 @@ extensions ws-protocol.
 
 ---
 
-### Commit 5 — `DuelWebSocketService` computeds + `sendXxx` (A21 + A37)
+### Commit 5 — `DuelWebSocketService` computeds + `sendXxx` (A21 + A37 + 🆕 A39)
 
 **Scope** : `wsService` lit les 21 computeds transport-local via
 `_connection.getXxxFor(perspective())()`. Les 7 `sendXxx` taggent
 `forPlayer` **SOLO-only** (A21).
+
+> **🚨 A39 — BUG SPEC PvP-normal P1 (découvert par BMad code review c4.1,
+> 2026-05-28).** La spec §4.3 ligne 1178 fait
+> `pendingPrompt = computed(() => _connection.getPendingPromptFor(duelCtx.perspective()()))`.
+> Mais `DuelContext.perspectiveSource` reste `0` en PvP normal
+> (`duel-context.ts:43-44` "En PvP normal / replay, le signal reste à 0").
+> Et `message.player` reste **absolu** côté serveur (CLAUDE.md
+> "Perspective Convention" §3 + `message-filter.ts:145` qui n'altère pas
+> `message.player`). Conséquence : en PvP P1, `_slots[1]` reçoit les
+> prompts mais le reader fait `_slots[perspective()=0]` → vide → **PvP P1
+> cassé structurellement**.
+>
+> **À résoudre AVANT de coder c5.** 3 résolutions possibles :
+> 1. **Wsservice branche sur `soloMode`** : `getXxxFor(soloMode ? perspective() : ownPlayerIndex)`. Mon avis : le plus localisé.
+> 2. **Setter `perspective` à `ownPlayerIndex` au bootstrap PvP normal** (au lieu de figer à 0).
+> 3. **Swap server-side de `message.player` en PvP normal** (coût protocole).
+>
+> Arbitrage à faire avec Axel au démarrage c5.
 
 **Fichiers touchés** :
 - [ ] `front/src/app/pages/pvp/duel-page/duel-web-socket.service.ts` :
@@ -742,8 +770,9 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A36** — PR1 c2a — `throw` (pas de `duelAssert` côté serveur) first-player-coordinator. ✅ 2026-05-28
 - [ ] **A37** — PR1 c1b (proto ✅ 2026-05-28) + PR2 c5 (fallback front).
 - [ ] **A38** — Méta (estimate ~18.75j) — n/a code.
+- [ ] **A39** — PR2 c5 — Arbitrage bug spec PvP-normal P1 (perspective=0 vs message.player absolu). Découvert via BMad code review c4.1 (2026-05-28). Voir détails dans la section Commit 5 ci-dessus.
 
-**38 amendments. À cocher 38 fois.**
+**39 amendments. À cocher 39 fois.**
 
 ---
 
