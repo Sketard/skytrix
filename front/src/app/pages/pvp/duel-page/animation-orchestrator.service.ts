@@ -1101,10 +1101,9 @@ export class AnimationOrchestratorService {
    * γ commit 5 — émission de `PerspectiveSwitched(from, to)` sur le
    * flux + dispatch `applyReset({PERSPECTIVE_LIFETIME})` via
    * `ScopeResetDispatcher`. Source UNIQUE de reset PERSPECTIVE_LIFETIME
-   * pour le SOLO orchestrator. La méthode `resetForSwitch` plus ancienne
-   * reste comme escape hatch (rematch effect en attendant que le
-   * commit 5 cascade le rematch lui-même via un checkpoint dédié), à
-   * retirer définitivement au commit 8.
+   * pour le SOLO orchestrator. La méthode `resetForSwitch` est désormais
+   * réservée au replay seek (cf. son docblock) — le rematch SOLO compte
+   * sur `onStateSync({DUEL_LIFETIME})` (post-review B1, 2026-05-28).
    *
    * Ordering garanti (cf. §4.5 spec) :
    *   1. `pushToStream` écrit l'event sur `_eventStream` (atomique).
@@ -1140,15 +1139,30 @@ export class AnimationOrchestratorService {
       from,
       to,
     });
-    // Dispatch reset PERSPECTIVE_LIFETIME. Pendant la transition β.x
-    // (resetForSwitch encore référencé par le rematch effect SOLO),
-    // les deux mécanismes coexistent — un switch passe ici, un
-    // rematch passe encore par resetForSwitch.
+    // Dispatch reset PERSPECTIVE_LIFETIME. Source UNIQUE de reset
+    // PERSPECTIVE-scoped depuis la transition B1 (2026-05-28) qui a
+    // retiré le pre-reset rematch via `resetForSwitch`. Le rematch
+    // SOLO compte désormais sur `onStateSync({DUEL_LIFETIME})` qui
+    // suit immédiatement le REMATCH_STARTING (handler unique).
     this.scopeDispatcher?.dispatch(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
     this.logger.log(DuelLogCategory.PIPELINE,
       'notifyPerspectiveSwitch %d → %d → dispatch({PERSPECTIVE_LIFETIME})', from, to);
   }
 
+  /**
+   * Hard reset à scope PERSPECTIVE_LIFETIME. Aujourd'hui (post-review
+   * B1, 2026-05-28), un SEUL caller : le replay seek
+   * (`ReplayPageComponent.abortAndClean`). Auparavant aussi appelé par
+   * le SOLO rematch effect — retiré au profit du `onStateSync()` qui
+   * suit immédiatement (handler unique, scope cohérent).
+   *
+   * Le nom historique "ForSwitch" est conservé pour compat ; le scope
+   * effectif fait plus que ce que la doctrine PERSPECTIVE suggère
+   * (commitAll + eventStream.set([]) sont des side-effects DUEL). C'est
+   * acceptable pour le replay seek où on VEUT wiper l'historique
+   * (la rebuild via `gameLogRebuildTick` re-feed depuis [0..currentIndex]
+   * juste après).
+   */
   resetForSwitch(): void {
     this.logger.log(DuelLogCategory.QUEUE, 'resetForSwitch — clearing all state & timeouts');
     // PERSPECTIVE_LIFETIME only — Lp + Log survive (cf. resetAllState doc).

@@ -180,15 +180,22 @@ export class SoloDuelOrchestratorService {
     const to: 0 | 1 = from === 0 ? 1 : 0;
     this._switching.set(true);
 
-    // Stub commit 5 : émission de PerspectiveSwitched sur le flux +
-    // dispatch reset PERSPECTIVE_LIFETIME. Aujourd'hui no-op — le
-    // call site existe et matérialise le contrat.
-    this.animationService.notifyPerspectiveSwitch(from, to);
-
     // Flip CSS-driven (le board-host transform sera ajouté au commit 6).
     // Le wsService re-évalue ses computed transport-local sur cette
     // mutation (via `active()` qui lit `_transport_connections[perspective()]`).
+    //
+    // Ordre : signal flip AVANT `notifyPerspectiveSwitch` (post-review
+    // H2, 2026-05-28). La dispatch `applyReset({PERSPECTIVE_LIFETIME})`
+    // synchrone à l'intérieur de notifyPerspectiveSwitch doit voir la
+    // NOUVELLE perspective si une projection lit `perspectiveSource`
+    // dans son `applyReset`. Aucune projection ne le fait aujourd'hui,
+    // mais le futur-proof zéro coût vaut mieux qu'un bug latent off-
+    // by-one très subtil.
     this.duelCtx.setPerspective(to);
+
+    // Émission de PerspectiveSwitched sur le flux + dispatch reset
+    // PERSPECTIVE_LIFETIME.
+    this.animationService.notifyPerspectiveSwitch(from, to);
 
     // Pas de reset transport-local au switch — processor unique
     // partagé (rien à clear côté chain), accumulateurs prompt-flow
@@ -209,11 +216,24 @@ export class SoloDuelOrchestratorService {
   //  Rematch
   // ───────────────────────────────────────────────
   /**
-   * Quand les 2 transports reçoivent REMATCH_STARTING, on déclenche
-   * un seul reset orchestrator (`resetForSwitch` aujourd'hui, sera
-   * remplacé par `applyCheckpoint({RematchStarted})` au commit 5).
-   * Plus de double-reset façon ancien code (1 par connection × 2 =
-   * 2 cascades indépendantes).
+   * Quand les 2 transports reçoivent REMATCH_STARTING, on bascule la
+   * perspective à 0 et on acquitte les flags transport. On ne touche
+   * PAS à l'orchestrator : le STATE_SYNC qui suit (≤300ms, broadcasté
+   * par le serveur après `startDuelWithOrder`) déclenche le vrai
+   * reset DUEL_LIFETIME via `onStateSync()` — handler unique, scope
+   * cohérent, doctrine PERSPECTIVE/DUEL préservée.
+   *
+   * Historique (post-review B1, 2026-05-28) : un appel
+   * `resetForSwitch()` se trouvait ici. Il dispatch `{PERSPECTIVE_LIFETIME}`
+   * mais effectue aussi `rbs.commitAll()` + `_eventStream.set([])` qui
+   * sont DUEL_LIFETIME — mix incohérent (50% scope-driven, 50% global).
+   * Le STATE_SYNC qui suit faisait le vrai reset DUEL de toute façon,
+   * donc `resetForSwitch` n'était qu'une avance redondante. Drop.
+   *
+   * Risque accepté : pendant la fenêtre REMATCH_STARTING → STATE_SYNC
+   * (~100-300ms), une animation en cours peut finir. Son commit-ref
+   * agit sur la dernière board du duel précédent ; le `onStateSync`
+   * qui suit re-init tout proprement avec le payload neuf.
    */
   private setupRematchEffects(): void {
     const c = this._connections();
@@ -231,9 +251,6 @@ export class SoloDuelOrchestratorService {
         const s0 = c[0].rematchStarting();
         const s1 = c[1].rematchStarting();
         if (s0 && s1) {
-          // Un seul reset orchestrator (PERSPECTIVE_LIFETIME aujourd'hui ;
-          // sera étendu en DUEL_LIFETIME cascade au commit 5).
-          this.animationService.resetForSwitch();
           // Perspective P0 par convention en début de nouvelle partie.
           // Le wsService re-route ses lectures transport-local sur
           // _transports[0] via active() ; aucune `setActiveConnection`
@@ -242,6 +259,8 @@ export class SoloDuelOrchestratorService {
           c[0].resetRematchStarting();
           c[1].resetRematchStarting();
           this._rematchReset.update(v => v + 1);
+          // Pas d'orchestrator.reset ici : STATE_SYNC qui suit déclenche
+          // onStateSync({DUEL_LIFETIME}) qui purge tout proprement.
         }
       }, { allowSignalWrites: true });
     });
