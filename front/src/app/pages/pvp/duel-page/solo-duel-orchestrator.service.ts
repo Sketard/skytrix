@@ -188,7 +188,7 @@ export class SoloDuelOrchestratorService {
     // Flip CSS-driven (le board-host transform sera ajouté au commit 6).
     // Le wsService re-évalue ses computed transport-local sur cette
     // mutation (via `active()` qui lit `_transport_connections[perspective()]`).
-    this.duelCtx.perspective().set(to);
+    this.duelCtx.setPerspective(to);
 
     // Pas de reset transport-local au switch — processor unique
     // partagé (rien à clear côté chain), accumulateurs prompt-flow
@@ -238,7 +238,7 @@ export class SoloDuelOrchestratorService {
           // Le wsService re-route ses lectures transport-local sur
           // _transports[0] via active() ; aucune `setActiveConnection`
           // requise (commit 4).
-          this.duelCtx.perspective().set(0);
+          this.duelCtx.setPerspective(0);
           c[0].resetRematchStarting();
           c[1].resetRematchStarting();
           this._rematchReset.update(v => v + 1);

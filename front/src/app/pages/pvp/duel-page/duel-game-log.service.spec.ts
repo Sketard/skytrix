@@ -378,4 +378,55 @@ describe('DuelGameLogService', () => {
       expect(newCount).toBe(1);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // β.3 cas #12 — virtual events from RewriterRule must NOT pollute the journal
+  // (post-review H6). Tagged via `tagAsVirtual` at synthesis ; the journal
+  // filters them at the `notifyGameLog` boundary.
+  // ---------------------------------------------------------------------------
+  describe('β.3 cas #12 — virtual event filtering', () => {
+    it('skips MSG_MOVE events tagged via tagAsVirtual', async () => {
+      const { tagAsVirtual } = await import('./virtual-event-registry');
+      const virtualMove = tagAsVirtual({
+        type: 'MSG_MOVE' as const,
+        cardCode: 42,
+        cardName: '', // virtuals carry blank cardName by construction
+        player: 0 as 0 | 1,
+        toPlayer: 0 as 0 | 1,
+        fromLocation: 0x10 /* GRAVE */,
+        fromSequence: 0,
+        toLocation: 0x10 /* GRAVE */,
+        toSequence: 0,
+        fromPosition: 0,
+        toPosition: 0,
+        reason: 0x600,
+      });
+      const before = service.gameLogEntries().length;
+      service.notifyGameLog(virtualMove as unknown as Parameters<typeof service.notifyGameLog>[0]);
+      // Untouched : the virtual was filtered out before reaching the builder.
+      expect(service.gameLogEntries().length).toBe(before);
+    });
+
+    it('non-virtual MSG_MOVE with the same shape is NOT filtered (control)', () => {
+      const realMove = {
+        type: 'MSG_MOVE' as const,
+        cardCode: 42,
+        cardName: 'Some Card',
+        player: 0 as 0 | 1,
+        toPlayer: 0 as 0 | 1,
+        fromLocation: 0x10,
+        fromSequence: 0,
+        toLocation: 0x10,
+        toSequence: 0,
+        fromPosition: 0,
+        toPosition: 0,
+        reason: 0x600,
+      };
+      const before = service.gameLogEntries().length;
+      service.notifyGameLog(realMove as unknown as Parameters<typeof service.notifyGameLog>[0]);
+      // Builder consumed it — entries grew. Exact row count depends on the
+      // builder's emission logic ; we only assert non-zero growth here.
+      expect(service.gameLogEntries().length).toBeGreaterThan(before);
+    });
+  });
 });

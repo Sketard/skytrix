@@ -32,6 +32,7 @@ import type { InternalTransportEvent } from './queue-runner-events';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
 import { EMPTY_DUEL_STATE } from '../types';
+import { isVirtual } from './virtual-event-registry';
 
 /**
  * StreamEvent narrowed to what the legacy journal actually consumes.
@@ -306,6 +307,12 @@ export class DuelGameLogService implements ResetTarget {
     if (isAnimationFluxEvent(event)) return;
     if (isInternalTransportEvent(event)) return;
     if (isPerspectiveEvent(event)) return;
+    // β.3 cas #12 — RewriterRule virtuals (e.g., xyzLeaveWithMaterials's
+    // synthesized MSG_MOVE per ex-material) carry `cardName: ''` by
+    // construction and would surface as blank "→ went to GY" rows in
+    // the journal. Tagged via `tagAsVirtual` at synthesis ; the journal
+    // is the canonical consumer of `isVirtual` (post-review H6).
+    if (isVirtual(event)) return;
     this.tappedEvents.push(event);
     this.ingest(event);
     this.captureOpponentActivation(event);

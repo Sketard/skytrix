@@ -14,6 +14,28 @@
 // et `duel-server/src/replay-precompute.ts` (REASON_FUSION=0x8 au lieu
 // de 0x40000, REASON_XYZ=0x40 au lieu de 0x200000, etc.) — bug pré-
 // existant orthogonal, signalé dans R9 spec cas #12.
+//
+// Consumers connus (audit post-review L6, 2026-05-28) — exhaustif sur le
+// périmètre actuel. Tout nouveau consumer DOIT importer depuis ce fichier
+// pour éviter le pattern "constante locale qui drift silencieusement" qui
+// a causé le bug R9 :
+//
+//   Back  · `game-log/game-log-builder.ts`  — détection summon family
+//           (`isExtraDeckSummon`, `summonVerb`) via mask sur les REASON_*
+//           summon (FUSION/RITUAL/SYNCHRO/XYZ/LINK) + REASON_MATERIAL pour
+//           classer un MSG_MOVE→GY.
+//        · `replay-precompute.ts`            — labels des summon families
+//           dans le réseau replay précomputé (mêmes masks que builder).
+//
+//   Front · `move-animation-router.ts:150`  — mask `REASON_DESTROY` pour
+//           déclencher l'animation `preDestroyEffect` sur un MSG_MOVE.
+//        · `deferred-effect-rules.ts`       — predicate des deferreds
+//           xyz-leave (mask `REASON_XYZ_MATERIAL_SETTLE` pour matcher le
+//           settling GRAVE→GRAVE des ex-matériaux).
+//
+// `MSG_WIN.reason` (codes OCG `!victory` 0/1/2) est **distinct** de cette
+// famille (cf. `debug-log-formatter.ts:51:WIN_REASONS` — lookup table,
+// pas un bitfield). NE PAS confondre.
 // =============================================================================
 
 export const REASON_DESTROY     = 0x1;

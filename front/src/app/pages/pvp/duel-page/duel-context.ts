@@ -1,4 +1,4 @@
-import { inject, Injectable, signal, type WritableSignal } from '@angular/core';
+import { inject, Injectable, signal, type Signal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { ReducedMotionService } from '../../../services/reduced-motion.service';
@@ -48,15 +48,16 @@ export class DuelContext {
    * STATE_SYNC / RematchStarted le reset à 0 via le setupRematchEffects
    * de SoloDuelOrchestratorService.
    *
-   * Getter renvoie le WritableSignal pour préserver l'API "le SOLO écrit
-   * via `.set(...)`, les lecteurs appellent `()` directement". Si γ
-   * révèle que la mutabilité fuit hors du SOLO orchestrator (un
-   * composant qui set sans passer par switchPerspective), δ remplacera
-   * ce getter par une méthode dédiée `setPerspective` + un retour
-   * `Signal<0|1>` readonly.
+   * Surface API (post-review M8, 2026-05-28) : le `WritableSignal` reste
+   * interne. Les lecteurs passent par `perspective(): Signal<0|1>`
+   * (read-only) ; les écrivains (SOLO orchestrator uniquement) par
+   * `setPerspective(0|1)`. Cela ferme structurellement le leak qui
+   * permettait à n'importe quel consommateur d'appeler `.set()` sur
+   * la signal exposé en lecture.
    */
   readonly perspectiveSource = signal<0 | 1>(0);
-  perspective(): WritableSignal<0 | 1> { return this.perspectiveSource; }
+  perspective(): Signal<0 | 1> { return this.perspectiveSource; }
+  setPerspective(value: 0 | 1): void { this.perspectiveSource.set(value); }
 
   ownPlayerIndex(): number { return this._ownPlayerIndex(); }
   speedMultiplier(): number { return this._speedMultiplier(); }

@@ -72,7 +72,7 @@ describe('SoloDuelOrchestratorService (γ commit 3)', () => {
 
   it('exposes perspectiveIndex reading DuelContext.perspective', () => {
     expect(service.perspectiveIndex()).toBe(0);
-    duelCtx.perspective().set(1);
+    duelCtx.setPerspective(1);
     expect(service.perspectiveIndex()).toBe(1);
   });
 
@@ -85,7 +85,7 @@ describe('SoloDuelOrchestratorService (γ commit 3)', () => {
 
   it('switchPerspective is no-op while a prompt is active (convention §5.2 POC)', () => {
     pendingPromptSignal.set({ type: 'SELECT_CARD' });
-    duelCtx.perspective().set(0);
+    duelCtx.setPerspective(0);
     // Simulate that init has run by manually seating the connections
     // signal with a stub. We can't call init() here because it would
     // open real WebSockets — the spec verifies the guard logic.

@@ -311,21 +311,35 @@ export const NO_OP_SINKS: RuleSinks = {
 // ActiveDeferred — état interne portant payload + rule
 // ---------------------------------------------------------------------------
 
-/** Read-only view passed to `chainTo` — lets a rule peek at the
- *  deferred without mutating the DEP's internal state. */
+/**
+ * View passed to `chainTo` — exposes the DEP's bookkeeping fields
+ * (name / triggerRef / awaitingPredicate) as read-only and the
+ * rule-owned payload as **deliberately mutable** (post-review M3).
+ *
+ * Why `payload` is not `readonly` :
+ *  · `readonly` in TypeScript blocks reassignment only, not deep
+ *    mutation — `payload.x = …` compiles either way.
+ *  · The actual contract is "payload is owned by the rule after
+ *    `onTrigger` returns". Rules like `xyzLeaveWithMaterials` mutate
+ *    `payload.expectedCardCodes` and `payload.remaining` inside
+ *    `chainTo` ; this is the supported pattern, not an escape hatch.
+ *  · A prior `readonly unknown` annotation was misleading both ways :
+ *    it didn't protect at runtime, and it suggested the rule should
+ *    return a new payload (which the verdict shape doesn't support).
+ */
 export interface ActiveDeferredView {
   readonly name: string;
   readonly triggerRef: number;
   readonly awaitingPredicate: AwaitingPredicate;
   /**
-   * β.3 cas #12 — opaque pour le DEP (lecture seule depuis sa
-   * perspective), mutable côté rule. Stocké au moment de `openDeferred`
-   * via `RewriterRule.onTrigger` qui retourne `{payload?}`. Passé à
+   * β.3 cas #12 — opaque pour le DEP (jamais lu côté DEP), mutable
+   * côté rule. Stocké au moment de `openDeferred` via
+   * `RewriterRule.onTrigger` qui retourne `{payload?}`. Passé à
    * `chainTo` et à `onClose?` tel quel. Permet de porter un état
    * inter-events (compteur de matériaux restants, lock acquis, etc.)
    * sans que le DEP ait à le connaître.
    */
-  readonly payload?: unknown;
+  payload?: unknown;
 }
 
 interface ActiveDeferred extends ActiveDeferredView {
