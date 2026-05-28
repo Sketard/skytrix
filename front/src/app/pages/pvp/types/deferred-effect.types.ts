@@ -64,6 +64,12 @@ export interface AwaitingPredicate {
    *  equality only (no mask AND). If the rule needs a bitmask match,
    *  it must do so inside `chainTo` (not via the predicate matcher). */
   reason?: number;
+  /** β.3 cas #12 post-review B3 (2026-05-28) — matches
+   *  `MoveMsg.sourceMzoneSeq` literal. Used by `xyzLeaveWithMaterials`
+   *  to discriminate between two XYZ-leave deferreds that share a
+   *  cardCode in their materials. Absent → no narrowing on this
+   *  field, fallback to cardCode-only via chainTo. */
+  sourceMzoneSeq?: number;
 }
 
 export interface DeferredEffectEvent {

@@ -1,7 +1,10 @@
 import type { OcgCoreSync, OcgDuelHandle, OcgMessage } from '@n1xx1/ocgcore-wasm';
 import { OcgMessageType, OcgProcessResult } from '@n1xx1/ocgcore-wasm';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
-import { capturePreProcessOverlays, type PreProcessOverlayKey } from './pre-process-overlays.js';
+import {
+  capturePreProcessOverlays, buildSettlingSourceFifo,
+  type PreProcessOverlayKey, type SettlingSourceFifo,
+} from './pre-process-overlays.js';
 import { filterMessage } from './message-filter.js';
 import type { DuelLogger } from './logger.js';
 import type { InitReplayMessage } from './types.js';
@@ -181,7 +184,7 @@ export interface ReplayPrecomputeDeps {
   duelId: string;
   dlog: DuelLogger;
   port: PortLike;
-  transformMessage: (msg: OcgMessage, preProcessOverlays?: Map<PreProcessOverlayKey, number[]>) => ServerMessage | null;
+  transformMessage: (msg: OcgMessage, preProcessOverlays?: Map<PreProcessOverlayKey, number[]>, settlingFifo?: SettlingSourceFifo) => ServerMessage | null;
   updateState: (msg: OcgMessage) => void;
   buildBoardState: () => ServerMessage;
   cleanup: () => void;
@@ -304,6 +307,10 @@ export function runReplayPreComputation(
     // to runDuelLoop — the replay precompute reruns OCGCore and emits the
     // same MSG_MOVE family the live worker emits.
     const preProcessOverlays = capturePreProcessOverlays(core, duel, dlog);
+    // β.3 cas #12 post-review B3 (2026-05-28) — settling FIFO derived from
+    // the snapshot. Same as runDuelLoop ; replay parity by construction
+    // (transformMessage is shared, the FIFO is built and consumed identically).
+    const settlingFifo = buildSettlingSourceFifo(preProcessOverlays);
 
     let status: number;
     try {
@@ -362,7 +369,9 @@ export function runReplayPreComputation(
       // Translate via message pipeline + omniscient filter — pass the
       // pre-process overlay snapshot so XYZ leaving MZONE carry their
       // matériaux on the resulting MSG_MOVE (β.3 cas #12 Commit 0bis).
-      const translated = transformMessage(rawMsg, preProcessOverlays);
+      // settlingFifo tags GRAVE→GRAVE settlings with sourceMzoneSeq for the
+      // discriminating rule predicate (B3 post-review).
+      const translated = transformMessage(rawMsg, preProcessOverlays, settlingFifo);
       if (translated) {
         const filtered = filterMessage(translated, 0 as Player, true); // omniscient
         if (filtered) {

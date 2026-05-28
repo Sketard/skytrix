@@ -561,8 +561,11 @@ describe('DeferredEffectProcessor — β.3 cas #12 RewriterRule', () => {
     } as unknown as StreamEvent;
   }
 
-  /** Fixture builder for a settling event (`GRAVE → GRAVE reason=0x600`). */
-  function settling(player: number, cardCode: number): StreamEvent {
+  /** Fixture builder for a settling event (`GRAVE → GRAVE reason=0x600`).
+   *  Post-review B3 (2026-05-28) — accepts an optional `sourceMzoneSeq`
+   *  that the production server tags on the settling. Tests pre-dating
+   *  B3 omit it (= replay-pre-B3 fallback path). */
+  function settling(player: number, cardCode: number, sourceMzoneSeq?: number): StreamEvent {
     return {
       type: 'MSG_MOVE',
       player,
@@ -570,6 +573,7 @@ describe('DeferredEffectProcessor — β.3 cas #12 RewriterRule', () => {
       toLocation: 0x10,     // LOCATION.GRAVE
       reason: 0x600,        // REASON_XYZ_MATERIAL_SETTLE
       cardCode,
+      ...(sourceMzoneSeq !== undefined ? { sourceMzoneSeq } : {}),
     } as unknown as StreamEvent;
   }
 
@@ -577,10 +581,12 @@ describe('DeferredEffectProcessor — β.3 cas #12 RewriterRule', () => {
    *  from `event.overlayMaterials`. The shape mirrors the production rule
    *  but is locally defined so the spec controls the assertions. */
   function makeXyzLeaveRule(): RewriterRule {
+    // Mirror the production rule (post-review B3 + M2, 2026-05-28).
     interface Payload {
       lock: ZoneLock;
       expectedCardCodes: Set<number>;
       remaining: number;
+      sourceMzoneSeq: number;
     }
     return {
       kind: 'rewriter',
@@ -590,16 +596,15 @@ describe('DeferredEffectProcessor — β.3 cas #12 RewriterRule', () => {
         return m.fromLocation === 0x04 && (m.overlayMaterials?.length ?? 0) > 0;
       },
       deriveName: (_e, ref) => `xyz-leave:${ref}`,
-      derivePredicate: e => {
-        const m = e as unknown as { player: number };
-        return {
-          type: 'MSG_MOVE',
-          player: m.player,
-          fromLocation: 0x10,
-          toLocation: 0x10,
-          reason: 0x600,
-        };
-      },
+      // B3 + M2 — no `player` filter (M2: settling.player = owner ≠ controller
+      // in Mind Control). sourceMzoneSeq filtering happens in chainTo for
+      // graceful fallback on replays pre-B3 that lack the field.
+      derivePredicate: () => ({
+        type: 'MSG_MOVE',
+        fromLocation: 0x10,
+        toLocation: 0x10,
+        reason: 0x600,
+      }),
       onTrigger: (e, _ref, sinkParam) => {
         const m = e as unknown as { player: number; fromSequence: number; overlayMaterials: number[] };
         const lock = sinkParam.lockZone(0x04, m.player);
@@ -618,12 +623,18 @@ describe('DeferredEffectProcessor — β.3 cas #12 RewriterRule', () => {
             lock,
             expectedCardCodes: new Set(m.overlayMaterials),
             remaining: m.overlayMaterials.length,
+            sourceMzoneSeq: m.fromSequence,
           } satisfies Payload,
         };
       },
       chainTo: (matched, _ref, deferred) => {
         const payload = deferred.payload as Payload;
-        const m = matched as unknown as { cardCode: number };
+        const m = matched as unknown as { cardCode: number; sourceMzoneSeq?: number };
+        // B3 discrimination — settling's sourceMzoneSeq, if present, must
+        // match the deferred's source. Absent = fallback to cardCode-only.
+        if (m.sourceMzoneSeq !== undefined && m.sourceMzoneSeq !== payload.sourceMzoneSeq) {
+          return deferred.awaitingPredicate;
+        }
         if (!payload.expectedCardCodes.has(m.cardCode)) {
           return deferred.awaitingPredicate; // rearm same predicate
         }
@@ -792,34 +803,75 @@ describe('DeferredEffectProcessor — β.3 cas #12 RewriterRule', () => {
   });
 
   // -------------------------------------------------------------------------
-  // T-V14 — Two deferreds sharing a cardCode (pathological). The first
-  // to see the settling absorbs; the other rearms with the same predicate
-  // and times out cleanly (no crash, EffectAbandoned + onClose? fires).
+  // T-V14 — Two deferreds sharing a cardCode WITH distinct sourceMzoneSeq
+  // (post-review B3, 2026-05-28). Each settling carries its own
+  // `sourceMzoneSeq` (tagged by the server's FIFO from the pre-process
+  // snapshot). Each settling closes ONLY its own deferred. The pre-B3
+  // collision ("both close on the first settling") no longer happens.
   // -------------------------------------------------------------------------
-  it('T-V14: two deferreds sharing cardCode — one absorbs, the other times out cleanly', () => {
+  it('T-V14: two deferreds sharing cardCode discriminate via sourceMzoneSeq', () => {
     const dep = makeDep([makeXyzLeaveRule()]);
-    dep.observe(xyzLeaveTrigger(0, 0, [101]), 42);
-    dep.observe(xyzLeaveTrigger(0, 1, [101]), 43);
+    // Two XYZ on different MZONE seqs (3 and 4) both carry material 101.
+    dep.observe(xyzLeaveTrigger(0, 3, [101]), 42);
+    dep.observe(xyzLeaveTrigger(0, 4, [101]), 43);
     expect(dep.activeCount()).toBe(2);
 
-    // Only one settling — both deferreds match the predicate (player +
-    // location + reason), but the FIRST one (insertion order) absorbs
-    // (chainTo decrements remaining→0 → absorb-and-close). The SECOND
-    // also matches the predicate, but its chainTo sees cardCode=101
-    // still in expectedCardCodes → absorb-and-close as well. So in the
-    // strict pathological case (same cardCode shared), BOTH close on
-    // the same event because both have it in expectedCardCodes.
-    dep.observe(settling(0, 101), 44);
+    // First settling tagged sourceMzoneSeq=3 → closes ONLY the seq-3 deferred.
+    dep.observe(settling(0, 101, 3), 44);
+    expect(dep.activeCount()).toBe(1);
+    expect(releaseSpies[0]).toHaveBeenCalledTimes(1);
+    expect(releaseSpies[1]).not.toHaveBeenCalled();
 
-    // Defensive check: at least one closed, and no crash. The exact
-    // ordering depends on Map insertion order semantics; the contract
-    // is "no crash + locks released".
-    expect(releaseSpies.length).toBe(2);
-    // Both releases fire (one via 'matched' / 'absorb-and-close', one
-    // via the absorb chain OR via timeout if its predicate stays open).
-    clock.advance(DEFERRED_TIMEOUT_MS + 1);
+    // Second settling tagged sourceMzoneSeq=4 → closes the seq-4 deferred.
+    dep.observe(settling(0, 101, 4), 45);
+    expect(dep.activeCount()).toBe(0);
+    expect(releaseSpies[1]).toHaveBeenCalledTimes(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V14b — Two deferreds sharing cardCode but settlings missing
+  // sourceMzoneSeq (replay pre-B3 fallback). Both deferreds fall back to
+  // cardCode-only matching → the pre-B3 collision behaviour returns
+  // (both close on the first settling). Contract : "no crash, locks
+  // released" — the bug B3 stays silent on legacy replays but doesn't
+  // make them worse than they were before B3.
+  // -------------------------------------------------------------------------
+  it('T-V14b: pre-B3 replay fallback — collision behaviour, no crash', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 3, [101]), 42);
+    dep.observe(xyzLeaveTrigger(0, 4, [101]), 43);
+    expect(dep.activeCount()).toBe(2);
+
+    // Settling has NO sourceMzoneSeq (pre-B3 replay) → both deferreds match
+    // via cardCode-only fallback.
+    dep.observe(settling(0, 101), 44);
     expect(releaseSpies[0]).toHaveBeenCalled();
     expect(releaseSpies[1]).toHaveBeenCalled();
+    clock.advance(DEFERRED_TIMEOUT_MS + 1);
+    // No throw, both releases fired (either via match or via timeout).
+  });
+
+  // -------------------------------------------------------------------------
+  // T-V14c — One deferred + a settling tagged with a DIFFERENT
+  // sourceMzoneSeq (orphan settling from another XYZ destroyed in
+  // parallel that this deferred should NOT absorb). The deferred rearms,
+  // stays open, eventually times out cleanly.
+  // -------------------------------------------------------------------------
+  it('T-V14c: orphan settling (wrong sourceMzoneSeq) is not absorbed', () => {
+    const dep = makeDep([makeXyzLeaveRule()]);
+    dep.observe(xyzLeaveTrigger(0, 3, [101]), 42);
+    expect(dep.activeCount()).toBe(1);
+
+    // Settling tagged sourceMzoneSeq=4 → doesn't match our deferred (seq=3).
+    // chainTo rearms without consuming. The deferred stays open.
+    dep.observe(settling(0, 101, 4), 43);
+    expect(dep.activeCount()).toBe(1);
+    expect(releaseSpies[0]).not.toHaveBeenCalled();
+
+    // Now our settling arrives with the right seq.
+    dep.observe(settling(0, 101, 3), 44);
+    expect(dep.activeCount()).toBe(0);
+    expect(releaseSpies[0]).toHaveBeenCalledTimes(1);
   });
 
   // -------------------------------------------------------------------------

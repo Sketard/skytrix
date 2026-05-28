@@ -57,6 +57,84 @@ export interface PreProcessOverlayLogger {
 }
 
 /**
+ * β.3 cas #12 post-review B3 (2026-05-28) — FIFO queue of pending
+ * settling sources, derived from the pre-process snapshot at the
+ * START of each `duelProcess` batch.
+ *
+ * Built once per batch from `capturePreProcessOverlays` output, then
+ * consumed at each settling event (GRAVE→GRAVE, reason=0x600) inside
+ * `transformMove`. The settling event is tagged with the source
+ * MZONE seq pulled from the FIFO so the front-side rule can
+ * discriminate between two XYZ that share a material's cardCode.
+ *
+ * Key = cardCode of the material. Value = ordered list of source
+ * MZONE seq that had a card with this code in their overlay. Empty
+ * list means all sources for this cardCode have been consumed already.
+ *
+ * Q1 acknowledged limit : the FIFO assumes OCGCore emits settlings
+ * in the same order as the snapshot iteration. If reversed, the
+ * sourceMzoneSeq is swapped between settlings of the same cardCode.
+ * Visually the material animates from the wrong XYZ source zone —
+ * less catastrophic than the original pile→pile flash. If observed,
+ * an instance-id extension to the wasm binding closes the gap.
+ */
+export type SettlingSourceFifo = Map<number, number[]>;
+
+/**
+ * Build the per-batch FIFO from the pre-process snapshot. Each
+ * `(controller, mzoneSeq) → [cardCode₀, cardCode₁, …]` entry of the
+ * snapshot becomes `cardCode → [mzoneSeq, …]` entries in the FIFO,
+ * appending in iteration order. The FIFO is mutated by
+ * `consumeSettlingSource` as settlings are tagged.
+ *
+ * Snapshot iteration order is map insertion order (controller 0
+ * then 1, MZONE seq ascending) — deterministic given the
+ * `capturePreProcessOverlays` for-loop nesting.
+ */
+export function buildSettlingSourceFifo(
+  snapshot: Map<PreProcessOverlayKey, number[]>,
+): SettlingSourceFifo {
+  const fifo: SettlingSourceFifo = new Map();
+  for (const [key, cardCodes] of snapshot) {
+    // Key format `${controller}-${sequence}` — we only need the seq for
+    // the settling tag. Two XYZ on different controllers (mass-destruction
+    // bilatérale) will see their settlings discriminated by `player` in
+    // the rule predicate AS WELL AS by `sourceMzoneSeq`, so seq alone
+    // suffices in the FIFO value.
+    const dashIdx = key.indexOf('-');
+    if (dashIdx < 0) continue;
+    const seq = Number(key.slice(dashIdx + 1));
+    if (!Number.isFinite(seq)) continue;
+    for (const code of cardCodes) {
+      const list = fifo.get(code);
+      if (list) list.push(seq);
+      else fifo.set(code, [seq]);
+    }
+  }
+  return fifo;
+}
+
+/**
+ * Consume one source for `cardCode` from the FIFO. Returns the head
+ * of the list (first remaining source seq) and removes it. Returns
+ * `undefined` when the cardCode is unknown or its list is empty —
+ * the settling stays untagged (the rule falls back to cardCode-only
+ * match, same as pre-B3 behaviour).
+ *
+ * Pure-ish : mutates the FIFO in place. The mutation IS the consume
+ * semantics ; callers MUST share the same FIFO instance across all
+ * settlings of one duelProcess batch.
+ */
+export function consumeSettlingSource(
+  fifo: SettlingSourceFifo,
+  cardCode: number,
+): number | undefined {
+  const list = fifo.get(cardCode);
+  if (!list || list.length === 0) return undefined;
+  return list.shift();
+}
+
+/**
  * Capture overlayMaterials for every MZONE slot of both players, just
  * BEFORE `duelProcess` applies the next batch of mutations. Empty slots
  * (no overlay) are omitted so the Map stays small in the common case.

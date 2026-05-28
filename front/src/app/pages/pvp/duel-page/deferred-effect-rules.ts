@@ -281,6 +281,15 @@ interface XyzLeavePayload {
   expectedCardCodes: Set<number>;
   /** Compteur de settlings restants à absorber. */
   remaining: number;
+  /**
+   * MZONE seq de l'XYZ source au moment du trigger (post-review B3,
+   * 2026-05-28). Inclus dans le predicate pour discriminer entre 2
+   * XYZ qui partagent un cardCode dans leurs matériaux. Si le serveur
+   * fournit `sourceMzoneSeq` sur le settling (champ optionnel, présent
+   * post-B3), le rule narrow dessus. Sinon (replay pré-B3), fallback
+   * sur cardCode-only via chainTo — comportement identique au pré-B3.
+   */
+  sourceMzoneSeq: number;
 }
 
 /**
@@ -297,26 +306,29 @@ export const xyzLeaveWithMaterials: RewriterRule = {
   deriveName: (_e, ref) => `xyz-leave:${ref}`,
 
   /**
-   * Predicate awaiting : settling event `GRAVE→GRAVE reason=0x600` du
-   * MÊME joueur (controller) que l'XYZ qui vient de partir.
+   * Predicate awaiting : settling event `GRAVE→GRAVE reason=0x600`.
    *
-   * Le champ `player` (résolution Q4 audit, Axel 2026-05-26) serre la
-   * mass-destruction bilatérale — un matériau a toujours le même
-   * controller que l'XYZ qui le portait, donc aucun risque de faux
-   * négatif. Sans `player`, en cas de Dark Hole bilatéral, chaque
-   * deferred verrait les 4 settlings et `chainTo` filtrerait via
-   * `expectedCardCodes` — match plus tardif, robustesse moindre.
+   * Post-review B3 + M2 (2026-05-28) — le `player` est retiré du
+   * predicate (M2 : un matériau va au GY de son OWNER, pas du
+   * controller du XYZ qui part — Mind Control casse l'invariant
+   * "settling.player === leave.player"). Le seq-narrowing pour B3 se
+   * fait dans `chainTo` (pas dans le predicate) pour préserver le
+   * fallback graceful sur replays pré-B3 où `sourceMzoneSeq` est
+   * absent du settling. Sans cette indirection, un predicate
+   * `sourceMzoneSeq: 3` rejetterait un settling sans le champ
+   * (= undefined ≠ 3) et l'animation tomberait dans `pileToPile`.
+   *
+   * La fenêtre matched par ce predicate large est ensuite filtrée
+   * par `chainTo` qui combine `expectedCardCodes` (la cardCode est
+   * attendue) ET `sourceMzoneSeq` (le seq match notre XYZ source, si
+   * le serveur l'a tagué).
    */
-  derivePredicate: (e) => {
-    const m = e as MoveMsg;
-    return {
-      type: 'MSG_MOVE',
-      player: m.player,
-      fromLocation: LOCATION.GRAVE,
-      toLocation: LOCATION.GRAVE,
-      reason: REASON_XYZ_MATERIAL_SETTLE,
-    };
-  },
+  derivePredicate: () => ({
+    type: 'MSG_MOVE',
+    fromLocation: LOCATION.GRAVE,
+    toLocation: LOCATION.GRAVE,
+    reason: REASON_XYZ_MATERIAL_SETTLE,
+  }),
 
   /**
    * Side-effect au trigger : acquiert le lock externe sur la zone
@@ -367,6 +379,7 @@ export const xyzLeaveWithMaterials: RewriterRule = {
         xyzZoneLock,
         expectedCardCodes: new Set(materials),
         remaining: materials.length,
+        sourceMzoneSeq: m.fromSequence,
       } satisfies XyzLeavePayload,
     };
   },
@@ -377,16 +390,36 @@ export const xyzLeaveWithMaterials: RewriterRule = {
    * Mutate le payload (decrement remaining + delete cardCode) —
    * autorisé par le contrat (le DEP ne lit ni n'écrit dans `payload`).
    *
-   * - `cardCode` hors liste → rearm avec MÊME predicate (probablement
-   *   le settling d'un AUTRE XYZ parti en parallèle ; un autre
-   *   deferred l'absorbera). Pas de modification du payload.
-   * - dernier matériau → `absorb-and-close` (close la deferred + emit
-   *   EffectReady + appelle onClose? avec reason='matched').
-   * - sinon → `absorb` (deferred reste ouverte, predicate inchangé).
+   * Filtres (chronologiquement) :
+   *
+   * 1. **sourceMzoneSeq** (post-review B3, 2026-05-28) — si le
+   *    settling carry `sourceMzoneSeq` (présent post-B3, absent sur
+   *    replays anciens) ET qu'il ne match pas le seq capturé au
+   *    trigger, c'est un settling d'un AUTRE XYZ détruit en parallèle
+   *    qui partage un cardCode avec celui-ci. Rearm sans muter — un
+   *    autre deferred l'absorbera. Fallback graceful : si le champ
+   *    est absent (pré-B3 replay), on skip ce filtre et tombe dans le
+   *    cardCode-only matching (= comportement pré-B3, bug B3 silent
+   *    mais pas pire).
+   *
+   * 2. **expectedCardCodes** — un settling dont le cardCode n'est
+   *    pas dans la liste est orphelin (cas qui peut arriver si le
+   *    serveur n'a PAS tagué `sourceMzoneSeq` et qu'un autre XYZ a
+   *    le même cardCode). Rearm.
+   *
+   * 3. dernier matériau → `absorb-and-close` (close la deferred +
+   *    emit EffectReady + appelle onClose? avec reason='matched').
+   * 4. sinon → `absorb` (deferred reste ouverte, predicate inchangé).
    */
   chainTo: (matched, _ref, deferred: ActiveDeferredView): RewriterVerdict => {
     if (!isMove(matched)) return null; // never happens given the predicate
     const payload = deferred.payload as XyzLeavePayload;
+    const matchedSeq = (matched as MoveMsg & { sourceMzoneSeq?: number }).sourceMzoneSeq;
+
+    if (matchedSeq !== undefined && matchedSeq !== payload.sourceMzoneSeq) {
+      // Settling d'un autre XYZ source (B3 discrimination). Rearm.
+      return deferred.awaitingPredicate;
+    }
 
     if (!payload.expectedCardCodes.has(matched.cardCode)) {
       // Settling orphelin — un autre deferred l'absorbera. Rearm avec

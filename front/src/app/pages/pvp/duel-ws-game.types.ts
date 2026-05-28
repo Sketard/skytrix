@@ -61,6 +61,35 @@ export interface MoveMsg {
    */
   overlayMaterials?: number[];
   /**
+   * β.3 cas #12 post-review B3 (2026-05-28) — MZONE sequence of the
+   * XYZ that USED to carry this matériau, when this MSG_MOVE is the
+   * settling event of an ex-overlay-material (GRAVE→GRAVE,
+   * reason=0x600). Tagged server-side in `transformMove` via a FIFO
+   * map built from the pre-process snapshot.
+   *
+   * Without this field, two XYZ destroyed in the same chain that
+   * share a cardCode in their materials produce settlings that the
+   * front-side `xyzLeaveWithMaterials` rule cannot discriminate :
+   * both deferreds match the same predicate, both decrement their
+   * expectedCardCodes on the first settling → the second settling
+   * falls through to the pile→pile router (B3 visual regression).
+   * With `sourceMzoneSeq`, each deferred narrows its predicate to
+   * its own XYZ source seq → 1 settling = 1 deferred match.
+   *
+   * Limit (Q1 acknowledged) : if OCGCore emits the settlings in the
+   * reverse order of the FIFO source sequence (rare), the assigned
+   * `sourceMzoneSeq` is swapped between settlings. Visually the
+   * material animates from the wrong XYZ zone — less catastrophic
+   * than the original pile→pile flash. Flagged for instance-id
+   * extension if observed.
+   *
+   * Optional + graceful : pre-B3 replays have no field ; the rule
+   * falls back to the cardCode-only match (= the pre-B3 behaviour,
+   * possibly mis-attributed but visually identical to the original
+   * "no fix" state). Backward-compatible.
+   */
+  sourceMzoneSeq?: number;
+  /**
    * Board-state snapshot captured immediately AFTER this event was applied
    * server-side. Populated by the replay precompute for BOARD_CHANGING events
    * that fire during `chainPhase === 'resolving'`, so the client's buffer

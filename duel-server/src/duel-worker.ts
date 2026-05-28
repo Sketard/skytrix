@@ -23,7 +23,12 @@ import { installWasmHook, uninstallWasmHook, locateWasmMemory, snapshotAvailable
 import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, InitForkMessage } from './types.js';
 import { filterMessage } from './message-filter.js';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
-import { capturePreProcessOverlays, readOverlayMaterialsForMove, type PreProcessOverlayKey } from './pre-process-overlays.js';
+import {
+  capturePreProcessOverlays, readOverlayMaterialsForMove,
+  buildSettlingSourceFifo, consumeSettlingSource,
+  type PreProcessOverlayKey, type SettlingSourceFifo,
+} from './pre-process-overlays.js';
+import { REASON_XYZ_MATERIAL_SETTLE } from './ocgcore-reason-flags.js';
 import { CardDbCache } from './card-db-cache.js';
 import { resolveDeckLoadOrder, normalizeReplayDeck } from './deck-load-order.js';
 import { runReplayPreComputation, SELECT_MESSAGE_TYPES } from './replay-precompute.js';
@@ -342,6 +347,7 @@ function locName(loc: number): string { return LOC_NAME[loc] ?? `0x${loc.toStrin
 function transformMove(
   msg: any,
   preProcessOverlays?: Map<PreProcessOverlayKey, number[]>,
+  settlingFifo?: SettlingSourceFifo,
 ): ServerMessage {
   let reason = 0;
   if (core && duel && msg.to.location as number !== 0) {
@@ -368,6 +374,24 @@ function transformMove(
     LOCATION.MZONE as number,
   );
 
+  // β.3 cas #12 post-review B3 (2026-05-28) — settling event tagging.
+  // A settling is a GRAVE→GRAVE MSG_MOVE with reason exactly equal to
+  // REASON_XYZ_MATERIAL_SETTLE (0x600 = REASON_RULE | REASON_LOST_TARGET).
+  // Consume the FIFO entry for this cardCode to attach the original
+  // XYZ source MZONE seq, so the front-side rule can discriminate
+  // between two XYZ that share a material's cardCode.
+  let sourceMzoneSeq: number | undefined;
+  const fromLoc = msg.from.location as number;
+  const toLoc = msg.to.location as number;
+  if (
+    settlingFifo &&
+    fromLoc === (LOCATION.GRAVE as number) &&
+    toLoc === (LOCATION.GRAVE as number) &&
+    reason === REASON_XYZ_MATERIAL_SETTLE
+  ) {
+    sourceMzoneSeq = consumeSettlingSource(settlingFifo, msg.card);
+  }
+
   return {
     type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card),
     player: msg.from.controller,
@@ -385,6 +409,7 @@ function transformMove(
     isToken: isTokenCard(msg.card),
     reason,
     ...(overlayMaterials ? { overlayMaterials } : {}),
+    ...(sourceMzoneSeq !== undefined ? { sourceMzoneSeq } : {}),
   };
 }
 
@@ -539,6 +564,7 @@ function transformSelectUnselect(msg: any): ServerMessage {
 function transformMessage(
   msg: OcgMessage,
   preProcessOverlays?: Map<PreProcessOverlayKey, number[]>,
+  settlingFifo?: SettlingSourceFifo,
 ): ServerMessage | null {
   if (msg.type === OcgMessageType.MOVE) {
     const m = msg as any;
@@ -561,7 +587,7 @@ function transformMessage(
       return { type: 'MSG_DRAW', player: msg.player as Player, cards: msg.drawn.map(d => d.code) };
 
     case OcgMessageType.MOVE:
-      return transformMove(msg, preProcessOverlays);
+      return transformMove(msg, preProcessOverlays, settlingFifo);
 
     case OcgMessageType.DAMAGE:
       return { type: 'MSG_DAMAGE', player: msg.player as Player, amount: msg.amount };
@@ -1236,6 +1262,12 @@ function runDuelLoop(): void {
       () => capturePreProcessOverlays(core!, duel!, dlog),
     );
 
+    // β.3 cas #12 post-review B3 (2026-05-28) — derive the per-batch FIFO
+    // from the snapshot for settling tagging. Consumed inside transformMove
+    // as each GRAVE→GRAVE settling event flows through. Mutates as events
+    // are tagged ; shared with every transformMessage call of this batch.
+    const settlingFifo = buildSettlingSourceFifo(preProcessOverlays);
+
     let status: number;
     try {
       status = duelInstr.time('duelProcess', () => core!.duelProcess(duel!));
@@ -1284,7 +1316,9 @@ function runDuelLoop(): void {
 
       // Transform and forward — preProcessOverlays surfaces overlayMaterials
       // on MSG_MOVE for XYZ leaving MZONE (β.3 cas #12 Commit 0bis).
-      const dto = transformMessage(msg, preProcessOverlays);
+      // settlingFifo tags GRAVE→GRAVE settlings with their source XYZ MZONE
+      // seq for the discriminating rule predicate (B3 post-review).
+      const dto = transformMessage(msg, preProcessOverlays, settlingFifo);
       if (dto) {
         if (dto.type === 'MSG_MOVE') {
           dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });
