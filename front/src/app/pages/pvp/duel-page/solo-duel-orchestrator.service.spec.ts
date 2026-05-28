@@ -143,13 +143,6 @@ describe('SoloDuelOrchestratorService (γ commit 3)', () => {
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledTimes(1);
   });
 
-  it('switchPlayer is a back-compat alias of switchPerspective', () => {
-    (service as unknown as { _connections: { set: (v: unknown) => void } })._connections.set([
-      makeStubConnection(), makeStubConnection(),
-    ]);
-    service.switchPlayer();
-    expect(duelCtx.perspective()()).toBe(1);
-  });
 });
 
 describe('PerspectiveEvent type guard (γ commit 5)', () => {

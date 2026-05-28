@@ -182,11 +182,7 @@ class StubSoloOrchestrator {
   readonly activePlayerIndex = signal(0);
   readonly perspectiveIndex = signal(0);
   init = jasmine.createSpy('init');
-  // γ commit 3 — `switchPlayer` renamed to `switchPerspective`. Both
-  // spies kept so the stub absorbs any residual call-site during the
-  // transition (commit 8 cleanup removes the alias on the real service).
   switchPerspective = jasmine.createSpy('switchPerspective');
-  switchPlayer = jasmine.createSpy('switchPlayer');
 }
 
 /** Stub for RoomStateMachineService — exposes the signals + spies for

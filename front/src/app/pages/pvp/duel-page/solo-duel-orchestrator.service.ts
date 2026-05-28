@@ -19,9 +19,8 @@ import { DuelContext } from './duel-context';
  * connection sortante).
  *
  * Sémantique du switch :
- *   - `switchPerspective()` (anciennement `switchPlayer`) ne bascule
- *     PAS de processor : il modifie la valeur courante de
- *     `DuelContext.perspective()`.
+ *   - `switchPerspective()` ne bascule PAS de processor : il modifie
+ *     la valeur courante de `DuelContext.perspective()`.
  *   - L'état chain (activeChainLinks, chainPhase, pendingChainEntry,
  *     buffer chain) survit au switch (CONNECTION_LIFETIME).
  *   - Les projections PERSPECTIVE_LIFETIME (LP animatingPlayer, battle
@@ -70,9 +69,10 @@ export class SoloDuelOrchestratorService {
   // Source unique de vérité = `DuelContext.perspective()` (signal
   // ajouté ci-dessous). Le service expose l'indice en lecture seule
   // pour les composants qui ne veulent pas injecter DuelContext.
-  // Back-compat : l'ancien `activePlayerIndex` est un alias en
-  // lecture seule sur le même signal, le temps que le commit 4
-  // migre les consommateurs vers `perspectiveIndex` / le wsService.
+  // `activePlayerIndex` est conservé comme alias public pour les
+  // composants pré-γ qui lisaient l'ancien nom (templates +
+  // duel-page.component.ts:365 isSoloMode branch) — l'alias est
+  // gratuit (assignement de signal), pas du code mort.
   readonly perspectiveIndex = computed(() => this.duelCtx.perspective()());
   readonly activePlayerIndex = this.perspectiveIndex;
 
@@ -209,17 +209,6 @@ export class SoloDuelOrchestratorService {
     // Debounce post-transition (durée alignée sur la future
     // transition CSS .board-host transform 250ms + marge).
     setTimeout(() => this._switching.set(false), 300);
-  }
-
-  /**
-   * Back-compat : ancien nom public. Délègue à `switchPerspective`.
-   * Les call sites consommateurs (duel-page.component.ts:622, 828)
-   * sont migrés vers le nouveau nom dans le même commit ; cet alias
-   * reste pour les éventuels appels résiduels et les specs en
-   * transition. À retirer au commit 8 (cleanup).
-   */
-  switchPlayer(): void {
-    this.switchPerspective();
   }
 
   // ───────────────────────────────────────────────

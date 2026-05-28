@@ -62,11 +62,27 @@ free function used by both for BOARD_STATE sync tier logic.
 
 ## Chain Event Processing & State Machine
 
-`DuelEventProcessor` is the single source of truth for chain state management
-(activeChainLinks, chainPhase, animation queue, chain entry commit). Both
-`DuelConnection` and `ReplayDuelAdapter` delegate to their own
-`DuelEventProcessor` instance. No manual PvP/replay parity is required — the
-processor guarantees identical behavior across both modes.
+`DuelEventProcessor` is the single source of truth for chain state
+management (activeChainLinks, chainPhase, animation queue, chain entry
+commit). Ownership rules (γ, 2026-05-27) :
+
+- **PvP normal** : 1 `DuelConnection` per duel → its own processor
+  (legacy path, unchanged). The orchestrator's `processor` field is
+  bound to this same instance via `bindSharedProcessor` at bootstrap.
+- **SOLO PvP** : 1 `AnimationOrchestratorService.processor`
+  (`readonly`) is created at the orchestrator scope ; the 2
+  `DuelConnection` instantiated by `SoloDuelOrchestratorService.init`
+  receive it via the `{ sharedProcessor }` ctor option and skip their
+  own instantiation. Both transports push their WS messages into the
+  SAME processor — the cardinal γ invariant that eliminates the
+  `bug-solo-sequence.md` chain-orphan bug structurally (a
+  `switchPerspective` no longer routes future messages to a different
+  processor ; there is only one).
+- **Replay** : `ReplayDuelAdapter` keeps its own processor (independent
+  scope, no SOLO/PvP interaction). γ does not touch the replay path.
+
+No manual PvP/replay parity is required — the processor guarantees
+identical behavior across both modes.
 
 `MSG_CHAIN_NEGATED` is consumed silently by the processor (sets `negated`
 flag on the matching chain link) — it is NOT pushed to `animationQueue`.
@@ -780,11 +796,35 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
 `prompt-derivation.service`, `replayHighlightedZones`/`replayChosenZone`
 (replay-page), all `ctx.relativePlayer()` callers in the orchestrator.
 
+**SOLO PvP — perspective is a projection signal (γ, 2026-05-27).**
+`DuelContext.perspectiveSource` (tag α.1 `*Source`) is a
+`WritableSignal<0 | 1>` written by `SoloDuelOrchestratorService.switchPerspective`
+and read by every relativizer. A SOLO switch flips the signal +
+emits `PerspectiveSwitched` on the EventStream + dispatches
+`applyReset({PERSPECTIVE_LIFETIME})` — the processor state
+(activeChainLinks, chainPhase, pendingChainEntry, locks, queue) is
+NOT touched (CONNECTION_LIFETIME, survives). `DuelGameLogService`
+re-relativises the journal entries on flip via the
+`effect(() => gameLog.setPerspective(ownPlayerIndex()))` wired in
+`duel-page.component.ts:575` (R10 acted at γ §8 spec). PvP normal +
+replay leave `perspectiveSource` at its default 0.
+
 ## Orchestrator Decomposition
 
 `AnimationOrchestratorService` is a thin coordinator that delegates to
-8 extracted managers/classes:
+9 extracted managers/classes (γ added the `processor` ownership) :
 
+- **`processor: DuelEventProcessor`** (γ commit 2, 2026-05-26) —
+  `readonly` shared chain state machine + animation queue. PvP normal :
+  the orchestrator passes this instance to its `DuelConnection` via
+  `bindSharedProcessor` at bootstrap so both reads come from the same
+  store. SOLO : the 2 `DuelConnection` instances receive it via the
+  `{ sharedProcessor }` ctor option of `SoloDuelOrchestratorService.init` ;
+  both transports push their WS messages into the SAME processor.
+  Replay : `ReplayDuelAdapter` keeps its own (separate scope). The
+  single-processor invariant is what eliminates `bug-solo-sequence.md`
+  by construction — a `switchPerspective` no longer routes future
+  messages to a different processor.
 - **`ChainResolutionManager`** — chain state (signals, buffer, replay
   timeouts, solved count). Pure state + `drainBuffer()`. Orchestrator
   owns `replayBuffer()` (cross-cutting dispatch via queue directives).
