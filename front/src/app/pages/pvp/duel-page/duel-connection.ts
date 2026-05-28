@@ -5,8 +5,9 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, InactivityWarningMsg, MoveMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
+import { BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, ErrorMsg, InactivityWarningMsg, MoveMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
+import { swapBoardState } from '../board-state-swap';
 
 export type ResponseData = Record<string, unknown>;
 
@@ -175,6 +176,19 @@ export class DuelConnection {
   private _boardActive = false;
 
   /**
+   * γ Option C (PR2 c4.4, A32) — last `ERROR` message received from the
+   * server. Server sends `ERROR` (defined PR1 c1b) for invalid client
+   * messages (e.g. SOLO `forPlayer` validation strike). In SOLO multiplex
+   * the message is routed-to-0 with `player?: 0|1` indicating which slot
+   * the error originated from (PR2 c4.5 server whitelist A28).
+   *
+   * The connection just surfaces the latest payload; the wsService /
+   * duel-page consumer is responsible for toast rendering and clearing.
+   * Perspective-agnostic — same surface in PvP normal and SOLO multiplex.
+   */
+  private _lastError = signal<ErrorMsg | null>(null);
+
+  /**
    * γ Option C (PR2 c4.1, 2026-05-28) — per-perspective transport state.
    * See `PerspectiveSlot` jsdoc above for which fields and why.
    * Indexed by ABSOLUTE player (matches `message.player` from the server,
@@ -247,6 +261,9 @@ export class DuelConnection {
   readonly firstPlayerResult = this._firstPlayerResult.asReadonly();
   readonly firstPlayerResponseSent = this._firstPlayerResponseSent.asReadonly();
   readonly sessionPhase = this._sessionPhase.asReadonly();
+  /** γ Option C (PR2 c4.4, A32) — read-only surface for the last server
+   *  `ERROR`. Consumer calls `clearLastError()` after rendering the toast. */
+  readonly lastError = this._lastError.asReadonly();
 
   // --- Reconnect state ---
   private _retryCount = signal(0);
@@ -476,6 +493,56 @@ export class DuelConnection {
     return forPlayer === undefined ? msg : { ...msg, forPlayer };
   }
 
+  /**
+   * γ Option C (PR2 c4.4, A17) — SOLO multiplex BOARD_STATE swap.
+   *
+   * Returns true when this connection is in SOLO mode AND the user's current
+   * visual perspective is 1 (the absolute server P1 — flipped via the SOLO
+   * orchestrator's `switchPerspective`). In that case the server's omniscient
+   * payloads arrive in absolute P0 order, and `BoardStatePayload.players[]` +
+   * `.turnPlayer` must be relativized before any downstream consumer reads them
+   * (cf. CLAUDE.md "Perspective Convention" §2 + "Replay Board State Parity").
+   *
+   * PvP normal and replay both yield false (PvP: `soloMode=false`; replay:
+   * uses `ReplayDuelAdapter` directly and never reaches this class). The
+   * `_duelCtx` field is injected at construction by the SOLO orchestrator
+   * (c6) and absent otherwise.
+   */
+  private _shouldSwapForSolo(): boolean {
+    if (!this.soloMode) return false;
+    // BH-3 from c4.4 code review — SOLO mode without `_duelCtx` is a
+    // construction-time invariant violation (the orchestrator MUST pass
+    // `duelCtx` whenever it flips `soloMode = true`). Asserting here surfaces
+    // a wiring bug instead of silently disabling the perspective swap.
+    const ctx = this._duelCtx;
+    duelAssert(ctx !== undefined, 'shouldSwapForSolo', 'soloMode=true requires duelCtx injection');
+    return ctx!.perspective()() === 1;
+  }
+
+  private _maybeSwapBoardState(bs: BoardStatePayload): BoardStatePayload {
+    return this._shouldSwapForSolo() ? swapBoardState(bs, 1) : bs;
+  }
+
+  /**
+   * γ Option C (PR2 c4.4, A17) — swap the per-event `boardStateAfter`
+   * snapshot in place (shallow-clone the event when a swap is needed).
+   * BOARD_CHANGING events emitted during chain resolution carry this
+   * snapshot (cf. CLAUDE.md "Per-event boardStateAfter snapshot"). The
+   * snapshot is consumed by `AnimationOrchestratorService.processEvent`
+   * via `rbs.updateLogical(event.boardStateAfter)`; without swap the SOLO
+   * perspective-1 view would briefly flip mid-chain.
+   *
+   * Mutates `message` in place when a swap is needed (replacing the
+   * `boardStateAfter` field). Safe: the message is freshly parsed from
+   * the WS frame, nothing else holds a reference.
+   */
+  private _maybeSwapBoardStateAfter(message: ServerMessage): void {
+    if (!this._shouldSwapForSolo()) return;
+    const m = message as { boardStateAfter?: BoardStatePayload };
+    if (!m.boardStateAfter) return;
+    m.boardStateAfter = swapBoardState(m.boardStateAfter, 1);
+  }
+
   sendResponse(promptType: string, data: ResponseData, forPlayer?: 0 | 1): void {
     if (this.safeSend(this._tagForPlayer({ type: 'PLAYER_RESPONSE', promptType, data }, forPlayer))) {
       // γ Option C (PR2 c4.3, A22) — clear the slot of the responding player.
@@ -530,6 +597,11 @@ export class DuelConnection {
 
   clearDiceResult(): void {
     this._diceResult.set(null);
+  }
+
+  /** γ Option C (PR2 c4.4, A32) — consumer-driven clear after toast render. */
+  clearLastError(): void {
+    this._lastError.set(null);
   }
 
   sendSurrender(forPlayer?: 0 | 1): void {
@@ -775,25 +847,40 @@ export class DuelConnection {
         probeOverlayCodes: probe.codes,
       }));
     }
+    // γ Option C (PR2 c4.4, A17) — SOLO multiplex receives omniscient (absolute)
+    // board states; swap `boardStateAfter` per-event snapshots before any
+    // downstream consumer reads them (BH-1 from c4.4 code review: also before
+    // `onMessage` debug-log sink, to keep the wire-shape consistent across
+    // the whole consumer chain). PvP normal / replay: `soloMode=false` →
+    // no-op fast path inside helper. Mirrors `ReplayDuelAdapter.swapEvents`
+    // for parity with the replay path.
+    this._maybeSwapBoardStateAfter(message);
     this.onMessage?.(message);
     this.prefetchRevealedCards(message);
     switch (message.type) {
-      case 'BOARD_STATE':
+      case 'BOARD_STATE': {
+        // γ Option C (PR2 c4.4, A17) — same swap as above but on the top-level
+        // payload. Swap once and pass the relativized `data` to every consumer
+        // below (syncAfterBoardState, observeBoardState, the turn-coord cache),
+        // so the BoundaryProcessor sees the relativized `turnPlayer` and the
+        // RBS `updateLogical` sees relativized `players[]`.
+        const data = this._maybeSwapBoardState(message.data);
         this._rematchStarting.set(false);
         this._justReconnected.set(false);
         syncAfterBoardState(this.rbs, this.processor.chainPhase(),
-          this.processor.animationQueue().length, message.data, this._boardActive);
+          this.processor.animationQueue().length, data, this._boardActive);
         // β.1 — feed the BoundaryProcessor for Turn/Phase delta detection.
         // Runs after the sync tier decision so the BP's emit fires AFTER
         // the board state is reflected in the rendered/logical layers.
-        this.processor.observeBoardState(message.data);
+        this.processor.observeBoardState(data);
         // β.3 cas #13 — cache the turn coordinates for the next MSG_DRAW
         // turn-delta detection. We do NOT fire `onDrawNewTurn` here: the
         // MSG_DRAW handler does, so the announce always enqueues right
         // before its triggering MSG_DRAW in the queue (correct order).
-        this._lastTurnPlayer = message.data.turnPlayer;
-        this._lastTurnCount = message.data.turnCount;
+        this._lastTurnPlayer = data.turnPlayer;
+        this._lastTurnCount = data.turnCount;
         break;
+      }
 
       case 'STATE_SYNC':
         // STATE_SYNC fires on TWO paths: reconnection re-sync, AND the
@@ -1064,6 +1151,18 @@ export class DuelConnection {
         try { localStorage.removeItem(this.storageKey); } catch {}
         break;
 
+      case 'ERROR':
+        // γ Option C (PR2 c4.4, A32) — surface the server's error payload to
+        // the wsService / duel-page consumer (toast). Perspective-agnostic:
+        // the global signal `lastError` is read by a perspective-independent
+        // consumer (a single user, no matter which slot they look at).
+        // Consumer is responsible for `clearLastError()` after rendering.
+        // BH-6 from c4.4 code review — warn-level log so the debug harness
+        // captures the payload even when no consumer is mounted.
+        this.logger?.warn('server ERROR received: %o', message);
+        this._lastError.set(message);
+        break;
+
       case 'REMATCH_INVITATION':
         this._rematchState.set('invited');
         break;
@@ -1081,6 +1180,15 @@ export class DuelConnection {
         this._rematchStarting.set(true);
         this._duelResult.set(null);
         this._cardCodes.set([]);
+        // γ Option C (PR2 c4.4, A23) — reset the board-active gate so the
+        // next BOARD_STATE re-enters `syncAfterBoardState` tier 1
+        // (`!boardActive → syncPileCounts`) and `drainPreActivationBuffer`
+        // fires for the new duel's initial 5 MSG_DRAW. Without this, the
+        // flag stays `true` from the prior duel and the rematch's opening
+        // hand never animates (the buffer never drains).
+        // `DuelLoadingEffectsService` re-flips it to `true` once the new
+        // BOARD_STATE lands via the `duel-loading → active` chain.
+        this._boardActive = false;
         this.rbs.updateLogical(EMPTY_DUEL_STATE);
         this.rbs.commitAll();
         this._firstPlayerResult.set(null);

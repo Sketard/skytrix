@@ -715,6 +715,14 @@ Réécriture `phase-gamma-victory.spec.ts` (T-F6). Playwright Scenarios A-E.
 - [ ] Scenario A — chain SOLO basique + screenshot (preuve 1 carte voyage).
 - [ ] Scenario B — bootstrap SOLO (5 MSG_DRAW initiaux s'animent 1× chacun).
 - [ ] Scenario C — rematch SOLO (5 MSG_DRAW du nouveau duel s'animent).
+      **Vérifier en particulier le finding BH-9 du code review c4.4 (2026-05-28)** :
+      la transition `roomState: 'duel-loading' → 'active'` doit se déclencher
+      après REMATCH_STARTING pour que `DuelLoadingEffectsService` re-flippe
+      `_boardActive = true` (A23 reset au REMATCH_STARTING dépend de cette
+      chaîne pour fonctionner). Si le rematch saute la dice arena, vérifier
+      que la chaîne `duel-loading → active` est néanmoins activée par le
+      BOARD_STATE du nouveau duel. Sinon les BOARD_CHANGING events restent
+      parqués dans `_preActivationBuffer` indéfiniment.
 - [ ] Scenario D — rematch court-circuit + F5 grace (A27 + A31).
 - [ ] Scenario E — cancel-rollback slot 1 (A30).
 

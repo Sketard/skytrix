@@ -4,10 +4,11 @@ import { syncAfterBoardState, type AnimationDataSource, type QueueDirective, typ
 import { DuelEventProcessor } from '../duel-page/duel-event-processor';
 import { DuelLogCategory, DuelLogger } from '../duel-page/duel-logger';
 import { RenderedBoardStateService, type BoardStateView } from '../duel-page/rendered-board-state.service';
+import { swapBoardState, swapEventBoardStates } from '../board-state-swap';
 import type { HintContext, Prompt, StreamEvent } from '../types';
 import type {
-  BoardStatePayload, DecisionMoment, Player, PreComputedState,
-  PlayerBoardState, ServerMessage, CardInfo,
+  BoardStatePayload, DecisionMoment, PreComputedState,
+  ServerMessage, CardInfo,
 } from '../duel-ws.types';
 
 
@@ -100,37 +101,19 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
 
   readonly perspectiveIndex = signal<0 | 1>(0);
 
-  private swapBoardState(bs: BoardStatePayload): BoardStatePayload {
-    if (this.perspectiveIndex() === 0) return bs;
-    return {
-      ...bs,
-      turnPlayer: (bs.turnPlayer === 0 ? 1 : 0) as Player,
-      players: [bs.players[1], bs.players[0]] as [PlayerBoardState, PlayerBoardState],
-    };
+  /**
+   * γ Option C (PR2 c4.4, 2026-05-28) — `swapBoardState` and
+   * `swapEventBoardStates` extracted to `pvp/board-state-swap.ts` as pure
+   * helpers so `DuelConnection` (SOLO multiplex BOARD_STATE swap A17) can
+   * reuse the same code path. The local instance methods become thin
+   * adapters that close over `this.perspectiveIndex()`.
+   */
+  private swapBs(bs: BoardStatePayload): BoardStatePayload {
+    return swapBoardState(bs, this.perspectiveIndex());
   }
 
-  /**
-   * Relativize the per-event `boardStateAfter` snapshot (attached server-side
-   * to BOARD_CHANGING events during chain resolution — see CLAUDE.md
-   * "Per-event boardStateAfter snapshot"). `swapBoardState` only covers the
-   * step/transition-level `boardState`; the snapshot buried on each event is
-   * consumed directly by `AnimationOrchestratorService.processEvent()` via
-   * `rbs.updateLogical(event.boardStateAfter)`. Left un-swapped, perspective=1
-   * replays render the board with absolute server P0 at the bottom for one
-   * frame before the next commit corrects it — the "board briefly flips"
-   * symptom. The orchestrator is shared with PvP and assumes already-relative
-   * data, so the swap MUST happen here in the replay adapter.
-   *
-   * Returns the events untouched for perspective 0, and a shallow-cloned
-   * array (only events carrying a snapshot are cloned) for perspective 1.
-   */
-  private swapEventBoardStates(events: ServerMessage[]): ServerMessage[] {
-    if (this.perspectiveIndex() === 0) return events;
-    return events.map(e => {
-      const snapshot = (e as { boardStateAfter?: BoardStatePayload }).boardStateAfter;
-      if (!snapshot) return e;
-      return { ...e, boardStateAfter: this.swapBoardState(snapshot) };
-    });
+  private swapEvents(events: ServerMessage[]): ServerMessage[] {
+    return swapEventBoardStates(events, this.perspectiveIndex());
   }
 
   // ══════════════════════════════════════════════════
@@ -161,16 +144,16 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   feedTransition(prev: PreComputedState, next: PreComputedState): void {
     this.busy.set(true);
     this._steps = [];
-    this.rbs.updateLogical(this.swapBoardState(prev.boardState));
+    this.rbs.updateLogical(this.swapBs(prev.boardState));
     this.rbs.assertNoLocks('feedTransition');
     this.rbs.syncRendered();
 
     this.resetProcessorForTransition();
-    for (const event of this.swapEventBoardStates(next.events)) {
+    for (const event of this.swapEvents(next.events)) {
       this.processor.processMessage(event);
     }
 
-    const nextSwapped = this.swapBoardState(next.boardState);
+    const nextSwapped = this.swapBs(next.boardState);
     syncAfterBoardState(this.rbs, this.processor.chainPhase(),
       this.processor.animationQueue().length, nextSwapped, true);
     // β.1 — feed the BoundaryProcessor with the swapped board state
@@ -198,13 +181,13 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     this.logger.log(DuelLogCategory.REPLAY, 'feedPhased prevPhase=%s nextPhase=%s events=%d decisions=%d',
       prev.boardState.phase, next.boardState.phase, next.events.length, next.decisions.length);
     this.busy.set(true);
-    this.rbs.updateLogical(this.swapBoardState(prev.boardState));
+    this.rbs.updateLogical(this.swapBs(prev.boardState));
     this.rbs.assertNoLocks('feedTransitionPhased');
     this.rbs.syncRendered();
 
     this.resetProcessorForTransition();
     this._steps = this.buildSteps(
-      this.swapEventBoardStates(next.events), next.decisions, this.swapBoardState(next.boardState));
+      this.swapEvents(next.events), next.decisions, this.swapBs(next.boardState));
     this.logger.log(DuelLogCategory.REPLAY, 'feedPhased steps=%o', this._steps.map(s => s.kind));
     this.advanceStep();
     return this._activeDecision() ? 'prompt' : 'done';
@@ -234,7 +217,7 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
         // The decision's boardState is the state AFTER the events in this segment
         // (matches the BOARD_STATE the PvP client receives before the prompt).
         const decision = decisions[di++];
-        steps.push({ kind: 'animate', events: [...segment], pendingState: decision.boardState ? this.swapBoardState(decision.boardState) : undefined });
+        steps.push({ kind: 'animate', events: [...segment], pendingState: decision.boardState ? this.swapBs(decision.boardState) : undefined });
         steps.push({ kind: 'decide', decision });
         segment = [];
       } else {
@@ -373,7 +356,7 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
 
   jumpToState(state: PreComputedState): void {
     this.abort();
-    this.rbs.updateLogical(this.swapBoardState(state.boardState));
+    this.rbs.updateLogical(this.swapBs(state.boardState));
     this.rbs.commitAll();
   }
 
