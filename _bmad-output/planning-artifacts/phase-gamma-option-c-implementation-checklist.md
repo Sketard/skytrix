@@ -477,12 +477,49 @@ extensions ws-protocol.
 > prompts mais le reader fait `_slots[perspective()=0]` → vide → **PvP P1
 > cassé structurellement**.
 >
-> **À résoudre AVANT de coder c5.** 3 résolutions possibles :
-> 1. **Wsservice branche sur `soloMode`** : `getXxxFor(soloMode ? perspective() : ownPlayerIndex)`. Mon avis : le plus localisé.
-> 2. **Setter `perspective` à `ownPlayerIndex` au bootstrap PvP normal** (au lieu de figer à 0).
-> 3. **Swap server-side de `message.player` en PvP normal** (coût protocole).
+> **Résolution actée Axel + Amelia 2026-05-28** — **Option 1 (helper
+> `slotIndex` qui branche sur `soloMode`)** :
 >
-> Arbitrage à faire avec Axel au démarrage c5.
+> ```ts
+> // duel-web-socket.service.ts (c5)
+> private slotIndex(): 0 | 1 {
+>   return this.soloMode
+>     ? this.duelCtx.perspective()()
+>     : (this.duelCtx.ownPlayerIndex() as 0 | 1);
+> }
+> readonly pendingPrompt = computed(() => this._connection.getPendingPromptFor(this.slotIndex())());
+> // ... 21 computeds total
+> ```
+>
+> **Sémantique** : en PvP normal/replay, `slotIndex = ownPlayerIndex`
+> (l'identité serveur absolue du viewer). En SOLO multiplex,
+> `slotIndex = perspective()` (le volet visuel projeté qui flippe).
+> Replay : `ownPlayerIndex` est fed `perspectiveIndex()` côté
+> `replay-page.component.ts` (cf. CLAUDE.md "Perspective Convention"
+> §2), donc le replay flip suit naturellement.
+>
+> **Précédent dans la codebase** : `DuelGameLogService.setPerspective(absolute: Player)`
+> (cf. `duel-game-log.service.ts:242`) — le journal a déjà ce pattern de
+> "perspective absolute" exposé. Le journal flippe via
+> `effect(() => gameLog.setPerspective(ownPlayerIndex()))`.
+>
+> **Sendside** — helper DISTINCT pour `sendXxx forPlayer` :
+>
+> ```ts
+> private sendForPlayer(): 0 | 1 | undefined {
+>   return this.soloMode ? this.duelCtx.perspective()() : undefined;
+> }
+> ```
+>
+> PvP normal envoie `forPlayer = undefined` (A2 serveur rejetterait sinon).
+> SOLO envoie `forPlayer = perspective()`. Pas le même helper que
+> `slotIndex` car la sémantique diffère (readside indexe un slot, sendside
+> tag un payload pour le serveur).
+>
+> **Edge case vérifié** : `ownPlayerIndex` typé `number` dans `DuelContext`
+> (`duel-context.ts:62`). Narrow `as 0|1` au call site `slotIndex` —
+> alternatives : changer le typing `DuelContext` (impact plus large) ou
+> ajouter un `duelAssert(idx === 0 || idx === 1)` (préféré, défensif).
 
 **Fichiers touchés** :
 - [ ] `front/src/app/pages/pvp/duel-page/duel-web-socket.service.ts` :
