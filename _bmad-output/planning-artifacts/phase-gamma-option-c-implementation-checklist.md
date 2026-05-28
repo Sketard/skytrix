@@ -520,6 +520,34 @@ extensions ws-protocol.
 > (`duel-context.ts:62`). Narrow `as 0|1` au call site `slotIndex` —
 > alternatives : changer le typing `DuelContext` (impact plus large) ou
 > ajouter un `duelAssert(idx === 0 || idx === 1)` (préféré, défensif).
+>
+> **A39-bis — MSG_HINT broadcast public (découvert par BMad code review
+> c4.2, 2026-05-28).** Les `SAFE_PUBLIC_HINT_TYPES` (cf.
+> `message-filter.ts:16-26`) sont des HINT broadcast envoyés à TOUS, mais
+> le payload garde `message.player = sourcePlayer` (l'origine, pas le
+> destinataire). En PvP normal P0 qui reçoit un HINT broadcast avec
+> `player=1` (originé par l'opponent), c4.2 écrit `_slots[1].hintContext`,
+> et la résolution Option 1 ferait `slotIndex = ownPlayerIndex = 0` →
+> lit `_slots[0]` = vide → le HINT broadcast est invisible.
+>
+> **Résolution EC-2** : à `MSG_HINT` côté `DuelConnection.handleMessage`,
+> dupliquer la whitelist `SAFE_PUBLIC_HINT_TYPES` côté front (constante
+> partagée idéale, sinon recopie) et :
+> ```ts
+> if (SAFE_PUBLIC_HINT_TYPES.has(message.hintType)) {
+>   // Broadcast : write LES DEUX slots (consumer reads via slotIndex).
+>   for (const s of this._slots) s.hintContext.set(merged);
+> } else {
+>   // Routed : write the targeted slot only.
+>   slot.hintContext.set(merged);
+> }
+> ```
+> Pour la lecture de `prev` (intra-slot A34), garder `prev = slot.hintContext()`
+> pour la branche routée ; pour broadcast, lire `_slots[ownPlayerIndex].hintContext()`
+> (la perspective du viewer) — mais comme `DuelConnection` n'a pas
+> `ownPlayerIndex`, soit on relit le slot du writer (`_slots[message.player]`,
+> i.e. l'origine), soit on passe par le `duelCtx` injecté en c4.1 si on
+> peut résoudre `ownPlayerIndex` via lui. À arbitrer au démarrage c5.
 
 **Fichiers touchés** :
 - [ ] `front/src/app/pages/pvp/duel-page/duel-web-socket.service.ts` :
