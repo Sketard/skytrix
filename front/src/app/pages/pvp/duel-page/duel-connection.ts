@@ -195,6 +195,16 @@ export class DuelConnection {
   soloMode = false;
 
   /**
+   * γ Option C (PR2 c4.3, A9) — memoize the `forPlayer` tag of the LAST
+   * outbound `PLAYER_RESPONSE` sent through this connection. Read by
+   * `DuelWebSocketService.sendAnimationsDone` (A37 fallback) when SOLO
+   * needs to derive the destination slot at a moment where no current
+   * prompt is active. `null` until the first tagged response is sent.
+   * Stays `null` forever in PvP normal (caller never passes `forPlayer`).
+   */
+  lastSentForPlayer: 0 | 1 | null = null;
+
+  /**
    * γ Option C (PR2 c4.1) — optional injection of `DuelContext` for SOLO
    * multiplex paths that need the current visual perspective (A17 BOARD_STATE
    * swap). PvP normal does not need it and passes `undefined`. Narrow type
@@ -450,11 +460,29 @@ export class DuelConnection {
     'SELECT_CARD', 'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_UNSELECT_CARD',
   ]);
 
-  sendResponse(promptType: string, data: ResponseData): void {
-    if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
-      // γ Option C (PR2 c4.2) — slot 0 by default; c4.3 will route via
-      // `forPlayer ?? 0` (legacy callers stay slot 0 — equivalence).
-      const slot = this._slots[0];
+  /**
+   * γ Option C (PR2 c4.3, A21) — attach the optional `forPlayer` tag to an
+   * outbound ClientMessage payload. PvP normal callers pass `undefined`
+   * (the spread produces no field — A2 server validator rejects otherwise).
+   * SOLO multiplex callers pass `0|1` (the user's current absolute slot —
+   * see `DuelWebSocketService.sendForPlayer` A39 helper at c5).
+   *
+   * `_lastSentForPlayer` memoization (A9) is sibling state: the
+   * `wsService.sendAnimationsDone` A37 fallback reads it when no current
+   * prompt is active.
+   */
+  private _tagForPlayer<T extends { type: string }>(msg: T, forPlayer: 0 | 1 | undefined): T {
+    this.lastSentForPlayer = forPlayer ?? null;
+    return forPlayer === undefined ? msg : { ...msg, forPlayer };
+  }
+
+  sendResponse(promptType: string, data: ResponseData, forPlayer?: 0 | 1): void {
+    if (this.safeSend(this._tagForPlayer({ type: 'PLAYER_RESPONSE', promptType, data }, forPlayer))) {
+      // γ Option C (PR2 c4.3, A22) — clear the slot of the responding player.
+      // PvP normal: `forPlayer === undefined` → slot 0 (legacy equivalent;
+      // c5's wsService.sendResponse forwards `undefined` in PvP normal).
+      // SOLO multiplex: the user's perspective slot is cleared.
+      const slot = this._slots[forPlayer ?? 0];
       // Capture selected cards before clearing prompt (for excluding from next prompt)
       const prompt = slot.pendingPrompt();
       const accumulate = DuelConnection.ACCUMULATE_SELECTION_TYPES.has(promptType);
@@ -489,22 +517,23 @@ export class DuelConnection {
     }
   }
 
-  sendActivityPing(): void {
-    this.safeSend({ type: 'ACTIVITY_PING' });
-    // γ Option C (PR2 c4.2) — slot 0 by default; c4.3 will route via `forPlayer ?? 0`.
-    this._slots[0].inactivityWarning.set(null);
+  sendActivityPing(forPlayer?: 0 | 1): void {
+    this.safeSend(this._tagForPlayer({ type: 'ACTIVITY_PING' }, forPlayer));
+    // γ Option C (PR2 c4.3) — clear the slot the ping was tagged for (slot 0
+    // when `forPlayer === undefined`, mirroring legacy PvP normal).
+    this._slots[forPlayer ?? 0].inactivityWarning.set(null);
   }
 
-  sendAnimationsDone(): void {
-    this.safeSend({ type: 'ANIMATIONS_DONE' });
+  sendAnimationsDone(forPlayer?: 0 | 1): void {
+    this.safeSend(this._tagForPlayer({ type: 'ANIMATIONS_DONE' }, forPlayer));
   }
 
   clearDiceResult(): void {
     this._diceResult.set(null);
   }
 
-  sendSurrender(): void {
-    this.safeSend({ type: 'SURRENDER' });
+  sendSurrender(forPlayer?: 0 | 1): void {
+    this.safeSend(this._tagForPlayer({ type: 'SURRENDER' }, forPlayer));
   }
 
   /**
@@ -517,16 +546,16 @@ export class DuelConnection {
    * SELECT_DISFIELD, SELECT_POSITION). No-op if no rollback target
    * exists server-side — the server will WARN and ignore.
    */
-  sendCancelPromptSequence(): void {
-    this.safeSend({ type: 'CANCEL_PROMPT_SEQUENCE' });
+  sendCancelPromptSequence(forPlayer?: 0 | 1): void {
+    this.safeSend(this._tagForPlayer({ type: 'CANCEL_PROMPT_SEQUENCE' }, forPlayer));
   }
 
-  sendRequestStateSync(): void {
-    this.safeSend({ type: 'REQUEST_STATE_SYNC' });
+  sendRequestStateSync(forPlayer?: 0 | 1): void {
+    this.safeSend(this._tagForPlayer({ type: 'REQUEST_STATE_SYNC' }, forPlayer));
   }
 
-  sendRematchRequest(): void {
-    if (this.safeSend({ type: 'REMATCH_REQUEST' })) {
+  sendRematchRequest(forPlayer?: 0 | 1): void {
+    if (this.safeSend(this._tagForPlayer({ type: 'REMATCH_REQUEST' }, forPlayer))) {
       this._rematchState.set('requested');
     }
   }
