@@ -7,6 +7,7 @@ import { DebugLogService } from './debug-log.service';
 import { DuelLogger, DuelLogCategory } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
+import { WebSocketFactoryService } from './websocket-factory.service';
 
 /**
  * γ Option C — PR2 c6a (2026-05-29) — SOLO multiplex mono-connection.
@@ -44,6 +45,10 @@ export class SoloDuelOrchestratorService {
   private readonly artService = inject(DuelCardArtService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
+  /** γ Option C PR2 c7a (A15) — factory indirection forwarded to the SOLO
+   *  multiplex `DuelConnection` so the SOLO chain spec (T-F6 c7b) can feed
+   *  frames through a MockWebSocket. */
+  private readonly wsFactory = inject(WebSocketFactoryService);
 
   /** γ Option C PR2 c6c (A5) — clé localStorage qui mémorise la
    *  perspective courante SOLO. Survit à un F5 pendant un duel SOLO,
@@ -112,7 +117,7 @@ export class SoloDuelOrchestratorService {
     // defined` throw au premier BOARD_STATE en SOLO P1.
     const conn = new DuelConnection(
       environment.wsUrl, true, 'duel-reconnect-token-solo', this.logger,
-      { duelCtx: this.duelCtx },
+      { duelCtx: this.duelCtx, wsFactory: this.wsFactory },
     );
 
     // A21 — pair flip AVANT connect(). Voir doc de classe ci-dessus.

@@ -8,6 +8,7 @@ import type { AnimationDataSource, QueueDirective, QueueEntry } from './animatio
 import type { StreamEvent } from '../types';
 import { DuelContext } from './duel-context';
 import { duelAssert } from '../../../core/utilities/duel-assert';
+import { WebSocketFactoryService } from './websocket-factory.service';
 
 export { ResponseData } from './duel-connection';
 
@@ -44,6 +45,9 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private readonly logger = inject(DuelLogger);
   private readonly artService = inject(DuelCardArtService);
   private readonly duelCtx = inject(DuelContext);
+  /** γ Option C PR2 c7a (A15) — factory indirection for `new WebSocket(url)`
+   *  so the SOLO multiplex chain spec can feed frames through a MockWebSocket. */
+  private readonly wsFactory = inject(WebSocketFactoryService);
 
   /** γ Option C PR2 c5b — Set to `true` by `SoloDuelOrchestratorService.init()`
    *  on the SOLO multiplex path. Branches the `slotIndex()` helper
@@ -82,7 +86,8 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     // BOARD_STATE swap parity (c4.4 BH-3) — never actually triggered in
     // PvP because `soloMode` stays false, but kept uniform.
     const defaultConn = new DuelConnection(
-      environment.wsUrl, true, undefined, this.logger, { duelCtx: this.duelCtx },
+      environment.wsUrl, true, undefined, this.logger,
+      { duelCtx: this.duelCtx, wsFactory: this.wsFactory },
     );
     defaultConn.artService = this.artService;
     defaultConn.onMessage = msg => { this.debugLog.logServerMessage(msg); };

@@ -8,6 +8,7 @@ import { RenderedBoardStateService, type BoardStateView } from './rendered-board
 import { BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, ErrorMsg, InactivityWarningMsg, MoveMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { swapBoardState } from '../board-state-swap';
+import type { WebSocketFactory } from './websocket-factory.service';
 
 export type ResponseData = Record<string, unknown>;
 
@@ -244,6 +245,26 @@ export class DuelConnection {
    */
   private readonly _duelCtx?: { perspective(): Signal<0 | 1> };
 
+  /**
+   * γ Option C (PR2 c7a, A15) — optional `WebSocket` factory indirection
+   * used by `openConnection()`. Production callers (`DuelWebSocketService`,
+   * `SoloDuelOrchestratorService`) inject `WebSocketFactoryService` and
+   * forward it via `options.wsFactory`.
+   *
+   * Tests EITHER override the Angular token via
+   * `TestBed.overrideProvider(WebSocketFactoryService, { useValue: stub })`
+   * when exercising the 2 services above (whose `inject()` resolves through
+   * TestBed), OR pass `{ wsFactory: stub }` directly when constructing
+   * `DuelConnection` by hand (cf. `websocket-factory.service.spec.ts`) —
+   * `DuelConnection` is a plain class, NOT in the DI graph, so the TestBed
+   * override alone wouldn't reach it.
+   *
+   * When `undefined`, `new WebSocket(url)` is used (back-compat — the 4
+   * existing `duel-connection.spec.ts` sites that bypass `connect()` rely
+   * on this default).
+   */
+  private readonly _wsFactory?: WebSocketFactory;
+
   // γ Option C (PR2 c4.2) — project slot 0 by default; c5 swaps the read
   // index to `slotIndex(soloMode, perspective, ownPlayerIndex)` (A39).
   readonly pendingPrompt = computed(() => this._slots[0].pendingPrompt());
@@ -417,6 +438,8 @@ export class DuelConnection {
        *  in SOLO multiplex so handleMessage can read the current visual
        *  perspective (A17 BOARD_STATE swap). Omitted in PvP normal. */
       duelCtx?: { perspective(): Signal<0 | 1> };
+      /** γ Option C (PR2 c7a, A15) — see `_wsFactory` field doc. */
+      wsFactory?: WebSocketFactory;
     },
   ) {
     if (wsUrlBase.startsWith('/')) {
@@ -436,6 +459,7 @@ export class DuelConnection {
     this.processor.logger = logger;
     this.rbs.logger = logger;
     this._duelCtx = options?.duelCtx;
+    this._wsFactory = options?.wsFactory;
   }
 
   clearStorageToken(): void {
@@ -753,7 +777,10 @@ export class DuelConnection {
       return;
     }
 
-    this.ws = new WebSocket(url);
+    // γ Option C PR2 c7a (A15) — factory indirection. Default = `new WebSocket(url)`
+    // when no factory was injected (PvP normal default conn ; existing tests
+    // that bypass `connect()` via `(conn as any).ws = mockWs`).
+    this.ws = this._wsFactory ? this._wsFactory.create(url) : new WebSocket(url);
 
     this.armTimeout('connection', () => {
       if (this.ws?.readyState !== WebSocket.OPEN) {
