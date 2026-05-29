@@ -588,6 +588,103 @@ describe('timer-management', () => {
   });
 
   // ==========================================================================
+  // γ Option C A37 — TIMER_STATE.pendingPlayer propagation
+  // ==========================================================================
+  // Validates that every TIMER_STATE emission carries `ctx.pendingPlayer`.
+  // The SOLO multiplex front uses it as a fallback for
+  // `sendAnimationsDone.forPlayer` when `_lastSentForPlayer` is null
+  // (bootstrap + early switch race). PvP normal ignores the field but the
+  // populate is unconditional for protocol consistency.
+
+  describe('A37 — TIMER_STATE.pendingPlayer propagation', () => {
+    it('sendTimerStateToAll propagates ctx.pendingPlayer when parked', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession();
+      s.timerContext!.pendingPlayer = 1;
+
+      sendTimerStateToAll(s);
+
+      const msgs = timerStateMessages(spy);
+      expect(msgs).toHaveLength(4);
+      for (const m of msgs) {
+        expect((m.message as { pendingPlayer?: Player }).pendingPlayer).toBe(1);
+      }
+    });
+
+    it('sendTimerStateToAll emits pendingPlayer: undefined when ctx.pendingPlayer is null', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession();
+      s.timerContext!.pendingPlayer = null;
+
+      sendTimerStateToAll(s);
+
+      const msgs = timerStateMessages(spy);
+      for (const m of msgs) {
+        expect((m.message as { pendingPlayer?: Player }).pendingPlayer).toBeUndefined();
+      }
+    });
+
+    it('scheduleTimerStart + sendTimerStateToAll surfaces the parked player', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession();
+
+      scheduleTimerStart(s, 0);
+      spy.sent.length = 0; // ignore scheduleTimerStart side-effects from pauseTurnTimer (timer wasn't running)
+      sendTimerStateToAll(s);
+
+      const msgs = timerStateMessages(spy);
+      expect(msgs).toHaveLength(4);
+      for (const m of msgs) {
+        expect((m.message as { pendingPlayer?: Player }).pendingPlayer).toBe(0);
+      }
+    });
+
+    it('startTurnTimer (interval tick) propagates pendingPlayer', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession();
+      // A pending player from a prior scheduleTimerStart that survived to running.
+      // In practice `commitPendingTimer` nulls it, but we test the propagation
+      // path itself — the populate is unconditional.
+      s.timerContext!.pendingPlayer = 1;
+
+      startTurnTimer(s);
+      spy.sent.length = 0;
+      vi.advanceTimersByTime(250);
+
+      const tickMsgs = timerStateMessages(spy);
+      expect(tickMsgs.length).toBeGreaterThan(0);
+      for (const m of tickMsgs) {
+        expect((m.message as { pendingPlayer?: Player }).pendingPlayer).toBe(1);
+      }
+
+      pauseTurnTimer(s); // cleanup
+    });
+
+    it('pauseTurnTimer post-pause broadcast propagates pendingPlayer', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession();
+      startTurnTimer(s);
+      // Simulate a parked pending slot lingering (defensive — should be null
+      // while running, but the propagation must not branch on it).
+      s.timerContext!.pendingPlayer = 0;
+      spy.sent.length = 0;
+
+      pauseTurnTimer(s);
+
+      const msgs = timerStateMessages(spy);
+      expect(msgs.length).toBeGreaterThan(0);
+      for (const m of msgs) {
+        expect((m.message as { pendingPlayer?: Player }).pendingPlayer).toBe(0);
+      }
+    });
+  });
+
+  // ==========================================================================
   // clearAllDuelTimers
   // ==========================================================================
 

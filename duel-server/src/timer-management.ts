@@ -53,14 +53,21 @@ const getCfg = configurable.get;
 // =============================================================================
 // TIMER_STATE bypasses message-filter.ts on purpose: both players see both
 // timers, and the server is the sole source of truth.
+//
+// γ Option C A37 — every emitted TIMER_STATE carries `ctx.pendingPlayer` so
+// the SOLO multiplex front can derive `sendAnimationsDone.forPlayer` from
+// it when `_lastSentForPlayer` is null (bootstrap + early switch race).
+// Populated in both modes for protocol consistency ; PvP normal front
+// ignores the field.
 
 export function sendTimerStateToAll(session: ActiveDuelSession): void {
   const ctx = session.timerContext;
   if (!ctx) return;
   const c = getCfg();
   const totalMs = session.turnTimeSecs * 1000;
-  const timer0: ServerMessage = { type: 'TIMER_STATE', player: 0, remainingMs: Math.max(0, ctx.pools[0]), totalMs };
-  const timer1: ServerMessage = { type: 'TIMER_STATE', player: 1, remainingMs: Math.max(0, ctx.pools[1]), totalMs };
+  const pendingPlayer = ctx.pendingPlayer ?? undefined;
+  const timer0: ServerMessage = { type: 'TIMER_STATE', player: 0, remainingMs: Math.max(0, ctx.pools[0]), totalMs, pendingPlayer };
+  const timer1: ServerMessage = { type: 'TIMER_STATE', player: 1, remainingMs: Math.max(0, ctx.pools[1]), totalMs, pendingPlayer };
   for (const client of [0, 1] as const) {
     c.sendToPlayer(session, client, timer0);
     c.sendToPlayer(session, client, timer1);
@@ -72,8 +79,9 @@ export function sendTimerStateToPlayer(session: ActiveDuelSession, targetPlayer:
   if (!ctx) return;
   const c = getCfg();
   const totalMs = session.turnTimeSecs * 1000;
+  const pendingPlayer = ctx.pendingPlayer ?? undefined;
   for (const p of [0, 1] as const) {
-    c.sendToPlayer(session, targetPlayer, { type: 'TIMER_STATE', player: p, remainingMs: Math.max(0, ctx.pools[p]), totalMs });
+    c.sendToPlayer(session, targetPlayer, { type: 'TIMER_STATE', player: p, remainingMs: Math.max(0, ctx.pools[p]), totalMs, pendingPlayer });
   }
 }
 
@@ -108,11 +116,14 @@ export function startTurnTimer(session: ActiveDuelSession): void {
     ctx.pools[ctx.activePlayer] -= elapsed;
 
     // Broadcast TIMER_STATE for active player to both clients
+    // A37 — `pendingPlayer` propagated from ctx (null while running, but kept
+    // populated for protocol consistency across all TIMER_STATE emissions).
     const timerMsg: ServerMessage = {
       type: 'TIMER_STATE',
       player: ctx.activePlayer,
       remainingMs: Math.max(0, ctx.pools[ctx.activePlayer]),
       totalMs: session.turnTimeSecs * 1000,
+      pendingPlayer: ctx.pendingPlayer ?? undefined,
     };
     c.sendToPlayer(session, 0, timerMsg);
     c.sendToPlayer(session, 1, timerMsg);
@@ -155,12 +166,14 @@ export function pauseTurnTimer(session: ActiveDuelSession): void {
   ctx.running = false;
 
   // Broadcast accurate pool value after pause (prevents up to ~1s display drift)
+  // A37 — `pendingPlayer` propagated from ctx for protocol consistency.
   const c = getCfg();
   const timerMsg: ServerMessage = {
     type: 'TIMER_STATE',
     player: ctx.activePlayer,
     remainingMs: Math.max(0, ctx.pools[ctx.activePlayer]),
     totalMs: session.turnTimeSecs * 1000,
+    pendingPlayer: ctx.pendingPlayer ?? undefined,
   };
   c.sendToPlayer(session, 0, timerMsg);
   c.sendToPlayer(session, 1, timerMsg);
