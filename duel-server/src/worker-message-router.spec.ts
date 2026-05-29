@@ -325,6 +325,50 @@ describe('worker-message-router', () => {
 
       expect(spy.sent).toHaveLength(0);
     });
+
+    // γ Option C PR2 c6bis (A30) — SOLO routes the 3 sends to socket 0.
+    it('SOLO + p=1: routes STATE_SYNC + CHAIN_STATE + cached prompt to socket 0 (T-S15)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+      const cached: ServerMessage = { type: 'SELECT_IDLECMD', player: 1 } as unknown as ServerMessage;
+      s.cancelTargetPrompt[1] = cached;
+      s.lastBoardState = makeBoardStateMsg(0, 1);
+
+      handleWorkerMessage(s, { type: 'WORKER_CANCEL_DONE', duelId: 'd1', playerIndex: 1 } as WorkerToMainMessage);
+
+      // The 3 sends MUST all target socket 0 in SOLO (the only socket).
+      // STATE_SYNC + CHAIN_STATE + the cached SELECT_IDLECMD (with
+      // payload.player still = 1 — the front uses slotIndex to route).
+      const stateSync = spy.sent.find(s => s.message.type === 'STATE_SYNC');
+      const chainState = spy.sent.find(s => s.message.type === 'CHAIN_STATE');
+      const cmd = spy.sent.find(s => s.message.type === 'SELECT_IDLECMD');
+      expect(stateSync?.player).toBe(0);
+      expect(chainState?.player).toBe(0);
+      expect(cmd?.player).toBe(0);
+      // Cached prompt payload's slot tag is preserved (front routes via slotIndex).
+      expect((cmd?.message as { player: 0 | 1 }).player).toBe(1);
+      // Bookkeeping on session.lastSentPrompt + awaitingResponse still
+      // mutates slot 1 (the absolute identity that was rolled back).
+      expect(s.lastSentPrompt[1]).toBe(cached);
+      expect(s.awaitingResponse[1]).toBe(true);
+      expect(s.cancelTargetPrompt[1]).toBeNull();
+    });
+
+    it('PvP normal + p=1: routes to socket p=1 (regression — c6bis SOLO branch must not leak)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession(); // soloMode defaults to false
+      const cached: ServerMessage = { type: 'SELECT_IDLECMD', player: 1 } as unknown as ServerMessage;
+      s.cancelTargetPrompt[1] = cached;
+      s.lastBoardState = makeBoardStateMsg(0, 1);
+
+      handleWorkerMessage(s, { type: 'WORKER_CANCEL_DONE', duelId: 'd1', playerIndex: 1 } as WorkerToMainMessage);
+
+      const cmd = spy.sent.find(s => s.message.type === 'SELECT_IDLECMD');
+      expect(cmd?.player).toBe(1);
+    });
   });
 
   // ==========================================================================

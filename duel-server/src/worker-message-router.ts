@@ -143,8 +143,17 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
       const p = wmsg.playerIndex;
       const cached = session.cancelTargetPrompt[p];
       if (cached) {
+        // γ Option C PR2 c6bis (A30) — SOLO multiplex routes the 3 sends
+        // to socket 0 (the only one). STATE_SYNC filter goes omniscient
+        // so the SOLO viewer's player-1 perspective sees the rollback's
+        // private fields (hand contents, deck order) it needs to render
+        // its slot correctly. PvP normal routes to socket `p` with the
+        // standard per-player filter.
+        const dest: 0 | 1 = session.soloMode ? 0 : p;
+        const omniscient = session.soloMode;
+
         logger.log('CANCEL: re-broadcasting IDLECMD/BATTLECMD prompt', {
-          duelId: session.duelId, promptType: cached.type, player: p,
+          duelId: session.duelId, promptType: cached.type, player: p, dest,
         });
 
         // STATE_SYNC + empty CHAIN_STATE so the client's reset machinery
@@ -152,10 +161,10 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
         // chain overlay). Same path as a reconnection re-sync.
         if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
           const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
-          const filtered = filterMessage(stateSync, p);
-          if (filtered) send(session, p, filtered);
+          const filtered = filterMessage(stateSync, p, omniscient);
+          if (filtered) send(session, dest, filtered);
         }
-        send(session, p, {
+        send(session, dest, {
           type: 'CHAIN_STATE', links: [], phase: 'idle', negatedIndices: [],
         } as ServerMessage);
 
@@ -176,7 +185,10 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
 
         session.lastSentPrompt[p] = cached;
         session.awaitingResponse[p] = true;
-        send(session, p, cached);
+        // The cached prompt already carries `player = p` (it's a SELECT_*
+        // / IDLECMD payload), so the SOLO front routes it through slot p
+        // via slotIndex(). PvP normal sends to player p directly.
+        send(session, dest, cached);
         // Drop the cache — the prompt is now in flight and a future
         // commit will re-snapshot it.
         session.cancelTargetPrompt[p] = null;

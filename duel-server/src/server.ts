@@ -317,7 +317,16 @@ configureClientMessageRouter({
   startRematch,
   onStateSyncRequested: (session, playerIndex) => {
     sendStateSnapshot(session, playerIndex);
-    resendPendingPrompt(session, playerIndex);
+    // γ Option C PR2 c6bis (A29) — SOLO multiplex re-arms BOTH slots'
+    // pending prompts via the single socket so the user can answer
+    // whichever identity is currently surface-routed. PvP normal re-arms
+    // only the requesting identity.
+    if (session.soloMode) {
+      resendPendingPrompt(session, 0);
+      resendPendingPrompt(session, 1);
+    } else {
+      resendPendingPrompt(session, playerIndex);
+    }
   },
   maxInvalidResponses: MAX_INVALID_RESPONSES,
   stateSyncRateLimitMs: STATE_SYNC_RATE_LIMIT_MS,
@@ -1089,7 +1098,14 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       sendToPlayer(session, opponentIndex, { type: 'OPPONENT_RECONNECTED' });
     }
 
-    resendPendingPrompt(session, playerIndex);
+    // γ Option C PR2 c6bis (A29) — SOLO multiplex re-arms BOTH slots
+    // on reconnect (single socket carries both server identities).
+    if (session.soloMode) {
+      resendPendingPrompt(session, 0);
+      resendPendingPrompt(session, 1);
+    } else {
+      resendPendingPrompt(session, playerIndex);
+    }
   }
 
   // Check if the session is ready to start — trigger pre-duel RPS or fork resume.

@@ -795,30 +795,39 @@ client-message-router, 2 i18n).
 
 ---
 
-### Commit 6bis — Lifecycle SOLO additionnels (A29 + A30)
+### Commit 6bis — Lifecycle SOLO additionnels (A29 + A30) ✅ LIVRÉ 2026-05-29
 
-**Scope** : `resendPendingPrompt × 2` au reconnect + `WORKER_CANCEL_DONE`
-routing-to-0. Côté serveur, mais arrive logiquement après commit 6
-parce qu'il dépend du front PerspectiveSlot pour être testable end-to-end.
+**Scope** : `resendPendingPrompt × 2` aux 2 sites de reconnect /
+REQUEST_STATE_SYNC + `WORKER_CANCEL_DONE` routing-to-0 en SOLO.
 
 **Fichiers touchés** :
-- [ ] **A29** — `server.ts:1072` (reconnect) :
-      ```ts
-      if (session.soloMode) {
-        resendPendingPrompt(session, 0);
-        resendPendingPrompt(session, 1);
-      } else { resendPendingPrompt(session, playerIndex); }
-      ```
-- [ ] **A30** — `worker-message-router.ts:137-186` (`case 'WORKER_CANCEL_DONE'`) :
-      branche `dest = session.soloMode ? 0 : p` ; `filterMessage` en
-      mode omniscient en SOLO ; 3 sends (STATE_SYNC + CHAIN_STATE +
-      cached prompt) routés au socket 0 avec `player=p` dans les payloads.
+- [x] **A29** — `server.ts` 2 sites :
+  - [x] `onStateSyncRequested` callback (`server.ts:318-330`, configureClientMessageRouter) :
+        si `session.soloMode`, appelle `resendPendingPrompt(session, 0)` ET
+        `resendPendingPrompt(session, 1)` au lieu de `resendPendingPrompt(session, playerIndex)`.
+  - [x] Reconnect handshake (`server.ts:1092-1099`) : même branche SOLO ×2 / PvP ×1.
+        Commentaires inline citent A29 + SOLO multiplex single-socket invariant.
+- [x] **A30** — `worker-message-router.ts:137-196` (`case 'WORKER_CANCEL_DONE'`) :
+  - [x] `const dest: 0 | 1 = session.soloMode ? 0 : p;` — les 3 `send(session, dest, ...)`
+        partent au socket 0 en SOLO.
+  - [x] `const omniscient = session.soloMode;` — passé en 3e arg à `filterMessage(stateSync, p, omniscient)`
+        pour que le STATE_SYNC pour le viewer-perspective-1 SOLO préserve les
+        champs privés (main, deck order) qu'il a besoin de rendre.
+  - [x] Cached prompt payload reste taggé `player = p` (sa valeur d'origine) ;
+        le front SOLO route via `slotIndex()` vers `_slots[p]`.
+  - [x] Bookkeeping `session.lastSentPrompt[p]` / `awaitingResponse[p]` / `cancelTargetPrompt[p]`
+        reste indexé sur `p` (identité serveur absolue), inchangé vs PvP normal.
+- [x] **Specs verts** : 1607 duel-server (+2 nouveaux : T-S15 SOLO routing-to-0
+      + régression PvP normal qui valide que la branche SOLO ne leak pas).
 
-**Specs verts** :
-- [ ] `T-S13` — resendPendingPrompt × 2 in SOLO reconnect.
-- [ ] `T-S15` — WORKER_CANCEL_DONE SOLO routed to socket 0.
+**Defers** :
+- **T-S13** (A29 SOLO reconnect × 2 e2e) — la logique est triviale (`if soloMode: 2 calls`),
+  pas testée en unitaire ici parce que `resendPendingPrompt` vit dans
+  `server.ts` (pas extrait, non-importable depuis un spec). À couvrir en
+  c7 via le harness Playwright Scenario D (rematch + F5 grace) ou un
+  scénario de reconnect dédié.
 
-**Diff attendu** : ~80 LOC, ~2 fichiers serveur.
+**Diff réel** : ~50 LOC métier + ~50 LOC tests, 3 fichiers serveur.
 
 ---
 
@@ -979,8 +988,8 @@ ligne au fil de l'implémentation pour garantir 38/38.
 
 - [x] **A27** — PR2 c6b (front garde auto-accept ✅ 2026-05-29) + c6e (server court-circuit ✅ 2026-05-29) — Rematch SOLO.
 - [x] **A28** — PR1 c2b (vide ✅ 2026-05-28) + PR2 c4.5 (peuplé ✅ 2026-05-28) — Whitelist routing.
-- [ ] **A29** — PR2 c6bis — resendPendingPrompt × 2.
-- [ ] **A30** — PR2 c6bis — WORKER_CANCEL_DONE routing.
+- [x] **A29** — PR2 c6bis (server.ts 2 sites onStateSyncRequested + reconnect handshake ✅ 2026-05-29). T-S13 e2e deferred to c7.
+- [x] **A30** — PR2 c6bis (WORKER_CANCEL_DONE routing-to-0 SOLO + omniscient filter + T-S15 + PvP régression ✅ 2026-05-29).
 - [x] **A31** — PR1 c3 — Post-duel grace cleanup SOLO (via `rematchTimeout` armé en SOLO). ✅ 2026-05-28
 - [x] **A32** — PR1 c1b (ErrorMsg type ✅ 2026-05-28) + PR2 c4.4 (case 'ERROR' DuelConnection ✅ 2026-05-28) + PR2 c6g (wsService surface + toast effect ✅ 2026-05-29).
 - [ ] **A33** — PR2 c4a — `_lastDrawAnnouncedHash` reste GLOBAL.
