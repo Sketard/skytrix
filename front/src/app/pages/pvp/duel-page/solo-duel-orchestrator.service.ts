@@ -259,15 +259,22 @@ export class SoloDuelOrchestratorService {
     // PERSPECTIVE_LIFETIME.
     this.animationService.notifyPerspectiveSwitch(from, to);
 
+    // γ-c cleanup F-2.2 (audit) — clear `_lastDrawAnnouncedHash` on the
+    // conn. The hash is built from BOARD_STATE's `turnPlayer` which is
+    // RELATIVE after `_maybeSwapBoardState` ; a switch invalidates the
+    // dedup since the new perspective sees a different relative
+    // `turnPlayer`. Without this, a switch mid-tour can either re-fire
+    // the DRAW announce on the same logical tour OR silently swallow
+    // a fresh tour announce if old + new perspectives coincidentally
+    // produce the same hash.
+    conn.onPerspectiveSwitched();
+
     // c6c A14 — `setBoardActive(true)` SUPPRIMÉ. Avec 1 connection
     // multiplex il n'y a plus d'asymétrie transport entre perspectives ;
     // `_boardActive` est un transport-flag global flippé une fois au
     // bootstrap par `DuelLoadingEffectsService` puis re-flippé à
     // REMATCH_STARTING par `duel-connection.ts` (A23, c4.4). Le rappeler
     // au switch serait redondant et brouillerait la sémantique du flag.
-    // `conn` reste consommé par la garde `_transport_connection() !== null`
-    // ci-dessus ; pas d'autre usage ici.
-    void conn;
 
     // Debounce post-transition (durée alignée sur la future
     // transition CSS .board-host transform 250ms + marge).

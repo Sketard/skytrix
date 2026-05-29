@@ -700,6 +700,31 @@ export class DuelConnection {
     this.rbs.commitAll();
   }
 
+  /**
+   * γ-c cleanup F-2.2 (audit) — clear perspective-relative dedup state that
+   * a SOLO `switchPerspective` invalidates. The `_lastDrawAnnouncedHash`
+   * built from `${turnPlayer}:${turnCount}` is post-swap (SOLO BOARD_STATE
+   * is swapped via `_maybeSwapBoardState` for perspective=1 — so
+   * `_lastTurnPlayer` is the RELATIVE turn-player, not absolute). A switch
+   * mid-tour flips the relative turn-player, so the hash no longer matches
+   * the new perspective's view of "current turn" and a stale dedup would
+   * either re-fire the DRAW announce on the same logical tour (no harm,
+   * just visual noise) or silently swallow a fresh tour announce if the
+   * old + new perspective coincidentally land on the same hash.
+   *
+   * Named distinct from `AnimationOrchestratorService.notifyPerspectiveSwitch`
+   * (which emits a PerspectiveSwitched stream event + dispatches reset) to
+   * keep the two callsites unambiguous in `SoloDuelOrchestratorService`.
+   *
+   * Called by `SoloDuelOrchestratorService.switchPerspective` AFTER it
+   * has flipped `DuelContext.perspectiveSource`. PvP normal + replay
+   * never call this. Idempotent — calling again on the same perspective
+   * just re-clears a state already cleared.
+   */
+  onPerspectiveSwitched(): void {
+    this._lastDrawAnnouncedHash = null;
+  }
+
   setBoardActive(active: boolean): void {
     this._boardActive = active;
   }

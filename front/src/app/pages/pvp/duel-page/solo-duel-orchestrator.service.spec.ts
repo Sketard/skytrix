@@ -366,12 +366,14 @@ function makeStubConnection(): {
   setBoardActive: jasmine.Spy;
   clearStorageToken: jasmine.Spy;
   cleanup: jasmine.Spy;
+  onPerspectiveSwitched: jasmine.Spy;
 } {
   return {
     connectionStatus: () => 'connected',
     setBoardActive: jasmine.createSpy('setBoardActive'),
     clearStorageToken: jasmine.createSpy('clearStorageToken'),
     cleanup: jasmine.createSpy('cleanup'),
+    onPerspectiveSwitched: jasmine.createSpy('onPerspectiveSwitched'),
   };
 }
 
