@@ -1,6 +1,7 @@
 import { computed, DestroyRef, effect, inject, Injectable, Injector, runInInjectionContext, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection } from './duel-connection';
+import { wireConnectionDebugSinks } from './duel-connection-wiring';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { DebugLogService } from './debug-log.service';
@@ -148,9 +149,7 @@ export class SoloDuelOrchestratorService {
     conn.soloMode = true;
     this.wsService.setSoloMode(true);
 
-    conn.artService = this.artService;
-    conn.onMessage = msg => this.debugLog.logServerMessage(msg);
-    conn.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);
+    wireConnectionDebugSinks(conn, { artService: this.artService, debugLog: this.debugLog });
 
     this._transport_connection.set(conn);
 

@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection, ResponseData } from './duel-connection';
+import { wireConnectionDebugSinks } from './duel-connection-wiring';
 import { DebugLogService } from './debug-log.service';
 import { DuelLogger } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
@@ -89,9 +90,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
       environment.wsUrl, true, undefined, this.logger,
       { duelCtx: this.duelCtx, wsFactory: this.wsFactory },
     );
-    defaultConn.artService = this.artService;
-    defaultConn.onMessage = msg => { this.debugLog.logServerMessage(msg); };
-    defaultConn.onResponse = (promptType, data) => { this.debugLog.logPlayerResponse(promptType, data); };
+    wireConnectionDebugSinks(defaultConn, { artService: this.artService, debugLog: this.debugLog });
     defaultConn.onStateSync = (msg) => { this.onStateSync?.(msg); };
     this._transport_connection = signal<DuelConnection>(defaultConn);
   }
