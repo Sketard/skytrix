@@ -2,45 +2,41 @@ import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection, ResponseData } from './duel-connection';
 import { DebugLogService } from './debug-log.service';
-import { DuelLogger, DuelLogCategory } from './duel-logger';
+import { DuelLogger } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
 import type { AnimationDataSource, QueueDirective, QueueEntry } from './animation-data-source';
 import type { StreamEvent } from '../types';
-import type { DuelEventProcessor } from './duel-event-processor';
 import { DuelContext } from './duel-context';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 export { ResponseData } from './duel-connection';
 
 /**
- * γ commit 4 (2026-05-26) — `_activeConnection` removed (§3.3 spec).
- *
- * Two routing layers depending on the mode :
+ * γ Option C PR2 c8 (2026-05-29) — `_transports` pair + `_sharedProcessor`
+ * dropped after the c6a single-connection refactor consolidated SOLO
+ * multiplex onto one `DuelConnection`. The wsService now holds a single
+ * `_connection: WritableSignal<DuelConnection>` :
  *
  *  ── PvP normal (default) ──
- *     `_transports[0] === _transports[1] === _defaultConnection`. The
- *     "active transport" = `_defaultConnection` regardless of perspective
- *     (which is always 0 in PvP). All reads work as before.
+ *     The ctor creates a default `DuelConnection` and seeds
+ *     `_transport_connection` with it. `RoomStateMachineService.connect`
+ *     calls `wsService.connect(wsToken)` which delegates to it.
  *
  *  ── SOLO ──
- *     `SoloDuelOrchestratorService.init()` calls `bindSharedProcessor(...)`
- *     + `bindTransports(t0, t1)`. The wsService then routes :
- *       · **shared-state reads** (chain machine + animation queue + board
- *         state + cardCodes) → directly from the shared processor /
- *         renderedBoardState — IDENTICAL across the 2 transports.
- *       · **transport-local reads** (pendingPrompt, timerState,
- *         connectionStatus, rematchState, …) → `_transports[perspective()]`
- *         — depends on which identity the viewer is currently inhabiting.
+ *     `SoloDuelOrchestratorService.init()` creates the SOLO conn and
+ *     calls `bindSoloConnection(conn)` (c8) which `_connection.set(conn)`
+ *     + re-applies any registered sinks (out-of-band, draw-new-turn,
+ *     onStateSync). The old `bindSharedProcessor` + `bindTransports` pair
+ *     is gone — one method does both atomically.
  *
- * The cardinal invariant of γ holds : a `switchPerspective()` no longer
- * routes WS messages to a different processor — both transports kept
- * pushing into the SAME processor all along. Only the read of
- * `transport-local` accumulators flips, which is exactly what the user
- * sees changing visually.
+ *  The cardinal γ invariant holds : a `switchPerspective()` no longer
+ *  routes WS messages to a different processor — there's only one
+ *  connection now, hence only one processor. The viewer flip reads
+ *  `_slots[slotIndex()]` on the same connection.
  *
  * **Replay**: this service is NOT used by `ReplayPageComponent` (the
- * replay-page uses `ReplayDuelAdapter` directly). γ commit 4 leaves
- * replay untouched.
+ * replay-page uses `ReplayDuelAdapter` directly). c8 leaves replay
+ * untouched.
  */
 @Injectable()
 export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
@@ -67,51 +63,32 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    *  computeds correctly. */
   readonly soloModeSource = signal(false);
 
-  private readonly _defaultConnection: DuelConnection;
-
-  // γ commit 4 — `_activeConnection` replaced by `_transports[perspective()]`.
-  // Default (PvP-normal): both slots = defaultConnection, so reads behave
-  // identically to the legacy code. SOLO overrides via `bindTransports`.
+  // γ Option C PR2 c8 — single connection signal. Default value is the
+  // PvP-normal connection created in the ctor ; `bindSoloConnection` in
+  // SOLO bootstrap swaps it for the SOLO multiplex conn.
   // _transport_*: per α.1 tagging convention, internal transport state.
-  private readonly _transport_connections: ReturnType<typeof signal<[DuelConnection, DuelConnection]>>;
-
-  // γ commit 4 — set by `SoloDuelOrchestratorService.init()`. When non-null,
-  // the chain-state machine + animation queue reads come from this single
-  // processor instance instead of from `active().processor`. PvP-normal
-  // leaves it null and falls back to `_defaultConnection.processor`.
-  private _sharedProcessor: DuelEventProcessor | null = null;
+  private readonly _transport_connection: ReturnType<typeof signal<DuelConnection>>;
 
   onStateSync?: (msg: import('../duel-ws-system.types').StateSyncMsg) => void;
 
   /** Palier 0 — EventStream sink (orchestrator's `notifyOutOfBandEvent`).
-   *  Retained so we can re-apply it on `bindTransports`. */
+   *  Retained so we can re-apply it on `bindSoloConnection`. */
   private _outOfBandSink?: (event: StreamEvent) => void;
   private _drawNewTurnSink?: (turnPlayer: number, turnCount: number) => void;
 
   constructor() {
-    // γ c5b — _defaultConnection moved from field init to ctor so we can pass
-    // `{ duelCtx }`. The c4.4 BOARD_STATE swap assertion (BH-3 patch) throws
-    // when `soloMode=true` and ctor `duelCtx` is undefined ; in PvP normal
-    // soloMode stays false so the swap branch never runs, but passing the
-    // ctx here makes the wiring uniform and keeps any future c4.4 invariant
-    // honest if a non-SOLO consumer ever needs the swap path.
-    this._defaultConnection = new DuelConnection(
+    // PvP-normal default connection. SOLO bootstrap immediately swaps it
+    // via `bindSoloConnection`. The PvP-normal conn carries `duelCtx` for
+    // BOARD_STATE swap parity (c4.4 BH-3) — never actually triggered in
+    // PvP because `soloMode` stays false, but kept uniform.
+    const defaultConn = new DuelConnection(
       environment.wsUrl, true, undefined, this.logger, { duelCtx: this.duelCtx },
     );
-    this._transport_connections = signal<[DuelConnection, DuelConnection]>(
-      [this._defaultConnection, this._defaultConnection],
-    );
-    this._defaultConnection.artService = this.artService;
-    this._defaultConnection.onMessage = msg => {
-      this.debugLog.logServerMessage(msg);
-    };
-    this._defaultConnection.onResponse = (promptType, data) => {
-      this.debugLog.logPlayerResponse(promptType, data);
-    };
-    this._defaultConnection.onStateSync = (msg) => {
-      this.checkpointLog(msg, 0);
-      this.onStateSync?.(msg);
-    };
+    defaultConn.artService = this.artService;
+    defaultConn.onMessage = msg => { this.debugLog.logServerMessage(msg); };
+    defaultConn.onResponse = (promptType, data) => { this.debugLog.logPlayerResponse(promptType, data); };
+    defaultConn.onStateSync = (msg) => { this.onStateSync?.(msg); };
+    this._transport_connection = signal<DuelConnection>(defaultConn);
   }
 
   // ───────────────────────────────────────────────
@@ -149,95 +126,57 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   }
 
   // ───────────────────────────────────────────────
-  //  γ commit 4 — SOLO wiring (replaces setActiveConnection)
+  //  γ Option C PR2 c8 — SOLO connection bind
   // ───────────────────────────────────────────────
 
-  /** SOLO only. The shared processor lives on
-   *  `AnimationOrchestratorService.processor` (commit 2). When set, ALL
-   *  chain-state + animation-queue reads route through it, IGNORING
-   *  which connection received the WS message. PvP-normal never calls
-   *  this and the wsService falls back to `_defaultConnection.processor`. */
-  bindSharedProcessor(proc: DuelEventProcessor): void {
-    this._sharedProcessor = proc;
-  }
-
-  /** SOLO only. Pass the two transport connections in OCGCore-identity
-   *  order (`t0` = server identity 0, `t1` = server identity 1). The
-   *  wsService re-applies its sinks (out-of-band + draw-new-turn +
-   *  onStateSync) on both connections, then routes transport-local
-   *  reads via `_transports[perspective()]`.
+  /** γ Option C PR2 c8 — SOLO only. Swap the wsService's single
+   *  `_transport_connection` for the SOLO multiplex conn created by
+   *  `SoloDuelOrchestratorService.init()`. Replaces the c6a-era pair
+   *  `bindSharedProcessor(conn.processor) + bindTransports(conn, conn)`.
    *
-   *  R1 mitigation (§8 spec) : each transport's `onStateSync` now
-   *  emits a PIPELINE log line before forwarding, so the first T4 test
-   *  observes the actual interleaving of the 2 STATE_SYNC and the
-   *  dedup predicate can be frozen against measurement, not guesswork. */
-  bindTransports(t0: DuelConnection, t1: DuelConnection): void {
-    this._transport_connections.set([t0, t1]);
-    // Re-apply sinks on the (potentially new) connections. Idempotent.
-    if (this._outOfBandSink) {
-      t0.attachOutOfBandSink(this._outOfBandSink);
-      t1.attachOutOfBandSink(this._outOfBandSink);
-    }
-    if (this._drawNewTurnSink) {
-      t0.onDrawNewTurn = this._drawNewTurnSink;
-      t1.onDrawNewTurn = this._drawNewTurnSink;
-    }
-    // R1: log + forward both transports' STATE_SYNC. The SOLO orchestrator
-    // wires its own forwarding to `wsService.onStateSync?.()` in `init()`
-    // (the existing path) — here we instrument the boundary so the first
-    // T4 test observation pinpoints the dedup predicate.
-    //
-    // c6a — when `t0 === t1` (SOLO multiplex mono-connection), the second
-    // assignment would overwrite the first → every STATE_SYNC would log as
-    // `via transport 1` which mis-tags the log line in mono-conn dedup
-    // measurements. Detect the mono-conn case and bind once with a neutral
-    // tag. The dedup measurement is moot in mono-conn (only 1 STATE_SYNC
-    // per duel) but we keep the log line accurate.
-    if (t0 === t1) {
-      t0.onStateSync = (msg) => { this.checkpointLog(msg, 0); this.onStateSync?.(msg); };
-    } else {
-      t0.onStateSync = (msg) => { this.checkpointLog(msg, 0); this.onStateSync?.(msg); };
-      t1.onStateSync = (msg) => { this.checkpointLog(msg, 1); this.onStateSync?.(msg); };
-    }
+   *  **Caller contract** — `conn` MUST have its `artService`, `onMessage`,
+   *  and `onResponse` wired BEFORE this call. The wsService re-applies
+   *  only the lifecycle sinks it owns (Palier 0 out-of-band, draw-new-turn,
+   *  onStateSync). The debug-log message/response hooks belong to the
+   *  caller because the ctor-built default conn wires them inline and we
+   *  don't keep a registry of them for re-binding.
+   *
+   *  **Default conn cleanup** — the ctor-built default conn is orphaned
+   *  by this swap (in SOLO it never receives `connect()`, so no live
+   *  WebSocket leaks ; the processor + RBS hold no timers either). We
+   *  still call `cleanup()` on it explicitly to release any future
+   *  teardown obligation the `DuelConnection` class might add.
+   *
+   *  PvP-normal never calls this and reads continue against the default
+   *  connection created in the ctor. */
+  bindSoloConnection(conn: DuelConnection): void {
+    // Drop the orphaned default conn first — defensive against future
+    // teardown obligations on `DuelConnection` (BlindHunter P2.1 c8).
+    const previous = this._transport_connection();
+    if (previous !== conn) previous.cleanup();
+
+    this._transport_connection.set(conn);
+    if (this._outOfBandSink) conn.attachOutOfBandSink(this._outOfBandSink);
+    if (this._drawNewTurnSink) conn.onDrawNewTurn = this._drawNewTurnSink;
+    conn.onStateSync = (msg) => { this.onStateSync?.(msg); };
   }
 
-  /** γ commit 4 — R1 instrumentation. The PIPELINE category is off by
-   *  default; enable via `__skytrixDebug.enableAll()` or the DevHub
-   *  toggle to see the trace. Each transport's STATE_SYNC fires this
-   *  line BEFORE the upstream callback runs ; consecutive lines on
-   *  the same duel are the data point for the dedup predicate
-   *  (commit 5). Format kept minimal — we don't speculate on payload
-   *  shape until T4 reveals what to gate on. */
-  private checkpointLog(msg: { type: string }, transportIdx: 0 | 1): void {
-    this.logger.log(
-      DuelLogCategory.PIPELINE,
-      'wsService.onStateSync via transport %d type=%s', transportIdx, msg.type,
-    );
-  }
-
-  /** Active transport for transport-local reads. PvP-normal: always
-   *  `_defaultConnection`. SOLO: tracks `DuelContext.perspective()`. */
+  /** Active transport for all reads. c8: a single `_transport_connection`
+   *  serves both PvP normal (the default conn) and SOLO (the multiplex
+   *  conn swapped in via `bindSoloConnection`). */
   private active(): DuelConnection {
-    return this._transport_connections()[this.duelCtx.perspective()()];
-  }
-
-  /** Chain machine + animation queue host. SOLO: the shared processor.
-   *  PvP-normal: the default connection's locally-owned processor. */
-  private proc(): DuelEventProcessor {
-    return this._sharedProcessor ?? this._defaultConnection.processor;
+    return this._transport_connection();
   }
 
   // ───────────────────────────────────────────────
   //  Out-of-band sinks (Palier 0 + β.3 cas #13)
   // ───────────────────────────────────────────────
 
-  /** Palier 0 — wire the EventStream sink onto the active transport (and
-   *  any future one set via `bindTransports`). Called by the page at
-   *  bootstrap with `orchestrator.notifyOutOfBandEvent`. In SOLO with a
-   *  shared processor, both transports' processors are the SAME, but the
-   *  sink lives on the processor's `onEvent` callback — wiring it on the
-   *  active transport sets it once on the shared processor. The
-   *  `bindTransports` re-wiring is therefore idempotent. */
+  /** Palier 0 — wire the EventStream sink onto the active connection.
+   *  Called by the page at bootstrap with `orchestrator.notifyOutOfBandEvent`.
+   *  `bindSoloConnection` re-applies the sink onto the SOLO conn when it
+   *  swaps in (idempotent). The sink lives on the processor's `onEvent`
+   *  callback so `MSG_CHAIN_NEGATED` surfaces in the stream too. */
   attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
     this._outOfBandSink = sink;
     this.active().attachOutOfBandSink(sink);
@@ -251,23 +190,27 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // ───────────────────────────────────────────────
   //  Reads
   // ───────────────────────────────────────────────
-  // The big triage of §3.3 : shared-state reads come from `proc()` /
-  // `active().renderedBoardState` (both transports share the same
-  // processor in SOLO ; in PvP-normal there's only one transport
-  // anyway). Transport-local reads come from `active()` — they react
-  // to `DuelContext.perspective()` via the `_transport_connections`
-  // signal that `active()` reads, so the computed re-evaluates on
-  // switch and the UI re-renders prompt / timer / rematch / first
-  // player / etc. for the new viewer identity.
+  // c8 — all reads go through `active()` which returns the single
+  // `_transport_connection`. Shared-state reads (chain machine, animation
+  // queue, board state) live on `active().processor` and `active().renderedBoardState`.
+  // Transport-local reads use `getXxxFor(slotIndex())()` so PvP normal
+  // reads `_slots[ownPlayerIndex]` (absolute) and SOLO reads
+  // `_slots[perspective()]` (visual) on the SAME connection. The
+  // `slotIndex` switch is what makes the perspective flip user-visible
+  // without re-routing WS messages between processors.
 
   // --- Shared (processor + RBS) ---
+  // c8: `active()` is the single connection ; its processor is the host
+  // of the chain machine + animation queue in BOTH modes (PvP normal +
+  // SOLO). The old `proc()` indirection (shared processor or fallback)
+  // is gone because there's no longer a separate shared instance.
   get renderedBoardState() { return this.active().renderedBoardState; }
   get boardStateView() { return this.active().boardStateView; }
-  readonly animationQueue = computed(() => this.proc().animationQueue());
-  readonly activeChainLinks = computed(() => this.proc().activeChainLinks());
-  readonly chainPhase = computed(() => this.proc().chainPhase());
-  readonly hasPendingChainEntry = computed(() => this.proc().hasPendingChainEntry());
-  readonly pendingChainEntry = computed(() => this.proc().pendingChainEntry());
+  readonly animationQueue = computed(() => this.active().processor.animationQueue());
+  readonly activeChainLinks = computed(() => this.active().processor.activeChainLinks());
+  readonly chainPhase = computed(() => this.active().processor.chainPhase());
+  readonly hasPendingChainEntry = computed(() => this.active().processor.hasPendingChainEntry());
+  readonly pendingChainEntry = computed(() => this.active().processor.pendingChainEntry());
 
   // --- Transport-local — per-perspective (A8 + A39 c5b) ---
   // The 4 signals that live in `PerspectiveSlot` (c4.1/c4.2). Route through
@@ -472,6 +415,10 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this._defaultConnection.cleanup();
+    // c8 — `active()` is the single connection. In SOLO it's already
+    // been cleaned by `SoloDuelOrchestratorService.cleanup()` (cleanup
+    // is idempotent — ws.close on a closed socket is a no-op). In PvP
+    // normal this is the only cleanup site for `_transport_connection`.
+    this.active().cleanup();
   }
 }

@@ -58,8 +58,9 @@ interface AnimServiceMock {
 }
 
 interface WsServiceMock {
-  bindSharedProcessor: jasmine.Spy;
-  bindTransports: jasmine.Spy;
+  /** c8 — `bindSharedProcessor + bindTransports` collapsed into a single
+   *  `bindSoloConnection(conn)` API. */
+  bindSoloConnection: jasmine.Spy;
   /** c6a — A21 pair flip from `SoloDuelOrchestratorService.init()`. */
   setSoloMode: jasmine.Spy;
   pendingPrompt: () => unknown;
@@ -88,8 +89,7 @@ function setupHarness(opts: {
       .and.callFake(opts.notifyImpl ?? (() => undefined)) as AnimServiceMock['notifyPerspectiveSwitch'],
   };
   const wsService: WsServiceMock = {
-    bindSharedProcessor: jasmine.createSpy('bindSharedProcessor'),
-    bindTransports: jasmine.createSpy('bindTransports'),
+    bindSoloConnection: jasmine.createSpy('bindSoloConnection'),
     setSoloMode: jasmine.createSpy('setSoloMode'),
     pendingPrompt: () => pendingPromptSignal(),
   };

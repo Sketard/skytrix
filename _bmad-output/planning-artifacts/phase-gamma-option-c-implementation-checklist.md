@@ -889,33 +889,66 @@ Réécriture `phase-gamma-victory.spec.ts` (T-F6). Playwright Scenarios A-E.
 
 ---
 
-### Commit 8 — Cleanup (drop code mort)
+### Commit 8 — Cleanup (drop code mort) ✅ LIVRÉ 2026-05-29
 
-**Scope** : retirer `_sharedProcessor`, `bindTransports`,
-`bindSharedProcessor`, `_defaultConnection` orphan, `_transport_connections`,
-`checkpointLog` R1 instrumentation.
+**Scope** : retirer `_sharedProcessor`, `bindTransports`, `bindSharedProcessor`,
+`_defaultConnection` field, `_transport_connections` paire, `checkpointLog`
+R1 instrumentation, `DuelConnection.options.sharedProcessor` ctor option.
+Remplacer par `bindSoloConnection(conn)` unifié.
 
-**Fichiers touchés** :
-- [ ] `duel-web-socket.service.ts` : drop tous les fields/méthodes listés.
-- [ ] `solo-duel-orchestrator.service.ts` : drop les appels obsolètes.
-- [ ] `room-api.service.ts` : `wsToken2?: string` → marquer deprecated
-      avec commentaire "supprimé en δ" (suppression effective en phase δ
-      séparée, hors PR2).
+**Fichiers touchés** (6) :
+- [x] `duel-web-socket.service.ts` (-130 LOC net) :
+  - [x] Drop `_defaultConnection` field. Le default conn est créé localement
+        dans le ctor et seed `_transport_connection`.
+  - [x] Drop `_transport_connections: signal<[c, c]>` paire → `_transport_connection: signal<DuelConnection>` singular.
+  - [x] Drop `_sharedProcessor` field + `bindSharedProcessor()` method +
+        `proc()` indirection. Tous les consommateurs lisent désormais
+        `active().processor` direct.
+  - [x] Drop `bindTransports(t0, t1)` method + `checkpointLog` R1 instrumentation.
+  - [x] Ajout `bindSoloConnection(conn)` — single API qui swap le signal +
+        re-applique les sinks Palier 0 / β.3 (out-of-band + draw-new-turn + onStateSync).
+  - [x] `active()` retourne `_transport_connection()` (single signal getter).
+  - [x] `ngOnDestroy()` → `this.active().cleanup()` au lieu de `_defaultConnection.cleanup()`.
+- [x] `solo-duel-orchestrator.service.ts` (-10 LOC) :
+  - [x] `init()` appelle `wsService.bindSoloConnection(conn)` au lieu du pair
+        `bindSharedProcessor(conn.processor) + bindTransports(conn, conn)`.
+- [x] `duel-connection.ts` :
+  - [x] Drop `options.sharedProcessor?: DuelEventProcessor` du ctor (BlindHunter P2.2).
+        `this.processor = new DuelEventProcessor()` direct (l'option n'avait
+        plus de caller post-c6a).
+  - [x] 3 doc-comments stale (`sharedProcessor` mentions) mis à jour.
+- [x] `solo-duel-orchestrator.service.spec.ts` + `phase-gamma-victory.spec.ts` :
+  - [x] Mock `bindSharedProcessor + bindTransports` spies → single
+        `bindSoloConnection` spy. Assertions adaptées.
+
+**Patches post-review (BMad Blind Hunter 2026-05-29, 3 P2)** :
+- [x] **P2.1 Default conn orphan en SOLO** — `bindSoloConnection` appelle
+      `previous.cleanup()` sur l'ancienne conn avant le swap. Défensif contre
+      une future teardown obligation de `DuelConnection.cleanup()` qui leakait
+      silencieusement post-c8.
+- [x] **P2.2 `sharedProcessor` ctor option dead** — option retirée du ctor.
+- [x] **P2.3 `bindSoloConnection` caller contract documenté** — JSDoc explicite
+      sur ce que le caller doit câbler (`artService`, `onMessage`, `onResponse`)
+      AVANT l'appel + pourquoi le wsService ne le fait pas.
 
 **Audit grep final** :
-- [ ] `grep -r "_sharedProcessor" front/src/` → 0 résultat.
-- [ ] `grep -r "bindTransports" front/src/` → 0 résultat.
-- [ ] `grep -r "bindSharedProcessor" front/src/` → 0 résultat.
-- [ ] `grep -r "_defaultConnection" front/src/` → 0 résultat (ou alias propre).
-- [ ] `grep -r "_transport_connections" front/src/` → 0 résultat.
-- [ ] `grep -r "checkpointLog" front/src/` → 0 résultat.
-- [ ] `grep -r "broadcastToBoth" duel-server/src/` → 0 résultat (n'a jamais
-      existé, vérif paranoïaque).
+- [x] `grep "_sharedProcessor" front/src/` → 0 hit code, 2 hits doc-comments
+      qui expliquent l'historique c8 (load-bearing).
+- [x] `grep "bindTransports" front/src/` → 0 hit code, 3 hits doc-comments
+      historiques c8.
+- [x] `grep "bindSharedProcessor" front/src/` → 0 hit code, 4 hits doc-comments.
+- [x] `grep "_defaultConnection" front/src/` → 0 hit (field retiré, plus de
+      référence directe).
+- [x] `grep "_transport_connections" front/src/` → 0 hit code (paire retirée).
+- [x] `grep "checkpointLog" front/src/` → 0 hit (R1 instrumentation retirée).
+- [x] `grep "broadcastToBoth" duel-server/src/` → 0 hit (n'a jamais existé,
+      vérif paranoïaque clean).
 
-**Specs verts** :
-- [ ] Tous les tests précédents restent verts.
+**Specs verts** : 1609 front (inchangé) / 1607 duel-server (inchangé).
+`check-ws-protocol-sync.mjs` passe. Type-check passe.
 
-**Diff attendu** : -300 LOC, ~3 fichiers.
+**Diff réel** : -76 LOC net, 6 fichiers (le `bindSoloConnection` + JSDocs
+chargés compensent une partie des -300 LOC attendus).
 
 ---
 

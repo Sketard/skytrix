@@ -82,14 +82,13 @@ function makeEmptySlot(): PerspectiveSlot {
  * MSG_CHAIN_SOLVING, or the next MSG_CHAINING). This ensures cards requiring cost payment
  * complete their cost prompts BEFORE appearing in the chain overlay visually.
  *
- * ## Solo mode dual connections (γ, 2026-05-27)
+ * ## Solo mode single connection (γ Option C, PR2 c6+)
  *
- * SOLO multiplex (γ Option C, PR2 c6+) is single-connection — one `DuelConnection`
- * instance serves both perspectives, with prompt-flow state partitioned into
- * `_slots[absolute player]` (cf. PerspectiveSlot interface above). Prior γ pre-PR2
- * had 2 connections sharing a `sharedProcessor`; the option is retained on the
- * ctor for transitional compatibility but `SoloDuelOrchestratorService.init`
- * stops using it at c6.
+ * SOLO multiplex is single-connection — one `DuelConnection` instance serves
+ * both perspectives, with prompt-flow state partitioned into `_slots[absolute
+ * player]` (cf. PerspectiveSlot interface above). The `sharedProcessor` ctor
+ * option (used by pre-PR2 γ when 2 conns shared a processor) was dropped in
+ * c8 ; every `DuelConnection` now owns its processor outright.
  *
  * Transport-local state buckets:
  *   - GLOBAL (single instance): `_confirmedCardsByChain` (keyed by chainIndex),
@@ -144,12 +143,10 @@ export class DuelConnection {
    */
   private _outOfBandSink?: (event: StreamEvent) => void;
   /**
-   * Chain state machine + animation queue. Either instantiated locally
-   * (default PvP-normal / replay-not-using-this-class case) or injected
-   * from outside via the `sharedProcessor` constructor option (γ commit 3+
-   * — `AnimationOrchestratorService` owns a single instance, both SOLO
-   * transports share it, eliminating the multi-processor divergence
-   * documented in `bug-solo-sequence.md`).
+   * Chain state machine + animation queue. Instantiated locally by the
+   * ctor in all modes (PvP normal, SOLO multiplex, replay-not-using-this-
+   * class). γ Option C c8 dropped the `sharedProcessor` ctor option since
+   * SOLO is single-conn now — there's nothing to share with.
    *
    * R8 acté (phase-gamma-spec.md §8) : pas de classe abstraite
    * `DuelTransport`. La même `DuelConnection` se reconfigure via le
@@ -254,12 +251,12 @@ export class DuelConnection {
   // γ commit 2 — these 5 signal aliases (animationQueue, activeChainLinks,
   // chainPhase, hasPendingChainEntry, pendingChainEntry) used to be field
   // initialisers reading `this.processor.X` at class-init time. Now that
-  // `processor` is assigned in the constructor (so it can resolve a shared
-  // instance via `options.sharedProcessor`), TS would flag a use-before-init.
-  // Getters defer resolution to first read — by then the constructor has
-  // run and `this.processor` points at the final instance. The Signal
-  // identity is preserved across reads, so existing consumers (`computed`
-  // tracking, `effect` subscriptions) keep their dependency edges.
+  // `processor` is assigned in the constructor (history: was needed to
+  // resolve a shared instance via `options.sharedProcessor`, dropped in
+  // c8 ; the local-only constructor assignment stays for symmetry with
+  // `_duelCtx` and `logger`), TS would flag a use-before-init. Getters
+  // defer resolution to first read — by then the constructor has run
+  // and `this.processor` points at the final instance.
   get animationQueue() { return this.processor.animationQueue; }
   readonly timerState = this._timerState.asReadonly();
   readonly timerStatePerPlayer = this._timerStatePerPlayer.asReadonly();
@@ -398,8 +395,10 @@ export class DuelConnection {
    * Palier 0 — attach the EventStream sink (orchestrator's
    * `notifyOutOfBandEvent`). Wires the processor's `onEvent` callback so
    * `MSG_CHAIN_NEGATED` surfaces in the stream too. Idempotent — calling
-   * again replaces the previous sink (re-applied by `bindTransports`
-   * on a SOLO init or rematch). γ commit 4 dropped `setActiveConnection`.
+   * again replaces the previous sink (re-applied by `bindSoloConnection`
+   * on a SOLO init or rematch). γ commit 4 dropped `setActiveConnection`,
+   * γ Option C c8 collapsed `bindSharedProcessor + bindTransports` into
+   * a single `bindSoloConnection`.
    */
   attachOutOfBandSink(sink: (event: StreamEvent) => void): void {
     this._outOfBandSink = sink;
@@ -414,7 +413,6 @@ export class DuelConnection {
     storageKey = 'duel-reconnect-token',
     logger?: DuelLogger,
     options?: {
-      sharedProcessor?: DuelEventProcessor;
       /** γ Option C (PR2 c4.1) — passed by `SoloDuelOrchestratorService.init`
        *  in SOLO multiplex so handleMessage can read the current visual
        *  perspective (A17 BOARD_STATE swap). Omitted in PvP normal. */
@@ -430,7 +428,11 @@ export class DuelConnection {
     this._autoReconnect = autoReconnect;
     this.storageKey = storageKey;
     this.logger = logger;
-    this.processor = options?.sharedProcessor ?? new DuelEventProcessor();
+    // γ Option C c8 (2026-05-29) — `sharedProcessor` ctor option dropped.
+    // SOLO multiplex is single-conn post-c6a so every `DuelConnection`
+    // owns its processor outright. The old "2 conns sharing a processor"
+    // model died with c6a.
+    this.processor = new DuelEventProcessor();
     this.processor.logger = logger;
     this.rbs.logger = logger;
     this._duelCtx = options?.duelCtx;

@@ -31,8 +31,7 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
   let service: SoloDuelOrchestratorService;
   let animService: { processor: DuelEventProcessor; resetForSwitch: jasmine.Spy; notifyPerspectiveSwitch: jasmine.Spy };
   let wsService: {
-    bindSharedProcessor: jasmine.Spy;
-    bindTransports: jasmine.Spy;
+    bindSoloConnection: jasmine.Spy;
     setSoloMode: jasmine.Spy;
     soloModeSource: ReturnType<typeof signal<boolean>>;
     duelResult: ReturnType<typeof signal<unknown>>;
@@ -53,8 +52,9 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
     };
     wsService = {
-      bindSharedProcessor: jasmine.createSpy('bindSharedProcessor'),
-      bindTransports: jasmine.createSpy('bindTransports'),
+      // c8 — `bindSharedProcessor` + `bindTransports` collapsed into
+      // a single `bindSoloConnection(conn)` call from init().
+      bindSoloConnection: jasmine.createSpy('bindSoloConnection'),
       // c6a A21 — pair flip of soloMode flags from init().
       setSoloMode: jasmine.createSpy('setSoloMode'),
       // c6b A27 — auto-accept rematch guard reads soloModeSource(). Mock
@@ -167,28 +167,21 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
   // Both flags MUST be set before the WS connect() call so the very first
   // BOARD_STATE arriving in perspective=1 goes through the SOLO swap branch.
   describe('init() — A21 pair flip', () => {
-    it('flips wsService.soloMode + conn.soloMode and routes wsService to the conn (c6a)', () => {
+    it('flips wsService.soloMode + conn.soloMode and routes wsService to the conn (c6a, c8)', () => {
       service.init('fake-token-solo');
 
       expect(wsService.setSoloMode).toHaveBeenCalledOnceWith(true);
-      expect(wsService.bindSharedProcessor).toHaveBeenCalledTimes(1);
-      expect(wsService.bindTransports).toHaveBeenCalledTimes(1);
+      // c8 — single `bindSoloConnection(conn)` replaces the legacy
+      // `bindSharedProcessor + bindTransports` pair.
+      expect(wsService.bindSoloConnection).toHaveBeenCalledTimes(1);
 
-      // The two transports passed to bindTransports MUST be the SAME
-      // DuelConnection reference (the SOLO mono-connection routed to
-      // both perspective slots).
-      const [t0, t1] = wsService.bindTransports.calls.mostRecent().args as [unknown, unknown];
-      expect(t0).toBe(t1);
-
-      // The connection signal exposes the conn just created ; assert
-      // conn.soloMode flipped in the same init() prefix.
+      // The conn passed to bindSoloConnection MUST be the same DuelConnection
+      // exposed by `service.connection()` — the wsService swaps its single
+      // `_transport_connection` signal to this very ref.
       const conn = service.connection();
       expect(conn).toBeTruthy();
       expect(conn!.soloMode).toBeTrue();
-
-      // The shared processor passed to wsService is the same as the
-      // conn's own processor (A21 — no separate sharedProcessor).
-      expect(wsService.bindSharedProcessor).toHaveBeenCalledOnceWith(conn!.processor);
+      expect(wsService.bindSoloConnection).toHaveBeenCalledOnceWith(conn!);
 
       // Tear down the open WebSocket the conn spun up (avoid leaks
       // across specs). cleanup() is idempotent.
@@ -209,11 +202,10 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
 
       service.init('fake-token-solo');
 
-      // jasmine `toHaveBeenCalledBefore` — both pair-flip ops must
-      // precede connect.
+      // jasmine `toHaveBeenCalledBefore` — pair-flip + wsService bind must
+      // precede connect. c8 collapsed bind pair into bindSoloConnection.
       expect(wsService.setSoloMode).toHaveBeenCalledBefore(connectSpy);
-      expect(wsService.bindTransports).toHaveBeenCalledBefore(connectSpy);
-      expect(wsService.bindSharedProcessor).toHaveBeenCalledBefore(connectSpy);
+      expect(wsService.bindSoloConnection).toHaveBeenCalledBefore(connectSpy);
 
       // Snapshot at connect-time of the DuelConnection.soloMode boolean
       // field — must be `true` already (set before connect).

@@ -129,19 +129,13 @@ export class SoloDuelOrchestratorService {
 
     this._transport_connection.set(conn);
 
-    // c6a — wsService routing : la `DuelConnection` unique SOLO devient
-    // la source de vérité pour les 2 indices de `_transport_connections`
-    // (le perspective() bascule entre deux slots du même `DuelConnection`,
-    // pas entre deux conns). On passe (conn, conn) à `bindTransports`
-    // pour que `active()` retourne `conn` quel que soit perspective().
-    // `bindSharedProcessor` aligne `proc()` sur le processor de la conn
-    // unique (sinon fallback `_defaultConnection.processor` orphelin).
-    //
-    // c8 cleanup : remplacer cet appel par `bindSoloConnection(conn)`
-    // qui set les 2 slots à la même conn ET le sharedProcessor en un
-    // seul mouvement ; nettoyer `_defaultConnection` orphan.
-    this.wsService.bindSharedProcessor(conn.processor);
-    this.wsService.bindTransports(conn, conn);
+    // c8 — wsService SOLO bind : remplace l'ancien pair
+    // `bindSharedProcessor(conn.processor) + bindTransports(conn, conn)`
+    // par une seule API atomique. Swap le `_transport_connection` signal
+    // côté wsService + re-applique les sinks Palier 0 / β.3 sur la
+    // nouvelle conn. Le `_transport_connection` unique sert maintenant
+    // PvP normal et SOLO (default conn vs SOLO multiplex conn).
+    this.wsService.bindSoloConnection(conn);
 
     conn.connect(token1);
 
