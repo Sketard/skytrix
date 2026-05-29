@@ -34,6 +34,7 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   readonly animationQueue = this.processor.animationQueue;
   readonly activeChainLinks = this.processor.activeChainLinks;
   readonly chainPhase = this.processor.chainPhase;
+  readonly hasPendingChainEntry = this.processor.hasPendingChainEntry;
   readonly pendingChainEntry = this.processor.pendingChainEntry;
   readonly pendingPrompt = signal<Prompt | null>(null); // Always null — replay has no interactive prompts
 

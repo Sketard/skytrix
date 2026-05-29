@@ -1,6 +1,6 @@
 import { InjectionToken, Signal } from '@angular/core';
-import type { Prompt, GameEvent, ChainLinkState, DuelState } from '../types';
-import type { RenderedBoardStateService } from './rendered-board-state.service';
+import type { Prompt, GameEvent, ChainLinkState, DuelState, StreamEvent } from '../types';
+import type { BoardStateView, RenderedBoardStateService } from './rendered-board-state.service';
 
 // ---------------------------------------------------------------------------
 // Queue directive types (Phase 6)
@@ -67,19 +67,45 @@ export function isDirective(entry: QueueEntry): entry is QueueDirective {
 /**
  * Data source interface for the animation pipeline.
  *
- * Implemented by DuelWebSocketService (live PvP) and ReplayDuelAdapter (replay).
- * Injected by AnimationOrchestratorService and PvpChainOverlayComponent via
- * the ANIMATION_DATA_SOURCE token — they never reference the concrete class.
+ * Implemented by `DuelWebSocketService` (live PvP + SOLO multiplex) and
+ * `ReplayDuelAdapter` (replay). Injected by `AnimationOrchestratorService`
+ * and `PvpChainOverlayComponent` via the `ANIMATION_DATA_SOURCE` token —
+ * they never reference the concrete class.
  *
- * NOTE: DuelConnection (duel-connection.ts) is an EXISTING concrete class
- * with WebSocket internals. Do NOT modify it. This interface extracts only
- * the subset needed by the animation pipeline.
+ * **Scope** : data + lifecycle calls needed by the animation pipeline
+ * (orchestrator + managers + queue runner). Methods that are mode-specific
+ * (only PvP, or only replay) stay OFF this interface and are reached via a
+ * direct concrete injection on the page that needs them — see the
+ * **mode-specific surfaces** list below.
+ *
+ * **Mode-specific surfaces** (NOT part of this contract — injected
+ * directly by the consumer that needs them) :
+ *  - `attachDrawNewTurnSink(sink)` — PvP/SOLO only ; replay rebuilds the
+ *    journal via the per-state `events[]`, no live turn-delta needed.
+ *  - `onStateSync` (callback field) — PvP/SOLO only ; STATE_SYNC is a WS
+ *    reconnect/cancel-rollback mechanism that has no replay analogue.
+ *  - `setBoardActive(active)` — PvP/SOLO only ; the replay adapter has no
+ *    "board active" gate (precompute drives `busy`).
+ *  - The `ReplayDuelAdapter` step-queue API (`feedTransition`,
+ *    `feedTransitionPhased`, `advanceStep`, `collapseRemainingSteps`,
+ *    `jumpToState`, `abort`, `busy`, `activePrompt`, …) — replay only.
+ *
+ * Adding a member here forces BOTH impls to implement it. If a new
+ * concept is genuinely shared (e.g. a future demo / sub-replay mode that
+ * needs it), add it ; otherwise keep it as a mode-specific surface.
  */
 export interface AnimationDataSource {
   readonly renderedBoardState: RenderedBoardStateService;
+  /** Read-only view of board state. Distinct from `renderedBoardState` :
+   *  the latter is the full write/control surface (locks, commits) used
+   *  by the orchestrator + managers ; this one is the read surface for
+   *  templates + non-orchestrator consumers (audit L25). */
+  readonly boardStateView: BoardStateView;
   readonly animationQueue: Signal<QueueEntry[]>;
   readonly activeChainLinks: Signal<ChainLinkState[]>;
   readonly chainPhase: Signal<'idle' | 'building' | 'resolving'>;
+  readonly hasPendingChainEntry: Signal<boolean>;
+  readonly pendingChainEntry: Signal<ChainLinkState | null>;
   readonly pendingPrompt: Signal<Prompt | null>;
 
   dequeueAnimation(): QueueEntry | null;
@@ -98,6 +124,15 @@ export interface AnimationDataSource {
   applyChainSolving(chainIndex: number): void;
   applyChainSolved(chainIndex: number): void;
   applyChainEnd(): void;
+  /**
+   * Palier 0 — attach the EventStream sink (orchestrator's
+   * `notifyOutOfBandEvent`). Routes events that bypass the animation queue
+   * by design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`, synthesised `MSG_WIN`
+   * from `DUEL_END`, β.1 `BoundaryEvent`s) onto the stream so the journal
+   * + projections observe them in arrival order. Both impls wire this to
+   * their underlying `DuelEventProcessor.onEvent`.
+   */
+  attachOutOfBandSink(sink: (event: StreamEvent) => void): void;
 }
 
 export const ANIMATION_DATA_SOURCE = new InjectionToken<AnimationDataSource>('AnimationDataSource');
