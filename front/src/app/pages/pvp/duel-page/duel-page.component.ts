@@ -750,6 +750,14 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     // parked during the dice→board transition.
     this.debugService.preActivationBufferAccessor =
       () => this.animationService.preActivationBufferSnapshot();
+    // γ-c c10 — surface the current pendingPrompt discriminator so the
+    // snapshot reveals why a `switchPerspective` no-op'd (convention
+    // §5.2 POC guard). Critical for diagnosing user-facing "switch
+    // button does nothing" reports.
+    this.debugService.pendingPromptTypeAccessor = () => {
+      const p = this.wsService.pendingPrompt();
+      return p ? (p as { type?: string }).type ?? null : null;
+    };
     this.debugService.bindToWindow();
   }
 

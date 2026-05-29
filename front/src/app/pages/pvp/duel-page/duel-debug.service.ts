@@ -38,6 +38,12 @@ export interface DebugSnapshot {
   /** Replay-only: events parked between BOARD_STATE landing and roomState
    *  active (the breathe-beat buffer). Empty in PvP after dice arena. */
   preActivationBuffer: ReadonlyArray<{ type: string }>;
+  /** γ-c c10 (2026-05-29) — current `pendingPrompt` discriminator type
+   *  (e.g. `'SELECT_IDLECMD'`, `'SELECT_CARD'`, …) or `null` when no
+   *  prompt is active. Surfaces the convention §5.2 POC switch-guard
+   *  input — useful to diagnose why `switchPerspective` no-ops without
+   *  having to enable the PIPELINE log category. */
+  pendingPromptType?: string | null;
 }
 
 /**
@@ -67,6 +73,12 @@ export class DuelDebugService {
    *  service to the orchestrator's internals. */
   preActivationBufferAccessor: (() => ReadonlyArray<{ type: string }>) | null = null;
 
+  /** γ-c c10 (2026-05-29) — pendingPrompt-type accessor. Set by
+   *  `duel-page.component.ts`. Returns the discriminator of the current
+   *  pending prompt (e.g. `'SELECT_IDLECMD'`) or `null`. Surfaces the
+   *  convention §5.2 POC guard input for live diagnostic. */
+  pendingPromptTypeAccessor: (() => string | null) | null = null;
+
   /** Build a snapshot of the current state. Cheap (signal reads); call as
    *  often as needed. The `domZones` field is a getter — calling it forces
    *  ~50 layout reads, so don't invoke it on every animation tick. */
@@ -90,6 +102,7 @@ export class DuelDebugService {
       landedFloats: this.floatRegistryDump('landed'),
       domZones: () => this.dumpDomZones(),
       preActivationBuffer: this.preActivationBufferAccessor?.() ?? [],
+      pendingPromptType: this.pendingPromptTypeAccessor?.() ?? null,
     };
   }
 

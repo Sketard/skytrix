@@ -10,6 +10,26 @@ import { DuelContext } from './duel-context';
 import { WebSocketFactoryService } from './websocket-factory.service';
 
 /**
+ * γ Option C c10 (2026-05-29) — whitelist des `Prompt.type` qui n'empêchent
+ * PAS un `switchPerspective` SOLO. Ces deux prompts sont l'état stable
+ * d'attente du joueur actif pendant respectivement sa Main Phase 1/2 et
+ * sa Battle Phase — ils sont émis par le serveur dès l'entrée en phase et
+ * restent pending jusqu'à end-phase. Les bloquer revient à interdire le
+ * switch tout au long du tour (bug user-facing remonté 2026-05-29 :
+ * "je clique P1 et rien ne se passe alors que je n'ai aucun prompt
+ * modal ouvert").
+ *
+ * Les autres prompts (SELECT_CARD, SELECT_CHAIN, SELECT_PLACE, …) restent
+ * bloquants car ils représentent une action multi-step en cours dont
+ * l'UX de basculement mid-action serait déroutante (le viewer arrive
+ * sur P1 alors que P0 attend une réponse pour finir son SELECT_CARD).
+ */
+const IDLE_PHASE_PROMPT_TYPES: ReadonlySet<string> = new Set([
+  'SELECT_IDLECMD',
+  'SELECT_BATTLECMD',
+]);
+
+/**
  * γ Option C — PR2 c6a (2026-05-29) — SOLO multiplex mono-connection.
  *
  * Le SOLO part désormais d'**une seule** `DuelConnection`. Le serveur
@@ -194,16 +214,21 @@ export class SoloDuelOrchestratorService {
    * (§1.2 spec). La projection visuelle complète arrive au commit 6
    * (PerspectiveProjector, rotate(180deg) sur `.board-host`).
    *
-   * Convention §5.2 POC : pas de switch pendant prompt actif. La garde
-   * sur `wsService.pendingPrompt()` matérialise la convention dès le
-   * commit 3.
+   * Convention §5.2 POC — révisée γ-c c10 (2026-05-29) : pas de switch
+   * pendant prompt MODAL actif. La whitelist `IDLE_PHASE_PROMPT_TYPES`
+   * autorise explicitement `SELECT_IDLECMD` et `SELECT_BATTLECMD` — ces
+   * deux prompts sont l'état stable d'attente du joueur actif pendant
+   * toute sa Main Phase / Battle Phase, donc bloquer le switch sur eux
+   * équivaut à bloquer le switch tout au long du tour.
    */
   switchPerspective(): void {
     const conn = this._transport_connection();
     if (!conn) return;
     if (this._switching()) return;
-    if (this.wsService.pendingPrompt() !== null) {
-      this.logger.log(DuelLogCategory.PIPELINE, 'switchPerspective skipped: prompt active');
+    const prompt = this.wsService.pendingPrompt();
+    if (prompt !== null && !IDLE_PHASE_PROMPT_TYPES.has(prompt.type)) {
+      this.logger.log(DuelLogCategory.PIPELINE,
+        'switchPerspective skipped: prompt active (type=%s)', prompt.type);
       return;
     }
     const from = this.duelCtx.perspective()() as 0 | 1;

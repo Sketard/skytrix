@@ -846,6 +846,20 @@ re-relativises the journal entries on flip via the
 `duel-page.component.ts:575` (R10 acted at γ §8 spec). PvP normal +
 replay leave `perspectiveSource` at its default 0.
 
+**Convention §5.2 POC — révisée γ-c c10 (2026-05-29).** Le switch SOLO
+n'est PAS bloqué pour TOUS les prompts pending mais seulement pour les
+prompts MODAUX (`SELECT_CARD`, `SELECT_CHAIN`, `SELECT_PLACE`,
+`SELECT_TRIBUTE`, …). La whitelist `IDLE_PHASE_PROMPT_TYPES` dans
+[solo-duel-orchestrator.service.ts](front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts)
+autorise explicitement `SELECT_IDLECMD` (Main Phase 1/2) et
+`SELECT_BATTLECMD` (Battle Phase) — ces prompts sont l'état stable
+d'attente du joueur actif pendant TOUTE sa phase, donc les bloquer
+revient à interdire le switch tout au long du tour. Bug user-facing
+remonté 2026-05-29 : "je clique P1 et rien ne se passe alors que je
+n'ai aucun prompt modal ouvert". Tests pinning : 4 cas dans
+`phase-gamma-victory.spec.ts` (IDLECMD/BATTLECMD autorisés ;
+CARD/CHAIN/PLACE bloqués).
+
 ## Orchestrator Decomposition
 
 `AnimationOrchestratorService` is a thin coordinator that delegates to

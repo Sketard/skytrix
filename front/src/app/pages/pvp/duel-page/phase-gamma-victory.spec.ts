@@ -165,6 +165,17 @@ function chainEndMsg(): ChainEndMsg {
   return { type: 'MSG_CHAIN_END' } as unknown as ChainEndMsg;
 }
 
+// γ-c c10 (2026-05-29) — `SoloDuelOrchestratorService.switchPerspective`
+// persists the new perspective to `localStorage['solo-duel-perspective']`
+// (A5 PR2 c6c). Without a global cleanup, a previous describe's switch
+// leaks "1" into storage and the next describe's `init()` calls
+// `restorePerspectiveFromStorage` which flips perspective to 1 BEFORE
+// the test starts — so the first `switchPerspective()` flips it back to
+// 0 instead of forward to 1, and the test fails. Clean key globally.
+beforeEach(() => {
+  try { localStorage.removeItem('solo-duel-perspective'); } catch { /* privacy mode */ }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // T1 — Switch sans chain : PerspectiveSwitched emitted + DuelContext flipped
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,22 +314,60 @@ describe('γ R10 — DuelGameLogService re-relativises journal on perspective fl
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('γ — prompt-active guard logs a PIPELINE trace', () => {
-  it('switchPerspective with pendingPrompt logs PIPELINE "skipped: prompt active"', () => {
+  it('switchPerspective with a modal pendingPrompt logs PIPELINE "skipped: prompt active"', () => {
     const { service, animService, setPrompt } = setupStubHarness();
     const logger = TestBed.inject(DuelLogger);
     const logSpy = spyOn(logger, 'log').and.callThrough();
 
+    // SELECT_CARD is a multi-step modal prompt — must block the switch.
     setPrompt({ type: 'SELECT_CARD' });
     service.switchPerspective();
 
     expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
     // The exact format string isn't load-bearing; what matters is a
     // PIPELINE-category log line surfaces. T10 checklist refers to this
-    // trace to confirm the no-op was deliberate.
+    // trace to confirm the no-op was deliberate. c10 added a 3rd argument
+    // carrying the prompt type for diagnostic, hence the `any(String)`.
     expect(logSpy).toHaveBeenCalledWith(
       DuelLogCategory.PIPELINE,
       jasmine.stringContaining('switchPerspective skipped: prompt active'),
+      jasmine.any(String),
     );
+  });
+
+  // γ-c c10 (2026-05-29) — whitelist révisée §5.2 POC. SELECT_IDLECMD et
+  // SELECT_BATTLECMD sont l'état stable d'attente du joueur actif et ne
+  // doivent PAS bloquer le switch, sinon il est interdit tout au long du
+  // tour. Pin par test pour éviter une régression silencieuse.
+  it('switchPerspective with SELECT_IDLECMD pending IS allowed (whitelist c10)', () => {
+    const { service, animService, duelCtx, setPrompt } = setupStubHarness();
+    setPrompt({ type: 'SELECT_IDLECMD' });
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
+  });
+
+  it('switchPerspective with SELECT_BATTLECMD pending IS allowed (whitelist c10)', () => {
+    const { service, animService, duelCtx, setPrompt } = setupStubHarness();
+    setPrompt({ type: 'SELECT_BATTLECMD' });
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
+  });
+
+  // Defence in depth — random other modal prompts must keep blocking.
+  it('switchPerspective with SELECT_CHAIN pending is still blocked', () => {
+    const { service, animService, setPrompt } = setupStubHarness();
+    setPrompt({ type: 'SELECT_CHAIN' });
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
+  });
+
+  it('switchPerspective with SELECT_PLACE pending is still blocked', () => {
+    const { service, animService, setPrompt } = setupStubHarness();
+    setPrompt({ type: 'SELECT_PLACE' });
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
   });
 });
 
