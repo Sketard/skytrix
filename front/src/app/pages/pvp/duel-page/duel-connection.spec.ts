@@ -341,3 +341,112 @@ describe('DuelConnection — sendResponse', () => {
     expect(conn.inactivityWarning()).toBeNull();
   });
 });
+
+// =============================================================================
+// γ Option C PR2 c5d — A39-bis MSG_HINT broadcast intra-slot
+// =============================================================================
+// SAFE_PUBLIC_HINT_TYPES from message-filter.ts:32 = [1, 2, 6, 7, 9]. The server
+// broadcasts these to BOTH players ; payload.player is the ORIGIN (sourcePlayer),
+// not the destinataire. Without A39-bis, c4.2 routed writes `_slots[origin]`,
+// leaving the other slot empty — invisible to any reader whose slotIndex !== origin.
+
+describe('DuelConnection — A39-bis MSG_HINT broadcast intra-slot', () => {
+  it('routed hint (non-broadcast type) writes only _slots[message.player]', () => {
+    const { conn } = makeConn();
+
+    dispatch(conn, {
+      type: 'MSG_HINT',
+      hintType: 3, // SELECT_MSG — not in broadcast set
+      player: 1 as Player,
+      value: 0,
+      cardName: 'Solemn',
+    } as unknown as ServerMessage);
+
+    expect(conn.getHintContextFor(1)().cardName).toBe('Solemn');
+    expect(conn.getHintContextFor(0)().cardName).toBe('');
+  });
+
+  it('broadcast hint (type 1) writes BOTH slots', () => {
+    const { conn } = makeConn();
+
+    dispatch(conn, {
+      type: 'MSG_HINT',
+      hintType: 1, // SAFE_PUBLIC_HINT_TYPES — broadcast
+      player: 1 as Player,
+      value: 42,
+      cardName: 'Public Hint',
+    } as unknown as ServerMessage);
+
+    expect(conn.getHintContextFor(0)().cardName).toBe('Public Hint');
+    expect(conn.getHintContextFor(1)().cardName).toBe('Public Hint');
+    expect(conn.getHintContextFor(0)().value).toBe(42);
+    expect(conn.getHintContextFor(1)().value).toBe(42);
+  });
+
+  it('broadcast hint types 2, 6, 7, 9 also write both slots', () => {
+    for (const hintType of [2, 6, 7, 9]) {
+      const { conn } = makeConn();
+      dispatch(conn, {
+        type: 'MSG_HINT',
+        hintType,
+        player: 0 as Player,
+        value: hintType * 10,
+        cardName: `H${hintType}`,
+      } as unknown as ServerMessage);
+      expect(conn.getHintContextFor(0)().cardName).toBe(`H${hintType}`);
+      expect(conn.getHintContextFor(1)().cardName).toBe(`H${hintType}`);
+    }
+  });
+
+  it('A34 intra-slot inheritance preserved across broadcast → routed sequence', () => {
+    const { conn } = makeConn();
+    // Routed hint sets origin slot's cardName via direct write.
+    dispatch(conn, {
+      type: 'MSG_HINT',
+      hintType: 10, // not broadcast — cardHint type
+      player: 1 as Player,
+      value: 0,
+      cardName: 'Origin Card',
+    } as unknown as ServerMessage);
+
+    // Follow-up SELECT_MSG (type 3 — not broadcast) inherits cardName intra-slot[1].
+    dispatch(conn, {
+      type: 'MSG_HINT',
+      hintType: 3,
+      player: 1 as Player,
+      value: 0,
+      cardName: '',
+    } as unknown as ServerMessage);
+
+    expect(conn.getHintContextFor(1)().cardName).toBe('Origin Card');
+    // Slot 0 was never written — stays empty.
+    expect(conn.getHintContextFor(0)().cardName).toBe('');
+  });
+
+  it('broadcast hint cardName empty does NOT inherit from prev (cardName: "" wins)', () => {
+    const { conn } = makeConn();
+    // Prime slot 1 with a cardName via routed hint.
+    dispatch(conn, {
+      type: 'MSG_HINT',
+      hintType: 10,
+      player: 1 as Player,
+      value: 0,
+      cardName: 'Previous',
+    } as unknown as ServerMessage);
+
+    // Broadcast hint type 1, cardName empty. Inheritance gate
+    // (canInherit = isSelectMsg && !hintCardConsumed) requires isSelectMsg=true
+    // (hintType=3). For broadcast type 1 (not select), no inheritance.
+    dispatch(conn, {
+      type: 'MSG_HINT',
+      hintType: 1,
+      player: 0 as Player,
+      value: 0,
+      cardName: '',
+    } as unknown as ServerMessage);
+
+    // Both slots overwritten by broadcast — cardName cleared.
+    expect(conn.getHintContextFor(0)().cardName).toBe('');
+    expect(conn.getHintContextFor(1)().cardName).toBe('');
+  });
+});

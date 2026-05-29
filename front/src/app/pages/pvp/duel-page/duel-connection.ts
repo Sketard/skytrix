@@ -99,6 +99,27 @@ function makeEmptySlot(): PerspectiveSlot {
  *     hintContext, inactivityWarning, waitingForOpponent, lastConfirmedCards,
  *     lastSelectedCards, lastSelectedPromptType, hintCardConsumed.
  */
+/**
+ * γ Option C (PR2 c5d, 2026-05-28) — A39-bis MSG_HINT broadcast intra-slot.
+ *
+ * Hints whose `hintType` falls in this set are broadcast PUBLIC by the
+ * server (`message-filter.ts:32` SAFE_PUBLIC_HINT_TYPES) — both players see
+ * them regardless of `forPlayer`. The payload carries `message.player =
+ * sourcePlayer` (the originator, NOT the destinataire), so the c4.2 routed
+ * write `_slots[message.player].hintContext.set(...)` lands in the slot of
+ * the ORIGIN. When the viewer reads `_slots[slotIndex()].hintContext` and
+ * slotIndex ≠ origin, the public hint is invisible — symptom of A39-bis.
+ *
+ * Fix : detect a broadcast hint at handleMessage time, write BOTH slots so
+ * any reader (PvP normal own, PvP normal opponent-originated, SOLO viewer
+ * before/after switch) surfaces the same hint context.
+ *
+ * Source of truth lives server-side (`duel-server/src/message-filter.ts:32`).
+ * Drift risk between front + server is low — the set has been stable since
+ * introduction. Synced manually (no script).
+ */
+const SAFE_PUBLIC_HINT_TYPES: ReadonlySet<number> = new Set([1, 2, 6, 7, 9]);
+
 export class DuelConnection {
   // --- Signals (13 pairs) ---
   // γ Option C (PR2 c4.2, 2026-05-28) — `_pendingPrompt` / `_hintContext` /
@@ -1068,6 +1089,17 @@ export class DuelConnection {
         // inheritance across a `switchPerspective` between 2 MSG_HINT of the
         // same slot: the cardName would be inherited from the wrong slot's
         // history. Spec §4.3 A34.
+        //
+        // γ c5d A39-bis — when the hint is broadcast public (server filter
+        // SAFE_PUBLIC_HINT_TYPES), every viewer sees the same payload regardless
+        // of forPlayer. Writing only `_slots[message.player]` makes the hint
+        // invisible to a reader whose `slotIndex !== message.player` (PvP
+        // normal P0 receiving an opponent-originated public hint, or SOLO
+        // after a perspective switch). Detect the broadcast case and write
+        // BOTH slots with the same `merged`. The `prev` for inheritance is
+        // read from the ORIGIN slot (`_slots[message.player]`) in both
+        // branches — A34 inheritance is attached to the origin, not the
+        // destinataire.
         const slot = this._slotFor(message.player, 'MSG_HINT');
         if (isCardHint) slot.hintCardConsumed = false;
         const prev = slot.hintContext();
@@ -1079,8 +1111,14 @@ export class DuelConnection {
           value: message.value,
           cardName: message.cardName || (canInherit ? prev.cardName : ''),
         };
-        this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o', { hintType: message.hintType, cardName: message.cardName, value: message.value, isSelectMsg, canInherit }, merged);
-        slot.hintContext.set(merged);
+        const isBroadcast = SAFE_PUBLIC_HINT_TYPES.has(message.hintType);
+        this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o (broadcast=%s)', { hintType: message.hintType, cardName: message.cardName, value: message.value, isSelectMsg, canInherit }, merged, isBroadcast);
+        if (isBroadcast) {
+          // A39-bis broadcast — write both slots so any reader surfaces it.
+          for (const s of this._slots) s.hintContext.set(merged);
+        } else {
+          slot.hintContext.set(merged);
+        }
         break;
       }
 
