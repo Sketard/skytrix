@@ -1,33 +1,27 @@
 // =============================================================================
-// phase-gamma-victory.spec.ts — γ commit 7 (2026-05-27)
+// phase-gamma-victory.spec.ts — γ Option C PR2 c7b (2026-05-29)
 // -----------------------------------------------------------------------------
-// Structural invariants that prove γ landed correctly. Covers the four spec
-// scenarios from `_bmad-output/planning-artifacts/phase-gamma-spec.md §5`
-// that DO NOT require a live SOLO PvP harness :
+// Structural invariants of γ Option C, asserted through the REAL multiplex
+// pipeline (DuelConnection + DuelWebSocketService + SoloDuelOrchestratorService
+// + AnimationOrchestratorService) wired against a `MockWebSocket` server.
 //
-//   · T0  — boot SOLO : single processor, sharedProcessor wired through both
-//           transports, perspective default 0.
-//   · T1  — switch sans chain : PerspectiveSwitched lands on the stream + the
-//           processor + chain state stay untouched.
-//   · T2  — UNIT version of the test of victoire `bug-solo-sequence.md §2` :
-//           feed the canonical WS sequence to the shared processor, switch
-//           mid-chain via the orchestrator API, prove the chain state lives
-//           on (the structural elimination of the bug — replayed end-to-end
-//           it would need a live harness, kept for the manual checklist).
-//   · T7  — replay non-regression : `ReplayDuelAdapter` never causes a
-//           PerspectiveSwitched emission on the orchestrator stream (the
-//           replay-page has its own perspective signal that doesn't reach
-//           `notifyPerspectiveSwitch`).
-//   · T9  — debounce : already covered by `solo-duel-orchestrator.service.spec.ts`
-//           ; here we additionally pin "300ms later → re-enabled" by driving
-//           jasmine fake time, which the existing spec skipped.
-//   · R10 — Game Log re-relativisation : a switch causes
-//           `gameLog.setPerspective(ownPlayerIndex)` to fire via the duel-page
-//           effect, which rebuilds the journal entries with the new viewer.
+// Replaces the c7-era spec which asserted γ invariants against a mocked
+// `AnimationOrchestratorService.processor` (vacuous post-c8 : the processor
+// is no longer wired via `bindSharedProcessor` — the SOLO multiplex
+// `DuelConnection` owns its processor outright). The scenarios that used a
+// stub `notifyPerspectiveSwitch` (T0 / T2 of the legacy file) are dropped ;
+// the surviving observation surfaces (T1 perspective flip, T9 debounce, R10
+// game log re-relativisation, PIPELINE log on prompt-active skip) keep their
+// stub-based shape because their assertions never touched the dropped
+// `processor` plumbing.
 //
-// The remaining T3-T6, T8, T10 scenarios require live WS timing and are
-// covered by the manual checklist at
-// `_bmad-output/phase-gamma/test-T2-T10-manual-checklist.md`.
+// The newcomer T-F6 (chain SOLO multiplex) exercises the cardinal γ invariant
+// in unit : the chain state survives a switchPerspective performed mid-chain,
+// because there is now ONE processor on ONE connection — not two processors
+// + a routing race. See `_bmad-output/planning-artifacts/phase-gamma-option-c-multiplex-spec.md §7.2`.
+//
+// The Playwright Scenarios A-E + the SOLO reconnect × 2 e2e (T-S13) stay in
+// debt → tracked at `_bmad-output/planning-artifacts/gamma-c-playwright-c9-deferred.md`.
 // =============================================================================
 
 import { TestBed } from '@angular/core/testing';
@@ -40,19 +34,21 @@ import { DebugLogService } from './debug-log.service';
 import { DuelLogger, DuelLogCategory } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
-import { DuelEventProcessor } from './duel-event-processor';
 import { DuelGameLogService } from './duel-game-log.service';
 import { ReducedMotionService } from '../../../services/reduced-motion.service';
-import { LOCATION, type ChainingMsg, type ChainSolvingMsg, type ChainSolvedMsg, type ChainEndMsg, type Player } from '../duel-ws.types';
+import { WebSocketFactoryService } from './websocket-factory.service';
+import { createMockWebSocketFactory } from './_test-utils/mock-websocket';
+import { LOCATION, type ChainingMsg, type ChainSolvingMsg, type ChainSolvedMsg, type ChainEndMsg, type SessionTokenMsg, type Player } from '../duel-ws.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared TestBed harness — minimal DI, mocks the AnimationOrchestratorService
-// surface SoloDuelOrchestratorService consumes. The point of this spec is the
-// γ contract, NOT the orchestrator internals (those have their own coverage).
+// Stub harness (T1 / T9 / R10 / prompt-guard) — minimal DI, mocks the
+// AnimationOrchestratorService + DuelWebSocketService surfaces
+// SoloDuelOrchestratorService consumes. Vacuous γ scenarios (T0 / T2) that
+// asserted against a stubbed processor are NOT reproduced — see the file
+// header banner for why.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AnimServiceMock {
-  processor: DuelEventProcessor;
   resetForSwitch: jasmine.Spy;
   notifyPerspectiveSwitch: jasmine.Spy & ((from: 0 | 1, to: 0 | 1) => void);
 }
@@ -66,7 +62,7 @@ interface WsServiceMock {
   pendingPrompt: () => unknown;
 }
 
-function setupHarness(opts: {
+function setupStubHarness(opts: {
   promptActive?: boolean;
   notifyImpl?: (from: 0 | 1, to: 0 | 1) => void;
 } = {}): {
@@ -83,7 +79,6 @@ function setupHarness(opts: {
   const pendingPromptSignal = signal<unknown>(opts.promptActive ? { type: 'SELECT_CARD' } : null);
 
   const animService: AnimServiceMock = {
-    processor: new DuelEventProcessor(),
     resetForSwitch: jasmine.createSpy('resetForSwitch'),
     notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch')
       .and.callFake(opts.notifyImpl ?? (() => undefined)) as AnimServiceMock['notifyPerspectiveSwitch'],
@@ -171,57 +166,21 @@ function chainEndMsg(): ChainEndMsg {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// T0 — Boot SOLO : single processor + sharedProcessor wired through
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('γ T0 — boot SOLO', () => {
-  it('exposes the orchestrator processor unmutated and DuelContext.perspective() default 0', () => {
-    const { service, duelCtx, animService } = setupHarness();
-    // The processor exposed by the orchestrator is the same instance the
-    // SOLO orchestrator pulls out via `animationService.processor` in init.
-    // (init() is not called in this spec — it would open real WebSockets —
-    // but the contract is that *if* it were called, both transports would
-    // receive THIS instance via the `sharedProcessor` ctor option.)
-    expect(animService.processor).toBeInstanceOf(DuelEventProcessor);
-    expect(animService.processor.chainPhase()).toBe('idle');
-    expect(animService.processor.activeChainLinks()).toEqual([]);
-    expect(animService.processor.pendingChainEntry()).toBeNull();
-    expect(duelCtx.perspective()()).toBe(0);
-    expect(service.perspectiveIndex()).toBe(0);
-  });
-
-  it('orchestrator.processor reference is stable across reads (single instance)', () => {
-    const { animService } = setupHarness();
-    const ref1 = animService.processor;
-    const ref2 = animService.processor;
-    expect(ref1).toBe(ref2);
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// T1 — Switch sans chain : PerspectiveSwitched emitted + processor unchanged
+// T1 — Switch sans chain : PerspectiveSwitched emitted + DuelContext flipped
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('γ T1 — switch sans chain', () => {
   it('switchPerspective emits PerspectiveSwitched (0 → 1) and flips DuelContext', () => {
-    const { service, duelCtx, animService } = setupHarness();
+    const { service, duelCtx, animService } = setupStubHarness();
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  it('switch leaves an empty processor empty (no spurious mutation)', () => {
-    const { service, animService } = setupHarness();
-    expect(animService.processor.chainPhase()).toBe('idle');
-    service.switchPerspective();
-    expect(animService.processor.chainPhase()).toBe('idle');
-    expect(animService.processor.activeChainLinks()).toEqual([]);
-  });
-
   it('switching 0→1 then 1→0 emits two distinct PerspectiveSwitched events', () => {
     jasmine.clock().install();
     try {
-      const { service, duelCtx, animService } = setupHarness();
+      const { service, duelCtx, animService } = setupStubHarness();
       service.switchPerspective();
       // 300ms debounce — must wait for `_switching` to flip back.
       jasmine.clock().tick(301);
@@ -233,85 +192,6 @@ describe('γ T1 — switch sans chain', () => {
     } finally {
       jasmine.clock().uninstall();
     }
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// T2 — Test of victoire (UNIT version) : bug-solo-sequence.md §2 against
-// the SHARED processor proves the chain state survives the switch. The full
-// "no Lock safety timeout + no POLL-DROP REGRESSION" assertions need a live
-// harness — this spec asserts the STRUCTURAL fact that makes those symptoms
-// impossible: at T6/T7/T8 of the bug sequence, the processor still holds the
-// chain link from T3. Without single-processor γ, T5 would have moved the
-// state-of-truth to processor1 (empty).
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('γ T2 — bug-solo-sequence §2 replayed against shared processor (UNIT)', () => {
-  it('replaying T1..T10 keeps chain state on the SAME processor across the switch', () => {
-    const { service, animService } = setupHarness();
-    const proc = animService.processor;
-
-    // T1-T3 — P0 plays a card, MSG_CHAINING(chain-1, player=0). Phase
-    // transitions to 'building', the pending entry holds chain-1.
-    proc.processMessage(chainingMsg(1, 0, 5001));
-    expect(proc.chainPhase()).toBe('building');
-    expect(proc.pendingChainEntry()?.chainIndex).toBe(1);
-    expect(proc.activeChainLinks().length).toBe(0); // still pending, not committed
-
-    // T4-T5 — user clicks switchPlayer mid-chain. The cardinal γ invariant:
-    // the processor state stays intact. Pre-γ, this is where divergence was
-    // born (state moved to processor1, which had never seen chain-1).
-    service.switchPerspective();
-    expect(proc.chainPhase()).toBe('building');
-    expect(proc.pendingChainEntry()?.chainIndex).toBe(1);
-    expect(proc.activeChainLinks().length).toBe(0);
-
-    // T6 — MSG_CHAIN_SOLVING(chain-1). Processor commits the pending entry
-    // to activeChainLinks (via _processMessageInner case 'MSG_CHAIN_SOLVING'),
-    // then enqueues the solving event. The link is now correctly tracked.
-    proc.processMessage(chainSolvingMsg(1));
-    // Note: applyChainSolving (which sets phase to 'resolving' + marks the
-    // link.resolving = true) is called by the orchestrator from its
-    // MSG_CHAIN_SOLVING handler, not directly by processMessage. So at this
-    // point phase remains 'building' until the orchestrator handler runs.
-    // The link IS committed by commitPendingChainEntry, which is the salient
-    // assertion: the link exists, indexed correctly.
-    expect(proc.activeChainLinks().length).toBe(1);
-    expect(proc.activeChainLinks()[0].chainIndex).toBe(1);
-    expect(proc.pendingChainEntry()).toBeNull();
-
-    // T7 — invariant : no `chainIndex N not in active links []` WARN possible.
-    // The link is THERE — the would-be warn from `applyChainSolved` only
-    // fires when the link is missing. We don't call `applyChainSolved` here
-    // because that's an orchestrator-driven mutation, but the precondition
-    // that prevents the warn is held by the structural invariant just
-    // verified.
-
-    // T10 — MSG_CHAIN_END. State returns to idle, links cleared.
-    proc.applyChainEnd();
-    expect(proc.chainPhase()).toBe('idle');
-    expect(proc.activeChainLinks()).toEqual([]);
-  });
-
-  it('a multi-link chain (CL1+CL2) preserves both links across a switch', () => {
-    const { service, animService } = setupHarness();
-    const proc = animService.processor;
-
-    proc.processMessage(chainingMsg(1, 0, 5001));
-    proc.processMessage(chainingMsg(2, 1, 5002));
-    // The second MSG_CHAINING commits chain-1 from pending and sets chain-2
-    // as the new pending.
-    expect(proc.activeChainLinks().length).toBe(1);
-    expect(proc.pendingChainEntry()?.chainIndex).toBe(2);
-
-    service.switchPerspective();
-
-    // Both links structurally intact — chain-1 in activeChainLinks, chain-2
-    // pending. A pre-γ switch would have re-routed to processor1 which has
-    // an empty state, leaving CL2's MSG_CHAIN_SOLVING with nothing to mark.
-    expect(proc.activeChainLinks().length).toBe(1);
-    expect(proc.activeChainLinks()[0].chainIndex).toBe(1);
-    expect(proc.pendingChainEntry()?.chainIndex).toBe(2);
   });
 });
 
@@ -333,7 +213,7 @@ describe('γ T2 — bug-solo-sequence §2 replayed against shared processor (UNI
 
 describe('γ T9 — debounce', () => {
   it('three rapid switchPerspective() calls produce exactly one PerspectiveSwitched', () => {
-    const { service, duelCtx, animService } = setupHarness();
+    const { service, duelCtx, animService } = setupStubHarness();
     service.switchPerspective();
     service.switchPerspective();
     service.switchPerspective();
@@ -344,7 +224,7 @@ describe('γ T9 — debounce', () => {
   it('after the 300ms debounce window, switchPerspective is re-enabled', () => {
     jasmine.clock().install();
     try {
-      const { service, animService } = setupHarness();
+      const { service, animService } = setupStubHarness();
       service.switchPerspective();
       expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledTimes(1);
 
@@ -424,7 +304,7 @@ describe('γ R10 — DuelGameLogService re-relativises journal on perspective fl
 
 describe('γ — prompt-active guard logs a PIPELINE trace', () => {
   it('switchPerspective with pendingPrompt logs PIPELINE "skipped: prompt active"', () => {
-    const { service, animService, setPrompt } = setupHarness();
+    const { service, animService, setPrompt } = setupStubHarness();
     const logger = TestBed.inject(DuelLogger);
     const logSpy = spyOn(logger, 'log').and.callThrough();
 
@@ -439,5 +319,305 @@ describe('γ — prompt-active guard logs a PIPELINE trace', () => {
       DuelLogCategory.PIPELINE,
       jasmine.stringContaining('switchPerspective skipped: prompt active'),
     );
+  });
+});
+
+// =============================================================================
+// T-F6 — chain SOLO multiplex (REAL pipeline)
+// -----------------------------------------------------------------------------
+// Cardinal γ invariant : a `switchPerspective` performed mid-chain leaves the
+// chain state intact, because there is ONE processor on ONE connection. The
+// bug-solo-sequence.md "chain orpheline" scenario is now structurally
+// impossible : the future WS messages can't end up on a different processor
+// (there isn't one). This test feeds the canonical chain frames through a
+// `MockWebSocket` plugged into `DuelConnection.openConnection` via the c7a
+// `WebSocketFactoryService` override, and asserts :
+//   · The chain state is observable on the `DuelConnection.processor` and is
+//     consistent across the switch (MSG_CHAINING accumulates ; MSG_CHAIN_END
+//     drains).
+//   · The `SoloDuelOrchestratorService.switchPerspective` flips `DuelContext`
+//     mid-chain without disturbing the active chain links.
+// =============================================================================
+
+/** Switch debounce window — keep in sync with
+ *  `SoloDuelOrchestratorService.switchPerspective` (`setTimeout(..., 300)`).
+ *  Extracted so a future debounce tweak fails the test loudly instead of
+ *  silently overshooting or undershooting (cf. EdgeCase F5 c7b BMad review). */
+const SWITCH_DEBOUNCE_MS = 300;
+
+describe('γ T-F6 — chain SOLO multiplex (real pipeline)', () => {
+  // The SoloDuelOrchestratorService wires the real DuelWebSocketService +
+  // real DuelConnection (the system under test) but the AnimationOrchestratorService
+  // is mocked — T-F6 observes the chain state via `connection().processor`
+  // directly, NOT the animation queue. The orchestrator's only call into the
+  // anim service is `notifyPerspectiveSwitch(from, to)` from switchPerspective,
+  // so a 2-method stub suffices and avoids dragging in the manager
+  // sub-dependencies (LpAnimationTracker, ChainResolutionManager, ...).
+
+  /** Captured for `afterEach` teardown — survives even when an `expect`
+   *  throws mid-it, eliminating cross-spec socket leaks (Auditor P2 c7b). */
+  let activeOrchestrator: SoloDuelOrchestratorService | null = null;
+  let activeSocket: import('./_test-utils/mock-websocket').MockWebSocket | null = null;
+  afterEach(() => {
+    activeSocket?.fireClose(1000);
+    activeOrchestrator?.cleanup();
+    activeOrchestrator = null;
+    activeSocket = null;
+  });
+
+  function configureT_F6TestBed(): { factory: ReturnType<typeof createMockWebSocketFactory> } {
+    const factory = createMockWebSocketFactory();
+    const animMock = {
+      notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
+      resetForSwitch: jasmine.createSpy('resetForSwitch'),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        SoloDuelOrchestratorService,
+        DuelWebSocketService,
+        DuelContext,
+        DebugLogService,
+        DuelLogger,
+        DuelCardArtService,
+        DuelGameLogService,
+        { provide: AnimationOrchestratorService, useValue: animMock },
+        { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
+        // why: ReducedMotionService stub — Source-tagged in prod.
+        // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+        { provide: ReducedMotionService, useValue: { enabled: signal(false) } },
+        { provide: WebSocketFactoryService, useValue: factory },
+      ],
+    });
+    return { factory };
+  }
+
+  /** Bootstrap helper — single source of truth for the 3 T-F6 scenarios.
+   *  Configures the TestBed, drives `init()` + socket open + SESSION_TOKEN
+   *  feed, and stores the orchestrator + socket in `afterEach` slots for
+   *  guaranteed teardown even when an `expect` throws (Auditor P2 c7b). */
+  function bootstrapSoloPipeline(): {
+    orchestrator: SoloDuelOrchestratorService;
+    duelCtx: DuelContext;
+    wsService: DuelWebSocketService;
+    factory: ReturnType<typeof createMockWebSocketFactory>;
+    socket: import('./_test-utils/mock-websocket').MockWebSocket;
+    conn: NonNullable<ReturnType<SoloDuelOrchestratorService['connection']>>;
+    processor: NonNullable<ReturnType<SoloDuelOrchestratorService['connection']>>['processor'];
+  } {
+    const { factory } = configureT_F6TestBed();
+    const orchestrator = TestBed.inject(SoloDuelOrchestratorService);
+    const duelCtx = TestBed.inject(DuelContext);
+    const wsService = TestBed.inject(DuelWebSocketService);
+    orchestrator.init('fake-token-solo');
+    const socket = factory.socket!;
+    socket.fireOpen();
+    socket.feed({ type: 'SESSION_TOKEN', token: 'reconnect-tok' } as SessionTokenMsg);
+    const conn = orchestrator.connection()!;
+    activeOrchestrator = orchestrator;
+    activeSocket = socket;
+    return { orchestrator, duelCtx, wsService, factory, socket, conn, processor: conn.processor };
+  }
+
+  it('chain accumulates, survives switch, drains on CHAIN_END — single processor', () => {
+    const { orchestrator, duelCtx, wsService, factory, socket, conn, processor } = bootstrapSoloPipeline();
+    expect(factory.createCount).toBe(1);
+    expect(wsService.soloModeSource()).toBeTrue();
+    expect(conn.soloMode).toBeTrue();
+    expect(conn.connectionStatus()).toBe('connected');
+
+    // 4. Drive the chain through the mock — these are SERVER → CLIENT frames.
+    //    Sequence : MSG_CHAINING(chain-1, P0) → switchPerspective() →
+    //    MSG_CHAINING(chain-2, P1) → MSG_CHAIN_SOLVING(chain-1) →
+    //    MSG_CHAIN_SOLVING(chain-2) → MSG_CHAIN_SOLVED × 2 → MSG_CHAIN_END.
+
+    // -- Chain link 1 : P0 activates a card.
+    socket.feed(chainingMsg(1, 0, 5001));
+    expect(processor.chainPhase()).toBe('building');
+    expect(processor.pendingChainEntry()?.chainIndex).toBe(1);
+    expect(processor.activeChainLinks().length).toBe(0);
+
+    // -- Mid-chain switchPerspective — THE cardinal γ moment.
+    //    Pre-γ : a switch routed future WS messages to a different processor,
+    //    which had never seen chain-1 → MSG_CHAIN_SOLVING(1) emitted a
+    //    "chain N not in active links []" warn and the overlay desynced.
+    //    Post-γ : there is one processor on one connection ; the switch is
+    //    visual-only.
+    orchestrator.switchPerspective();
+    expect(duelCtx.perspective()()).toBe(1);
+    expect(processor.chainPhase()).toBe('building');
+    expect(processor.pendingChainEntry()?.chainIndex).toBe(1);
+
+    // -- Chain link 2 : the 2nd MSG_CHAINING commits chain-1 from pending
+    //    and sets chain-2 as the new pending.
+    socket.feed(chainingMsg(2, 1, 5002));
+    expect(processor.activeChainLinks().length).toBe(1);
+    expect(processor.activeChainLinks()[0].chainIndex).toBe(1);
+    expect(processor.pendingChainEntry()?.chainIndex).toBe(2);
+
+    // -- CHAIN_SOLVING & CHAIN_SOLVED frames advance the resolve state.
+    //    MSG_CHAIN_SOLVING(1) commits chain-2 from pending (the
+    //    chain transitions from building to first-solve) so both links are
+    //    now in activeChainLinks.
+    //    NB: `processor.processMessage(MSG_CHAIN_SOLVING)` ENQUEUES the event
+    //    but does NOT call `applyChainSolving` — that's the orchestrator's
+    //    job (drained from the animation queue). T-F6 mocks the
+    //    AnimationOrchestratorService, so the queue is never drained and
+    //    `chainPhase` stays at `'building'`. What matters here is that the
+    //    links are committed to `activeChainLinks` by `commitPendingChainEntry()`,
+    //    which IS synchronous on MSG_CHAIN_SOLVING — that's what proves the
+    //    multiplex preserves the chain state across the switch.
+    socket.feed(chainSolvingMsg(1));
+    expect(processor.activeChainLinks().length).toBe(2);
+    expect(processor.activeChainLinks()[0].chainIndex).toBe(1);
+    expect(processor.activeChainLinks()[1].chainIndex).toBe(2);
+    expect(processor.pendingChainEntry()).toBeNull();
+
+    // -- The remaining MSG_CHAIN_SOLVING/SOLVED/END frames go through the
+    //    processor's enqueue path (the orchestrator would normally call
+    //    `applyChainSolved` + `applyChainEnd` when dequeuing them ; here we
+    //    simulate the dequeue manually since the AnimationOrchestratorService
+    //    is mocked).
+    socket.feed(chainSolvingMsg(2));
+    socket.feed(chainSolvedMsg(1));
+    socket.feed(chainSolvedMsg(2));
+    socket.feed(chainEndMsg());
+
+    // -- Manually drain the chain state — equivalent to what the
+    //    AnimationOrchestratorService runner does when consuming these
+    //    events from the animation queue.
+    processor.applyChainSolved(1);
+    processor.applyChainSolved(2);
+    processor.applyChainEnd();
+    expect(processor.chainPhase()).toBe('idle');
+    expect(processor.activeChainLinks()).toEqual([]);
+    expect(processor.pendingChainEntry()).toBeNull();
+
+    // 5. Network-discipline assertions (BMad c7b — Auditor + EdgeCase F2) :
+    //    The switchPerspective contract is "visual-only" — γ-c's `init()`
+    //    must NOT trigger any client → server frame at the switch boundary,
+    //    nor close the live socket. A regression that sends a
+    //    PERSPECTIVE_SWITCH frame or invokes `connection.cleanup()` mid-duel
+    //    would be caught here without needing the Playwright path.
+    expect(socket.sent).toEqual([]);
+    expect(socket.closedByProduction).toBeFalse();
+  });
+
+  it('a fresh chain in perspective=1 reuses the same processor — proof of single instance', () => {
+    // Variant scenario : after the switch, a chain ENTIRELY started in the
+    // new perspective still lives on the same processor. Demonstrates the
+    // "no second processor exists" property concretely (otherwise the new
+    // chain's events would silently desync from the structural state we
+    // observe via `connection().processor`).
+    const { orchestrator, wsService, socket, processor: processorRefBeforeSwitch } = bootstrapSoloPipeline();
+
+    // Switch with no chain in flight — perspective flips, processor must
+    // stay identical-by-reference.
+    orchestrator.switchPerspective();
+    const processorRefAfterSwitch = orchestrator.connection()!.processor;
+    expect(processorRefAfterSwitch).toBe(processorRefBeforeSwitch);
+    // BlindHunter P2 c7b — cross-check the wsService projection. If γ-c
+    // regresses such that wsService points at a different conn than the
+    // orchestrator after the switch, the chain state on the orchestrator
+    // side would diverge silently from what wsService projects. `active`
+    // is a private wsService accessor (intentional, the source-of-truth
+    // is the single signal `_transport_connection`) ; we reach it via
+    // bracket access here as a structural defence, not as a contract.
+    type WsInternals = { active(): { processor: typeof processorRefBeforeSwitch } };
+    const wsInternal = wsService as unknown as WsInternals;
+    expect(wsInternal.active().processor).toBe(processorRefBeforeSwitch);
+
+    // Drive a chain in perspective=1.
+    socket.feed(chainingMsg(1, 1, 6001));
+    expect(processorRefAfterSwitch.chainPhase()).toBe('building');
+    expect(processorRefAfterSwitch.pendingChainEntry()?.chainIndex).toBe(1);
+
+    // The CHAIN_END handler is the AnimationOrchestratorService's job
+    // (drained from the queue). T-F6 mocks the orchestrator, so we
+    // simulate the drain manually to verify the processor state.
+    socket.feed(chainEndMsg());
+    processorRefAfterSwitch.applyChainEnd();
+    expect(processorRefAfterSwitch.chainPhase()).toBe('idle');
+  });
+
+  it('MockWebSocket factory is called exactly once during init() (single connection)', () => {
+    // T-F5 corollary — pin that γ-c c6a's mono-connection invariant holds
+    // observably via the factory call count. If a refactor reintroduces a
+    // 2nd `new DuelConnection(...)` in init(), this asserts catches it.
+    // The default DuelConnection built in the DuelWebSocketService ctor is
+    // CONSTRUCTED (it receives the factory) but its `openConnection()` is
+    // NEVER called in SOLO — it's the orphan default that c8 documents,
+    // cleaned up by `bindSoloConnection`. Only the SOLO `init()` conn calls
+    // `connect()` → `openConnection()` → `factory.create(url)`.
+    const { factory, socket } = bootstrapSoloPipeline();
+    expect(factory.createCount).toBe(1);
+    // BlindHunter P2 c7b — also pin that the default conn (which never
+    // ran connect()) hasn't touched the live socket. A future cleanup()
+    // refactor that idempotently triggers openConnection() would bump
+    // createCount AND mark closedByProduction true on a phantom socket.
+    expect(socket.closedByProduction).toBeFalse();
+  });
+
+  it('switch in chain `resolving` phase keeps active links + same processor (BlindHunter P1 c7b)', () => {
+    // BlindHunter P1 c7b — the cardinal pre-γ bug surfaced when the
+    // chainPhase was `'resolving'` (cf. bug-solo-sequence.md). The first
+    // T-F6 scenario only exercises `'building'`. This scenario manually
+    // drives `applyChainSolving` to push the processor into `'resolving'`,
+    // then switches, and asserts the links + phase survive.
+    const { orchestrator, socket, processor } = bootstrapSoloPipeline();
+
+    // Build the chain: 2 links committed, then mark chain-1 as resolving.
+    socket.feed(chainingMsg(1, 0, 7001));
+    socket.feed(chainingMsg(2, 1, 7002));
+    socket.feed(chainSolvingMsg(1));
+    processor.applyChainSolving(1);  // simulates the orchestrator's queue drain
+    expect(processor.chainPhase()).toBe('resolving');
+    expect(processor.activeChainLinks().length).toBe(2);
+    expect(processor.activeChainLinks()[0].resolving).toBeTrue();
+
+    // The cardinal switch — pre-γ this routed future frames to a different
+    // processor whose `chainPhase` was still `'idle'`.
+    orchestrator.switchPerspective();
+    expect(processor.chainPhase()).toBe('resolving');
+    expect(processor.activeChainLinks().length).toBe(2);
+    expect(processor.activeChainLinks()[0].resolving).toBeTrue();
+    expect(orchestrator.connection()!.processor).toBe(processor);
+
+    // Drain to idle — clean teardown precondition.
+    processor.applyChainSolved(1);
+    processor.applyChainSolved(2);
+    processor.applyChainEnd();
+    expect(processor.chainPhase()).toBe('idle');
+  });
+
+  it('double switch (0→1→0) mid-chain leaves processor intact (EdgeCase F1 c7b)', () => {
+    // EdgeCase F1 c7b — the cardinal γ invariant must hold across MULTIPLE
+    // switches within a single chain, not just one. Pre-γ : each switch
+    // would have re-routed to a fresh processor ; here all 2 flips land on
+    // the same processor and the chain accumulates as expected.
+    jasmine.clock().install();
+    try {
+      const { orchestrator, duelCtx, socket, processor } = bootstrapSoloPipeline();
+      socket.feed(chainingMsg(1, 0, 8001));
+      expect(processor.pendingChainEntry()?.chainIndex).toBe(1);
+
+      // First switch — guarded by the 300ms debounce.
+      orchestrator.switchPerspective();
+      expect(duelCtx.perspective()()).toBe(1);
+      // Cross the debounce window before flipping back.
+      jasmine.clock().tick(SWITCH_DEBOUNCE_MS + 1);
+      orchestrator.switchPerspective();
+      expect(duelCtx.perspective()()).toBe(0);
+
+      // The processor state survived both flips — link 1 is still pending.
+      expect(processor.pendingChainEntry()?.chainIndex).toBe(1);
+      expect(processor.chainPhase()).toBe('building');
+
+      // Drain.
+      socket.feed(chainEndMsg());
+      processor.applyChainEnd();
+      expect(processor.chainPhase()).toBe('idle');
+    } finally {
+      jasmine.clock().uninstall();
+    }
   });
 });
