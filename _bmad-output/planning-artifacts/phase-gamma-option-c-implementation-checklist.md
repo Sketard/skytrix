@@ -460,11 +460,55 @@ extensions ws-protocol.
 
 ---
 
-### Commit 5 — `DuelWebSocketService` computeds + `sendXxx` (A21 + A37 + 🆕 A39)
+### Commit 5 — `DuelWebSocketService` computeds + `sendXxx` (A21 + A37 + 🆕 A39 + 🆕 A39-bis) ✅ LIVRÉ 2026-05-29
 
-**Scope** : `wsService` lit les 21 computeds transport-local via
-`_connection.getXxxFor(perspective())()`. Les 7 `sendXxx` taggent
-`forPlayer` **SOLO-only** (A21).
+**Découpe interne actée 2026-05-29 (Amelia + Axel)** — 4 sub-commits :
+
+- **c5a ✅ 2026-05-29** (commit `2fd436dc`) — Server populate
+  TIMER_STATE.pendingPlayer aux 4 sites d'émission de timer-management.ts
+  (sendTimerStateToAll, sendTimerStateToPlayer, startTurnTimer tick,
+  pauseTurnTimer post-pause). +5 specs A37 propagation, 1545 duel-server
+  verts. Type `TimerStateMsg.pendingPlayer?: Player` déjà livré PR1 c1b.
+- **c5b ✅ 2026-05-29** (commit `fb2564b9`) — `soloModeSource: WritableSignal<boolean>`
+  + `setSoloMode()` API + `slotIndex(): 0|1` helper (SOLO ? perspective :
+  ownPlayerIndex narrowed via duelAssert + clamp défensif prod). 4 computeds
+  per-perspective re-routés (pendingPrompt, hintContext, inactivityWarning,
+  waitingForOpponent) + 2 getters non-signal (lastSelectedCards,
+  lastConfirmedCards). 17 autres computeds restent transport-global.
+  _defaultConnection déplacé field-init→ctor pour passer {duelCtx}.
+  Code review BMad 3 agents : APPROVE_WITH_PATCHES — 2 patches appliqués
+  (BH-2 soloMode signal vs boolean → readonly soloModeSource: WritableSignal ;
+  BH-3 prod clamp `idx === 1 ? 1 : 0` au lieu de `as 0|1`). 1588 specs
+  verts.
+- **c5c ✅ 2026-05-29** (commit `89dd68bc`) — `sendForPlayer(): 0|1|undefined`
+  helper distinct de slotIndex (sendside vs readside, sémantique différente).
+  7 sendXxx propagent `sendForPlayer()` (sendResponse, sendActivityPing,
+  sendSurrender, sendRematchRequest, sendCancelPromptSequence,
+  sendRequestStateSync, sendAnimationsDone). PvP normal → undefined
+  (A2 garde stricte). A37 fallback `sendAnimationsDone` SOLO 3-niveaux :
+  `_lastSentForPlayer ?? timerState.pendingPlayer ?? perspective()`.
+  Code review BMad combiné Blind+Edge Hunter : APPROVE_WITH_PATCHES, 0
+  patch appliqué (F-X1 P2 ordre fallback conforme à la spec — à acter
+  c6 si symptômes ; F-X2 P3 dead code SOLO jusqu'à c6 ; F-X3/F-X4 P3
+  pré-existants hors scope). 1588 specs verts.
+- **c5d ✅ 2026-05-29** (commit `e509ea80`) — A39-bis MSG_HINT broadcast
+  intra-slot. Whitelist `SAFE_PUBLIC_HINT_TYPES = [1, 2, 6, 7, 9]`
+  dupliquée côté front (commentaire pointe vers message-filter.ts:32
+  comme source de vérité). Branche broadcast écrit LES 2 SLOTS avec
+  même merged. `prev` lu depuis slot d'origine dans les 2 branches
+  (cohérence A34). Correction d'un bug pré-existant PvP normal (P0
+  recevait HINT broadcast originé P1 → _slots[1] → invisible).
+  +5 specs A39-bis. Code review BMad Auditor : APPROVE. 1593 specs verts.
+
+**Bonus c5 (hors scope mais corrigé en flux)** :
+- **fix(tests) ✅ 2026-05-29** (commit `2126f4cd`) — Fix TS2352 dans
+  `worker-message-router.spec.ts:558` (test `MSG_DRAW.cards` payload
+  mockait `[{ cardCode, ... }]` au lieu de `[1234]` conforme au type
+  `(number | null)[]`). Pré-existant PR1 c2, exposé par check TS hook.
+
+**Scope original** (réf. spec §4.2-4.4) : `wsService` lit les 21 computeds
+transport-local via `_connection.getXxxFor(perspective())()`. Les 7
+`sendXxx` taggent `forPlayer` **SOLO-only** (A21).
 
 > **🚨 A39 — BUG SPEC PvP-normal P1 (découvert par BMad code review c4.1,
 > 2026-05-28).** La spec §4.3 ligne 1178 fait
@@ -822,9 +866,9 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A18** — PR1 c3 — `ws.on('close')` SOLO sans grace. ✅ 2026-05-28
 - [x] **A19** — PR1 c2c — WAITING_RESPONSE émission SOLO. ✅ 2026-05-28
 - [x] **A20** — PR1 c2c — DUEL_STARTING reconnect SOLO. ✅ 2026-05-28
-- [ ] **A21** — PR2 c5 — `sendXxx` garde SOLO-only.
-- [ ] **A22** — PR2 c4c — `sendResponse` clear slot.
-- [ ] **A23** — PR2 c4d — REMATCH_STARTING `_boardActive=false`.
+- [x] **A21** — PR2 c5b (soloModeSource + slotIndex ✅ 2026-05-29) + c5c (sendForPlayer + 7 sendXxx tagging ✅ 2026-05-29) — `sendXxx` garde SOLO-only.
+- [x] **A22** — PR2 c4.3 (sendResponse slot-clear ✅ 2026-05-28) — `sendResponse` clear slot.
+- [x] **A23** — PR2 c4.4 (REMATCH_STARTING _boardActive=false ✅ 2026-05-28) — REMATCH_STARTING `_boardActive=false`.
 - [ ] **A24** — PR2 c6f — Banner button disabled.
 - [ ] **A25** — PR2 c7b — WebSocketFactory sites inventaire.
 - [ ] **A26** — Méta (estimate) — n/a code.
@@ -841,9 +885,10 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [ ] **A34** — PR2 c4b — MSG_HINT inheritance intra-slot.
 - [ ] **A35** — PR2 c6f — i18n keys banner.
 - [x] **A36** — PR1 c2a — `throw` (pas de `duelAssert` côté serveur) first-player-coordinator. ✅ 2026-05-28
-- [ ] **A37** — PR1 c1b (proto ✅ 2026-05-28) + PR2 c5 (fallback front).
+- [x] **A37** — PR1 c1b (proto ✅ 2026-05-28) + PR2 c5a (server populate ✅ 2026-05-29) + PR2 c5c (fallback front 3-niveaux ✅ 2026-05-29).
 - [ ] **A38** — Méta (estimate ~18.75j) — n/a code.
-- [ ] **A39** — PR2 c5 — Arbitrage bug spec PvP-normal P1 (perspective=0 vs message.player absolu). Découvert via BMad code review c4.1 (2026-05-28). Voir détails dans la section Commit 5 ci-dessus.
+- [x] **A39** — PR2 c5b (helper slotIndex SOLO ? perspective : ownPlayerIndex avec narrow duelAssert + clamp défensif prod ✅ 2026-05-29).
+- [x] **A39-bis** — PR2 c5d (MSG_HINT broadcast intra-slot via SAFE_PUBLIC_HINT_TYPES dupliquée front, écrit les 2 slots quand broadcast ✅ 2026-05-29). Découvert via BMad code review c4.2 (2026-05-28).
 
 **39 amendments. À cocher 39 fois.**
 
