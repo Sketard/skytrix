@@ -84,7 +84,7 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
 
   /**
    * Palier 0 — attach the EventStream sink (orchestrator's
-   * `notifyOutOfBandEvent`). Replay only needs the processor's `onEvent`
+   * `pushToStream`). Replay only needs the processor's `onEvent`
    * for `MSG_CHAIN_NEGATED`: `SELECT_CARD` is not surfaced in replay
    * (the adapter never emits prompts as events), and `MSG_WIN` doesn't
    * need to reach EventStream on this side at all — the replay seek path

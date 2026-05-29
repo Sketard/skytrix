@@ -582,7 +582,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     this.gameLog.setPerspective(this.ownPlayerIndex());
     this.gameLog.attachBoardSource(() => this.logicalState());
     this.gameLog.attachEventStream(this.animationService.eventStream);
-    this.wsService.attachOutOfBandSink(ev => this.animationService.notifyOutOfBandEvent(ev));
+    this.wsService.attachOutOfBandSink(ev => { this.animationService.pushToStream(ev); });
     // `ownPlayerIndex()` is a computed — at construction `ocgPlayerIndex()` is
     // still null (→ 0); it resolves to the real absolute index once the first
     // BOARD_STATE lands. Track it so the journal is rebuilt for the correct

@@ -222,9 +222,12 @@ export class AnimationOrchestratorService {
    * the *complete log source* the Game Log subscribes to. Fed via the
    * single convergence point `pushToStream(event)`:
    *   - in-queue tap inside `processEvent` (every MSG_*);
-   *   - `notifyOutOfBandEvent` for the types that bypass the queue by
-   *     design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`, `MSG_WIN` from
-   *     `DUEL_END`, β.1 BoundaryEvents);
+   *   - the page-bootstrapped out-of-band sink (PvP page wires
+   *     `wsService.attachOutOfBandSink`, replay page wires
+   *     `adapter.attachOutOfBandSink`) for the types that bypass the
+   *     queue by design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`, synthetic
+   *     `MSG_WIN` from `DUEL_END`, β.1 BoundaryEvents) — fed through a
+   *     direct `pushToStream(ev)` call ;
    *   - the `QueueRunner.onInternalEvent` sink (β.2a — α.3
    *     `InternalTransportEvent`s join the stream so the DEP observes
    *     transport state alongside WS messages).
@@ -999,15 +1002,24 @@ export class AnimationOrchestratorService {
    * `_dispatchEvent`) can pin them to the same value. Call sites:
    *   · in-queue tap inside `processEvent` (every MSG_* the orchestrator
    *     dispatches);
-   *   · `notifyOutOfBandEvent` (events that bypass the animation queue
-   *     by design — see its docblock);
+   *   · the page bootstrap (duel-page / replay-page) wires this as the
+   *     out-of-band sink on `wsService.attachOutOfBandSink` /
+   *     `adapter.attachOutOfBandSink` for events that bypass the
+   *     animation queue by design : `MSG_CHAIN_NEGATED` (processor
+   *     onEvent), `SELECT_CARD` (PvP prompt routing), synthetic
+   *     `MSG_WIN` (PvP DUEL_END reconstruction), β.1 `BoundaryEvent`s
+   *     (BoundaryProcessor emissions) ;
    *   · `QueueRunner.onInternalEvent` sink (β.2a — α.3 runner
    *     `InternalTransportEvent`s, absorbed onto the stream so the DEP
    *     observes transport state alongside WS messages).
    * Does NOT touch `dataSource.animationQueue()` — invariant
    * "`MSG_CHAIN_NEGATED` is NOT enqueued" stays true.
+   *
+   * γ-c cleanup F-1.2 (audit) — made public, replacing the
+   * `notifyOutOfBandEvent` wrapper which was a transparent pipe.
+   * Out-of-band sink callers now invoke `pushToStream` directly.
    */
-  private pushToStream(event: StreamEvent): number {
+  pushToStream(event: StreamEvent): number {
     const ref = this._transport_nextStreamRef++;
     this._eventStream.update(s => [...s, event]);
     this.deferredProcessor.observe(event, ref);
@@ -1050,25 +1062,6 @@ export class AnimationOrchestratorService {
     this.pushToStream({ kind: 'animation', type: 'AnimationStarted', ref, msgType });
   }
 
-  /**
-   * Palier 0 — push a `GameEvent` that bypasses the animation queue by
-   * design into the EventStream. Three+ call-sites:
-   *   · `MSG_CHAIN_NEGATED` — surfaced by `DuelEventProcessor.onEvent` (the
-   *     processor consumes it silently for chain-state but still emits it
-   *     here so the journal sees the "Nié" badge in PvP live);
-   *   · `SELECT_CARD` — surfaced by `DuelConnection` on prompt routing
-   *     (the builder needs it as the secondary `MSG_BECOME_TARGET` resolver);
-   *   · `MSG_WIN` (reconstructed from `DUEL_END`) — surfaced by
-   *     `DuelConnection` on duel close (server converts MSG_WIN → DUEL_END;
-   *     the journal needs the original to render the 🏆 row);
-   *   · β.1 `BoundaryEvent`s — emitted by `BoundaryProcessor` via the
-   *     same `processor.onEvent` sink the adapters wire here.
-   * Delegates to `pushToStream` (β.2a) so the DEP observes these events
-   * too. Public method kept as the stable adapter-side API.
-   */
-  notifyOutOfBandEvent(event: StreamEvent): void {
-    this.pushToStream(event);
-  }
 
   /**
    * γ commit 5 — émission de `PerspectiveSwitched(from, to)` sur le

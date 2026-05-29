@@ -158,7 +158,7 @@ class StubAnimationOrchestrator {
   resetForSwitch = jasmine.createSpy('resetForSwitch');
   startProcessingIfIdle = jasmine.createSpy('startProcessingIfIdle');
   onStateSync = jasmine.createSpy('onStateSync');
-  notifyOutOfBandEvent = jasmine.createSpy('notifyOutOfBandEvent');
+  pushToStream = jasmine.createSpy('pushToStream').and.returnValue(0);
 }
 
 class StubChainResolutionManager {

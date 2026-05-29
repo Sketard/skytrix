@@ -545,7 +545,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.gameLog.setPerspective(this.perspectiveIndex());
     this.gameLog.attachBoardSource(() => this.adapter.boardStateView.logicalState());
     this.gameLog.attachEventStream(this.orchestrator.eventStream);
-    this.adapter.attachOutOfBandSink(ev => this.orchestrator.notifyOutOfBandEvent(ev));
+    this.adapter.attachOutOfBandSink(ev => { this.orchestrator.pushToStream(ev); });
     // The user can flip perspective mid-session (`onTogglePerspective`).
     // Re-feeding `setPerspective` rebuilds the journal from the retained raw
     // events for the new viewer (R7 — handled inside the service).

@@ -125,12 +125,14 @@ export interface AnimationDataSource {
   applyChainSolved(chainIndex: number): void;
   applyChainEnd(): void;
   /**
-   * Palier 0 — attach the EventStream sink (orchestrator's
-   * `notifyOutOfBandEvent`). Routes events that bypass the animation queue
-   * by design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`, synthesised `MSG_WIN`
-   * from `DUEL_END`, β.1 `BoundaryEvent`s) onto the stream so the journal
-   * + projections observe them in arrival order. Both impls wire this to
-   * their underlying `DuelEventProcessor.onEvent`.
+   * Palier 0 — attach the EventStream sink. The page bootstrap wires
+   * this to `orchestrator.pushToStream` (γ-c cleanup F-1.2 retired the
+   * `notifyOutOfBandEvent` wrapper). Routes events that bypass the
+   * animation queue by design (`MSG_CHAIN_NEGATED`, `SELECT_CARD`,
+   * synthesised `MSG_WIN` from `DUEL_END`, β.1 `BoundaryEvent`s) onto
+   * the stream so the journal + projections observe them in arrival
+   * order. Both impls wire this to their underlying
+   * `DuelEventProcessor.onEvent`.
    */
   attachOutOfBandSink(sink: (event: StreamEvent) => void): void;
 }

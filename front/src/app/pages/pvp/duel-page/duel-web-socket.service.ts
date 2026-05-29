@@ -76,7 +76,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
 
   onStateSync?: (msg: import('../duel-ws-system.types').StateSyncMsg) => void;
 
-  /** Palier 0 — EventStream sink (orchestrator's `notifyOutOfBandEvent`).
+  /** Palier 0 — EventStream sink (orchestrator's `pushToStream`).
    *  Retained so we can re-apply it on `bindSoloConnection`. */
   private _outOfBandSink?: (event: StreamEvent) => void;
   private _drawNewTurnSink?: (turnPlayer: number, turnCount: number) => void;
@@ -188,7 +188,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // ───────────────────────────────────────────────
 
   /** Palier 0 — wire the EventStream sink onto the active connection.
-   *  Called by the page at bootstrap with `orchestrator.notifyOutOfBandEvent`.
+   *  Called by the page at bootstrap with `orchestrator.pushToStream`.
    *  `bindSoloConnection` re-applies the sink onto the SOLO conn when it
    *  swaps in (idempotent). The sink lives on the processor's `onEvent`
    *  callback so `MSG_CHAIN_NEGATED` surfaces in the stream too. */

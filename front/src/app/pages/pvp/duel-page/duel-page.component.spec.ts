@@ -180,7 +180,7 @@ class StubAnimationOrchestrator {
   onStateSync = jasmine.createSpy('onStateSync');
   isPreActivationBufferActive = jasmine.createSpy('isPreActivationBufferActive').and.returnValue(false);
   drainPreActivationBuffer = jasmine.createSpy('drainPreActivationBuffer');
-  notifyOutOfBandEvent = jasmine.createSpy('notifyOutOfBandEvent');
+  pushToStream = jasmine.createSpy('pushToStream').and.returnValue(0);
 }
 
 /** Stub for SoloDuelOrchestratorService.

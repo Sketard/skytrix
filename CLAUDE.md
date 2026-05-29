@@ -146,9 +146,11 @@ Two distinct flux coexist in the animation pipeline:
   bypasses observe re-entry. Push sites converging on `pushToStream`:
   · the in-queue tap inside `processEvent` (after `bufferIfResolving`,
     after `updateLogical(boardStateAfter)`, before the dispatch switch);
-  · `notifyOutOfBandEvent` (public adapter API kept; delegates to
-    `pushToStream`) — feeds `DuelEventProcessor.onEvent(MSG_CHAIN_NEGATED)`
-    (wired by `DuelConnection.attachOutOfBandSink` /
+  · the page-bootstrapped out-of-band sink (γ-c cleanup F-1.2 retired
+    the `notifyOutOfBandEvent` wrapper — sink callers invoke
+    `pushToStream` directly) — feeds
+    `DuelEventProcessor.onEvent(MSG_CHAIN_NEGATED)` (wired by
+    `DuelConnection.attachOutOfBandSink` /
     `ReplayDuelAdapter.attachOutOfBandSink`); `DuelConnection`
     `SELECT_CARD` prompt branch (PvP only — replay has no interactive
     prompts); `DuelConnection` `DUEL_END` handler reconstructs a
@@ -323,11 +325,13 @@ table guarantees uniqueness by including index / chainIndex / ref in
 each name (`overlay-show:<chainIdx>`, `banish-seq:<ref>:<n>`, …).
 
 **Convergence point — `pushToStream` (β.2a)**: the orchestrator
-exposes a single private `pushToStream(event)` method that both
-appends to `_eventStream` and calls `deferredProcessor.observe(event)`.
-Four call sites converge here: the in-queue tap inside
-`processEvent`, `notifyOutOfBandEvent` (boundary events + MSG_CHAIN_NEGATED
-+ SELECT_CARD + synthesized MSG_WIN from DUEL_END), and the
+exposes a single public `pushToStream(event)` method (γ-c cleanup
+F-1.2 made it public, retiring the redundant `notifyOutOfBandEvent`
+wrapper) that both appends to `_eventStream` and calls
+`deferredProcessor.observe(event)`. Four call sites converge here:
+the in-queue tap inside `processEvent`, the page-bootstrapped
+out-of-band sink (boundary events + MSG_CHAIN_NEGATED + SELECT_CARD
++ synthesized MSG_WIN from DUEL_END), and the
 `QueueRunner.onInternalEvent` sink (β.2a absorbs the α.3 sink onto
 the stream, closing the W1 code-review finding). The DEP's own
 emissions go through `pushDeferredToStream` which **bypasses the

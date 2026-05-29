@@ -137,7 +137,7 @@ export class DuelConnection {
   /**
    * Palier 0 — sink for events that bypass the animation queue but belong
    * to the duel's logical event stream (Game Log feeds). Wired by
-   * `DuelWebSocketService` to `AnimationOrchestratorService.notifyOutOfBandEvent`.
+   * `DuelWebSocketService` to `AnimationOrchestratorService.pushToStream`.
    * Three feeders: `processor.onEvent` (MSG_CHAIN_NEGATED), the
    * `SELECT_CARD` prompt branch, and the `DUEL_END` handler (reconstructs
    * a synthetic MSG_WIN from `winner` + `winReasonCode`).
@@ -439,7 +439,7 @@ export class DuelConnection {
 
   /**
    * Palier 0 — attach the EventStream sink (orchestrator's
-   * `notifyOutOfBandEvent`). Wires the processor's `onEvent` callback so
+   * `pushToStream`). Wires the processor's `onEvent` callback so
    * `MSG_CHAIN_NEGATED` surfaces in the stream too. Idempotent — calling
    * again replaces the previous sink (re-applied by `bindSoloConnection`
    * on a SOLO init or rematch). γ commit 4 dropped `setActiveConnection`,
