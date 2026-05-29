@@ -64,22 +64,27 @@ free function used by both for BOARD_STATE sync tier logic.
 
 `DuelEventProcessor` is the single source of truth for chain state
 management (activeChainLinks, chainPhase, animation queue, chain entry
-commit). Ownership rules (γ, 2026-05-27) :
+commit). Ownership rules (γ-c PR2 c8, 2026-05-29) :
 
-- **PvP normal** : 1 `DuelConnection` per duel → its own processor
-  (legacy path, unchanged). The orchestrator's `processor` field is
-  bound to this same instance via `bindSharedProcessor` at bootstrap.
-- **SOLO PvP** : 1 `AnimationOrchestratorService.processor`
-  (`readonly`) is created at the orchestrator scope ; the 2
-  `DuelConnection` instantiated by `SoloDuelOrchestratorService.init`
-  receive it via the `{ sharedProcessor }` ctor option and skip their
-  own instantiation. Both transports push their WS messages into the
-  SAME processor — the cardinal γ invariant that eliminates the
+- **PvP normal** : the `DuelWebSocketService` ctor builds a default
+  `DuelConnection` which owns its processor outright. Lifetime = the
+  wsService's component scope.
+- **SOLO multiplex** : `SoloDuelOrchestratorService.init` builds ONE
+  `DuelConnection` (mono-conn, post-c6a) which owns its processor
+  outright, then swaps it into the wsService via `bindSoloConnection`.
+  Both perspectives are projected from the same `_slots[0|1]` on this
+  SAME conn — the cardinal γ invariant that eliminates the
   `bug-solo-sequence.md` chain-orphan bug structurally (a
   `switchPerspective` no longer routes future messages to a different
-  processor ; there is only one).
-- **Replay** : `ReplayDuelAdapter` keeps its own processor (independent
+  processor — there is only one). The default conn built by the
+  wsService ctor is orphaned and `cleanup()`-ed by `bindSoloConnection`.
+- **Replay** : `ReplayDuelAdapter` owns its processor outright (separate
   scope, no SOLO/PvP interaction). γ does not touch the replay path.
+
+The `sharedProcessor` ctor option on `DuelConnection` was dropped in
+PR2 c8 — there is no longer a "processor shared across multiple
+conns" model. Every `DuelConnection` instance owns its processor ;
+the consolidation happened by collapsing to 1 conn, not by sharing.
 
 No manual PvP/replay parity is required — the processor guarantees
 identical behavior across both modes.
@@ -89,6 +94,38 @@ flag on the matching chain link) — it is NOT pushed to `animationQueue`.
 It IS pushed to `AnimationOrchestratorService.eventStream` via
 `DuelEventProcessor.onEvent` so the Game Log sees the "Nié" badge in PvP
 live (Palier 0).
+
+## Transport Lifecycle Invariants
+
+Two load-bearing invariants the γ-c bootstrap relies on. Both are
+implicit today (enforced by code structure + comments) — documenting
+them here so a future refactor that breaks them gets caught at review.
+
+**Invariant 1 — `DuelConnection.cleanup()` MUST stay idempotent + safe
+without prior `connect()`.** The `DuelWebSocketService` ctor builds a
+default `DuelConnection` even in SOLO mode (where it's immediately
+orphaned and `cleanup()`-ed by `bindSoloConnection`). On top of that,
+SOLO teardown can fire `cleanup()` twice on the same conn (once via
+`SoloDuelOrchestratorService.cleanup`, once via
+`DuelWebSocketService.ngOnDestroy` — see [F-3.3]). Both work today
+because `cleanup()` is null-safe (no-op WS close, RBS destroy is
+idempotent, timer slots check before clear). Any future addition to
+`cleanup()` (Datadog counter, listener removal that throws on missing
+listener, …) MUST preserve both properties or the SOLO bootstrap +
+teardown paths break silently.
+
+**Invariant 2 — `DuelConnection.soloMode` and `_duelCtx` MUST be set
+together before `connect()`.** A conn with `soloMode = true` and
+`_duelCtx === undefined` throws via `duelAssert` at the first
+BOARD_STATE through `_shouldSwapForSolo`. The reverse (`soloMode =
+false` with `_duelCtx` set) is harmless but pointless. Currently the
+"pair flip A21" is enforced by `SoloDuelOrchestratorService.init`
+calling both at construction in the SAME statement chain, then doing
+`wsService.setSoloMode(true)` before `conn.connect(token)`. Anyone
+adding a third SOLO-only field to `DuelConnection` MUST honour the
+same "set before connect" discipline ; the cleanest long-term fix is
+to derive `soloMode` from `wsService.soloModeSource` as a getter
+(audit P1 [F-2.3] — noted as a c8 cleanup that never landed).
 
 ## EventStream vs AnimationQueue (Palier 0)
 
@@ -812,19 +849,12 @@ replay leave `perspectiveSource` at its default 0.
 ## Orchestrator Decomposition
 
 `AnimationOrchestratorService` is a thin coordinator that delegates to
-9 extracted managers/classes (γ added the `processor` ownership) :
+8 extracted managers/classes. The processor (chain state machine +
+animation queue) lives on the `DuelConnection` / `ReplayDuelAdapter`
+that owns the WS / precompute feed, NOT on the orchestrator — see the
+"Chain Event Processing & State Machine" section above for ownership
+rules post-c8.
 
-- **`processor: DuelEventProcessor`** (γ commit 2, 2026-05-26) —
-  `readonly` shared chain state machine + animation queue. PvP normal :
-  the orchestrator passes this instance to its `DuelConnection` via
-  `bindSharedProcessor` at bootstrap so both reads come from the same
-  store. SOLO : the 2 `DuelConnection` instances receive it via the
-  `{ sharedProcessor }` ctor option of `SoloDuelOrchestratorService.init` ;
-  both transports push their WS messages into the SAME processor.
-  Replay : `ReplayDuelAdapter` keeps its own (separate scope). The
-  single-processor invariant is what eliminates `bug-solo-sequence.md`
-  by construction — a `switchPerspective` no longer routes future
-  messages to a different processor.
 - **`ChainResolutionManager`** — chain state (signals, buffer, replay
   timeouts, solved count). Pure state + `drainBuffer()`. Orchestrator
   owns `replayBuffer()` (cross-cutting dispatch via queue directives).
