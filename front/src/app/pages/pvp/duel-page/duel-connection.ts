@@ -1223,6 +1223,14 @@ export class DuelConnection {
         // normal emits without player and the legacy reader was slot-agnostic,
         // so slot 0 is the equivalent slot. In SOLO multiplex the server
         // populates it.
+        //
+        // γ-c cleanup F-2.4 (audit) — assert presence in SOLO. A server
+        // regression that omits `player` in SOLO would silently land the
+        // warning in slot 0 = invisible to a viewer in perspective=1.
+        // PvP normal keeps the fallback (legacy slot-agnostic behavior).
+        duelAssert(!this.soloMode || message.player !== undefined,
+          'INACTIVITY_WARNING',
+          'SOLO multiplex requires server to populate `player` (got undefined)');
         this._slots[message.player ?? 0].inactivityWarning.set(message);
         break;
 
@@ -1351,6 +1359,12 @@ export class DuelConnection {
         // (PR1 c2c). Default slot 0 if absent (= legacy PvP normal behavior
         // where the message was sent to the opponent socket whose connection
         // implicitly represented slot 0 of its own perspective).
+        //
+        // γ-c cleanup F-2.4 (audit) — assert presence in SOLO. Same
+        // rationale as `INACTIVITY_WARNING` above.
+        duelAssert(!this.soloMode || message.targetPlayer !== undefined,
+          'WAITING_RESPONSE',
+          'SOLO multiplex requires server to populate `targetPlayer` (got undefined)');
         this._slots[message.targetPlayer ?? 0].waitingForOpponent.set(true);
         break;
 
