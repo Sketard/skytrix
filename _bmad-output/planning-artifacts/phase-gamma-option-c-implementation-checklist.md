@@ -676,11 +676,27 @@ Banner UX cross-slot. i18n.
   émet toujours 2 tokens, on garde la cohérence ; le 2e token est dead-data
   côté front mais signale "session fork OK"). Pas de patch.
 
-#### 6b — `setupRematchEffect` 1-signal (A4 + A27)
-- [ ] `solo-duel-orchestrator.service.ts:218-247` :
-  - [ ] **A27** — garde `if (!this.wsService.soloMode)` autour de
-        l'auto-accept `rematchState === 'invited'` (désactivé en SOLO).
-  - [ ] Effect REMATCH_STARTING : conn unique, plus de `c[0] && c[1]`.
+#### 6b — `setupRematchEffect` 1-signal (A4 + A27) ✅ LIVRÉ 2026-05-29
+- [x] `solo-duel-orchestrator.service.ts:setupRematchEffect()` :
+  - [x] **A27** — garde `if (this.wsService.soloModeSource()) return;` au
+        début de l'effect auto-accept `rematchState === 'invited'`. En SOLO
+        le serveur court-circuite (c6e à venir) donc REMATCH_INVITATION
+        n'est plus émise — l'auto-accept devient dead-path. La garde
+        matérialise l'invariant côté front au cas où une régression
+        serveur émettrait à tort.
+  - [x] Effect REMATCH_STARTING : 1 effect (la collapse `c[0] && c[1]` a
+        été forcée par le shift structurel `_connections` → `_transport_connection`
+        en c6a).
+  - [x] Renommage `setupRematchEffects` → `setupRematchEffect` (singulier).
+- [x] **`duel-context.ts:48`** — JSDoc mention `setupRematchEffects` mise à jour.
+- [x] **Bonus cleanup** — `{ allowSignalWrites: true }` retiré des 2 `effect()`
+      (Angular 21.2 a déprécié ce flag, warnings runtime). Cleanup
+      complet : 0 hits restant dans `front/src`.
+
+**Specs verts** : 1598 front (+2 nouveaux tests A27 garde : SOLO skip + PvP fires).
+
+**Patches post-review (BMad Auditor 2026-05-29)** :
+- Invariant 6 doc — `duel-context.ts:48` JSDoc obsolète mise à jour.
 
 #### 6c — `switchPerspective` simplifié (A5 + A14)
 - [ ] `solo-duel-orchestrator.service.ts:171-213` :
@@ -879,7 +895,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A2** — PR1 c1 — Validation stricte `forPlayer` PvP rejected. ✅ 2026-05-28
 - [x] **A2bis** — PR1 c1 — CANCEL rate-limit lâche SOLO documenté. ✅ 2026-05-28
 - [x] **A3** — PR1 c2e — Lifecycle helpers. ✅ 2026-05-28
-- [ ] **A4** — PR2 c6b — setupRematchEffect 1-connection.
+- [x] **A4** — PR2 c6b (setupRematchEffect singulier + 1-signal ✅ 2026-05-29).
 - [ ] **A5** — PR2 c6c, c6d — Perspective localStorage persist + clear.
 - [x] **A6** — PR1 c2d — Session register 1 token SOLO. ✅ 2026-05-28
 - [ ] **A7** — Méta (découpe 2 PRs) — acté.

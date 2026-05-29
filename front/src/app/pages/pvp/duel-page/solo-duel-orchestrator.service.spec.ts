@@ -34,6 +34,7 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
     bindSharedProcessor: jasmine.Spy;
     bindTransports: jasmine.Spy;
     setSoloMode: jasmine.Spy;
+    soloModeSource: ReturnType<typeof signal<boolean>>;
     pendingPrompt: () => unknown;
   };
   let duelCtx: DuelContext;
@@ -55,6 +56,11 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
       bindTransports: jasmine.createSpy('bindTransports'),
       // c6a A21 — pair flip of soloMode flags from init().
       setSoloMode: jasmine.createSpy('setSoloMode'),
+      // c6b A27 — auto-accept rematch guard reads soloModeSource(). Mock
+      // stub-signal so tests can drive the SOLO branch on/off without
+      // booting the full DuelWebSocketService.
+      // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+      soloModeSource: signal<boolean>(false),
       pendingPrompt: () => pendingPromptSignal(),
     };
 
@@ -209,6 +215,68 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
       // field — must be `true` already (set before connect).
       expect(connSoloModeAtConnectTime).toBeTrue();
 
+      service.cleanup();
+    });
+  });
+
+  // c6b — A27 garde : auto-accept rematch côté front skip en SOLO car
+  // le serveur court-circuite la gate "both requested" et n'émet plus
+  // d'invitation REMATCH_INVITATION (=> conn.rematchState() ne passe
+  // jamais à 'invited' en SOLO). La garde matérialise l'invariant
+  // côté front au cas où une régression serveur émettrait à tort.
+  describe('setupRematchEffect — A27 auto-accept guard (c6b)', () => {
+    it('does NOT call sendRematchRequest when rematchState=invited and SOLO mode is on', async () => {
+      spyOn(DuelConnection.prototype, 'connect');
+      service.init('fake-token-solo');
+
+      // SOLO multiplex enabled by init() — invariant snapshot.
+      expect(wsService.setSoloMode).toHaveBeenCalledOnceWith(true);
+      // Mirror the prod runtime: the SOLO orchestrator flips the
+      // signal that `setSoloMode` writes to. We flip it directly here
+      // because the wsService is mocked and its `setSoloMode` is just
+      // a spy — `soloModeSource` stays at its mock default of `false`
+      // unless we step in.
+      wsService.soloModeSource.set(true);
+
+      const conn = service.connection()!;
+      const sendSpy = spyOn(conn, 'sendRematchRequest');
+
+      // Drive rematchState() to 'invited' on the real DuelConnection.
+      // The signal is private but we mutate it through its writable
+      // backing field for the spec — same pattern as the chain state
+      // seeding above.
+      (conn as unknown as { _rematchState: { set: (v: 'invited') => void } })
+        ._rematchState.set('invited');
+
+      // Flush effect microtask.
+      await Promise.resolve();
+      TestBed.tick();
+
+      expect(sendSpy).not.toHaveBeenCalled();
+      service.cleanup();
+    });
+
+    it('DOES call sendRematchRequest when rematchState=invited and SOLO mode is off (PvP normal path safety)', async () => {
+      spyOn(DuelConnection.prototype, 'connect');
+      service.init('fake-token-solo');
+
+      // Force the soloModeSource off so the guard branch lets the
+      // auto-accept through. PvP normal never instantiates this
+      // orchestrator (it lives in `SoloDuelOrchestratorService` only),
+      // but the guard is a defensive matter-of-fact assertion : when
+      // soloModeSource is false, the legacy auto-accept must still fire.
+      wsService.soloModeSource.set(false);
+
+      const conn = service.connection()!;
+      const sendSpy = spyOn(conn, 'sendRematchRequest');
+
+      (conn as unknown as { _rematchState: { set: (v: 'invited') => void } })
+        ._rematchState.set('invited');
+
+      await Promise.resolve();
+      TestBed.tick();
+
+      expect(sendSpy).toHaveBeenCalledTimes(1);
       service.cleanup();
     });
   });

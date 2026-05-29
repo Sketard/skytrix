@@ -45,7 +45,7 @@ export class DuelContext {
    *
    * Le signal est CONNECTION_LIFETIME (cf. spec §3.5) : il survit à
    * un switch (par définition c'est lui qui PORTE le switch), mais un
-   * STATE_SYNC / RematchStarted le reset à 0 via le setupRematchEffects
+   * STATE_SYNC / RematchStarted le reset à 0 via le setupRematchEffect
    * de SoloDuelOrchestratorService.
    *
    * Surface API (post-review M8, 2026-05-28) : le `WritableSignal` reste

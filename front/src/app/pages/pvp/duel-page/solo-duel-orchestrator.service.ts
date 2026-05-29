@@ -138,7 +138,7 @@ export class SoloDuelOrchestratorService {
 
     conn.connect(token1);
 
-    this.setupRematchEffects();
+    this.setupRematchEffect();
   }
 
   // ───────────────────────────────────────────────
@@ -205,25 +205,30 @@ export class SoloDuelOrchestratorService {
    * serveur après `startDuelWithOrder`) déclenche le vrai reset
    * DUEL_LIFETIME via `onStateSync()`.
    *
-   * c6b — `setupRematchEffects` est volontairement gardé au pluriel
-   * pour ne pas casser les 2 effects existants en un seul commit.
-   * L'auto-accept `rematchState === 'invited'` reste actif pour PvP
-   * normal (mais cet orchestrator n'y entre jamais — `enabled` est
-   * SOLO-only). En SOLO le serveur court-circuite la gate "both
-   * requested" (A27 serveur, c6e), donc l'invitation REMATCH_INVITATION
-   * n'est plus émise — l'effet auto-accept est devenu dead-code en
-   * SOLO mais reste sans effet observable.
+   * c6b A27 — auto-accept skip en SOLO. Le serveur court-circuite la
+   * gate "both requested" (A27 serveur, c6e) et démarre rematch dès le
+   * 1er REMATCH_REQUEST. L'invitation REMATCH_INVITATION n'est plus
+   * émise en SOLO, donc `rematchState === 'invited'` ne fire jamais.
+   * Garde explicite quand même pour matérialiser l'invariant + éviter
+   * un coût computed inutile si une régression serveur émettait à tort.
+   *
+   * c6b — renommé au singulier (`setupRematchEffect`) parce que la
+   * sémantique est désormais "un signal, un effect" (la 2e moitié
+   * `if (s0 && s1)` du legacy a disparu au c6a, forcée par le shift
+   * `_connections` paire → `_transport_connection` singular).
    */
-  private setupRematchEffects(): void {
+  private setupRematchEffect(): void {
     const conn = this._transport_connection();
     if (!conn) return;
 
     runInInjectionContext(this.injector, () => {
-      // Auto-accept rematch invitation côté transport. En SOLO le
-      // serveur court-circuite donc cet effect ne fire jamais (A27).
+      // c6b A27 — auto-accept skip en SOLO (le serveur court-circuite
+      // déjà, REMATCH_INVITATION pas émis). L'effect reste créé mais
+      // sa condition d'entrée est garde-bloquée.
       effect(() => {
+        if (this.wsService.soloModeSource()) return;
         if (conn.rematchState() === 'invited') conn.sendRematchRequest();
-      }, { allowSignalWrites: true });
+      });
 
       // REMATCH_STARTING reçu une fois ⇒ 1 reset orchestrator.
       effect(() => {
@@ -235,7 +240,7 @@ export class SoloDuelOrchestratorService {
           // Pas d'orchestrator.reset ici : STATE_SYNC qui suit déclenche
           // onStateSync({DUEL_LIFETIME}) qui purge tout proprement.
         }
-      }, { allowSignalWrites: true });
+      });
     });
   }
 
