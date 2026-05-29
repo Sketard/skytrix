@@ -176,9 +176,10 @@ class StubAnimationOrchestrator {
   notifyOutOfBandEvent = jasmine.createSpy('notifyOutOfBandEvent');
 }
 
-/** Stub for SoloDuelOrchestratorService. */
+/** Stub for SoloDuelOrchestratorService.
+ *  c6a — refactor `connections` paire → `connection` singular. */
 class StubSoloOrchestrator {
-  readonly connections = signal<readonly { timerStatePerPlayer: () => readonly [TimerStateMsg | null, TimerStateMsg | null] }[] | null>(null);
+  readonly connection = signal<{ timerStatePerPlayer: () => readonly [TimerStateMsg | null, TimerStateMsg | null] } | null>(null);
   readonly perspectiveIndex = signal(0);
   init = jasmine.createSpy('init');
   switchPerspective = jasmine.createSpy('switchPerspective');
@@ -569,25 +570,23 @@ describe('DuelPageComponent — displayedTimerState multiplexing (C1.2)', () => 
     expect(component.displayedTimerState()).toBe(own);
   });
 
-  it('Solo + connections=null falls back to top-level timerState() (during init)', () => {
+  it('Solo + connection=null falls back to top-level timerState() (during init)', () => {
     const fallback = makeTimer('solo-fallback');
     ws.timerState.set(fallback);
     (component.isSoloMode as WritableSignal<boolean>).set(true);
-    solo.connections.set(null);
+    solo.connection.set(null);
     expect(component.displayedTimerState()).toBe(fallback);
   });
 
-  it('Solo + perspectiveIndex=1 reads connections[1].timerStatePerPlayer()[1]', () => {
-    // After switchPerspective(), the active connection is index 1 and its own
-    // timer pool is at index 1 (server broadcasts both pools to each
-    // connection). The active connection's pool — not the previous
-    // active one — drives the displayed timer.
-    const t0own = makeTimer('conn0-own');
-    const t1own = makeTimer('conn1-own');
-    const conn0 = makeConnection(t0own, makeTimer('conn0-opp'));
-    const conn1 = makeConnection(makeTimer('conn1-opp'), t1own);
+  it('Solo + perspectiveIndex=1 reads connection.timerStatePerPlayer()[1] (c6a mono-connection)', () => {
+    // c6a — SOLO multiplex passe à 1 connection. Le pool timer per-
+    // player est broadcast omniscient ; la perspective sélectionne
+    // l'index du pool (`[activeIdx]`).
+    const t0own = makeTimer('conn-pool-0');
+    const t1own = makeTimer('conn-pool-1');
+    const conn = makeConnection(t0own, t1own);
     (component.isSoloMode as WritableSignal<boolean>).set(true);
-    solo.connections.set([conn0, conn1] as unknown as ReturnType<typeof solo.connections>);
+    solo.connection.set(conn as unknown as ReturnType<typeof solo.connection>);
     solo.perspectiveIndex.set(1);
     expect(component.displayedTimerState()).toBe(t1own);
   });
@@ -836,7 +835,10 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
       const room = pickRoom(fixture);
       const soloEff = pickSoloEffects(fixture);
 
-      expect(orch.init).toHaveBeenCalledOnceWith('tok1', 'tok2');
+      // c6a — orchestrator.init() passe à 1 token (SOLO mono-connection).
+      // Le fork garde 2 tokens server-side ; le wsToken2 n'est plus
+      // consommé front mais reste validé en gate.
+      expect(orch.init).toHaveBeenCalledOnceWith('tok1');
       expect(room.forceState).toHaveBeenCalledWith('connecting');
       expect(soloEff.initFork).toHaveBeenCalledTimes(1);
       expect(fixture.componentInstance.forkReplayId).toBe('abc');
@@ -866,8 +868,10 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
     // sessionStorage entry persists. The component must read from there
     // so the duel survives reloads. Pin: tabGuard.init+broadcast and
     // orchestrator.init both fire with the stored tokens.
+    // c6a — wsToken2 retiré du sessionStorage (SOLO mono-connection,
+    // PR1 A6). Le sessionStorage ne porte plus que wsToken1+activePlayer+decklistId.
     sessionStorage.setItem('solo-duel-tokens-r2', JSON.stringify({
-      wsToken1: 'stored-tok-1', wsToken2: 'stored-tok-2', activePlayer: 0, decklistId: 42,
+      wsToken1: 'stored-tok-1', activePlayer: 0, decklistId: 42,
     }));
     setupTestBed(makeRouteStub({ roomCode: 'r2', query: { solo: 'true' } }));
     withHistoryState({}, () => {
@@ -878,7 +882,7 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
 
       expect(tab.init).toHaveBeenCalledOnceWith('r2');
       expect(tab.broadcast).toHaveBeenCalledTimes(1);
-      expect(orch.init).toHaveBeenCalledOnceWith('stored-tok-1', 'stored-tok-2');
+      expect(orch.init).toHaveBeenCalledOnceWith('stored-tok-1');
       expect(room.decklistId).toBe(42);
       expect(orch.switchPerspective).not.toHaveBeenCalled(); // restoredPlayer=0
     });
@@ -890,7 +894,7 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
     // restores it by re-running switchPerspective once after init.
     // (γ commit 3 renamed switchPlayer → switchPerspective.)
     sessionStorage.setItem('solo-duel-tokens-r3', JSON.stringify({
-      wsToken1: 'tk1', wsToken2: 'tk2', activePlayer: 1, decklistId: null,
+      wsToken1: 'tk1', activePlayer: 1, decklistId: null,
     }));
     setupTestBed(makeRouteStub({ roomCode: 'r3', query: { solo: 'true' } }));
     withHistoryState({}, () => {
@@ -908,7 +912,7 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
     // entry is removed; if a refactor moves it elsewhere by mistake,
     // duels would resume with the wrong tokens after lobby round-trips.
     sessionStorage.setItem('solo-duel-tokens-r4', JSON.stringify({
-      wsToken1: 'tk1', wsToken2: 'tk2', activePlayer: 0, decklistId: null,
+      wsToken1: 'tk1', activePlayer: 0, decklistId: null,
     }));
     setupTestBed(makeRouteStub({ roomCode: 'r4', query: { solo: 'true' } }));
     withHistoryState({}, () => {

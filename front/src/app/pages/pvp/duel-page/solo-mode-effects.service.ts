@@ -32,17 +32,19 @@ export class SoloModeEffectsService {
   initSolo(config: {
     soloTokensKey: string;
     wsToken1: string;
-    wsToken2: string;
     roomService: RoomStateMachineService;
     thumbnailsReady: WritableSignal<boolean>;
   }): void {
     this.initConnectionLoss();
 
-    // Persist active player index so refresh restores the same view
+    // Persist active player index so refresh restores the same view.
+    // c6a — SOLO multiplex passe à 1 token (PR1 A6) ; wsToken2 disparaît
+    // du sessionStorage. Le `restorePerspectiveFromStorage` reste dans
+    // l'orchestrator (c6c) côté localStorage A5.
     effect(() => {
       const activePlayer = this.orchestrator.perspectiveIndex();
       untracked(() => {
-        try { sessionStorage.setItem(config.soloTokensKey, JSON.stringify({ wsToken1: config.wsToken1, wsToken2: config.wsToken2, activePlayer })); } catch {}
+        try { sessionStorage.setItem(config.soloTokensKey, JSON.stringify({ wsToken1: config.wsToken1, activePlayer })); } catch {}
       });
     });
 

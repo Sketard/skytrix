@@ -186,8 +186,19 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     // wires its own forwarding to `wsService.onStateSync?.()` in `init()`
     // (the existing path) — here we instrument the boundary so the first
     // T4 test observation pinpoints the dedup predicate.
-    t0.onStateSync = (msg) => { this.checkpointLog(msg, 0); this.onStateSync?.(msg); };
-    t1.onStateSync = (msg) => { this.checkpointLog(msg, 1); this.onStateSync?.(msg); };
+    //
+    // c6a — when `t0 === t1` (SOLO multiplex mono-connection), the second
+    // assignment would overwrite the first → every STATE_SYNC would log as
+    // `via transport 1` which mis-tags the log line in mono-conn dedup
+    // measurements. Detect the mono-conn case and bind once with a neutral
+    // tag. The dedup measurement is moot in mono-conn (only 1 STATE_SYNC
+    // per duel) but we keep the log line accurate.
+    if (t0 === t1) {
+      t0.onStateSync = (msg) => { this.checkpointLog(msg, 0); this.onStateSync?.(msg); };
+    } else {
+      t0.onStateSync = (msg) => { this.checkpointLog(msg, 0); this.onStateSync?.(msg); };
+      t1.onStateSync = (msg) => { this.checkpointLog(msg, 1); this.onStateSync?.(msg); };
+    }
   }
 
   /** γ commit 4 — R1 instrumentation. The PIPELINE category is off by

@@ -60,6 +60,8 @@ interface AnimServiceMock {
 interface WsServiceMock {
   bindSharedProcessor: jasmine.Spy;
   bindTransports: jasmine.Spy;
+  /** c6a — A21 pair flip from `SoloDuelOrchestratorService.init()`. */
+  setSoloMode: jasmine.Spy;
   pendingPrompt: () => unknown;
 }
 
@@ -88,6 +90,7 @@ function setupHarness(opts: {
   const wsService: WsServiceMock = {
     bindSharedProcessor: jasmine.createSpy('bindSharedProcessor'),
     bindTransports: jasmine.createSpy('bindTransports'),
+    setSoloMode: jasmine.createSpy('setSoloMode'),
     pendingPrompt: () => pendingPromptSignal(),
   };
 
@@ -109,12 +112,12 @@ function setupHarness(opts: {
 
   const service = TestBed.inject(SoloDuelOrchestratorService);
   const duelCtx = TestBed.inject(DuelContext);
-  // Seat fake connections so switchPerspective() passes its guards. The two
-  // stubs are intentionally minimal — switch logic touches `setBoardActive`
-  // on the incoming connection only.
-  (service as unknown as { _connections: { set: (v: unknown) => void } })._connections.set([
-    makeStubConnection(), makeStubConnection(),
-  ]);
+  // c6a — SOLO multiplex mono-connection. The orchestrator now holds a
+  // single `_transport_connection`. The stub is minimal — switch logic
+  // no longer touches `setBoardActive` on the incoming connection
+  // (A14 removed it ; see solo-duel-orchestrator.service.ts).
+  (service as unknown as { _transport_connection: { set: (v: unknown) => void } })
+    ._transport_connection.set(makeStubConnection());
 
   return {
     service,

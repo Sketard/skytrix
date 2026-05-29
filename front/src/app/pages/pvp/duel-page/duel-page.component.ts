@@ -247,10 +247,13 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       if (ownIdx === null) return this.timerState();
       return this.wsService.timerStatePerPlayer()[ownIdx] ?? this.timerState();
     }
-    const conns = this.orchestrator.connections();
-    if (!conns) return this.timerState();
+    // c6a — SOLO mono-connection. Le pool timer per-player est broadcast
+    // omniscient sur la connection unique ; la perspective sélectionne
+    // quel pool surface à l'UI.
+    const conn = this.orchestrator.connection();
+    if (!conn) return this.timerState();
     const activeIdx = this.orchestrator.perspectiveIndex();
-    return conns[activeIdx].timerStatePerPlayer()[activeIdx] ?? this.timerState();
+    return conn.timerStatePerPlayer()[activeIdx] ?? this.timerState();
   });
 
   readonly playerHand = computed(() => this.getHandCards(0));
@@ -594,13 +597,17 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       this.isSoloMode.set(true);
       this.forkReplayId = this.route.snapshot.queryParamMap.get('replayId');
       this.forkSeekTo = parseInt(this.route.snapshot.queryParamMap.get('seekTo') ?? '0', 10);
+      // c6a — fork garde son flux 2-tokens côté serveur (fork-handlers.ts
+      // pas SOLO-reachable, cf. PR1 c3 checklist). On ne consomme que
+      // wsToken1 côté orchestrator multiplex ; wsToken2 reste validé en
+      // gate pour signaler une session forkée incomplète.
       const wsToken1 = history.state?.wsToken1 as string | undefined;
       const wsToken2 = history.state?.wsToken2 as string | undefined;
       if (!wsToken1 || !wsToken2) {
         this.notify.error('error.SOLO_SESSION_EXPIRED');
         this.router.navigate(['/pvp']);
       } else {
-        this.orchestrator.init(wsToken1, wsToken2);
+        this.orchestrator.init(wsToken1);
         this.roomService.forceState('connecting');
         this.soloEffects.initFork();
       }
@@ -609,22 +616,24 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       const soloTokensKey = `solo-duel-tokens-${code}`;
       const stored = (() => { try { return JSON.parse(sessionStorage.getItem(soloTokensKey) ?? 'null'); } catch { return null; } })();
       const wsToken1 = (history.state?.wsToken1 as string | undefined) ?? stored?.wsToken1;
-      const wsToken2 = (history.state?.wsToken2 as string | undefined) ?? stored?.wsToken2;
 
-      if (!wsToken1 || !wsToken2) {
+      // c6a — SOLO QuickDuel debloquée : la garde ne checke plus wsToken2
+      // (POST quick-duel server-side passe à 1 token, PR1 A6). Le
+      // wsToken2 historique n'est plus persisté en sessionStorage.
+      if (!wsToken1) {
         this.notify.error('error.SOLO_SESSION_EXPIRED');
         this.router.navigate(['/pvp']);
       } else {
         const restoredPlayer = (stored?.activePlayer as 0 | 1 | undefined) ?? 0;
         const decklistId = (history.state?.decklistId as number | undefined) ?? (stored?.decklistId as number | undefined) ?? null;
         this.roomService.decklistId = decklistId;
-        try { sessionStorage.setItem(soloTokensKey, JSON.stringify({ wsToken1, wsToken2, activePlayer: restoredPlayer, decklistId })); } catch {}
+        try { sessionStorage.setItem(soloTokensKey, JSON.stringify({ wsToken1, activePlayer: restoredPlayer, decklistId })); } catch {}
         this.tabGuard.init(code);
         this.tabGuard.broadcast();
-        this.orchestrator.init(wsToken1, wsToken2);
+        this.orchestrator.init(wsToken1);
         if (restoredPlayer === 1) this.orchestrator.switchPerspective();
         this.roomService.forceState('connecting');
-        this.soloEffects.initSolo({ soloTokensKey, wsToken1, wsToken2, roomService: this.roomService, thumbnailsReady: this.thumbnailsReady });
+        this.soloEffects.initSolo({ soloTokensKey, wsToken1, roomService: this.roomService, thumbnailsReady: this.thumbnailsReady });
       }
     } else if (code) {
       this.roomService.deckName.set(history.state?.deckName ?? '');

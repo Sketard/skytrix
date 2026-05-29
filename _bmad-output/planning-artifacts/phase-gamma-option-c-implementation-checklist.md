@@ -634,12 +634,47 @@ Banner UX cross-slot. i18n.
 
 **Fichiers touchés** :
 
-#### 6a — `init()` refondu mono-connection
-- [ ] `solo-duel-orchestrator.service.ts:104-150` :
-  - [ ] 1 seul `new DuelConnection(...)`, plus de `sharedProcessor` arg.
-  - [ ] **A21** — `this.wsService.soloMode = true` flag.
-  - [ ] **A5** — `restorePerspectiveFromStorage()` appelé après le connect.
-  - [ ] `setupRematchEffect()` (singular).
+#### 6a — `init()` refondu mono-connection ✅ LIVRÉ 2026-05-29
+- [x] `solo-duel-orchestrator.service.ts:99-142` :
+  - [x] 1 seul `new DuelConnection(...)`, plus de `sharedProcessor` arg
+        (la conn instancie son processor localement, path PvP-normal).
+  - [x] **A21** — pair flip avant `connect()` : `conn.soloMode = true` +
+        `wsService.setSoloMode(true)` (signal réactif c5b BH-2). Ordre
+        load-bearing documenté dans la doc de classe.
+  - [x] **A5 + setupRematchEffect singular** — **DÉFERRÉ** à c6b/c6c
+        (purement périmètre c6a = structure init, pas la localStorage
+        ni la garde A27).
+- [x] **`duel-page.component.ts`** — 2 call sites `orchestrator.init(t1, t2)` →
+      `init(t1)` ; SOLO branch garde `if (!wsToken1)` au lieu de
+      `!wsToken1 || !wsToken2` (débloque SOLO QuickDuel cassé depuis PR1 c2).
+- [x] **`solo-mode-effects.service.ts`** — sessionStorage SOLO drop `wsToken2`.
+- [x] **`displayedTimerState`** (duel-page) — adapté `connection()` singular.
+- [x] **3 specs migrés** : `solo-duel-orchestrator.service.spec.ts`,
+      `duel-page.component.spec.ts`, `phase-gamma-victory.spec.ts`.
+- [x] **wsService bindTransports(conn, conn) + bindSharedProcessor(conn.processor)** —
+      transitionnel jusqu'au c8 cleanup (le `_defaultConnection` orphan
+      reste, juste plus consommé en SOLO). Patch instrumentation R1
+      `if (t0 === t1)` pour éviter de tagger STATE_SYNC `via transport 1`
+      à tort en mono-conn.
+- [x] **`cleanup()`** reset `_transport_connection.set(null)` + `enabled = false`.
+
+**Specs verts** : 1596 front (+1 test order assertion A21) / 1603 duel-server (inchangé).
+
+**Patches post-review (BMad code review 2026-05-29, 3 layers)** :
+- **P1 BlindHunter** — test order assertion via `spyOn(DuelConnection.prototype, 'connect')`
+  + `toHaveBeenCalledBefore` + capture `conn.soloMode` à connect-time. Le pair-flip
+  AVANT connect() est désormais verrouillé par test, pas seulement par code review.
+- **P2 BlindHunter** — instrumentation R1 dans `bindTransports(conn, conn)` mono-conn.
+- **P2 BlindHunter** — `cleanup()` reset signal + flag (évite zombie state).
+- **Auditor REQUEST_CHANGES** — A14 (drop `setBoardActive`) restaurée → reportée c6c.
+  La collapse `if (s0 && s1)` → `if (conn.rematchStarting())` reste en c6a parce
+  qu'elle est forcée par le shift structurel `_connections` paire → singular ; la
+  garde A27 reste en c6b.
+
+**Defers** :
+- **P2 BlindHunter fork gate 2-tokens** — by design (`fork-handlers.ts` serveur
+  émet toujours 2 tokens, on garde la cohérence ; le 2e token est dead-data
+  côté front mais signale "session fork OK"). Pas de patch.
 
 #### 6b — `setupRematchEffect` 1-signal (A4 + A27)
 - [ ] `solo-duel-orchestrator.service.ts:218-247` :
@@ -866,7 +901,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A18** — PR1 c3 — `ws.on('close')` SOLO sans grace. ✅ 2026-05-28
 - [x] **A19** — PR1 c2c — WAITING_RESPONSE émission SOLO. ✅ 2026-05-28
 - [x] **A20** — PR1 c2c — DUEL_STARTING reconnect SOLO. ✅ 2026-05-28
-- [x] **A21** — PR2 c5b (soloModeSource + slotIndex ✅ 2026-05-29) + c5c (sendForPlayer + 7 sendXxx tagging ✅ 2026-05-29) — `sendXxx` garde SOLO-only.
+- [x] **A21** — PR2 c5b (soloModeSource + slotIndex ✅ 2026-05-29) + c5c (sendForPlayer + 7 sendXxx tagging ✅ 2026-05-29) + c6a (pair flip in init() : conn.soloMode + wsService.setSoloMode AVANT connect() ✅ 2026-05-29).
 - [x] **A22** — PR2 c4.3 (sendResponse slot-clear ✅ 2026-05-28) — `sendResponse` clear slot.
 - [x] **A23** — PR2 c4.4 (REMATCH_STARTING _boardActive=false ✅ 2026-05-28) — REMATCH_STARTING `_boardActive=false`.
 - [ ] **A24** — PR2 c6f — Banner button disabled.
