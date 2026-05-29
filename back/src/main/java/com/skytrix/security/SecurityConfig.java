@@ -83,6 +83,8 @@ public class SecurityConfig {
 				// metrics on that internal port; the perf-audit chantier
 				// (Phase 0a) reads http.server.requests / hibernate.* from it.
 				new AntPathRequestMatcher("/actuator/**"),
+				// Lightweight liveness probe on the public port — see HealthController.
+				new AntPathRequestMatcher("/health", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/replays", HttpMethod.POST.name()),
 				new AntPathRequestMatcher("/internal/replays/**")
 		);
