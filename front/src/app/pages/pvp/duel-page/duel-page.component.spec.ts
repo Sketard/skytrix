@@ -121,6 +121,13 @@ class StubWsService {
   readonly rematchStarting = signal(false);
   readonly inactivityWarning = signal<unknown>(null);
   readonly waitingForOpponent = signal(false);
+  // c6f — per-slot waitingForOpponent accessor used by waitingForOpponentOnOtherSlot.
+  // The two slots are mocked as independent signals — tests can drive either.
+  readonly waitingForOpponentBySlot: [ReturnType<typeof signal<boolean>>, ReturnType<typeof signal<boolean>>] = [signal(false), signal(false)];
+  waitingForOpponentForSlot(slot: 0 | 1): ReturnType<typeof signal<boolean>> { return this.waitingForOpponentBySlot[slot]; }
+  // c6g — server ERROR surface read by the toast effect.
+  readonly lastError = signal<{ message: string; player?: 0 | 1 } | null>(null);
+  clearLastError = jasmine.createSpy('clearLastError');
   readonly firstPlayerResult = signal<{ goFirst: boolean } | null>(null);
   readonly firstPlayerResponseSent = signal(false);
   readonly sessionPhase = signal<'PRE_DUEL' | 'DUELING' | 'ENDED' | null>(null);
@@ -414,7 +421,9 @@ function setupTestBed(routeStub: ActivatedRoute = makeRouteStub()): void {
         DuelGameLogService,
         { provide: SoloDuelOrchestratorService, useClass: StubSoloOrchestrator },
         { provide: PhaseAnnouncementService, useClass: StubPhaseAnnouncementService },
-        { provide: DuelToastService, useValue: {} },
+        // c6g — `show` consumed by the toast ERROR effect ; `clear` by
+        // the ngOnDestroy. Spies so c6g tests can observe what fired.
+        { provide: DuelToastService, useValue: { show: jasmine.createSpy('show'), clear: jasmine.createSpy('clear') } },
         { provide: DuelConnectionEffectsService, useClass: NoopEffectsStub },
         { provide: SoloModeEffectsService, useClass: NoopEffectsStub },
         { provide: DuelPromptEffectsService, useClass: NoopEffectsStub },
@@ -589,6 +598,92 @@ describe('DuelPageComponent — displayedTimerState multiplexing (C1.2)', () => 
     solo.connection.set(conn as unknown as ReturnType<typeof solo.connection>);
     solo.perspectiveIndex.set(1);
     expect(component.displayedTimerState()).toBe(t1own);
+  });
+});
+
+// =============================================================================
+// γ Option C PR2 c6fg — waitingForOpponentOnOtherSlot + toast ERROR
+// =============================================================================
+
+describe('DuelPageComponent — c6fg (urgent glow + toast ERROR)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let component: DuelPageComponent;
+  let ws: StubWsService;
+  let solo: StubSoloOrchestrator;
+  let toast: DuelToastService;
+
+  beforeEach(() => {
+    setupTestBed();
+    fixture = TestBed.createComponent(DuelPageComponent);
+    component = fixture.componentInstance;
+    ws = wsOf(fixture);
+    solo = fixture.componentRef.injector.get(SoloDuelOrchestratorService) as unknown as StubSoloOrchestrator;
+    toast = fixture.componentRef.injector.get(DuelToastService);
+  });
+
+  describe('waitingForOpponentOnOtherSlot (c6f)', () => {
+    it('returns false outside SOLO mode', () => {
+      (component.isSoloMode as WritableSignal<boolean>).set(false);
+      ws.waitingForOpponentBySlot[0].set(true);
+      ws.waitingForOpponentBySlot[1].set(true);
+      expect(component.waitingForOpponentOnOtherSlot()).toBe(false);
+    });
+
+    it('SOLO + perspective=0 reads slot 1', () => {
+      (component.isSoloMode as WritableSignal<boolean>).set(true);
+      solo.perspectiveIndex.set(0);
+      ws.waitingForOpponentBySlot[0].set(false);
+      ws.waitingForOpponentBySlot[1].set(true);
+      expect(component.waitingForOpponentOnOtherSlot()).toBe(true);
+    });
+
+    it('SOLO + perspective=1 reads slot 0', () => {
+      (component.isSoloMode as WritableSignal<boolean>).set(true);
+      solo.perspectiveIndex.set(1);
+      ws.waitingForOpponentBySlot[0].set(true);
+      ws.waitingForOpponentBySlot[1].set(false);
+      expect(component.waitingForOpponentOnOtherSlot()).toBe(true);
+    });
+
+    it('SOLO + the CURRENT slot has the prompt → false (the glow is for the OTHER slot)', () => {
+      (component.isSoloMode as WritableSignal<boolean>).set(true);
+      solo.perspectiveIndex.set(0);
+      ws.waitingForOpponentBySlot[0].set(true); // current slot
+      ws.waitingForOpponentBySlot[1].set(false); // other slot
+      expect(component.waitingForOpponentOnOtherSlot()).toBe(false);
+    });
+  });
+
+  describe('toast ERROR effect (c6g)', () => {
+    it('shows a toast with the server message when lastError flips non-null', () => {
+      // `toast.show` is already a jasmine.Spy (TestBed mock at line ~426).
+      // Cast it through `unknown` to silence the structural typing.
+      const showSpy = toast.show as unknown as jasmine.Spy;
+      const clearSpy = toast.clear as unknown as jasmine.Spy;
+      showSpy.calls.reset();
+      clearSpy.calls.reset();
+      (ws.clearLastError as jasmine.Spy).calls.reset();
+
+      fixture.detectChanges();
+      ws.lastError.set({ message: 'Expected prompt type SELECT_CARD, got ANNOUNCE_CARD' });
+      TestBed.tick();
+
+      expect(showSpy).toHaveBeenCalledOnceWith(
+        { icon: 'error', lines: ['Expected prompt type SELECT_CARD, got ANNOUNCE_CARD'] },
+        4000,
+      );
+      expect(ws.clearLastError).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT show a toast while lastError stays null', () => {
+      const showSpy = toast.show as unknown as jasmine.Spy;
+      showSpy.calls.reset();
+
+      fixture.detectChanges();
+      TestBed.tick();
+
+      expect(showSpy).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -176,6 +176,22 @@ app-pvp-board-container {
     color: rgba(255, 255, 255, 0.7);
     line-height: 1;
   }
+
+  // γ Option C PR2 c6f — Urgent glow on the SOLO switch-player button
+  // when the OTHER perspective slot has a pending prompt. Gold pulse
+  // 1.6s = "action utile dispo, clique pour basculer". Distinct du
+  // glow rouge opponent-thinking (rythme 3s, attention passive subie)
+  // — la désynchronisation gold/rouge accentue la sémantique active/
+  // passive.
+  &__item--urgent {
+    animation: mini-toolbar-urgent-pulse 1.6s var(--ease-out) infinite;
+  }
+}
+
+@keyframes mini-toolbar-urgent-pulse {
+  0% { box-shadow: 0 0 0 0 var(--pvp-switch-urgent-glow); }
+  40% { box-shadow: 0 0 12px 4px var(--pvp-switch-urgent-glow); }
+  100% { box-shadow: 0 0 0 0 var(--pvp-switch-urgent-glow); }
 }
 
 // Mobile landscape (small viewport height): toolbar vertical alongside pile
@@ -219,5 +235,12 @@ app-pvp-board-container {
 
   .mini-toolbar {
     transition: none;
+
+    // c6f fallback — static gold glow without animation so the urgent
+    // signal stays visible for users with reduced-motion preference.
+    &__item--urgent {
+      animation: none;
+      box-shadow: 0 0 8px 2px var(--pvp-switch-urgent-glow);
+    }
   }
 }

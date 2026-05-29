@@ -361,6 +361,18 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   // Server-driven: true when opponent has a pending prompt
   readonly waitingForOpponent = this.wsService.waitingForOpponent;
 
+  /** γ Option C PR2 c6f — drives the switch-player button urgent glow.
+   *  True when SOLO multiplex AND the OTHER perspective slot (not the
+   *  one the viewer currently looks at) has a pending prompt the user
+   *  can't see. PvP normal / replay never enter this branch — the glow
+   *  stays off because there's no "other slot" to surface. */
+  readonly waitingForOpponentOnOtherSlot = computed(() => {
+    if (!this.isSoloMode()) return false;
+    const cur = this.orchestrator.perspectiveIndex();
+    const other: 0 | 1 = cur === 0 ? 1 : 0;
+    return this.wsService.waitingForOpponentForSlot(other)();
+  });
+
   // Story 3.1 — Own player index (0 = player1, 1 = player2)
   // In solo mode, tracks the active connection's player index so the board and badges
   // render from the correct perspective after switching players.
@@ -710,6 +722,23 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       if (this.wsService.rematchStarting() && !this.isSoloMode()) {
         untracked(() => this.roomService.forceState('connecting'));
       }
+    });
+
+    // γ Option C PR2 c6g (A32 front) — surface server ERROR payloads as
+    // a transient toast. The case 'ERROR' branch in DuelConnection (c4.4)
+    // sets `wsService.lastError()` to the message ; this effect renders
+    // it via the existing DuelToastService, then clears the signal so
+    // the same error never re-fires on subsequent computed re-evals.
+    // Only known source today is the prompt-type mismatch from
+    // `client-message-router.ts:96` (M28 anti-out-of-sequence gate),
+    // but the channel is extensible.
+    effect(() => {
+      const err = this.wsService.lastError();
+      if (err === null) return;
+      untracked(() => {
+        this.toastService.show({ icon: 'error', lines: [err.message] }, 4000);
+        this.wsService.clearLastError();
+      });
     });
 
   }

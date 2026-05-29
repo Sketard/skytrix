@@ -691,6 +691,7 @@
     "cardActions": "Card actions",
     "toggleDevHub": "Toggle dev hub",
     "switchPlayer": "Switch to {{player}}",
+    "switchPlayerUrgent": "Switch to {{player}} — action pending",
     "loadingReplay": "Loading replay",
     "mainNavigation": "Main navigation",
     "appHeader": "Application header",

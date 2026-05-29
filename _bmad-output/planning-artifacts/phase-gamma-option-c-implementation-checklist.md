@@ -736,19 +736,49 @@ strictement sur `solo-duel-orchestrator.service.ts` + son spec.
       + SOLO toujours rejeté quand `endedAt === null`).
 - [x] `scripts/check-ws-protocol-sync.mjs` passe (aucun fichier protocole touché).
 
-#### 6f — Banner UX cross-slot (A13 + A24 + A35)
-- [ ] `duel-page.component.html` : ajouter `@if (pendingPromptForOtherSlot())`
-      banner avec `<app-banner>` + `<app-button>`.
-- [ ] `duel-page.component.ts` : computeds `pendingPromptForOtherSlot()`,
-      `otherSlot()`, `switchToOtherSlot()`.
-- [ ] **A24** — `[disabled]="orchestrator.switching()"` sur le bouton.
-- [ ] **A35** — i18n keys :
-  - [ ] `front/src/assets/i18n/fr.json` : `pvp.solo.actionRequiredP1 = "Action requise de P1"`, `actionRequiredP2`, `switchPerspective = "Basculer"`.
-  - [ ] `front/src/assets/i18n/en.json` : `"Action required from P1"`, `"Action required from P2"`, `"Switch"`.
+#### 6f — Glow gold sur bouton switch (A13/A24/A35 redéfinis) ✅ LIVRÉ 2026-05-29
 
-#### 6g — Toast UX ERROR (A32 front)
-- [ ] `duel-page.component.html` (ou service toast existant) : afficher
-      le `ErrorMsg.message` reçu via `wsService` (perspective-agnostique).
+**Décision UX réorientée 2026-05-29** : le plan initial "banner cross-slot
+avec `<app-banner>`" est dropé. Trois raisons : (1) le composant
+`<app-banner>` n'existe pas dans le DS actuel ; (2) le mécanisme
+`opponent-thinking-glow` existant signale déjà "action requise de l'autre
+côté" via le signal `waitingForOpponent` per-perspective câblé en c5b ;
+(3) l'affordance "comment basculer" manque — c'est ça que c6f résout, en
+pulse-glowant le bouton SWITCH PLAYER existant de la mini-toolbar.
+Sémantique gold = "action utile dispo" (inverse du rouge passif).
+
+- [x] **Token** `--pvp-switch-urgent-glow: var(--pvp-activate-highlight)` dans
+      `_tokens.scss`. Option B aliased (réutilise gold soft 80% existant) ;
+      token dédié pour ouvrir la porte à une différenciation future zéro coût.
+- [x] **`waitingForOpponentForSlot(slot: 0|1)`** méthode publique sur
+      `DuelWebSocketService` (read OTHER slot's `waitingForOpponent` signal).
+- [x] **`waitingForOpponentOnOtherSlot()`** computed sur `duel-page.component.ts` :
+      false hors SOLO ; true quand SOLO + l'AUTRE slot que la perspective
+      courante a un prompt en attente.
+- [x] **`.mini-toolbar__item--urgent`** modifier + animation
+      `mini-toolbar-urgent-pulse 1.6s var(--ease-out) infinite` (réplique du
+      pattern `pvp-activate-flash` du board container, redéclaré localement
+      car ViewEncapsulation isole les keyframes). Override
+      `prefers-reduced-motion` → glow statique 8px 2px sans animation.
+- [x] **Template** `[class.mini-toolbar__item--urgent]="waitingForOpponentOnOtherSlot()"`
+      + aria-label conditionnelle `a11y.switchPlayerUrgent` vs `a11y.switchPlayer`.
+- [x] **A35 i18n** — 1 clé nouvelle FR + EN (`switchPlayerUrgent` sœur de
+      `switchPlayer`, pas nested car ngx-translate split sur `.`) :
+      `"Passer à {{player}} — action en attente"` / `"Switch to {{player}} — action pending"`.
+
+#### 6g — Toast UX ERROR (A32 front) ✅ LIVRÉ 2026-05-29
+- [x] `DuelWebSocketService.lastError` computed + `clearLastError()` méthode
+      (route vers la `active()` connection). Le case 'ERROR' DuelConnection
+      a déjà été câblé en c4.4 ; c6g ajoute le surface wsService consommable.
+- [x] `duel-page.component.ts` constructor — nouvel `effect()` qui observe
+      `wsService.lastError()` ; quand non-null → `toastService.show({ icon:
+      'error', lines: [err.message] }, 4000)` + `wsService.clearLastError()`.
+- [x] **Type d'erreur affichée** : aujourd'hui seul `client-message-router.ts:96`
+      émet ERROR (prompt-type mismatch M28 — anti-out-of-sequence /
+      anti-cheat). Le canal reste extensible.
+
+**Specs verts c6fg** : 1609 front (+6 nouveaux : 4 glow + 2 toast ERROR) /
+1605 duel-server (inchangé). `check-ws-protocol-sync.mjs` passe.
 
 **Specs verts** :
 - [ ] `T-F5` — single connection in SOLO.
@@ -927,7 +957,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A10** — PR1 c2a — Doctrine omniscient SOLO commentée. ✅ 2026-05-28
 - [x] **A11** — PR1 c2a — DICE_RESULT skip SOLO clarifié. ✅ 2026-05-28
 - [ ] **A12** — Méta (PR2 atomique) — acté.
-- [ ] **A13** — PR2 c6f — Banner cross-slot.
+- [x] **A13** — PR2 c6f (redéfini en glow gold sur bouton switch ✅ 2026-05-29). Banner cross-slot dropé : `<app-banner>` n'existe pas, opponent-thinking-glow couvre déjà l'info, c6f apporte l'affordance via `waitingForOpponentOnOtherSlot` + `.mini-toolbar__item--urgent`.
 - [x] **A14** — PR2 c6c (switchPerspective drop `conn.setBoardActive(true)` ✅ 2026-05-29).
 - [ ] **A15** — PR2 c7a — `WebSocketFactoryService`.
 - [ ] **A16** — Méta (estimate) — n/a code.
@@ -941,7 +971,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A21** — PR2 c5b (soloModeSource + slotIndex ✅ 2026-05-29) + c5c (sendForPlayer + 7 sendXxx tagging ✅ 2026-05-29) + c6a (pair flip in init() : conn.soloMode + wsService.setSoloMode AVANT connect() ✅ 2026-05-29).
 - [x] **A22** — PR2 c4.3 (sendResponse slot-clear ✅ 2026-05-28) — `sendResponse` clear slot.
 - [x] **A23** — PR2 c4.4 (REMATCH_STARTING _boardActive=false ✅ 2026-05-28) — REMATCH_STARTING `_boardActive=false`.
-- [ ] **A24** — PR2 c6f — Banner button disabled.
+- [x] **A24** — PR2 c6f (N/A — banner dropé, voir A13 ; le bouton switch existant a déjà sa propre garde via `_switching` debounce 300ms ✅ 2026-05-29).
 - [ ] **A25** — PR2 c7b — WebSocketFactory sites inventaire.
 - [ ] **A26** — Méta (estimate) — n/a code.
 
@@ -952,10 +982,10 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [ ] **A29** — PR2 c6bis — resendPendingPrompt × 2.
 - [ ] **A30** — PR2 c6bis — WORKER_CANCEL_DONE routing.
 - [x] **A31** — PR1 c3 — Post-duel grace cleanup SOLO (via `rematchTimeout` armé en SOLO). ✅ 2026-05-28
-- [ ] **A32** — PR1 c1b (ErrorMsg type ✅ 2026-05-28) + PR2 c4g (toast) + PR2 c6e (sendToPlayer).
+- [x] **A32** — PR1 c1b (ErrorMsg type ✅ 2026-05-28) + PR2 c4.4 (case 'ERROR' DuelConnection ✅ 2026-05-28) + PR2 c6g (wsService surface + toast effect ✅ 2026-05-29).
 - [ ] **A33** — PR2 c4a — `_lastDrawAnnouncedHash` reste GLOBAL.
 - [ ] **A34** — PR2 c4b — MSG_HINT inheritance intra-slot.
-- [ ] **A35** — PR2 c6f — i18n keys banner.
+- [x] **A35** — PR2 c6f (i18n `switchPlayerUrgent` FR + EN ✅ 2026-05-29). 1 clé au lieu des 3 prévues pour le banner dropé.
 - [x] **A36** — PR1 c2a — `throw` (pas de `duelAssert` côté serveur) first-player-coordinator. ✅ 2026-05-28
 - [x] **A37** — PR1 c1b (proto ✅ 2026-05-28) + PR2 c5a (server populate ✅ 2026-05-29) + PR2 c5c (fallback front 3-niveaux ✅ 2026-05-29).
 - [ ] **A38** — Méta (estimate ~18.75j) — n/a code.

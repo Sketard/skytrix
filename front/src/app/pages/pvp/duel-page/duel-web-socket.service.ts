@@ -279,6 +279,16 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   readonly inactivityWarning = computed(() => this.active().getInactivityWarningFor(this.slotIndex())());
   readonly waitingForOpponent = computed(() => this.active().getWaitingForOpponentFor(this.slotIndex())());
 
+  /** γ Option C PR2 c6f — explicit per-slot accessor for the switch-player
+   *  glow gating. The default `waitingForOpponent` reads the slot of the
+   *  current viewer ; this variant lets a SOLO consumer read the OTHER
+   *  slot (the one the viewer is NOT looking at) so a banner / glow can
+   *  surface "action pending on the slot you can't see, click to switch".
+   *  Returns a `Signal<boolean>` — consumer wraps in a computed. */
+  waitingForOpponentForSlot(slot: 0 | 1): import('@angular/core').Signal<boolean> {
+    return this.active().getWaitingForOpponentFor(slot);
+  }
+
   // --- Transport-local — global (single source per DuelConnection) ---
   // Not per-slot per A8 inventory (spec §4.3). `firstPlayerResult` +
   // `firstPlayerResponseSent` are dead in SOLO (no dice/RPS phase) — kept
@@ -302,6 +312,15 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
 
   readonly canRetry = computed(() => this.active().canRetry());
   readonly totalAutoRetries = computed(() => this.active().totalAutoRetries());
+
+  /** γ Option C PR2 c6g (A32 front) — perspective-agnostic server ERROR
+   *  surface. Read by the duel-page toast effect. The ERROR payload is
+   *  set by `DuelConnection` case 'ERROR' (c4.4) ; the consumer calls
+   *  `clearLastError()` after rendering. Single-user / single-slot in
+   *  PvP normal, single-user across the 2 slots in SOLO multiplex
+   *  (the message describes WHICH player when relevant via `player`). */
+  readonly lastError = computed(() => this.active().lastError());
+  clearLastError(): void { this.active().clearLastError(); }
   readonly justReconnected = computed(() => this.active().justReconnected());
 
   // ───────────────────────────────────────────────

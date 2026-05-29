@@ -519,6 +519,15 @@
   // --- Game Event Animations (Story 4.2) ---
   --pvp-activate-highlight: var(--gold-soft-80);
 
+  // --- SOLO Switch Player Urgent Glow (γ Option C c6f, 2026-05-29) ---
+  // Pulses on the switch-player mini-toolbar button when the OTHER
+  // perspective slot has a pending prompt waiting for action. Sémantique
+  // gold = "action utile dispo, clique pour basculer" (inverse du rouge
+  // opponent-thinking qui signale une attention passive subie).
+  // Initially aliased to --pvp-activate-highlight (DS doctrine reuse) ;
+  // dedicated token to leave room for future differentiation.
+  --pvp-switch-urgent-glow: var(--pvp-activate-highlight);
+
   // --- Alteration Indicators (Story 8.2 — refresh DS 2026-05-17) ---
   // Sémantique : `gain` (cyan DS) = ATK boost, level +N, attribut/race
   //              `loss` (rouge DS doux) = ATK reduce, level -N

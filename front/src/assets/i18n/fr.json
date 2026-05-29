@@ -691,6 +691,7 @@
     "cardActions": "Actions de carte",
     "toggleDevHub": "Afficher/masquer le dev hub",
     "switchPlayer": "Passer à {{player}}",
+    "switchPlayerUrgent": "Passer à {{player}} — action en attente",
     "loadingReplay": "Chargement du replay",
     "mainNavigation": "Navigation principale",
     "appHeader": "En-tête de l'application",
