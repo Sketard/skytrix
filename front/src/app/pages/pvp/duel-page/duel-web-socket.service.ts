@@ -306,12 +306,26 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // mutations (dequeueAnimation, prependToQueue, …) likewise reach the same
   // shared queue in SOLO.
 
+  /** γ c5c A21 — sendside `forPlayer` tag. Distinct from `slotIndex` (read-side)
+   *  because the semantics differ : sendside tags a payload for the SERVER
+   *  (A2 strict validation rejects `forPlayer` from PvP normal), readside
+   *  indexes a slot for the UI.
+   *  - **PvP normal / replay** : `undefined` — the server's A2 validation
+   *    rejects any `forPlayer` present in non-SOLO mode.
+   *  - **SOLO multiplex** : `perspective()()` — the visual slot the user
+   *    currently sees. The 2 server identities are both projected onto one
+   *    connection ; the tag tells the server which identity the response /
+   *    surrender / rematch / etc. applies to. */
+  private sendForPlayer(): 0 | 1 | undefined {
+    return this.soloModeSource() ? this.duelCtx.perspective()() : undefined;
+  }
+
   connect(wsToken: string): void {
     this.active().connect(wsToken);
   }
 
   sendResponse(promptType: string, data: ResponseData): void {
-    this.active().sendResponse(promptType, data);
+    this.active().sendResponse(promptType, data, this.sendForPlayer());
   }
 
   // γ c5b A8 + A39 — per-slot (PerspectiveSlot c4.1). PvP normal reads
@@ -335,27 +349,52 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   }
 
   sendSurrender(): void {
-    this.active().sendSurrender();
+    this.active().sendSurrender(this.sendForPlayer());
   }
 
   sendCancelPromptSequence(): void {
-    this.active().sendCancelPromptSequence();
+    this.active().sendCancelPromptSequence(this.sendForPlayer());
   }
 
   sendRequestStateSync(): void {
-    this.active().sendRequestStateSync();
+    this.active().sendRequestStateSync(this.sendForPlayer());
   }
 
   sendRematchRequest(): void {
-    this.active().sendRematchRequest();
+    this.active().sendRematchRequest(this.sendForPlayer());
   }
 
   sendActivityPing(): void {
-    this.active().sendActivityPing();
+    this.active().sendActivityPing(this.sendForPlayer());
   }
 
+  /** γ c5c A37 — ANIMATIONS_DONE fallback. The server's animations-done
+   *  gate (`ctx.pendingPlayer === playerIndex`) needs to know WHICH SOLO
+   *  identity finished its animations, but the user has no "current prompt"
+   *  context when this fires (it's emitted after the queue drains, not in
+   *  response to a SELECT_*). Three-level fallback in SOLO :
+   *
+   *  1. `_lastSentForPlayer` (A9 memoize) — set by the last `_tagForPlayer`
+   *     call on the DuelConnection. Cheapest + most accurate when a recent
+   *     PLAYER_RESPONSE / surrender / rematch tagged a slot.
+   *  2. `timerState().pendingPlayer` (A37 server populate, c5a) — set by
+   *     `scheduleTimerStart` server-side ; the server knows which identity
+   *     it's waiting on even if no client send happened recently.
+   *  3. `perspective()()` last-resort — covers bootstrap (first turn before
+   *     any send) + early switch race. Not as authoritative but never wrong
+   *     for a duel that just started.
+   *
+   *  PvP normal sends `undefined` — A2 strict validation rejects forPlayer
+   *  presence in PvP. */
   sendAnimationsDone(): void {
-    this.active().sendAnimationsDone();
+    if (!this.soloModeSource()) {
+      this.active().sendAnimationsDone(undefined);
+      return;
+    }
+    const forPlayer = this.active().lastSentForPlayer
+      ?? this.active().timerState()?.pendingPlayer
+      ?? this.duelCtx.perspective()();
+    this.active().sendAnimationsDone(forPlayer);
   }
 
   dequeueAnimation(): QueueEntry | null {
