@@ -45,6 +45,13 @@ export class SoloDuelOrchestratorService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
 
+  /** γ Option C PR2 c6c (A5) — clé localStorage qui mémorise la
+   *  perspective courante SOLO. Survit à un F5 pendant un duel SOLO,
+   *  permet de restaurer le bon côté du board sans réinitialiser à P0.
+   *  Cleared par l'effect DUEL_END en c6d (la perspective d'un duel
+   *  terminé n'a plus de sens et un nouveau duel doit repartir à P0). */
+  private readonly SOLO_PERSPECTIVE_KEY = 'solo-duel-perspective';
+
   enabled = false;
 
   // ───────────────────────────────────────────────
@@ -138,7 +145,44 @@ export class SoloDuelOrchestratorService {
 
     conn.connect(token1);
 
+    // c6c A5 — restore perspective depuis localStorage. À noter : si la
+    // restauration ramène 1, on flippe immédiatement la signal avec
+    // `duelCtx.setPerspective(1)` (sans passer par `switchPerspective`
+    // qui re-persisterait + déclencherait `notifyPerspectiveSwitch` —
+    // ici on est en bootstrap, pas en switch utilisateur). La conséquence
+    // observable côté UI est identique : les computeds per-perspective
+    // re-évaluent dès le prochain BOARD_STATE.
+    this.restorePerspectiveFromStorage();
+
     this.setupRematchEffect();
+    this.setupDuelEndClearEffect();
+  }
+
+  /** c6c A5 — restore la perspective SOLO depuis localStorage (F5 survival).
+   *  Appelée une fois en init() après connect(). En cas de clé absente,
+   *  parse error ou valeur hors {0,1}, no-op (perspective reste à 0). */
+  private restorePerspectiveFromStorage(): void {
+    try {
+      const stored = Number(localStorage.getItem(this.SOLO_PERSPECTIVE_KEY));
+      if (stored === 0 || stored === 1) this.duelCtx.setPerspective(stored);
+    } catch { /* privacy mode / quota */ }
+  }
+
+  /** c6d A5 — clear le localStorage `SOLO_PERSPECTIVE_KEY` au DUEL_END.
+   *  La perspective d'un duel terminé n'a plus de sens et un nouveau
+   *  duel (rematch ou nouveau lobby) doit repartir à P0 par convention.
+   *  Sans ce clear, un user qui finit en perspective=1 et navigue vers
+   *  un nouveau lobby SOLO se retrouverait avec perspective restaurée
+   *  à 1 sans avoir choisi — incohérent. */
+  private setupDuelEndClearEffect(): void {
+    runInInjectionContext(this.injector, () => {
+      effect(() => {
+        const result = this.wsService.duelResult();
+        if (result !== null) {
+          try { localStorage.removeItem(this.SOLO_PERSPECTIVE_KEY); } catch { /* privacy mode */ }
+        }
+      });
+    });
   }
 
   // ───────────────────────────────────────────────
@@ -180,14 +224,26 @@ export class SoloDuelOrchestratorService {
     // by-one très subtil.
     this.duelCtx.setPerspective(to);
 
+    // c6c A5 — persist la perspective en localStorage. Survit à un F5
+    // pendant un duel SOLO ; restauré au prochain `init()` via
+    // `restorePerspectiveFromStorage`. Cleared par l'effect DUEL_END
+    // (c6d) car la perspective d'un duel terminé est sans objet et un
+    // nouveau duel doit repartir à P0.
+    try { localStorage.setItem(this.SOLO_PERSPECTIVE_KEY, String(to)); } catch { /* quota / privacy mode */ }
+
     // Émission de PerspectiveSwitched sur le flux + dispatch reset
     // PERSPECTIVE_LIFETIME.
     this.animationService.notifyPerspectiveSwitch(from, to);
 
-    // `setBoardActive(true)` reste en c6a (A14 differé à c6c). Avec
-    // 1 connection, l'appel est devenu équivalent à une no-op (la conn
-    // est déjà active) mais on le garde pour ne pas merger c6c en c6a.
-    conn.setBoardActive(true);
+    // c6c A14 — `setBoardActive(true)` SUPPRIMÉ. Avec 1 connection
+    // multiplex il n'y a plus d'asymétrie transport entre perspectives ;
+    // `_boardActive` est un transport-flag global flippé une fois au
+    // bootstrap par `DuelLoadingEffectsService` puis re-flippé à
+    // REMATCH_STARTING par `duel-connection.ts` (A23, c4.4). Le rappeler
+    // au switch serait redondant et brouillerait la sémantique du flag.
+    // `conn` reste consommé par la garde `_transport_connection() !== null`
+    // ci-dessus ; pas d'autre usage ici.
+    void conn;
 
     // Debounce post-transition (durée alignée sur la future
     // transition CSS .board-host transform 250ms + marge).

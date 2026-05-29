@@ -698,17 +698,33 @@ Banner UX cross-slot. i18n.
 **Patches post-review (BMad Auditor 2026-05-29)** :
 - Invariant 6 doc — `duel-context.ts:48` JSDoc obsolète mise à jour.
 
-#### 6c — `switchPerspective` simplifié (A5 + A14)
-- [ ] `solo-duel-orchestrator.service.ts:171-213` :
-  - [ ] **A14** — supprimer `c[to].setBoardActive(true)` (plus d'asymétrie
-        transport sur 1 socket).
-  - [ ] **A5** — `localStorage.setItem(SOLO_PERSPECTIVE_KEY, String(to))`
-        après le `setPerspective(to)`.
-  - [ ] Garde `_switching` (300ms) inchangée.
+#### 6c + 6d — `switchPerspective` + A5 + clear DUEL_END (groupés) ✅ LIVRÉ 2026-05-29
+- [x] `solo-duel-orchestrator.service.ts:switchPerspective()` :
+  - [x] **A14** — `conn.setBoardActive(true)` SUPPRIMÉ. Avec 1 conn multiplex,
+        plus d'asymétrie transport entre perspectives. Le `_boardActive`
+        global est flippé au bootstrap par `DuelLoadingEffectsService` et
+        re-flippé au REMATCH_STARTING par c4.4 — le rappeler au switch
+        serait redondant.
+  - [x] **A5** — `localStorage.setItem(SOLO_PERSPECTIVE_KEY, String(to))`
+        après `setPerspective(to)`, avant `notifyPerspectiveSwitch`.
+        Try/catch sur quota / privacy mode.
+  - [x] Garde `_switching` (300ms) inchangée.
+- [x] **`init()`** appelle `restorePerspectiveFromStorage()` après `connect()`.
+      Si la clé contient `1`, flip direct via `duelCtx.setPerspective(1)`
+      (pas `switchPerspective` qui re-persisterait + notify).
+- [x] **6d** — nouveau `setupDuelEndClearEffect()` posé dans `init()`.
+      `effect()` qui observe `wsService.duelResult()` ; non-null →
+      `localStorage.removeItem(SOLO_PERSPECTIVE_KEY)`. Pas de garde
+      `soloMode` requise car l'orchestrator SOLO est seul à câbler
+      cet effect (`enabled` SOLO-only).
+- [x] **Constante** `SOLO_PERSPECTIVE_KEY = 'solo-duel-perspective'` au
+      head de la classe + JSDoc qui rappelle le lifecycle (persist au
+      switch → restore au init → clear au DUEL_END).
 
-#### 6d — Clear localStorage au DUEL_END
-- [ ] `solo-duel-orchestrator.service.ts` : `effect()` qui écoute
-      `wsService.duelResult()` ; quand non-null + SOLO → `localStorage.removeItem(SOLO_PERSPECTIVE_KEY)`.
+**Specs verts** : 1603 front (+5 nouveaux : persist, restore, restore-ignore-garbage, clear-on-duelResult, no-clear-while-null) / 1605 duel-server (inchangé).
+
+**Pas de scope creep** : Aucun code de c6fg leak. Le sub-commit reste
+strictement sur `solo-duel-orchestrator.service.ts` + son spec.
 
 #### 6e — REMATCH SOLO court-circuit (A27 serveur) ✅ LIVRÉ 2026-05-29
 - [x] `duel-server/src/client-message-router.ts:174-196` (case `REMATCH_REQUEST`) :
@@ -901,7 +917,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A2bis** — PR1 c1 — CANCEL rate-limit lâche SOLO documenté. ✅ 2026-05-28
 - [x] **A3** — PR1 c2e — Lifecycle helpers. ✅ 2026-05-28
 - [x] **A4** — PR2 c6b (setupRematchEffect singulier + 1-signal ✅ 2026-05-29).
-- [ ] **A5** — PR2 c6c, c6d — Perspective localStorage persist + clear.
+- [x] **A5** — PR2 c6c (persist + restore ✅ 2026-05-29) + c6d (clear DUEL_END ✅ 2026-05-29).
 - [x] **A6** — PR1 c2d — Session register 1 token SOLO. ✅ 2026-05-28
 - [ ] **A7** — Méta (découpe 2 PRs) — acté.
 - [ ] **A8** — PR2 c4a — PerspectiveSlot 8 fields (A33 reclasse `_lastDrawAnnouncedHash` global).
@@ -912,7 +928,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 - [x] **A11** — PR1 c2a — DICE_RESULT skip SOLO clarifié. ✅ 2026-05-28
 - [ ] **A12** — Méta (PR2 atomique) — acté.
 - [ ] **A13** — PR2 c6f — Banner cross-slot.
-- [ ] **A14** — PR2 c6c — `setBoardActive` supprimé.
+- [x] **A14** — PR2 c6c (switchPerspective drop `conn.setBoardActive(true)` ✅ 2026-05-29).
 - [ ] **A15** — PR2 c7a — `WebSocketFactoryService`.
 - [ ] **A16** — Méta (estimate) — n/a code.
 - [ ] **A17** — PR2 c4e — BOARD_STATE swap étendu.
