@@ -24,7 +24,12 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   // ══════════════════════════════════════════════════
 
   private readonly logger = inject(DuelLogger);
-  private readonly processor = (() => { const p = new DuelEventProcessor(); p.logger = this.logger; return p; })();
+  /** γ-c cleanup F-1.4 (audit) — `public readonly` for symmetry with
+   *  `DuelConnection.processor`. The processor is the SoT for chain
+   *  state + animation queue ; consumers (game-log builder, T-F6
+   *  parity spec, future projections in replay mode) reach it via
+   *  this field on the adapter, identical pattern to PvP/SOLO. */
+  readonly processor = (() => { const p = new DuelEventProcessor(); p.logger = this.logger; return p; })();
   private readonly rbs = (() => { const s = new RenderedBoardStateService(); s.logger = this.logger; return s; })();
   /** Full RBS — write/control surface used by AnimationDataSource (orchestrator + managers). */
   readonly renderedBoardState = this.rbs;
