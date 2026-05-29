@@ -220,12 +220,24 @@ export class DuelConnection {
   private readonly _slots: [PerspectiveSlot, PerspectiveSlot] = [makeEmptySlot(), makeEmptySlot()];
 
   /**
-   * γ Option C (PR2 c4.1, A21) — flipped by `SoloDuelOrchestratorService.init`
-   * to gate SOLO-only behavior (BOARD_STATE swap A17, `forPlayer` tag on
-   * outbound sendXxx). Default `false` so PvP normal + replay paths are
-   * unaffected by this commit.
+   * γ Option C (PR2 c4.1, A21) — gates SOLO-only behavior (BOARD_STATE
+   * swap A17, `forPlayer` tag on outbound sendXxx). Default `false` so
+   * PvP normal + replay paths are unaffected.
+   *
+   * γ-c cleanup F-2.3 (audit) — turned into a getter derived from
+   * `_soloModeSource` (typically `wsService.soloModeSource`) so the
+   * c8-era "A21 pair flip" pattern (`conn.soloMode = true` +
+   * `wsService.setSoloMode(true)` both required, in lock-step) becomes
+   * **structurally impossible to break** : there is now ONE source of
+   * truth, the signal. Adding a 3rd point of init SOLO (rematch, fork,
+   * demo) now only needs to ensure the SAME signal is passed through.
+   *
+   * Pre-cleanup, this was a public boolean field that the SOLO
+   * orchestrator flipped manually before `conn.connect(token)`.
    */
-  soloMode = false;
+  get soloMode(): boolean {
+    return this._soloModeSource?.() ?? false;
+  }
 
   /**
    * γ Option C (PR2 c4.3, A9) — memoize the `forPlayer` tag of the LAST
@@ -244,6 +256,19 @@ export class DuelConnection {
    * (only `perspective()`) keeps the contract minimal.
    */
   private readonly _duelCtx?: { perspective(): Signal<0 | 1> };
+
+  /**
+   * γ-c cleanup F-2.3 (audit) — optional `soloModeSource` signal that
+   * drives the `soloMode` getter. Typically `wsService.soloModeSource`
+   * — by sharing the SAME signal, the conn and the wsService can no
+   * longer disagree on whether SOLO mode is on.
+   *
+   * Default `undefined` (PvP normal + replay + legacy tests that bypass
+   * the SOLO bootstrap) → `soloMode` returns `false`. The SOLO bootstrap
+   * passes the signal via `options.soloModeSource` and the conn projects
+   * its value through the getter.
+   */
+  private readonly _soloModeSource?: Signal<boolean>;
 
   /**
    * γ Option C (PR2 c7a, A15) — optional `WebSocket` factory indirection
@@ -440,6 +465,10 @@ export class DuelConnection {
       duelCtx?: { perspective(): Signal<0 | 1> };
       /** γ Option C (PR2 c7a, A15) — see `_wsFactory` field doc. */
       wsFactory?: WebSocketFactory;
+      /** γ-c cleanup F-2.3 (audit) — see `_soloModeSource` field doc.
+       *  Typically `wsService.soloModeSource`. Omitted in PvP normal
+       *  and legacy tests that bypass the SOLO bootstrap. */
+      soloModeSource?: Signal<boolean>;
     },
   ) {
     if (wsUrlBase.startsWith('/')) {
@@ -460,6 +489,7 @@ export class DuelConnection {
     this.rbs.logger = logger;
     this._duelCtx = options?.duelCtx;
     this._wsFactory = options?.wsFactory;
+    this._soloModeSource = options?.soloModeSource;
   }
 
   clearStorageToken(): void {

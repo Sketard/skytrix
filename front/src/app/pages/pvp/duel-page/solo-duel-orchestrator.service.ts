@@ -45,16 +45,24 @@ const IDLE_PHASE_PROMPT_TYPES: ReadonlySet<string> = new Set([
  * `DuelConnection` unique instancie son propre processor (path PvP-normal
  * réutilisé tel quel) ; `sharedProcessor` n'est plus nécessaire.
  *
- * A21 invariant — pair flip des 2 flags soloMode :
- *   · `wsService.setSoloMode(true)` (signal réactif c5b BH-2) : pilote
- *     `slotIndex()` + `sendForPlayer()` côté wsService computeds.
- *   · `conn.soloMode = true` (boolean field c4.4) : pilote le swap
- *     BOARD_STATE pour perspective=1.
+ * A21 invariant — une seule source de vérité (γ-c cleanup F-2.3) :
+ *   `wsService.soloModeSource` (signal réactif c5b BH-2). Il pilote :
+ *     · `perspectiveSlot()` + `sendForPlayer()` côté wsService computeds
+ *       (lecture directe du signal) ;
+ *     · `DuelConnection.soloMode` getter (lit le MÊME signal injecté via
+ *       l'option `soloModeSource` du ctor). Donc le swap BOARD_STATE
+ *       pour perspective=1 dans `_shouldSwapForSolo` propage
+ *       automatiquement quand `setSoloMode(true)` flippe le signal.
  *
- * Les deux DOIVENT être flippés ENSEMBLE avant `connect()`. Refactor
- * possible plus tard (c8 cleanup) : faire de `DuelConnection.soloMode`
- * un getter dérivé du `wsService.soloModeSource`. Pour c6 on garde le
- * flip explicite avec ce commentaire load-bearing.
+ * Le flip DOIT précéder `connect()` — sinon le 1er BOARD_STATE après
+ * l'OPEN du socket ne passerait pas par la branche soloMode du
+ * `shouldSwapForSolo` et on aurait 1 frame de board non-swappé visible
+ * en perspective=1.
+ *
+ * Pré-cleanup : c'était un "pair flip" `conn.soloMode = true` +
+ * `wsService.setSoloMode(true)` à faire ENSEMBLE — risque d'oubli sur
+ * un futur 3ᵉ point d'init SOLO. Le getter dérivé ferme structurellement
+ * le risque : il n'y a plus qu'un flip à faire.
  */
 @Injectable()
 export class SoloDuelOrchestratorService {
@@ -136,17 +144,26 @@ export class SoloDuelOrchestratorService {
     // le BOARD_STATE swap (perspective=1, c4.4) résolve `_duelCtx`
     // côté `shouldSwapForSolo`. Sans ça l'assertion `duelCtx must be
     // defined` throw au premier BOARD_STATE en SOLO P1.
+    //
+    // γ-c cleanup F-2.3 (audit) — `soloModeSource` partagé entre conn
+    // et wsService. Le getter `conn.soloMode` lit `wsService.soloModeSource()`
+    // donc le flip `setSoloMode(true)` ci-dessous propage AUTOMATIQUEMENT
+    // sur la conn. Le pair flip A21 (`conn.soloMode = true` manuel) qui
+    // existait pré-cleanup est devenu structurellement impossible à
+    // oublier — il n'y a plus qu'UN flip à faire.
     const conn = new DuelConnection(
       environment.wsUrl, true, 'duel-reconnect-token-solo', this.logger,
-      { duelCtx: this.duelCtx, wsFactory: this.wsFactory },
+      {
+        duelCtx: this.duelCtx,
+        wsFactory: this.wsFactory,
+        soloModeSource: this.wsService.soloModeSource,
+      },
     );
 
-    // A21 — pair flip AVANT connect(). Voir doc de classe ci-dessus.
-    // Ordre crucial : le premier BOARD_STATE qui arrive après `connect()`
-    // doit passer par la branche soloMode du `shouldSwapForSolo` ; si
-    // le flip arrive après l'OPEN du socket, on a 1 frame de board non-
-    // swappé visible en perspective=1.
-    conn.soloMode = true;
+    // Le flip DOIT précéder `connect()` : sinon le premier BOARD_STATE
+    // après l'OPEN du socket ne passerait pas par la branche soloMode
+    // du `shouldSwapForSolo` et on aurait 1 frame de board non-swappé
+    // visible en perspective=1.
     this.wsService.setSoloMode(true);
 
     wireConnectionDebugSinks(conn, { artService: this.artService, debugLog: this.debugLog });

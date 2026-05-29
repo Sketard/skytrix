@@ -51,17 +51,27 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
       resetForSwitch: jasmine.createSpy('resetForSwitch'),
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
     };
+    // c6b A27 — auto-accept rematch guard reads soloModeSource(). Mock
+    // stub-signal so tests can drive the SOLO branch on/off without
+    // booting the full DuelWebSocketService.
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const soloModeSourceMock = signal<boolean>(false);
     wsService = {
       // c8 — `bindSharedProcessor` + `bindTransports` collapsed into
       // a single `bindSoloConnection(conn)` call from init().
       bindSoloConnection: jasmine.createSpy('bindSoloConnection'),
       // c6a A21 — pair flip of soloMode flags from init().
-      setSoloMode: jasmine.createSpy('setSoloMode'),
-      // c6b A27 — auto-accept rematch guard reads soloModeSource(). Mock
-      // stub-signal so tests can drive the SOLO branch on/off without
-      // booting the full DuelWebSocketService.
-      // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
-      soloModeSource: signal<boolean>(false),
+      // γ-c cleanup F-2.3 (audit) — the spy must also flip the signal so
+      // the prod runtime behavior is mirrored : `wsService.setSoloMode(true)`
+      // flips `soloModeSource` which propagates to the `DuelConnection.soloMode`
+      // getter (derived from the same signal). Pre-cleanup the spy was a no-op
+      // — that was OK then because conn.soloMode was a separate boolean
+      // field flipped manually. Post-cleanup the signal IS the single source
+      // of truth, so the mock must mirror it.
+      setSoloMode: jasmine.createSpy('setSoloMode').and.callFake((value: boolean) => {
+        soloModeSourceMock.set(value);
+      }),
+      soloModeSource: soloModeSourceMock,
       // c6d — DUEL_END clear effect reads duelResult(). Mock stub-signal.
       // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
       duelResult: signal<unknown>(null),
