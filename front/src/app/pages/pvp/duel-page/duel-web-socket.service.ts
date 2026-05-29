@@ -34,7 +34,7 @@ export { ResponseData } from './duel-connection';
  *  The cardinal γ invariant holds : a `switchPerspective()` no longer
  *  routes WS messages to a different processor — there's only one
  *  connection now, hence only one processor. The viewer flip reads
- *  `_slots[slotIndex()]` on the same connection.
+ *  `_slots[perspectiveSlot()]` on the same connection.
  *
  * **Replay**: this service is NOT used by `ReplayPageComponent` (the
  * replay-page uses `ReplayDuelAdapter` directly). c8 leaves replay
@@ -51,7 +51,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private readonly wsFactory = inject(WebSocketFactoryService);
 
   /** γ Option C PR2 c5b — Set to `true` by `SoloDuelOrchestratorService.init()`
-   *  on the SOLO multiplex path. Branches the `slotIndex()` helper
+   *  on the SOLO multiplex path. Branches the `perspectiveSlot()` helper
    *  (perspective-driven in SOLO, ownPlayerIndex-driven in PvP normal) and
    *  the c5c `sendXxx forPlayer` tagging.
    *
@@ -61,7 +61,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    *
    *  Signal (not plain boolean) by design (BH-2 c5b code review) : the 4
    *  per-perspective computeds (pendingPrompt, hintContext, inactivityWarning,
-   *  waitingForOpponent) read this via `slotIndex()`. A plain boolean flip
+   *  waitingForOpponent) read this via `perspectiveSlot()`. A plain boolean flip
    *  would NOT invalidate the computeds — the SOLO branch would be silently
    *  unreachable until ANOTHER tracked dep (perspective / ownPlayerIndex)
    *  changed. With a signal, the `init()` flip alone re-evaluates the
@@ -107,24 +107,35 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this.soloModeSource.set(value);
   }
 
-  /** γ c5b A39 resolution — slot index for per-perspective reads.
+  /** γ c5b A39 resolution — which `_slots[0|1]` index the viewer projects
+   *  on the active `DuelConnection`.
+   *
    *  - **PvP normal / replay** : `ownPlayerIndex` (the absolute server
-   *    identity of the viewer). `DuelContext.perspective()` stays at 0
-   *    in these modes, so reading it would mis-route P1 prompts to slot 0.
+   *    identity of the viewer). In non-SOLO modes, the server filters
+   *    omniscient state per-player, so `_slots[ownPlayerIndex]` is the
+   *    only populated slot. `DuelContext.perspective()` stays at 0,
+   *    reading it would mis-route P1 prompts to slot 0.
    *  - **SOLO multiplex** : `perspective()` (the visual slot that flips
-   *    on user switch). The 2 server identities are both projected onto
-   *    one connection ; the viewer choice picks which slot's accumulators
-   *    surface to the UI.
+   *    on user switch). The conn is omniscient and populates BOTH
+   *    `_slots[0]` and `_slots[1]` ; the viewer choice picks which
+   *    one's accumulators surface to the UI.
+   *
+   *  γ-c cleanup F-2.1 (audit) — renamed from `slotIndex`. The previous
+   *  pair (`slotIndex` for read-side, `sendForPlayer` for send-side) had
+   *  near-identical bodies in SOLO and was kept separate for nominal
+   *  readability ; the new name describes the role (perspective-driven
+   *  slot projection on the conn) and `sendForPlayer` now delegates here
+   *  to keep the SOLO branch DRY.
    *
    *  Narrowed via `duelAssert` rather than mutating the `DuelContext`
    *  typing (`ownPlayerIndex(): number`) — defensive at the call site.
    *  Prod fall-through clamp (`idx === 1 ? 1 : 0`) replaces `as 0|1` so
    *  a post-assert prod survival path returns a valid slot index even if
    *  a future bug emits a non-0/1 value (BH-3 c5b code review patch). */
-  private slotIndex(): 0 | 1 {
+  private perspectiveSlot(): 0 | 1 {
     if (this.soloModeSource()) return this.duelCtx.perspective()();
     const idx = this.duelCtx.ownPlayerIndex();
-    duelAssert(idx === 0 || idx === 1, 'DuelWebSocketService.slotIndex',
+    duelAssert(idx === 0 || idx === 1, 'DuelWebSocketService.perspectiveSlot',
       `ownPlayerIndex must be 0 or 1, got ${idx}`);
     return idx === 1 ? 1 : 0;
   }
@@ -197,10 +208,10 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // c8 — all reads go through `active()` which returns the single
   // `_transport_connection`. Shared-state reads (chain machine, animation
   // queue, board state) live on `active().processor` and `active().renderedBoardState`.
-  // Transport-local reads use `getXxxFor(slotIndex())()` so PvP normal
+  // Transport-local reads use `getXxxFor(perspectiveSlot())()` so PvP normal
   // reads `_slots[ownPlayerIndex]` (absolute) and SOLO reads
   // `_slots[perspective()]` (visual) on the SAME connection. The
-  // `slotIndex` switch is what makes the perspective flip user-visible
+  // `perspectiveSlot` switch is what makes the perspective flip user-visible
   // without re-routing WS messages between processors.
 
   // --- Shared (processor + RBS) ---
@@ -218,13 +229,13 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
 
   // --- Transport-local — per-perspective (A8 + A39 c5b) ---
   // The 4 signals that live in `PerspectiveSlot` (c4.1/c4.2). Route through
-  // `getXxxFor(slotIndex())()` so PvP normal reads `_slots[ownPlayerIndex]`
+  // `getXxxFor(perspectiveSlot())()` so PvP normal reads `_slots[ownPlayerIndex]`
   // (absolute) and SOLO multiplex reads `_slots[perspective()]` (visual).
   // Cf. A39 resolution in checklist Commit 5.
-  readonly pendingPrompt = computed(() => this.active().getPendingPromptFor(this.slotIndex())());
-  readonly hintContext = computed(() => this.active().getHintContextFor(this.slotIndex())());
-  readonly inactivityWarning = computed(() => this.active().getInactivityWarningFor(this.slotIndex())());
-  readonly waitingForOpponent = computed(() => this.active().getWaitingForOpponentFor(this.slotIndex())());
+  readonly pendingPrompt = computed(() => this.active().getPendingPromptFor(this.perspectiveSlot())());
+  readonly hintContext = computed(() => this.active().getHintContextFor(this.perspectiveSlot())());
+  readonly inactivityWarning = computed(() => this.active().getInactivityWarningFor(this.perspectiveSlot())());
+  readonly waitingForOpponent = computed(() => this.active().getWaitingForOpponentFor(this.perspectiveSlot())());
 
   /** γ Option C PR2 c6f — explicit per-slot accessor for the switch-player
    *  glow gating. The default `waitingForOpponent` reads the slot of the
@@ -283,18 +294,16 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // mutations (dequeueAnimation, prependToQueue, …) likewise reach the same
   // shared queue in SOLO.
 
-  /** γ c5c A21 — sendside `forPlayer` tag. Distinct from `slotIndex` (read-side)
-   *  because the semantics differ : sendside tags a payload for the SERVER
-   *  (A2 strict validation rejects `forPlayer` from PvP normal), readside
-   *  indexes a slot for the UI.
-   *  - **PvP normal / replay** : `undefined` — the server's A2 validation
-   *    rejects any `forPlayer` present in non-SOLO mode.
-   *  - **SOLO multiplex** : `perspective()()` — the visual slot the user
-   *    currently sees. The 2 server identities are both projected onto one
-   *    connection ; the tag tells the server which identity the response /
-   *    surrender / rematch / etc. applies to. */
+  /** γ c5c A21 — sendside `forPlayer` tag. Thin wrapper around
+   *  `perspectiveSlot()` : same SOLO value (`perspective()()`), `undefined`
+   *  in PvP normal / replay because the server's A2 validation rejects
+   *  any `forPlayer` field present in non-SOLO mode.
+   *
+   *  γ-c cleanup F-2.1 (audit) — delegated to `perspectiveSlot()` to keep
+   *  the SOLO branch DRY. Pre-cleanup these two helpers had near-identical
+   *  bodies branching on `soloModeSource()`. */
   private sendForPlayer(): 0 | 1 | undefined {
-    return this.soloModeSource() ? this.duelCtx.perspective()() : undefined;
+    return this.soloModeSource() ? this.perspectiveSlot() : undefined;
   }
 
   connect(wsToken: string): void {
@@ -308,11 +317,11 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // γ c5b A8 + A39 — per-slot (PerspectiveSlot c4.1). PvP normal reads
   // slot[ownPlayerIndex] (= 0 in practice), SOLO reads slot[perspective()].
   get lastSelectedCards(): import('../duel-ws.types').CardInfo[] {
-    return this.active().getLastSelectedCardsFor(this.slotIndex());
+    return this.active().getLastSelectedCardsFor(this.perspectiveSlot());
   }
 
   get lastConfirmedCards(): import('../duel-ws.types').CardInfo[] {
-    return this.active().getLastConfirmedCardsFor(this.slotIndex());
+    return this.active().getLastConfirmedCardsFor(this.perspectiveSlot());
   }
 
   // γ c5b — `_confirmedCardsByChain` is keyed by `chainIndex` (global per
