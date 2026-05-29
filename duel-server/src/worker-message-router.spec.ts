@@ -541,21 +541,23 @@ describe('worker-message-router', () => {
       const s = makeSession();
       s.soloMode = true;
 
-      const drawMsg = {
+      // DrawMsg.cards is typed `(number | null)[]` — a raw cardCode array
+      // (cf. ws-protocol-game.ts:105). Non-omniscient filter replaces non-own
+      // cards with `null` ; omniscient preserves the cardCodes intact.
+      const drawMsg: ServerMessage = {
         type: 'MSG_DRAW',
         player: 1,
-        cards: [{ cardCode: 1234, position: 0, location: 1, sequence: 0, controller: 1, isOverlay: false, overlaySeq: 0, hidden: false }],
-      } as unknown as ServerMessage;
+        cards: [1234],
+      };
 
       broadcastMessage(s, drawMsg);
 
       expect(spy.sent).toHaveLength(1);
       expect(spy.sent[0]!.player).toBe(0);
       const sentDraw = spy.sent[0]!.message as Extract<ServerMessage, { type: 'MSG_DRAW' }>;
-      // Non-omniscient would have returned `{ ..., cards: cards.map(() => null) }`.
-      // Omniscient preserves the original cards array — cardCode intact.
+      // Non-omniscient would have nulled the entry ; omniscient preserves it.
       expect(sentDraw.cards[0]).not.toBeNull();
-      expect((sentDraw.cards[0] as { cardCode: number }).cardCode).toBe(1234);
+      expect(sentDraw.cards[0]).toBe(1234);
     });
 
     it('preserves the per-player loop in PvP normal (2 sends)', () => {
