@@ -710,10 +710,15 @@ Banner UX cross-slot. i18n.
 - [ ] `solo-duel-orchestrator.service.ts` : `effect()` qui écoute
       `wsService.duelResult()` ; quand non-null + SOLO → `localStorage.removeItem(SOLO_PERSPECTIVE_KEY)`.
 
-#### 6e — REMATCH SOLO court-circuit (A27 serveur)
-- [ ] `duel-server/src/client-message-router.ts:174-184` (case `REMATCH_REQUEST`) :
-  - [ ] `if (session.soloMode) { cfg.startRematch(session); break; }` avant
-        la gate "both requested".
+#### 6e — REMATCH SOLO court-circuit (A27 serveur) ✅ LIVRÉ 2026-05-29
+- [x] `duel-server/src/client-message-router.ts:174-196` (case `REMATCH_REQUEST`) :
+  - [x] `if (session.soloMode) { cfg.startRematch(session); break; }` placée
+        APRÈS la gate `session.endedAt === null` (toujours valable en SOLO)
+        et AVANT le bookkeeping `rematchRequested[playerIndex]` + l'émission
+        de REMATCH_INVITATION. Symétrie avec c6b A27 garde front documentée inline.
+- [x] **Specs verts** : 1605 duel-server (+2 nouveaux : T-S14 SOLO court-circuit
+      + SOLO toujours rejeté quand `endedAt === null`).
+- [x] `scripts/check-ws-protocol-sync.mjs` passe (aucun fichier protocole touché).
 
 #### 6f — Banner UX cross-slot (A13 + A24 + A35)
 - [ ] `duel-page.component.html` : ajouter `@if (pendingPromptForOtherSlot())`
@@ -926,7 +931,7 @@ ligne au fil de l'implémentation pour garantir 38/38.
 
 ### Passage 3 (A27-A38)
 
-- [ ] **A27** — PR2 c6b + c6e — Rematch SOLO court-circuit (front + server).
+- [x] **A27** — PR2 c6b (front garde auto-accept ✅ 2026-05-29) + c6e (server court-circuit ✅ 2026-05-29) — Rematch SOLO.
 - [x] **A28** — PR1 c2b (vide ✅ 2026-05-28) + PR2 c4.5 (peuplé ✅ 2026-05-28) — Whitelist routing.
 - [ ] **A29** — PR2 c6bis — resendPendingPrompt × 2.
 - [ ] **A30** — PR2 c6bis — WORKER_CANCEL_DONE routing.

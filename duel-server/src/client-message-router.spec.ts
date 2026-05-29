@@ -459,6 +459,40 @@ describe('client-message-router', () => {
 
       expect(spy.rematches).toEqual([s]);
     });
+
+    // γ Option C PR2 c6e (A27 serveur) — SOLO court-circuit. T-S14.
+    it('SOLO: starts rematch immediately on first REMATCH_REQUEST, no REMATCH_INVITATION sent', () => {
+      const spy = makeSpy();
+      configureClientMessageRouter(makeConfig(spy));
+      const s = makeSession(spy);
+      s.soloMode = true;
+      s.endedAt = Date.now();
+
+      handleClientMessage(s, 0, { type: 'REMATCH_REQUEST' } as ClientMessage);
+
+      // startRematch fires on the FIRST request — no "both requested" gate.
+      expect(spy.rematches).toEqual([s]);
+      // No REMATCH_INVITATION is emitted (the front c6b A27 guard assumes
+      // this invariant : the auto-accept dead-paths in SOLO).
+      expect(findMsg(spy, 'REMATCH_INVITATION')).toBeUndefined();
+      // The `rematchRequested` flag is NOT mutated either — the
+      // court-circuit returns BEFORE the bookkeeping. Future c4 tests
+      // around the rematch flow can rely on the flag staying false in SOLO.
+      expect(s.rematchRequested[0]).toBe(false);
+    });
+
+    it('SOLO: still rejected when duel is still active (endedAt null)', () => {
+      const spy = makeSpy();
+      configureClientMessageRouter(makeConfig(spy));
+      const s = makeSession(spy);
+      s.soloMode = true;
+      // endedAt left null — gate `if (session.endedAt === null) break;`
+      // must still apply in SOLO (the court-circuit comes AFTER it).
+
+      handleClientMessage(s, 0, { type: 'REMATCH_REQUEST' } as ClientMessage);
+
+      expect(spy.rematches).toHaveLength(0);
+    });
   });
 
   // ==========================================================================

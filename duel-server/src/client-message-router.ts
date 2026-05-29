@@ -174,6 +174,17 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
     case 'REMATCH_REQUEST': {
       // Only valid post-duel.
       if (session.endedAt === null) break;
+      // γ Option C PR2 c6e (A27) — SOLO court-circuit. Le user est le
+      // seul opérateur des 2 identités via 1 socket, la gate "both
+      // requested" n'a pas de sens : on démarre rematch dès le 1er
+      // REMATCH_REQUEST. La conséquence côté front (c6b) est que
+      // l'auto-accept `rematchState === 'invited'` devient dead-path en
+      // SOLO (REMATCH_INVITATION jamais émise) ; sa garde A27 front
+      // matérialise l'invariant en miroir.
+      if (session.soloMode) {
+        cfg.startRematch(session);
+        break;
+      }
       session.rematchRequested[playerIndex] = true;
       const opponentIdx: Player = playerIndex === 0 ? 1 : 0;
       if (session.rematchRequested[opponentIdx]) {
