@@ -624,6 +624,11 @@ describe('DuelPageComponent — c6fg (urgent glow + toast ERROR)', () => {
     toast = fixture.componentRef.injector.get(DuelToastService);
   });
 
+  // ⚠️ Semantics (fixed 2026-05-30): `waitingForOpponentBySlot[X] = true` means
+  // "slot X is WAITING for the other player to act" — so the OTHER slot has the
+  // action. The glow invites a switch when the OTHER (opponent) slot has the
+  // action, i.e. when the CURRENT slot is the one waiting. The glow therefore
+  // reads `waitingForOpponentForSlot(cur)`, NOT `(other)`.
   describe('waitingForOpponentOnOtherSlot (c6f)', () => {
     it('returns false outside SOLO mode', () => {
       (component.isSoloMode as WritableSignal<boolean>).set(false);
@@ -632,27 +637,29 @@ describe('DuelPageComponent — c6fg (urgent glow + toast ERROR)', () => {
       expect(component.waitingForOpponentOnOtherSlot()).toBe(false);
     });
 
-    it('SOLO + perspective=0 reads slot 1', () => {
+    it('SOLO + perspective=0: glows when the CURRENT slot (0) is waiting → opponent (1) has the action', () => {
       (component.isSoloMode as WritableSignal<boolean>).set(true);
       solo.perspectiveIndex.set(0);
-      ws.waitingForOpponentBySlot[0].set(false);
-      ws.waitingForOpponentBySlot[1].set(true);
-      expect(component.waitingForOpponentOnOtherSlot()).toBe(true);
-    });
-
-    it('SOLO + perspective=1 reads slot 0', () => {
-      (component.isSoloMode as WritableSignal<boolean>).set(true);
-      solo.perspectiveIndex.set(1);
-      ws.waitingForOpponentBySlot[0].set(true);
+      ws.waitingForOpponentBySlot[0].set(true);  // current slot is waiting
       ws.waitingForOpponentBySlot[1].set(false);
       expect(component.waitingForOpponentOnOtherSlot()).toBe(true);
     });
 
-    it('SOLO + the CURRENT slot has the prompt → false (the glow is for the OTHER slot)', () => {
+    it('SOLO + perspective=1: glows when the CURRENT slot (1) is waiting → opponent (0) has the action', () => {
+      (component.isSoloMode as WritableSignal<boolean>).set(true);
+      solo.perspectiveIndex.set(1);
+      ws.waitingForOpponentBySlot[0].set(false);
+      ws.waitingForOpponentBySlot[1].set(true);  // current slot is waiting
+      expect(component.waitingForOpponentOnOtherSlot()).toBe(true);
+    });
+
+    it('SOLO + the CURRENT player has the action (current slot NOT waiting) → no glow', () => {
       (component.isSoloMode as WritableSignal<boolean>).set(true);
       solo.perspectiveIndex.set(0);
-      ws.waitingForOpponentBySlot[0].set(true); // current slot
-      ws.waitingForOpponentBySlot[1].set(false); // other slot
+      // The OTHER slot (1) is waiting → the CURRENT player (0) has the action →
+      // no point inviting a switch.
+      ws.waitingForOpponentBySlot[0].set(false); // current slot NOT waiting
+      ws.waitingForOpponentBySlot[1].set(true);  // other slot waiting
       expect(component.waitingForOpponentOnOtherSlot()).toBe(false);
     });
   });

@@ -362,15 +362,23 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   readonly waitingForOpponent = this.wsService.waitingForOpponent;
 
   /** γ Option C PR2 c6f — drives the switch-player button urgent glow.
-   *  True when SOLO multiplex AND the OTHER perspective slot (not the
-   *  one the viewer currently looks at) has a pending prompt the user
-   *  can't see. PvP normal / replay never enter this branch — the glow
-   *  stays off because there's no "other slot" to surface. */
+   *  True when SOLO multiplex AND the OTHER perspective slot (the one the
+   *  viewer is NOT looking at) has a pending action — i.e. it's worth
+   *  switching to go play it.
+   *
+   *  ⚠️ Semantics trap (fixed 2026-05-30): `waitingForOpponent[X]` means
+   *  "slot X is WAITING for the other player to act" — NOT "slot X has the
+   *  action". The server sends `WAITING_RESPONSE{targetPlayer}` to the player
+   *  who WAITS (`worker-message-router.ts` / `first-player-coordinator.ts`),
+   *  and the front sets `_slots[targetPlayer].waitingForOpponent = true`.
+   *  So "the OTHER slot has the action" ⟺ "the CURRENT slot is waiting" ⟺
+   *  `waitingForOpponentForSlot(cur)`. Reading `other` (the previous code)
+   *  double-inverted and glowed when the CURRENT player had the action.
+   *  PvP normal / replay never enter this branch (no other slot). */
   readonly waitingForOpponentOnOtherSlot = computed(() => {
     if (!this.isSoloMode()) return false;
     const cur = this.orchestrator.perspectiveIndex();
-    const other: 0 | 1 = cur === 0 ? 1 : 0;
-    return this.wsService.waitingForOpponentForSlot(other)();
+    return this.wsService.waitingForOpponentForSlot(cur)();
   });
 
   // Story 3.1 — Own player index (0 = player1, 1 = player2)
