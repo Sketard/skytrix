@@ -295,13 +295,35 @@ function sanitizeOpponentBoard(board: PlayerBoardState): PlayerBoardState {
             cards: zone.cards.map(sanitizeFaceDownCard),
           };
 
-        // GY, BANISHED: public info — pass through
+        // GY: always public — a card in the graveyard is never face-down.
         case 'GY':
-        case 'BANISHED':
           return zone;
 
-        default:
-          return zone;
+        // BANISHED: mostly public, BUT a card can be banished FACE-DOWN
+        // (e.g. "Gold Sarcophagus", "Different Dimension Capsule", many
+        // "banish face-down" effects). A face-down banished card is private
+        // to its owner — the opponent must not see its identity. Same
+        // discipline as a face-down field/Extra card.
+        case 'BANISHED':
+          return {
+            zoneId: zone.zoneId,
+            cards: zone.cards.map(sanitizeFaceDownCard),
+          };
+
+        // Unknown zone — FAIL CLOSED. The `never` assignment makes `tsc`
+        // break the build if a new `ZoneId` is added to the union without a
+        // matching case above, so a future zone cannot silently leak the
+        // opponent's card identities through this default arm. At runtime
+        // (e.g. a cast-through `as any` zoneId) we mask face-down cards
+        // rather than passing the zone verbatim.
+        default: {
+          const _exhaustive: never = zone.zoneId;
+          void _exhaustive;
+          return {
+            zoneId: zone.zoneId,
+            cards: zone.cards.map(sanitizeFaceDownCard),
+          };
+        }
       }
     }),
   };

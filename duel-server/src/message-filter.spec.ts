@@ -444,13 +444,45 @@ describe('filterMessage', () => {
       expect(oppM2.cards[0].currentAtk).toBe(2500);
     });
 
-    it('should pass opponent GY and BANISHED through', () => {
+    it('should pass opponent GY and face-up BANISHED through', () => {
       const msg = { type: 'BOARD_STATE', data: boardState() } as any;
       const result = filterMessage(msg, 0) as any;
       const oppGY = result.data.players[1].zones.find((z: any) => z.zoneId === 'GY');
       const oppBan = result.data.players[1].zones.find((z: any) => z.zoneId === 'BANISHED');
       expect(oppGY.cards[0].cardCode).toBe(1500);
-      expect(oppBan.cards[0].cardCode).toBe(1600);
+      expect(oppBan.cards[0].cardCode).toBe(1600); // face-up banished — visible
+    });
+
+    it('should HIDE an opponent card banished FACE-DOWN', () => {
+      const data = boardState();
+      // Banish a face-down card in the opponent's (player 1) BANISHED zone.
+      data.players[1].zones.push(
+        zone('BANISHED', [card(1610, POSITION.FACEDOWN_ATTACK)]),
+      );
+      const msg = { type: 'BOARD_STATE', data } as any;
+      const result = filterMessage(msg, 0) as any;
+      const oppBan = result.data.players[1].zones
+        .filter((z: any) => z.zoneId === 'BANISHED')
+        .flatMap((z: any) => z.cards);
+      const hidden = oppBan.find((c: any) => c.position === POSITION.FACEDOWN_ATTACK);
+      expect(hidden).toBeDefined();
+      expect(hidden.cardCode).toBeNull(); // identity masked
+      expect(hidden.name).toBeNull();
+    });
+
+    it('should still SHOW the owner their OWN face-down banished card', () => {
+      const data = boardState();
+      // Player 0 (the recipient) banishes one of their own cards face-down.
+      data.players[0].zones.push(
+        zone('BANISHED', [card(820, POSITION.FACEDOWN_ATTACK)]),
+      );
+      const msg = { type: 'BOARD_STATE', data } as any;
+      const result = filterMessage(msg, 0) as any;
+      const ownBan = result.data.players[0].zones
+        .filter((z: any) => z.zoneId === 'BANISHED')
+        .flatMap((z: any) => z.cards);
+      const own = ownBan.find((c: any) => c.cardCode === 820);
+      expect(own).toBeDefined(); // owner sees their own banished card identity
     });
 
     it('should skip sanitization in omniscient mode', () => {

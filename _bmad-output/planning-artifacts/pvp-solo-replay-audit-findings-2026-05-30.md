@@ -37,16 +37,26 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
   providé sur duel-page ET replay-page (injection safe dans les deux contextes).
 - **Statut** : DONE.
 
-### F2 — `sanitizeBoardState` fail-OPEN sur zones inconnues (fuite d'info)
-- **Lieu** : `message-filter.ts:303-304` (arm `default` du switch zones)
-- **Constat** : les zones inconnues passent telles quelles, à l'inverse exact
-  de la politique fail-CLOSED du switch des messages. Seul default-OPEN de
-  sécurité réel trouvé.
-- **Risque** : si OCGCore/`buildBoardState` émet un jour un nouveau `zoneId`
-  (variante pendule/field), main/deck adverse fuiterait via `boardStateAfter`
-  + `BOARD_STATE`. Latent (dépend d'un futur zoneId).
-- **Fix proposé** : masquer/asserter les zones inconnues (fail-CLOSED).
-- **Décision** :
+### F2 — `sanitizeBoardState` fail-OPEN sur zones inconnues + BANISHED face-down — ✅ FIX (2026-05-30)
+- **Constat vérifié** : `ZoneId` est une union FERMÉE et le switch couvre déjà
+  toutes ses valeurs → le `default: return zone` était **mort aujourd'hui**
+  mais constituait un default-OPEN latent : un futur `ZoneId` ajouté à l'union
+  n'était PAS forcé dans le switch (TS ne cassait pas) → fuite silencieuse.
+- **Sous-finding confirmé (Axel)** : `BANISHED` faisait `return zone` sans
+  masquer les cartes bannies **face-down** — or une carte peut être bannie face
+  cachée (Gold Sarcophagus, D.D. Capsule, …) et seul le possesseur doit la voir.
+- **Décision appliquée** :
+  - `default` → **fail-closed** + exhaustiveness `const _exhaustive: never =
+    zone.zoneId` (tsc casse le build si un `ZoneId` est ajouté sans case) ;
+    fallback runtime masque les face-down.
+  - `BANISHED` → `sanitizeFaceDownCard` sur chaque carte (face-up visible,
+    face-down masquée côté adversaire ; le possesseur voit son board
+    non-sanitizé donc voit les siennes).
+  - `GY` reste `return zone` pur (jamais de face-down au GY).
+- **Tests** : 2 nouveaux (`HIDE opponent face-down banished` + `owner sees own
+  face-down banished`), ancien renommé « face-up BANISHED ». 270/270 vitest
+  verts, tsc vert.
+- **Statut** : DONE.
 
 ---
 
