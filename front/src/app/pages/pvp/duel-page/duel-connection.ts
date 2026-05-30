@@ -5,7 +5,7 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, ErrorMsg, InactivityWarningMsg, MoveMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
+import { BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, ErrorMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { swapBoardState } from '../board-state-swap';
 import type { WebSocketFactory } from './websocket-factory.service';
@@ -934,24 +934,6 @@ export class DuelConnection {
 
   private handleMessage(message: ServerMessage): void {
     this.logger?.log(DuelLogCategory.PIPELINE, 'ws.recv type=%s', message.type);
-    // β.3 cas #12 — R8 PROBE TEMPORARY (2026-05-26) — surface the server-side
-    // probe field as a console.warn so the Playwright debug harness captures
-    // it. TO REMOVE before merging Commit 0bis.
-    if (message.type === 'MSG_MOVE' && (message as { _r8Probe?: unknown })._r8Probe) {
-      const probe = (message as unknown as { _r8Probe: { count: number; codes: number[]; fromLoc: number; fromSeq: number } })._r8Probe;
-      const m = message as MoveMsg;
-      console.warn('R8-PROBE MSG_MOVE post-process OVERLAY_CARD on source', JSON.stringify({
-        card: m.cardName,
-        cardCode: m.cardCode,
-        player: m.player,
-        toPlayer: m.toPlayer,
-        fromLoc: m.fromLocation, fromSeq: m.fromSequence,
-        toLoc: m.toLocation, toSeq: m.toSequence,
-        reason: '0x' + m.reason.toString(16),
-        probeOverlayCount: probe.count,
-        probeOverlayCodes: probe.codes,
-      }));
-    }
     // γ Option C (PR2 c4.4, A17) — SOLO multiplex receives omniscient (absolute)
     // board states; swap `boardStateAfter` per-event snapshots before any
     // downstream consumer reads them (BH-1 from c4.4 code review: also before
@@ -1117,10 +1099,17 @@ export class DuelConnection {
         this._rematchStarting.set(false);
         this._diceResult.set(null);
         this._diceInProgress.set(false);
-        // γ Option C (PR2 c4.2) — DICE_ROLL is dead in SOLO (RPS flow skipped
-        // server-side), but route by `message.player` for PvP-normal correctness
-        // and defensive future-proofing.
-        this._slotFor(message.player, 'DICE_ROLL').pendingPrompt.set(message);
+        // γ-c regression fix (2026-05-29) — pre-duel prompts route to `_slots[0]`,
+        // NOT `_slots[message.player]`. DICE_ROLL is a single-recipient prompt
+        // always addressed to the receiver (server sends `player:0` to P0 and
+        // `player:1` to P1). But the dice-arena reads it via
+        // `perspectiveSlot()`, which in PvP-normal returns `ownPlayerIndex()` —
+        // and `ownPlayerIndex` is unresolved (`ocgPlayerIndex() ?? 0` = 0) until
+        // DUEL_STARTING, i.e. the entire pre-duel window. So both players read
+        // `_slots[0]` here. Routing the joiner's `player:1` prompt to `_slots[1]`
+        // made it invisible → "the joiner never sees the dice roll". DICE_ROLL is
+        // dead in SOLO (startFirstPlayerPhase throws), so `_slots[0]` is safe.
+        this._slots[0].pendingPrompt.set(message);
         break;
 
       case 'DICE_RESULT':
@@ -1129,9 +1118,12 @@ export class DuelConnection {
         break;
 
       case 'SELECT_FIRST_PLAYER':
-        // γ Option C (PR2 c4.2) — same comment as DICE_ROLL.
+        // γ-c regression fix (2026-05-29) — same as DICE_ROLL: route to
+        // `_slots[0]`. Single-recipient pre-duel prompt (sent only to the dice
+        // winner), read via `perspectiveSlot()` which is still `0` for both
+        // players pre-DUEL_STARTING. Dead in SOLO.
         {
-          const slot = this._slotFor(message.player, 'SELECT_FIRST_PLAYER');
+          const slot = this._slots[0];
           slot.waitingForOpponent.set(false);
           slot.pendingPrompt.set(message);
         }

@@ -18,6 +18,7 @@ import { DuelCardArtService } from '../../duel-card-art.service';
 import { DuelSystemStringsService } from '../../../duel-system-strings.service';
 import { resolveDescription } from '../../../duel-description.util';
 import { CardDataCacheService } from '../../card-data-cache.service';
+import { DuelLogger, DuelLogCategory } from '../../duel-logger';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 import { PillComponent } from '../../../../../components/pill/pill.component';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
@@ -58,6 +59,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   private readonly artService = inject(DuelCardArtService);
   private readonly systemStrings = inject(DuelSystemStringsService);
   private readonly cardDataCache = inject(CardDataCacheService);
+  private readonly duelLogger = inject(DuelLogger);
 
   promptData: CardGridPrompt | null = null;
   hintContext: HintContext | null = null;
@@ -95,11 +97,11 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     }
     if (this.promptData?.type === 'SELECT_TRIBUTE') {
       const p = this.promptData as SelectTributeMsg;
-      console.warn('[SELECT_TRIBUTE] cards=%d min=%d max=%d excluded=%d cards=%o',
+      this.duelLogger.log(DuelLogCategory.PIPELINE, '[SELECT_TRIBUTE] cards=%d min=%d max=%d excluded=%d cards=%o',
         p.cards.length, p.min, p.max, this.excludedCards.length,
         p.cards.map((c, i) => ({ i, name: c.name, amount: c.amount ?? 1, loc: c.location, seq: c.sequence })));
     }
-    console.log('[PromptCardGrid] type=%s cards=%d excluded=%d displayEntries=%d',
+    this.duelLogger.log(DuelLogCategory.PIPELINE, '[PromptCardGrid] type=%s cards=%d excluded=%d displayEntries=%d',
       this.promptData?.type, this.cards.length, this.excludedCards.length, this.displayEntries.length);
 
     if (this.readOnly && this.preSelectedResponse != null) {
@@ -620,7 +622,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     // SELECT_CHAIN and SELECT_UNSELECT_CARD use { index } (single)
     if (type === 'SELECT_UNSELECT_CARD') {
       const idx = this.toggledIndex();
-      console.log('[PromptCardGrid] SELECT_UNSELECT_CARD confirm: toggledIndex=%o card=%o canFinish=%s',
+      this.duelLogger.log(DuelLogCategory.PIPELINE, '[PromptCardGrid] SELECT_UNSELECT_CARD confirm: toggledIndex=%o card=%o canFinish=%s',
         idx, idx != null ? this.cards[idx] : null, (this.promptData as SelectUnselectCardMsg)?.canFinish);
       this.response.emit({ index: idx });
     } else if (type === 'SELECT_CHAIN') {
@@ -628,7 +630,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     } else {
       if (type === 'SELECT_TRIBUTE') {
         const tributeSum = indices.reduce((s, i) => s + (this.cards[i]?.amount ?? 1), 0);
-        console.warn('[SELECT_TRIBUTE] confirm indices=%o tributeSum=%d', indices, tributeSum);
+        this.duelLogger.log(DuelLogCategory.PIPELINE, '[SELECT_TRIBUTE] confirm indices=%o tributeSum=%d', indices, tributeSum);
       }
       this.response.emit({ indices });
     }

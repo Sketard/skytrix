@@ -41,6 +41,7 @@ import {
 } from '../../../duel-hint.util';
 import { getAttributeName, getRaceName } from '../../../pvp-alteration.utils';
 import { CardDataCacheService } from '../../card-data-cache.service';
+import { DuelLogger, DuelLogCategory } from '../../duel-logger';
 import '../prompt-registry'; // side-effect: populates PROMPT_COMPONENT_MAP
 
 function isExcavatedCard(c: CardInfo): boolean {
@@ -101,6 +102,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private readonly translate = inject(TranslateService);
   private readonly systemStrings = inject(DuelSystemStringsService);
   private readonly cardDataCache = inject(CardDataCacheService);
+  private readonly duelLogger = inject(DuelLogger);
 
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
@@ -341,7 +343,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       ? confirmedCards[confirmedCards.length - 1].name
       : '';
     const cardName = promptCardName || hintCardName || lastConfirmedName;
-    console.log(`[PROMPT] type=${prompt.type} | hint=`, hint, `| hintCardName="${hintCardName}" | promptCardName="${promptCardName}" | lastConfirmedName="${lastConfirmedName}" | resolved="${cardName}"`);
+    this.duelLogger.log(DuelLogCategory.PIPELINE, `[PROMPT] type=${prompt.type} | hint=%o | hintCardName="${hintCardName}" | promptCardName="${promptCardName}" | lastConfirmedName="${lastConfirmedName}" | resolved="${cardName}"`, hint);
     // HINT_SELECTMSG (hintType 3) is meant for card-selection prompts.
     // Ignore its action for non-selection prompts (e.g. SELECT_OPTION) to prevent
     // a stale "Select the card(s) to destroy" from a previous targeting step bleeding in.
@@ -371,7 +373,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     // Warn ONLY for a genuinely unknown hintType — a known card-code type
     // that yields '' (empty card name) is benign, not a missing handler.
     if (!action && !KNOWN_HINT_TYPES.has(hint.hintType)) {
-      console.warn(`[PROMPT] unresolved hint — hintType=${hint.hintType} value=${hint.value}`);
+      this.duelLogger.warn('[PROMPT] unresolved hint — hintType=%s value=%s', hint.hintType, hint.value);
     }
     return action;
   }
