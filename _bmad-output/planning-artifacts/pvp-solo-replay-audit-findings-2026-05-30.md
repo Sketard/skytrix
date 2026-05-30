@@ -318,6 +318,34 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 
 ---
 
+## 🐛 Bugs découverts en cours de refinement
+
+### F21 — Glow du bouton switch SOLO inversé — ✅ FIX (2026-05-30)
+- **Découvert par** : Axel pendant le refinement de F3 (« quand je suis sur P1,
+  le bouton glow quand P1=moi a une action, pas quand l'adversaire en a »).
+  Contredit mon « déjà correct » de F3 — c'était une erreur d'analyse.
+- **Constat vérifié (preuve serveur)** : `WAITING_RESPONSE.targetPlayer` =
+  le joueur **qui ATTEND** (pas qui décide). Preuves :
+  `worker-message-router.ts:290` (`send(opponentOfTarget, {targetPlayer:
+  opponentOfTarget})`) + `first-player-coordinator.ts:217-218` (le perdant RPS
+  reçoit WAITING_RESPONSE). Donc `_slots[X].waitingForOpponent = true` signifie
+  « slot X attend, l'AUTRE a l'action ».
+- **Bug** : `waitingForOpponentOnOtherSlot` lisait
+  `waitingForOpponentForSlot(other)` → double inversion → glow quand le joueur
+  COURANT a l'action (au lieu de l'adversaire). Vérité :
+  « l'autre slot a l'action » ⟺ « mon slot courant attend » ⟺
+  `waitingForOpponentForSlot(cur)`.
+- **Cause profonde** : les tests `c6f` pinaient le bug — le mock interprétait
+  `waitingForOpponent[X]` comme « slot X a le prompt » (inverse de la réalité
+  serveur), donc les tests passaient en validant le mauvais comportement.
+- **Décision appliquée** : computed lit `cur` au lieu de `other` (one-liner) +
+  commentaire « semantics trap » détaillé + 4 tests `c6f` réécrits avec la
+  vraie sémantique.
+- **Tests** : 41/41 duel-page verts. Commit `3cddde27`.
+- **Statut** : DONE.
+
+---
+
 ## Cases NON-findings (vérifiés sains — ne pas re-creuser)
 
 - `swapBoardState`/`swapEventBoardStates` déjà DRY dans `board-state-swap.ts`.
