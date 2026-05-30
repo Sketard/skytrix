@@ -1099,17 +1099,20 @@ export class DuelConnection {
         this._rematchStarting.set(false);
         this._diceResult.set(null);
         this._diceInProgress.set(false);
-        // γ-c regression fix (2026-05-29) — pre-duel prompts route to `_slots[0]`,
-        // NOT `_slots[message.player]`. DICE_ROLL is a single-recipient prompt
-        // always addressed to the receiver (server sends `player:0` to P0 and
-        // `player:1` to P1). But the dice-arena reads it via
-        // `perspectiveSlot()`, which in PvP-normal returns `ownPlayerIndex()` —
-        // and `ownPlayerIndex` is unresolved (`ocgPlayerIndex() ?? 0` = 0) until
-        // DUEL_STARTING, i.e. the entire pre-duel window. So both players read
-        // `_slots[0]` here. Routing the joiner's `player:1` prompt to `_slots[1]`
-        // made it invisible → "the joiner never sees the dice roll". DICE_ROLL is
-        // dead in SOLO (startFirstPlayerPhase throws), so `_slots[0]` is safe.
-        this._slots[0].pendingPrompt.set(message);
+        // γ-c regression fix (2026-05-29) — pre-duel prompts route to BOTH
+        // slots, NOT `_slots[message.player]`. DICE_ROLL is a single-recipient
+        // prompt always addressed to the receiver (server sends `player:0` to
+        // P0, `player:1` to P1). The dice-arena reads it via `perspectiveSlot()`
+        // = `ownPlayerIndex()` in PvP-normal. That index is UNRESOLVED
+        // (`ocgPlayerIndex() ?? 0` = 0) on the first duel (→ reads `_slots[0]`),
+        // but ALREADY RESOLVED on a rematch (`_ocgPlayerIndex` is not cleared at
+        // REMATCH_STARTING → joiner reads `_slots[1]`). Routing to a single
+        // slot is correct for exactly one of the two cases, never both — so the
+        // joiner missed the dice on either the first duel (slot-1 route) or the
+        // rematch (slot-0 route). Writing both slots is unconditionally visible.
+        // Safe: the receiver is the sole reader, and DICE_ROLL is dead in SOLO
+        // (startFirstPlayerPhase throws), so the unread slot is inert.
+        for (const s of this._slots) s.pendingPrompt.set(message);
         break;
 
       case 'DICE_RESULT':
@@ -1118,14 +1121,15 @@ export class DuelConnection {
         break;
 
       case 'SELECT_FIRST_PLAYER':
-        // γ-c regression fix (2026-05-29) — same as DICE_ROLL: route to
-        // `_slots[0]`. Single-recipient pre-duel prompt (sent only to the dice
-        // winner), read via `perspectiveSlot()` which is still `0` for both
-        // players pre-DUEL_STARTING. Dead in SOLO.
-        {
-          const slot = this._slots[0];
-          slot.waitingForOpponent.set(false);
-          slot.pendingPrompt.set(message);
+        // γ-c regression fix (2026-05-29) — same as DICE_ROLL: write BOTH slots.
+        // Single-recipient pre-duel prompt (sent only to the dice winner), read
+        // via `perspectiveSlot()` which is `0` on the first duel but the resolved
+        // `ownPlayerIndex` on a rematch (`_ocgPlayerIndex` survives
+        // REMATCH_STARTING). Dead in SOLO. See the DICE_ROLL comment for the
+        // full rationale.
+        for (const s of this._slots) {
+          s.waitingForOpponent.set(false);
+          s.pendingPrompt.set(message);
         }
         break;
 
@@ -1137,7 +1141,22 @@ export class DuelConnection {
         // `goFirst`). Dead in SOLO. Clear BOTH slots so PvP-normal P1's slot
         // gets `waitingForOpponent` cleared too (the c5 reader projects via
         // `slotIndex` — clearing both is the safe equivalent of the prior global).
-        for (const s of this._slots) s.waitingForOpponent.set(false);
+        //
+        // γ-c regression fix (2026-05-30) — ALSO clear `pendingPrompt` on both
+        // slots. The pre-duel prompts (DICE_ROLL / SELECT_FIRST_PLAYER) are
+        // written to BOTH slots (see those cases). The dice loser never sends a
+        // response, so its residual prompt is never cleared by `sendResponse`.
+        // When DUEL_STARTING flips `ocgPlayerIndex` 0→1 for the joiner,
+        // `perspectiveSlot()` switches the read from `_slots[0]` to `_slots[1]`,
+        // resurfacing the stale DICE_ROLL still parked there. The dice-arena's
+        // "fresh DICE_ROLL" effect then resets `_finalSeen=false`, dropping the
+        // stage `final → result` → the loser is stuck on "opponent choosing"
+        // forever. FIRST_PLAYER_RESULT is the end of the pre-duel prompt phase,
+        // so wiping pendingPrompt on both slots here is the correct closure.
+        for (const s of this._slots) {
+          s.waitingForOpponent.set(false);
+          s.pendingPrompt.set(null);
+        }
         break;
 
       case 'DECK_PREFETCH':

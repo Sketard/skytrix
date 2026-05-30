@@ -250,6 +250,55 @@ describe('DuelConnection — handleMessage: dice', () => {
     expect(conn.diceResult()).toBe(result as never);
   });
 
+  // γ-c regression (2026-05-29) — pre-duel prompts (DICE_ROLL,
+  // SELECT_FIRST_PLAYER) for the joiner (player:1) must reach BOTH slots.
+  // The dice-arena reads via `perspectiveSlot()` = `ownPlayerIndex()`, which is
+  // 0 on the first duel (ocgPlayerIndex unresolved) but the resolved index 1 on
+  // a rematch (ocgPlayerIndex survives REMATCH_STARTING). A single-slot route is
+  // correct for exactly one of the two cases. `_slots[1]` is asserted via the
+  // per-slot accessor `getPendingPromptFor(1)` to pin the rematch path.
+  function slotPrompt(conn: DuelConnection, slot: 0 | 1) {
+    return (conn as unknown as {
+      getPendingPromptFor(p: 0 | 1): () => unknown;
+    }).getPendingPromptFor(slot)();
+  }
+
+  it('DICE_ROLL (player:1) lands in BOTH slots (first-duel + rematch read paths)', () => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    dispatch(conn, { type: 'DICE_ROLL', player: 1 } as unknown as ServerMessage);
+    const expected = { type: 'DICE_ROLL', player: 1 };
+    expect(slotPrompt(conn, 0)).toEqual(expected as never); // first-duel path (ownIdx=0)
+    expect(slotPrompt(conn, 1)).toEqual(expected as never); // rematch path (ownIdx=1)
+  });
+
+  it('SELECT_FIRST_PLAYER (player:1) lands in BOTH slots (first-duel + rematch read paths)', () => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    dispatch(conn, { type: 'SELECT_FIRST_PLAYER', player: 1 } as unknown as ServerMessage);
+    const expected = { type: 'SELECT_FIRST_PLAYER', player: 1 };
+    expect(slotPrompt(conn, 0)).toEqual(expected as never);
+    expect(slotPrompt(conn, 1)).toEqual(expected as never);
+  });
+
+  it('FIRST_PLAYER_RESULT clears pendingPrompt on BOTH slots (dice-loser stuck-on-result fix)', () => {
+    // γ-c regression (2026-05-30) — the pre-duel prompts are written to BOTH
+    // slots. The dice LOSER never sends a response, so its residual DICE_ROLL /
+    // SELECT_FIRST_PLAYER is never cleared by `sendResponse`. When DUEL_STARTING
+    // later flips ocgPlayerIndex 0→1 for the joiner, `perspectiveSlot()` switches
+    // the read from `_slots[0]` to `_slots[1]`, resurfacing the stale DICE_ROLL.
+    // The dice-arena's "fresh DICE_ROLL" effect then resets `_finalSeen=false`,
+    // dropping the stage `final → result` → loser stuck on "opponent choosing".
+    // FIRST_PLAYER_RESULT ends the pre-duel prompt phase, so it MUST wipe
+    // pendingPrompt on both slots.
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    dispatch(conn, { type: 'DICE_ROLL', player: 1 } as unknown as ServerMessage);
+    expect(slotPrompt(conn, 0)).not.toBeNull();
+    expect(slotPrompt(conn, 1)).not.toBeNull();
+
+    dispatch(conn, { type: 'FIRST_PLAYER_RESULT', goFirst: false } as unknown as ServerMessage);
+    expect(slotPrompt(conn, 0)).toBeNull();
+    expect(slotPrompt(conn, 1)).toBeNull();
+  });
+
   it('DICE_ROLL clears rematchStarting (the dice arena takes over from the "Starting…" modal)', () => {
     // A rematch re-runs the pre-duel dice flow. rematchStarting stays true
     // from REMATCH_STARTING until the new duel's BOARD_STATE (~6s later) —
