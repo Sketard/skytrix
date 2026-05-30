@@ -190,6 +190,9 @@ class StubSoloOrchestrator {
   readonly perspectiveIndex = signal(0);
   init = jasmine.createSpy('init');
   switchPerspective = jasmine.createSpy('switchPerspective');
+  // F3 — gate read by the toolbar [disabled] + urgent-glow bindings. Default
+  // true so the switch button renders enabled in component tests.
+  canSwitchPerspective = true;
 }
 
 /** Stub for RoomStateMachineService — exposes the signals + spies for

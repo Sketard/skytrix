@@ -62,24 +62,46 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 
 ## 🟠 Bugs confirmés / architecture préoccupante
 
-### F3 — `switchPerspective` SOLO non bloqué pendant résolution de chaîne
-- **Lieu** : `solo-duel-orchestrator.service.ts:240-310`
-- **Constat** : ne bloque que sur (1) prompt modal non-IDLE et (2)
-  draw-in-flight. **PAS** sur `chainManager.isResolving`. Fenêtre sans prompt
-  ni draw entre `MSG_CHAIN_SOLVED` et `MSG_CHAIN_END` (buffer replay) → switch
-  passe → swap board + re-render mid-résolution désync les zones lockées de
-  l'état logique swappé → locks HAND-0/GY-0 orphelins → lock safety timeout +
-  POLL-DROP REGRESSION.
-- **Racine côté queue** : branche deferred-solving
-  (`animation-orchestrator.service.ts:1593-1645`) parke `_deferredSolvingEvent`
-  (CONNECTION_LIFETIME) ; un `requestStop` entre park et `consume-deferred`
-  l'orpheline jusqu'au reset CONNECTION.
-- **Lien memo** : `pvp-solo-chain-state-hygiene-2026-05-23` — symptômes exacts.
-- **Fix proposé** : ajouter `if (this.animationService.chainManager.isResolving)
-  return;` à `switchPerspective` (miroir de la garde draw-in-flight ; il faut
-  exposer `chainManager` sur l'orchestrateur comme `drawManager`).
-- **Sévérité** : MEDIUM (SOLO = mode test, mais reproductible). Non testé.
-- **Décision** :
+### F3 — `switchPerspective` SOLO non bloqué pendant board instable — ✅ FIX (2026-05-30)
+- **Constat vérifié** : `switchPerspective` ne bloquait que sur prompt modal +
+  draw-in-flight. Confirmé par le commentaire de `notifyPerspectiveSwitch`
+  (`animation-orchestrator.service.ts:1088-1099`) : un switch NE reset PAS le
+  `DuelEventProcessor` (chainPhase/buffer) ni les locks RBS
+  (CONNECTION_LIFETIME) mais swappe + re-render le board → asymétrie →
+  locks HAND-0/GY-0 orphelins → LOCK_SAFETY_TIMEOUT + POLL-DROP.
+- **Affinement (Axel)** : `chainPhase` est l'horloge ANIMATION (pas serveur :
+  `applyChainEnd` flippe `idle` quand l'orchestrateur dépile MSG_CHAIN_END de
+  la queue, pas à la réception serveur). MAIS `chainPhase === 'idle'` peut
+  coexister avec des locks/queue résiduels (`CHAIN_END_SETTLE_MS` + drain).
+  → la garde doit couvrir AUSSI ce cas. `isAnimating` subsume `hasLockedZones`
+  (finalizeAndCommit AVANT setRunning(false), invariant CLAUDE.md) et est
+  réactif (contrairement à `hasLockedZones`/`hasDrawsInFlight` non-réactifs).
+- **Décision appliquée** :
+  - `AnimationOrchestratorService.isBoardStableForSwitch` = getter réactif
+    (`chainPhase()==='idle' && !isAnimating.value()`).
+  - `SoloDuelOrchestratorService.canSwitchPerspective` = getter composite
+    (prompt modal OK + pas de draw + board stable) — **source unique** pour la
+    garde ET l'UX.
+  - `switchPerspective` : gardes inline remplacées par
+    `if (!canSwitchPerspective) { log; return; }`.
+  - **UX** : bouton `[disabled]="!canSwitchPerspective"`, glow conditionné
+    `waitingForOpponentOnOtherSlot() && canSwitchPerspective` (pas de glow si
+    on ne peut pas switcher), 3ᵉ aria-label `switchPlayerUnavailable` (FR+EN),
+    SCSS `&:disabled` DS-conforme (`--opacity-disabled`, `cursor:not-allowed`).
+- **Point UX résolu (Axel)** : le bouton n'avait AUCUN `[disabled]` → le user
+  cliquait dans le vide + faux feedback `switching=true`. Désormais grisé.
+- **Sous-point vérifié** : le glow s'allume bien quand l'AUTRE slot
+  (adversaire) a un prompt (`waitingForOpponentOnOtherSlot` lit `other` slot) —
+  **déjà correct**, pas de fix nécessaire.
+- **T-F6 (option 1)** : le test « chain survives switch » (invariant cardinal
+  γ = robustesse transport) stubbe `isBoardStableForSwitch=true` pour forcer le
+  switch mid-chain. La garde F3 (UX) et l'invariant γ (transport) sont
+  complémentaires : la garde empêche le USER de déclencher, l'invariant
+  garantit qu'aucune désync n'arrive si un switch atteint le processor.
+- **Tests** : +5 cas `γ F3 — board-stability guard` (block board instable /
+  draw / re-allow / prompt / stable), 1 assertion log mise à jour. 20/20
+  phase-gamma + 41/41 duel-page verts. tsc app+spec + stylelint verts.
+- **Statut** : DONE.
 
 ### F4 — `sendAnimationsDone` A37 : triangulation 3-niveaux → mauvais joueur possible
 - **Lieu** : `duel-web-socket.service.ts:380-382`

@@ -143,6 +143,26 @@ export class AnimationOrchestratorService {
     return Math.round(CHAIN_PULSE_BASE_MS * this.ctx.speedMultiplier());
   }
 
+  /**
+   * F3 (2026-05-30) — true iff the animation board is in a stable,
+   * perspective-swappable state. A SOLO perspective switch swaps + re-renders
+   * the board, but the chain state machine (`chainPhase`, buffer) and the RBS
+   * locks are CONNECTION_LIFETIME — NOT reset by the switch. Swapping while the
+   * chain is live or the runner still holds locks orphans the locked HAND/GY
+   * zones against the swapped logical state → LOCK_SAFETY_TIMEOUT + POLL-DROP
+   * REGRESSION (see memory pvp-solo-chain-state-hygiene).
+   *
+   * Built from REACTIVE signals only (`chainPhase`, `isAnimating`) so a
+   * `[disabled]` binding reading this through `canSwitchPerspective` refreshes
+   * the instant the chain finalises. `isAnimating` subsumes the non-reactive
+   * `rbs.hasLockedZones`: the runner's `finalizeAndCommit()` commits every lock
+   * BEFORE `setRunning(false)` flips `isAnimating` off (CLAUDE.md invariant),
+   * so `!isAnimating` already implies "no held locks".
+   */
+  get isBoardStableForSwitch(): boolean {
+    return this.dataSource.chainPhase() === 'idle' && !this.isAnimating.value();
+  }
+
   /** Current speed multiplier (0.5 when speed toggle is Off, 1 otherwise). */
   speedMultiplier(): number {
     return this.ctx.speedMultiplier();

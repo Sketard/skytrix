@@ -355,9 +355,10 @@
           </button>
           @if (isSoloMode()) {
             <button class="mini-toolbar__item"
-                    [class.mini-toolbar__item--urgent]="waitingForOpponentOnOtherSlot()"
+                    [class.mini-toolbar__item--urgent]="waitingForOpponentOnOtherSlot() && orchestrator.canSwitchPerspective"
                     type="button"
-                    [attr.aria-label]="(waitingForOpponentOnOtherSlot() ? 'a11y.switchPlayerUrgent' : 'a11y.switchPlayer') | translate : { player: orchestrator.perspectiveIndex() === 0 ? 'P2' : 'P1' }"
+                    [disabled]="!orchestrator.canSwitchPerspective"
+                    [attr.aria-label]="(!orchestrator.canSwitchPerspective ? 'a11y.switchPlayerUnavailable' : waitingForOpponentOnOtherSlot() ? 'a11y.switchPlayerUrgent' : 'a11y.switchPlayer') | translate : { player: orchestrator.perspectiveIndex() === 0 ? 'P2' : 'P1' }"
                     (click)="switchPlayerWithTransition()">
               <span class="mini-toolbar__icon mini-toolbar__icon--text">{{ orchestrator.perspectiveIndex() === 0 ? 'P1' : 'P2' }}</span>
               <span class="mini-toolbar__label">{{ 'duel.misc.player' | translate }}</span>

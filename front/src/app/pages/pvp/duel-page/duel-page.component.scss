@@ -151,6 +151,19 @@ app-pvp-board-container {
       outline: 2px solid var(--pvp-accent);
       outline-offset: 2px;
     }
+
+    // F3 — disabled while a perspective switch is unsafe (chain resolving /
+    // animation running / draw in flight). The urgent glow is also gated off
+    // in this state (see the `--urgent` class binding) so we never invite a
+    // click that would no-op.
+    &:disabled {
+      opacity: var(--opacity-disabled);
+      cursor: not-allowed;
+
+      &:hover {
+        background: var(--pvp-prompt-dialog-bg, rgba(15, 23, 42, 0.92));
+      }
+    }
   }
 
   &__icon {

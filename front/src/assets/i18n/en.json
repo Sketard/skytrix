@@ -692,6 +692,7 @@
     "toggleDevHub": "Toggle dev hub",
     "switchPlayer": "Switch to {{player}}",
     "switchPlayerUrgent": "Switch to {{player}} — action pending",
+    "switchPlayerUnavailable": "Player switch unavailable — animation in progress",
     "loadingReplay": "Loading replay",
     "mainNavigation": "Main navigation",
     "appHeader": "Application header",

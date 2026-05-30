@@ -51,6 +51,9 @@ import { LOCATION, type ChainingMsg, type ChainSolvingMsg, type ChainSolvedMsg, 
 interface AnimServiceMock {
   resetForSwitch: jasmine.Spy;
   notifyPerspectiveSwitch: jasmine.Spy & ((from: 0 | 1, to: 0 | 1) => void);
+  // F3 — surfaces read by `canSwitchPerspective`.
+  drawManager: { hasDrawsInFlight: boolean };
+  isBoardStableForSwitch: boolean;
 }
 
 interface WsServiceMock {
@@ -71,6 +74,8 @@ function setupStubHarness(opts: {
   animService: AnimServiceMock;
   wsService: WsServiceMock;
   setPrompt: (value: unknown) => void;
+  setDrawsInFlight: (value: boolean) => void;
+  setBoardStable: (value: boolean) => void;
 } {
   // why: spec-local mock signal — feeds wsService.pendingPrompt() stub.
   // Not part of the pipeline state surface; α.1 lint tagging is for prod
@@ -82,6 +87,10 @@ function setupStubHarness(opts: {
     resetForSwitch: jasmine.createSpy('resetForSwitch'),
     notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch')
       .and.callFake(opts.notifyImpl ?? (() => undefined)) as AnimServiceMock['notifyPerspectiveSwitch'],
+    // F3 — default: no draw in flight + board stable, so canSwitchPerspective
+    // depends only on the prompt guard unless a test sets otherwise.
+    drawManager: { hasDrawsInFlight: false },
+    isBoardStableForSwitch: true,
   };
   const wsService: WsServiceMock = {
     bindSoloConnection: jasmine.createSpy('bindSoloConnection'),
@@ -120,6 +129,8 @@ function setupStubHarness(opts: {
     animService,
     wsService,
     setPrompt: (v: unknown) => pendingPromptSignal.set(v),
+    setDrawsInFlight: (v: boolean) => { animService.drawManager.hasDrawsInFlight = v; },
+    setBoardStable: (v: boolean) => { animService.isBoardStableForSwitch = v; },
   };
 }
 
@@ -332,8 +343,10 @@ describe('γ — prompt-active guard logs a PIPELINE trace', () => {
     // carrying the prompt type for diagnostic, hence the `any(String)`.
     expect(logSpy).toHaveBeenCalledWith(
       DuelLogCategory.PIPELINE,
-      jasmine.stringContaining('switchPerspective skipped: prompt active'),
-      jasmine.any(String),
+      jasmine.stringContaining('switchPerspective skipped: cannot switch'),
+      jasmine.any(String),   // prompt type
+      jasmine.any(Boolean),  // hasDrawsInFlight
+      jasmine.any(Boolean),  // isBoardStableForSwitch
     );
   });
 
@@ -370,6 +383,55 @@ describe('γ — prompt-active guard logs a PIPELINE trace', () => {
     setPrompt({ type: 'SELECT_PLACE' });
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// F3 (2026-05-30) — board-stability guard on switchPerspective.
+// A switch performed while the animation board is unstable (chain resolving /
+// runner animating / draw in flight) orphans the CONNECTION_LIFETIME locks +
+// chain state against the swapped board → LOCK_SAFETY_TIMEOUT + POLL-DROP
+// (pvp-solo-chain-state-hygiene). `canSwitchPerspective` is the single gate
+// shared with the toolbar [disabled]+glow.
+// =============================================================================
+describe('γ F3 — board-stability guard', () => {
+  it('blocks the switch while the board is NOT stable (chain/animation)', () => {
+    const { service, animService, setBoardStable } = setupStubHarness();
+    setBoardStable(false);
+    expect(service.canSwitchPerspective).toBeFalse();
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
+  });
+
+  it('blocks the switch while a draw is in flight', () => {
+    const { service, animService, setDrawsInFlight } = setupStubHarness();
+    setDrawsInFlight(true);
+    expect(service.canSwitchPerspective).toBeFalse();
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
+  });
+
+  it('allows the switch once the board is stable again', () => {
+    const { service, animService, duelCtx, setBoardStable } = setupStubHarness();
+    setBoardStable(false);
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
+
+    setBoardStable(true);
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
+  });
+
+  it('canSwitchPerspective is false when a modal prompt is active even on a stable board', () => {
+    const { service, setPrompt } = setupStubHarness();
+    setPrompt({ type: 'SELECT_CARD' });
+    expect(service.canSwitchPerspective).toBeFalse();
+  });
+
+  it('canSwitchPerspective is true on a stable board with no blocking prompt', () => {
+    const { service } = setupStubHarness();
+    expect(service.canSwitchPerspective).toBeTrue();
   });
 });
 
@@ -421,6 +483,16 @@ describe('γ T-F6 — chain SOLO multiplex (real pipeline)', () => {
     const animMock = {
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
       resetForSwitch: jasmine.createSpy('resetForSwitch'),
+      // F3 — T-F6 deliberately drives a switch MID-CHAIN to prove the cardinal
+      // γ invariant (one processor survives the switch — transport robustness).
+      // The F3 user-facing guard (`canSwitchPerspective`) would normally block
+      // a mid-chain switch, but T-F6 tests the lower transport layer, so we
+      // stub the board as stable + no draw to let the switch through. The two
+      // are complementary: the guard stops the USER triggering this, the
+      // invariant guarantees nothing desyncs if a switch reaches the processor
+      // anyway (reconnect / future edge case).
+      drawManager: { hasDrawsInFlight: false },
+      isBoardStableForSwitch: true,
     };
     TestBed.configureTestingModule({
       providers: [

@@ -692,6 +692,7 @@
     "toggleDevHub": "Afficher/masquer le dev hub",
     "switchPlayer": "Passer à {{player}}",
     "switchPlayerUrgent": "Passer à {{player}} — action en attente",
+    "switchPlayerUnavailable": "Changement de joueur indisponible — animation en cours",
     "loadingReplay": "Chargement du replay",
     "mainNavigation": "Navigation principale",
     "appHeader": "En-tête de l'application",

@@ -237,14 +237,47 @@ export class SoloDuelOrchestratorService {
    * toute sa Main Phase / Battle Phase, donc bloquer le switch sur eux
    * équivaut à bloquer le switch tout au long du tour.
    */
+  /**
+   * F3 (2026-05-30) — single source of truth for "can the viewer switch
+   * perspective right now?". Drives BOTH `switchPerspective`'s early-return
+   * guard AND the toolbar button's `[disabled]` + urgent-glow gate, so the UX
+   * and the safety guard can never disagree (clicking a glowing button that
+   * silently no-ops was the "I click P1 and nothing happens" frustration).
+   *
+   * Three families of conditions:
+   *  - No BLOCKING modal prompt. `IDLE_PHASE_PROMPT_TYPES` (SELECT_IDLECMD /
+   *    SELECT_BATTLECMD) are the stable per-phase wait state and are allowed —
+   *    blocking them would lock the switch for the whole turn (c10 bug).
+   *  - No draw in flight — a mid-draw flip re-derives card faces and flashes
+   *    card-backs on the travelling cards.
+   *  - Board stable (chain idle + runner stopped) — swapping mid-chain or
+   *    while locks are held desyncs the CONNECTION_LIFETIME chain/lock state
+   *    against the freshly-swapped board (lock leak + POLL-DROP).
+   *
+   * Reads only reactive signals (pendingPrompt, chainPhase, isAnimating) plus
+   * the draw-in-flight Set; the reactive trio drives `[disabled]` refresh.
+   */
+  get canSwitchPerspective(): boolean {
+    const prompt = this.wsService.pendingPrompt();
+    if (prompt !== null && !IDLE_PHASE_PROMPT_TYPES.has(prompt.type)) return false;
+    if (this.animationService.drawManager.hasDrawsInFlight) return false;
+    if (!this.animationService.isBoardStableForSwitch) return false;
+    return true;
+  }
+
   switchPerspective(): void {
     const conn = this._transport_connection();
     if (!conn) return;
     if (this._switching()) return;
-    const prompt = this.wsService.pendingPrompt();
-    if (prompt !== null && !IDLE_PHASE_PROMPT_TYPES.has(prompt.type)) {
+    // F3 — single guard via `canSwitchPerspective` (modal prompt + draw in
+    // flight + board-stable). Logs the blocking reason for diagnostics.
+    if (!this.canSwitchPerspective) {
+      const prompt = this.wsService.pendingPrompt();
       this.logger.log(DuelLogCategory.PIPELINE,
-        'switchPerspective skipped: prompt active (type=%s)', prompt.type);
+        'switchPerspective skipped: cannot switch (prompt=%s draw=%s boardStable=%s)',
+        prompt?.type ?? 'none',
+        this.animationService.drawManager.hasDrawsInFlight,
+        this.animationService.isBoardStableForSwitch);
       return;
     }
     const from = this.duelCtx.perspective()() as 0 | 1;
