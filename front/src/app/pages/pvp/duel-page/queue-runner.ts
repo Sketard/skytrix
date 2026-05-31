@@ -259,10 +259,40 @@ export class QueueRunner {
    *  `_processAnimationQueueInner` calls from starting in the same turn;
    *  the abort signal preserves ordering across reset boundaries (palier C). */
   private _isProcessing = false;
-  /** scope: PERSPECTIVE_LIFETIME. Detects parallel re-entry of
-   *  `_processAnimationQueueInner` (audit finding C4). Palier C kept this
-   *  as a runtime invariant assertion — with `AbortController` it should
-   *  never trip in practice, but it surfaces a regression if it does. */
+  /**
+   * scope: PERSPECTIVE_LIFETIME. Detects parallel re-entry of
+   * `_processAnimationQueueInner` (audit finding C4). F13 (2026-05-31)
+   * — **NOT redundant** with `AbortController` (palier C); the two cover
+   * distinct scenarios:
+   *
+   *   - `AbortController` covers RESET boundaries — a suspended inner
+   *     loop resumes after `requestStop`, checks `abortSignal.aborted`,
+   *     and bails (single-loop, time-ordered).
+   *
+   *   - `_innerLoopDepth` covers INTRA-TICK re-entry — the finalize
+   *     branch (line ~581) flips `_isProcessing=false` for a sync window
+   *     between `onFinalize()` and `setRunning(false)`. If
+   *     `setRunning(false)` triggers `advanceStep → feedTransition →
+   *     enqueue → notifyEnqueue → processAnimationQueue` in the same
+   *     microtask, the new call passes the `_isProcessing=false` gate
+   *     and a SECOND inner loop starts BEFORE the first returns. No
+   *     abort involved, but two loops coexist — the depth assertion is
+   *     the only structural surface for catching this.
+   *
+   * Three sites participate (each load-bearing for a distinct reason):
+   *  1. `requestStop()` zeroes the counter to clear a stale ++ that a
+   *     suspended loop hadn't yet --'d ;
+   *  2. The entry `++` + `<=1` assert detects parallel re-entry ;
+   *  3. The finally `Math.max(0, …)` floor prevents a negative counter
+   *     when a suspended loop's finally fires AFTER the zero-on-reset
+   *     (otherwise the next assert would compare against -1 and the
+   *     enter ++ wouldn't trip even with re-entry).
+   *
+   * Removing any one of the three breaks an invariant the other two
+   * rely on. Removing the whole counter loses C4 detection — accepted
+   * only if a future migration moves the finalize window into a
+   * synchronous critical section guarded by `_isProcessing` end-to-end.
+   */
   private _innerLoopDepth = 0;
   /**
    * scope: PERSPECTIVE_LIFETIME. Palier C — replaces the maison
@@ -380,10 +410,12 @@ export class QueueRunner {
     // next run starts uncontaminated.
     this._abort.abort();
     this._abort = new AbortController();
-    // Reset re-entry depth. A reset can land while a loop is suspended on an
-    // `await`; that loop's `finally { _innerLoopDepth-- }` has not run yet,
-    // so the counter is stale at 1. Zeroing here + the `Math.max(0, …)`
-    // floor in the inner-loop finally keeps it balanced across resets.
+    // F13 site 1 of 3 — see `_innerLoopDepth` docstring for the full
+    // contract. A reset can land while a loop is suspended on an `await`
+    // ; that loop's `finally { _innerLoopDepth-- }` has not run yet, so
+    // the counter is stale at 1. Zeroing here + the floor in the
+    // inner-loop finally keeps it balanced across resets ; together with
+    // the entry assert they form the C4 re-entry detection.
     this._innerLoopDepth = 0;
     this.setRunning(false);
     this.trace('requestStop', { aborted: true });
@@ -477,6 +509,10 @@ export class QueueRunner {
   }
 
   private async _processAnimationQueueInner(abortSignal: AbortSignal): Promise<void> {
+    // F13 site 2 of 3 — see `_innerLoopDepth` docstring for the full
+    // contract. The `++` + `<=1` assert is the structural detection of
+    // INTRA-TICK parallel re-entry (audit finding C4 ; not covered by
+    // AbortController, which only guards reset boundaries).
     this._innerLoopDepth++;
     duelAssert(
       this._innerLoopDepth <= 1,
@@ -592,9 +628,11 @@ export class QueueRunner {
         }
       }
     } finally {
-      // Floor at 0 — `requestStop` may have already zeroed the counter while
-      // this loop was suspended on an `await`, in which case a bare `--` would
-      // go negative and corrupt the next assert.
+      // F13 site 3 of 3 — see `_innerLoopDepth` docstring. Floor at 0
+      // because `requestStop` may have already zeroed the counter while
+      // this loop was suspended on an `await` ; a bare `--` would drive
+      // negative and the next entry's `<=1` assert wouldn't trip even
+      // under genuine re-entry (depth=-1 → 0 → ok, hiding the bug).
       this._innerLoopDepth = Math.max(0, this._innerLoopDepth - 1);
     }
   }

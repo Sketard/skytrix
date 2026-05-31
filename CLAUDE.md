@@ -1634,6 +1634,27 @@ delegates to `runner.requestStop()`.
    (`RESCUE_NO_PROGRESS_CEILING`) — past N rescues with `queueLen`
    unchanged the rescue abandons with a `logger.warn` instead of looping.
 
+   **F13 (2026-05-31) — `AbortController` does NOT make `_innerLoopDepth`
+   redundant.** The two cover orthogonal scenarios:
+
+   - `AbortController` guards RESET boundaries (single suspended loop
+     bails after a `requestStop`).
+   - `_innerLoopDepth` guards INTRA-TICK parallel re-entry. The finalize
+     branch in `_processAnimationQueueInner` flips `_isProcessing=false`
+     for a synchronous window between `onFinalize()` and
+     `setRunning(false)` ; if `setRunning(false)` triggers
+     `advanceStep → feedTransition → enqueue → notifyEnqueue →
+     processAnimationQueue` in the same microtask, the new call passes
+     the `_isProcessing=false` gate and a SECOND inner loop starts
+     BEFORE the first returns. No abort involved. The `depth <= 1`
+     assert is the only structural detection (audit finding C4).
+
+   Removing `_innerLoopDepth` would lose that detection. The three
+   sites (`requestStop` zero, entry `++` + assert, finally `Math.max(0,
+   …)` floor) each load-bear a piece of the invariant the others rely
+   on ; removing any one breaks the rest. Each site carries an `F13
+   site N of 3` comment pointer in `queue-runner.ts`.
+
 2. **Watchdog false-fire while paused.** A resolving chain can sit with
    an empty queue when replay auto-play is paused — the next link /
    `MSG_CHAIN_END` are in a transition `maybeAdvance` won't schedule
