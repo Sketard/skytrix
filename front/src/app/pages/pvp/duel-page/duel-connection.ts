@@ -630,10 +630,25 @@ export class DuelConnection {
       'ws.send PLAYER_RESPONSE type=%s forPlayer=%s data=%o', promptType, forPlayer ?? 'none', data);
     if (this.safeSend(this._tagForPlayer({ type: 'PLAYER_RESPONSE', promptType, data }, forPlayer))) {
       // γ Option C (PR2 c4.3, A22) — clear the slot of the responding player.
-      // PvP normal: `forPlayer === undefined` → slot 0 (legacy equivalent;
-      // c5's wsService.sendResponse forwards `undefined` in PvP normal).
-      // SOLO multiplex: the user's perspective slot is cleared.
-      const slot = this._slots[forPlayer ?? 0];
+      // F-bugB3 root-cause fix (2026-05-31) — locate the slot from the
+      // pending prompt's own `player` field. The previous fallback `_slots[
+      // forPlayer ?? 0]` was wrong in PvP normal for the P1 viewer
+      // (`forPlayer === undefined` → cleared slot 0, but P1's prompt lives
+      // in `_slots[1]`). The stale slot[1] was then re-read by the dialog
+      // after a transient gating closeDialog (visiblePrompt gates behind
+      // the animation queue while a phase announcement plays), letting the
+      // user submit a duplicate decline that the server dropped as
+      // `Unexpected PLAYER_RESPONSE` → modal stuck on "Sending…".
+      //
+      // The slot per prompt is keyed by `message.player` in the SELECT_*
+      // branches of `handleMessage`, so `pendingPrompt.player` is the
+      // ground truth. In SOLO multiplex `forPlayer` is always passed (=
+      // `perspectiveSlot()`) and wins; this branch only matters for PvP
+      // normal where the prompt's player is the unambiguous slot index.
+      const slotIdx: 0 | 1 = forPlayer !== undefined
+        ? forPlayer
+        : ((this._slots[1].pendingPrompt()?.player === 1) ? 1 : 0);
+      const slot = this._slots[slotIdx];
       // Capture selected cards before clearing prompt (for excluding from next prompt)
       const prompt = slot.pendingPrompt();
       const accumulate = DuelConnection.ACCUMULATE_SELECTION_TYPES.has(promptType);

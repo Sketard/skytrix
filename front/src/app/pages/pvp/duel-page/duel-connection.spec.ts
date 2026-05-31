@@ -389,6 +389,99 @@ describe('DuelConnection — sendResponse', () => {
     expect(conn.pendingPrompt()).toBeNull();
     expect(conn.inactivityWarning()).toBeNull();
   });
+
+  // F-bugB3 (2026-05-31) — PvP normal slot-resolution regression.
+  // γ-c PR2 c4.3 introduced per-perspective slots (`_slots[0|1]`) and made
+  // `sendResponse(_, _, forPlayer)` clear `_slots[forPlayer ?? 0]` after a
+  // successful send. In SOLO `forPlayer` is the active perspective; in PvP
+  // normal `wsService.sendResponse` calls through with `forPlayer===undefined`,
+  // which fell back to `_slots[0]`. That fallback is right for a P0 viewer
+  // but WRONG for a P1 viewer — P1's prompt is routed by `handleMessage` to
+  // `_slots[1]` (per `message.player`). The stale `_slots[1].pendingPrompt`
+  // survived the response and was re-read by the UI after a transient
+  // `visiblePrompt` gate (animation queue / phase announcement); the dialog
+  // re-opened on the same prompt, the user re-declined, the server received
+  // a duplicate response while `awaitingResponse[1]===false` and dropped it
+  // as `Unexpected PLAYER_RESPONSE` → modal stuck on "Sending…".
+  //
+  // Fix: resolve the slot from the pending prompt's own `player` field when
+  // `forPlayer` is unset.
+  it('clears _slots[1] for a player=1 prompt when forPlayer is omitted (F-bugB3)', () => {
+    const ws = makeMockWs(true);
+    const { conn } = makeConn({ ws });
+    // Route a SELECT_CHAIN to player 1 — handleMessage writes _slots[1].
+    dispatch(conn, {
+      type: 'SELECT_CHAIN', player: 1, cards: [
+        { cardCode: 42141493, location: 2, sequence: 3, player: 1 } as CardInfo,
+      ], forced: false, hintTiming: 0,
+    } as unknown as ServerMessage);
+    // slot accessor (private API exposed for tests, mirrors the helper used
+    // by the A39-bis suite below).
+    const slotPrompt = (slot: 0 | 1) => (conn as unknown as {
+      getPendingPromptFor(p: 0 | 1): () => unknown;
+    }).getPendingPromptFor(slot)();
+    expect(slotPrompt(0)).toBeNull();
+    expect(slotPrompt(1)).not.toBeNull();
+
+    // PvP normal: forPlayer omitted. The previous implementation cleared
+    // _slots[0] (wrong slot) and left _slots[1] stale.
+    conn.sendResponse('SELECT_CHAIN', { index: null });
+
+    expect(ws.send).toHaveBeenCalledTimes(1);
+    expect(slotPrompt(1)).toBeNull();
+  });
+
+  it('still clears _slots[0] for a player=0 prompt when forPlayer is omitted (F-bugB3)', () => {
+    const ws = makeMockWs(true);
+    const { conn } = makeConn({ ws });
+    dispatch(conn, {
+      type: 'SELECT_CHAIN', player: 0, cards: [
+        { cardCode: 1, location: 2, sequence: 0, player: 0 } as CardInfo,
+      ], forced: false, hintTiming: 0,
+    } as unknown as ServerMessage);
+    const slotPrompt = (slot: 0 | 1) => (conn as unknown as {
+      getPendingPromptFor(p: 0 | 1): () => unknown;
+    }).getPendingPromptFor(slot)();
+    expect(slotPrompt(0)).not.toBeNull();
+    expect(slotPrompt(1)).toBeNull();
+
+    conn.sendResponse('SELECT_CHAIN', { index: null });
+
+    expect(slotPrompt(0)).toBeNull();
+  });
+
+  it('forPlayer wins over the prompt-player heuristic (SOLO path, F-bugB3 scope)', () => {
+    // In SOLO multiplex `wsService.sendForPlayer()` returns the active
+    // perspective and is passed explicitly. The heuristic that fixes PvP
+    // normal MUST NOT override it — pass forPlayer=0 and expect slot 0 to
+    // be cleared even if _slots[1] happens to hold something.
+    const ws = makeMockWs(true);
+    const { conn } = makeConn({ ws });
+    // Park a prompt in slot 1 (SOLO would do this for the inactive side).
+    dispatch(conn, {
+      type: 'SELECT_CHAIN', player: 1, cards: [
+        { cardCode: 1, location: 2, sequence: 0, player: 1 } as CardInfo,
+      ], forced: false, hintTiming: 0,
+    } as unknown as ServerMessage);
+    // Park a prompt in slot 0 too.
+    dispatch(conn, {
+      type: 'SELECT_CHAIN', player: 0, cards: [
+        { cardCode: 2, location: 2, sequence: 0, player: 0 } as CardInfo,
+      ], forced: false, hintTiming: 0,
+    } as unknown as ServerMessage);
+    const slotPrompt = (slot: 0 | 1) => (conn as unknown as {
+      getPendingPromptFor(p: 0 | 1): () => unknown;
+    }).getPendingPromptFor(slot)();
+    expect(slotPrompt(0)).not.toBeNull();
+    expect(slotPrompt(1)).not.toBeNull();
+
+    // Explicit forPlayer=0 must clear slot 0 even though slot 1 has a
+    // player=1 prompt that the heuristic would otherwise target.
+    conn.sendResponse('SELECT_CHAIN', { index: null }, 0);
+
+    expect(slotPrompt(0)).toBeNull();
+    expect(slotPrompt(1)).not.toBeNull();
+  });
 });
 
 // =============================================================================
