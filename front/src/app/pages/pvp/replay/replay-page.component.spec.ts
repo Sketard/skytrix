@@ -155,7 +155,7 @@ class StubAnimationOrchestrator {
   readonly lpTracker = { animatingLpPlayer: signal<number | null>(null) };
   readonly eventStream = signal<readonly unknown[]>([]);
   destroy = jasmine.createSpy('destroy');
-  resetForSwitch = jasmine.createSpy('resetForSwitch');
+  resetForReplaySeek = jasmine.createSpy('resetForReplaySeek');
   startProcessingIfIdle = jasmine.createSpy('startProcessingIfIdle');
   onStateSync = jasmine.createSpy('onStateSync');
   pushToStream = jasmine.createSpy('pushToStream').and.returnValue(0);

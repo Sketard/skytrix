@@ -100,12 +100,12 @@ export class AnimationOrchestratorService {
   private readonly gameLog = inject(DuelGameLogService, { optional: true });
   /**
    * α.5 — the duel-page-scoped `ScopeResetDispatcher`. Used by
-   * `resetForSwitch` (dispatches PERSPECTIVE_LIFETIME) and `onStateSync`
-   * (dispatches DUEL_LIFETIME) to fan-out resets to the 4 `ResetTarget`
-   * managers (Chain, Lp, Battle, Log). `{ optional: true }` for the
-   * same reason as `gameLog` — the orchestrator's own spec suite
-   * (`animation-orchestrator.service.spec.ts`) does not provide it.
-   * Cf. duel-session-chantier.md §3.5.
+   * `notifyPerspectiveSwitch` (dispatches PERSPECTIVE_LIFETIME),
+   * `resetForReplaySeek` and `onStateSync` (both dispatch DUEL_LIFETIME)
+   * to fan-out resets to the 4 `ResetTarget` managers (Chain, Lp,
+   * Battle, Log). `{ optional: true }` for the same reason as `gameLog`
+   * — the orchestrator's own spec suite (`animation-orchestrator.service.spec.ts`)
+   * does not provide it. Cf. duel-session-chantier.md §3.5.
    */
   private readonly scopeDispatcher = inject(ScopeResetDispatcher, { optional: true });
 
@@ -884,9 +884,10 @@ export class AnimationOrchestratorService {
     // `onIsRunningChange` callback — which keeps `_isAnimating` in sync.
     this.runner.requestStop();
     // Drop any parked initial-draw events — a hard reset (destroy /
-    // resetForSwitch) means the next duel starts fresh, replaying its own
-    // BOARD_STATE + MSG_DRAW sequence. Carrying stale buffered events
-    // would mean the rematch board flashes the previous duel's draws.
+    // resetForReplaySeek / onStateSync) means the next duel starts fresh,
+    // replaying its own BOARD_STATE + MSG_DRAW sequence. Carrying stale
+    // buffered events would mean the rematch board flashes the previous
+    // duel's draws.
     this._preActivationBuffer.length = 0;
     this._preActivationDrainScheduled = false;
   }
@@ -936,19 +937,20 @@ export class AnimationOrchestratorService {
   }
 
   /**
-   * Shared reset logic for both `resetForSwitch` and `onStateSync`.
-   * Caller passes the scope set to dispatch — α.5 replaces what used to
-   * be manual chains of `chainManager.reset()` / `lpTracker.reset()` /
-   * `battleTracker.reset()` with a single `dispatcher.dispatch(scopes)`
-   * driven by the 4 ResetTarget managers' declared scopes:
+   * Shared reset logic for `notifyPerspectiveSwitch`, `resetForReplaySeek`
+   * and `onStateSync`. Caller passes the scope set to dispatch — α.5
+   * replaces what used to be manual chains of `chainManager.reset()` /
+   * `lpTracker.reset()` / `battleTracker.reset()` with a single
+   * `dispatcher.dispatch(scopes)` driven by the 4 ResetTarget managers'
+   * declared scopes:
    *
-   *   - `resetForSwitch` passes `{PERSPECTIVE_LIFETIME}` → hits Chain
-   *     (declared PERSPECTIVE) + Battle (PERSPECTIVE) only. Lp + Log
-   *     (DUEL_LIFETIME) survive the switch — the same duel viewed from
-   *     either side must share LP state + journal. The duel-session-
-   *     chantier §3.5 invalidation matrix is now mechanically enforced
-   *     instead of relying on a comment that "the line must not be
-   *     added back".
+   *   - `notifyPerspectiveSwitch` dispatches `{PERSPECTIVE_LIFETIME}` →
+   *     hits Chain (declared PERSPECTIVE) + Battle (PERSPECTIVE) only.
+   *     Lp + Log (DUEL_LIFETIME) survive the switch — the same duel
+   *     viewed from either side must share LP state + journal. The
+   *     duel-session-chantier §3.5 invalidation matrix is now
+   *     mechanically enforced instead of relying on a comment that
+   *     "the line must not be added back".
    *
    *     Behaviour change from pre-α.5: `LpAnimationTracker.reset()` is
    *     no longer called at SOLO switchPlayer. Safe because the BOARD_STATE
@@ -957,12 +959,13 @@ export class AnimationOrchestratorService {
    *     accurate. Mid-chain `_pendingLpCommits` now correctly survive the
    *     switch (cf. §3.5 LP scope rationale).
    *
-   *   - `onStateSync` passes `{DUEL_LIFETIME}` → cascade hits all 4
-   *     managers (DUEL ⊃ CONNECTION ⊃ PERSPECTIVE). The journal is
-   *     cleared via `gameLog.applyReset` so the incoming STATE_SYNC
-   *     payload's `gameLogEntries` can repopulate from a clean slate
-   *     (R8 rematch + F5 reconnect path). No more explicit
-   *     `gameLog?.reset()` after the shared helper.
+   *   - `resetForReplaySeek` and `onStateSync` both pass `{DUEL_LIFETIME}`
+   *     → cascade hits all 4 managers (DUEL ⊃ CONNECTION ⊃ PERSPECTIVE).
+   *     The journal is cleared via `gameLog.applyReset` so the incoming
+   *     STATE_SYNC payload's `gameLogEntries` can repopulate from a clean
+   *     slate (R8 rematch + F5 reconnect path), and replay seek rebuilds
+   *     via `gameLogRebuildTick` → `rebuildUpTo([0..currentIndex])`. No
+   *     explicit `gameLog?.reset()` needed after the shared helper.
    *
    * Non-ResetTarget cleanups (drawManager, moveRouter, toastService,
    * transient signal sets) stay as explicit chains here — they aren't
@@ -1106,9 +1109,10 @@ export class AnimationOrchestratorService {
    * γ commit 5 — émission de `PerspectiveSwitched(from, to)` sur le
    * flux + dispatch `applyReset({PERSPECTIVE_LIFETIME})` via
    * `ScopeResetDispatcher`. Source UNIQUE de reset PERSPECTIVE_LIFETIME
-   * pour le SOLO orchestrator. La méthode `resetForSwitch` est désormais
-   * réservée au replay seek (cf. son docblock) — le rematch SOLO compte
-   * sur `onStateSync({DUEL_LIFETIME})` (post-review B1, 2026-05-28).
+   * pour le SOLO orchestrator. La méthode `resetForReplaySeek` (F27
+   * renaming) est réservée au replay seek (cf. son docblock) — le
+   * rematch SOLO compte sur `onStateSync({DUEL_LIFETIME})` (post-review
+   * B1, 2026-05-28).
    *
    * Ordering garanti (cf. §4.5 spec) :
    *   1. `pushToStream` écrit l'event sur `_eventStream` (atomique).
@@ -1147,32 +1151,39 @@ export class AnimationOrchestratorService {
     });
     // Dispatch reset PERSPECTIVE_LIFETIME. Source UNIQUE de reset
     // PERSPECTIVE-scoped depuis la transition B1 (2026-05-28) qui a
-    // retiré le pre-reset rematch via `resetForSwitch`. Le rematch
-    // SOLO compte désormais sur `onStateSync({DUEL_LIFETIME})` qui
-    // suit immédiatement le REMATCH_STARTING (handler unique).
+    // retiré le pre-reset rematch via l'ancien `resetForSwitch`. Le
+    // rematch SOLO compte désormais sur `onStateSync({DUEL_LIFETIME})`
+    // qui suit immédiatement le REMATCH_STARTING (handler unique).
     this.scopeDispatcher?.dispatch(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
     this.logger.log(DuelLogCategory.PIPELINE,
       'notifyPerspectiveSwitch %d → %d → dispatch({PERSPECTIVE_LIFETIME})', from, to);
   }
 
   /**
-   * Hard reset à scope PERSPECTIVE_LIFETIME. Aujourd'hui (post-review
-   * B1, 2026-05-28), un SEUL caller : le replay seek
-   * (`ReplayPageComponent.abortAndClean`). Auparavant aussi appelé par
-   * le SOLO rematch effect — retiré au profit du `onStateSync()` qui
-   * suit immédiatement (handler unique, scope cohérent).
+   * Hard reset triggered by a replay seek (the unique caller :
+   * `ReplayPageComponent.abortAndClean`). Dispatches `{DUEL_LIFETIME}`
+   * which cascades to CONNECTION + PERSPECTIVE — every ResetTarget
+   * is invalidated, including the journal (DuelGameLogService) and the
+   * LP tracker (LpAnimationTracker). A seek is causally a checkpoint
+   * (the user moves to a different point in time), not a perspective
+   * switch — the scope reflects that.
    *
-   * Le nom historique "ForSwitch" est conservé pour compat ; le scope
-   * effectif fait plus que ce que la doctrine PERSPECTIVE suggère
-   * (commitAll + eventStream.set([]) sont des side-effects DUEL). C'est
-   * acceptable pour le replay seek où on VEUT wiper l'historique
-   * (la rebuild via `gameLogRebuildTick` re-feed depuis [0..currentIndex]
-   * juste après).
+   * F27 (2026-05-31) — renamed from `resetForSwitch` + scope widened
+   * from `{PERSPECTIVE_LIFETIME}` to `{DUEL_LIFETIME}`. The previous
+   * narrow scope was load-bearing only thanks to compensating
+   * mechanisms (`lpTracker.syncFromBoardState` via `onFinalize` before
+   * any stale `peekLpDelta` read) ; aligning the scope on the actual
+   * causal nature of a seek removes a regression risk for any future
+   * DUEL-scoped manager that would lack such a compensator.
+   *
+   * SOLO PvP perspective switch does NOT go through this method — it
+   * goes through `notifyPerspectiveSwitch` which dispatches
+   * `{PERSPECTIVE_LIFETIME}` (LP + journal survive a switch on the
+   * same duel). The two paths are intentionally separate.
    */
-  resetForSwitch(): void {
-    this.logger.log(DuelLogCategory.QUEUE, 'resetForSwitch — clearing all state & timeouts');
-    // PERSPECTIVE_LIFETIME only — Lp + Log survive (cf. resetAllState doc).
-    this.resetAllState(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
+  resetForReplaySeek(): void {
+    this.logger.log(DuelLogCategory.QUEUE, 'resetForReplaySeek — clearing all state & timeouts');
+    this.resetAllState(new Set<ScopeCategory>(['DUEL_LIFETIME']));
     document.querySelectorAll<HTMLElement>('.pvp-deck-shuffle').forEach(el => {
       el.classList.remove('pvp-deck-shuffle');
       el.style.removeProperty('--pvp-shuffle-duration');

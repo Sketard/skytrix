@@ -38,7 +38,6 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
   // misses. Defaults mirror `phase-gamma-victory.spec.ts:setupStubHarness`.
   let animService: {
     processor: DuelEventProcessor;
-    resetForSwitch: jasmine.Spy;
     notifyPerspectiveSwitch: jasmine.Spy;
     drawManager: { hasDrawsInFlight: boolean };
     isBoardStableForSwitch: boolean;
@@ -61,7 +60,6 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
     pendingPromptSignal = signal<unknown>(null);
     animService = {
       processor: new DuelEventProcessor(),
-      resetForSwitch: jasmine.createSpy('resetForSwitch'),
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
       // F3 — default: no draw in flight + board stable, so canSwitchPerspective
       // depends only on the prompt guard unless a test sets otherwise.

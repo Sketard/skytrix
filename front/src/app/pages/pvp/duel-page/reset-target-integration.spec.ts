@@ -147,9 +147,10 @@ describe('α.4b — managers as ResetTarget (integration)', () => {
   describe('perspective-survival contract (party-mode 2026-05-26)', () => {
     // Per §3.5 the invalidation matrix has LP + Log declared DUEL_LIFETIME.
     // PERSPECTIVE expansion = {PERSPECTIVE} alone (PERSPECTIVE is the most
-    // volatile rung; nothing strictly below). So a `resetForSwitch` dispatch
-    // does NOT reach `applyReset` on LP or Log — they survive the switch
-    // by virtue of NOT being notified, not by their `applyReset` no-oping.
+    // volatile rung; nothing strictly below). So a `notifyPerspectiveSwitch`
+    // dispatch ({PERSPECTIVE_LIFETIME}) does NOT reach `applyReset` on LP
+    // or Log — they survive the switch by virtue of NOT being notified, not
+    // by their `applyReset` no-oping.
     //
     // The journal's re-relativisation ("Vous" vs "Adversaire" labels) is
     // carried elsewhere: page-component effects call `gameLog.setPerspective(...)`

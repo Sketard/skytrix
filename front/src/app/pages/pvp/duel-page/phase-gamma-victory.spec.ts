@@ -50,7 +50,6 @@ import { LOCATION, type ChainingMsg, type ChainSolvingMsg, type ChainSolvedMsg, 
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AnimServiceMock {
-  resetForSwitch: jasmine.Spy;
   notifyPerspectiveSwitch: jasmine.Spy & ((from: 0 | 1, to: 0 | 1) => void);
   // F3 — surfaces read by `canSwitchPerspective`.
   drawManager: { hasDrawsInFlight: boolean };
@@ -85,7 +84,6 @@ function setupStubHarness(opts: {
   const pendingPromptSignal = signal<unknown>(opts.promptActive ? { type: 'SELECT_CARD' } : null);
 
   const animService: AnimServiceMock = {
-    resetForSwitch: jasmine.createSpy('resetForSwitch'),
     notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch')
       .and.callFake(opts.notifyImpl ?? (() => undefined)) as AnimServiceMock['notifyPerspectiveSwitch'],
     // F3 — default: no draw in flight + board stable, so canSwitchPerspective
@@ -484,7 +482,6 @@ describe('γ T-F6 — chain SOLO multiplex (real pipeline)', () => {
     const factory = createMockWebSocketFactory();
     const animMock = {
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
-      resetForSwitch: jasmine.createSpy('resetForSwitch'),
       // F3 — T-F6 deliberately drives a switch MID-CHAIN to prove the cardinal
       // γ invariant (one processor survives the switch — transport robustness).
       // The F3 user-facing guard (`canSwitchPerspective`) would normally block

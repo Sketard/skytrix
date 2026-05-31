@@ -801,15 +801,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   // --- DRY cleanup helper (used by all interruption points) ---
 
   private abortAndClean(): void {
-    this.orchestrator.resetForSwitch();
+    // F27 (2026-05-31) — `resetForReplaySeek` dispatches `{DUEL_LIFETIME}`
+    // which cascades through DuelGameLogService.applyReset (DUEL_LIFETIME
+    // scope → calls `this.reset()`). The previous explicit
+    // `this.gameLog.reset()` after the orchestrator call is no longer
+    // needed — the cascade handles it.
+    this.orchestrator.resetForReplaySeek();
     this.phaseService.clear();
     this.adapter.abort();
-    // Clear the journal explicitly — `resetForSwitch` used to do this via
-    // `resetAllState`, but that was decoupled (SOLO PvP fix: switchPlayer
-    // must not wipe the cumulative journal). Replay seek IS a legitimate
-    // journal-reset path because the rebuild tick below feeds `rebuildUpTo`
-    // with the new [0..currentIndex] history.
-    this.gameLog.reset();
     // Bump the rebuild tick so the seek-rebuild effect re-feeds the journal
     // with the history [0..currentIndex] once the seek has committed its
     // index (Bug 1). A forward step does NOT call `abortAndClean`, so it
