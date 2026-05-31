@@ -29,7 +29,20 @@ import { ReducedMotionService } from '../../../services/reduced-motion.service';
  */
 describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
   let service: SoloDuelOrchestratorService;
-  let animService: { processor: DuelEventProcessor; resetForSwitch: jasmine.Spy; notifyPerspectiveSwitch: jasmine.Spy };
+  // F3 (audit, abcc259f) added `canSwitchPerspective` which reads
+  // `drawManager.hasDrawsInFlight` + `isBoardStableForSwitch` on the
+  // injected AnimationOrchestratorService. The stub must expose both for
+  // any test that calls `switchPerspective` — without them, the guard
+  // throws TypeError (`Cannot read property 'hasDrawsInFlight' of
+  // undefined`) before the perspective flips and every assertion downstream
+  // misses. Defaults mirror `phase-gamma-victory.spec.ts:setupStubHarness`.
+  let animService: {
+    processor: DuelEventProcessor;
+    resetForSwitch: jasmine.Spy;
+    notifyPerspectiveSwitch: jasmine.Spy;
+    drawManager: { hasDrawsInFlight: boolean };
+    isBoardStableForSwitch: boolean;
+  };
   let wsService: {
     bindSoloConnection: jasmine.Spy;
     setSoloMode: jasmine.Spy;
@@ -50,6 +63,10 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
       processor: new DuelEventProcessor(),
       resetForSwitch: jasmine.createSpy('resetForSwitch'),
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
+      // F3 — default: no draw in flight + board stable, so canSwitchPerspective
+      // depends only on the prompt guard unless a test sets otherwise.
+      drawManager: { hasDrawsInFlight: false },
+      isBoardStableForSwitch: true,
     };
     // c6b A27 — auto-accept rematch guard reads soloModeSource(). Mock
     // stub-signal so tests can drive the SOLO branch on/off without
