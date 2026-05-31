@@ -223,6 +223,110 @@ describe('DuelConnection — handleMessage: DUEL_END', () => {
 });
 
 // =============================================================================
+// F14 (2026-05-31) — atomic STATE_SYNC + CHAIN_STATE
+// -----------------------------------------------------------------------------
+// STATE_SYNC is buffered ; CHAIN_STATE consumes it and applies the pair
+// atomically in the same tick (no transient empty-chain window). A
+// fallback timer flushes STATE_SYNC alone if CHAIN_STATE never arrives.
+// =============================================================================
+
+describe('DuelConnection — F14 atomic STATE_SYNC + CHAIN_STATE', () => {
+  // Minimal BOARD_STATE-shaped payload — the spec only cares that
+  // _applyStateSync runs without throwing on it. The RBS sanitization
+  // path tolerates an empty-zone shape.
+  const emptyBoardData = {
+    players: [
+      { lp: 8000, deckCount: 40, extraCount: 0, hand: [], zones: [] },
+      { lp: 8000, deckCount: 40, extraCount: 0, hand: [], zones: [] },
+    ],
+    turnPlayer: 0,
+    turnCount: 0,
+    phase: 1,
+  } as never;
+
+  it('STATE_SYNC alone does NOT apply immediately — onStateSync callback is deferred', () => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    const onStateSyncSpy = jasmine.createSpy('onStateSync');
+    conn.onStateSync = onStateSyncSpy;
+
+    dispatch(conn, {
+      type: 'STATE_SYNC', data: emptyBoardData,
+    } as unknown as ServerMessage);
+
+    // No CHAIN_STATE arrived yet ; the buffer is parked.
+    expect(onStateSyncSpy).not.toHaveBeenCalled();
+  });
+
+  it('STATE_SYNC + CHAIN_STATE applied atomically in the same tick (onStateSync fires before chain restore)', () => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    const callOrder: string[] = [];
+    conn.onStateSync = () => callOrder.push('onStateSync');
+    spyOn(conn['processor'] as unknown as { restoreChainState: () => void }, 'restoreChainState')
+      .and.callFake(() => callOrder.push('restoreChainState'));
+
+    dispatch(conn, {
+      type: 'STATE_SYNC', data: emptyBoardData,
+    } as unknown as ServerMessage);
+    dispatch(conn, {
+      type: 'CHAIN_STATE', links: [], phase: 'idle', negatedIndices: [],
+    } as unknown as ServerMessage);
+
+    expect(callOrder).toEqual(['onStateSync', 'restoreChainState']);
+  });
+
+  it('STATE_SYNC fallback timer flushes the buffer if no CHAIN_STATE arrives', (done) => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    const onStateSyncSpy = jasmine.createSpy('onStateSync');
+    conn.onStateSync = onStateSyncSpy;
+
+    dispatch(conn, {
+      type: 'STATE_SYNC', data: emptyBoardData,
+    } as unknown as ServerMessage);
+
+    // Just after dispatch — still buffered.
+    expect(onStateSyncSpy).not.toHaveBeenCalled();
+
+    // STATE_SYNC_FLUSH_MS is 100ms ; wait a bit more.
+    setTimeout(() => {
+      expect(onStateSyncSpy).toHaveBeenCalledTimes(1);
+      done();
+    }, 150);
+  });
+
+  it('a second STATE_SYNC flushes the prior buffer before parking the new payload', () => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    const onStateSyncSpy = jasmine.createSpy('onStateSync');
+    conn.onStateSync = onStateSyncSpy;
+
+    const first = { type: 'STATE_SYNC', data: emptyBoardData } as unknown as ServerMessage;
+    const second = { type: 'STATE_SYNC', data: emptyBoardData } as unknown as ServerMessage;
+
+    dispatch(conn, first);
+    expect(onStateSyncSpy).not.toHaveBeenCalled();
+
+    dispatch(conn, second);
+    // The first one got flushed sync at the second dispatch ; the second
+    // is now parked.
+    expect(onStateSyncSpy).toHaveBeenCalledTimes(1);
+    expect(onStateSyncSpy).toHaveBeenCalledWith(first as never);
+  });
+
+  it('CHAIN_STATE without buffered STATE_SYNC restores chain best-effort (no throw, warn-only)', () => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    spyOn(conn['processor'] as unknown as { restoreChainState: () => void }, 'restoreChainState');
+
+    // No STATE_SYNC dispatched first — protocol violation.
+    expect(() => {
+      dispatch(conn, {
+        type: 'CHAIN_STATE', links: [], phase: 'idle', negatedIndices: [],
+      } as unknown as ServerMessage);
+    }).not.toThrow();
+    expect((conn['processor'] as unknown as { restoreChainState: jasmine.Spy }).restoreChainState)
+      .toHaveBeenCalledTimes(1);
+  });
+});
+
+// =============================================================================
 // handleMessage dispatch — RPS cycle
 // =============================================================================
 

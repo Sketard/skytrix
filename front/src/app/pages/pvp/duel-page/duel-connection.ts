@@ -5,12 +5,25 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, ErrorMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
+import { BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, ErrorMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { swapBoardState } from '../board-state-swap';
 import type { WebSocketFactory } from './websocket-factory.service';
 
 export type ResponseData = Record<string, unknown>;
+
+/**
+ * F14 (2026-05-31) — STATE_SYNC buffer fallback delay. Server contract:
+ * CHAIN_STATE is sent IN THE SAME tick as STATE_SYNC iff
+ * `session.activeChainLinks.length > 0`. If CHAIN_STATE never arrives
+ * (the empty-chain case), the client flushes the buffered STATE_SYNC
+ * after this delay so a no-chain resync still progresses. 100ms is long
+ * enough to absorb TCP segmentation on a degraded link (the pair has
+ * never been observed split in production) AND short enough that the
+ * user perceives no resync lag. Lower-bound = TCP RTT under abnormal
+ * conditions ; tunable if real-world telemetry surfaces edge cases.
+ */
+const STATE_SYNC_FLUSH_MS = 100;
 
 /**
  * γ Option C (PR2 c4.1, 2026-05-28) — per-perspective transport state.
@@ -342,14 +355,16 @@ export class DuelConnection {
   private ws: WebSocket | null = null;
   private wsToken: string | null = null;
   private reconnectToken: string | null = null;
-  /** Three named timer slots. Use armTimeout/clearTimeoutSlot to manage them —
+  /** Four named timer slots. Use armTimeout/clearTimeoutSlot to manage them —
    *  arming a slot already holding a timer would otherwise leak two concurrent
-   *  setTimeouts (handshake retry race, see audit finding H11). */
+   *  setTimeouts (handshake retry race, see audit finding H11). F14 adds
+   *  `stateSyncFlush` for the STATE_SYNC + CHAIN_STATE atomic buffer fallback. */
   private readonly _timers: {
     connection: ReturnType<typeof setTimeout> | null;
     sessionToken: ReturnType<typeof setTimeout> | null;
     retry: ReturnType<typeof setTimeout> | null;
-  } = { connection: null, sessionToken: null, retry: null };
+    stateSyncFlush: ReturnType<typeof setTimeout> | null;
+  } = { connection: null, sessionToken: null, retry: null, stateSyncFlush: null };
   private readonly wsUrlBase: string;
 
   // --- Last selected cards (for excluding from next card-selection prompt) ---
@@ -392,13 +407,25 @@ export class DuelConnection {
   // Cleared when a fresh HINT type 10/13/15 (card-identifying hint) arrives.
   // γ Option C (PR2 c4.2) — state lives on `_slots[player].hintCardConsumed`.
 
-  // M18 — STATE_SYNC timestamp. Server contract: CHAIN_STATE is ALWAYS preceded
-  // by STATE_SYNC in the same WS batch (cancel rollback + reconnect snapshot).
-  // We assert that the gap is small (TCP segmentation should not split them by
-  // more than a fraction of a second). If the gap is large, processor.reset()
-  // from STATE_SYNC may arrive AFTER restoreChainState and silently wipe the
-  // restored chain links — surfacing it via duelAssert is the cheap detection.
-  private _lastStateSyncAt = 0;
+  // F14 (2026-05-31) — STATE_SYNC + CHAIN_STATE form a SINGLE semantic
+  // operation (atomic resync). The server emits them in the same Node.js
+  // tick (reconnect snapshot + cancel rollback), TCP guarantees order, but
+  // the client used to apply them one-at-a-time with a wall-clock assert
+  // (`sinceSync < 1000ms`) as the only invariant guard. M18's original
+  // worry was a "delayed STATE_SYNC reset wiping the restored chain" —
+  // structurally impossible because the order is fixed, but the asymmetry
+  // (STATE_SYNC resets, CHAIN_STATE restores) left a transient window
+  // where the chain state was empty even though it was about to be
+  // restored. Any future reader / handler running between the two would
+  // observe a corrupted view.
+  //
+  // The fix: STATE_SYNC stores its payload in `_pendingStateSync` and
+  // schedules a fallback timer. CHAIN_STATE consumes the pending payload
+  // and applies STATE_SYNC + restoreChainState atomically (same tick).
+  // If CHAIN_STATE never arrives (server contract: only sent when there's
+  // an active chain to restore — the empty-chain case skips it), the
+  // fallback timer applies STATE_SYNC alone.
+  private _pendingStateSync: StateSyncMsg | null = null;
 
   // --- Just-reconnected flag ---
   // Set to true on STATE_SYNC (reconnect), cleared on the first BOARD_STATE after
@@ -815,6 +842,8 @@ export class DuelConnection {
     this.clearTimeoutSlot('connection');
     this.clearTimeoutSlot('sessionToken');
     this.clearTimeoutSlot('retry');
+    this.clearTimeoutSlot('stateSyncFlush');
+    this._pendingStateSync = null;
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.close();
@@ -1001,47 +1030,49 @@ export class DuelConnection {
         // `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
         // READ IT BEFORE ADDING A NEW PRIVATE FIELD TO DuelConnection
         // that holds prompt-flow state.
-        this._confirmedCardsByChain.clear();
-        this._rematchStarting.set(false);
-        // M18 — record timestamp for the CHAIN_STATE gap assertion
-        this._lastStateSyncAt = Date.now();
-        this.rbs.assertNoLocks('onStateSync');
-        this.rbs.updateLogical(message.data);
-        this.rbs.commitAll();
-        // β.1 — emit `*Ended` for every still-open boundary group BEFORE
-        // wiping chain state. The journal sees the closures in causality
-        // order; the next BOARD_STATE (forwarded by the resync) re-opens
-        // fresh turn/phase groups.
-        this.processor.forceBoundaryClosure('STATE_SYNC');
-        this.processor.reset();
-        // γ Option C (PR2 c4.1+c4.2) — STATE_SYNC clears BOTH slots (cancel
-        // rollback + reconnect both wipe the entire prompt flow; server
-        // re-sends per slot via the `forPlayer`-tagged prompts).
-        for (const s of this._slots) {
-          s.lastConfirmedCards = [];
-          s.lastSelectedCards = [];
-          s.lastSelectedPromptType = null;
-          s.hintCardConsumed = false;
-          s.pendingPrompt.set(null);
-          s.hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
+        //
+        // F14 (2026-05-31) — STATE_SYNC is BUFFERED rather than applied
+        // immediately. The companion CHAIN_STATE (when there's an active
+        // chain to restore) arrives in the same Node.js tick server-side
+        // and consumes the buffer ; STATE_SYNC + restoreChainState happen
+        // atomically in the same client tick, no transient window. If
+        // CHAIN_STATE never arrives (server-contract: only sent when
+        // session.activeChainLinks.length > 0), the `stateSyncFlush`
+        // timer applies STATE_SYNC alone after a short delay.
+        if (this._pendingStateSync !== null) {
+          // Two STATE_SYNCs back-to-back without a CHAIN_STATE between
+          // them — flush the prior one before parking the new payload so
+          // no resync silently shadows another.
+          this._applyStateSync(this._pendingStateSync);
         }
-        // Suppress auto-respond until the game resumes (first BOARD_STATE after reconnect)
-        this._justReconnected.set(true);
-        this.onStateSync?.(message);
+        this._pendingStateSync = message;
+        this.armTimeout('stateSyncFlush', () => {
+          const pending = this._pendingStateSync;
+          if (pending !== null) {
+            this._pendingStateSync = null;
+            this._applyStateSync(pending);
+          }
+        }, STATE_SYNC_FLUSH_MS);
         break;
 
       case 'CHAIN_STATE': {
         const cs = message as ChainStateMsg;
-        // M18 — STATE_SYNC + CHAIN_STATE arrive in the same WS batch by
-        // server contract. If the gap exceeds 1s, segmentation/proxy
-        // buffering has split them and processor.reset() from a delayed
-        // STATE_SYNC might wipe the chain we're about to restore.
-        const sinceSync = Date.now() - this._lastStateSyncAt;
-        duelAssert(
-          this._lastStateSyncAt > 0 && sinceSync < 1000,
-          'CHAIN_STATE',
-          `received without recent STATE_SYNC (gap=${sinceSync}ms, lastSyncAt=${this._lastStateSyncAt})`,
-        );
+        // F14 (2026-05-31) — consume the buffered STATE_SYNC and apply
+        // STATE_SYNC + restoreChainState atomically (same tick, no
+        // transient empty-chain window observable to any reader).
+        const pending = this._pendingStateSync;
+        if (pending === null) {
+          // CHAIN_STATE without preceding STATE_SYNC is a true protocol
+          // violation (the server-contract pairs them). Log loud but
+          // best-effort restore so the user isn't stuck.
+          this.logger?.warn(
+            'CHAIN_STATE received without buffered STATE_SYNC — applying chain restore on current state'
+          );
+        } else {
+          this.clearTimeoutSlot('stateSyncFlush');
+          this._pendingStateSync = null;
+          this._applyStateSync(pending);
+        }
         const negatedSet = new Set(cs.negatedIndices);
         const links: ChainLinkState[] = cs.links.map(msg => ({
           chainIndex: msg.chainIndex,
@@ -1054,7 +1085,7 @@ export class DuelConnection {
           resolving: false,
           negated: negatedSet.has(msg.chainIndex),
         }));
-        // Queue already cleared by processor.reset() in STATE_SYNC
+        // Queue already cleared by processor.reset() inside _applyStateSync.
         this.processor.restoreChainState(links, cs.phase);
         break;
       }
@@ -1608,6 +1639,51 @@ export class DuelConnection {
     this.logger?.warn('safeSend dropped — WS not open (readyState=%d, type=%s)',
       this.ws?.readyState ?? -1, (data as { type?: string }).type ?? '?');
     return false;
+  }
+
+  /**
+   * F14 (2026-05-31) — apply a buffered STATE_SYNC payload. Extracted from
+   * the inline `case 'STATE_SYNC'` body so both the CHAIN_STATE consume
+   * path (atomic with restoreChainState) and the timer-fallback path
+   * (no-chain resync) share the same logic. Side-effects:
+   *   · clears per-chain confirmed-cards map + rematchStarting flag ;
+   *   · asserts RBS lock cleanliness then `updateLogical + commitAll` ;
+   *   · forces boundary closure + resets the processor (chain wiped) ;
+   *   · clears BOTH slot prompt-flow states (cancel + reconnect parity) ;
+   *   · raises `_justReconnected` to gate auto-respond until next
+   *     BOARD_STATE ;
+   *   · forwards the message to `onStateSync` for component-level wiring
+   *     (game-log journal restore, etc.).
+   *
+   * Safe to call multiple times for distinct messages — each call is a
+   * fresh resync against a clean slate.
+   */
+  private _applyStateSync(message: StateSyncMsg): void {
+    this._confirmedCardsByChain.clear();
+    this._rematchStarting.set(false);
+    this.rbs.assertNoLocks('onStateSync');
+    this.rbs.updateLogical(message.data);
+    this.rbs.commitAll();
+    // β.1 — emit `*Ended` for every still-open boundary group BEFORE
+    // wiping chain state. The journal sees the closures in causality
+    // order; the next BOARD_STATE (forwarded by the resync) re-opens
+    // fresh turn/phase groups.
+    this.processor.forceBoundaryClosure('STATE_SYNC');
+    this.processor.reset();
+    // γ Option C (PR2 c4.1+c4.2) — STATE_SYNC clears BOTH slots (cancel
+    // rollback + reconnect both wipe the entire prompt flow; server
+    // re-sends per slot via the `forPlayer`-tagged prompts).
+    for (const s of this._slots) {
+      s.lastConfirmedCards = [];
+      s.lastSelectedCards = [];
+      s.lastSelectedPromptType = null;
+      s.hintCardConsumed = false;
+      s.pendingPrompt.set(null);
+      s.hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
+    }
+    // Suppress auto-respond until the game resumes (first BOARD_STATE after reconnect)
+    this._justReconnected.set(true);
+    this.onStateSync?.(message);
   }
 
   /** Atomically replace any existing timer in `slot` with a fresh one. The
