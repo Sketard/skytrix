@@ -135,6 +135,12 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private longPressSubscription: { unsubscribe(): void } | null = null;
   private preTargetSubscription: { unsubscribe(): void } | null = null;
   private langChangeSubscription: { unsubscribe(): void } | null = null;
+  /** F-bugB2 — identity of the prompt object whose response has already been
+   *  emitted. Used to drop duplicate emissions on a gate-flap re-arm of the
+   *  sub-component (re-creating its subscription against the SAME prompt
+   *  object). Cleared on `openForPrompt` when the OBJECT changes, on
+   *  `closeDialog`, and after the first emission within `attachComponent`. */
+  private _answeredPrompt: Prompt | null = null;
 
   constructor() {
     // Warm the FR/EN system-string tables so prompt descriptions resolve
