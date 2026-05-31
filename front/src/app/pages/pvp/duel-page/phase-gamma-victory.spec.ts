@@ -338,14 +338,13 @@ describe('γ — prompt-active guard logs a PIPELINE trace', () => {
     expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
     // The exact format string isn't load-bearing; what matters is a
     // PIPELINE-category log line surfaces. T10 checklist refers to this
-    // trace to confirm the no-op was deliberate. c10 added a 3rd argument
-    // carrying the prompt type for diagnostic, hence the `any(String)`.
+    // trace to confirm the no-op was deliberate. A5 (2026-05-31) collapsed
+    // the diagnostic into a single reason string carrying ONLY the real
+    // blocking causes — here only the modal prompt is the cause.
     expect(logSpy).toHaveBeenCalledWith(
       DuelLogCategory.PIPELINE,
-      jasmine.stringContaining('switchPerspective skipped: cannot switch'),
-      jasmine.any(String),   // prompt type
-      jasmine.any(Boolean),  // hasDrawsInFlight
-      jasmine.any(Boolean),  // isBoardStableForSwitch
+      jasmine.stringContaining('switchPerspective skipped:'),
+      'prompt=SELECT_CARD',
     );
   });
 

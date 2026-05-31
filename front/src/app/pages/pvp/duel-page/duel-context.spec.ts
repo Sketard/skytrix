@@ -103,6 +103,29 @@ describe('DuelContext', () => {
     it('should return 180 for opponent (relPlayer 1)', () => {
       expect(ctx.cardBaseRotation(1)).toBe(180);
     });
+
+    // F22 / A8 regression guard (2026-05-31) — `cardBaseRotation` MUST stay
+    // a pure function of `relPlayer`, NOT of `perspectiveSource`. The SOLO
+    // board CSS flip (`rotate(180deg)` on `.board-host` when perspective=1)
+    // was removed in F22 because the DATA is already relativized by
+    // `DuelConnection._maybeSwapBoardState` (same `swapBoardState()` shared
+    // with replay). If a future revert reintroduces a perspective-aware
+    // branch here, the SOLO board flips upside-down a second time (the
+    // original F22 user-visible bug: HUD opponent, TURN/phase badge,
+    // monster stats — everything mirrored). Pin the static contract.
+    it('F22 — own player (relPlayer 0) stays upright regardless of perspectiveSource', () => {
+      ctx.setPerspective(1);
+      expect(ctx.cardBaseRotation(0)).toBeUndefined();
+      ctx.setPerspective(0);
+      expect(ctx.cardBaseRotation(0)).toBeUndefined();
+    });
+
+    it('F22 — opponent (relPlayer 1) stays flipped regardless of perspectiveSource', () => {
+      ctx.setPerspective(1);
+      expect(ctx.cardBaseRotation(1)).toBe(180);
+      ctx.setPerspective(0);
+      expect(ctx.cardBaseRotation(1)).toBe(180);
+    });
   });
 
   describe('cardBaseRotateCSS', () => {
@@ -117,6 +140,18 @@ describe('DuelContext', () => {
     it('empty string should be falsy (consistent with undefined check pattern)', () => {
       const css = ctx.cardBaseRotateCSS(0);
       expect(!css).toBeTrue();
+    });
+
+    // F22 / A8 — same invariant as cardBaseRotation, mirrored on the CSS
+    // helper (derives from cardBaseRotation, so a revert of one propagates).
+    it('F22 — CSS form is perspective-independent for own player', () => {
+      ctx.setPerspective(1);
+      expect(ctx.cardBaseRotateCSS(0)).toBe('');
+    });
+
+    it('F22 — CSS form is perspective-independent for opponent', () => {
+      ctx.setPerspective(1);
+      expect(ctx.cardBaseRotateCSS(1)).toBe('rotateZ(180deg)');
     });
   });
 

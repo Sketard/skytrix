@@ -4,6 +4,24 @@
 
 When writing or modifying code, always apply the `clean-code` and `code-principles` skills to enforce DRY, KISS, SRP, YAGNI, and Miller's Law thresholds.
 
+### Component DI changes — run Karma before commit (A6, 2026-05-31)
+
+Adding a new `inject(X)` (required, i.e. without `{ optional: true }`) to
+an Angular component or directive REQUIRES running the component's spec
+through Karma before commit, not just `tsc --noEmit`. Reason : missing
+testbed providers surface as runtime `NG0201 No provider for X` — `tsc`
+cannot see this. Pre-commit hooks (`stylelint` + ESLint via lint-staged)
+also miss it.
+
+Precedent — F1 (`7943aef4`, 2026-05-30) added `inject(DuelLogger)` to
+`pvp-prompt-dialog` + `prompt-card-grid` claiming "tsc green". The specs
+were not run ; F23 (`2879d0f0`, 2026-05-31) paid the debt 16 days later
+by providing `DuelLogger` in both specs.
+
+Minimum command : `ng test --include="<path-to-spec>" --watch=false
+--browsers=ChromeHeadless`. If a refactor pass touches many components,
+run the full duel-page / replay-page spec batch.
+
 ## Design System & Styling Conventions
 
 The front-end has a custom Design System. **Before writing ANY UI, read

@@ -247,14 +247,20 @@ export class SoloDuelOrchestratorService {
     if (!conn) return;
     if (this._switching()) return;
     // F3 — single guard via `canSwitchPerspective` (modal prompt + draw in
-    // flight + board-stable). Logs the blocking reason for diagnostics.
+    // flight + board-stable). Logs ONLY the real blocking reasons so a
+    // whitelisted prompt (SELECT_IDLECMD/BATTLECMD) coexisting with a draw or
+    // chain doesn't look like the cause of the block in diagnostic exports.
     if (!this.canSwitchPerspective) {
       const prompt = this.wsService.pendingPrompt();
+      const promptBlocks = prompt !== null && !IDLE_PHASE_PROMPT_TYPES.has(prompt.type);
+      const drawBlocks = this.animationService.drawManager.hasDrawsInFlight;
+      const boardUnstable = !this.animationService.isBoardStableForSwitch;
+      const reasons: string[] = [];
+      if (promptBlocks) reasons.push(`prompt=${prompt!.type}`);
+      if (drawBlocks) reasons.push('draw');
+      if (boardUnstable) reasons.push('board-unstable');
       this.logger.log(DuelLogCategory.PIPELINE,
-        'switchPerspective skipped: cannot switch (prompt=%s draw=%s boardStable=%s)',
-        prompt?.type ?? 'none',
-        this.animationService.drawManager.hasDrawsInFlight,
-        this.animationService.isBoardStableForSwitch);
+        'switchPerspective skipped: %s', reasons.join(','));
       return;
     }
     const from = this.duelCtx.perspective()() as 0 | 1;
