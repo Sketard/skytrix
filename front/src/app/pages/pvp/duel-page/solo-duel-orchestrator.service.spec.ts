@@ -304,74 +304,14 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
     });
   });
 
-  // c6c — A5 perspective persist + restore via localStorage.
-  describe('A5 perspective localStorage (c6c + c6d)', () => {
-    const KEY = 'solo-duel-perspective';
-
-    beforeEach(() => { try { localStorage.removeItem(KEY); } catch { /* */ } });
-    afterEach(() => { try { localStorage.removeItem(KEY); } catch { /* */ } });
-
-    it('switchPerspective persists the NEW perspective value to localStorage', () => {
-      seedConnection(service);
-      expect(localStorage.getItem(KEY)).toBeNull();
-
-      service.switchPerspective(); // 0 → 1
-
-      expect(localStorage.getItem(KEY)).toBe('1');
-    });
-
-    it('init() restores perspective=1 from localStorage when present', () => {
-      localStorage.setItem(KEY, '1');
-      spyOn(DuelConnection.prototype, 'connect');
-
-      service.init('fake-token-solo');
-
-      expect(duelCtx.perspective()()).toBe(1);
-      service.cleanup();
-    });
-
-    it('init() ignores invalid stored values (no perspective flip)', () => {
-      localStorage.setItem(KEY, 'garbage');
-      spyOn(DuelConnection.prototype, 'connect');
-
-      service.init('fake-token-solo');
-
-      expect(duelCtx.perspective()()).toBe(0);
-      service.cleanup();
-    });
-
-    // c6d — DUEL_END clears the persisted perspective so a new lobby starts fresh.
-    it('clears localStorage when wsService.duelResult() flips to non-null (c6d)', async () => {
-      localStorage.setItem(KEY, '1');
-      spyOn(DuelConnection.prototype, 'connect');
-
-      service.init('fake-token-solo');
-      // Re-set after the init's restore consumed it — we want to observe
-      // the EFFECT clearing the key, not the restore that read it.
-      localStorage.setItem(KEY, '1');
-      wsService.duelResult.set({ winner: 0, reason: 'normal' });
-
-      await Promise.resolve();
-      TestBed.tick();
-
-      expect(localStorage.getItem(KEY)).toBeNull();
-      service.cleanup();
-    });
-
-    it('does NOT clear localStorage while duelResult stays null (effect not yet fired)', async () => {
-      localStorage.setItem(KEY, '1');
-      spyOn(DuelConnection.prototype, 'connect');
-
-      service.init('fake-token-solo');
-      localStorage.setItem(KEY, '1');
-      // duelResult stays at the default null — effect should NOT clear.
-      await Promise.resolve();
-      TestBed.tick();
-
-      expect(localStorage.getItem(KEY)).toBe('1');
-      service.cleanup();
-    });
-  });
+  // F18 (2026-05-31) — the localStorage A5 (c6c + c6d) sub-suite is
+  // retired with the underlying mechanism. The orchestrator no longer
+  // reads or writes `localStorage['solo-duel-perspective']`; the
+  // perspective is now persisted exclusively in sessionStorage by
+  // `SoloModeEffectsService.initSolo` (covered by its own spec), and
+  // restoration is owned by `DuelPageComponent.ngOnInit`. The previous
+  // dual mechanism risked leaking a SOLO perspective into an unrelated
+  // session (fork-solo, other tab) via the global localStorage key.
 
 });
 

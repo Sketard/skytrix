@@ -179,16 +179,12 @@ function chainEndMsg(): ChainEndMsg {
   return { type: 'MSG_CHAIN_END' } as unknown as ChainEndMsg;
 }
 
-// γ-c c10 (2026-05-29) — `SoloDuelOrchestratorService.switchPerspective`
-// persists the new perspective to `localStorage['solo-duel-perspective']`
-// (A5 PR2 c6c). Without a global cleanup, a previous describe's switch
-// leaks "1" into storage and the next describe's `init()` calls
-// `restorePerspectiveFromStorage` which flips perspective to 1 BEFORE
-// the test starts — so the first `switchPerspective()` flips it back to
-// 0 instead of forward to 1, and the test fails. Clean key globally.
-beforeEach(() => {
-  try { localStorage.removeItem('solo-duel-perspective'); } catch { /* privacy mode */ }
-});
+// F18 (2026-05-31) — the localStorage `solo-duel-perspective` cleanup
+// that lived here is retired with the underlying mechanism. The
+// orchestrator no longer reads or writes that key; persistence is now
+// owned by `SoloModeEffectsService` via sessionStorage. The describes
+// below do not write sessionStorage either (no `initSolo` running on
+// the stub harness), so no per-spec cleanup is needed.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // T1 — Switch sans chain : PerspectiveSwitched emitted + DuelContext flipped

@@ -80,12 +80,16 @@ export class SoloDuelOrchestratorService {
    *  frames through a MockWebSocket. */
   private readonly wsFactory = inject(WebSocketFactoryService);
 
-  /** γ Option C PR2 c6c (A5) — clé localStorage qui mémorise la
-   *  perspective courante SOLO. Survit à un F5 pendant un duel SOLO,
-   *  permet de restaurer le bon côté du board sans réinitialiser à P0.
-   *  Cleared par l'effect DUEL_END en c6d (la perspective d'un duel
-   *  terminé n'a plus de sens et un nouveau duel doit repartir à P0). */
-  private readonly SOLO_PERSPECTIVE_KEY = 'solo-duel-perspective';
+  // F18 (2026-05-31) — `SOLO_PERSPECTIVE_KEY` localStorage retired.
+  // The perspective is now persisted in sessionStorage under
+  // `solo-duel-tokens-${code}` `.activePlayer` (kept in sync with
+  // `perspectiveIndex` by `SoloModeEffectsService.initSolo`'s effect).
+  // Restoration is owned by `DuelPageComponent.ngOnInit` (line ~659:
+  // `if (restoredPlayer === 1) this.orchestrator.switchPerspective()`),
+  // the single point of perspective restore. The previous localStorage
+  // path was a duplicate write surface — global to all tabs/sessions
+  // instead of per-duel — and could leak a SOLO perspective into an
+  // unrelated fork-solo session.
 
   enabled = false;
 
@@ -181,44 +185,16 @@ export class SoloDuelOrchestratorService {
 
     conn.connect(token1);
 
-    // c6c A5 — restore perspective depuis localStorage. À noter : si la
-    // restauration ramène 1, on flippe immédiatement la signal avec
-    // `duelCtx.setPerspective(1)` (sans passer par `switchPerspective`
-    // qui re-persisterait + déclencherait `notifyPerspectiveSwitch` —
-    // ici on est en bootstrap, pas en switch utilisateur). La conséquence
-    // observable côté UI est identique : les computeds per-perspective
-    // re-évaluent dès le prochain BOARD_STATE.
-    this.restorePerspectiveFromStorage();
+    // F18 (2026-05-31) — perspective restoration moved out of init().
+    // The orchestrator no longer reads any storage; the duel-page
+    // component reads `sessionStorage[soloTokensKey].activePlayer` and
+    // calls `switchPerspective()` AFTER `init()` returns (cf.
+    // duel-page.component.ts ~line 659). This makes the orchestrator
+    // perspective-agnostic at bootstrap and prevents the global
+    // localStorage from leaking a SOLO perspective into an unrelated
+    // session (fork-solo, future SOLO tab).
 
     this.setupRematchEffect();
-    this.setupDuelEndClearEffect();
-  }
-
-  /** c6c A5 — restore la perspective SOLO depuis localStorage (F5 survival).
-   *  Appelée une fois en init() après connect(). En cas de clé absente,
-   *  parse error ou valeur hors {0,1}, no-op (perspective reste à 0). */
-  private restorePerspectiveFromStorage(): void {
-    try {
-      const stored = Number(localStorage.getItem(this.SOLO_PERSPECTIVE_KEY));
-      if (stored === 0 || stored === 1) this.duelCtx.setPerspective(stored);
-    } catch { /* privacy mode / quota */ }
-  }
-
-  /** c6d A5 — clear le localStorage `SOLO_PERSPECTIVE_KEY` au DUEL_END.
-   *  La perspective d'un duel terminé n'a plus de sens et un nouveau
-   *  duel (rematch ou nouveau lobby) doit repartir à P0 par convention.
-   *  Sans ce clear, un user qui finit en perspective=1 et navigue vers
-   *  un nouveau lobby SOLO se retrouverait avec perspective restaurée
-   *  à 1 sans avoir choisi — incohérent. */
-  private setupDuelEndClearEffect(): void {
-    runInInjectionContext(this.injector, () => {
-      effect(() => {
-        const result = this.wsService.duelResult();
-        if (result !== null) {
-          try { localStorage.removeItem(this.SOLO_PERSPECTIVE_KEY); } catch { /* privacy mode */ }
-        }
-      });
-    });
   }
 
   // ───────────────────────────────────────────────
@@ -300,12 +276,12 @@ export class SoloDuelOrchestratorService {
     // by-one très subtil.
     this.duelCtx.setPerspective(to);
 
-    // c6c A5 — persist la perspective en localStorage. Survit à un F5
-    // pendant un duel SOLO ; restauré au prochain `init()` via
-    // `restorePerspectiveFromStorage`. Cleared par l'effect DUEL_END
-    // (c6d) car la perspective d'un duel terminé est sans objet et un
-    // nouveau duel doit repartir à P0.
-    try { localStorage.setItem(this.SOLO_PERSPECTIVE_KEY, String(to)); } catch { /* quota / privacy mode */ }
+    // F18 (2026-05-31) — perspective persistence moved to sessionStorage
+    // (single source). `SoloModeEffectsService.initSolo` holds a reactive
+    // `effect(() => orchestrator.perspectiveIndex())` that writes
+    // `sessionStorage[soloTokensKey].activePlayer` on every change — the
+    // setPerspective above invalidates `perspectiveIndex`, the effect
+    // fires synchronously, persistence happens with zero coupling here.
 
     // Émission de PerspectiveSwitched sur le flux + dispatch reset
     // PERSPECTIVE_LIFETIME.
