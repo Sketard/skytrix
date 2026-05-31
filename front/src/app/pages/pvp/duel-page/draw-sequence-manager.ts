@@ -232,7 +232,20 @@ export class DrawSequenceManager {
 
       clearTimeout(guardId);
     } finally {
+      // Commit the HAND locks (reveals the real 5-card hand in rendered state)
+      // AND clear the kept proxy floats in the SAME synchronous block. The
+      // floats were retained through the travel (keepFloats) as visual proxies
+      // while the locked hand stayed empty; once the locks commit, the real
+      // cards render and the proxies become duplicates. Deferring their removal
+      // to the runner's `finalize` lets an intervening blocking directive (e.g.
+      // the `phase:MAIN1` announcement, ~1s) keep both visible — the user sees
+      // ghost floats stacked over the real hand. Clearing here keeps reveal +
+      // proxy-removal atomic. `resetHandAnimationState` drops the expansion
+      // slots in the same tick so Angular reuses the hand <div>s without
+      // firing a layout transition.
       earlyLocks.forEach(l => l.commit());
+      this.floatRegistry.clearLandedTravels();
+      this.resetHandAnimationState();
     }
 
     this._drawsInFlight.clear();
