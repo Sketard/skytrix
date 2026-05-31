@@ -149,6 +149,55 @@ describe('QueueRunner.decideNextStep', () => {
         expect(step.entry).toBe(head);
       }
     });
+
+    // F-bugB4 (2026-05-31) — multi-link chain banner regression. β.3 cas #13
+    // (commit bb30c4bc) replaced the legacy `scheduleBannerAnnounce` timer
+    // with an `announcement` directive prepended to the queue. The directive's
+    // `onShow` callback flips `chainManager._announcePending = true`, which
+    // is the SAME flag that gates `handleSolving` re-deferring (the line-145
+    // guard). But `decideNextStep` prioritised `consume-deferred` over any
+    // queue head, so the directive was never dispatched: every tick
+    // `consume-deferred` → `handleEntryAndAwait(MSG_CHAIN_SOLVING)` →
+    // `handleChainSolving` → guard sees `_announcePending=false` →
+    // re-deferred → re-prepend directive → infinite loop (queue grows by 1
+    // per tick, observed as `queueLen=13667→13668→…` in the field).
+    //
+    // Pin: an `announcement` directive at the queue head must dispatch
+    // BEFORE consume-deferred so its `onShow` can flip the gate.
+    it('prioritises an announcement directive head over consume-deferred (F-bugB4)', () => {
+      const deferred = { type: 'MSG_CHAIN_SOLVING' } as unknown as GameEvent;
+      const announcement: QueueEntry = {
+        kind: 'announcement',
+        source: 'chain-resolution',
+        durationMs: 3000,
+        prePauseMs: 1000,
+        onShow: () => undefined,
+        onClear: () => undefined,
+      };
+      const step = decideNextStep(baseInputs({
+        deferredSolvingEntry: deferred,
+        queue: [announcement],
+      }));
+      expect(step.action).toBe('dequeue');
+      if (step.action === 'dequeue') {
+        expect(step.entry).toBe(announcement);
+      }
+    });
+
+    // Negative side: a non-announcement directive (or a plain GameEvent) at
+    // the queue head must NOT preempt the deferred — preserves the pinned
+    // contract above ("consume-deferred when queue non-empty"). This guard
+    // keeps the F-bugB4 carve-out narrowly scoped to the chain-resolution
+    // banner; any other directive (group, barrier, lp, batch-end,
+    // await-signal) goes through `consume-deferred` first as before.
+    it('keeps consume-deferred priority over a non-announcement directive head (F-bugB4 scope)', () => {
+      const deferred = { type: 'MSG_CHAIN_SOLVING' } as unknown as GameEvent;
+      const step = decideNextStep(baseInputs({
+        deferredSolvingEntry: deferred,
+        queue: [groupDirective()],
+      }));
+      expect(step.action).toBe('consume-deferred');
+    });
   });
 
   // -------------------------------------------------------------------------

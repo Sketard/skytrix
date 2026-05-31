@@ -188,6 +188,31 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
 
   // 3. Dequeue priority: deferred-solving (held over from first-multi-link
   // banner) before normal queue.
+  //
+  // F-bugB4 (2026-05-31) — EXCEPTION: when the queue head is an
+  // `announcement` directive AND a deferred-solving event is pending,
+  // dispatch the directive first. This is the head of the chain-resolution
+  // banner sequence (β.3 cas #13, commit bb30c4bc): `handleChainSolving`
+  // both (a) stashes the MSG_CHAIN_SOLVING into `_deferredSolvingEvent`
+  // and (b) prepends an `announcement` directive whose `onShow` callback
+  // flips `_announcePending = true`. Without this exception, the deferred
+  // entry would win priority → `consume-deferred` → re-call
+  // `handleChainSolving` → `_announcePending` is still false (directive
+  // never dispatched) → the guard re-deferreds the same event → infinite
+  // loop (the queue grows by one re-prepended directive per tick, the
+  // deferred slot is set→consumed→re-set forever). Dispatching the
+  // directive first lets `_announcePending` flip, breaking the guard on
+  // the next consume-deferred tick. Pure GameEvent heads keep the
+  // deferred-first priority (the pinning test `dequeue priority` covers
+  // that path).
+  if (
+    input.deferredSolvingEntry !== null
+    && input.queue.length > 0
+    && 'kind' in input.queue[0]
+    && (input.queue[0] as { kind: string }).kind === 'announcement'
+  ) {
+    return { action: 'dequeue', entry: input.queue[0] };
+  }
   if (input.deferredSolvingEntry !== null) {
     return { action: 'consume-deferred', entry: input.deferredSolvingEntry };
   }
