@@ -500,6 +500,22 @@ function transformSelectIdleCmd(msg: any): ServerMessage {
 function transformSelectChain(msg: any): ServerMessage {
   // `hintTiming` ships raw — the client resolves the timing label from it
   // (see duel-hint.util.ts `resolveHintTimingLabel`).
+  // F-bugB3 verbose — log every SELECT_CHAIN the engine emits with its full
+  // chain context so we can correlate the back-to-back re-offers user
+  // reports (Maxx "C" pattern: 3× SELECT_CHAIN to P2 across the phase shift).
+  dlog.log('SELECT_CHAIN emit', {
+    player: msg.player,
+    forced: msg.forced,
+    hintTiming: msg.hint_timing,
+    selectsLen: msg.selects?.length ?? 0,
+    selects: (msg.selects ?? []).map((c: any) => ({
+      code: c.code,
+      loc: c.location,
+      seq: c.sequence,
+      controller: c.controller,
+      description: Number(c.description),
+    })),
+  });
   return {
     type: 'SELECT_CHAIN', player: msg.player as Player,
     cards: msg.selects.map((c: any) => ({ ...toCardInfo(c), description: Number(c.description) })),

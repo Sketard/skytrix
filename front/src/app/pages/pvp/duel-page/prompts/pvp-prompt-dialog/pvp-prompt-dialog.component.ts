@@ -162,6 +162,14 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       const msg = this.passiveMessage();
       const diceIp = this.wsService.diceInProgress();
       untracked(() => {
+        // F-bugB3 verbose — lifecycle visibility on every prompt-input flap.
+        // Identity (`promptObjectId`) lets us correlate a re-emit with the
+        // same object vs a fresh server prompt. `_answeredPrompt` shown so
+        // we can spot a stale guard surviving a close.
+        this.duelLogger.log(DuelLogCategory.PIPELINE,
+          '[DIALOG] effect tick promptType=%s prompt=%o passive=%s diceIp=%s isSending=%s state=%s answered=%s',
+          prompt?.type ?? null, prompt, !!msg, diceIp, this.isSending(), this.dialogState(),
+          this._answeredPrompt === prompt ? 'same' : (this._answeredPrompt ? 'stale' : 'none'));
         // F-bugB (2026-05-31) — drop the "Sending…" indicator whenever there
         // is no active prompt, unconditionally. The flag is set true on submit
         // (`onConfirm`) and was only reset when a NEW prompt arrived
@@ -323,11 +331,16 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   }
 
   private openForPrompt(prompt: Prompt, componentType: Type<PromptSubComponent>): void {
+    const isSame = this._answeredPrompt === prompt;
+    this.duelLogger.log(DuelLogCategory.PIPELINE,
+      '[DIALOG] openForPrompt type=%s component=%s sameObject=%s prevAnswered=%s portalAttached=%s state=%s',
+      prompt.type, componentType.name, isSame, !!this._answeredPrompt,
+      !!this.portalOutlet?.hasAttached(), this.dialogState());
     // F-bugB2 — clear the answered-guard only when the prompt OBJECT actually
     // changes. A gate flap re-calls openForPrompt with the SAME object `P`; we
     // must NOT reset the guard there (it would re-allow a duplicate decline).
     // A genuinely new server prompt is a different object → guard released.
-    if (this._answeredPrompt !== prompt) this._answeredPrompt = null;
+    if (!isSame) this._answeredPrompt = null;
     this.isSending.set(false);
     this.refreshHintText(prompt);
 
@@ -461,13 +474,21 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       (instance as unknown as { ownPlayerIndex: number }).ownPlayerIndex = this.ownPlayerIndex();
     }
 
+    this.duelLogger.log(DuelLogCategory.PIPELINE,
+      '[DIALOG] attachComponent type=%s component=%s answeredGuard=%s',
+      prompt.type, componentType.name, this._answeredPrompt === prompt ? 'BLOCKED' : 'open');
+
     this.responseSubscription = instance.response.subscribe((data: unknown) => {
+      const guardHit = this._answeredPrompt === prompt;
+      this.duelLogger.log(DuelLogCategory.PIPELINE,
+        '[DIALOG] sub.response promptType=%s guardHit=%s data=%o',
+        prompt.type, guardHit, data);
       // F-bugB2 — drop a duplicate response for an already-answered prompt
       // object. A re-armed grid (gate flap re-creating the sub-component)
       // would otherwise re-decline the same SELECT_CHAIN → N+1 responses →
       // "Unexpected PLAYER_RESPONSE" + stuck "Sending…". Keyed on identity so
       // a real new server prompt (different object) still goes through.
-      if (this._answeredPrompt === prompt) return;
+      if (guardHit) return;
       this._answeredPrompt = prompt;
       const override = this.responseOverride();
       if (override) {
@@ -504,6 +525,9 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
 
   private closeDialog(): void {
     if (this.dialogState() === 'closed') return;
+    this.duelLogger.log(DuelLogCategory.PIPELINE,
+      '[DIALOG] closeDialog (was state=%s answered=%s isSending=%s)',
+      this.dialogState(), !!this._answeredPrompt, this.isSending());
     this.pendingAttach = null;
     this.detachComponent();
     this.hintText.set(null);

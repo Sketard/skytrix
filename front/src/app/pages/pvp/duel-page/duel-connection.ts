@@ -1072,6 +1072,17 @@ export class DuelConnection {
         if (message.type === 'SELECT_CARD') this._outOfBandSink?.(message);
         // γ Option C (PR2 c4.2) — single-source slot write per `message.player`.
         {
+          // F-bugB3 verbose — visibility on every card-selection prompt arrival.
+          // The slot route (`message.player` → `_slotFor` → slot identity) is
+          // load-bearing in SOLO multiplex; in PvP normal both should resolve
+          // to slot 0 for the receiver. `cardsLen` distinguishes a real
+          // re-offer (cards present) from the auto-respond empty-cards path.
+          this.logger?.log(DuelLogCategory.PIPELINE,
+            'ws.recv %s player=%s cardsLen=%s forced=%s prevPending=%s',
+            message.type, message.player,
+            'cards' in message ? (message as { cards: unknown[] }).cards.length : 'n/a',
+            message.type === 'SELECT_CHAIN' ? (message as SelectChainMsg).forced : 'n/a',
+            this._slots[message.player].pendingPrompt()?.type ?? null);
           const slot = this._slotFor(message.player, message.type);
           // Reset exclusion accumulator when the prompt type changes mid-sequence
           // (must happen before pendingPrompt.set so attachComponent reads the correct value)
@@ -1079,7 +1090,11 @@ export class DuelConnection {
             slot.lastSelectedCards = [];
             slot.lastSelectedPromptType = null;
           }
-          if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) break;
+          if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) {
+            this.logger?.log(DuelLogCategory.PIPELINE,
+              'ws.recv %s player=%s → auto-respond empty (cards=0)', message.type, message.player);
+            break;
+          }
           slot.waitingForOpponent.set(false);
           slot.pendingPrompt.set(message);
         }

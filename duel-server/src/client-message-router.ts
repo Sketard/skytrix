@@ -77,21 +77,42 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
 
   switch (msg.type) {
     case 'PLAYER_RESPONSE': {
-      logger.debug('PLAYER_RESPONSE', {
+      // F-bugB3 verbose — visibility on every PLAYER_RESPONSE arrival.
+      // The trio (awaiting / lastSent / data) is the smallest set that lets
+      // us tell apart: a duplicate response (awaiting=false), a promptType
+      // mismatch (lastSent !== msg.promptType), an out-of-phase decline
+      // (data.index === null when forced=true), and a normal accept.
+      logger.log('PLAYER_RESPONSE', {
         duelId: session.duelId, player: playerIndex, promptType: msg.promptType,
+        data: msg.data,
         awaiting: session.awaitingResponse.slice(),
-        lastPrompt: session.lastSentPrompt[playerIndex]?.type,
+        lastSentType: session.lastSentPrompt[playerIndex]?.type,
+        lastSentForced: (session.lastSentPrompt[playerIndex] as any)?.forced,
+        phase: session.phase,
       });
 
       // awaitingResponse gate — anti-spam / anti-out-of-sequence.
       if (!session.awaitingResponse[playerIndex]) {
-        logger.error('Unexpected PLAYER_RESPONSE', { duelId: session.duelId, player: playerIndex });
+        logger.error('Unexpected PLAYER_RESPONSE', {
+          duelId: session.duelId, player: playerIndex,
+          promptType: msg.promptType,
+          lastSentType: session.lastSentPrompt[playerIndex]?.type,
+          // F-bugB3 — show the data of the rejected response. Empirically the
+          // user reports a stuck "Sending…" after the 3rd decline; the front
+          // signals that as "the server rejected", so this branch is the
+          // most likely silent landing point.
+          data: msg.data,
+        });
         return;
       }
 
       // M28 — promptType must match the prompt we sent last.
       const expectedPrompt = session.lastSentPrompt[playerIndex];
       if (expectedPrompt && msg.promptType !== expectedPrompt.type) {
+        logger.error('PLAYER_RESPONSE type mismatch', {
+          duelId: session.duelId, player: playerIndex,
+          got: msg.promptType, expected: expectedPrompt.type,
+        });
         safeSend(session.players[playerIndex].ws, {
           type: 'ERROR',
           message: `Expected prompt type ${expectedPrompt.type}, got ${msg.promptType}`,

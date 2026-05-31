@@ -269,8 +269,17 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
   // SELECT_* — arm response/inactivity timers + drop stale cancel cache.
   if (isSelectMessage(message)) {
     const targetPlayer = (message as { player: Player }).player;
-    logger.debug('SELECT prompt sent', {
+    // F-bugB3 verbose — promoted from debug. We want every server→client
+    // SELECT_* to leave a trace, with the per-player awaitingResponse +
+    // previously cached prompt so a 3rd back-to-back SELECT_CHAIN is
+    // visible alongside the matching PLAYER_RESPONSE rows above.
+    logger.log('SELECT prompt sent', {
       duelId: session.duelId, type: message.type, player: targetPlayer,
+      forced: (message as any).forced,
+      cardsLen: (message as any).cards?.length,
+      hintTiming: (message as any).hintTiming ?? (message as any).hint_timing,
+      prevAwaitingResponse: session.awaitingResponse.slice(),
+      prevLastSentType: session.lastSentPrompt[targetPlayer]?.type ?? null,
       timerRunning: session.timerContext?.running,
     });
     session.awaitingResponse[targetPlayer] = true;
