@@ -625,13 +625,14 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       this.isSoloMode.set(true);
       this.forkReplayId = this.route.snapshot.queryParamMap.get('replayId');
       this.forkSeekTo = parseInt(this.route.snapshot.queryParamMap.get('seekTo') ?? '0', 10);
-      // c6a — fork garde son flux 2-tokens côté serveur (fork-handlers.ts
-      // pas SOLO-reachable, cf. PR1 c3 checklist). On ne consomme que
-      // wsToken1 côté orchestrator multiplex ; wsToken2 reste validé en
-      // gate pour signaler une session forkée incomplète.
+      // F5-bis (2026-05-31) — fork-solo is now a SOLO multiplex session
+      // (collapsed onto the same path as POST /api/duels solo). One token,
+      // one socket multiplexed via slot routing. Pre-F5-bis tracked a
+      // wsToken2 gate that is gone now (the token never made it to a
+      // socket — the front always opened a single connection with
+      // wsToken1 only).
       const wsToken1 = history.state?.wsToken1 as string | undefined;
-      const wsToken2 = history.state?.wsToken2 as string | undefined;
-      if (!wsToken1 || !wsToken2) {
+      if (!wsToken1) {
         this.notify.error('error.SOLO_SESSION_EXPIRED');
         this.router.navigate(['/pvp']);
       } else {

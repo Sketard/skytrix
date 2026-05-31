@@ -73,7 +73,11 @@ export interface ReplayForkCancelMsg {
 export interface ReplayForkReadyMsg {
   type: 'REPLAY_FORK_READY';
   token1: string;
-  token2: string;
+  // F5-bis (2026-05-31) — fork-solo is now a SOLO multiplex (1-socket)
+  // session ; only `token1` is issued. Pre-F5-bis emitted a second token
+  // for `players[1].ws` but the front never connected with it (the
+  // orchestrator opens a single socket with token1 and multiplexes both
+  // perspectives via slot routing).
 }
 
 export interface ReplayBoardStatesMsg {

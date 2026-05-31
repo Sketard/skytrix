@@ -88,18 +88,21 @@ export interface ReplayHandlersConfig {
    *     (replay-handlers does NOT call `worker.removeAllListeners` first
    *     — the host must do it before attaching new handlers).
    *
-   * Returns `{ token1, token2 }` so this module can flush
-   * `REPLAY_FORK_READY { token1, token2 }` to the client and then close
+   * Returns `{ token1 }` so this module can flush
+   * `REPLAY_FORK_READY { token1 }` to the client and then close
    * the WebSocket. After this call, replay-handlers detaches `conn.worker`
    * and releases its worker pool slot — the worker lives on under the
    * session's ownership.
+   *
+   * F5-bis (2026-05-31) — fork-solo collapsed into the SOLO multiplex
+   * 1-socket pattern; the second token disappeared.
    */
   createForkSoloSession: (args: {
     forkDuelId: string;
     userId: string;
     worker: Worker;
     replayData: WorkerReplayPayload;
-  }) => { token1: string; token2: string };
+  }) => { token1: string };
 }
 
 const configurable = createConfigurable<ReplayHandlersConfig>('replay-handlers');
@@ -519,7 +522,7 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
   // Hand off to the host: it allocates tokens, builds the ActiveDuelSession,
   // registers it with DuelSessionManager, schedules its own connection-
   // timeout, and wires the fork worker handlers.
-  const { token1, token2 } = c.createForkSoloSession({
+  const { token1 } = c.createForkSoloSession({
     forkDuelId,
     userId: conn.userId,
     worker,
@@ -545,8 +548,9 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
   // OPEN (client disconnected mid-transition) the callback path is unreachable,
   // so close unconditionally to guarantee no leaked socket regardless of which
   // branch fires. ws.close() on an already-closed socket is a no-op.
+  // F5-bis (2026-05-31) — single-token payload (collapsed to SOLO multiplex).
   if (conn.ws.readyState === WebSocket.OPEN) {
-    conn.ws.send(JSON.stringify({ type: 'REPLAY_FORK_READY', token1, token2 }), () => {
+    conn.ws.send(JSON.stringify({ type: 'REPLAY_FORK_READY', token1 }), () => {
       conn.ws.close();
     });
   } else {

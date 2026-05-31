@@ -83,19 +83,28 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
     case 'WORKER_DUEL_CREATED':
       logger.log('Duel created in worker', { duelId: wmsg.duelId });
       session.startedAt = Date.now();
-      session.timerContext = {
-        pools: [session.turnTimeSecs * 1000, session.turnTimeSecs * 1000],
-        running: false,
-        activePlayer: 0,
-        intervalRef: null,
-        lastTickMs: 0,
-        turnCount: 0,
-        pendingPlayer: null,
-        pendingTimeout: null,
-      };
-      // Note: no-ops if players haven't connected yet —
-      // sendTimerStateToPlayer covers on connection.
-      sendTimerStateToAll(session);
+      // F5-bis (2026-05-31) — turn timer is meaningless against oneself.
+      // SOLO multiplex (POST quick-duel) and fork-solo (forkMode implies
+      // soloMode) both skip timer init. Inactivity timer stays enabled
+      // (load-bearing: protects against worker leaks when the socket stays
+      // open without activity ; see CLAUDE.md → "Fork-solo unification (F5-bis)").
+      // All timer-management functions early-return on `timerContext === null`
+      // so no further branches are required.
+      if (!session.soloMode) {
+        session.timerContext = {
+          pools: [session.turnTimeSecs * 1000, session.turnTimeSecs * 1000],
+          running: false,
+          activePlayer: 0,
+          intervalRef: null,
+          lastTickMs: 0,
+          turnCount: 0,
+          pendingPlayer: null,
+          pendingTimeout: null,
+        };
+        // Note: no-ops if players haven't connected yet —
+        // sendTimerStateToPlayer covers on connection.
+        sendTimerStateToAll(session);
+      }
       break;
 
     case 'WORKER_MESSAGE':
@@ -211,6 +220,13 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
 
     case 'WORKER_REPLAY_DATA': {
       logger.log('Received WORKER_REPLAY_DATA', { duelId: wmsg.duelId, responses: wmsg.payload.playerResponses.length });
+      // F5-bis (2026-05-31) — fork-solo is exploratory by design and not
+      // archived (it derives from an existing replay). Skip the POST to
+      // Spring Boot ; just terminate the worker.
+      if (session.forkMode) {
+        safeTerminateWorker(session);
+        break;
+      }
       persistReplay(session, wmsg.payload).finally(() => {
         safeTerminateWorker(session);
       });
@@ -245,7 +261,10 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
     const endMsg: ServerMessage = {
       type: 'DUEL_END', winner: message.player, reason: 'win', winReasonCode: message.reason,
     };
-    logger.log('DUEL_END', { duelId: session.duelId, winner: message.player, reason: 'win' });
+    // F5-bis (2026-05-31) — mode tag distinguishes the three session
+    // shapes for replay audit log filtering.
+    const mode = session.forkMode ? 'fork_solo' : (session.soloMode ? 'solo' : 'pvp');
+    logger.log('DUEL_END', { duelId: session.duelId, winner: message.player, reason: 'win', mode });
     send(session, 0, endMsg);
     send(session, 1, endMsg);
     handleDuelEnd(session);

@@ -1870,9 +1870,14 @@ port.on('message', (msg: MainToWorkerMessage) => {
       // P0-3bis.3 — take a rollback snapshot BEFORE applying an
       // IDLECMD/BATTLECMD response. The cancel path will restore this if
       // the user right-clicks on the continuation prompt.
-      // Only applies in regular PVP (not fork mode — replay-fork already
-      // bypasses capturedSetResponse, and rollback there has no client UI).
-      if (!forkMode && snapshotAvailable() && (msg.promptType === 'SELECT_IDLECMD' || msg.promptType === 'SELECT_BATTLECMD')) {
+      //
+      // F5-bis (2026-05-31) — fork-solo now inherits cancel-rollback. The
+      // pre-F5-bis gate `!forkMode` was historical (no client UI when fork
+      // first shipped) but functionally there was no blocker. Fork-solo
+      // sessions go through the same SOLO multiplex path and thus benefit
+      // from cancel-rollback identically — anti-fat-finger discipline is
+      // valuable in an exploratory variant.
+      if (snapshotAvailable() && (msg.promptType === 'SELECT_IDLECMD' || msg.promptType === 'SELECT_BATTLECMD')) {
         try {
           setLastIdleSnapshot(takeWorkerSnapshot());
         } catch (err) {

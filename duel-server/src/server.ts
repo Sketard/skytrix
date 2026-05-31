@@ -480,6 +480,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       cancelTargetPrompt: [null, null],
       timerContext: null,
       soloMode,
+      forkMode: false,
       skipShuffle,
       turnTimeSecs,
       invalidResponseCount: [0, 0],
@@ -1119,7 +1120,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       } else {
         startFirstPlayerPhase(session);
       }
-    } else if (session.phase === 'DUELING' && session.duelId.startsWith('fork-')) {
+    } else if (session.phase === 'DUELING' && session.forkMode) {
       // Fork session: worker already reconstructed the duel, tell it to emit state + prompt
       if (session.forkConnectionTimeout) {
         clearTimeout(session.forkConnectionTimeout);

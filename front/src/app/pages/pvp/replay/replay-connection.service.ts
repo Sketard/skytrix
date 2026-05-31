@@ -16,7 +16,9 @@ export class ReplayConnectionService implements OnDestroy {
   readonly error = signal<string | null>(null);
   readonly lastReceivedTurn = signal<number>(-1);
   readonly forkStatus = signal<'idle' | 'forking' | 'ready' | 'warning' | 'error'>('idle');
-  readonly forkTokens = signal<{ token1: string; token2: string } | null>(null);
+  // F5-bis (2026-05-31) — fork-solo is now a SOLO multiplex (1-socket)
+  // session ; only `token1` is issued by the server.
+  readonly forkTokens = signal<{ token1: string } | null>(null);
   readonly forkWarning = signal<string | null>(null);
   /** True when the server closed the WS with code 4426 (protocol version
    *  mismatch). The replay-page component reads this to render a "please
@@ -80,7 +82,7 @@ export class ReplayConnectionService implements OnDestroy {
 
           case 'REPLAY_FORK_READY':
             this.forkStatus.set('ready');
-            this.forkTokens.set({ token1: msg.token1, token2: msg.token2 });
+            this.forkTokens.set({ token1: msg.token1 });
             break;
         }
       } catch (e) {

@@ -208,11 +208,12 @@ describe('ReplayConnectionService — server message dispatch', () => {
 
   it('REPLAY_FORK_READY: forkStatus=ready + forkTokens set', () => {
     svc.forkStatus.set('forking');
+    // F5-bis (2026-05-31) — single-token payload (collapsed to SOLO multiplex).
     dispatchServerMessage(ws, {
-      type: 'REPLAY_FORK_READY', token1: 'tok1', token2: 'tok2',
+      type: 'REPLAY_FORK_READY', token1: 'tok1',
     });
     expect(svc.forkStatus()).toBe('ready');
-    expect(svc.forkTokens()).toEqual({ token1: 'tok1', token2: 'tok2' });
+    expect(svc.forkTokens()).toEqual({ token1: 'tok1' });
   });
 
   it('onclose with code 4426: sets protocolMismatch=true + error key', () => {
@@ -247,7 +248,7 @@ describe('ReplayConnectionService — client send methods', () => {
 
   it('sendFork (WS open): sends payload + sets forkStatus=forking + clears tokens/warning', () => {
     const { svc, ws, restore } = setup(true);
-    svc.forkTokens.set({ token1: 'old1', token2: 'old2' });
+    svc.forkTokens.set({ token1: 'old1' });
     svc.forkWarning.set('previous warning');
     svc.sendFork(5, sanity);
     expect(ws.send).toHaveBeenCalledTimes(1);
@@ -305,7 +306,7 @@ describe('ReplayConnectionService — state helpers', () => {
   it('resetForkState clears all 3 fork signals', () => {
     const svc = new ReplayConnectionService();
     svc.forkStatus.set('warning');
-    svc.forkTokens.set({ token1: 'a', token2: 'b' });
+    svc.forkTokens.set({ token1: 'a' });
     svc.forkWarning.set('x');
     svc.resetForkState();
     expect(svc.forkStatus()).toBe('idle');
@@ -322,7 +323,7 @@ describe('ReplayConnectionService — state helpers', () => {
     // Wire a non-null onmessage so we can assert it was nullified.
     ws.onmessage = () => undefined;
     ws.onclose = () => undefined;
-    svc.forkTokens.set({ token1: 'leftover', token2: 'leftover2' });
+    svc.forkTokens.set({ token1: 'leftover' });
     svc.disconnect();
     expect(ws.close).toHaveBeenCalled();
     expect(ws.onmessage).toBeNull();

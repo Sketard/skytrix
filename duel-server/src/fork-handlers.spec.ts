@@ -5,8 +5,6 @@ import {
   type ForkHandlersConfig,
 } from './fork-handlers.js';
 import { configureWorkerLifecycle, _resetTotalDuelsServedForTest } from './worker-lifecycle.js';
-import { configureTimerManagement } from './timer-management.js';
-import { configureWorkerMessageRouter } from './worker-message-router.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import type { ActiveDuelSession, WorkerReplayPayload } from './types.js';
 import type { ServerMessage } from './ws-protocol.js';
@@ -48,11 +46,11 @@ function makeReplayData(): WorkerReplayPayload {
       playerUsernames: ['axel', 'axel'],
       deckNames: ['deck-a', 'deck-b'],
       turnCount: 3,
-      result: 'win',
-      date: '2026-05-11',
-      scriptsHash: 'abc',
-      ocgcoreVersion: '1.2.3',
-      durationSec: 120,
+      result: 'VICTORY',
+      date: '2026-05-30',
+      scriptsHash: 'h',
+      ocgcoreVersion: 'v',
+      durationSec: 60,
     },
   };
 }
@@ -62,37 +60,19 @@ interface SpyHooks {
   cleanups: ActiveDuelSession[];
 }
 
-function makeSpy(): SpyHooks {
-  return { sent: [], cleanups: [] };
-}
+function makeSpy(): SpyHooks { return { sent: [], cleanups: [] }; }
 
 function wireUpstreams(): void {
-  _resetTotalDuelsServedForTest();
+  // Minimum upstream config so attachWorkerHandlers (used by fork-handlers
+  // after F5-bis) does not throw on the boot check.
   configureWorkerLifecycle({
-    handleWorkerMessage: () => undefined,
     cleanupDuelSession: () => undefined,
+    handleWorkerMessage: () => undefined,
     clearAllDuelTimers: () => undefined,
-    rematchExpiryMs: 1000,
+    rematchExpiryMs: 30_000,
     onRematchExpired: () => undefined,
   });
-  configureTimerManagement({
-    sendToPlayer: () => undefined,
-    handleDuelEnd: () => undefined,
-    requestReplayFromWorker: () => undefined,
-    cleanupDuelSession: () => undefined,
-    safeTerminateWorker: () => undefined,
-    turnTimeIncrementMs: 40_000,
-    inactivityTimeoutMs: 120_000,
-    inactivityWarningBeforeMs: 20_000,
-    inactivityRaceWindowMs: 500,
-    reconnectGraceMs: 60_000,
-    bothDisconnectedCleanupMs: 10_000,
-    animationsDoneTimeoutMs: 30_000,
-  });
-  configureWorkerMessageRouter({
-    sendToPlayer: () => undefined,
-    maxInvalidResponses: 5,
-  });
+  _resetTotalDuelsServedForTest();
 }
 
 function makeConfig(spy: SpyHooks, sessionManager: DuelSessionManager, overrides: Partial<ForkHandlersConfig> = {}): ForkHandlersConfig {
@@ -109,7 +89,7 @@ function makeConfig(spy: SpyHooks, sessionManager: DuelSessionManager, overrides
 // Tests
 // =============================================================================
 
-describe('fork-handlers', () => {
+describe('fork-handlers (F5-bis collapsed onto SOLO multiplex)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     wireUpstreams();
@@ -121,47 +101,41 @@ describe('fork-handlers', () => {
   // ==========================================================================
 
   describe('createForkSoloSession', () => {
-    it('returns two distinct tokens', () => {
+    it('returns a single token (F5-bis collapse — no token2)', () => {
       const spy = makeSpy();
       const mgr = new DuelSessionManager();
       configureForkHandlers(makeConfig(spy, mgr));
       const w = makeWorker();
 
-      const { token1, token2 } = createForkSoloSession({
+      const ret = createForkSoloSession({
         forkDuelId: 'fork-1', userId: 'u1', worker: w as unknown as Worker, replayData: makeReplayData(),
       });
 
-      expect(token1).not.toBe(token2);
-      expect(token1).toBeTruthy();
-      expect(token2).toBeTruthy();
+      expect(ret.token1).toBeTruthy();
+      expect((ret as { token2?: string }).token2).toBeUndefined();
     });
 
-    it('registers the session under forkDuelId with both tokens', () => {
+    it('registers the session under forkDuelId with only token1', () => {
       const spy = makeSpy();
       const mgr = new DuelSessionManager();
       configureForkHandlers(makeConfig(spy, mgr));
       const w = makeWorker();
 
-      const { token1, token2 } = createForkSoloSession({
+      const { token1 } = createForkSoloSession({
         forkDuelId: 'fork-X', userId: 'u1', worker: w as unknown as Worker, replayData: makeReplayData(),
       });
 
       const session = mgr.get('fork-X');
       expect(session).toBeDefined();
-      // Both pending tokens resolve to the same duel.
       const r1 = mgr.consumePendingToken(token1);
-      const r2 = mgr.consumePendingToken(token2);
       expect(r1.kind).toBe('ok');
-      expect(r2.kind).toBe('ok');
-      if (r1.kind === 'ok' && r2.kind === 'ok') {
+      if (r1.kind === 'ok') {
         expect(r1.session.duelId).toBe('fork-X');
-        expect(r2.session.duelId).toBe('fork-X');
         expect(r1.playerIndex).toBe(0);
-        expect(r2.playerIndex).toBe(1);
       }
     });
 
-    it('builds a solo-mode, skip-shuffle session with both player slots pointing at the same userId', () => {
+    it('builds a soloMode + forkMode, skip-shuffle session with both player slots pointing at the same userId', () => {
       const spy = makeSpy();
       const mgr = new DuelSessionManager();
       configureForkHandlers(makeConfig(spy, mgr));
@@ -173,6 +147,7 @@ describe('fork-handlers', () => {
 
       const s = mgr.get('fork-S')!;
       expect(s.soloMode).toBe(true);
+      expect(s.forkMode).toBe(true);
       expect(s.skipShuffle).toBe(true);
       expect(s.phase).toBe('DUELING');
       expect(s.players[0].playerId).toBe('u42');
@@ -197,7 +172,7 @@ describe('fork-handlers', () => {
       expect(s.deckNames).toEqual(['deck-a', 'deck-b']);
     });
 
-    it('removes the worker\'s existing listeners + attaches the fork-specific ones', () => {
+    it('removes the worker\'s existing listeners + attaches canonical session-bound ones', () => {
       const spy = makeSpy();
       const mgr = new DuelSessionManager();
       configureForkHandlers(makeConfig(spy, mgr));
@@ -211,7 +186,7 @@ describe('fork-handlers', () => {
       expect(w.removeAllListeners).toHaveBeenCalledWith('message');
       expect(w.removeAllListeners).toHaveBeenCalledWith('exit');
       expect(w.removeAllListeners).toHaveBeenCalledWith('error');
-      // 3 .on() calls
+      // attachWorkerHandlers (canonical) attaches 3 handlers via worker.on
       expect(w._handlers.message).toBeDefined();
       expect(w._handlers.exit).toBeDefined();
       expect(w._handlers.error).toBeDefined();
@@ -244,7 +219,7 @@ describe('fork-handlers', () => {
       expect(spy.cleanups[0]!.duelId).toBe('fork-T');
     });
 
-    it('does NOT clean up if at least one client has connected before the timeout', () => {
+    it('does NOT clean up if slot 0 has connected before the timeout (SOLO multiplex pattern)', () => {
       const spy = makeSpy();
       const mgr = new DuelSessionManager();
       configureForkHandlers(makeConfig(spy, mgr, { forkConnectionTimeoutMs: 100 }));
@@ -264,75 +239,11 @@ describe('fork-handlers', () => {
     });
   });
 
-  // ==========================================================================
-  // Fork worker handlers (the actual routing)
-  // ==========================================================================
-
-  describe('fork worker handlers — message dispatch', () => {
-    function makeFreshFork(spy: SpyHooks, overrides: Partial<ForkHandlersConfig> = {}): {
-      worker: FakeWorker;
-      session: ActiveDuelSession;
-    } {
-      const mgr = new DuelSessionManager();
-      configureForkHandlers(makeConfig(spy, mgr, overrides));
-      const worker = makeWorker();
-      createForkSoloSession({
-        forkDuelId: 'fork-H', userId: 'u1', worker: worker as unknown as Worker, replayData: makeReplayData(),
-      });
-      return { worker, session: mgr.get('fork-H')! };
-    }
-
-    it('drops malformed worker messages without throwing', () => {
-      const spy = makeSpy();
-      const { worker, session } = makeFreshFork(spy);
-
-      expect(() => worker._handlers.message!({ type: 'GARBAGE' })).not.toThrow();
-      expect(spy.sent).toHaveLength(0);
-      expect(session.lastBoardState).toBeNull();
-    });
-
-    it('on MSG_WIN, generates DUEL_END to both ports + marks endedAt', () => {
-      const spy = makeSpy();
-      const { worker, session } = makeFreshFork(spy);
-
-      worker._handlers.message!({
-        type: 'WORKER_MESSAGE',
-        duelId: 'fork-H',
-        message: { type: 'MSG_WIN', player: 1 },
-      });
-
-      const ends = spy.sent.filter(x => x.message.type === 'DUEL_END');
-      expect(ends).toHaveLength(2);
-      const m = ends[0]!.message as Extract<ServerMessage, { type: 'DUEL_END' }>;
-      expect(m.winner).toBe(1);
-      expect(m.reason).toBe('win');
-      expect(session.endedAt).not.toBeNull();
-    });
-
-    it('WORKER_ERROR logs without throwing (no DUEL_END emitted)', () => {
-      const spy = makeSpy();
-      const { worker } = makeFreshFork(spy);
-
-      expect(() => worker._handlers.message!({
-        type: 'WORKER_ERROR', duelId: 'fork-H', error: 'boom',
-      })).not.toThrow();
-      expect(spy.sent.filter(x => x.message.type === 'DUEL_END')).toHaveLength(0);
-    });
-
-    it('exit handler flips workerTerminated', () => {
-      const spy = makeSpy();
-      const { worker, session } = makeFreshFork(spy);
-
-      worker._handlers.exit!(0);
-
-      expect(session.workerTerminated).toBe(true);
-    });
-
-    it('error handler does not throw', () => {
-      const spy = makeSpy();
-      const { worker } = makeFreshFork(spy);
-
-      expect(() => worker._handlers.error!(new Error('thread boom'))).not.toThrow();
-    });
-  });
+  // F5-bis (2026-05-31) — `setupForkWorkerHandlers` was removed (it
+  // reimplemented a subset of `broadcastMessage`). All worker-to-client
+  // routing now goes through `worker-message-router.handleWorkerMessage`
+  // which is tested directly in `worker-message-router.spec.ts`. The
+  // routing parity between fork-solo and SOLO multiplex is structural
+  // (same code path, same `if (session.forkMode)` skips for persist +
+  // rematch), so no per-message dispatch tests are needed here.
 });

@@ -83,9 +83,10 @@ export class ReplayForkService {
     const tokens = this.replayConnection.forkTokens();
     if (!tokens || !this.replayId) return;
 
+    // F5-bis (2026-05-31) — single-token state (collapsed to SOLO multiplex).
     this.router.navigate(['/pvp/duel', `fork-${this.replayId}`], {
       queryParams: { fork: 'true', replayId: this.replayId, seekTo: this.forkEventIndex() },
-      state: { wsToken1: tokens.token1, wsToken2: tokens.token2 },
+      state: { wsToken1: tokens.token1 },
     });
   }
 }

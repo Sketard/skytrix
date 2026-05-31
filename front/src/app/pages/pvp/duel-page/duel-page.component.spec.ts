@@ -942,20 +942,18 @@ describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
     return fixture.componentRef.injector.get(DuelTabGuardService) as unknown as StubDuelTabGuard;
   }
 
-  it('fork mode + tokens in history.state → orchestrator.init + forceState("connecting") + initFork', () => {
+  it('fork mode + token in history.state → orchestrator.init + forceState("connecting") + initFork', () => {
     // Fork branch: replay viewer hits the "duplicate as solo" entry, the
-    // tokens travel via history.state (set by router.navigate on the
+    // token travels via history.state (set by router.navigate on the
     // replay page, never persisted to sessionStorage).
     setupTestBed(makeRouteStub({ roomCode: 'r1', query: { fork: 'true', replayId: 'abc', seekTo: '12' } }));
-    withHistoryState({ wsToken1: 'tok1', wsToken2: 'tok2' }, () => {
+    // F5-bis (2026-05-31) — single-token (collapsed to SOLO multiplex).
+    withHistoryState({ wsToken1: 'tok1' }, () => {
       const fixture = TestBed.createComponent(DuelPageComponent);
       const orch = pickSoloOrch(fixture);
       const room = pickRoom(fixture);
       const soloEff = pickSoloEffects(fixture);
 
-      // c6a — orchestrator.init() passe à 1 token (SOLO mono-connection).
-      // Le fork garde 2 tokens server-side ; le wsToken2 n'est plus
-      // consommé front mais reste validé en gate.
       expect(orch.init).toHaveBeenCalledOnceWith('tok1');
       expect(room.forceState).toHaveBeenCalledWith('connecting');
       expect(soloEff.initFork).toHaveBeenCalledTimes(1);

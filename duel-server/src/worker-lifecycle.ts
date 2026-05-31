@@ -158,7 +158,13 @@ export function handleDuelEnd(session: ActiveDuelSession): void {
   // can fire `cleanupDuelSession` post-duel is this timer expiring naturally
   // (`onRematchExpired`). Pre-γ SOLO had no rematch grace at all — the
   // session was cleaned the instant the worker reported MSG_WIN.
-  session.rematchTimeout = setTimeout(() => cfg.onRematchExpired(session), cfg.rematchExpiryMs);
+  //
+  // F5-bis (2026-05-31) — fork-solo is exploratory one-shot: no rematch
+  // invitation flow. Skip the arm ; the session cleans up naturally via
+  // the player's socket close path (grace timer in handleClose).
+  if (!session.forkMode) {
+    session.rematchTimeout = setTimeout(() => cfg.onRematchExpired(session), cfg.rematchExpiryMs);
+  }
 }
 
 /**

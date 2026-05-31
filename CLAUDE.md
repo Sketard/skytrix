@@ -248,6 +248,161 @@ pins the server-side transition matrix ; the client suite at
 pins the client-side. Any change to the chain phase semantics on
 either side MUST update both specs + this matrix.
 
+## Fork-solo unification (F5-bis, 2026-05-31)
+
+Fork-solo sessions (the "replay → fork at turn N → play your own
+variant" entry point) used to run on a **parallel worker handler
+path** : `setupForkWorkerHandlers` in
+[fork-handlers.ts](duel-server/src/fork-handlers.ts) reimplemented a
+subset of `broadcastMessage`, which diverged over time and required
+manual sync on every change (F5 partial fix added back 4 missing
+bits, the audit finding F5-bis tracked the structural debt). The
+unification collapses fork-solo onto **the same SOLO multiplex code
+path** as the POST `/api/duels` solo (1-socket, omniscient filter,
+slot-0 routing). One canonical path, one place to maintain.
+
+### Session shape
+
+`ActiveDuelSession` gained `forkMode: boolean` alongside `soloMode`.
+The flag implies `soloMode: true` and is NEVER set on a PvP normal
+session. There are now three legitimate combinations :
+
+| Combination | Mode | Sockets connected | Path |
+|---|---|---|---|
+| `soloMode: false, forkMode: false` | PvP normal | 2 (slots 0 + 1) | `attachWorkerHandlers` → `broadcastMessage` 2-player loop |
+| `soloMode: true, forkMode: false` | SOLO multiplex (POST quick-duel) | 1 (slot 0 ; slot 1 reserved but never connected) | `attachWorkerHandlers` → `broadcastMessage` SOLO branch |
+| `soloMode: true, forkMode: true` | Fork-solo | 1 (slot 0 ; slot 1 reserved but never connected) | Same as SOLO multiplex + skips below |
+
+The structural insight from the audit : fork-solo's perceived
+differences from SOLO multiplex were rationalizations after the
+fact. The single-player nature, omniscient filtering, 1-socket
+multiplex pattern are IDENTICAL between SOLO and fork-solo. The only
+true behavioral differences fork-solo needs are :
+
+1. **No replay persist** — `worker-message-router.ts`
+   `case 'WORKER_REPLAY_DATA'` skips `persistReplay` when
+   `session.forkMode`. Fork-solo derives from an existing replay,
+   recording the variant doesn't make sense.
+2. **No rematch** — `worker-lifecycle.ts handleDuelEnd` skips the
+   `rematchTimeout = setTimeout(...)` arm when `session.forkMode`.
+   Fork-solo is exploratory one-shot.
+3. **Log tag** — `broadcastMessage` `case 'MSG_WIN'` writes
+   `mode: 'fork_solo'` on the DUEL_END log line, alongside `'solo'`
+   for SOLO multiplex and `'pvp'` for PvP normal. For audit-log
+   filtering only.
+
+### Inherited from SOLO multiplex (no fork-specific code)
+
+Everything else flows through the SAME code path as a regular SOLO
+multiplex session, no per-fork branches :
+
+- **Omniscient filter** : `broadcastMessage:320-335` SOLO branch fires
+  on `session.soloMode`, applies to fork.
+- **1-socket routing** : `decideSoloRouting` / `PSEUDO_PAIRWISE_SOLO_ROUTED`
+  in `lifecycle-helpers.ts` handle slot-1 sends via tag (no-op or
+  route-to-0). Same for fork.
+- **Chain tracking** : `applyChainTransition` runs in
+  `broadcastMessage` for every message. Same for fork.
+- **MSG_CONFIRM_CARDS chainIndex tag** : tagged in `broadcastMessage`
+  via `session.currentSolvingChainIndex`. Same for fork.
+- **`winReasonCode` on DUEL_END** : extracted from `MSG_WIN.reason` in
+  `broadcastMessage`. Same for fork.
+- **Game-log ingestion** : `broadcastMessage` top of body runs
+  `ingestIntoSessionGameLog(session.gameLog, message)`. Same for fork.
+- **Cancel-rollback** : the `!forkMode` gate that previously disabled
+  `takeWorkerSnapshot()` at the IDLECMD/BATTLECMD boundary
+  ([duel-worker.ts:1875](duel-server/src/duel-worker.ts#L1875)) was
+  retired. Fork-solo now benefits from cancel-rollback identically to
+  SOLO multiplex — anti-fat-finger discipline is valuable in
+  exploratory variants. (The worker's own `forkMode` flag persists for
+  other concerns : bypassing `capturedSetResponse`, gating
+  `emitReplayData`. The snapshot-take gate was the only over-broad
+  application of it.)
+
+### Turn timer disabled in SOLO + fork (F5-bis behavior change)
+
+The `case 'WORKER_DUEL_CREATED'` handler in
+[worker-message-router.ts](duel-server/src/worker-message-router.ts)
+now wraps `timerContext` allocation + `sendTimerStateToAll` in
+`if (!session.soloMode)`. Rationale : a turn timer counting down
+against oneself is a paradox. SOLO and fork-solo simply skip the
+allocation ; all timer-management functions early-return on
+`timerContext === null` so no further branches are required.
+
+**Client behavior** : with no `TIMER_STATE` ever emitted, the
+`pvp-timer-badge` component reads `timerState() === null` →
+`effectiveRemainingMs() === null` → displays `'--:--'` cosmetically.
+All UI computeds degrade gracefully (no crash, no NaN, no off-by-one).
+
+**Inactivity timer kept** : the per-prompt inactivity timer
+(`startInactivityTimer`) is still armed via `broadcastMessage` for
+SOLO sessions. Load-bearing — protects against worker leaks when the
+client keeps the socket open without activity (5min timeout → forfeit
++ session cleanup). The "you forfeit yourself" paradox is accepted in
+exchange for the resource-leak protection. SOLO players who walk away
+from an active prompt for >5min will see "duel ended by inactivity" ;
+closing the tab cleanly is the recommended flow.
+
+### Fork-specific construction (the only path that touches `forkMode`)
+
+[fork-handlers.ts createForkSoloSession](duel-server/src/fork-handlers.ts)
+is the only constructor that sets `forkMode: true`. It :
+
+1. Allocates 1 token (not 2 — `register(session, [token1])`).
+2. Builds the session with `soloMode: true, forkMode: true`, 2 player
+   slots where slot 1 is reserved-but-never-connected (same as SOLO
+   multiplex — see [lifecycle-helpers.ts](duel-server/src/lifecycle-helpers.ts)
+   comment block).
+3. Removes the worker's transient (replay-precompute-style) listeners
+   and calls `attachWorkerHandlers(session)` — the canonical PvP/SOLO
+   handler set. No `setupForkWorkerHandlers` parallel implementation
+   remains.
+
+### Front consumer changes
+
+- `REPLAY_FORK_READY` payload : `{ token1 }` only (no `token2`).
+- `replay-connection.service.ts forkTokens` signal :
+  `{ token1: string } | null`.
+- `replay-fork.service.ts navigateToForkDuel` : router state
+  `{ wsToken1: tokens.token1 }` only.
+- `duel-page.component.ts` fork branch : gate is `if (!wsToken1)`
+  (the `wsToken2` validation guard is gone).
+- `solo-mode-effects.service.ts initFork` : unchanged. Fork still
+  legitimately skips the `initSolo` player-persistence + rematch-reset
+  effects — those are SOLO UX features the fork explicitly doesn't
+  want.
+
+### Worker `forkMode` variable (not the same as `session.forkMode`)
+
+[duel-worker.ts](duel-server/src/duel-worker.ts) has an internal
+`forkMode: boolean` variable (line 1676) set on `INIT_REPLAY_FORK`
+that gates worker-side behavior : bypassing `capturedSetResponse` (for
+deterministic replay reconstruction), skipping `emitReplayData` (the
+worker doesn't auto-emit on END/WIN), the `FORK_RESUME` handler.
+These are LEGITIMATELY worker-internal concerns that do not collapse
+into the SOLO multiplex path — they relate to how the worker bootstraps
+on a replay's seek point, not how the server routes messages.
+
+The `session.forkMode` flag is the SERVER-side concern (which routing
+skips to apply) ; the worker's `forkMode` variable is the WORKER-side
+concern (how to bootstrap + handle responses). They share a name but
+have different scopes.
+
+### Pre-F5-bis structure (for archeology)
+
+Pre-F5-bis, fork-solo had :
+- 2 tokens issued (`token1`, `token2`) ; only token1 ever consumed.
+- `setupForkWorkerHandlers` parallel handler set (~100 lines)
+  reimplementing `broadcastMessage` partially.
+- A `KEEP IN SYNC WITH broadcastMessage` comment block marking 4 bits
+  that F5 had to recopy because they had drifted.
+- `session.duelId.startsWith('fork-')` ad-hoc check in `server.ts:1122`
+  to detect fork sessions for the `FORK_RESUME` dispatch.
+
+All of those are gone. The fork-solo path is now structurally
+equivalent to a SOLO multiplex session with 2 documented skips +
+1 log tag.
+
 ## Transport Lifecycle Invariants
 
 Two load-bearing invariants the γ-c bootstrap relies on. Both are

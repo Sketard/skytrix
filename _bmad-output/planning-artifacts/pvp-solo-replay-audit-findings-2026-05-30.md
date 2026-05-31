@@ -143,7 +143,7 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 - **Tests** : 1615/1615 vitest duel-server verts.
 - **Statut** : FIX partiel — la divergence structurelle reste, voir F5-bis.
 
-### F5-bis — unifier fork-solo dans le pattern SOLO multiplex (refonte architecturale)
+### F5-bis — unifier fork-solo dans le pattern SOLO multiplex — ✅ FIX (2026-05-31)
 - **Origine** : F5 a corrigé les 4 omissions immédiates, mais la dette
   de fond reste : deux mécanismes parallèles avec `setupForkWorkerHandlers`
   qui réimplémente une logique parallèle à `broadcastMessage`. Toute
@@ -151,24 +151,76 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 - **Cible** : collapser fork-solo dans le pattern SOLO multiplex (1
   socket, multiplexing via `forPlayer` tag, `attachWorkerHandlers`
   partagé avec un flag `forkMode` qui skip cancel/timer/etc.).
-- **Coût estimé** : 1-2 demi-journées, touche ~10-15 fichiers :
-  - Backend : `createForkSoloSession` retourne 1 token au lieu de 2 ;
-    `attachWorkerHandlers` accepte un `forkMode: boolean` ; retirer
-    `setupForkWorkerHandlers` ; le flag dispatche conditionnellement
-    cancel/timer/cancelTargetPrompt côté `broadcastMessage`.
-  - Frontend : retirer la branche fork-solo de `duel-page.component.ts`
-    qui consomme `wsToken2` ; `solo-mode-effects.service.ts initFork`
-    aligne avec `initSolo`.
-  - Tests : MAJ des specs front + e2e qui ont des wsToken2 / fork-solo
-    paths.
-- **Bénéfice** : élimine la classe de bug "fork-solo dérive de SOLO
-  multiplex" par construction. Un seul code path = une seule maintenance.
-- **Risque** : régression sur le flux fork-solo (mode user-facing
-  existant). Refactor end-to-end qui mérite sa propre session dédiée
-  avec test e2e Playwright complémentaire.
-- **Sévérité** : MEDIUM (dette architecturale).
-- **Décision** : BACKLOG. À planifier comme chantier dédié quand la
-  priorité audit principale sera close.
+- **Investigation (2026-05-31)** : la "raison historique" du path séparé
+  (omniscient filter / pas de chain tracking / pas de cancel-rollback /
+  log tag) s'est révélée être des rationalisations après coup. SOLO
+  multiplex et fork-solo sont structurellement identiques (1 socket
+  omniscient, slot 0 connecté + slot 1 réservé jamais connecté). Le
+  vrai écart se résume à : ne PAS persister le replay + ne PAS armer
+  la rematch + log tag spécifique. 2 skips + 1 tag = 3 branches d'1
+  ligne chacune.
+- **Décisions Axel sur scope** :
+  · Turn timer désactivé en SOLO multiplex AUSSI (pas seulement fork) —
+    paradoxe UX "se forcer soi-même". Inactivity timer conservé
+    (protection fuite worker).
+  · Cancel-rollback activé en fork-solo (cohérence + simple :
+    retirer le `!forkMode` worker-side).
+  · Rematch désactivé en fork-solo (exploration one-shot, pas une
+    "vraie" partie).
+  · `server.ts:1122` : check `duelId.startsWith('fork-')` remplacé par
+    `session.forkMode` (single source of truth).
+  · Slot players[1] : déjà géré par SOLO multiplex (slot réservé mais
+    jamais connecté, helper `isReadyToStart`/`isFullyDisconnected` branche
+    sur soloMode). Fork-solo s'aligne sans modif de shape.
+- **Changements appliqués** :
+  - **Backend** :
+    · `types.ts` : `ActiveDuelSession.forkMode: boolean` ajouté + JSDoc
+      qui implique soloMode et liste les 3 différences.
+    · `server.ts:1122` : `duelId.startsWith('fork-')` → `session.forkMode`.
+    · `server.ts:482` POST init : `forkMode: false`.
+    · `fork-handlers.ts` : refonte complète. `setupForkWorkerHandlers`
+      (100 lignes) supprimée, remplacée par `attachWorkerHandlers`
+      standard. Retour `{ token1 }` (au lieu de `{ token1, token2 }`).
+      `forkMode: true` sur la session.
+    · `worker-message-router.ts WORKER_DUEL_CREATED` : timerContext init
+      + sendTimerStateToAll wrapped dans `if (!session.soloMode)`.
+    · `worker-message-router.ts WORKER_REPLAY_DATA` : skip persistReplay
+      si `session.forkMode`.
+    · `worker-message-router.ts broadcastMessage MSG_WIN log` :
+      `mode: session.forkMode ? 'fork_solo' : (session.soloMode ? 'solo' : 'pvp')`.
+    · `worker-lifecycle.ts handleDuelEnd` : skip rematchTimeout arm si
+      `session.forkMode`.
+    · `duel-worker.ts:1875` : retirer `!forkMode &&` devant
+      `takeWorkerSnapshot()` → fork gagne cancel-rollback.
+  - **Protocole WS (paired)** :
+    · `ReplayForkReadyMsg.token2` retiré (front + back synced via F7
+      pre-commit hook).
+  - **Frontend** :
+    · `replay-connection.service.ts forkTokens` : `{ token1 }` only.
+    · `replay-connection.service.ts REPLAY_FORK_READY handler` : pas de
+      `token2`.
+    · `replay-fork.service.ts navigateToForkDuel` : router state
+      `{ wsToken1: tokens.token1 }`.
+    · `duel-page.component.ts fork branch` : `wsToken2` retiré, gate
+      `if (!wsToken1)` seulement.
+- **Tests adaptés** :
+  · `fork-handlers.spec.ts` réécrite : retire les tests "fork worker
+    handlers — message dispatch" (testaient setupForkWorkerHandlers
+    disparu, routing maintenant testé via worker-message-router.spec).
+    Ajoute test `soloMode + forkMode` sur la shape session.
+  · `session-game-log.spec.ts` fixture : `forkMode: false`.
+  · `replay-connection.service.spec.ts` : `token2` retiré des 4 fixtures
+    (lignes 212, 250, 308, 325 — bug bundle Angular remonté par Axel
+    pendant le refactor).
+  · `duel-page.component.spec.ts:950` : history.state `{ wsToken1 }` only.
+- **Doctrine** : section CLAUDE.md "Fork-solo unification (F5-bis,
+  2026-05-31)" qui pose les 3 combinaisons légitimes
+  (soloMode/forkMode), liste les 3 skips fork-specific, distingue le
+  flag `session.forkMode` (server-side, routing) du worker-internal
+  `forkMode` variable (worker-side, bootstrap).
+- **Tests** : tsc front + back green. Vitest duel-server 1610/1610 (79
+  fichiers). Karma front 60/60 sur specs touchées. WS protocol sync OK.
+- **Statut** : DONE.
 
 ---
 

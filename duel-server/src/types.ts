@@ -411,6 +411,17 @@ export interface ActiveDuelSession extends DuelSession {
   // M1 consolidation — turn timer context (formerly standalone Map)
   timerContext: TimerContext | null;
   soloMode: boolean;
+  /**
+   * F5-bis (2026-05-31) — fork-solo subset of SOLO multiplex. When true,
+   * the session is a fork-from-replay: it skips replay persistence (this
+   * variant is exploratory, not recorded) and skips the rematch flow (a
+   * fork is one-shot). Implies `soloMode: true` and inherits all SOLO
+   * multiplex routing (omniscient filter, 1-socket multiplex via slot 0,
+   * no turn timer). The only behavioral differences from a regular SOLO
+   * multiplex session are the 2 skips above + a log tag `'fork_solo'`
+   * on DUEL_END. NEVER true with `soloMode: false`.
+   */
+  forkMode: boolean;
   skipShuffle: boolean;
   turnTimeSecs: number;
   invalidResponseCount: [number, number];

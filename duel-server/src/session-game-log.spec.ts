@@ -197,6 +197,7 @@ describe('worker-message-router — game-log ingestion tap', () => {
       cancelTargetPrompt: [null, null],
       timerContext: null,
       soloMode: false,
+      forkMode: false,
       skipShuffle: false,
       turnTimeSecs: 300,
       invalidResponseCount: [0, 0],
