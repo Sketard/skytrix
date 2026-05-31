@@ -659,15 +659,12 @@ export class AnimationOrchestratorService {
     this.scopeDispatcher?.register(this.targetedZoneKeys);
     this.targetedZoneKeys.attachEventStream(this._eventStream, this.injector);
 
-    // β.3 Lot 3.2-REDO — chain-resolution-announce projection lives on
-    // `chainManager` (symmetric with the lp-tracker's projection placement).
-    // Sets on AnimationPhaseCompleted({phase:'banner-announce'}) emitted
-    // by `handleChainSolving`'s parallel `phaseWait`; clears on
-    // MSG_CHAIN_END / applyReset. The manager's sync `_announcePending`
-    // mirror is fed by the same `pauseMs` setTimeout — both flip in the
-    // same wall-clock tick.
-    this.scopeDispatcher?.register(this.chainManager.chainResolutionAnnounce);
-    this.chainManager.chainResolutionAnnounce.attachEventStream(this._eventStream, this.injector);
+    // F15 (2026-05-31) — `chain-resolution-announce` projection retired.
+    // The state is now a single signal owned by `ChainResolutionManager`
+    // (`chainResolutionAnnounce`), set sync by `markAnnouncePending` and
+    // cleared in `reset()`/`handleEnd`. No stream observation needed;
+    // the manager is already registered with the dispatcher (above) and
+    // its `applyReset → reset()` chain covers the §3.6 cascade.
   }
 
   /** Called by the animation queue watcher effect in the component. */
@@ -1663,20 +1660,20 @@ export class AnimationOrchestratorService {
         durationMs: CHAIN_BANNER_DEFERRED_BUDGET_MS,
         prePauseMs: pauseMs,
         onShow: () => {
+          // F15 (2026-05-31) — single `markAnnouncePending` call now
+          // sets the unified `_announcing` signal on the manager,
+          // observed reactively by templates / Effect D and read
+          // synchronously by `handleSolving`'s predicate. The prior
+          // `pushToStream(AnimationPhaseCompleted phase=banner-announce)`
+          // was the only producer of that event ; its sole consumer
+          // (`ChainResolutionAnnounceProjection`) is retired, so the
+          // push is unreachable and removed.
           this.chainManager.markAnnouncePending();
-          // Push the phase event so the projection observes via the
-          // stream (same wall-clock as the manager's sync mirror flip,
-          // ≤1 microtask apart). Ref is `null` here — the announcement
-          // directive does not carry a parent business event ref.
-          this.pushToStream({
-            kind: 'animation', type: 'AnimationPhaseCompleted',
-            ref: -1, phase: 'banner-announce', msgType: 'MSG_CHAIN_SOLVING',
-          });
         },
-        // The projection self-clears on `MSG_CHAIN_END` (its existing
-        // contract). The sync mirror is reset by `chainManager.handleSolving`
-        // / `reset()` — onClear is a no-op so the banner stays visible
-        // until the chain naturally ends.
+        // The signal self-clears in `chainManager.reset()` (triggered by
+        // `handleEnd` on MSG_CHAIN_END and by the scope dispatcher's
+        // applyReset cascade). onClear is a no-op so the banner stays
+        // visible until the chain naturally ends.
         onClear: () => undefined,
       }]);
       return 0;

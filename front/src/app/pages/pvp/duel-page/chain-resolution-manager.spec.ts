@@ -414,14 +414,13 @@ describe('ChainResolutionManager', () => {
       const r0 = mgr.handleSolving(solving(2));
       expect(r0.deferred).toBeTrue();
 
-      // Consume deferred, simulate banner, then re-process.
-      // β.3 Lot 3.2-REDO — production sets `_announcePending=true` via the
-      // `scheduleBannerAnnounce(pauseMs)` setTimeout. Tests jump straight
-      // to the post-timer state via a private write (the manager has no
-      // public setter, and simulating with fakeAsync isn't worth the
-      // extra surface here).
+      // Consume deferred, simulate banner via the public setter, then re-process.
+      // F15 (2026-05-31) — `markAnnouncePending()` is the production path
+      // for flipping the announce state; the prior private `_announcePending`
+      // field has been replaced by a single `_announcing` signal exposed
+      // via the same public setter.
       mgr.consumeDeferredSolving();
-      (mgr as unknown as { _announcePending: boolean })._announcePending = true;
+      mgr.markAnnouncePending();
       const r0b = enterResolving(2);
       expect(r0b.deferred).toBeFalse();
       expect(mgr.isResolving).toBeTrue();

@@ -29,6 +29,6 @@ export {
   TargetedZoneKeysProjection,
   type TargetedZoneKeysProjectionDeps,
 } from './targeted-zone-keys.projection';
-export {
-  ChainResolutionAnnounceProjection,
-} from './chain-resolution-announce.projection';
+// F15 (2026-05-31) — `ChainResolutionAnnounceProjection` retired ; the
+// state is now a single signal owned by `ChainResolutionManager`
+// (read sync by `handleSolving`, reactive by templates + Effect D).

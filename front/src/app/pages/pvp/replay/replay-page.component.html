@@ -64,7 +64,7 @@
       <!-- Duel overlays (phase announcements, chain resolution) -->
       <app-pvp-duel-overlays
         [phaseAnnouncement]="phaseService.announcement()"
-        [chainResolutionAnnounce]="chainManager.chainResolutionAnnounce.value()"
+        [chainResolutionAnnounce]="chainManager.chainResolutionAnnounce()"
         [opponentThinking]="false"
         [duelToast]="toastService.toast()" />
 

@@ -398,7 +398,11 @@ each `extends BaseProjection<T>` and is registered + attached on
 | 2.4-REDO | `SwapGraveDeckProjection` | `MSG_SWAP_GRAVE_DECK` | `AnimationPhaseCompleted({phase: 'glow'})` (Standardisation 1) |
 | 2.2-REDO | `AnimatingLpProjection` | `MSG_DAMAGE` / `MSG_RECOVER` / `MSG_PAY_LPCOST` decorated with `lpDelta` (Standardisation 2) | `AnimationCompleted({msgType ∈ LP_MSG_TYPES})` |
 | 4.1-REDO | `TargetedZoneKeysProjection` | `MSG_BECOME_TARGET` (FIELD locations only, union accumulation) | `AnimationPhaseCompleted({phase: 'reticle-pulse'})` (Standardisation 1) |
-| 3.2-REDO | `ChainResolutionAnnounceProjection` | `AnimationPhaseCompleted({phase: 'banner-announce'})` (parallel emit by `handleChainSolving`) | `MSG_CHAIN_END` + applyReset |
+
+(F15, 2026-05-31) — `ChainResolutionAnnounceProjection` (3.2-REDO) was
+collapsed into a unified `signal<boolean>` on `ChainResolutionManager`;
+see "Cas dual-purpose collapsé" below + the dedicated subsection. The
+slot is intentionally retired from this table.
 
 **Drops (signaux définitivement NON migrés en projection, par
 design)** — voir la section "Doctrine projection vs signal manager"
@@ -411,14 +415,21 @@ ci-dessous pour les critères. Deux cas droppés en β.3 :
   chain-tagged hand badges, `confirmCardsInHand` flip,
   `revealCardOnDeck`.
 
-**Cas dual-purpose résolu (Lot 3.2-REDO)** —
+**Cas dual-purpose collapsé (F15, 2026-05-31)** —
 `chainResolutionAnnounce` était un signal *dual-use* : Effect D
-réactif côté UI ET predicat sync côté `handleSolving`. Migré en
-splittant les deux mécaniques (cf. section dédiée ci-dessous) :
-projection pour la surface réactive, `_announcePending: boolean`
-privé pour le predicat sync. Les deux mécaniques sont alimentées
-par le même `pauseMs` setTimeout (en parallèle), avec drift ≤1
-microtask.
+réactif côté UI ET predicat sync côté `handleSolving`. β.3 Lot
+3.2-REDO l'avait migré en split-brain (projection
+`ChainResolutionAnnounceProjection` pour la surface réactive +
+`_announcePending: boolean` privé pour le predicat sync, alimentés
+en parallèle par le même `pauseMs` timer). F15 retire le split-
+brain : la projection est supprimée et le state vit comme un
+unique `signal<boolean>` privé sur le manager
+(`_announcing`), exposé en `asReadonly()` pour la surface
+réactive ET lu en sync via `_announcing()` pour le predicat. Le
+split parallel-feed était fragile par construction (F-bugB4
+2026-05-31 a exposé une divergence transitoire qui causait une
+boucle infinie dans le queue runner). Doctrine 3-bis mise à jour
+en conséquence.
 
 Le pattern `_entryAnimInProgress` du composant chain-overlay a aussi
 été dropé (mirror de `entryTimerId !== null`, Lot 2.1bis) + le
@@ -552,29 +563,29 @@ SYNCHRONOUS reader is introduced, either wrap in
 effect/computed/timer, OR break the abstraction with a sync-tap
 method (discuss before).
 
-**`ChainResolutionAnnounceProjection`** (Lot 3.2-REDO) —
-`projections/chain-resolution-announce.projection.ts`. Tracks the
-"Chain Resolution" banner gate (`boolean`). Set by
-`AnimationPhaseCompleted({phase:'banner-announce',
-msgType:'MSG_CHAIN_SOLVING'})` emitted by the orchestrator's
-`handleChainSolving` deferred branch in PARALLEL with the manager's
-existing `scheduleBannerAnnounce(pauseMs)` setTimeout. Cleared by
-`MSG_CHAIN_END` / applyReset. **Dual-purpose resolution**: the
-legacy `chainManager.chainResolutionAnnounce` signal served BOTH a
-reactive UI gate (Effect D + templates) AND a sync predicate inside
-`handleSolving`. Lot 3.2-REDO splits the two:
-- The reactive surface is this projection (templates read
-  `chainManager.chainResolutionAnnounce.value()`, Effect D reads it
-  reactively).
-- The sync predicate reads a private
-  `chainManager._announcePending: boolean`, fed by the SAME
-  `scheduleBannerAnnounce(pauseMs)` timer (which now sets the
-  mirror directly instead of `set(true)`).
-The two flips happen on the same wall-clock `pauseMs`; the
-projection lags by ≤1 microtask (the EventStream effect tick), which
-is irrelevant for UI readers but would matter for a sync predicate —
-hence the dual mechanism. The manager exposes a public
-`get isAnnouncePending(): boolean` for test introspection.
+**`chainResolutionAnnounce`** (F15, 2026-05-31 — collapsed) —
+unified `signal<boolean>` privately owned by `ChainResolutionManager`
+(`_announcing`), exposed as `chainResolutionAnnounce: Signal<boolean>`
+via `asReadonly()`. Set sync via `markAnnouncePending()` (called
+from the orchestrator's `announcement` directive `onShow`
+callback) ; cleared in `reset()` / `handleEnd` / `applyReset()`.
+Serves BOTH the sync predicate inside `handleSolving`'s first-link
+multi-link branch (via the manager's internal `_announcing()`
+direct call) AND the reactive UI surface (templates + Effect D in
+`pvp-chain-overlay`, via the exposed readonly Signal).
+
+Replaces the prior split-brain (β.3 Lot 3.2-REDO 2026-05-26): a
+`ChainResolutionAnnounceProjection` stream-observer + a private
+`_announcePending: boolean` mirror, fed in parallel by the same
+`pauseMs` timer. F-bugB4 (2026-05-31) exposed the split-brain's
+fragility — an infinite re-deferred loop in the queue runner
+caused by a transient divergence between the sync mirror and the
+stream-driven projection. The collapse to one signal removes the
+class structurally. `get isAnnouncePending(): boolean` is kept as
+a sync alias on the manager for test introspection ;
+`pvp-chain-overlay` reads via `chainResolutionAnnounce()` (the
+Signal direct call instead of the prior `.value()` projection
+accessor).
 
 ### Lot 4 projection — RMW + sub-step boundary
 
@@ -670,15 +681,22 @@ Not every signal in the pipeline is a candidate projection. The
 
 3-bis. **Dual-purpose signal — reactive UI + sync predicate** —
    when a single signal serves BOTH a reactive Angular template /
-   effect AND a synchronous predicate inside a manager method, a
-   straight migration is impossible (the projection's
-   effect-driven update lags by ≥1 microtask, breaking the sync
-   read). Resolution pattern (Lot 3.2-REDO): split into a
-   projection (reactive surface) + a private `boolean` mirror on
-   the manager (sync surface), both fed by the SAME timer in
-   parallel. Templates migrate to the projection;
-   sync-predicate reads switch to the private mirror via a public
-   getter for tests. Example migrated: `chainResolutionAnnounce`.
+   effect AND a synchronous predicate inside a manager method, do
+   NOT split into a projection + private mirror pair. Although the
+   shapes appear orthogonal (a `BaseProjection` for the reactive
+   surface and a `boolean` for the sync read), keeping two copies
+   of the same state in lock-step is fragile by construction — the
+   two writers may agree within a tick today but skew under any
+   future timing change (cf. F-bugB4 2026-05-31, where the
+   parallel-fed sync mirror and stream-driven projection diverged
+   and caused an infinite re-deferred loop in the queue runner).
+   The correct shape is a single `signal<T>` owned by the manager,
+   read sync via direct call (`this._announcing()`) for the
+   predicate AND exposed as readonly via an `asReadonly()`
+   accessor for the reactive surface. The manager handles its own
+   `applyReset` to clear; no projection-class wrapping needed.
+   Example migrated: `chainResolutionAnnounce` (F15, 2026-05-31).
+   The legacy Lot 3.2-REDO "projection + mirror" pattern is RETIRED.
 
 4. **External state dependency** — when a signal value depends on
    state outside the projection (e.g., LP's `fromLp` depending on
