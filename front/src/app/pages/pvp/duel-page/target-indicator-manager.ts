@@ -2,6 +2,12 @@ import { inject, Injectable, OnDestroy } from '@angular/core';
 import type { BecomeTargetMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import type { ZoneId } from '../duel-ws-shared.types';
+import {
+  ScopeResetDispatcher,
+  type CheckpointPayload,
+  type ResetTarget,
+  type ScopeCategory,
+} from '../projections';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
@@ -33,13 +39,30 @@ interface TrackedFloat {
  * `targetedZoneKeys` signal binding on `.zone-card--targeted`.
  */
 @Injectable()
-export class TargetIndicatorManager implements OnDestroy {
+export class TargetIndicatorManager implements OnDestroy, ResetTarget {
   private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly boardEffects = inject(BoardEffectsService);
   private readonly artService = inject(DuelCardArtService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
   private readonly logger = inject(DuelLogger, { optional: true });
+  // `optional: true` so isolated unit specs don't need to provide the
+  // dispatcher; production DuelPageComponent providers always include it.
+  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+
+  /**
+   * F12 (2026-05-31) — aligned with the FIELD-target side of
+   * MSG_BECOME_TARGET handling (`TargetedZoneKeysProjection` ; also
+   * PERSPECTIVE_LIFETIME). A SOLO `switchPerspective` now clears the
+   * pile floats via the scope dispatcher alongside the FIELD reticles,
+   * closing the dette flagged in the audit (the orchestrator's explicit
+   * `targetIndicator.reset()` in `resetAllState` is no longer load-bearing).
+   */
+  readonly scope: ScopeCategory = 'PERSPECTIVE_LIFETIME';
+
+  constructor() {
+    this.dispatcher?.register(this);
+  }
 
   private floats: TrackedFloat[] = [];
   private readonly floatsByZone = new Map<string, TrackedFloat[]>();
@@ -149,6 +172,23 @@ export class TargetIndicatorManager implements OnDestroy {
     }
     this.floats = [];
     this.floatsByZone.clear();
+  }
+
+  /**
+   * F12 (2026-05-31) — `ResetTarget` entry point. All carried state
+   * (pile floats + cleanup timer) is PERSPECTIVE_LIFETIME, so any reset
+   * that touches that scope triggers the same cleanup as the legacy
+   * `reset()`. The dispatcher fires this on a SOLO `switchPerspective`,
+   * on `onStateSync` (DUEL_LIFETIME cascades to PERSPECTIVE), and on
+   * `REMATCH_STARTING` (same cascade).
+   */
+  applyReset(
+    scopes: ReadonlySet<ScopeCategory>,
+    _checkpointPayload?: CheckpointPayload,
+  ): void {
+    if (scopes.has('PERSPECTIVE_LIFETIME')) {
+      this.reset();
+    }
   }
 
   ngOnDestroy(): void {

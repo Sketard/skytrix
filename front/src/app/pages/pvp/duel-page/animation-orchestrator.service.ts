@@ -913,6 +913,10 @@ export class AnimationOrchestratorService {
     this.lpTracker.reset();
     this.battleTracker.reset();
     this.gameLog?.reset();
+    // F12 (2026-05-31) — symmetric with the other ResetTarget managers
+    // above. The dispatcher's auto-fire path covers production resets ;
+    // this defensive call covers the explicit teardown.
+    this.targetIndicator.reset();
     // β.2a — silent reset on hard teardown (mirrors BP.silentReset and
     // the orchestrator's intent for `destroy`). Drops timers + the
     // active map WITHOUT emitting `EffectAbandoned` — the stream
@@ -963,10 +967,14 @@ export class AnimationOrchestratorService {
    *     (R8 rematch + F5 reconnect path). No more explicit
    *     `gameLog?.reset()` after the shared helper.
    *
-   * Non-ResetTarget cleanups (drawManager, moveRouter, targetIndicator,
-   * toastService, transient signal sets) stay as explicit chains here —
-   * they aren't projection state, so they don't participate in the
-   * dispatcher. β.3+ will revisit which of these become projections.
+   * Non-ResetTarget cleanups (drawManager, moveRouter, toastService,
+   * transient signal sets) stay as explicit chains here — they aren't
+   * projection state, so they don't participate in the dispatcher.
+   * β.3+ will revisit which of these become projections.
+   *
+   * F12 (2026-05-31) — `targetIndicator` removed from that list: it
+   * now `implements ResetTarget` and is dispatched alongside the
+   * `targetedZoneKeys` projection (its FIELD-side equivalent).
    */
   private resetAllState(scopes: ReadonlySet<ScopeCategory>): void {
     this.clearTimersAndPolling();
@@ -990,7 +998,14 @@ export class AnimationOrchestratorService {
     this.scopeDispatcher?.dispatch(scopes);
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
-    this.targetIndicator.reset();
+    // F12 (2026-05-31) — `targetIndicator.reset()` removed from this
+    // chain : the manager now `implements ResetTarget` and registers
+    // itself with the scope dispatcher (PERSPECTIVE_LIFETIME scope),
+    // so the `dispatch(scopes)` call above already drives its cleanup.
+    // The explicit call here was the dette pointed at by the audit
+    // (would have leaked floats had a future caller dispatched without
+    // hitting this method). Defense-in-depth `reset()` stays in
+    // `destroy()` below, mirroring the other `ResetTarget` managers.
     // β.3 Lot 2.3 + 2.4-REDO + 4.1-REDO — `counterPulse` +
     // `swapGraveDeckKeys` + `targetedZoneKeys` projections clear
     // themselves via `applyReset` driven by the scopeDispatcher.dispatch
@@ -1108,6 +1123,7 @@ export class AnimationOrchestratorService {
    *      `ResetTarget` registered (cf. CLAUDE.md "Orchestrator
    *      Decomposition" + α.4b) reçoivent `applyReset` ; les
    *      projections PERSPECTIVE_LIFETIME (BattleAnimationTracker,
+   *      TargetIndicatorManager [F12, 2026-05-31],
    *      animatingLpPlayer, targetedZoneKeys, swapGraveDeckKeys,
    *      animatingZone, counterPulse, isAnimating,
    *      chainResolutionAnnounce, overlayShowReady) reset au passage.
