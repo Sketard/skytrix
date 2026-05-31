@@ -314,7 +314,9 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
   contre-rotation player-cards SCSS), chaîne réactive badge/LP/pseudo dérive de
   `ownPlayerIndex → perspectiveIndex → perspective()`.
 - **Action** : vérifier visuellement une fois puis clore le memo.
-- **Décision** :
+- **Décision** : ⚠️ INVALIDÉ par F22 — le flip n'était pas « déjà fixé », il était
+  EN TROP. Le vrai fix = retirer le flip CSS (cf. F22). Mon analyse F20 était fausse
+  (j'avais lu le code statiquement sans tester le rendu réel).
 
 ---
 
@@ -345,6 +347,36 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 - **Statut** : DONE.
 
 ---
+
+### F22 — Board SOLO entièrement à l'envers en perspective=1 — ✅ FIX (2026-05-31)
+- **Découvert par** : Axel (screenshot perspective=1 : HUD Opponent, badge TURN/phase,
+  stats monstres en miroir, main — tout upside-down ; seul le HUD "You" correct).
+  Invalide F20 (qui disait « flip déjà fixé ») : le flip était en TROP, pas manquant.
+- **Constat vérifié** : DEUX mécanismes de flip s'entrechoquaient.
+  - Mécanisme A (statique, pré-γ) : contenu adverse tourné 180° selon la moitié de
+    board (`.opponent-field`, `side`, `relPlayer:1`). Correct, couvre terrain/stats/
+    badges/main/piles.
+  - Mécanisme B (γ commit 6) : `rotate(180deg)` CSS sur `.board-host` quand
+    `perspectiveSource()===1`. Redondant — les DONNÉES sont DÉJÀ relativisées
+    (`DuelConnection._maybeSwapBoardState` = même `swapBoardState()` partagé que
+    replay). Le flip CSS double-appliquait → tout cassé sauf player-cards (qui
+    avaient un pansement de contre-rotation).
+- **Preuve clé** : replay change de perspective SANS flip CSS (jamais de
+  `setPerspective`, `perspectiveSource` reste 0) — juste data relativisée +
+  `ownPlayerIndex=perspectiveIndex`. Et replay n'a aucun bug de rotation. SOLO
+  câble les données à l'identique → le flip CSS était la seule divergence.
+- **Décision appliquée (alignement sur replay)** :
+  - retiré `[style.transform]`/`[class.board-host--flipped]` (board-container.html) ;
+  - supprimé computeds `boardTransform`/`boardFlipped` + inject/import `DuelContext`
+    (board-container.ts) ;
+  - supprimé la contre-rotation `.player-card` (player-card.scss) ;
+  - `cardBaseRotation`/`cardBaseRotateCSS` → forme statique (`relPlayer` seul),
+    branche `flipped` retirée (duel-context.ts) ;
+  - `perspectiveSource` reste l'index de DONNÉES (swap `players[]`, slots,
+    `ownPlayerIndex`, journal) — load-bearing, intact. Commentaire mis à jour.
+- **Validation** : visuelle par Axel (perspective=1 tout à l'endroit). tsc app+spec
+  + 136 tests verts (duel-context, board-container, move-router, draw, phase-gamma).
+- **Statut** : DONE.
 
 ## Cases NON-findings (vérifiés sains — ne pas re-creuser)
 

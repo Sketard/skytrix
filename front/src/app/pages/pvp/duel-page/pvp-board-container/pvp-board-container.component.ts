@@ -17,7 +17,6 @@ import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
 import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 import { DuelThemeService } from '../duel-theme.service';
-import { DuelContext } from '../duel-context';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -90,19 +89,16 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   /** Active duel theme — drives `.board-host[data-theme]` cascade. Wave 3 Sprint 2. */
   protected readonly theme = inject(DuelThemeService).currentTheme;
 
-  /**
-   * γ commit 6 — perspective signal driving the `.board-host` flip
-   * transform. Read from `DuelContext` (the single source of truth set
-   * by `SoloDuelOrchestratorService.switchPerspective`). `{ optional:
-   * true }` for the preview embeddings that don't provide DuelContext;
-   * a missing context defaults to perspective=0 (no flip), preserving
-   * legacy behavior. */
-  private readonly duelCtx = inject(DuelContext, { optional: true });
-  protected readonly boardTransform = computed(() => {
-    const p = this.duelCtx?.perspectiveSource() ?? 0;
-    return p === 1 ? 'rotate(180deg)' : 'rotate(0deg)';
-  });
-  protected readonly boardFlipped = computed(() => (this.duelCtx?.perspectiveSource() ?? 0) === 1);
+  // F-bugA (2026-05-31) — the SOLO board CSS flip (`rotate(180deg)` on
+  // `.board-host` driven by `DuelContext.perspectiveSource()===1`) was removed.
+  // The board top/bottom orientation is ALREADY relativized by data
+  // (DuelConnection `_maybeSwapBoardState` swaps `players[]` + `ownPlayerIndex =
+  // perspectiveIndex`), exactly like replay — which has no CSS flip and renders
+  // correctly. The flip double-applied on top of the already-correct data,
+  // leaving own cards / phase badge / hand upside-down (only the player-card had
+  // a compensating counter-rotation). SOLO now matches the replay model: pure
+  // data relativization, no CSS flip. `boardTransform` / `boardFlipped` and the
+  // (only) `DuelContext` consumer here are gone with it.
 
   /** Dev hub state — `forcedReadOnly` and `forcedOpponentDisconnected` overrides
    *  read here. Production-safe via `_signal()` no-op setters. */

@@ -21,6 +21,11 @@
   right: var(--space-4);
 }
 
+// F-bugA (2026-05-31) — the `:host-context(.board-host--flipped) .player-card`
+// counter-rotation was removed together with the SOLO board CSS flip. The board
+// no longer rotates 180° (orientation is data-relativized like replay), so there
+// is nothing to counter-rotate.
+
 .player-card {
   display: flex;
   align-items: center;

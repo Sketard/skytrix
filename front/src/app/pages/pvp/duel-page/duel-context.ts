@@ -28,20 +28,24 @@ export class DuelContext {
   readonly reducedMotion = inject(ReducedMotionService).enabled;
 
   /**
-   * γ commit 3 — perspective visuelle du board. Source unique de
-   * vérité pour la projection (POC §1 décision S3 + §4 algorithme).
+   * γ commit 3 — index de perspective SOLO. Source unique de vérité.
    *   - `0` = own player at bottom (default).
-   *   - `1` = flipped (own at top — appliqué via `rotate(180deg)` sur
-   *     `.board-host` au commit 6).
+   *   - `1` = viewer regarde P1 (P1 en bas).
+   *
+   * F-bugA (2026-05-31) — c'est un index de DONNÉES, PAS un déclencheur de
+   * flip CSS. Le flip CSS `.board-host` (γ commit 6) a été retiré : la
+   * perspective pilote uniquement la relativisation des DONNÉES (swap
+   * `players[]` via `DuelConnection._shouldSwapForSolo`, routing des
+   * `_slots[]`, `ownPlayerIndex`, journal). C'est le pendant SOLO du
+   * `perspectiveIndex` du replay. `cardBaseRotation` NE le lit plus (forme
+   * statique, comme replay).
    *
    * Tag α.1 `perspectiveSource` (suffix `Source`) : du POV du pipeline
    * animation, cette valeur est un INPUT contextuel (cf. CLAUDE.md
-   * "Pipeline Signal Tagging Convention"). Le pipeline LIT — il dérive
-   * `cardBaseRotation` (commit 6) et les projections perspective-aware
-   * Mode B. L'écriture provient d'EN DEHORS du pipeline :
-   * `SoloDuelOrchestratorService.switchPerspective()` et le rematch
-   * effect (qui reset à 0). En PvP normal / replay, le signal reste à
-   * 0 — la perspective y est figée à l'identité serveur du viewer.
+   * "Pipeline Signal Tagging Convention"). L'écriture provient d'EN DEHORS
+   * du pipeline : `SoloDuelOrchestratorService.switchPerspective()` et le
+   * rematch effect (qui reset à 0). En PvP normal / replay, le signal reste
+   * à 0 — la perspective y est figée à l'identité serveur du viewer.
    *
    * Le signal est CONNECTION_LIFETIME (cf. spec §3.5) : il survit à
    * un switch (par définition c'est lui qui PORTE le switch), mais un
@@ -101,29 +105,24 @@ export class DuelContext {
    * Base rotation (degrees) for floating card elements (travel floats, overlays).
    * Cards face their owner: rendered upright on the owner's side of the board.
    *
-   * γ commit 6 — perspective-aware (option B.1 POC §2). Composition
-   * mathématique post-flip parent à 180° :
-   *   - perspective=0 (default, own at bottom) :
-   *       own  (relPlayer=0) art à 0°  × 0° board     = 0°   → upright pour le viewer
-   *       opp  (relPlayer=1) art à 180° × 0° board    = 180° → upright pour l'opp
-   *   - perspective=1 (flipped, own au top après transform 180° du `.board-host`) :
-   *       own  (relPlayer=0) art à 180° × 180° board  = 360° = 0° → upright pour le viewer
-   *       opp  (relPlayer=1) art à 0°   × 180° board  = 180° → upright pour l'opp
+   * F-bugA (2026-05-31) — STATIC (replay form). Own cards (relPlayer=0, bottom
+   * half) render upright (undefined/0°); opponent cards (relPlayer=1, top half)
+   * flip 180° so the art faces the opponent — matching the static top/bottom
+   * board layout (Mechanism A).
    *
-   * Sans cette logique, Option A (suppression) recrée le bug actuel inversé
-   * (opp art à l'endroit pour le viewer côté joueur, illisible) en
-   * perspective=0 ; ou (post-flip) joueur art upside-down après le switch.
-   * Cf. POC `decision.md` §2.
+   * Was "perspective-aware" (γ commit 6) to compose with the SOLO `.board-host`
+   * 180° CSS flip. That flip is gone: SOLO now relativizes orientation by DATA
+   * (swap `players[]` + `ownPlayerIndex = perspectiveIndex`) exactly like replay,
+   * where this function is NOT perspective-aware and floats are already correct.
+   * By the time it's read the data has put the viewer's cards in the bottom half
+   * (rel 0) and the opponent's in the top (rel 1), so `relPlayer` alone decides.
    *
    * Returns undefined when 0 so callers can use
    * `baseRotateZ: ctx.cardBaseRotation(rel)` (option type:
    * `number | undefined`).
    */
   cardBaseRotation(relPlayer: number): number | undefined {
-    const flipped = this.perspectiveSource() === 1;
-    const isOwn = relPlayer === 0;
-    if (flipped) return isOwn ? 180 : undefined;
-    return isOwn ? undefined : 180;
+    return relPlayer === 0 ? undefined : 180;
   }
 
   /** CSS rotateZ fragment for float stabilization (e.g. 'rotateZ(180deg)'). Empty string when 0. */
