@@ -42,7 +42,8 @@ export class DuelContext {
    *
    * Tag α.1 `perspectiveSource` (suffix `Source`) : du POV du pipeline
    * animation, cette valeur est un INPUT contextuel (cf. CLAUDE.md
-   * "Pipeline Signal Tagging Convention"). L'écriture provient d'EN DEHORS
+   * "Signal tagging convention (α.1)" sub-section under
+   * "Animation Pipeline v2"). L'écriture provient d'EN DEHORS
    * du pipeline : `SoloDuelOrchestratorService.switchPerspective()` et le
    * rematch effect (qui reset à 0). En PvP normal / replay, le signal reste
    * à 0 — la perspective y est figée à l'identité serveur du viewer.

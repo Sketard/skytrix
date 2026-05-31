@@ -56,8 +56,9 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    *  the c5c `sendXxx forPlayer` tagging.
    *
    *  Tag α.1 `soloModeSource` — `@Environment` input from the SOLO orchestrator
-   *  (cf. CLAUDE.md "Pipeline Signal Tagging Convention"). Read-only from the
-   *  pipeline's POV ; the SOLO orchestrator writes via `.set(true)` at init.
+   *  (cf. CLAUDE.md "Signal tagging convention (α.1)" sub-section under
+   *  "Animation Pipeline v2"). Read-only from the pipeline's POV ; the SOLO
+   *  orchestrator writes via `.set(true)` at init.
    *
    *  Signal (not plain boolean) by design (BH-2 c5b code review) : the 4
    *  per-perspective computeds (pendingPrompt, hintContext, inactivityWarning,
@@ -365,14 +366,12 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    *  set `ctx.pendingPlayer = msg.player` when broadcasting the prompt, the
    *  client reads back `pendingPrompt.player`, the round-trip preserves it.
    *
-   *  F4 (2026-05-31) — was a 3-level fallback triangulation
-   *  (`lastSentForPlayer ?? timerState.pendingPlayer ?? perspective`). The
-   *  3 sources could legitimately diverge from `pendingPrompt.player`
-   *  (e.g. `lastSentForPlayer` stale after a server-driven turn change
-   *  with no client interaction → ANIMATIONS_DONE picks the wrong slot →
-   *  server gate no-op → turn timer never armed). Explicit `player`
-   *  argument replaces the triangulation: the caller has the authoritative
-   *  value at hand, no fallback chain needed.
+   *  History — F4 (2026-05-31) replaced a 3-level fallback triangulation
+   *  whose sources could legitimately diverge from `pendingPrompt.player`
+   *  (stale memoize after a server-driven turn change → ANIMATIONS_DONE
+   *  picks the wrong slot → server gate no-op → turn timer never armed).
+   *  The explicit `player` argument reads the authoritative value
+   *  directly from the caller, no fallback chain needed.
    *
    *  PvP normal sends `undefined` — A2 strict validation rejects forPlayer
    *  presence in PvP. */
