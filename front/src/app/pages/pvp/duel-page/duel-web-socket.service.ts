@@ -354,32 +354,30 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this.active().sendActivityPing(this.sendForPlayer());
   }
 
-  /** γ c5c A37 — ANIMATIONS_DONE fallback. The server's animations-done
-   *  gate (`ctx.pendingPlayer === playerIndex`) needs to know WHICH SOLO
-   *  identity finished its animations, but the user has no "current prompt"
-   *  context when this fires (it's emitted after the queue drains, not in
-   *  response to a SELECT_*). Three-level fallback in SOLO :
+  /** γ c5c A37 — ANIMATIONS_DONE forPlayer tag.
    *
-   *  1. `_lastSentForPlayer` (A9 memoize) — set by the last `_tagForPlayer`
-   *     call on the DuelConnection. Cheapest + most accurate when a recent
-   *     PLAYER_RESPONSE / surrender / rematch tagged a slot.
-   *  2. `timerState().pendingPlayer` (A37 server populate, c5a) — set by
-   *     `scheduleTimerStart` server-side ; the server knows which identity
-   *     it's waiting on even if no client send happened recently.
-   *  3. `perspective()()` last-resort — covers bootstrap (first turn before
-   *     any send) + early switch race. Not as authoritative but never wrong
-   *     for a duel that just started.
+   *  The server's animations-done gate (`ctx.pendingPlayer === playerIndex`)
+   *  needs to know WHICH SOLO identity finished its animations. The caller
+   *  (today: `_animationsDoneEffect` in `DuelPageComponent` which fires on
+   *  `(pendingPrompt, isAnimating)`) passes `player` as the absolute slot
+   *  index of the SELECT_* that triggered the send. By protocol contract,
+   *  this is strictly equal to the server's `ctx.pendingPlayer`: the server
+   *  set `ctx.pendingPlayer = msg.player` when broadcasting the prompt, the
+   *  client reads back `pendingPrompt.player`, the round-trip preserves it.
+   *
+   *  F4 (2026-05-31) — was a 3-level fallback triangulation
+   *  (`lastSentForPlayer ?? timerState.pendingPlayer ?? perspective`). The
+   *  3 sources could legitimately diverge from `pendingPrompt.player`
+   *  (e.g. `lastSentForPlayer` stale after a server-driven turn change
+   *  with no client interaction → ANIMATIONS_DONE picks the wrong slot →
+   *  server gate no-op → turn timer never armed). Explicit `player`
+   *  argument replaces the triangulation: the caller has the authoritative
+   *  value at hand, no fallback chain needed.
    *
    *  PvP normal sends `undefined` — A2 strict validation rejects forPlayer
    *  presence in PvP. */
-  sendAnimationsDone(): void {
-    if (!this.soloModeSource()) {
-      this.active().sendAnimationsDone(undefined);
-      return;
-    }
-    const forPlayer = this.active().lastSentForPlayer
-      ?? this.active().timerState()?.pendingPlayer
-      ?? this.duelCtx.perspective()();
+  sendAnimationsDone(player: 0 | 1): void {
+    const forPlayer = this.soloModeSource() ? player : undefined;
     this.active().sendAnimationsDone(forPlayer);
   }
 

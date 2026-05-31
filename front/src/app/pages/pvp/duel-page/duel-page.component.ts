@@ -269,11 +269,14 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   // Notify server when animations complete so it can start the turn timer.
   // Fires on every (pendingPrompt, isAnimating) change: sends immediately if
   // not animating, or defers until the queue drains.
+  // F4 (2026-05-31) — pass `prompt.player` explicitly. The prompt's
+  // `.player` is by protocol contract identical to the server-side
+  // `ctx.pendingPlayer` the gate checks against ; no triangulation needed.
   private readonly _animationsDoneEffect = effect(() => {
     const prompt = this.wsService.pendingPrompt();
     const animating = this.isAnimating();
     if (prompt && !animating) {
-      untracked(() => this.wsService.sendAnimationsDone());
+      untracked(() => this.wsService.sendAnimationsDone(prompt.player));
     }
   });
   private readonly lpTracker = inject(LpAnimationTracker);

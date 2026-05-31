@@ -47,10 +47,14 @@ export interface TimerStateMsg {
   totalMs: number;
   /** γ Option C A37 — populated server-side from
    *  `session.timerContext.pendingPlayer` when a parked timer is waiting for
-   *  `ANIMATIONS_DONE`. Read by the SOLO multiplex front as a fallback for
-   *  `sendAnimationsDone.forPlayer` when `_lastSentForPlayer` is null
-   *  (bootstrap + early switch). Populated in both modes for consistency;
-   *  PvP normal front ignores the field. */
+   *  `ANIMATIONS_DONE`. Originally read by the SOLO multiplex front as a
+   *  fallback for `sendAnimationsDone.forPlayer` ; F4 (2026-05-31) removed
+   *  the triangulation in favor of the authoritative `pendingPrompt.player`
+   *  passed explicitly by the caller. The field stays in the protocol for
+   *  observability + symmetry (server's view of who it's waiting on) and
+   *  for any future client that needs to render "server is waiting for P1"
+   *  without inspecting the prompt itself. Populated in both modes ; no
+   *  SOLO-only routing decision depends on it anymore. */
   pendingPlayer?: Player;
 }
 

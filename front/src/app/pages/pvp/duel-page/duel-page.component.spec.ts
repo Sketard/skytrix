@@ -730,14 +730,14 @@ describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
     // Setting isAnimating=true before the prompt arrives means we should
     // never have fired before this point.
     anim.isAnimating.value.set(true);
-    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    ws.pendingPrompt.set({ type: 'SELECT_CARD', player: 0 });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
   });
 
   it('sends ANIMATIONS_DONE exactly once when a prompt arrives while idle', () => {
     anim.isAnimating.value.set(false);
-    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    ws.pendingPrompt.set({ type: 'SELECT_CARD', player: 0 });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
   });
@@ -746,7 +746,7 @@ describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
     // Realistic flow: prompt arrives while orchestrator is still draining
     // the animation queue, then drain completes and isAnimating flips off.
     anim.isAnimating.value.set(true);
-    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    ws.pendingPrompt.set({ type: 'SELECT_CARD', player: 0 });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
 
@@ -761,9 +761,22 @@ describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
 
-    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    ws.pendingPrompt.set({ type: 'SELECT_CARD', player: 0 });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
+  });
+
+  // F4 (2026-05-31) — pin that the effect passes `prompt.player` as the
+  // `sendAnimationsDone` argument. The prior triangulation
+  // (`lastSentForPlayer ?? timerState.pendingPlayer ?? perspective`)
+  // could pick the wrong slot in SOLO ; the explicit arg removes the
+  // risk by sourcing the authoritative value from the prompt itself.
+  it('forwards the prompt.player as the sendAnimationsDone argument (F4)', () => {
+    anim.isAnimating.value.set(false);
+    ws.pendingPrompt.set({ type: 'SELECT_CARD', player: 1 });
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
+    expect(ws.sendAnimationsDone).toHaveBeenCalledWith(1);
   });
 });
 
