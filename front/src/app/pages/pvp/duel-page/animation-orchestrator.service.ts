@@ -979,6 +979,13 @@ export class AnimationOrchestratorService {
     // β.3 Lot 2.6 — `animatingZone` projection cleared via the
     // scopeDispatcher.dispatch below (PERSPECTIVE_LIFETIME scope).
     this.finalizeAndCommit();
+    // F19 (2026-05-31) — assert lock state at the reset boundary BEFORE
+    // commitAll() wipes everything inconditionally. `finalizeAndCommit`
+    // above runs the queue's `commitUnlocked` path; any zone still locked
+    // here means a `lockZone` was never paired. Throws in dev, console.errors
+    // in prod via duelAssert — the alternative is `commitAll` silently
+    // covering the leak.
+    this.rbs.assertNoLocks('resetAllState');
     this.rbs.commitAll(); // Lifecycle: force-sync all zones + clear locks
     this.scopeDispatcher?.dispatch(scopes);
     this.moveRouter.clearTimeouts();

@@ -1368,6 +1368,13 @@ export class DuelConnection {
         // BOARD_STATE lands via the `duel-loading → active` chain.
         this._boardActive = false;
         this.rbs.updateLogical(EMPTY_DUEL_STATE);
+        // F19 (2026-05-31) — assert lock state at the reset boundary BEFORE
+        // commitAll() wipes everything inconditionally. The previous duel's
+        // animation pipeline MUST have settled all its locks (chain end,
+        // queue drained) by the time REMATCH_STARTING fires. A leak here
+        // is a regression: somewhere a `lockZone` never paired with a
+        // commit/release. Throws in dev, console.errors in prod via duelAssert.
+        this.rbs.assertNoLocks('REMATCH_STARTING');
         this.rbs.commitAll();
         this._firstPlayerResult.set(null);
         this._firstPlayerResponseSent.set(false);

@@ -698,7 +698,40 @@ Replay MUST NOT call `commitAll()` (reserved for `abort()`/`jumpToState()`);
 it uses `syncRendered()` to respect the lock contract.
 
 `assertNoLocks()` surfaces lock leaks at transition boundaries and PvP
-reset points via `duelAssert()`.
+reset points via `duelAssert()`. Throws in dev, `console.error`s in prod.
+
+**Asserted sites (7 total — F19, 2026-05-31)**, ordered by call path :
+
+- **PvP (`duel-connection.ts`)** :
+  · `STATE_SYNC` handler — before `updateLogical + commitAll` (reconnect /
+    cancel rollback). The server-side fresh state can't surface leaks
+    from the prior animation pipeline if `commitAll` masks them first.
+  · `REMATCH_STARTING` handler — before `commitAll`. The previous duel's
+    pipeline MUST have settled all locks (chain end + queue drained)
+    before the rematch transition.
+  · `cleanup()` — duel teardown.
+- **Animation orchestrator (`animation-orchestrator.service.ts`)** :
+  · `resetAllState(scopes)` — before `commitAll`, after `finalizeAndCommit`.
+    Any zone still locked here means a `lockZone` was never paired with a
+    commit/release in the dispatch path that triggered the reset.
+- **Replay (`replay-duel-adapter.ts`)** :
+  · `feedTransition()` — every new state transition starts clean.
+  · `feedTransitionPhased()` — same.
+  · `advanceStep` end branch — every step exhaustion finishes clean.
+
+**Intentionally NOT asserted** (volontary skip/abort paths in replay) :
+
+- `replay-duel-adapter.ts:collapseRemainingSteps` — user-triggered
+  "skip to end" interruption. Intermediate locks from cut-short steps
+  are expected and `commitAll` is the right cleanup.
+- `replay-duel-adapter.ts:abort` — replay tear-down ; locks from the
+  interrupted dispatch are expected.
+- `replay-duel-adapter.ts:jumpToState` — user-triggered seek ; same.
+
+Other `commitAll()` call-sites (draw-sequence-manager fallback paths,
+buffer-replay-builder shuffle merge) are mid-pipeline flow recoveries,
+not transition boundaries. They run with active locks by design and do
+NOT assert.
 
 Key rules:
 
