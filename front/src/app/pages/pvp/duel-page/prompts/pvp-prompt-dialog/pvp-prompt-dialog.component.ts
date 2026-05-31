@@ -156,10 +156,19 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       const msg = this.passiveMessage();
       const diceIp = this.wsService.diceInProgress();
       untracked(() => {
+        // F-bugB (2026-05-31) — drop the "Sending…" indicator whenever there
+        // is no active prompt, unconditionally. The flag is set true on submit
+        // (`onConfirm`) and was only reset when a NEW prompt arrived
+        // (`openForPrompt`) or in the passive branch below. If the server
+        // accepts a decline but sends NO follow-up prompt for this slot (the
+        // SOLO SELECT_CHAIN re-offer loop ending on a decline — the engine
+        // stops re-offering), neither path fired and the modal stuck on
+        // "Sending…" until the server timeout. A cleared prompt now always
+        // releases the indicator.
+        if (!prompt) this.isSending.set(false);
         if (prompt) {
           this.onPromptChange(prompt);
         } else if (msg) {
-          this.isSending.set(false);
           this.hintText.set(null);
           this.detachComponent();
           if (this.dialogState() === 'closed') {

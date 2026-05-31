@@ -378,6 +378,40 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
   + 136 tests verts (duel-context, board-container, move-router, draw, phase-gamma).
 - **Statut** : DONE.
 
+### F23 — SOLO : modale prompt figée sur "Sending…" + re-offer SELECT_CHAIN — ✅ FIX partiel (2026-05-31)
+- **Découvert par** : Axel (console-export-2026-5-31). SOLO, P2 commence, P1 peut
+  activer pendant draw/standby/main de P2 ; user cancel à répétition puis finit
+  bloqué sur la vue prompt d'activation avec "Sending…" jusqu'au timeout.
+- **Constat vérifié (log + code)** : TROIS phénomènes distincts :
+  1. **Re-offer SELECT_CHAIN = engine OCGCore, PAS un bug de routing.** Deux
+     `ws.recv SELECT_CHAIN` chacun précédé d'un `MSG_HINT` dont la `value`
+     incrémente (20→21) = l'engine ré-offre une activation optionnelle à chaque
+     fenêtre de timing. Le routing `forPlayer` est CORRECT (perspective=1 ET
+     prompt.player=1 coïncident). Comportement de carte, aggravé en SOLO (user
+     décline les deux côtés). **Pas un bug transport.**
+  2. **`[PROMPT]` qui spam le log = simple re-éval change-detection** (le
+     `setAnimating(false)` de l'announcement par phase re-déclenche l'effect).
+     Inoffensif. Visible car converti en DuelLogger PIPELINE en F1.
+  3. **VRAI bug client : "Sending…" bloqué sur la DERNIÈRE itération.**
+     `isSending` (pvp-prompt-dialog.ts:124) mis true au submit, reset SEULEMENT
+     si nouveau prompt (`openForPrompt`) / branche passive / `closeDialog`.
+     Quand le dernier decline part et l'engine ne ré-offre plus, aucun nouveau
+     prompt pour le slot → `isSending` reste true → modale figée.
+- **Décision appliquée** :
+  - **Fix A** : dans l'effect lifecycle (pvp-prompt-dialog.ts:158), `isSending
+    .set(false)` INCONDITIONNEL dès que `prompt()` est falsy (sorti de la seule
+    branche passive). Un slot vidé après envoi retombe toujours l'indicateur.
+  - **Fix B** : log send-side `ws.send PLAYER_RESPONSE type=%s forPlayer=%s` dans
+    `DuelConnection.sendResponse` (PIPELINE) — `safeSend` ne logguait que les
+    drops, zéro visibilité outbound. Diagnostic pour la suite.
+- **Tests** : 70/70 (prompt-dialog + duel-connection) + tsc app+spec verts.
+- **À valider en SOLO par Axel** (changement comportemental subtil).
+- **Reste à confirmer (piste secondaire)** : `prompt-card-grid.cancel()` a un
+  guard `if (answered) return` — un 2ᵉ cancel rapide pourrait être avalé si la
+  grille n'est pas re-créée → decline jamais envoyé. À trancher avec les logs
+  Fix B. Fix C serveur (UX "ne plus demander") = hors scope.
+- **Statut** : FIX A+B livrés, validation + piste secondaire en attente.
+
 ## Cases NON-findings (vérifiés sains — ne pas re-creuser)
 
 - `swapBoardState`/`swapEventBoardStates` déjà DRY dans `board-state-swap.ts`.

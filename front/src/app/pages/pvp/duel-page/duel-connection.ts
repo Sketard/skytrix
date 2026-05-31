@@ -621,6 +621,13 @@ export class DuelConnection {
   }
 
   sendResponse(promptType: string, data: ResponseData, forPlayer?: 0 | 1): void {
+    // F-bugB (2026-05-31) — send-side visibility. `safeSend` only warns on a
+    // DROP; a successful PLAYER_RESPONSE left no trace, so a console export
+    // could not show whether a decline actually left the socket nor with which
+    // `forPlayer` tag (load-bearing in SOLO multiplex). Log before the send so
+    // the SELECT_CHAIN re-offer / "Sending…" investigations have outbound data.
+    this.logger?.log(DuelLogCategory.PIPELINE,
+      'ws.send PLAYER_RESPONSE type=%s forPlayer=%s data=%o', promptType, forPlayer ?? 'none', data);
     if (this.safeSend(this._tagForPlayer({ type: 'PLAYER_RESPONSE', promptType, data }, forPlayer))) {
       // γ Option C (PR2 c4.3, A22) — clear the slot of the responding player.
       // PvP normal: `forPlayer === undefined` → slot 0 (legacy equivalent;

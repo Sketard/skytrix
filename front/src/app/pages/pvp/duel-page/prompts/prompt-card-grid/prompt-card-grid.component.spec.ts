@@ -4,6 +4,7 @@ import { PromptCardGridComponent } from './prompt-card-grid.component';
 import { DuelCardArtService } from '../../duel-card-art.service';
 import { DuelSystemStringsService } from '../../../duel-system-strings.service';
 import { CardDataCacheService } from '../../card-data-cache.service';
+import { DuelLogger } from '../../duel-logger';
 import { CardInfo, LOCATION, SelectChainMsg } from '../../../duel-ws.types';
 
 // `description` is the 64-bit OCGCore code (cardCode << 20 | strIndex). The
@@ -38,6 +39,9 @@ describe('PromptCardGridComponent — effect discriminator', () => {
         { provide: DuelCardArtService, useValue: { resolveUrl: () => '' } },
         { provide: CardDataCacheService, useValue: { getCardData: () => Promise.resolve({ name: '' }) } },
         systemStringsStub(),
+        // F1 routed the grid's debug logs through DuelLogger (injected) — provide
+        // it (real, dependency-light) so the component instantiates in tests.
+        DuelLogger,
       ],
     });
     const fixture = TestBed.createComponent(PromptCardGridComponent);

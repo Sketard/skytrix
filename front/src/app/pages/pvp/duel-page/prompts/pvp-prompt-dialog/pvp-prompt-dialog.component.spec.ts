@@ -17,6 +17,7 @@ import {
 import { DuelWebSocketService } from '../../duel-web-socket.service';
 import { DuelSystemStringsService } from '../../../duel-system-strings.service';
 import { CardDataCacheService } from '../../card-data-cache.service';
+import { DuelLogger } from '../../duel-logger';
 import { PROMPT_COMPONENT_MAP, PromptSubComponent } from '../prompt.types';
 import { Prompt } from '../../../types';
 import { CardInfo, LOCATION } from '../../../duel-ws.types';
@@ -146,9 +147,12 @@ interface WsStub {
   sendCancelPromptSequence: jasmine.Spy;
 }
 
-/** Stub providers for the client-side description-resolution services. */
+/** Stub providers for the client-side description-resolution services.
+ *  Includes DuelLogger (real, dependency-light) which the dialog injects since
+ *  F1 routed its prompt-derivation logs through it. */
 function descriptionServiceStubs() {
   return [
+    DuelLogger,
     { provide: DuelSystemStringsService, useValue: {
       preload: () => Promise.resolve(),
       resolveSystemString: () => '',
