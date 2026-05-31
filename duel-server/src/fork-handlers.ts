@@ -2,8 +2,8 @@ import type { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 import type { ActiveDuelSession, WorkerReplayPayload } from './types.js';
-import { emptyChainState } from './chain-state-tracker.js';
-import { createSessionGameLog } from './session-game-log.js';
+import { applyChainTransition, emptyChainState } from './chain-state-tracker.js';
+import { createSessionGameLog, ingestMessage as ingestIntoSessionGameLog } from './session-game-log.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import { safeSend } from './http-helpers.js';
@@ -149,16 +149,50 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
     if (wmsg.type === 'WORKER_MESSAGE') {
       const message = wmsg.message;
 
+      // F5 (2026-05-31) — bits mirrored from `broadcastMessage`
+      // (worker-message-router.ts). The two paths diverged because fork-
+      // solo originally reimplemented a sub-set ; the fix here adds back
+      // the missing pieces so the user-facing experience is the same.
+      // KEEP IN SYNC WITH `broadcastMessage` until the architectural
+      // unification (audit finding F5-bis) collapses both paths into one.
+
+      // (1) Game-log ingestion — was MISSING in fork-solo : the gameLog
+      // allocated at `createForkSoloSession` was orphaned (never fed).
+      // Now an F5 mid-fork repopulates the journal from the snapshot.
+      if (session.gameLog) ingestIntoSessionGameLog(session.gameLog, message);
+
       // MSG_WIN → generated DUEL_END (mirrors broadcastMessage in PvP,
       // tagged with mode: 'fork_solo' for log filtering).
       if (message.type === 'MSG_WIN') {
-        const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
+        // (2) F5 (2026-05-31) — propagate the raw OCGCore `!victory`
+        // code as `winReasonCode` so the client UI can localize the
+        // exact win reason (LP=0 vs deck-out vs Exodia) instead of a
+        // generic "win" label. Was MISSING in fork-solo.
+        const endMsg: ServerMessage = {
+          type: 'DUEL_END', winner: message.player, reason: 'win', winReasonCode: message.reason,
+        };
         logger.log('DUEL_END', {
           duelId: session.duelId, winner: message.player, reason: 'win', mode: 'fork_solo',
         });
         send(session, 0, endMsg);
         send(session, 1, endMsg);
         handleDuelEnd(session);
+      }
+
+      // (3) Server-side chain state mirror — was MISSING in fork-solo.
+      // Without it, an F5 mid-chain loses the active chain links
+      // (`server.ts` reconnect path reads `session.activeChainLinks` to
+      // decide whether to re-emit CHAIN_STATE). Now the tracker
+      // accumulates the state alongside SOLO multiplex.
+      applyChainTransition(session, message);
+
+      // (4) MSG_CONFIRM_CARDS chainIndex tag — was MISSING in fork-solo.
+      // The client's prompt-reveal filter narrows on this tag to show
+      // ONLY the reveals belonging to the currently-resolving chain
+      // link ; without the tag, multi-link forks mix reveals across
+      // links. Now tagged identically to SOLO multiplex.
+      if (message.type === 'MSG_CONFIRM_CARDS' && session.currentSolvingChainIndex !== null) {
+        (message as { chainIndex?: number }).chainIndex = session.currentSolvingChainIndex;
       }
 
       if (message.type === 'BOARD_STATE') {
