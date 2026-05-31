@@ -42,6 +42,17 @@ function isGameEvent(msg: ServerMessage): msg is GameEvent {
 /**
  * Shared chain state machine and animation queue routing.
  * Plain class (NOT injectable) — instantiated privately by DuelConnection and ReplayDuelAdapter.
+ *
+ * F9 (2026-05-31) — cross-side parity invariant. The server mirrors a
+ * minimal version of this machine in
+ * `duel-server/src/chain-state-tracker.ts` (`applyChainTransition`).
+ * The transition table MUST stay aligned — see CLAUDE.md → "Cross-side
+ * `chainPhase` parity (F9)" for the full matrix. Client-side, the
+ * machine is split across `_processMessageInner` (CHAINING/NEGATED
+ * sync, BELOW) and `applyChainSolving`/`applyChainEnd` (driven from
+ * the queue runner, lower in this file). Any change to either branch
+ * MUST be reflected in `applyChainTransition` server-side or the
+ * `CHAIN_STATE` reconnect handshake will drift silently.
  */
 export class DuelEventProcessor {
   logger?: DuelLogger;

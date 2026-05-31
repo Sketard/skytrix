@@ -95,6 +95,65 @@ It IS pushed to `AnimationOrchestratorService.eventStream` via
 `DuelEventProcessor.onEvent` so the Game Log sees the "Nié" badge in PvP
 live (Palier 0).
 
+### Cross-side `chainPhase` parity (F9, 2026-05-31)
+
+The same `chainPhase` state machine (`idle | building | resolving`)
+lives on BOTH sides of the wire, in two structurally different shapes :
+
+- **Server** ([chain-state-tracker.ts](duel-server/src/chain-state-tracker.ts) —
+  `applyChainTransition(state, msg)`) — a pure function dispatched on
+  every outgoing message. Single function, all transitions in one
+  switch. Phase + activeLinks + negated indices + currentSolvingChainIndex
+  live on a `ChainStateContainer`. Snapshotted on reconnect via
+  `CHAIN_STATE`.
+- **Client** ([duel-event-processor.ts](front/src/app/pages/pvp/duel-page/duel-event-processor.ts) —
+  `DuelEventProcessor`) — split across two layers :
+  · `_processMessageInner` handles `MSG_CHAINING` (idle→building) and
+    `MSG_CHAIN_NEGATED` (no phase change) synchronously on message
+    receipt — SAME branches as the server's `applyChainTransition`.
+  · `applyChainSolving(idx)` / `applyChainEnd()` flip
+    `resolving` / `idle` but are called by the orchestrator from the
+    QUEUE RUNNER (when `MSG_CHAIN_SOLVING` / `MSG_CHAIN_END` is dequeued
+    and dispatched), NOT on receipt. The server flips on receipt.
+
+**The asymmetry is intentional, not a bug**. The server's `chainPhase`
+tracks the wire state ("what did I emit"); the client's `chainPhase`
+tracks the animation state ("what am I rendering right now"). They
+diverge for a window between the server emitting `MSG_CHAIN_SOLVING` /
+`MSG_CHAIN_END` and the client's queue runner reaching that event —
+during which the server is `resolving`/`idle` while the client is still
+on the previous phase. That window is BOUNDED by the queue draining +
+the chain overlay contract (`chainOverlayReady` await-signal).
+
+**Invariant** : at the boundaries (idle for ≥ 1 tick after the queue
+drains AND `MSG_CHAIN_END` has been dispatched), both sides agree on
+phase. Reconnect handshake (`CHAIN_STATE`) ships the server's snapshot;
+the client's `restoreChainState(links, phase)` re-aligns.
+
+**Transition matrix** (CHAIN_* messages only — see both files for the
+non-chain no-op handling) :
+
+| Message | Server transition | Client transition (where) |
+|---|---|---|
+| `MSG_CHAINING` | idle→building (push link) | idle→building (push pending) — `_processMessageInner` sync |
+| `MSG_CHAIN_NEGATED` | no phase change (add idx) | no phase change (flag link.negated) — sync |
+| `MSG_CHAIN_SOLVING` | →resolving (set currentSolvingChainIndex) | →resolving (set link.resolving) — `applyChainSolving`, from queue runner |
+| `MSG_CHAIN_SOLVED` | clear currentSolvingChainIndex (no phase change) | drop link from activeChainLinks (no phase change) — `applyChainSolved`, from queue runner |
+| `MSG_CHAIN_END` | →idle, clear links/negated/currentSolving | →idle, clear activeChainLinks — `applyChainEnd`, from queue runner |
+
+**Regression risk** : evolving one side without the other (e.g. server
+adds a `pending` sub-phase, client splits `resolving` into `resolving`/
+`announcing`) breaks the reconnect handshake silently — the client
+restores `phase: 'resolving'` from a `CHAIN_STATE` payload that the
+new sub-phase logic can't handle. Detected only at runtime, only on a
+real reconnect mid-chain. There is currently NO automated gate ;
+review-time discipline is the protection. The server suite at
+[chain-state-tracker.spec.ts](duel-server/src/chain-state-tracker.spec.ts)
+pins the server-side transition matrix ; the client suite at
+[duel-event-processor.spec.ts](front/src/app/pages/pvp/duel-page/duel-event-processor.spec.ts)
+pins the client-side. Any change to the chain phase semantics on
+either side MUST update both specs + this matrix.
+
 ## Transport Lifecycle Invariants
 
 Two load-bearing invariants the γ-c bootstrap relies on. Both are

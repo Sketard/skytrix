@@ -45,6 +45,14 @@ export function emptyChainState(): ChainStateContainer {
  *
  * Pure mutation of the passed-in `state` — the caller (handleWorkerMessage
  * in production, the spec in tests) owns the state lifecycle.
+ *
+ * F9 (2026-05-31) — cross-side parity invariant. The client mirrors this
+ * machine in `front/src/app/pages/pvp/duel-page/duel-event-processor.ts`,
+ * split across `_processMessageInner` (CHAINING/NEGATED sync) and
+ * `applyChainSolving`/`applyChainEnd` (driven from the queue runner).
+ * Any change to the transition table here MUST be reflected on the
+ * client side or the CHAIN_STATE reconnect handshake will drift
+ * silently. See CLAUDE.md → "Cross-side `chainPhase` parity (F9)".
  */
 export function applyChainTransition(state: ChainStateContainer, message: ServerMessage): void {
   switch (message.type) {

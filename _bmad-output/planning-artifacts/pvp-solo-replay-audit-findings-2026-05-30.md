@@ -217,7 +217,7 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 - **Fix proposé** : test d'invariant `GAME_EVENT_TYPES ⊇ BOARD_CHANGING_EVENT_TYPES`.
 - **Décision** :
 
-### F9 — Machine chainPhase client `DuelEventProcessor` vs serveur `ChainStateTracker`
+### F9 — Machine chainPhase client `DuelEventProcessor` vs serveur `ChainStateTracker` — ✅ DOC-ONLY (2026-05-31)
 - **Lieu** : `duel-event-processor.ts:136-184,209-244` vs
   `chain-state-tracker.ts:52-69`
 - **Constat** : transitions matchent aujourd'hui mais rien ne les cross-check.
@@ -225,7 +225,22 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
   pilotés par orchestrateur) ; serveur fait tout dans une fonction pure.
 - **Risque** : évolution d'un côté désync le handshake de reconnect mid-chaîne
   — détecté seulement au runtime sur un reconnect.
-- **Décision** :
+- **Investigation Option B (Karma front + import serveur)** : impossible
+  sans casser l'isolation front↔serveur enforced par `check-ws-protocol-sync.mjs`
+  — pas d'alias TS vers `duel-server/`. Trois sous-variantes envisagées
+  (copier le tracker dans front, import relatif, ré-implémenter inline)
+  toutes plus lourdes que le gain.
+- **Décision** : **DOC-ONLY**. Section CLAUDE.md "Cross-side `chainPhase`
+  parity (F9)" qui :
+  · pose l'invariant "les 2 machines doivent matcher aux frontières"
+  · liste la transition matrix (5 messages × 2 côtés)
+  · documente l'asymétrie intentionnelle (server = wire state, client =
+    animation state) + le window borné
+  · pointe les 2 specs existantes comme gates par-côté (pas de cross-check)
+  · pointe les 2 risques (drift sur reconnect, détection runtime only)
+  Commentaires-pointeurs ajoutés dans les 2 fichiers (`chain-state-tracker.ts`
+  + `duel-event-processor.ts`) qui pointent vers la section CLAUDE.md.
+- **Statut** : DONE.
 
 ### F10 — `ChainSnapshotTracker` parité PvP↔Replay : bien enforced sauf BOARD_STATE intermédiaire
 - **Lieu** : `chain-snapshot-tracker.ts` (partagé, OK) ;
