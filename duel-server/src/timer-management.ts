@@ -54,11 +54,12 @@ const getCfg = configurable.get;
 // TIMER_STATE bypasses message-filter.ts on purpose: both players see both
 // timers, and the server is the sole source of truth.
 //
-// γ Option C A37 — every emitted TIMER_STATE carries `ctx.pendingPlayer` so
-// the SOLO multiplex front can derive `sendAnimationsDone.forPlayer` from
-// it when `_lastSentForPlayer` is null (bootstrap + early switch race).
-// Populated in both modes for protocol consistency ; PvP normal front
-// ignores the field.
+// γ Option C A37 — every emitted TIMER_STATE carries `ctx.pendingPlayer`.
+// Originally consumed by the SOLO multiplex front as a fallback for
+// `sendAnimationsDone.forPlayer`; F4 (2026-05-31) replaced the fallback
+// with an explicit `prompt.player` argument at the caller, so the field
+// is no longer load-bearing on the client side. Kept in the protocol for
+// observability + symmetry. PvP normal front ignores the field.
 
 export function sendTimerStateToAll(session: ActiveDuelSession): void {
   const ctx = session.timerContext;

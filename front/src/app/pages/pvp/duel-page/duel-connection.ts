@@ -253,16 +253,6 @@ export class DuelConnection {
   }
 
   /**
-   * γ Option C (PR2 c4.3, A9) — memoize the `forPlayer` tag of the LAST
-   * outbound `PLAYER_RESPONSE` sent through this connection. Read by
-   * `DuelWebSocketService.sendAnimationsDone` (A37 fallback) when SOLO
-   * needs to derive the destination slot at a moment where no current
-   * prompt is active. `null` until the first tagged response is sent.
-   * Stays `null` forever in PvP normal (caller never passes `forPlayer`).
-   */
-  lastSentForPlayer: 0 | 1 | null = null;
-
-  /**
    * γ Option C (PR2 c4.1) — optional injection of `DuelContext` for SOLO
    * multiplex paths that need the current visual perspective (A17 BOARD_STATE
    * swap). PvP normal does not need it and passes `undefined`. Narrow type
@@ -587,13 +577,8 @@ export class DuelConnection {
    * (the spread produces no field — A2 server validator rejects otherwise).
    * SOLO multiplex callers pass `0|1` (the user's current absolute slot —
    * see `DuelWebSocketService.sendForPlayer` A39 helper at c5).
-   *
-   * `_lastSentForPlayer` memoization (A9) is sibling state: the
-   * `wsService.sendAnimationsDone` A37 fallback reads it when no current
-   * prompt is active.
    */
   private _tagForPlayer<T extends { type: string }>(msg: T, forPlayer: 0 | 1 | undefined): T {
-    this.lastSentForPlayer = forPlayer ?? null;
     return forPlayer === undefined ? msg : { ...msg, forPlayer };
   }
 

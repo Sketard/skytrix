@@ -591,10 +591,11 @@ describe('timer-management', () => {
   // γ Option C A37 — TIMER_STATE.pendingPlayer propagation
   // ==========================================================================
   // Validates that every TIMER_STATE emission carries `ctx.pendingPlayer`.
-  // The SOLO multiplex front uses it as a fallback for
-  // `sendAnimationsDone.forPlayer` when `_lastSentForPlayer` is null
-  // (bootstrap + early switch race). PvP normal ignores the field but the
-  // populate is unconditional for protocol consistency.
+  // Historically consumed by the SOLO multiplex front as a fallback for
+  // `sendAnimationsDone.forPlayer`; F4 (2026-05-31) replaced the fallback
+  // with an explicit `prompt.player` argument so the field is no longer
+  // load-bearing on the client side. Kept in the protocol for observability
+  // + symmetry; the populate stays unconditional for protocol consistency.
 
   describe('A37 — TIMER_STATE.pendingPlayer propagation', () => {
     it('sendTimerStateToAll propagates ctx.pendingPlayer when parked', () => {
