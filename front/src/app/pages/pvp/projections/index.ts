@@ -1,4 +1,5 @@
 export { BaseProjection } from './base-projection';
+export { drainStream, type StreamCursor } from './drain-stream';
 export type { CheckpointPayload } from './checkpoint-payload';
 export type { FluxEvent } from './flux-event';
 export type { ResetTarget } from './reset-target';

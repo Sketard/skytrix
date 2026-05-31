@@ -11,14 +11,16 @@
 // `providedIn: 'root'` — one instance per duel page, reset on rematch / seek.
 // =============================================================================
 
-import { computed, effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
+import { computed, type EffectRef, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
 import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
 import type { PreComputedState } from '../duel-ws-replay.types';
 import {
+  drainStream,
   ScopeResetDispatcher,
   type CheckpointPayload,
   type ResetTarget,
   type ScopeCategory,
+  type StreamCursor,
 } from '../projections';
 import type {
   AnimationFluxEvent, BoundaryEvent, DeferredFluxEvent, DuelState,
@@ -172,10 +174,14 @@ export class DuelGameLogService implements ResetTarget {
    */
   private readonly tappedEvents: JournalEvent[] = [];
 
-  /** Palier 0 — index of last event consumed from the attached `eventStream`.
-   *  Reset on `reset()` (and implicitly on `rebuildUpTo`, which clears
-   *  `tappedEvents`). Drives the incremental drain in `attachEventStream`. */
-  private _streamConsumedLength = 0;
+  /** Palier 0 — cursor tracking the prefix of the attached `eventStream`
+   *  already consumed by `notifyGameLog`. Reset on `reset()` (and
+   *  implicitly on `rebuildUpTo`, which clears `tappedEvents`). Drives
+   *  the incremental drain in `attachEventStream`. F11 (2026-05-31) —
+   *  the wrapped-cursor shape is what `drainStream` mutates; carried as
+   *  an object for the same reason `BaseProjection._transport_streamCursor`
+   *  is. */
+  private readonly _streamCursor: StreamCursor = { value: 0 };
 
   /** Palier 0 — the `effect()` ref installed by `attachEventStream`. Held
    *  so a subsequent `attachEventStream` call (or a manual `detachEventStream`)
@@ -319,34 +325,26 @@ export class DuelGameLogService implements ResetTarget {
   }
 
   /**
-   * Palier 0 — subscribe to the orchestrator's `EventStream`. Pose un
-   * `effect()` that drains newly-pushed events through `notifyGameLog`
-   * exactly once each, in arrival order. The `_streamConsumedLength`
-   * index tracks the prefix already consumed so the effect is idempotent
-   * across multiple recomputations (signal re-emits the same array when
-   * an unrelated dependency changes — defensive in practice, and free).
+   * Palier 0 — subscribe to the orchestrator's `EventStream`. Delegates
+   * to `drainStream` (F11, 2026-05-31) — the same harness used by
+   * `BaseProjection.attachEventStream`. See `drain-stream.ts` for the
+   * idempotency + stream-wipe contract.
    *
    * Replay seek path is honoured by construction: a seek triggers
    * `orchestrator.resetAllState()` → `_eventStream.set([])`, then this
-   * service's `reset()` clears the consumed index; the subsequent
+   * service's `reset()` clears the consumed cursor; the subsequent
    * `rebuildUpTo` re-feeds the builder directly via `ingestState`. The
-   * effect sees the cleared stream (length 0 == consumed length 0) and
-   * stays idle until the next live push.
+   * effect sees the cleared stream (length 0 == cursor 0) and stays
+   * idle until the next live push.
    */
   attachEventStream(stream: Signal<readonly StreamEvent[]>): void {
     this._streamEffect?.destroy();
-    this._streamEffect = effect(() => {
-      const events = stream();
-      if (events.length < this._streamConsumedLength) {
-        // Stream was cleared (orchestrator reset) — sync the cursor back.
-        this._streamConsumedLength = events.length;
-        return;
-      }
-      while (this._streamConsumedLength < events.length) {
-        this.notifyGameLog(events[this._streamConsumedLength]);
-        this._streamConsumedLength++;
-      }
-    }, { injector: this.injector });
+    this._streamEffect = drainStream(
+      stream,
+      this._streamCursor,
+      event => this.notifyGameLog(event),
+      this.injector,
+    );
   }
 
   /** Tear down the `attachEventStream` subscription. Angular's `DestroyRef`
@@ -434,7 +432,12 @@ export class DuelGameLogService implements ResetTarget {
   reset(): void {
     this.builder = new GameLogBuilder(this.perspective);
     this.tappedEvents.length = 0;
-    this._streamConsumedLength = 0;
+    // Defensive: reset the cursor for paths that call `reset()` WITHOUT
+    // wiping the stream (`destroy()`, `replay-page.component`). On paths
+    // that DO wipe the stream first (orchestrator `resetAllState`), the
+    // `drainStream` harness syncs the cursor automatically via its
+    // length-regression branch — this line is then a no-op.
+    this._streamCursor.value = 0;
     this._entries.set([]);
     this._lastOpponentActivation.set(null);
   }

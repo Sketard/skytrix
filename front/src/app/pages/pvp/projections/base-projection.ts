@@ -1,6 +1,7 @@
-import { effect, type EffectRef, type Injector, type Signal } from '@angular/core';
+import { type EffectRef, type Injector, type Signal } from '@angular/core';
 
 import type { CheckpointPayload } from './checkpoint-payload';
+import { drainStream, type StreamCursor } from './drain-stream';
 import type { FluxEvent } from './flux-event';
 import type { ResetTarget } from './reset-target';
 import type { ScopeCategory } from './scope';
@@ -75,16 +76,16 @@ export abstract class BaseProjection<T> implements ResetTarget {
   ): void;
 
   /**
-   * Index of the last event consumed from the attached `eventStream`.
-   * `_transport_*` per pipeline-signal-tagged convention — internal
-   * state, never read by templates.
+   * Cursor tracking the prefix of the attached `eventStream` already
+   * consumed by `applyEvent`. `_transport_*` per pipeline-signal-tagged
+   * convention — internal state, never read by templates.
    *
-   * Reset to 0 when the stream signal observes a length REGRESSION
-   * (orchestrator wipe via `_eventStream.set([])` on rematch / seek);
+   * Synced to the stream's length when the orchestrator wipes the
+   * stream (`_eventStream.set([])` on rematch / state-sync / seek);
    * the projection's own `applyReset` is fired in parallel by the
    * scope dispatcher, so the cursor + the value start fresh together.
    */
-  private _transport_streamConsumedLength = 0;
+  private readonly _transport_streamCursor: StreamCursor = { value: 0 };
 
   /** Effect ref installed by `attachEventStream`. Held so a subsequent
    *  `attachEventStream` call (defensive — should not happen in
@@ -94,20 +95,9 @@ export abstract class BaseProjection<T> implements ResetTarget {
 
   /**
    * β.3 Lot 1 — subscribe to the orchestrator's `eventStream` signal.
-   * Installs an Angular `effect()` that drains newly-pushed events
-   * through `applyEvent` exactly once each, in arrival order.
-   *
-   * The effect is idempotent across signal re-emits (signal may
-   * publish the same array reference when an unrelated dependency
-   * changes — defensive in practice). The `_transport_streamConsumedLength`
-   * cursor tracks the prefix already consumed.
-   *
-   * Stream-wipe path: when `events.length < cursor`, the orchestrator
-   * called `_eventStream.set([])` (resetAllState — rematch / seek).
-   * Sync the cursor back to 0 so the next push restarts from index 0;
-   * the projection's `applyReset` is fired in parallel by the scope
-   * dispatcher and is responsible for clearing the projection's
-   * `value` state.
+   * Delegates to `drainStream` (F11, 2026-05-31) — the same harness
+   * used by `DuelGameLogService.attachEventStream`. See `drain-stream.ts`
+   * for the idempotency + stream-wipe contract.
    *
    * Required `injector` because `BaseProjection` is a plain class
    * (constructable outside an injection context — e.g. in tests),
@@ -119,18 +109,12 @@ export abstract class BaseProjection<T> implements ResetTarget {
     injector: Injector,
   ): void {
     this._transport_streamEffect?.destroy();
-    this._transport_streamEffect = effect(() => {
-      const events = stream();
-      if (events.length < this._transport_streamConsumedLength) {
-        // Stream was cleared — sync the cursor back.
-        this._transport_streamConsumedLength = events.length;
-        return;
-      }
-      while (this._transport_streamConsumedLength < events.length) {
-        this.applyEvent(events[this._transport_streamConsumedLength]);
-        this._transport_streamConsumedLength++;
-      }
-    }, { injector });
+    this._transport_streamEffect = drainStream(
+      stream,
+      this._transport_streamCursor,
+      event => this.applyEvent(event),
+      injector,
+    );
   }
 
   /** Tear down the `attachEventStream` subscription. Angular's
@@ -140,6 +124,6 @@ export abstract class BaseProjection<T> implements ResetTarget {
   detachEventStream(): void {
     this._transport_streamEffect?.destroy();
     this._transport_streamEffect = null;
-    this._transport_streamConsumedLength = 0;
+    this._transport_streamCursor.value = 0;
   }
 }
