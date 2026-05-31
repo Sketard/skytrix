@@ -610,6 +610,19 @@ expanded set. Idempotent register ; silent unregister.
   hard teardown ; use `forceClosure` when a §3.6 checkpoint is the
   actual cause and the journal should see the closures.
 
+**Replay-side asymmetry (F29 doctrine, 2026-05-31)** — `ReplayDuelAdapter`
+intentionally does NOT call `forceClosure` at seek. A replay seek runs
+`abortAndClean` → `resetForReplaySeek` → dispatch `{DUEL_LIFETIME}` →
+`processor.reset()` → `boundary.silentReset()`. The journal would only
+see those closures briefly because `gameLog` is fully wiped + rebuilt
+the same tick via `gameLogRebuildTick` → `rebuildUpTo([0..currentIndex])`
+(new `GameLogBuilder` instance). Emitting closures juste avant the
+wipe would be pure noise. PvP/SOLO have NO such full rebuild — their
+journal stays live across STATE_SYNC/Rematch, so `forceClosure` is
+load-bearing there. Don't add `forceClosure` to the replay seek path
+without first introducing a consumer that would survive the journal
+wipe.
+
 
 ### DeferredEffectProcessor invariants (β.2)
 
