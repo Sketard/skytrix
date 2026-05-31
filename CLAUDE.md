@@ -95,6 +95,82 @@ It IS pushed to `AnimationOrchestratorService.eventStream` via
 `DuelEventProcessor.onEvent` so the Game Log sees the "Nié" badge in PvP
 live (Palier 0).
 
+### Intermediate post-cost board sync (F10, 2026-05-31)
+
+Both PvP and Replay surface a board-sync moment between chain cost
+events (`MSG_MOVE` discarding the activator from hand, banishing for
+cost, etc.) and `MSG_CHAIN_SOLVING`, but via **two different mechanisms**
+that achieve the same effect by construction :
+
+- **PvP** — explicit BOARD_STATE between cost and `MSG_CHAIN_SOLVING`.
+  [duel-worker.ts:1366-1369](duel-server/src/duel-worker.ts#L1366-L1369)
+  tracks `hasCostMoves` (any `MSG_MOVE` emitted since the last reset)
+  and emits an extra `BOARD_STATE` message right before
+  `MSG_CHAIN_SOLVING` when the flag is true. Client consumes it through
+  the normal `case 'BOARD_STATE'` branch → `syncAfterBoardState` → tier 3
+  (chainPhase=`building`, queue non-empty) → `syncPileCounts()` so
+  DECK/EXTRA counts + metadata are up to date before the chain enters
+  `resolving`.
+- **Replay** — implicit `PreComputedState` segmentation. The flush on
+  `MSG_CHAINING` in [replay-precompute.ts:394-399](duel-server/src/replay-precompute.ts#L394-L399)
+  cuts the timeline so the state containing `events=[..., MSG_MOVE]`
+  (the cost) has its own `pendingState` captured via `buildBoardState()`
+  on flush. The next `PreComputedState` then carries `MSG_CHAINING` and
+  the chain resolution events. Client consumes via the adapter's
+  `feedTransition` → same `syncAfterBoardState`. Tier decision lands on
+  tier 2 (`syncRendered`) because `chainPhase=idle` at that moment
+  (MSG_CHAINING hasn't yet been processed for this state).
+
+**Difference in ordering vs `MSG_CHAINING`** :
+
+- PvP : sync arrives **after** `MSG_CHAINING` (chainPhase=`building` at
+  sync time), **before** `MSG_CHAIN_SOLVING`.
+- Replay : sync arrives **before** the state carrying `MSG_CHAINING`
+  (chainPhase=`idle` at sync time).
+
+The sync tier differs as a result (tier 3 vs tier 2), but the practical
+effect on rendered state is equivalent — both update DECK/EXTRA pile
+counts + metadata before the chain enters `resolving`. The
+`syncRendered()` tier 2 commits more aggressively than tier 3
+`syncPileCounts()`, but at that moment in replay the only zones the
+animation pipeline cares about (HAND for the discarded cost card) are
+already committed by the MSG_MOVE handler — there are no extra zones
+to mismatch.
+
+**Why no intermediate boardStateAfter is needed on cost MSG_MOVEs** :
+the `ChainSnapshotTracker` (PvP + replay shared) only attaches
+`boardStateAfter` to BOARD_CHANGING events emitted **inside** the
+resolving window (between `MSG_CHAIN_SOLVING` and `MSG_CHAIN_SOLVED`).
+Cost moves are emitted **before** `MSG_CHAIN_SOLVING`, so they are
+not tagged on either side. Both mechanisms above plug that gap
+independently.
+
+**Regression risk** : the parity is "by construction" but not by a
+shared mechanism. Two ways it can break :
+
+1. **Server splits the PvP path** — e.g. moves the `hasCostMoves` check
+   to a different trigger, or drops the intermediate BOARD_STATE
+   because the test "looks fine". Without an equivalent change in
+   `replay-precompute.ts:394-399` segmentation, only PvP loses the
+   sync — replay keeps working through the precompute flush.
+2. **Client adds a sync consumer that depends on the ORDER vs
+   `MSG_CHAINING`** — anything reading `chainPhase` at sync time will
+   read `building` in PvP and `idle` in replay, and may branch
+   differently. The current tier predicate doesn't (both fall back to
+   `syncPileCounts` in the worst case, and tier 2 `syncRendered` in
+   replay is a strict superset of tier 3). A future tier 4 with a
+   side-effect gated on `chainPhase === 'building'` would diverge.
+
+There is currently NO automated gate enforcing this parity. The
+`ChainSnapshotTracker` shared spec covers the resolving-window snapshot
+contract — the pre-resolving cost-sync contract is unwritten. If a
+future bug surfaces a divergence here, the right fix is probably to
+hoist the intermediate sync into a shared utility callable from both
+`runDuelLoop` and `runReplayPreComputation`, rather than reproducing
+the PvP message in the replay timeline (Axel-validated 2026-05-31 — a
+"Chain Cost" timeline entry is internal mechanics, not a user-facing
+step).
+
 ### Cross-side `chainPhase` parity (F9, 2026-05-31)
 
 The same `chainPhase` state machine (`idle | building | resolving`)

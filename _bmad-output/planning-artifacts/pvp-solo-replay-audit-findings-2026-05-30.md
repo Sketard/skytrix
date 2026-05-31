@@ -242,7 +242,7 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
   + `duel-event-processor.ts`) qui pointent vers la section CLAUDE.md.
 - **Statut** : DONE.
 
-### F10 — `ChainSnapshotTracker` parité PvP↔Replay : bien enforced sauf BOARD_STATE intermédiaire
+### F10 — `ChainSnapshotTracker` parité PvP↔Replay : bien enforced sauf BOARD_STATE intermédiaire — ✅ DOC-ONLY (2026-05-31)
 - **Lieu** : `chain-snapshot-tracker.ts` (partagé, OK) ;
   `duel-worker.ts:1350-1354` (BOARD_STATE intermédiaire pré-chain-solving sur
   `hasCostMoves`) SANS équivalent dans `replay-precompute.ts`
@@ -253,7 +253,38 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 - **Risque** : si le client (DEP β.2 cost-before-overlay) suppose l'existence du
   BOARD_STATE intermédiaire, divergence de timing replay vs PvP. Lien memo
   `faimena-activate-cost-overlap-2026-05-24`.
-- **Décision** :
+- **Investigation** : les 2 modes ont en réalité **un sync intermédiaire
+  fonctionnellement équivalent**, via 2 mécanismes différents :
+  · PvP — BOARD_STATE explicite émis avant MSG_CHAIN_SOLVING quand
+    `hasCostMoves`.
+  · Replay — segmentation du PreComputedState sur MSG_CHAINING
+    (`replay-precompute.ts:394-399`), qui capture un boardState
+    post-cost via `buildBoardState()` au moment du flush.
+  Différence d'ordre vs MSG_CHAINING (PvP after, replay before) → tier
+  de sync différent (3 vs 2) mais effet pratique équivalent (DECK/EXTRA
+  pile counts + metadata à jour avant resolving). La DEP β.2 cost-
+  before-overlay regarde `AnimationCompleted` du MSG_MOVE, pas le board
+  intermédiaire — pas concernée par cet ordre.
+- **Investigation Option 2 (light gate cross-loop)** : `runDuelLoop`
+  n'est pas exportée (privée, depend de variables module-scope, watchdog
+  `process.exit`). Pas testable en isolation sans refactor invasif
+  (Option 4 / extraction) qu'Axel a déjà écarté pour ne pas introduire
+  un state "Chain Cost" visible dans le timeline replay.
+- **Décision** : **DOC-ONLY**. Section CLAUDE.md "Intermediate post-cost
+  board sync (F10)" qui :
+  · documente les 2 mécanismes en détail (PvP BOARD_STATE explicit vs
+    replay PreComputedState segmenté sur MSG_CHAINING)
+  · explique la différence d'ordre vs MSG_CHAINING (tier 3 vs tier 2)
+  · pose la parité de fait et pourquoi elle marche (cost moves commit
+    leurs zones via le handler, la DEP regarde AnimationCompleted)
+  · liste les 2 modes de régression possibles (split serveur sans MAJ
+    replay ; nouveau consommateur qui branche sur chainPhase au sync)
+  · note la décision Axel "pas de state 'Chain Cost' user-visible dans
+    le timeline replay" — si fix structurel un jour, hoister la logique
+    dans une utility partagée, pas dupliquer le message PvP en replay
+  Commentaires-pointeurs ajoutés dans les 2 call-sites (`duel-worker.ts`
+  + `replay-precompute.ts`) qui pointent vers la section CLAUDE.md.
+- **Statut** : DONE.
 
 ---
 

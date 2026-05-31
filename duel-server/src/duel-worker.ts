@@ -1363,6 +1363,16 @@ function runDuelLoop(): void {
         // Emit intermediate BOARD_STATE before chain resolution starts so the client
         // can apply cost-related moves (e.g. cards sent to GY) before chainPhase='resolving'
         // blocks applyPendingBoardState().
+        //
+        // F10 (2026-05-31) — cross-side parity. Replay precompute achieves
+        // the equivalent intermediate sync via PreComputedState segmentation
+        // on MSG_CHAINING (replay-precompute.ts:394-399), NOT via an
+        // intermediate BOARD_STATE. The two mechanisms differ in ORDER vs
+        // MSG_CHAINING (PvP sync arrives after MSG_CHAINING, replay before)
+        // but converge on "DECK/EXTRA pile counts + metadata up to date
+        // before chain resolution". See CLAUDE.md → "Intermediate post-cost
+        // board sync (F10)". If you remove or relocate this branch, update
+        // the replay precompute counterpart + the doctrine in lock-step.
         if (dto.type === 'MSG_CHAIN_SOLVING' && hasCostMoves) {
           dlog.debug('BOARD_STATE (intermediate, before chain solving)');
           port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });

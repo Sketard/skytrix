@@ -390,7 +390,20 @@ export function runReplayPreComputation(
             lastConfirmedCards = filtered.cards;
             events.push(filtered); // Also push to events so the front-end can animate the reveal
           } else if (filtered.type !== 'SELECT_IDLECMD' && filtered.type !== 'SELECT_BATTLECMD') {
-            // Flush before each chain activation so each effect gets its own timeline entry
+            // Flush before each chain activation so each effect gets its own timeline entry.
+            //
+            // F10 (2026-05-31) — cross-side parity. This flush is the replay
+            // counterpart to the PvP intermediate BOARD_STATE emitted in
+            // duel-worker.ts:1376-1379 (after the "if (dto.type === 'MSG_CHAIN_SOLVING'
+            // && hasCostMoves)" guard). Both mechanisms surface a board sync
+            // between chain cost moves (the events flushed here) and the
+            // chain entering resolving. The ORDER vs MSG_CHAINING differs
+            // between modes (PvP after, replay before) but the practical
+            // effect (DECK/EXTRA pile counts + metadata up to date before
+            // resolving) is equivalent. See CLAUDE.md → "Intermediate
+            // post-cost board sync (F10)". If you change this flush
+            // condition (e.g. only flush when cost moves are present), make
+            // sure the PvP counterpart still matches the new contract.
             if (filtered.type === 'MSG_CHAINING') {
               if (events.length > 0) {
                 flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, activeChainIndex ?? undefined);
