@@ -474,6 +474,46 @@ describe('PvpPromptDialogComponent — response dispatch (C2.2)', () => {
 
     expect(events).toEqual([{ cardCode: 12345 }]);
   });
+
+  // F-bugB2 (2026-05-31) — `_answeredPrompt` identity guard. The sub-component
+  // can emit its `response` more than once for the SAME prompt object: a
+  // re-arm flow (re-creating the sub-component while the prompt object is
+  // unchanged) installs a fresh `response` subscription that the user can
+  // trigger again. Without the guard, a 2nd emit re-calls `sendResponse` →
+  // the server sees a duplicate PLAYER_RESPONSE, drops it as `Unexpected`
+  // (`awaitingResponse[player]` already cleared by the 1st response) → the
+  // modal sticks on "Sending…" until the server timeout.
+  //
+  // Pin: a 2nd `response.emit` against the SAME prompt object is dropped
+  // silently. The `isSending` flag stays `true` from the 1st emit.
+  it('drops a 2nd response.emit for the SAME prompt object (F-bugB2)', () => {
+    const sub = mountAndGetSubComponent();
+    sub.response.emit({ index: null });
+    expect(ws.sendResponse).toHaveBeenCalledTimes(1);
+
+    // 2nd emit on the same subscription (same prompt object) — guard active.
+    sub.response.emit({ index: null });
+    expect(ws.sendResponse).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases the guard when the prompt OBJECT changes (next server prompt, F-bugB2)', () => {
+    const sub1 = mountAndGetSubComponent();
+    sub1.response.emit({ index: null });
+    expect(ws.sendResponse).toHaveBeenCalledTimes(1);
+
+    // A NEW server prompt = different object. The dialog swaps the
+    // sub-component; the guard must release so the user can answer the
+    // new prompt.
+    fixture.componentRef.setInput('prompt', { ...makeYesNoPrompt() });
+    fixture.detectChanges();
+    const ref = component.portalOutlet.attachedRef as { instance: StubYesNoWithOutputsComponent };
+    const sub2 = ref.instance;
+    expect(sub2).not.toBe(sub1);
+
+    sub2.response.emit({ yes: true });
+    expect(ws.sendResponse).toHaveBeenCalledTimes(2);
+    expect(ws.sendResponse.calls.argsFor(1)).toEqual(['SELECT_YESNO', { yes: true }]);
+  });
 });
 
 // =============================================================================
