@@ -317,6 +317,11 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   }
 
   private openForPrompt(prompt: Prompt, componentType: Type<PromptSubComponent>): void {
+    // F-bugB2 — clear the answered-guard only when the prompt OBJECT actually
+    // changes. A gate flap re-calls openForPrompt with the SAME object `P`; we
+    // must NOT reset the guard there (it would re-allow a duplicate decline).
+    // A genuinely new server prompt is a different object → guard released.
+    if (this._answeredPrompt !== prompt) this._answeredPrompt = null;
     this.isSending.set(false);
     this.refreshHintText(prompt);
 
@@ -451,6 +456,13 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     }
 
     this.responseSubscription = instance.response.subscribe((data: unknown) => {
+      // F-bugB2 — drop a duplicate response for an already-answered prompt
+      // object. A re-armed grid (gate flap re-creating the sub-component)
+      // would otherwise re-decline the same SELECT_CHAIN → N+1 responses →
+      // "Unexpected PLAYER_RESPONSE" + stuck "Sending…". Keyed on identity so
+      // a real new server prompt (different object) still goes through.
+      if (this._answeredPrompt === prompt) return;
+      this._answeredPrompt = prompt;
       const override = this.responseOverride();
       if (override) {
         override(data);
@@ -490,6 +502,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     this.detachComponent();
     this.hintText.set(null);
     this.isSending.set(false);
+    this._answeredPrompt = null; // F-bugB2 — fresh slate for the next prompt cycle
     this.dialogState.set('closed');
   }
 
