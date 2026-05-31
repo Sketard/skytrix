@@ -38,6 +38,7 @@ import { DuelGameLogService } from './duel-game-log.service';
 import { ReducedMotionService } from '../../../services/reduced-motion.service';
 import { WebSocketFactoryService } from './websocket-factory.service';
 import { createMockWebSocketFactory } from './_test-utils/mock-websocket';
+import { SOLO_SWITCH_PLAYER_MS } from './ui-timing-constants';
 import { LOCATION, type ChainingMsg, type ChainSolvingMsg, type ChainSolvedMsg, type ChainEndMsg, type SessionTokenMsg, type Player } from '../duel-ws.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,8 +207,10 @@ describe('γ T1 — switch sans chain', () => {
     try {
       const { service, duelCtx, animService } = setupStubHarness();
       service.switchPerspective();
-      // 300ms debounce — must wait for `_switching` to flip back.
-      jasmine.clock().tick(301);
+      // SOLO_SWITCH_PLAYER_MS debounce — must wait for `_switching` to flip
+      // back (F17, 2026-05-31 : was hand-written 300ms aligned on a `.board-host`
+      // transform that was never implemented ; now uses the constant).
+      jasmine.clock().tick(SWITCH_DEBOUNCE_MS + 1);
       service.switchPerspective();
       expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledTimes(2);
       expect(animService.notifyPerspectiveSwitch.calls.argsFor(0)).toEqual([0, 1]);
@@ -245,7 +248,7 @@ describe('γ T9 — debounce', () => {
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  it('after the 300ms debounce window, switchPerspective is re-enabled', () => {
+  it('after the SOLO_SWITCH_PLAYER_MS debounce window, switchPerspective is re-enabled', () => {
     jasmine.clock().install();
     try {
       const { service, animService } = setupStubHarness();
@@ -253,7 +256,7 @@ describe('γ T9 — debounce', () => {
       expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledTimes(1);
 
       // Within debounce — no new emission.
-      jasmine.clock().tick(299);
+      jasmine.clock().tick(SWITCH_DEBOUNCE_MS - 1);
       service.switchPerspective();
       expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledTimes(1);
 
@@ -452,11 +455,15 @@ describe('γ F3 — board-stability guard', () => {
 //     mid-chain without disturbing the active chain links.
 // =============================================================================
 
-/** Switch debounce window — keep in sync with
- *  `SoloDuelOrchestratorService.switchPerspective` (`setTimeout(..., 300)`).
- *  Extracted so a future debounce tweak fails the test loudly instead of
- *  silently overshooting or undershooting (cf. EdgeCase F5 c7b BMad review). */
-const SWITCH_DEBOUNCE_MS = 300;
+/** Switch debounce window — pinned to `SOLO_SWITCH_PLAYER_MS` (the constant
+ *  used by both `SoloDuelOrchestratorService.switchPerspective`'s setTimeout
+ *  and the duel-page component's `switchPlayerWithTransition`). Local alias
+ *  kept so a future debounce tweak still fails the test loudly via the
+ *  source-of-truth import (cf. EdgeCase F5 c7b BMad review).
+ *  F17 (2026-05-31) : was hand-written `300` aligned on a `.board-host`
+ *  transform that was never implemented ; now derived from the canonical
+ *  constant. */
+const SWITCH_DEBOUNCE_MS = SOLO_SWITCH_PLAYER_MS;
 
 describe('γ T-F6 — chain SOLO multiplex (real pipeline)', () => {
   // The SoloDuelOrchestratorService wires the real DuelWebSocketService +

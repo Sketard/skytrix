@@ -9,6 +9,7 @@ import { DuelLogger, DuelLogCategory } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
 import { WebSocketFactoryService } from './websocket-factory.service';
+import { SOLO_SWITCH_PLAYER_MS } from './ui-timing-constants';
 
 /**
  * γ Option C c10 (2026-05-29) — whitelist des `Prompt.type` qui n'empêchent
@@ -108,13 +109,13 @@ export class SoloDuelOrchestratorService {
   // pour les composants qui ne veulent pas injecter DuelContext.
   readonly perspectiveIndex = computed(() => this.duelCtx.perspective()());
 
-  // Debounce post-switch : empêche un double-click pendant la
-  // transition CSS (~250ms, commit 6). Le composant duel-page tient
-  // aussi son propre `switching` signal pour le bouton — celui-ci
-  // protège l'orchestrator des ré-entrées programmées (rematch
-  // restoration consécutive, par exemple).
+  // Anti-réentrance programmatique : protège un appel `switchPerspective`
+  // synchrone consécutif (rematch restoration → switch → switch). Le
+  // composant `duel-page` tient son propre `switching` signal qui pilote
+  // l'opacité 0.3 du board-container + l'état désactivé du bouton — c'est
+  // l'anti-double-click UX. Ce signal-ci est interne ; aucun consommateur
+  // hors orchestrator ne le lit.
   private _switching = signal(false);
-  readonly switching = this._switching.asReadonly();
 
   // ───────────────────────────────────────────────
   //  Connectivité
@@ -284,9 +285,11 @@ export class SoloDuelOrchestratorService {
     const to: 0 | 1 = from === 0 ? 1 : 0;
     this._switching.set(true);
 
-    // Flip CSS-driven (le board-host transform sera ajouté au commit 6).
-    // Le wsService re-évalue ses computeds per-perspective via
-    // `slotIndex()` qui lit `perspective()` en SOLO.
+    // Flip data-only : pas d'anim CSS (cf. F22 — le `rotate(180deg)` sur
+    // `.board-host` a été retiré, les données sont déjà relativisées par
+    // `DuelConnection._maybeSwapBoardState`). Le wsService re-évalue ses
+    // computeds per-perspective via `slotIndex()` qui lit `perspective()`
+    // en SOLO.
     //
     // Ordre : signal flip AVANT `notifyPerspectiveSwitch` (post-review
     // H2, 2026-05-28). La dispatch `applyReset({PERSPECTIVE_LIFETIME})`
@@ -325,9 +328,12 @@ export class SoloDuelOrchestratorService {
     // REMATCH_STARTING par `duel-connection.ts` (A23, c4.4). Le rappeler
     // au switch serait redondant et brouillerait la sémantique du flag.
 
-    // Debounce post-transition (durée alignée sur la future
-    // transition CSS .board-host transform 250ms + marge).
-    setTimeout(() => this._switching.set(false), 300);
+    // Debounce post-transition aligné sur `SOLO_SWITCH_PLAYER_MS` =
+    // 150ms `--transition-fast` du board-container (opacity 0.3) + 50ms
+    // marge. Avant F22 cette valeur était calibrée sur un `rotate(180deg)`
+    // CSS sur `.board-host` qui n'a jamais été implémenté ; F17 (2026-05-31)
+    // a aligné sur la SEULE transition CSS désormais en jeu.
+    setTimeout(() => this._switching.set(false), SOLO_SWITCH_PLAYER_MS);
   }
 
   // ───────────────────────────────────────────────

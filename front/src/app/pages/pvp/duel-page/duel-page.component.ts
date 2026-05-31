@@ -535,7 +535,12 @@ export class DuelPageComponent implements OnInit, OnDestroy {
 
 
 
-  // Task 16 — Board flip transition for solo player switch
+  // Solo player-switch UX gate : applique `.switching` au board-container
+  // (opacity 0.3 pendant `--transition-fast` 150ms — cf. duel-page.component.scss)
+  // et grise le bouton « Switch player » pour empêcher un double-click pendant
+  // la transition. Avant F22 le nom évoquait un « board flip transition »
+  // (rotate 180deg sur `.board-host`) qui n'a jamais été implémenté ; le
+  // signal sert maintenant uniquement à la transition d'opacité.
   readonly switching = signal(false);
   private switchTimer: ReturnType<typeof setTimeout> | null = null;
 

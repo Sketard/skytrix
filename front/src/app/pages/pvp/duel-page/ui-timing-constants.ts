@@ -15,6 +15,9 @@ export const RPS_DISMISS_DRAW_MS = 2000;
  *  `.zone-browser--closing` CSS transition. */
 export const ZONE_BROWSER_CLOSE_MS = 150;
 
-/** Solo mode "switch player" overlay duration — guards `switching` signal
- *  so the user can't double-trigger the swap mid-animation. */
+/** Solo mode "switch player" debounce duration. Sized to the board-container
+ *  opacity transition (`--transition-fast` 150ms) plus a 50ms margin. Used
+ *  by BOTH the component `switching` signal (anti-double-click + opacity
+ *  gate) AND the orchestrator `_switching` signal (anti-réentrance
+ *  programmatique). Two signals for two distinct rôles, same timing. */
 export const SOLO_SWITCH_PLAYER_MS = 200;
