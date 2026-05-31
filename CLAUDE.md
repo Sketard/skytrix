@@ -33,7 +33,7 @@ duel-server / OCGCore stack for headless analysis.
 |---|---|---|---|---|
 | **PvP normal** | POST `/api/duels` (2 distinct players) | `INIT_DUEL` | 2 (slots 0 + 1, both connected) | `soloMode: false, forkMode: false` |
 | **PvP solo multiplex** | POST quick-duel (1 player plays both sides) | `INIT_DUEL` | 1 (slot 0 ; slot 1 reserved-but-never-connected) | `soloMode: true, forkMode: false` |
-| **Fork-solo** | Replay viewer → REPLAY_FORK | `INIT_FORK` (precompute + sanity) → live session under `INIT_DUEL`-equivalent runtime | 1 (same as SOLO multiplex) | `soloMode: true, forkMode: true` |
+| **Fork-solo** | Replay viewer → REPLAY_FORK | `INIT_FORK` (precompute + sanity ; same worker process stays live with `forkMode=true`, no second init) | 1 (same as SOLO multiplex) | `soloMode: true, forkMode: true` |
 | **Replay** | Replay viewer → REPLAY_LOAD | `INIT_REPLAY` (precompute batch only ; no live session) | 1 (WS replay endpoint, NOT WS duel) | n/a — no `ActiveDuelSession` |
 
 **Mental pivot — fork-solo IS a SOLO multiplex.** Post-F5-bis (2026-05-31)
@@ -183,7 +183,7 @@ cost, etc.) and `MSG_CHAIN_SOLVING`, but via **two different mechanisms**
 that achieve the same effect by construction :
 
 - **PvP** — explicit BOARD_STATE between cost and `MSG_CHAIN_SOLVING`.
-  [duel-worker.ts:1366-1369](duel-server/src/duel-worker.ts#L1366-L1369)
+  [duel-worker.ts:1376-1380](duel-server/src/duel-worker.ts#L1376-L1380)
   tracks `hasCostMoves` (any `MSG_MOVE` emitted since the last reset)
   and emits an extra `BOARD_STATE` message right before
   `MSG_CHAIN_SOLVING` when the flag is true. Client consumes it through
@@ -192,7 +192,7 @@ that achieve the same effect by construction :
   DECK/EXTRA counts + metadata are up to date before the chain enters
   `resolving`.
 - **Replay** — implicit `PreComputedState` segmentation. The flush on
-  `MSG_CHAINING` in [replay-precompute.ts:394-399](duel-server/src/replay-precompute.ts#L394-L399)
+  `MSG_CHAINING` in [replay-precompute.ts:407-413](duel-server/src/replay-precompute.ts#L407-L413)
   cuts the timeline so the state containing `events=[..., MSG_MOVE]`
   (the cost) has its own `pendingState` captured via `buildBoardState()`
   on flush. The next `PreComputedState` then carries `MSG_CHAINING` and
@@ -231,7 +231,7 @@ shared mechanism. Two ways it can break :
 1. **Server splits the PvP path** — e.g. moves the `hasCostMoves` check
    to a different trigger, or drops the intermediate BOARD_STATE
    because the test "looks fine". Without an equivalent change in
-   `replay-precompute.ts:394-399` segmentation, only PvP loses the
+   `replay-precompute.ts:407-413` segmentation, only PvP loses the
    sync — replay keeps working through the precompute flush.
 2. **Client adds a sync consumer that depends on the ORDER vs
    `MSG_CHAINING`** — anything reading `chainPhase` at sync time will
@@ -418,7 +418,7 @@ is the only constructor that sets `forkMode: true`. It :
 ### Worker `forkMode` variable (not the same as `session.forkMode`)
 
 [duel-worker.ts](duel-server/src/duel-worker.ts) has an internal
-`forkMode: boolean` variable (line 1676) set on `INIT_REPLAY_FORK`
+`forkMode: boolean` variable (line 1676) set on `INIT_FORK`
 that gates worker-side behavior : bypassing `capturedSetResponse` (for
 deterministic replay reconstruction), skipping `emitReplayData` (the
 worker doesn't auto-emit on END/WIN), the `FORK_RESUME` handler.
@@ -454,14 +454,16 @@ teardown paths break silently.
 together before `connect()`.** A conn with `soloMode = true` and
 `_duelCtx === undefined` throws via `duelAssert` at the first
 BOARD_STATE through `_shouldSwapForSolo`. The reverse (`soloMode =
-false` with `_duelCtx` set) is harmless but pointless. Currently the
-"pair flip A21" is enforced by `SoloDuelOrchestratorService.init`
-calling both at construction in the SAME statement chain, then doing
-`wsService.setSoloMode(true)` before `conn.connect(token)`. Anyone
-adding a third SOLO-only field to `DuelConnection` MUST honour the
-same "set before connect" discipline ; the cleanest long-term fix is
-to derive `soloMode` from `wsService.soloModeSource` as a getter
-(audit P1 [F-2.3] — noted as a c8 cleanup that never landed).
+false` with `_duelCtx` set) is harmless but pointless. The cleanup landed (F-2.3, post-c8) : `conn.soloMode` is now a
+**getter derived from `soloModeSource`**
+([duel-connection.ts:251-253](front/src/app/pages/pvp/duel-page/duel-connection.ts#L251-L253)),
+passed in as a ctor option by `SoloDuelOrchestratorService`
+([solo-duel-orchestrator.service.ts:164](front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts#L164)),
+so the "pair flip" is structurally impossible to break — there is no
+longer a `setSoloMode` writer on the conn. Anyone adding a third
+SOLO-only field to `DuelConnection` SHOULD follow the same pattern
+(ctor option backed by a wsService source signal) rather than a
+mutable setter.
 
 ## EventStream vs AnimationQueue (Palier 0)
 
@@ -667,9 +669,12 @@ runner transport events).
 **Rule contract** (`deferred-effect-rules.ts`) — each rule declares
 `trigger / deriveName / derivePredicate` and an optional `chainTo`.
 The rule reference is stored on the active deferred so `tryRearm`
-reaches `chainTo` in O(1). 5 rules ship (overlay-show compound,
-trigger-show self-ref, attack-impact, lp-cost, counter-pulse) ; 6
-stubs documented inline (`#3` through `#11` — see the file).
+reaches `chainTo` in O(1). 6 rules ship — 5 `DeferredRule`
+(overlay-show compound, trigger-show self-ref, attack-impact, lp-cost,
+counter-pulse) + 1 `RewriterRule` (xyz-leave-with-materials, a
+distinct `kind:'rewriter'` type that rewrites the event stream
+in-place rather than producing deferred markers) ; 6 stubs documented
+inline (`#3` through `#11` — see the file).
 
 ### Projections β.3 — inventory
 
@@ -1011,7 +1016,7 @@ emits `PerspectiveSwitched` on the EventStream + dispatches
 NOT touched (CONNECTION_LIFETIME, survives). `DuelGameLogService`
 re-relativises the journal entries on flip via the
 `effect(() => gameLog.setPerspective(ownPlayerIndex()))` wired in
-`duel-page.component.ts:575` (R10 acted at γ §8 spec). PvP normal +
+`duel-page.component.ts:606` (R10 acted at γ §8 spec). PvP normal +
 replay leave `perspectiveSource` at its default 0.
 
 **Convention §5.2 POC — révisée γ-c c10 (2026-05-29).** Le switch SOLO
@@ -1099,6 +1104,19 @@ rules post-c8.
   the lifecycle: `decideNextStep` (pure decision branches) + `QueueRunner
   (loop)` (notifyEnqueue / requestStop / rescue / finalize / await-signal
   / abort invalidation / onInternalEvent emissions).
+
+**Other `ResetTarget` implementers** (documented in their dedicated
+sections — listed here so the scope-reset inventory is complete) :
+
+- **`DeferredEffectProcessor`** — scope `CONNECTION_LIFETIME`. Owned by
+  `AnimationOrchestratorService` (not by a manager). See "DeferredEffectProcessor"
+  section for the rules table + emission contract.
+- **`DuelGameLogService`** — scope `DUEL_LIFETIME`. Subscribes to the
+  EventStream. See "EventStream vs AnimationQueue" + the perspective-
+  switch wire (`gameLog.setPerspective`).
+
+Adding a new checkpoint reset path → check both lists (the 8 managers
+above + these 2) so no `ResetTarget` is missed.
 
 **`DuelContext`** is the shared context for all managers. API surface:
 
@@ -1448,7 +1466,7 @@ order — they're additive, not redundant.
 
 ### Layer 1 — `DuelLogger` categories
 
-`DuelLogger` is the gated console logger. Nine categories, each filterable
+`DuelLogger` is the gated console logger. Eleven categories, each filterable
 via `localStorage['duel-log-categories']` (CSV) or the DevHub toggle. Default
 set keeps the console readable; the three **verbose** categories are off by
 default and must be opted in.
@@ -1509,8 +1527,9 @@ and the JSON dump goes to your clipboard for bug-report inclusion.
 
 ### Layer 3 — Playwright debug harness
 
-`front/e2e/debug-replay-harness.ts` (`runReplayDebug({ replayId,
-perspective, screenshotOn, buildFirst, fromEvent, timeoutSec })`) is the
+`front/e2e/debug-replay-harness.ts` (`runReplayDebug(ctx, { replayId,
+perspective, screenshotOn, buildFirst, fromEvent, timeoutSec })` —
+first arg is the Playwright `BrowserContext`) is the
 batch-mode equivalent: scripted replay playback, console capture,
 screenshots, JSON snapshots, and a Markdown report.
 
@@ -1682,8 +1701,9 @@ the regression fence for the whole pattern.
   clamp.
 - **`solver-handlers`** — solver WS attach/detach + deck cache +
   per-userId SOLVER_START mutex.
-- **`rps-coordinator`** — pre-duel RPS + turn-player selection state
-  machine; spawns the OCGCore worker via injected `startDuelWithOrder`.
+- **`first-player-coordinator`** — pre-duel RPS + turn-player selection
+  state machine; spawns the OCGCore worker via injected
+  `startDuelWithOrder`.
 - **`worker-lifecycle`** — per-session worker spawn handle, listener
   attach, idempotent terminate, natural-end bookkeeping
   (`endedAt`, `totalDuelsServed`, rematch timer arm). Owns the
