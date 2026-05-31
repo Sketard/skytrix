@@ -1,8 +1,8 @@
-import { LOCATION } from '../duel-ws.types';
+import { LOCATION, BOARD_CHANGING_EVENT_TYPES } from '../duel-ws.types';
 import type { ChainingMsg, ChainNegatedMsg, ChainSolvingMsg, ChainSolvedMsg, ServerMessage } from '../duel-ws.types';
 import type { GameEvent } from '../types';
 import type { QueueEntry } from './animation-data-source';
-import { DuelEventProcessor } from './duel-event-processor';
+import { DuelEventProcessor, GAME_EVENT_TYPES } from './duel-event-processor';
 
 /** Narrows a QueueEntry to GameEvent for `.type` access in assertions. */
 const asEvent = (e: QueueEntry): GameEvent => e as GameEvent;
@@ -299,6 +299,33 @@ describe('DuelEventProcessor', () => {
       expect(proc.animationQueue()).toEqual([]);
       expect(proc.chainPhase()).toBe('resolving');
       expect(proc.activeChainLinks().length).toBe(1);
+    });
+  });
+
+  // F8 (2026-05-31) — pin `BOARD_CHANGING_EVENT_TYPES ⊆ GAME_EVENT_TYPES`.
+  // Without this invariant, a future addition to `BOARD_CHANGING_EVENT_TYPES`
+  // (byte-synced front↔back via `check-ws-protocol-sync.mjs`) that forgot
+  // to update `GAME_EVENT_TYPES` would silently break chain animations: the
+  // event would be buffered by `bufferIfResolving` during chain resolution,
+  // then drained via `replayBuffer` → `enqueue` → `isGameEvent` returns
+  // false → `logger.warn` and the event is dropped. The user sees the chain
+  // resolve but a board mutation is missing, with no assertion firing.
+  //
+  // `GAME_EVENT_TYPES` itself is structurally aligned with the `GameEvent`
+  // union via the exhaustive `Record<GameEvent['type'], true>` map declared
+  // in `duel-event-processor.ts` — TS compile-time catches divergence on
+  // that side. This runtime test catches divergence on the other side.
+  describe('F8 invariant — BOARD_CHANGING_EVENT_TYPES ⊆ GAME_EVENT_TYPES', () => {
+    it('every BOARD_CHANGING type is a known GAME_EVENT type', () => {
+      const orphans = [...BOARD_CHANGING_EVENT_TYPES].filter(
+        t => !GAME_EVENT_TYPES.has(t as GameEvent['type']),
+      );
+      expect(orphans).withContext(
+        `These BOARD_CHANGING_EVENT_TYPES entries are missing from ` +
+        `GAME_EVENT_TYPES (or GameEvent union): ${orphans.join(', ')}. ` +
+        `Add them to GAME_EVENT_TYPE_MAP in duel-event-processor.ts and ` +
+        `the matching variant to the GameEvent union in types/game-event.types.ts.`
+      ).toEqual([]);
     });
   });
 });

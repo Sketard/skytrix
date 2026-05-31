@@ -6,19 +6,34 @@ import { BoundaryProcessor, type BoundaryClosureReason } from './boundary-proces
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import type { QueueEntry } from './animation-data-source';
 
-// Set of ServerMessage `type` values that map to a GameEvent member. Used as
-// the runtime guard for the cast in `enqueue` (audit finding L26). The cast
-// is safe because every entry here is a discriminant of the GameEvent union.
-const GAME_EVENT_TYPES: ReadonlySet<GameEvent['type']> = new Set([
-  'MSG_MOVE', 'MSG_DRAW', 'MSG_SHUFFLE_HAND', 'MSG_SHUFFLE_DECK',
-  'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
-  'MSG_CHAINING', 'MSG_CHAIN_SOLVING', 'MSG_CHAIN_SOLVED', 'MSG_CHAIN_END',
-  'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET', 'MSG_SWAP',
-  'MSG_BECOME_TARGET', 'MSG_ATTACK', 'MSG_BATTLE', 'MSG_CONFIRM_CARDS',
-  'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
-  'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER',
-  'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
-]);
+// Exhaustive map keyed on every member of the `GameEvent` type union (F8,
+// 2026-05-31). TypeScript will fail to compile if a new GameEvent variant
+// is added without a corresponding entry here (key missing on
+// `Record<…, true>`) or if an entry strays outside the union ("…" is not
+// assignable to "GameEvent['type']"). Either side stays in sync by
+// construction; no runtime test can degrade silently. Replaces the prior
+// hand-written `new Set([…])` whose hand-maintained list could diverge
+// from `GameEvent` undetected — causing `enqueue` to silently drop the new
+// event with a `logger.warn` (in chain resolution: bufferIfResolving still
+// captured it via BOARD_CHANGING_EVENT_TYPES, then drainBuffer → enqueue
+// → drop, leaving a hole in the animation sequence). Used as the runtime
+// guard for the cast in `enqueue` (audit finding L26).
+const GAME_EVENT_TYPE_MAP: Record<GameEvent['type'], true> = {
+  MSG_MOVE: true, MSG_DRAW: true, MSG_SHUFFLE_HAND: true, MSG_SHUFFLE_DECK: true,
+  MSG_DAMAGE: true, MSG_RECOVER: true, MSG_PAY_LPCOST: true,
+  MSG_CHAINING: true, MSG_CHAIN_SOLVING: true, MSG_CHAIN_SOLVED: true, MSG_CHAIN_END: true,
+  MSG_FLIP_SUMMONING: true, MSG_CHANGE_POS: true, MSG_SET: true, MSG_SWAP: true,
+  MSG_BECOME_TARGET: true, MSG_ATTACK: true, MSG_BATTLE: true, MSG_CONFIRM_CARDS: true,
+  MSG_TOSS_COIN: true, MSG_TOSS_DICE: true, MSG_EQUIP: true,
+  MSG_ADD_COUNTER: true, MSG_REMOVE_COUNTER: true,
+  MSG_SHUFFLE_SET_CARD: true, MSG_SWAP_GRAVE_DECK: true,
+};
+
+/** Runtime view of the GameEvent type union — derived from the exhaustive
+ *  map. Exported for the F8 invariant spec (`BOARD_CHANGING_EVENT_TYPES`
+ *  ⊆ this set). */
+export const GAME_EVENT_TYPES: ReadonlySet<GameEvent['type']> =
+  new Set(Object.keys(GAME_EVENT_TYPE_MAP) as Array<GameEvent['type']>);
 
 function isGameEvent(msg: ServerMessage): msg is GameEvent {
   return GAME_EVENT_TYPES.has(msg.type as GameEvent['type']);
