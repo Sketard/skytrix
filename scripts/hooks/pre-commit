@@ -1,21 +1,50 @@
 #!/bin/sh
-# Pre-commit hook — lint des fichiers stagés du front.
+# Pre-commit hook — lint des fichiers stagés du front + sync du protocole WS.
 #
 # Garde-fou Design System (étape 1, 2026-05-20) : stylelint + ESLint via
 # lint-staged ne tournent QUE sur les fichiers stagés. Le code nouveau ou
 # modifié doit être propre ; la dette existante non touchée n'est pas bloquée.
+#
+# F7 (2026-05-31) : ajout du check ws-protocol-sync. Le script
+# `scripts/check-ws-protocol-sync.mjs` byte-compare 9 fichiers paires
+# front↔back. Auparavant lancé uniquement par `npm run build` côté
+# duel-server (prebuild), donc un commit éditant uniquement un fichier
+# `duel-ws-*.types.ts` côté front passait silencieusement jusqu'au
+# prochain build duel-server — la divergence pouvait persister des
+# jours.
 #
 # Activation : git config core.hooksPath scripts/hooks
 # (fait par scripts/setup-hooks.sh — à lancer une fois après le clone).
 #
 # Bypass ponctuel si nécessaire : git commit --no-verify
 
+ROOT="$(git rev-parse --show-toplevel)"
+STAGED="$(git diff --cached --name-only)"
+
+# --- F7 : check ws-protocol-sync ---
+# Pattern matching les 9 paires : ws-protocol-*.ts, game-log-*.ts,
+# ocgcore-reason-flags.ts (côté duel-server) + leurs mirrors front
+# (duel-ws-*.types.ts, game-log/game-log-*.ts, duel-page/ocgcore-reason-flags.ts).
+# Si l'un de ces fichiers est stagé, on lance le check ; il est rapide
+# (~50ms) donc le coût est nul si on ne touche pas le protocole.
+PROTOCOL_PATTERN='^(duel-server/src/(ws-protocol-(shared|game|prompts|system|replay|solver)|game-log/game-log-(types|builder)|ocgcore-reason-flags)\.ts|front/src/app/pages/pvp/(duel-ws-(shared|game|prompts|system|replay|solver)\.types|game-log/game-log-(types|builder)|duel-page/ocgcore-reason-flags)\.ts)$'
+if echo "$STAGED" | grep -qE "$PROTOCOL_PATTERN"; then
+  if ! node "$ROOT/scripts/check-ws-protocol-sync.mjs"; then
+    echo
+    echo "pre-commit: WS protocol files are out of sync between duel-server and front."
+    echo "             Edit BOTH paired files in the same commit (see script header)."
+    echo "             Bypass with --no-verify ONLY if you know what you are doing."
+    exit 1
+  fi
+fi
+
+# --- lint-staged sur le front ---
 # Ne rien faire si aucun fichier front n'est stagé.
-if ! git diff --cached --name-only | grep -q '^front/'; then
+if ! echo "$STAGED" | grep -q '^front/'; then
   exit 0
 fi
 
-cd "$(git rev-parse --show-toplevel)/front" || exit 1
+cd "$ROOT/front" || exit 1
 
 if [ ! -d node_modules ]; then
   echo "pre-commit: front/node_modules absent — npm install d'abord. Skip lint."
