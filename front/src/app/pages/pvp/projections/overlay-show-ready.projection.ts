@@ -39,7 +39,6 @@ import { signal, type Signal } from '@angular/core';
 
 import type { FluxEvent } from './flux-event';
 import { BaseProjection } from './base-projection';
-import type { CheckpointPayload } from './checkpoint-payload';
 import type { ScopeCategory } from './scope';
 
 /** Prefix matched on `name` for the overlay-show family of deferreds.
@@ -94,10 +93,7 @@ export class OverlayShowReadyProjection extends BaseProjection<ReadonlySet<numbe
     }
   }
 
-  override applyReset(
-    _invalidatedScopes: ReadonlySet<ScopeCategory>,
-    _checkpointPayload?: CheckpointPayload,
-  ): void {
+  override applyReset(_invalidatedScopes: ReadonlySet<ScopeCategory>): void {
     // The dispatcher already filters by scope before calling — we don't
     // need to re-check `invalidatedScopes.has('PERSPECTIVE_LIFETIME')`.
     // Always reset to the empty set, regardless of reset source.

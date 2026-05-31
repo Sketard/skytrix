@@ -37,7 +37,6 @@ import { LOCATION } from '../duel-ws.types';
 import { locationToZoneKey } from '../pvp-zone.utils';
 
 import { BaseProjection } from './base-projection';
-import type { CheckpointPayload } from './checkpoint-payload';
 import type { FluxEvent } from './flux-event';
 import type { ScopeCategory } from './scope';
 
@@ -78,10 +77,7 @@ export class TargetedZoneKeysProjection extends BaseProjection<ReadonlySet<strin
     }
   }
 
-  override applyReset(
-    _invalidatedScopes: ReadonlySet<ScopeCategory>,
-    _checkpointPayload?: CheckpointPayload,
-  ): void {
+  override applyReset(_invalidatedScopes: ReadonlySet<ScopeCategory>): void {
     this._keys.set(new Set());
   }
 }

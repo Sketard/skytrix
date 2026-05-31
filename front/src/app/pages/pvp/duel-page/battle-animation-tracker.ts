@@ -3,7 +3,6 @@ import type { AttackMsg, BattleMsg } from '../duel-ws.types';
 import { LOCATION } from '../duel-ws.types';
 import {
   ScopeResetDispatcher,
-  type CheckpointPayload,
   type ResetTarget,
   type ScopeCategory,
 } from '../projections';
@@ -137,10 +136,7 @@ export class BattleAnimationTracker implements ResetTarget {
    * so any reset that touches that scope (the most common — a switch)
    * triggers the same cleanup as the legacy `reset()`.
    */
-  applyReset(
-    scopes: ReadonlySet<ScopeCategory>,
-    _checkpointPayload?: CheckpointPayload,
-  ): void {
+  applyReset(scopes: ReadonlySet<ScopeCategory>): void {
     if (scopes.has('PERSPECTIVE_LIFETIME')) {
       this.reset();
     }

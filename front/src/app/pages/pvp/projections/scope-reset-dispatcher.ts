@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
-import type { CheckpointPayload } from './checkpoint-payload';
 import type { ResetTarget } from './reset-target';
 import {
   expandInvalidatedScopes,
@@ -69,23 +68,18 @@ export class ScopeResetDispatcher {
    * Dispatch a reset to every target whose scope is in the (expanded)
    * invalidated set.
    *
-   * - `invalidatedScopes` is the *top-most* set the caller wants to
-   *   invalidate. The dispatcher expands it down the hierarchy before
-   *   fan-out so callers can pass `{ DUEL_LIFETIME }` and have
-   *   `CONNECTION_LIFETIME` + `PERSPECTIVE_LIFETIME` invalidated
-   *   automatically (cf. §3.5 expected invalidation matrix).
-   * - `payload` is forwarded as-is to every target. Pass it only for
-   *   §3.6 checkpoint events (`STATE_SYNC`, `RematchStarted`).
+   * `invalidatedScopes` is the *top-most* set the caller wants to
+   * invalidate. The dispatcher expands it down the hierarchy before
+   * fan-out so callers can pass `{ DUEL_LIFETIME }` and have
+   * `CONNECTION_LIFETIME` + `PERSPECTIVE_LIFETIME` invalidated
+   * automatically (cf. §3.5 expected invalidation matrix).
    */
-  dispatch(
-    invalidatedScopes: ReadonlySet<ScopeCategory>,
-    payload?: CheckpointPayload,
-  ): void {
+  dispatch(invalidatedScopes: ReadonlySet<ScopeCategory>): void {
     if (invalidatedScopes.size === 0) return;
     const expanded = expandInvalidatedScopes(invalidatedScopes);
     for (const target of this._transport_targets) {
       if (!expanded.has(target.scope)) continue;
-      target.applyReset(expanded, payload);
+      target.applyReset(expanded);
     }
   }
 

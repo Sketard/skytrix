@@ -4,7 +4,6 @@ import { LOCATION, POSITION } from '../duel-ws.types';
 import type { ZoneId } from '../duel-ws-shared.types';
 import {
   ScopeResetDispatcher,
-  type CheckpointPayload,
   type ResetTarget,
   type ScopeCategory,
 } from '../projections';
@@ -183,10 +182,7 @@ export class TargetIndicatorManager implements OnDestroy, ResetTarget {
    * on `onStateSync` (DUEL_LIFETIME cascades to PERSPECTIVE), and on
    * `REMATCH_STARTING` (same cascade).
    */
-  applyReset(
-    scopes: ReadonlySet<ScopeCategory>,
-    _checkpointPayload?: CheckpointPayload,
-  ): void {
+  applyReset(scopes: ReadonlySet<ScopeCategory>): void {
     if (scopes.has('PERSPECTIVE_LIFETIME')) {
       this.reset();
     }

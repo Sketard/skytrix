@@ -1,6 +1,5 @@
 import { type EffectRef, type Injector, type Signal } from '@angular/core';
 
-import type { CheckpointPayload } from './checkpoint-payload';
 import { drainStream, type StreamCursor } from './drain-stream';
 import type { FluxEvent } from './flux-event';
 import type { ResetTarget } from './reset-target';
@@ -60,20 +59,12 @@ export abstract class BaseProjection<T> implements ResetTarget {
    * Re-initialise the projection because the {@link scope} it belongs
    * to has been invalidated.
    *
-   * - {@link invalidatedScopes} is the *expanded* set produced by
-   *   {@link expandInvalidatedScopes}. This projection's `scope` is
-   *   guaranteed to be in it (the {@link ScopeResetDispatcher} filters
-   *   before calling).
-   * - {@link checkpointPayload} is `undefined` for non-checkpoint
-   *   resets (`PerspectiveSwitched`, `ServerKicked`, …). When defined,
-   *   it carries the server-provided initial state from §3.6
-   *   (`STATE_SYNC` or `RematchStarted`); the projection re-seeds from
-   *   the payload instead of from its zero state.
+   * {@link invalidatedScopes} is the *expanded* set produced by
+   * {@link expandInvalidatedScopes}. This projection's `scope` is
+   * guaranteed to be in it (the {@link ScopeResetDispatcher} filters
+   * before calling).
    */
-  abstract applyReset(
-    invalidatedScopes: ReadonlySet<ScopeCategory>,
-    checkpointPayload?: CheckpointPayload,
-  ): void;
+  abstract applyReset(invalidatedScopes: ReadonlySet<ScopeCategory>): void;
 
   /**
    * Cursor tracking the prefix of the attached `eventStream` already

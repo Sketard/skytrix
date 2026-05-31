@@ -1,4 +1,3 @@
-import type { CheckpointPayload } from './checkpoint-payload';
 import type { ScopeCategory } from './scope';
 
 /**
@@ -12,10 +11,10 @@ import type { ScopeCategory } from './scope';
  *  - `scope` — declares which scope category this target lives in
  *    (`SESSION_LIFETIME` | `DUEL_LIFETIME` | `CONNECTION_LIFETIME` |
  *    `PERSPECTIVE_LIFETIME`).
- *  - `applyReset(scopes, payload?)` — invoked by the dispatcher when one
- *    of the target's scopes is invalidated. `scopes` is the **expanded**
- *    set (cascades already applied) so the target can use a `has()`
- *    check to decide which slice of its state to clear.
+ *  - `applyReset(scopes)` — invoked by the dispatcher when one of the
+ *    target's scopes is invalidated. `scopes` is the **expanded** set
+ *    (cascades already applied) so the target can use a `has()` check
+ *    to decide which slice of its state to clear.
  *
  * **Why split from {@link BaseProjection}?** A {@link BaseProjection}
  * promises three things: `scope`, `value: Signal<T>`, and `applyEvent`.
@@ -40,8 +39,5 @@ import type { ScopeCategory } from './scope';
  */
 export interface ResetTarget {
   readonly scope: ScopeCategory;
-  applyReset(
-    invalidatedScopes: ReadonlySet<ScopeCategory>,
-    checkpointPayload?: CheckpointPayload,
-  ): void;
+  applyReset(invalidatedScopes: ReadonlySet<ScopeCategory>): void;
 }

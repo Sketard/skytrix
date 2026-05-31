@@ -5,7 +5,6 @@ import { BOARD_CHANGING_EVENT_TYPES, LOCATION } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import {
   ScopeResetDispatcher,
-  type CheckpointPayload,
   type ResetTarget,
   type ScopeCategory,
 } from '../projections';
@@ -306,10 +305,7 @@ export class ChainResolutionManager implements ResetTarget {
    * so the legacy `reset()` is functionally equivalent to
    * `applyReset(new Set(['CONNECTION_LIFETIME', 'PERSPECTIVE_LIFETIME']))`.
    */
-  applyReset(
-    scopes: ReadonlySet<ScopeCategory>,
-    _checkpointPayload?: CheckpointPayload,
-  ): void {
+  applyReset(scopes: ReadonlySet<ScopeCategory>): void {
     if (scopes.has('CONNECTION_LIFETIME')) {
       this.reset();
     } else if (scopes.has('PERSPECTIVE_LIFETIME')) {
@@ -335,7 +331,8 @@ export class ChainResolutionManager implements ResetTarget {
     this._deferredSolvingEvent = null;
   }
 
-  /** Clear replay timeouts (called by orchestrator's resetForSwitch, onStateSync, destroy).
+  /** Clear replay timeouts (called by orchestrator's resetForReplaySeek,
+   *  onStateSync, destroy — via the scope dispatcher's applyReset cascade).
    *  β.3 cas #13 — banner timeouts are no longer owned here ; the
    *  `announcement` directive registers its setTimeouts via
    *  `orchestrator.scheduleTimeout` which `clearTimersAndPolling` aborts. */

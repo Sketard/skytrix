@@ -1,7 +1,6 @@
 import { signal, type Signal } from '@angular/core';
 
 import { BaseProjection } from './base-projection';
-import type { CheckpointPayload } from './checkpoint-payload';
 import type { FluxEvent } from './flux-event';
 import type { ResetTarget } from './reset-target';
 import { ScopeResetDispatcher } from './scope-reset-dispatcher';
@@ -9,10 +8,7 @@ import type { ScopeCategory } from './scope';
 
 class TestProjection extends BaseProjection<number> {
   override readonly scope: ScopeCategory;
-  readonly resets: Array<{
-    scopes: ReadonlySet<ScopeCategory>;
-    payload: CheckpointPayload | undefined;
-  }> = [];
+  readonly resets: Array<ReadonlySet<ScopeCategory>> = [];
   private readonly _backing = signal(0);
   override readonly value: Signal<number> = this._backing.asReadonly();
 
@@ -25,11 +21,8 @@ class TestProjection extends BaseProjection<number> {
     // no-op for these tests
   }
 
-  override applyReset(
-    invalidatedScopes: ReadonlySet<ScopeCategory>,
-    checkpointPayload?: CheckpointPayload,
-  ): void {
-    this.resets.push({ scopes: invalidatedScopes, payload: checkpointPayload });
+  override applyReset(invalidatedScopes: ReadonlySet<ScopeCategory>): void {
+    this.resets.push(invalidatedScopes);
     this._backing.set(0);
   }
 }
@@ -100,28 +93,10 @@ describe('ScopeResetDispatcher', () => {
     const p = new TestProjection('PERSPECTIVE_LIFETIME');
     dispatcher.register(p);
     dispatcher.dispatch(new Set(['DUEL_LIFETIME']));
-    const passed = p.resets[0].scopes;
+    const passed = p.resets[0];
     expect(passed.has('DUEL_LIFETIME')).toBeTrue();
     expect(passed.has('CONNECTION_LIFETIME')).toBeTrue();
     expect(passed.has('PERSPECTIVE_LIFETIME')).toBeTrue();
-  });
-
-  it('forwards the checkpoint payload', () => {
-    const p = new TestProjection('DUEL_LIFETIME');
-    dispatcher.register(p);
-    const payload: CheckpointPayload = {
-      source: 'STATE_SYNC',
-      body: { stub: true },
-    };
-    dispatcher.dispatch(new Set(['DUEL_LIFETIME']), payload);
-    expect(p.resets[0].payload).toBe(payload);
-  });
-
-  it('omits payload for non-checkpoint resets', () => {
-    const p = new TestProjection('PERSPECTIVE_LIFETIME');
-    dispatcher.register(p);
-    dispatcher.dispatch(new Set(['PERSPECTIVE_LIFETIME']));
-    expect(p.resets[0].payload).toBeUndefined();
   });
 
   it('empty scope set is a no-op (no fan-out)', () => {

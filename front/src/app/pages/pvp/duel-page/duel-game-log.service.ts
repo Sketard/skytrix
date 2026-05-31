@@ -17,7 +17,6 @@ import type { PreComputedState } from '../duel-ws-replay.types';
 import {
   drainStream,
   ScopeResetDispatcher,
-  type CheckpointPayload,
   type ResetTarget,
   type ScopeCategory,
   type StreamCursor,
@@ -256,8 +255,9 @@ export class DuelGameLogService implements ResetTarget {
    * `[0..N]` after a seek (analysis: the journal is an *history*, not a
    * snapshot of step N).
    *
-   * A replay seek runs `abortAndClean → resetForSwitch → reset()` which
-   * empties the journal, then `jumpToState()` renders the board for step N
+   * A replay seek runs `abortAndClean → resetForReplaySeek →
+   * applyReset({DUEL_LIFETIME}) → reset()` which empties the journal,
+   * then `jumpToState()` renders the board for step N
    * directly — the events BEFORE N never pass back through the
    * `notifyGameLog` tap, so the journal would restart empty at N. This
    * method re-feeds the builder with every event of states `[0..N]` so the
@@ -415,15 +415,11 @@ export class DuelGameLogService implements ResetTarget {
    * when DUEL_LIFETIME (or above) is invalidated — typically by §3.6
    * checkpoints (STATE_SYNC / RematchStarted). A PerspectiveSwitched
    * does NOT reach this branch (the journal survives a switch — see
-   * the §3.5 invalidation matrix). The `checkpointPayload` is currently
-   * unused: a STATE_SYNC will re-feed events through the attached
-   * stream, so resetting locally + waiting for the stream to drain is
-   * correct.
+   * the §3.5 invalidation matrix). A STATE_SYNC will re-feed events
+   * through the attached stream, so resetting locally + waiting for the
+   * stream to drain is correct.
    */
-  applyReset(
-    scopes: ReadonlySet<ScopeCategory>,
-    _checkpointPayload?: CheckpointPayload,
-  ): void {
+  applyReset(scopes: ReadonlySet<ScopeCategory>): void {
     if (scopes.has('DUEL_LIFETIME')) {
       this.reset();
     }

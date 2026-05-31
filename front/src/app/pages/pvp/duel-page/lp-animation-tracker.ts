@@ -5,7 +5,6 @@ import type { DamageMsg, PayLpCostMsg, Player, RecoverMsg } from '../duel-ws.typ
 import {
   AnimatingLpProjection,
   ScopeResetDispatcher,
-  type CheckpointPayload,
   type ResetTarget,
   type ScopeCategory,
 } from '../projections';
@@ -246,17 +245,13 @@ export class LpAnimationTracker implements ResetTarget {
    * Benign in practice (SOLO switches happen at prompt boundaries with
    * the queue already drained). Proper fix deferred to β: once
    * `BoundaryProcessor` emits typed switch events, the orchestrator
-   * clears `animatingLpPlayer` explicitly at `resetForSwitch` rather
-   * than via scope semantics.
+   * clears `animatingLpPlayer` explicitly at the perspective-switch
+   * boundary rather than via scope semantics.
    *
-   * `checkpointPayload` is unused at α.4b — LP state re-seeds from the
-   * BOARD_STATE payload directly via `syncFromBoardState` after a
-   * STATE_SYNC.
+   * After a STATE_SYNC, LP state re-seeds from the BOARD_STATE payload
+   * directly via `syncFromBoardState`.
    */
-  applyReset(
-    scopes: ReadonlySet<ScopeCategory>,
-    _checkpointPayload?: CheckpointPayload,
-  ): void {
+  applyReset(scopes: ReadonlySet<ScopeCategory>): void {
     if (scopes.has('DUEL_LIFETIME')) {
       this.trackedLp = [...STARTING_LP] as [number, number];
       this._pendingLpCommits.clear();

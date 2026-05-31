@@ -43,7 +43,6 @@
 // =============================================================================
 
 import type {
-  CheckpointPayload,
   ResetTarget,
   ScopeCategory,
 } from '../projections';
@@ -450,14 +449,8 @@ export class DeferredEffectProcessor implements ResetTarget {
    *     own scope filter already prevents the call in PERSPECTIVE-only
    *     dispatches, but the guard is kept for clarity + defense in
    *     depth.
-   * Payload is forwarded by the dispatcher but the DEP does not consume
-   * it at β.2a — the checkpoint shape pins at β.3 when the first
-   * consumer needs it.
    */
-  applyReset(
-    invalidatedScopes: ReadonlySet<ScopeCategory>,
-    _payload?: CheckpointPayload,
-  ): void {
+  applyReset(invalidatedScopes: ReadonlySet<ScopeCategory>): void {
     if (!invalidatedScopes.has('CONNECTION_LIFETIME')) return;
     this.abandonAllActive('checkpoint');
   }
