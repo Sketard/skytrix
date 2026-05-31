@@ -1023,6 +1023,33 @@ per-event `boardStateAfter`. Anything else absolute stays absolute.
 `prompt-derivation.service`, `replayHighlightedZones`/`replayChosenZone`
 (replay-page), all `ctx.relativePlayer()` callers in the orchestrator.
 
+### Relativizer routing discipline (F6, 2026-05-31)
+
+Every absolute→relative conversion `abs === ownIdx ? 0 : 1` for DOM
+zone-key building is now routed through `DuelContext.relativePlayer()`
+where the call site has access to `DuelContext` (the conversion lives
+in one place — change the semantics of "relative" once, every site
+follows). Refactored sites :
+
+- [target-indicator-manager.ts](front/src/app/pages/pvp/duel-page/target-indicator-manager.ts) — `spawnPileFloats` uses `this.ctx.relativePlayer(target.player)`.
+- [duel-page.component.ts](front/src/app/pages/pvp/duel-page/duel-page.component.ts) — `onPreTargetCards` + `onZoneSelected` use `this.duelCtx.relativePlayer(c.player / pl.player)`.
+- [pvp-board-container.component.ts](front/src/app/pages/pvp/duel-page/pvp-board-container/pvp-board-container.component.ts) — `chainBadges` + `linkedZoneMap` go through a private `toRelativePlayer()` helper that injects `DuelContext` optionally and falls back to the input idiom in standalone preview specs.
+- [replay-page.component.ts](front/src/app/pages/pvp/replay/replay-page.component.ts) — `replayHighlightedZones` + `replayChosenZone` use `this.duelCtx.relativePlayer(pl.player / place.player)`. Replay configures `duelCtx.ownPlayerIndex = () => perspectiveIndex()` so the helper is equivalent to the prior `=== perspectiveIndex() ? 0 : 1` inline.
+
+**Sites intentionally left with the inline idiom** :
+
+- [prompt-derivation.service.ts](front/src/app/pages/pvp/duel-page/prompt-derivation.service.ts) `highlightedZones` (1 site) — the service follows the two-phase init pattern (closures over signals, not DI), so it doesn't inject DuelContext. If a SECOND absolute→relative conversion ever lands in this service, add `relativePlayer: (abs) => 0 | 1` to `PromptDerivationConfig` and route through it instead of duplicating the idiom.
+- Components with `ownPlayerIndex: input<Player>` that don't read `controller`/`player` fields from absolute payloads ([pvp-board-container](front/src/app/pages/pvp/duel-page/pvp-board-container/pvp-board-container.component.ts) `playerLpAnim`/`opponentLpAnim`, [prompt-card-grid](front/src/app/pages/pvp/duel-page/prompts/prompt-card-grid/prompt-card-grid.component.ts), [timeline-bar](front/src/app/pages/pvp/replay/timeline-bar/timeline-bar.component.ts)) — these run a boolean "is mine" test, not an absolute→relative conversion. Routing through `ctx.relativePlayer()` would be a no-op : the test is already absolute-vs-absolute.
+- Pure utility functions taking `ownPlayerIndex` as a parameter ([chain-badge.utils.ts](front/src/app/pages/pvp/duel-page/chain-badge.utils.ts)) — by design absolute-agnostic, no ctx access.
+- `mySide()` / "other side of mySide" computations in replay-page + topbar + mini-board-thumbnail — these compare with `userPseudo` (the LOGGED-IN user's position in the replay) or invert `mySide()`, NOT the viewer's perspective. Different semantic, not refactorable to `ctx.relativePlayer()`.
+- `absoluteTurnPlayer` in pvp-board-container — inverse direction (relative→absolute), not the routing target.
+
+**Enforcement** : there is currently no automated lint rule that flags
+new `${zoneId}-${X}` builders where X is not provably relative. The
+gate is review-time discipline + this checklist. If you add a new
+relativizer, add it to the Known-correct list above and route through
+`ctx.relativePlayer()` whenever possible.
+
 **SOLO PvP — perspective is a projection signal (γ, 2026-05-27).**
 `DuelContext.perspectiveSource` (tag α.1 `*Source`) is a
 `WritableSignal<0 | 1>` written by `SoloDuelOrchestratorService.switchPerspective`

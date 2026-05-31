@@ -17,6 +17,7 @@ import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
 import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 import { DuelThemeService } from '../duel-theme.service';
+import { DuelContext } from '../duel-context';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -122,6 +123,22 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   /** Optional logger — the duel-page provides DuelLogger at component level,
    *  the preview / simulator embeddings don't. */
   private readonly _logger = inject(DuelLogger, { optional: true });
+  /** F6 (2026-05-31) — optional DuelContext: present under duel-page / replay-page
+   *  providers, absent in standalone preview specs. When present, perspective-
+   *  sensitive computeds route the absolute→relative conversion through
+   *  `ctx.relativePlayer()`; when absent, they fall back to the `=== ownIdx ? 0 : 1`
+   *  idiom using the `ownPlayerIndex` input. See CLAUDE.md → "Perspective
+   *  Convention". */
+  private readonly _ctx = inject(DuelContext, { optional: true });
+
+  /** F6 — absolute→relative player conversion, routed through DuelContext
+   *  when available (production path), falling back to the input idiom for
+   *  standalone preview specs. */
+  private toRelativePlayer(absolutePlayer: number): 0 | 1 {
+    return this._ctx
+      ? this._ctx.relativePlayer(absolutePlayer)
+      : (absolutePlayer === this.ownPlayerIndex() ? 0 : 1);
+  }
 
   /** When true, this instance is a miniature preview — skip zone resolver registration. */
   readonly preview = input(false);
@@ -334,7 +351,6 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     // bottom, 1 = opponent / top), so we must relativize `controller` via
     // `ownPlayerIndex` — same idiom as `chainBadges`. Skip it and Equip/target
     // lines point at the wrong half of the board for the J2 / perspective-1 viewer.
-    const ownIdx = this.ownPlayerIndex();
     for (let relPlayer = 0; relPlayer < 2; relPlayer++) {
       const player = state.players[relPlayer];
       if (!player) continue;
@@ -345,7 +361,10 @@ export class PvpBoardContainerComponent implements AfterViewInit {
         for (const link of card.linkedCards) {
           const targetZoneId = locationToZoneId(link.location, link.sequence);
           if (!targetZoneId) continue;
-          const relController = link.controller === ownIdx ? 0 : 1;
+          // F6 (2026-05-31) — link.controller is absolute (see CLAUDE.md
+          // "Perspective Convention" — server-side relativization is partial,
+          // controller fields stay absolute). Route through toRelativePlayer.
+          const relController = this.toRelativePlayer(link.controller);
           const targetKey = `${targetZoneId}-${relController}`;
           const sArr = map.get(sourceKey);
           if (sArr) sArr.push(targetKey); else map.set(sourceKey, [targetKey]);
@@ -550,9 +569,10 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     const links = this.activeChainLinks();
     const map = new Map<string, number>();
     if (links.length < 2 && this.chainPhase() !== 'resolving') return map;
-    const ownIdx = this.ownPlayerIndex();
     for (const link of links) {
-      const relPlayer = link.player === ownIdx ? 0 : 1;
+      // F6 (2026-05-31) — link.player is absolute. See CLAUDE.md
+      // "Perspective Convention". Route through toRelativePlayer.
+      const relPlayer = this.toRelativePlayer(link.player);
       const chainNum = link.chainIndex + 1;
       const key = link.zoneId
         ? `${link.zoneId}-${relPlayer}`

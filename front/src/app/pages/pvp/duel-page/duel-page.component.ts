@@ -983,9 +983,10 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       this.preTargetZoneKeys.set(new Set());
       return;
     }
-    const ownIdx = this.ownPlayerIndex();
+    // F6 (2026-05-31) — route absolute→relative via duelCtx.relativePlayer
+    // for perspective discipline. See CLAUDE.md → "Perspective Convention".
     const keys = new Set(cards.map(c => {
-      const relPlayer = c.player === ownIdx ? 0 : 1;
+      const relPlayer = this.duelCtx.relativePlayer(c.player);
       return locationToZoneKey(c.location, c.sequence, relPlayer);
     }));
     this.preTargetZoneKeys.set(keys);
@@ -1087,10 +1088,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     const p = this.wsService.pendingPrompt();
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return;
     const prompt = p as SelectPlaceMsg | SelectDisfieldMsg;
-    const ownIdx = this.ownPlayerIndex();
+    // F6 (2026-05-31) — route absolute→relative via duelCtx.relativePlayer
+    // for perspective discipline. See CLAUDE.md → "Perspective Convention".
     const place = prompt.places.find(pl => {
       const id = locationToZoneId(pl.location, pl.sequence);
-      const relPlayer = pl.player === ownIdx ? 0 : 1;
+      const relPlayer = this.duelCtx.relativePlayer(pl.player);
       return id ? `${id}-${relPlayer}` === zoneKey : false;
     });
     if (place) {

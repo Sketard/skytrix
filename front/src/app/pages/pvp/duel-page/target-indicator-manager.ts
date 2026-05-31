@@ -73,13 +73,14 @@ export class TargetIndicatorManager implements OnDestroy, ResetTarget {
    * Field-located targets are ignored (handled by orchestrator's signal).
    */
   spawnPileFloats(msg: BecomeTargetMsg): void {
-    const ownIdx = this.ctx.ownPlayerIndex();
     const board = this.dataSource.renderedBoardState.renderedState();
 
     for (const target of msg.cards) {
       const zoneId = pileZoneIdFromLocation(target.location);
       if (!zoneId) continue; // field zones handled elsewhere
-      const relPlayer = target.player === ownIdx ? 0 : 1;
+      // F6 (2026-05-31) — route absolute→relative via ctx.relativePlayer for
+      // perspective discipline. See CLAUDE.md → "Perspective Convention".
+      const relPlayer = this.ctx.relativePlayer(target.player);
       const zoneKey = `${zoneId}-${relPlayer}`;
 
       // renderedState().players is swapped to the current perspective

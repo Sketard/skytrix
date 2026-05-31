@@ -250,11 +250,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     const prompt = this.adapter.activePrompt();
     if (prompt?.type !== 'SELECT_PLACE' && prompt?.type !== 'SELECT_DISFIELD') return EMPTY_ZONE_SET;
     const places = (prompt as SelectPlaceMsg | SelectDisfieldMsg).places;
-    const perspective = this.perspectiveIndex();
+    // F6 (2026-05-31) — pl.player is absolute. Replay configures
+    // duelCtx.ownPlayerIndex = perspectiveIndex (cf. configure() in ngOnInit)
+    // so duelCtx.relativePlayer is the canonical conversion. See CLAUDE.md
+    // → "Perspective Convention".
     const keys = places
       .map((pl: PlaceOption) => {
         const zoneId = locationToZoneId(pl.location, pl.sequence);
-        const relPlayer = pl.player === perspective ? 0 : 1;
+        const relPlayer = this.duelCtx.relativePlayer(pl.player);
         return zoneId ? `${zoneId}-${relPlayer}` : null;
       })
       .filter((k): k is string => k !== null);
@@ -269,7 +272,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     const place = resp?.places?.[0];
     if (!place) return null;
     const zoneId = locationToZoneId(place.location, place.sequence);
-    const relPlayer = place.player === this.perspectiveIndex() ? 0 : 1;
+    // F6 (2026-05-31) — place.player is absolute. Use duelCtx.relativePlayer
+    // (replay configures it to read perspectiveIndex). See CLAUDE.md →
+    // "Perspective Convention".
+    const relPlayer = this.duelCtx.relativePlayer(place.player);
     return zoneId ? `${zoneId}-${relPlayer}` : null;
   });
 

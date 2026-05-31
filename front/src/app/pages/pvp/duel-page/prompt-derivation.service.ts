@@ -114,6 +114,13 @@ export class PromptDerivationService {
     const p = this.visiblePrompt();
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return new Set<string>();
     const places = (p as SelectPlaceMsg | SelectDisfieldMsg).places;
+    // F6 (2026-05-31) — `pl.player` is absolute (server-side relativization
+    // is partial — see CLAUDE.md "Perspective Convention"). This service is
+    // configured by closures (two-phase init pattern) so it doesn't inject
+    // DuelContext directly ; the inline `=== ownIdx ? 0 : 1` idiom is the
+    // canonical conversion here. If a second absolute→relative conversion
+    // ever lands in this service, add `relativePlayer: (abs) => 0 | 1` to
+    // `PromptDerivationConfig` instead of duplicating the idiom.
     const ownIdx = this.c.ownPlayerIndex();
     const keys = places
       .map(pl => {

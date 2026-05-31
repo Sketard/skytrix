@@ -174,7 +174,7 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 
 ## ⚠️ Parités fragiles (sync par convention, pas par type/test)
 
-### F6 — Convention Perspective (absolu vs relatif) — la plus fragile
+### F6 — Convention Perspective (absolu vs relatif) — la plus fragile — ✅ FIX (2026-05-31)
 - **Lieu** : `message-filter.ts:247` (TODO Story 4.2) ; idiome copié-collé ~11
   sites ; suspect : `target-indicator-manager.ts:59` (inline ternaire) vs
   `battle-animation-tracker.ts:50` (`ctx.relativePlayer()`).
@@ -189,9 +189,39 @@ Colonne **Décision** à remplir ensemble : `FIX` / `BACKLOG` / `WONTFIX` /
 - **Risque** : tout nouveau builder `${zoneId}-${X}` lisant `controller`/`player`
   sans `=== ownPlayerIndex` → board flippé. Classe de bug
   `perspective-bug-hunt-2026-05-20`.
-- **Fix proposé** : router les sites manager/board via `ctx.relativePlayer` ;
-  les sites page/builder ne peuvent légitimement pas atteindre `DuelContext`.
-- **Décision** :
+- **Catégorisation des sites (issue de l'investigation)** :
+  · 8 sites = vraies conversions absolu→relatif pour construire des zone keys.
+    Tous refactorés vers `ctx.relativePlayer()` ci-dessous.
+  · ~7 sites = tests booléens "is mine" (`player === ownIdx` sans
+    `? 0 : 1`) — légitimes inline, pas une conversion.
+  · ~5 sites = inversion relatif→opposé (`mySide() === 0 ? 1 : 0`) ou
+    relatif→absolu (`absoluteTurnPlayer`) — sémantique orthogonale,
+    pas refactorables vers `ctx.relativePlayer`.
+  · Utility functions pures avec `ownPlayerIndex` en param (chain-badge.utils) —
+    absolute-agnostic by design.
+- **Décision** : **FIX unifié sur 8 sites** (refactor minimal des sites
+  qui font vraiment de la conversion absolu→relatif, scope animation
+  pipeline + replay) :
+  · [target-indicator-manager.ts:82](front/src/app/pages/pvp/duel-page/target-indicator-manager.ts#L82) → `this.ctx.relativePlayer(target.player)`
+  · [duel-page.component.ts:988](front/src/app/pages/pvp/duel-page/duel-page.component.ts#L988) → `this.duelCtx.relativePlayer(c.player)`
+  · [duel-page.component.ts:1093](front/src/app/pages/pvp/duel-page/duel-page.component.ts#L1093) → `this.duelCtx.relativePlayer(pl.player)`
+  · [pvp-board-container.component.ts:348](front/src/app/pages/pvp/duel-page/pvp-board-container/pvp-board-container.component.ts#L348) → `this.toRelativePlayer(link.controller)` (nouveau helper privé qui inject DuelContext optional + fallback sur input idiom pour preview specs)
+  · [pvp-board-container.component.ts:555](front/src/app/pages/pvp/duel-page/pvp-board-container/pvp-board-container.component.ts#L555) → `this.toRelativePlayer(link.player)`
+  · [replay-page.component.ts:257](front/src/app/pages/pvp/replay/replay-page.component.ts#L257) → `this.duelCtx.relativePlayer(pl.player)`
+  · [replay-page.component.ts:272](front/src/app/pages/pvp/replay/replay-page.component.ts#L272) → `this.duelCtx.relativePlayer(place.player)`
+  · [prompt-derivation.service.ts:121](front/src/app/pages/pvp/duel-page/prompt-derivation.service.ts#L121) — laissé inline (pattern two-phase init par closures, pas DI) avec commentaire-pointeur expliquant la doctrine : si un 2e site arrive, ajouter `relativePlayer: (abs) => 0 | 1` au config.
+- **Pivot architectural** : `pvp-board-container` injecte maintenant
+  `DuelContext` en `{ optional: true }` — préserve l'embeddabilité
+  preview hors-duel (le composant continue de marcher sans DuelContext
+  provider via le fallback input idiom). Pattern confirmé par le
+  même `inject(DuelLogger, { optional: true })` déjà en place.
+- **Doctrine** : section CLAUDE.md "Relativizer routing discipline (F6)"
+  qui liste les 8 sites refactorés + tous les sites intentionnellement
+  laissés inline avec leur justification.
+- **Tests** : tsc green. Karma 162/162 pass sur les 4 specs
+  touchées (target-indicator + board-container + duel-page + prompt-
+  derivation + replay-page).
+- **Statut** : DONE.
 
 ### F7 — Sync protocole WS front↔back : script existe mais trou CI
 - **Lieu** : `scripts/check-ws-protocol-sync.mjs`, `duel-server/package.json:10`
