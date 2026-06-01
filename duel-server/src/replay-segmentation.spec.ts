@@ -54,6 +54,16 @@ describe('replay-segmentation (U12)', () => {
     expect(SEGMENTATION.MSG_CHANGE_POS).toBe('accumulate');
   });
 
+  it('MSG_WIN is accumulate (duel-ending visual event, not a flush boundary)', () => {
+    // #5 (audit review) — pin the MSG_WIN classification explicitly.
+    // The precompute does NOT flush on MSG_WIN ; it lets the duel-ending
+    // event ride into the last timeline entry, and `runReplayPreComputation`
+    // emits the final state at the loop tail. Promoting MSG_WIN to
+    // flush-before here without simultaneously patching the precompute
+    // would silently desync the timeline.
+    expect(SEGMENTATION.MSG_WIN).toBe('accumulate');
+  });
+
   it('SELECT_*/SORT_*/ANNOUNCE_* prompts are not-an-event (fed as decisions, not events)', () => {
     expect(SEGMENTATION.SELECT_CARD).toBe('not-an-event');
     expect(SEGMENTATION.SELECT_CHAIN).toBe('not-an-event');

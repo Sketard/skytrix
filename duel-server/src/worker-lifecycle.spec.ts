@@ -355,7 +355,7 @@ describe('worker-lifecycle', () => {
     // offering rematch invitations for fork-solo sessions.
     it('does NOT arm rematch timer when session.forkMode (U1)', () => {
       const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
+      configureWorkerLifecycle(makeConfig(spy, { rematchExpiryMs: 100 }));
       const s = makeSession();
       s.soloMode = true;
       s.forkMode = true;
@@ -365,6 +365,14 @@ describe('worker-lifecycle', () => {
       expect(s.endedAt).not.toBeNull();
       expect(spy.timerClears).toHaveLength(1);
       expect(s.rematchTimeout).toBeNull();
+
+      // #17 (audit review) — verify the rematch CALLBACK is never invoked
+      // even after the timer would have fired. Asserting `=== null`
+      // passes trivially if the default state is `null` ; advancing the
+      // clock past `rematchExpiryMs` then checking `rematchExpirations`
+      // proves the timer was never armed in the first place.
+      vi.advanceTimersByTime(200);
+      expect(spy.rematchExpirations).toEqual([]);
     });
   });
 
