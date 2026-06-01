@@ -299,7 +299,7 @@
       "surrender": { "winner": "L'adversaire a abandonné", "loser": "Vous avez abandonné" },
       "timeout": { "winner": "L'adversaire a dépassé le temps", "loser": "Vous avez dépassé le temps" },
       "inactivity": { "winner": "L'adversaire était inactif", "loser": "Vous étiez inactif" },
-      "inactivity_solo": "Session expirée (5 min sans activité — protection anti-leak serveur)",
+      "inactivity_solo": "Session expirée pour cause d'inactivité — protection anti-leak serveur",
       "disconnect": { "winner": "L'adversaire s'est déconnecté", "loser": "Vous vous êtes déconnecté" },
       "draw_both_disconnect": { "winner": "Les deux joueurs se sont déconnectés", "loser": "Les deux joueurs se sont déconnectés" },
       "worker_error": { "winner": "Erreur moteur", "loser": "Erreur moteur" },
@@ -309,7 +309,7 @@
     "inactivity": {
       "title": "Êtes-vous toujours là ?",
       "warning": "Vous perdrez par inactivité si vous ne répondez pas.",
-      "warningSolo": "Cette session expirera dans 1 minute si vous ne confirmez pas.",
+      "warningSolo": "Cette session expirera bientôt si vous ne confirmez pas.",
       "confirm": "Je suis là"
     },
     "a11y": {

@@ -1356,8 +1356,15 @@ export class DuelConnection {
         // row `_hintContext` ("clear LES DEUX au DUEL_END + REMATCH_STARTING
         // + STATE_SYNC"). Legacy did NOT clear it at DUEL_END, but the spec
         // table is authoritative for the per-slot semantics.
+        // U6-D3 (audit-4-modes-2026-06-01 review): also clear the
+        // selection-accumulator pair. Without this, a duel 2 SELECT_CARD
+        // matching the duel 1 last promptType inherits stale `excludedCards`
+        // into `pvp-prompt-dialog.attachComponent` → user sees ghost
+        // exclusions on the very first prompt of the rematch.
         for (const s of this._slots) {
           s.lastConfirmedCards = [];
+          s.lastSelectedCards = [];
+          s.lastSelectedPromptType = null;
           s.pendingPrompt.set(null);
           s.inactivityWarning.set(null);
           s.waitingForOpponent.set(false);
@@ -1425,8 +1432,15 @@ export class DuelConnection {
         // DUEL_END + REMATCH_STARTING + STATE_SYNC" and _inactivityWarning
         // "clear LES DEUX au DUEL_END + REMATCH_STARTING"). Legacy did
         // not clear either at REMATCH_STARTING; spec table is authoritative.
+        // U6-D3 (audit-4-modes-2026-06-01 review): same selection-accumulator
+        // clear as DUEL_END — REMATCH_STARTING typically arrives without an
+        // intervening STATE_SYNC, so without this clear the first SELECT_*
+        // of the rematch inherits stale `lastSelectedCards` when the
+        // promptType matches.
         for (const s of this._slots) {
           s.lastConfirmedCards = [];
+          s.lastSelectedCards = [];
+          s.lastSelectedPromptType = null;
           s.pendingPrompt.set(null);
           s.waitingForOpponent.set(false);
           s.inactivityWarning.set(null);

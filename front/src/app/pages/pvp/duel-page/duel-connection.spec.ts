@@ -875,7 +875,7 @@ describe('DuelConnection — mass-reset matrix (spec §4.3 A8, U6)', () => {
     turnPlayer: 0, turnCount: 0, phase: 1,
   } as never;
 
-  it('DUEL_END clears 5 fields on BOTH slots, leaves selection state untouched', () => {
+  it('DUEL_END clears 7 fields on BOTH slots, leaves hintCardConsumed untouched', () => {
     const { conn } = makeConn();
     primeSlot(conn, 0);
     primeSlot(conn, 1);
@@ -890,16 +890,21 @@ describe('DuelConnection — mass-reset matrix (spec §4.3 A8, U6)', () => {
       expect(p.hintContext.cardName).toBe(''); // empty hintContext
       expect(p.hintContext.hintType).toBe(0);
       expect(p.lastConfirmedCards).toEqual([]);
-      // DUEL_END intentionally does NOT touch selection-history fields;
-      // they survive until next STATE_SYNC. Pinning the carve-out so a
-      // future "clear everything" PR cannot silently broaden the reset.
-      expect(p.lastSelectedCards.length).toBe(1);
-      expect(p.lastSelectedPromptType).toBe('SELECT_CARD');
+      // U6-D3 (audit-4-modes-2026-06-01 review) — selection accumulator MUST
+      // be cleared at DUEL_END. Stale values would leak into the rematch's
+      // first SELECT_* of matching promptType via `excludedCards`
+      // (pvp-prompt-dialog.attachComponent reads `wsService.lastSelectedCards`).
+      expect(p.lastSelectedCards).toEqual([]);
+      expect(p.lastSelectedPromptType).toBeNull();
+      // hintCardConsumed is intentionally NOT cleared — it's a per-prompt
+      // consumption marker, not session state. STATE_SYNC clears it (cancel
+      // rollback). Pinning the carve-out so a future "clear everything"
+      // PR cannot silently broaden the reset.
       expect(p.hintCardConsumed).toBeTrue();
     }
   });
 
-  it('REMATCH_STARTING clears the same 5 fields as DUEL_END on BOTH slots', () => {
+  it('REMATCH_STARTING clears the same 7 fields as DUEL_END on BOTH slots', () => {
     const { conn } = makeConn();
     primeSlot(conn, 0);
     primeSlot(conn, 1);
@@ -914,9 +919,10 @@ describe('DuelConnection — mass-reset matrix (spec §4.3 A8, U6)', () => {
       expect(p.hintContext.cardName).toBe('');
       expect(p.hintContext.hintType).toBe(0);
       expect(p.lastConfirmedCards).toEqual([]);
-      // Same carve-out as DUEL_END — selection history survives.
-      expect(p.lastSelectedCards.length).toBe(1);
-      expect(p.lastSelectedPromptType).toBe('SELECT_CARD');
+      // U6-D3 — same selection-accumulator clear as DUEL_END (REMATCH_STARTING
+      // typically arrives without an intervening STATE_SYNC).
+      expect(p.lastSelectedCards).toEqual([]);
+      expect(p.lastSelectedPromptType).toBeNull();
       expect(p.hintCardConsumed).toBeTrue();
     }
   });
@@ -968,7 +974,8 @@ describe('DuelConnection — mass-reset matrix (spec §4.3 A8, U6)', () => {
       // waitingForOpponent — the server re-sends a fresh WAITING_RESPONSE
       // after the resync, and INACTIVITY_WARNING is a transport-time event
       // that does not survive a reconnect on the server side anyway.
-      // (The audit doc's A8 table shows these as "–" for STATE_SYNC.)
+      // (See `_bmad-output/planning-artifacts/phase-gamma-option-c-multiplex-spec.md`
+      // §4.3 A8 — these rows show "–" for STATE_SYNC.)
       expect(p.inactivityWarning).not.toBeNull();
       expect(p.waitingForOpponent).toBeTrue();
     }
