@@ -770,3 +770,30 @@ describe('DuelConnection — onclose 4426 protocol mismatch (U2)', () => {
     expect(conn.protocolMismatch()).toBeFalse();
   });
 });
+
+// =============================================================================
+// U29 (audit-4-modes-2026-06-01) — DuelConnection.cleanup() idempotence.
+// Transport Lifecycle Invariant 1 (CLAUDE.md) requires cleanup() to be safe
+// to call multiple times — SOLO multiplex teardown invokes it twice
+// (orchestrator.cleanup + wsService.ngOnDestroy), and the wsService ctor
+// builds a default conn immediately replaced + cleaned by bindSoloConnection.
+// =============================================================================
+
+describe('DuelConnection.cleanup() — idempotence (Transport Lifecycle Invariant 1)', () => {
+  it('calling cleanup() twice in a row does not throw', () => {
+    const storageKey = `duel-test-${Math.random().toString(36).slice(2, 10)}`;
+    const conn = new DuelConnection('/ws/test', false, storageKey);
+
+    expect(() => {
+      conn.cleanup();
+      conn.cleanup();
+    }).not.toThrow();
+  });
+
+  it('calling cleanup() without a prior connect() does not throw', () => {
+    const storageKey = `duel-test-${Math.random().toString(36).slice(2, 10)}`;
+    const conn = new DuelConnection('/ws/test', false, storageKey);
+
+    expect(() => conn.cleanup()).not.toThrow();
+  });
+});

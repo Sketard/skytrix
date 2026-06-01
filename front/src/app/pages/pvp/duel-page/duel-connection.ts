@@ -821,7 +821,28 @@ export class DuelConnection {
     this.openConnection();
   }
 
+  /**
+   * Idempotent teardown. SOLO multiplex tears down a connection from two
+   * sites (`SoloDuelOrchestratorService.cleanup` + `wsService.ngOnDestroy`),
+   * and the wsService's ctor allocates a default connection that is
+   * orphaned + cleaned immediately by `bindSoloConnection` — every call
+   * site must tolerate a second invocation without throwing.
+   *
+   * Today every line below is structurally idempotent (assertNoLocks no-ops
+   * on cleared locks, rbs.destroy is null-safe, clearTimeoutSlot is null-safe,
+   * the WS close + null-out is gated). The `_destroyed` flag (U29,
+   * 2026-06-01) lifts that property from "by inspection" to "by
+   * construction" — a future non-null-safe addition (a Datadog counter, a
+   * listener removal that throws on missing listener) cannot break the
+   * double-cleanup contract without ALSO removing the early-return.
+   *
+   * See CLAUDE.md "Transport Lifecycle Invariants → Invariant 1".
+   */
+  private _destroyed = false;
+
   cleanup(): void {
+    if (this._destroyed) return;
+    this._destroyed = true;
     this.rbs.assertNoLocks('cleanup');
     this.rbs.destroy();
     this.clearTimeoutSlot('connection');
