@@ -101,8 +101,8 @@ export class AnimationOrchestratorService {
   private readonly gameLog = inject(DuelGameLogService, { optional: true });
   /**
    * α.5 — the duel-page-scoped `ScopeResetDispatcher`. Used by
-   * `notifyPerspectiveSwitch` (dispatches PERSPECTIVE_LIFETIME),
-   * `resetForReplaySeek` and `onStateSync` (both dispatch DUEL_LIFETIME)
+   * `notifyPerspectiveSwitch` + `resetForReplaySeek` (both dispatch
+   * PERSPECTIVE_LIFETIME) and `onStateSync` (dispatches DUEL_LIFETIME)
    * to fan-out resets to the 4 `ResetTarget` managers (Chain, Lp,
    * Battle, Log). `{ optional: true }` for the same reason as `gameLog`
    * — the orchestrator's own spec suite (`animation-orchestrator.service.spec.ts`)
@@ -972,7 +972,10 @@ export class AnimationOrchestratorService {
    *     accurate. Mid-chain `_pendingLpCommits` now correctly survive the
    *     switch (cf. §3.5 LP scope rationale).
    *
-   *   - `resetForReplaySeek` and `onStateSync` both pass `{DUEL_LIFETIME}`
+   *   - `resetForReplaySeek` passes `{PERSPECTIVE_LIFETIME}` (LP tracker
+   *     + journal preserved here — the journal is wiped explicitly by
+   *     the caller `abortAndClean` before its `rebuildUpTo` re-feed).
+   *   - `onStateSync` passes `{DUEL_LIFETIME}`
    *     → cascade hits all 4 managers (DUEL ⊃ CONNECTION ⊃ PERSPECTIVE).
    *     The journal is cleared via `gameLog.applyReset` so the incoming
    *     STATE_SYNC payload's `gameLogEntries` can repopulate from a clean
@@ -1182,29 +1185,33 @@ export class AnimationOrchestratorService {
 
   /**
    * Hard reset triggered by a replay seek (the unique caller :
-   * `ReplayPageComponent.abortAndClean`). Dispatches `{DUEL_LIFETIME}`
-   * which cascades to CONNECTION + PERSPECTIVE — every ResetTarget
-   * is invalidated, including the journal (DuelGameLogService) and the
-   * LP tracker (LpAnimationTracker). A seek is causally a checkpoint
-   * (the user moves to a different point in time), not a perspective
-   * switch — the scope reflects that.
+   * `ReplayPageComponent.abortAndClean`). Dispatches
+   * `{PERSPECTIVE_LIFETIME}` — clears the volatile slice (chain
+   * resolution banner / replay timers, battle + target indicators,
+   * `animatingLpPlayer`, in-progress attack) without touching the
+   * LP tracker's `trackedLp` (DUEL_LIFETIME). The caller restores
+   * the journal explicitly via `gameLog.reset()` immediately after,
+   * since DUEL is not cascaded.
    *
-   * F27 (2026-05-31) — renamed from `resetForSwitch` + scope widened
-   * from `{PERSPECTIVE_LIFETIME}` to `{DUEL_LIFETIME}`. The previous
-   * narrow scope was load-bearing only thanks to compensating
-   * mechanisms (`lpTracker.syncFromBoardState` via `onFinalize` before
-   * any stale `peekLpDelta` read) ; aligning the scope on the actual
-   * causal nature of a seek removes a regression risk for any future
-   * DUEL-scoped manager that would lack such a compensator.
+   * F27 (2026-05-31) — renamed from `resetForSwitch`. Initially also
+   * widened scope to `{DUEL_LIFETIME}` on the rationale that a seek
+   * is "causally a checkpoint", but post-merge adversarial review
+   * (2026-06-01) showed the widening introduces a real desync : the
+   * DUEL cascade resets `trackedLp` to `[STARTING_LP, STARTING_LP]`,
+   * and `requestStop` aborts BEFORE `onFinalize` would re-prime the
+   * tracker via `syncFromBoardState`. The next `peekLpDelta` post-
+   * seek reads `fromLp = 8000` instead of the real LP at the target
+   * state. Reverted to PERSPECTIVE here ; the journal wipe stays
+   * explicit at the caller site (DRY enough for a single caller).
    *
    * SOLO PvP perspective switch does NOT go through this method — it
    * goes through `notifyPerspectiveSwitch` which dispatches
-   * `{PERSPECTIVE_LIFETIME}` (LP + journal survive a switch on the
-   * same duel). The two paths are intentionally separate.
+   * `{PERSPECTIVE_LIFETIME}` as well (LP + journal survive a switch
+   * on the same duel). The two paths share semantics by design.
    */
   resetForReplaySeek(): void {
     this.logger.log(DuelLogCategory.QUEUE, 'resetForReplaySeek — clearing all state & timeouts');
-    this.resetAllState(new Set<ScopeCategory>(['DUEL_LIFETIME']));
+    this.resetAllState(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
     document.querySelectorAll<HTMLElement>('.pvp-deck-shuffle').forEach(el => {
       el.classList.remove('pvp-deck-shuffle');
       el.style.removeProperty('--pvp-shuffle-duration');

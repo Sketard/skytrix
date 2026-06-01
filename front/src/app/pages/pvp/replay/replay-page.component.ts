@@ -801,14 +801,16 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   // --- DRY cleanup helper (used by all interruption points) ---
 
   private abortAndClean(): void {
-    // F27 (2026-05-31) — `resetForReplaySeek` dispatches `{DUEL_LIFETIME}`
-    // which cascades through DuelGameLogService.applyReset (DUEL_LIFETIME
-    // scope → calls `this.reset()`). The previous explicit
-    // `this.gameLog.reset()` after the orchestrator call is no longer
-    // needed — the cascade handles it.
+    // `resetForReplaySeek` dispatches `{PERSPECTIVE_LIFETIME}` — clears
+    // the volatile slice without touching `trackedLp` (a DUEL widening
+    // here desynchronised the LP counter at the next post-seek MSG_DAMAGE,
+    // since `requestStop` aborts before `onFinalize` would re-prime the
+    // tracker via `syncFromBoardState`). The journal is wiped explicitly
+    // below — the rebuild tick re-feeds [0..currentIndex] right after.
     this.orchestrator.resetForReplaySeek();
     this.phaseService.clear();
     this.adapter.abort();
+    this.gameLog.reset();
     // Bump the rebuild tick so the seek-rebuild effect re-feeds the journal
     // with the history [0..currentIndex] once the seek has committed its
     // index (Bug 1). A forward step does NOT call `abortAndClean`, so it

@@ -256,8 +256,9 @@ export class DuelGameLogService implements ResetTarget {
    * `[0..N]` after a seek (analysis: the journal is an *history*, not a
    * snapshot of step N).
    *
-   * A replay seek runs `abortAndClean → resetForReplaySeek →
-   * applyReset({DUEL_LIFETIME}) → reset()` which empties the journal,
+   * A replay seek runs `abortAndClean → resetForReplaySeek` (scope
+   * PERSPECTIVE — does NOT cascade here) followed by an explicit
+   * `gameLog.reset()` at the caller which empties the journal,
    * then `jumpToState()` renders the board for step N
    * directly — the events BEFORE N never pass back through the
    * `notifyGameLog` tap, so the journal would restart empty at N. This
