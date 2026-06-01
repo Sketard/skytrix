@@ -299,6 +299,7 @@
       "surrender": { "winner": "Opponent surrendered", "loser": "You surrendered" },
       "timeout": { "winner": "Opponent timed out", "loser": "You timed out" },
       "inactivity": { "winner": "Opponent was inactive", "loser": "You were inactive" },
+      "inactivity_solo": "Session expired (5 min idle — server anti-leak protection)",
       "disconnect": { "winner": "Opponent disconnected", "loser": "You disconnected" },
       "draw_both_disconnect": { "winner": "Both players disconnected", "loser": "Both players disconnected" },
       "worker_error": { "winner": "Engine error", "loser": "Engine error" },
@@ -308,6 +309,7 @@
     "inactivity": {
       "title": "Are you still there?",
       "warning": "You will forfeit due to inactivity if you don't respond.",
+      "warningSolo": "This session will expire in 1 minute if you don't confirm.",
       "confirm": "I'm here"
     },
     "a11y": {

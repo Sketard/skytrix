@@ -14,7 +14,7 @@ export class DuelPromptEffectsService {
 
   private inactivityDialogRef: MatDialogRef<unknown> | null = null;
 
-  initEffects(config: { activationMode: Signal<ActivationMode> }): void {
+  initEffects(config: { activationMode: Signal<ActivationMode>; isSoloMode?: Signal<boolean> }): void {
     // Activation toggle auto-respond effect (off + auto modes).
     effect(() => {
       const mode = config.activationMode();
@@ -57,6 +57,7 @@ export class DuelPromptEffectsService {
             disableClose: true,
             width: '320px',
             panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--warning'],
+            data: { soloMode: config.isSoloMode?.() ?? false },
           });
           this.inactivityDialogRef.afterClosed().subscribe(() => {
             if (this.inactivityDialogRef) {

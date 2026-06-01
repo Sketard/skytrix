@@ -715,7 +715,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     });
 
     // Prompt effects (extracted to DuelPromptEffectsService)
-    this.promptEffects.initEffects({ activationMode: this.activationMode });
+    this.promptEffects.initEffects({ activationMode: this.activationMode, isSoloMode: this.isSoloMode });
 
     // Loading effects (extracted to DuelLoadingEffectsService)
     this.loadingEffects.initEffects({
@@ -1181,6 +1181,12 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     if (result.winReasonCode != null) {
       const resolved = this.systemStrings.resolveWinReason(result.winReasonCode);
       if (resolved) return resolved;
+    }
+    // U24 — SOLO inactivity: the viewer IS both players, so "Opponent was inactive" /
+    // "You were inactive" is ambiguous. Surface the actual cause (server anti-leak
+    // timeout, not gameplay loss) via a SOLO-only key.
+    if (result.reason === 'inactivity' && this.isSoloMode()) {
+      return this.translate.instant('duel.reason.inactivity_solo');
     }
     const side = isWinner ? 'winner' : 'loser';
     const key = `duel.reason.${result.reason}.${side}`;

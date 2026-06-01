@@ -1187,3 +1187,59 @@ describe('DuelPageComponent — rematch re-enters the dice flow (C1.7)', () => {
     expect(room.forceState).not.toHaveBeenCalledWith('connecting');
   });
 });
+
+// =============================================================================
+// U24 — SOLO inactivity reason mapping
+// =============================================================================
+
+describe('DuelPageComponent — mapDuelEndReason SOLO inactivity (U24)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let component: DuelPageComponent;
+  let ws: StubWsService;
+
+  beforeEach(() => {
+    setupTestBed();
+    fixture = TestBed.createComponent(DuelPageComponent);
+    component = fixture.componentInstance;
+    ws = wsOf(fixture);
+    // Stub translate.instant to surface the key requested as `[key]` — the
+    // component's mapDuelEndReason fall-throughs to `duel.reason.unknown`
+    // when `translated === key`, so we need translated != key for the
+    // "side-aware key was hit" path to surface in the result.
+    const t = TestBed.inject(TranslateService) as unknown as { instant: (k: string) => string };
+    t.instant = (k: string) => `[${k}]`;
+    fixture.detectChanges();
+  });
+
+  it('PvP normal inactivity loss reads duel.reason.inactivity.loser', () => {
+    (component.isSoloMode as WritableSignal<boolean>).set(false);
+    ws.ocgPlayerIndex.set(0);
+    ws.duelResult.set({ winner: 1, reason: 'inactivity' });
+    fixture.detectChanges();
+    expect(component.resultOutcome()?.reason).toBe('[duel.reason.inactivity.loser]');
+  });
+
+  it('PvP normal inactivity win reads duel.reason.inactivity.winner', () => {
+    (component.isSoloMode as WritableSignal<boolean>).set(false);
+    ws.ocgPlayerIndex.set(0);
+    ws.duelResult.set({ winner: 0, reason: 'inactivity' });
+    fixture.detectChanges();
+    expect(component.resultOutcome()?.reason).toBe('[duel.reason.inactivity.winner]');
+  });
+
+  it('SOLO inactivity routes to duel.reason.inactivity_solo regardless of winner', () => {
+    (component.isSoloMode as WritableSignal<boolean>).set(true);
+    ws.ocgPlayerIndex.set(0);
+    ws.duelResult.set({ winner: 1, reason: 'inactivity' });
+    fixture.detectChanges();
+    expect(component.resultOutcome()?.reason).toBe('[duel.reason.inactivity_solo]');
+  });
+
+  it('SOLO non-inactivity end reason still routes through the side-aware key', () => {
+    (component.isSoloMode as WritableSignal<boolean>).set(true);
+    ws.ocgPlayerIndex.set(0);
+    ws.duelResult.set({ winner: 0, reason: 'win' });
+    fixture.detectChanges();
+    expect(component.resultOutcome()?.reason).toBe('[duel.reason.win.winner]');
+  });
+});
