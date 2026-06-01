@@ -577,6 +577,102 @@ describe('QueueRunner (loop) — Palier B', () => {
     });
   });
 
+  // ===========================================================================
+  // U22 (audit-4-modes-2026-06-01) / F13 site 2 of 3 — INTRA-TICK parallel
+  // re-entry detection.
+  // ---------------------------------------------------------------------------
+  // The runner's finalize block (`case 'finalize'` in `_processAnimationQueueInner`)
+  // flips `_isProcessing = false` BEFORE `setRunning(false)` (load-bearing for
+  // the queue-stall recovery — see comment at queue-runner.ts:612-616). That
+  // opens a sync window where `setRunning(false)` → `onIsRunningChange(false)`
+  // → if the callback synchronously calls `notifyEnqueue` → `processAnimationQueue`,
+  // the `_isProcessing=false` gate passes and a SECOND inner loop starts before
+  // the first returns. AbortController does NOT guard this (no reset boundary).
+  // The `_innerLoopDepth++ + duelAssert(depth <= 1)` at the top of the inner
+  // loop is the structural detection (audit finding C4 / F13).
+  //
+  // Pre-U22, F13 site 1 (requestStop zero) was covered by 'a suspended loop
+  // bails on resume after requestStop' above, but site 2 (the assert itself)
+  // was unpinned. A regression removing the `<=1` assert or the `++` would
+  // silently allow two inner loops to dispatch the same queue entries in
+  // parallel — visible only on a specific intra-tick race.
+  describe('intra-tick parallel re-entry (F13 / C4)', () => {
+    it('the inner-loop depth assert detects a parallel finalize→re-enqueue path', async () => {
+      // We trigger the race ourselves : the onIsRunningChange(false) callback
+      // synchronously enqueues + notifies, mimicking what happens in prod when
+      // `advanceStep` fires from the same effect tick.
+      let triggerReentry = false;
+      let reentryDispatched = false;
+      const handleCalls: GameEvent[] = [];
+      const ds = new MockDataSource();
+      const watchdog = new PollDropWatchdog(
+        () => ({ isResolving: false, queueLen: ds.animationQueue().length, isAnimating: false, hasPendingPrompt: false }),
+        () => undefined,
+        /* delayMs */ 10_000,
+      );
+      const injector = TestBed.inject(Injector);
+      const deps: QueueRunnerDeps = {
+        dataSource: asDataSource(ds),
+        pollDropWatchdog: watchdog,
+        ctx: stubCtx,
+        logger: silentLogger,
+        injector,
+        handleEntry: (e: GameEvent) => { handleCalls.push(e); return 0; },
+        processDirective: async () => 'continue',
+        applyInstantAnimation: () => undefined,
+        consumeDeferredSolving: () => undefined,
+        preReplayBuffer: async () => undefined,
+        preLockQueuedSources: () => undefined,
+        onStepSettled: () => undefined,
+        onFinalize: () => undefined,
+        onIsRunningChange: (running) => {
+          // The race window : finalize flipped _isProcessing=false JUST BEFORE
+          // setRunning(false), which fires this callback synchronously. If we
+          // re-enqueue + notify here, the second processAnimationQueue passes
+          // the gate.
+          if (!running && triggerReentry) {
+            triggerReentry = false;
+            reentryDispatched = true;
+            ds.setQueue([ev('MSG_DAMAGE')]);
+            runnerRef!.notifyEnqueue();
+          }
+        },
+        decisionInputs: () => ({
+          isWaitingForOverlay: false,
+          hasDrawsInFlight: false,
+          isResolving: false,
+          hasBufferedEvents: false,
+          hasPendingPrompt: false,
+          commitMode: 'per-event',
+          deferredSolvingEntry: null,
+        }),
+      };
+      let runnerRef: QueueRunner | null = null;
+      runnerRef = new QueueRunner(deps);
+
+      // First pass : queue with one event. After it dispatches and finalize
+      // empties the queue, the onIsRunningChange(false) callback re-enqueues.
+      ds.setQueue([ev('MSG_MOVE')]);
+      triggerReentry = true;
+      runnerRef.notifyEnqueue();
+      // Multiple microtask flushes : the second pass runs through finalize
+      // again (queue emptied again), no more re-entry triggered.
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+
+      // Pre-conditions: the re-entry trigger fired.
+      expect(reentryDispatched).withContext('re-entry trigger should have fired in finalize').toBeTrue();
+
+      // The MSG_DAMAGE enqueued from inside onIsRunningChange(false) MUST be
+      // dispatched exactly once. If the parallel-re-entry assert was removed,
+      // both the stale inner loop (re-running after the finalize finally) and
+      // the fresh one would dispatch MSG_DAMAGE → 2 calls. The assert today
+      // throws on the 2nd loop's depth=2, taking the 2nd loop down before it
+      // can re-dispatch.
+      const damageCalls = handleCalls.filter(e => e.type === 'MSG_DAMAGE');
+      expect(damageCalls).withContext('MSG_DAMAGE should be dispatched at most once despite the intra-tick re-entry').toHaveSize(1);
+    });
+  });
+
   describe('finalize / POLL-DROP watchdog', () => {
     it('arms the watchdog when finalize fires during chainPhase=resolving', async () => {
       const armed: number[] = [];
