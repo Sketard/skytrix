@@ -429,4 +429,38 @@ describe('DuelGameLogService', () => {
       expect(service.gameLogEntries().length).toBeGreaterThan(before);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // U16 (2026-06-01) — RewriterRule-absorbed events must NOT pollute the
+  // journal. Mirror of the β.3 cas #12 virtual filter: real OCGCore MSG_MOVE
+  // settlings (GRAVE→GRAVE, EXTRA→EXTRA) consumed by a `RewriterRule` are
+  // tagged via `tagAsAbsorbed` in the orchestrator's `pushToStream` and the
+  // journal MUST skip them.
+  // ---------------------------------------------------------------------------
+  describe('U16 — absorbed event filtering', () => {
+    it('skips MSG_MOVE events tagged via tagAsAbsorbed', async () => {
+      const { tagAsAbsorbed } = await import('./absorbed-event-registry');
+      const absorbedMove = tagAsAbsorbed({
+        type: 'MSG_MOVE' as const,
+        cardCode: 42,
+        cardName: 'Some Material',
+        player: 0 as 0 | 1,
+        toPlayer: 0 as 0 | 1,
+        fromLocation: 0x10 /* GRAVE */,
+        fromSequence: 0,
+        toLocation: 0x10 /* GRAVE */,
+        toSequence: 0,
+        fromPosition: 0,
+        toPosition: 0,
+        reason: 0x600,
+      });
+      const before = service.gameLogEntries().length;
+      service.notifyGameLog(absorbedMove as unknown as Parameters<typeof service.notifyGameLog>[0]);
+      // Untouched : the absorbed real event was filtered out before reaching
+      // the builder. Without this filter the journal would show a duplicate
+      // "→ went to Graveyard" entry alongside the virtual MSG_MOVE the rule
+      // already synthesized.
+      expect(service.gameLogEntries().length).toBe(before);
+    });
+  });
 });

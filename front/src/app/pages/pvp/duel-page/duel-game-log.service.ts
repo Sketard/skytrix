@@ -34,6 +34,7 @@ import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
 import { EMPTY_DUEL_STATE } from '../types';
 import { isVirtual } from './virtual-event-registry';
+import { isAbsorbed } from './absorbed-event-registry';
 
 /**
  * StreamEvent narrowed to what the legacy journal actually consumes.
@@ -319,6 +320,14 @@ export class DuelGameLogService implements ResetTarget {
     // the journal. Tagged via `tagAsVirtual` at synthesis ; the journal
     // is the canonical consumer of `isVirtual` (post-review H6).
     if (isVirtual(event)) return;
+    // U16 (2026-06-01) — Mirror filter for RewriterRule-absorbed events.
+    // A real OCGCore MSG_MOVE that a RewriterRule matched via `chainTo`
+    // (e.g., the GRAVE→GRAVE / EXTRA→EXTRA settlings of XYZ materials)
+    // would otherwise produce a duplicate journal entry alongside the
+    // virtuals already filtered above. Tagged via `tagAsAbsorbed` in
+    // `AnimationOrchestratorService.pushToStream` when the DEP reports
+    // `{absorbed: true}`.
+    if (isAbsorbed(event)) return;
     this.tappedEvents.push(event);
     this.ingest(event);
     this.captureOpponentActivation(event);

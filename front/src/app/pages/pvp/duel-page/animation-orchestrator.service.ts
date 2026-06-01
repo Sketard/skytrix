@@ -44,6 +44,7 @@ import { PollDropWatchdog } from './poll-drop-watchdog';
 import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
+import { tagAsAbsorbed, isAbsorbed } from './absorbed-event-registry';
 import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, TargetedZoneKeysProjection, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
@@ -1064,7 +1065,15 @@ export class AnimationOrchestratorService {
   pushToStream(event: StreamEvent): number {
     const ref = this._transport_nextStreamRef++;
     this._eventStream.update(s => [...s, event]);
-    this.deferredProcessor.observe(event, ref);
+    // U16 (2026-06-01) — propagate the DEP's `{absorbed}` flag. A
+    // `RewriterRule` (today only `xyzLeaveWithMaterials`) that matches the
+    // event via `chainTo` consumes it: the routing aval (`processEvent`
+    // dispatch switch) MUST skip the per-type handler and the journal MUST
+    // skip the ingest. Both surfaces read `isAbsorbed(event)`. The event
+    // stays on `_eventStream` so DEP-driven projections (deferred markers,
+    // animation lifecycle pair) keep observing a complete history.
+    const { absorbed } = this.deferredProcessor.observe(event, ref);
+    if (absorbed) tagAsAbsorbed(event);
     return ref;
   }
 
@@ -1531,6 +1540,19 @@ export class AnimationOrchestratorService {
     // that retained a reference still sees the original shape.
     const eventToPush = this.decorateLpEventForStream(event);
     this._transport_lastDispatchedRef = this.pushToStream(eventToPush);
+
+    // U16 (2026-06-01) — skip the dispatch switch when the just-pushed
+    // event was absorbed by a DEP `RewriterRule`. The stream entry is
+    // already in place (DEP / projections observe it); the lifecycle pair
+    // (`AnimationStarted` / `AnimationCompleted`) is emitted by the normal
+    // path (`_dispatchEvent.emitAnimationStarted` after this returns +
+    // `QueueRunner.onStepSettled` after the 0ms hold settles). Returning
+    // 0 short-circuits any animation work — the rule has already played
+    // the equivalent visual via its synthesized virtual MSG_MOVEs.
+    if (isAbsorbed(eventToPush)) {
+      this.logger.log(DuelLogCategory.PROC, 'Absorbed by DEP rewriter, skipping dispatch %s', event.type);
+      return 0;
+    }
 
     switch (event.type) {
       case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);
