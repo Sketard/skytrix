@@ -6,6 +6,7 @@ import type {
   CardInfo,
   Player,
 } from '../duel-ws.types';
+import { createMockWebSocketFactory } from './_test-utils/mock-websocket';
 
 // =============================================================================
 // Test helpers
@@ -694,5 +695,78 @@ describe('DuelConnection — A39-bis MSG_HINT broadcast intra-slot', () => {
     // Both slots overwritten by broadcast — cardName cleared.
     expect(conn.getHintContextFor(0)().cardName).toBe('');
     expect(conn.getHintContextFor(1)().cardName).toBe('');
+  });
+});
+
+// =============================================================================
+// U2 (audit-4-modes-2026-06-01) — Close-code 4426 (protocol version mismatch)
+// branch. The DuelConnection's onclose handler at duel-connection.ts:921-937
+// wipes both tokens, clears the localStorage entry, sets the protocolMismatch
+// signal so the page renders the "please refresh" banner. Pre-U2 there was
+// zero test exercising this branch — a regression silently removing the
+// token-wipe would only surface on a PROTOCOL_VERSION bump in prod with
+// stale-bundle clients.
+// =============================================================================
+
+describe('DuelConnection — onclose 4426 protocol mismatch (U2)', () => {
+  function makeConnWithFactory(): {
+    conn: DuelConnection;
+    socket: { fireClose(code?: number): void; fireOpen(): void };
+  } {
+    const storageKey = `duel-test-${Math.random().toString(36).slice(2, 10)}`;
+    const factory = createMockWebSocketFactory();
+    const conn = new DuelConnection('/ws/test', false, storageKey, undefined, {
+      // Cast to bypass the WebSocket structural-type mismatch — MockWebSocket
+      // implements the subset DuelConnection actually uses.
+      wsFactory: factory as unknown as { create(url: string): WebSocket },
+    });
+    // Drive a connect() so onclose gets wired by openConnection.
+    conn.connect('tok-ws');
+    const socket = factory.socket!;
+    return { conn, socket };
+  }
+
+  it('wipes reconnectToken + wsToken on close code 4426', () => {
+    const { conn, socket } = makeConnWithFactory();
+    socket.fireOpen();
+    // Simulate that the client had stored a reconnect token before the close
+    // (wsToken is already set to 'tok-ws' by connect() above).
+    (conn as unknown as { reconnectToken: string | null }).reconnectToken = 'tok-r';
+
+    socket.fireClose(4426);
+
+    expect((conn as unknown as { reconnectToken: string | null }).reconnectToken).toBeNull();
+    expect((conn as unknown as { wsToken: string | null }).wsToken).toBeNull();
+  });
+
+  it('sets protocolMismatch + flips connectionStatus to "lost"', () => {
+    const { conn, socket } = makeConnWithFactory();
+    socket.fireOpen();
+    expect(conn.protocolMismatch()).toBeFalse();
+
+    socket.fireClose(4426);
+
+    expect(conn.protocolMismatch()).toBeTrue();
+    expect(conn.connectionStatus()).toBe('lost');
+  });
+
+  it('clears the localStorage token entry on 4426', () => {
+    const { conn, socket } = makeConnWithFactory();
+    socket.fireOpen();
+    const storageKey = (conn as unknown as { storageKey: string }).storageKey;
+    localStorage.setItem(storageKey, 'tok-persisted');
+
+    socket.fireClose(4426);
+
+    expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it('control — non-4426 close (e.g. 1006) does NOT set protocolMismatch', () => {
+    const { conn, socket } = makeConnWithFactory();
+    socket.fireOpen();
+
+    socket.fireClose(1006);
+
+    expect(conn.protocolMismatch()).toBeFalse();
   });
 });
