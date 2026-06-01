@@ -9,6 +9,7 @@ import {
 } from './timer-management.js';
 import { handleDuelEnd, requestReplayFromWorker } from './worker-lifecycle.js';
 import { handlePreDuelResponse } from './first-player-coordinator.js';
+import { snapshotCancelTarget } from './cancel-rollback-main.js';
 import * as logger from './logger.js';
 
 /**
@@ -160,9 +161,9 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
       // snapshot at the same boundary; we mirror server-side because
       // lastSentPrompt gets overwritten by intermediate SELECT_PLACE/
       // SELECT_TRIBUTE/SELECT_POSITION before the user can right-click
-      // to cancel.
+      // to cancel. (U38, 2026-06-01 — extracted to cancel-rollback-main.ts.)
       if (msg.promptType === 'SELECT_IDLECMD' || msg.promptType === 'SELECT_BATTLECMD') {
-        session.cancelTargetPrompt[playerIndex] = expectedPrompt ?? null;
+        snapshotCancelTarget(session, playerIndex as 0 | 1, expectedPrompt ?? null);
       }
 
       pauseTurnTimer(session);

@@ -5,6 +5,7 @@ import { filterMessage } from './message-filter.js';
 import * as duelInstr from './duel-instrumentation.js';
 import { applyChainTransition } from './chain-state-tracker.js';
 import { ingestMessage as ingestIntoSessionGameLog } from './session-game-log.js';
+import { applyCancelRollbackBroadcast } from './cancel-rollback-main.js';
 import {
   handleTurnChange,
   scheduleTimerStart,
@@ -186,65 +187,12 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
 
     case 'WORKER_CANCEL_DONE': {
       // P0-3bis.3 — the worker has rolled back to the IDLECMD/BATTLECMD
-      // boundary. Re-broadcast the IDLECMD/BATTLECMD prompt cached at
-      // commit time so the client returns to the action menu. NOT
-      // counted as a retry. See cancel-rollback-contract.md for the
-      // full inventory of state slots reset across this flow.
-      const p = liveMsg.playerIndex;
-      const cached = session.cancelTargetPrompt[p];
-      if (cached) {
-        // γ Option C PR2 c6bis (A30) — SOLO multiplex routes the 3 sends
-        // to socket 0 (the only one). STATE_SYNC filter goes omniscient
-        // so the SOLO viewer's player-1 perspective sees the rollback's
-        // private fields (hand contents, deck order) it needs to render
-        // its slot correctly. PvP normal routes to socket `p` with the
-        // standard per-player filter.
-        const dest: 0 | 1 = session.soloMode ? 0 : p;
-        const omniscient = session.soloMode;
-
-        logger.log('CANCEL: re-broadcasting IDLECMD/BATTLECMD prompt', {
-          duelId: session.duelId, promptType: cached.type, player: p, dest,
-        });
-
-        // STATE_SYNC + empty CHAIN_STATE so the client's reset machinery
-        // runs (processor.reset + commitAll + clear pendingPrompt + clear
-        // chain overlay). Same path as a reconnection re-sync.
-        if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
-          const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
-          const filtered = filterMessage(stateSync, p, omniscient);
-          if (filtered) send(session, dest, filtered);
-        }
-        send(session, dest, {
-          type: 'CHAIN_STATE', links: [], phase: 'idle', negatedIndices: [],
-        } as ServerMessage);
-
-        // Mirror server-side chain bookkeeping so a subsequent
-        // reconnect-resync sends the same empty chain.
-        session.activeChainLinks = [];
-        session.chainPhase = 'idle';
-        session.negatedChainIndices.clear();
-        session.currentSolvingChainIndex = null;
-
-        // Hint replayed verbatim on reconnect would point at an effect
-        // that no longer exists — drop it.
-        session.lastSentHint[p] = null;
-
-        // Cancel is a legitimate user action — don't accumulate retry
-        // strikes toward `maxInvalidResponses`.
-        session.invalidResponseCount[p] = 0;
-
-        session.lastSentPrompt[p] = cached;
-        session.awaitingResponse[p] = true;
-        // The cached prompt already carries `player = p` (it's a SELECT_*
-        // / IDLECMD payload), so the SOLO front routes it through slot p
-        // via slotIndex(). PvP normal sends to player p directly.
-        send(session, dest, cached);
-        // Drop the cache — the prompt is now in flight and a future
-        // commit will re-snapshot it.
-        session.cancelTargetPrompt[p] = null;
-      } else {
-        logger.warn('CANCEL: no cached IDLECMD/BATTLECMD to re-broadcast', { duelId: session.duelId, player: p });
-      }
+      // boundary. Re-broadcast the cached prompt + STATE_SYNC +
+      // CHAIN_STATE so the client returns to the action menu. NOT
+      // counted as a retry. See cancel-rollback-main.ts +
+      // cancel-rollback-contract.md (U38, 2026-06-01 — extracted from
+      // this branch to isolate the contract for unit testing).
+      applyCancelRollbackBroadcast(session, liveMsg.playerIndex, send);
       break;
     }
 
