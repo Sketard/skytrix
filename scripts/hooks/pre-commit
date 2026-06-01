@@ -38,6 +38,22 @@ if echo "$STAGED" | grep -qE "$PROTOCOL_PATTERN"; then
   fi
 fi
 
+# --- U3 (audit-4-modes-2026-06-01) : Animation Parity Rule ---
+# Fires whenever animation-orchestrator.service.ts is staged. Ensures the
+# orchestrator does not import or reference DuelWebSocketService /
+# DuelConnection — both must route through ANIMATION_DATA_SOURCE so
+# ReplayDuelAdapter parity holds. See CLAUDE.md "Animation Parity Rule".
+ORCHESTRATOR_PATTERN='^front/src/app/pages/pvp/duel-page/animation-orchestrator\.service\.ts$'
+if echo "$STAGED" | grep -qE "$ORCHESTRATOR_PATTERN"; then
+  if ! node "$ROOT/scripts/check-animation-parity.mjs"; then
+    echo
+    echo "pre-commit: Animation Parity Rule violation in animation-orchestrator.service.ts."
+    echo "             Route the new dependency through ANIMATION_DATA_SOURCE (replay parity)."
+    echo "             Bypass with --no-verify ONLY if you know what you are doing."
+    exit 1
+  fi
+fi
+
 # --- lint-staged sur le front ---
 # Ne rien faire si aucun fichier front n'est stagé.
 if ! echo "$STAGED" | grep -q '^front/'; then

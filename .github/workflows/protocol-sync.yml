@@ -26,8 +26,10 @@ on:
       - 'front/src/app/pages/pvp/game-log/**'
       - 'front/src/app/pages/pvp/ocgcore-reason-flags.ts'
       - 'front/src/app/pages/pvp/duel-page/**'
+      - 'front/src/app/pages/pvp/duel-page/animation-orchestrator.service.ts'
       - 'scripts/check-ws-protocol-sync.mjs'
       - 'scripts/check-perspective-isolation.mjs'
+      - 'scripts/check-animation-parity.mjs'
       - '.github/workflows/protocol-sync.yml'
   push:
     branches:
@@ -46,3 +48,5 @@ jobs:
         run: node scripts/check-ws-protocol-sync.mjs
       - name: Verify notifyPerspectiveSwitch call-site uniqueness
         run: node scripts/check-perspective-isolation.mjs
+      - name: Verify Animation Parity Rule (no WS reference in orchestrator)
+        run: node scripts/check-animation-parity.mjs
