@@ -7,7 +7,7 @@
     "poc": "tsx src/test-core.ts",
     "solver-poc": "tsx src/solver-poc.ts",
     "game-log": "tsx src/tools/game-log-builder-cli.ts",
-    "prebuild": "node ../scripts/check-ws-protocol-sync.mjs && node ../scripts/check-perspective-isolation.mjs && node ../scripts/check-animation-parity.mjs",
+    "prebuild": "node ../scripts/check-ws-protocol-sync.mjs && node ../scripts/check-perspective-isolation.mjs && node ../scripts/check-animation-parity.mjs && node ../scripts/check-perspective-zone-key.mjs",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",

@@ -54,6 +54,23 @@ if echo "$STAGED" | grep -qE "$ORCHESTRATOR_PATTERN"; then
   fi
 fi
 
+# --- C4 (audit-4-modes-2026-06-01) : Perspective Convention zone keys ---
+# Fires whenever any TS file under front/src/app/pages/pvp/ is staged.
+# Ensures every `${ZONE_ID}-${X}` template literal uses a relative player
+# index (rel / relPlayer / relativePlayer(...) / etc.) — absolute server
+# indices route the zone key to the wrong board half (see CLAUDE.md
+# "Perspective Convention" + the perspective-bug-hunt-2026-05-20 memory).
+PERSPECTIVE_PATTERN='^front/src/app/pages/pvp/.*\.ts$'
+if echo "$STAGED" | grep -qE "$PERSPECTIVE_PATTERN"; then
+  if ! node "$ROOT/scripts/check-perspective-zone-key.mjs"; then
+    echo
+    echo "pre-commit: Perspective Convention violation — \${ZONE_ID}-\${X} key with non-relative X."
+    echo "             Use ctx.relativePlayer(absolute) or a rel* local. See CLAUDE.md Perspective Convention."
+    echo "             Bypass with --no-verify ONLY if you know what you are doing."
+    exit 1
+  fi
+fi
+
 # --- lint-staged sur le front ---
 # Ne rien faire si aucun fichier front n'est stagé.
 if ! echo "$STAGED" | grep -q '^front/'; then
