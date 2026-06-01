@@ -29,8 +29,14 @@ import * as logger from './logger.js';
  *      `rematchTimeout` arm when `session.forkMode`.
  *   3. **Log tag** — `broadcastMessage` writes `mode: 'fork_solo'` on
  *      the `DUEL_END` log line.
- *   4. **No turn timer** — inherited from `soloMode: true` (the
- *      `WORKER_DUEL_CREATED` handler skips `timerContext` init in SOLO).
+ *   4. **No turn timer** — fork-solo bypasses `WORKER_DUEL_CREATED` entirely.
+ *      The fork worker emits `WORKER_FORK_READY` instead (duel-worker.ts:1805),
+ *      so the `worker-message-router.ts` `WORKER_DUEL_CREATED` handler
+ *      (which would init `timerContext` for non-SOLO sessions) is never
+ *      reached for the fork path. `startedAt` is set manually at line 85
+ *      below to compensate. Audit C10 (2026-06-01) — clarified that the
+ *      timer skip is by CONSTRUCTION (path bypass), not by the soloMode
+ *      gate firing.
  *
  * All other routing (omniscient filter, 1-socket multiplex via slot 0,
  * chain tracking, game-log ingestion, MSG_CONFIRM_CARDS tagging,

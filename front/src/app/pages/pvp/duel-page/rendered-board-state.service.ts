@@ -217,7 +217,29 @@ export class RenderedBoardStateService implements BoardStateView {
     return Array.from(this._locks.keys());
   }
 
-  /** Warn if locks exist at a point where state should be clean. Throws in dev, warns in prod. */
+  /**
+   * Warn if locks exist at a point where state should be clean. Throws in dev,
+   * console.error in prod (via duelAssert).
+   *
+   * **F19 anchor (audit C6, 2026-06-01) — Lock-assert sites manifest** :
+   *
+   * Asserted (7 prod sites) — transition boundaries that MUST be clean :
+   *   1. duel-connection.ts:825 — cleanup
+   *   2. duel-connection.ts:1393 — REMATCH_STARTING
+   *   3. duel-connection.ts:1649 — STATE_SYNC (onStateSync)
+   *   4. animation-orchestrator.service.ts:996 — resetAllState
+   *   5. replay-duel-adapter.ts:154 — feedTransition
+   *   6. replay-duel-adapter.ts:191 — feedTransitionPhased
+   *   7. replay-duel-adapter.ts:246 — advanceStep:done
+   *
+   * Intentionally NOT asserted (3 skip sites, voluntary skip/abort paths) :
+   *   - replay-duel-adapter.ts:collapseRemainingSteps — user skip-to-end
+   *   - replay-duel-adapter.ts:abort — replay tear-down
+   *   - replay-duel-adapter.ts:jumpToState — user-triggered seek
+   *
+   * Full doctrine : CLAUDE.md "Replay Board State Parity Rule".
+   * Adding an 8th asserted site → update this list + CLAUDE.md.
+   */
   assertNoLocks(site: string): void {
     duelAssert(this._locks.size === 0, site,
       `${this._locks.size} locks still active: ${[...this._locks.keys()].join(', ')}`);

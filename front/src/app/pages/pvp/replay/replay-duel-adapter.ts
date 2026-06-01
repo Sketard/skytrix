@@ -310,6 +310,10 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   }
 
   collapseRemainingSteps(): void {
+    // F19 skip site (audit C6, 2026-06-01) — user-triggered skip-to-end
+    // interruption. Intermediate locks from cut-short steps are EXPECTED ;
+    // commitAll() is the right cleanup. See CLAUDE.md "Replay Board State
+    // Parity Rule" + the F19 anchor at `rbs.assertNoLocks`.
     this._activeDecision.set(null);
     // Clear any active zone locks before re-feeding — animations may still hold locks
     // from the interrupted step. commitAll() is the replay equivalent of PvP's onStateSync().
@@ -353,6 +357,8 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   }
 
   abort(): void {
+    // F19 skip site (audit C6, 2026-06-01) — replay tear-down ; locks from
+    // the interrupted dispatch are expected by design.
     this.processor.reset();
     this.rbs.commitAll();
     this._steps = [];
@@ -361,6 +367,8 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   }
 
   jumpToState(state: PreComputedState): void {
+    // F19 skip site (audit C6, 2026-06-01) — user-triggered seek ; same
+    // rationale as abort().
     this.abort();
     this.rbs.updateLogical(this.swapBs(state.boardState));
     this.rbs.commitAll();

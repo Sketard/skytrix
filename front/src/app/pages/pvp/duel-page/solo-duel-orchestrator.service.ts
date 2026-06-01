@@ -233,6 +233,18 @@ export class SoloDuelOrchestratorService {
    *
    * Reads only reactive signals (pendingPrompt, chainPhase, isAnimating) plus
    * the draw-in-flight Set; the reactive trio drives `[disabled]` refresh.
+   *
+   * U30 (audit, 2026-06-01) — `hasDrawsInFlight` is a non-reactive Set getter,
+   * BUT `isAnimating` subsumes it by runtime invariant: QueueRunner.decideNextStep
+   * bypasses finalize while `hasDrawsInFlight === true` (queue-runner.ts:175 and
+   * :468), so `_isRunning` (and therefore `isAnimating`) stays true for the
+   * entire draw lifecycle. The non-reactive `hasDrawsInFlight` check below is
+   * defense-in-depth, not load-bearing — removing it would still work today
+   * because `isBoardStableForSwitch` returns false during the draw. Kept for
+   * explicitness + as the early-return for the diagnostic log at switchPerspective().
+   * If the runner invariant changes (a future refactor removes the queue-runner.ts:468
+   * `hasDrawsInFlight` early-return), this becomes load-bearing again — promote it
+   * to a reactive signal at that point.
    */
   get canSwitchPerspective(): boolean {
     const prompt = this.wsService.pendingPrompt();

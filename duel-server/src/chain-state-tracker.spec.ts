@@ -2,6 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { applyChainTransition, emptyChainState } from './chain-state-tracker.js';
 import type { ServerMessage } from './ws-protocol.js';
 
+// =============================================================================
+// F9 PARITY ANCHOR (audit C2, 2026-06-01)
+// =============================================================================
+// This spec pins the SERVER-side chain-phase transition matrix. The CLIENT
+// mirror lives at front/src/app/pages/pvp/duel-page/duel-event-processor.spec.ts.
+//
+// Any change to chain-phase semantics on EITHER side MUST update BOTH specs
+// + the transition matrix in CLAUDE.md §"Cross-side chainPhase parity (F9)".
+//
+// There is currently no automated cross-side gate. Detection of a divergence
+// happens only at runtime, only on a real reconnect mid-chain (CHAIN_STATE
+// handshake → restoreChainState lands a phase the client cannot handle).
+// =============================================================================
+
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function chaining(chainIndex: number, extra: Record<string, unknown> = {}): ServerMessage {

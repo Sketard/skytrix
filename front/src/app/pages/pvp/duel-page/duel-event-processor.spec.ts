@@ -4,6 +4,23 @@ import type { GameEvent } from '../types';
 import type { QueueEntry } from './animation-data-source';
 import { DuelEventProcessor, GAME_EVENT_TYPES } from './duel-event-processor';
 
+// =============================================================================
+// F9 PARITY ANCHOR (audit C2, 2026-06-01)
+// =============================================================================
+// This spec pins the CLIENT-side chain-phase transition matrix
+// (_processMessageInner sync branches + applyChainSolving/Solved/End from
+// queue runner). The SERVER mirror lives at
+// duel-server/src/chain-state-tracker.spec.ts.
+//
+// Any change to chain-phase semantics on EITHER side MUST update BOTH specs
+// + the transition matrix in CLAUDE.md §"Cross-side chainPhase parity (F9)".
+//
+// There is currently no automated cross-side gate. Detection of a divergence
+// happens only at runtime, only on a real reconnect mid-chain (CHAIN_STATE
+// handshake → restoreChainState lands a phase the client cannot handle).
+// =============================================================================
+
+
 /** Narrows a QueueEntry to GameEvent for `.type` access in assertions. */
 const asEvent = (e: QueueEntry): GameEvent => e as GameEvent;
 

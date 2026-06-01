@@ -66,8 +66,17 @@ const SELECT_TYPES = new Set([
   'SELECT_POSITION', 'SELECT_OPTION', 'SELECT_TRIBUTE', 'SELECT_SUM',
   'SELECT_UNSELECT_CARD', 'SELECT_COUNTER', 'SORT_CARD', 'SORT_CHAIN',
   'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
-  // Pre-duel coordinator prompts (since 2026-05-13). They're not "select"
-  // in the OCGCore sense but they ride the same awaiting-response pipeline.
+  // Pre-duel coordinator prompts (since 2026-05-13). They're not "select" in
+  // the OCGCore sense and DO NOT actually reach `broadcastMessage` in prod
+  // (first-player-coordinator sends them via `sendToPlayer` direct, not via
+  // the worker pipeline) — so the `isSelectMessage(...)` gates at
+  // `broadcastMessage:289/342/359` never fire for these two types. Kept in
+  // the set as a defensive declaration : if a future refactor ever routes
+  // pre-duel prompts through `broadcastMessage`, they're correctly classified
+  // as "awaiting-response" prompts by intent. The `lastSentPrompt` cache
+  // (written by `first-player-coordinator` directly, validated by
+  // `client-message-router` PLAYER_RESPONSE handler) is the actual shared
+  // pipeline — `isSelectMessage` is not part of that path. Audit U21 (2026-06-01).
   'DICE_ROLL', 'SELECT_FIRST_PLAYER',
 ]);
 
@@ -75,13 +84,45 @@ export function isSelectMessage(message: ServerMessage): boolean {
   return SELECT_TYPES.has(message.type);
 }
 
+/**
+ * Worker→main message types handled by THIS dispatcher (live PvP / SOLO /
+ * fork-solo paths). The 5 replay-specific types (`WORKER_REPLAY_*` +
+ * `WORKER_FORK_*`) are handled by `replay-handlers.ts` instead and never
+ * reach this function — excluded from the union so the exhaustive `default`
+ * arm below (audit C8) can narrow to `never`.
+ */
+type LiveDuelWorkerMessage = Exclude<
+  WorkerToMainMessage,
+  { type: 'WORKER_REPLAY_BOARD_STATES' | 'WORKER_REPLAY_COMPLETE' | 'WORKER_REPLAY_ERROR' | 'WORKER_FORK_READY' | 'WORKER_FORK_ERROR' }
+>;
+
 export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessage): void {
   const cfg = getCfg();
   const send = cfg.sendToPlayer;
 
-  switch (wmsg.type) {
+  // Replay-specific messages are routed by replay-handlers.ts ; not reachable here.
+  if (
+    wmsg.type === 'WORKER_REPLAY_BOARD_STATES' ||
+    wmsg.type === 'WORKER_REPLAY_COMPLETE' ||
+    wmsg.type === 'WORKER_REPLAY_ERROR' ||
+    wmsg.type === 'WORKER_FORK_READY' ||
+    wmsg.type === 'WORKER_FORK_ERROR'
+  ) {
+    logger.error('Replay/fork worker message reached live dispatcher (replay-handlers should have caught it)', { type: wmsg.type });
+    return;
+  }
+  const liveMsg: LiveDuelWorkerMessage = wmsg;
+
+  switch (liveMsg.type) {
+    // Audit C10 (2026-06-01) — fork-solo BYPASSES this entire branch.
+    // The fork worker emits WORKER_FORK_READY (duel-worker.ts:1805) instead
+    // of WORKER_DUEL_CREATED ; `session.startedAt` is set manually in
+    // `fork-handlers.ts:createForkSoloSession` to compensate. Future
+    // additions to this case (timer setup, instrumentation, etc.) MUST
+    // either also land in createForkSoloSession OR be conditional on a
+    // discriminator that excludes fork-solo.
     case 'WORKER_DUEL_CREATED':
-      logger.log('Duel created in worker', { duelId: wmsg.duelId });
+      logger.log('Duel created in worker', { duelId: liveMsg.duelId });
       session.startedAt = Date.now();
       // F5-bis (2026-05-31) — turn timer is meaningless against oneself.
       // SOLO multiplex (POST quick-duel) and fork-solo (forkMode implies
@@ -108,14 +149,14 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
       break;
 
     case 'WORKER_MESSAGE':
-      broadcastMessage(session, wmsg.message);
+      broadcastMessage(session, liveMsg.message);
       break;
 
     case 'WORKER_RETRY': {
       // OCGCore rejected the player's response — re-send the cached prompt.
       // lastSentPrompt is intentionally NOT cleared on PLAYER_RESPONSE for
       // exactly this case.
-      const p = wmsg.playerIndex;
+      const p = liveMsg.playerIndex;
       const cached = session.lastSentPrompt[p];
       if (cached) {
         session.invalidResponseCount[p]++;
@@ -149,7 +190,7 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
       // commit time so the client returns to the action menu. NOT
       // counted as a retry. See cancel-rollback-contract.md for the
       // full inventory of state slots reset across this flow.
-      const p = wmsg.playerIndex;
+      const p = liveMsg.playerIndex;
       const cached = session.cancelTargetPrompt[p];
       if (cached) {
         // γ Option C PR2 c6bis (A30) — SOLO multiplex routes the 3 sends
@@ -208,7 +249,7 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
     }
 
     case 'WORKER_ERROR': {
-      logger.error('Worker error', { duelId: wmsg.duelId, error: wmsg.error });
+      logger.error('Worker error', { duelId: liveMsg.duelId, error: liveMsg.error });
       const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'worker_error' };
       logger.log('DUEL_END', { duelId: session.duelId, winner: null, reason: 'engine_error' });
       send(session, 0, errorMsg);
@@ -219,7 +260,7 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
     }
 
     case 'WORKER_REPLAY_DATA': {
-      logger.log('Received WORKER_REPLAY_DATA', { duelId: wmsg.duelId, responses: wmsg.payload.playerResponses.length });
+      logger.log('Received WORKER_REPLAY_DATA', { duelId: liveMsg.duelId, responses: liveMsg.payload.playerResponses.length });
       // F5-bis (2026-05-31) — fork-solo is exploratory by design and not
       // archived (it derives from an existing replay). Skip the POST to
       // Spring Boot ; just terminate the worker.
@@ -227,10 +268,21 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
         safeTerminateWorker(session);
         break;
       }
-      persistReplay(session, wmsg.payload).finally(() => {
+      persistReplay(session, liveMsg.payload).finally(() => {
         safeTerminateWorker(session);
       });
       break;
+    }
+
+    // Audit C8 (2026-06-01) — exhaustiveness check. If a new member is added
+    // to the `LiveDuelWorkerMessage` union (i.e. to `WorkerToMainMessage`
+    // without simultaneously being added to the replay-handlers' Exclude
+    // list above), `liveMsg` will not narrow to `never` here and TS will
+    // fail at compile time.
+    default: {
+      const _exhaustive: never = liveMsg;
+      logger.error('Unhandled worker message type', { type: (liveMsg as { type: string }).type });
+      void _exhaustive;
     }
   }
 }
