@@ -286,7 +286,7 @@ function inactivitySchedulerFor(session: ActiveDuelSession): InactivityScheduler
     getSlot: (p) => session.players[p].inactivitySlot,
     setSlot: (p, slot) => { session.players[p].inactivitySlot = slot; },
     sendWarning: (p, remainingSec) => {
-      const warningMsg: ServerMessage = { type: 'INACTIVITY_WARNING', remainingSec };
+      const warningMsg: ServerMessage = { type: 'INACTIVITY_WARNING', remainingSec, player: p };
       c.sendToPlayer(session, p, warningMsg);
     },
     forfeit: (p) => {

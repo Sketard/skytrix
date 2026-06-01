@@ -10,6 +10,7 @@ import {
   handleTurnChange,
   clearAllDuelTimers,
   startGracePeriod,
+  startInactivityTimer,
   type TimerManagementConfig,
 } from './timer-management.js';
 import type { ActiveDuelSession } from './types.js';
@@ -682,6 +683,52 @@ describe('timer-management', () => {
       for (const m of msgs) {
         expect((m.message as { pendingPlayer?: Player }).pendingPlayer).toBe(0);
       }
+    });
+  });
+
+  // ==========================================================================
+  // A8.1 — INACTIVITY_WARNING payload contract (U28, 2026-06-01)
+  // ==========================================================================
+  // Protocol contract (ws-protocol-system.ts:199-207): `player` is populated
+  // in both modes for consistency; required by SOLO multiplex (A28 routing)
+  // to dispatch the warning to the correct perspective slot. PvP normal front
+  // ignores the field but the server MUST still emit it. Bug discovered in
+  // audit-4-modes-2026-06-01 (U28): server omitted `player`, causing the SOLO
+  // assert F-2.4 to fire and PvP P1 viewer to misroute the warning to slot 0.
+
+  describe('A8.1 — INACTIVITY_WARNING payload contract (U28)', () => {
+    it('INACTIVITY_WARNING carries player: p when the warning stage fires for P0', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession();
+
+      startInactivityTimer(s, 0);
+      vi.advanceTimersByTime(120_000 - 20_000); // warningDelayMs
+
+      const warning = spy.sent.find(m => m.message.type === 'INACTIVITY_WARNING');
+      expect(warning).toBeDefined();
+      expect(warning!.message).toMatchObject({
+        type: 'INACTIVITY_WARNING',
+        player: 0,
+        remainingSec: 20,
+      });
+    });
+
+    it('INACTIVITY_WARNING carries player: p when the warning stage fires for P1', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession();
+
+      startInactivityTimer(s, 1);
+      vi.advanceTimersByTime(120_000 - 20_000);
+
+      const warning = spy.sent.find(m => m.message.type === 'INACTIVITY_WARNING');
+      expect(warning).toBeDefined();
+      expect(warning!.message).toMatchObject({
+        type: 'INACTIVITY_WARNING',
+        player: 1,
+        remainingSec: 20,
+      });
     });
   });
 
