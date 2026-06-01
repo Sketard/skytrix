@@ -36,11 +36,14 @@ const FORBIDDEN = ['DuelWebSocketService', 'DuelConnection'];
 
 const src = readFileSync(target, 'utf-8');
 
-// Strip block + line comments so docblock references are not flagged.
+// Strip block + line comments so docblock references are not flagged,
+// while preserving newlines so byte offsets in `stripped` map 1:1 to
+// line numbers in the original source. A bare `replace(..., '')` would
+// collapse multi-line block comments and shift every subsequent offset.
 // Conservative regex — does NOT handle comments inside string literals,
 // but the orchestrator does not embed forbidden type names in strings.
 const stripped = src
-  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\/\*[\s\S]*?\*\//g, (match) => match.replace(/[^\n]/g, ' '))
   .replace(/\/\/.*/g, '');
 
 const violations = [];
@@ -51,10 +54,9 @@ for (const name of FORBIDDEN) {
   const re = new RegExp(`\\b${name}\\b`, 'g');
   let m;
   while ((m = re.exec(stripped)) !== null) {
-    // Find line number in the ORIGINAL source — count newlines up to
-    // the original offset. The stripped string preserves line layout
-    // (comments are stripped in-place without removing newlines).
-    const upto = src.slice(0, m.index);
+    // m.index is the offset into `stripped`, which now preserves the
+    // original line layout (block comments → whitespace, newlines kept).
+    const upto = stripped.slice(0, m.index);
     const line = upto.split('\n').length;
     violations.push({ name, line });
   }
