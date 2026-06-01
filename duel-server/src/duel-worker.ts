@@ -32,6 +32,7 @@ import { REASON_XYZ_MATERIAL_SETTLE } from './ocgcore-reason-flags.js';
 import { CardDbCache } from './card-db-cache.js';
 import { resolveDeckLoadOrder, normalizeReplayDeck } from './deck-load-order.js';
 import { runReplayPreComputation, SELECT_MESSAGE_TYPES } from './replay-precompute.js';
+import { createWorkerEmitter, type WorkerEmitter } from './duel-worker-emit.js';
 import { resolveDescription } from './game-log/effect-desc-resolver.js';
 import * as duelInstr from './duel-instrumentation.js';
 import type {
@@ -68,6 +69,11 @@ let core: OcgCoreSync | null = null;
 let duel: OcgDuelHandle | null = null;
 let duelId = '';
 let dlog = logger.forDuel('(pre-init)');
+// U33 (2026-06-01) — typed emitter. Recreated in each `init*` after `duelId`
+// is assigned (so the captured duelId in the closure is the live one). The
+// 25 raw `port.postMessage(...)` call sites are now `emit.xxx(...)` — typos
+// + missing variants fail at compile time. See duel-worker-emit.ts.
+let emit: WorkerEmitter = createWorkerEmitter(port, duelId);
 let turnPlayer: Player = 0;
 let turnCount = 0;
 let phase: Phase = 'DRAW';
@@ -1219,26 +1225,22 @@ function emitReplayData(): void {
   if (replayEmitted) return;
   replayEmitted = true;
   dlog.log('Emitting replay data', { responses: capturedResponses.length, result: duelResult });
-  port.postMessage({
-    type: 'WORKER_REPLAY_DATA',
-    duelId,
-    payload: {
-      seed: duelSeed.map(s => s.toString()),
-      decks: capturedDecks,
-      playerResponses: capturedResponses,
-      metadata: {
-        playerUsernames,
-        deckNames,
-        turnCount,
-        result: duelResult,
-        date: new Date().toISOString(),
-        scriptsHash: getScriptsHash(),
-        ocgcoreVersion: getOcgcoreVersion(),
-        durationSec: Math.round((Date.now() - duelStartMs) / 1000),
-        // capturedDecks is the live top→bottom pile order (loadDeckToOcg
-        // returns it verbatim since the back-to-front sequence:0 fix).
-        deckOrder: 'verbatim',
-      },
+  emit.replayData({
+    seed: duelSeed.map(s => s.toString()),
+    decks: capturedDecks,
+    playerResponses: capturedResponses,
+    metadata: {
+      playerUsernames,
+      deckNames,
+      turnCount,
+      result: duelResult,
+      date: new Date().toISOString(),
+      scriptsHash: getScriptsHash(),
+      ocgcoreVersion: getOcgcoreVersion(),
+      durationSec: Math.round((Date.now() - duelStartMs) / 1000),
+      // capturedDecks is the live top→bottom pile order (loadDeckToOcg
+      // returns it verbatim since the back-to-front sequence:0 fix).
+      deckOrder: 'verbatim',
     },
   });
 }
@@ -1262,7 +1264,7 @@ function runDuelLoop(): void {
     const watchdog = setTimeout(() => {
       dlog.error('Watchdog timeout — saving partial replay before exit', { timeoutMs: WATCHDOG_TIMEOUT_MS });
       if (!forkMode) emitReplayData();
-      port.postMessage({ type: 'WORKER_ERROR', duelId, error: 'Watchdog timeout (30s)' });
+      emit.error('Watchdog timeout (30s)');
       cleanup();
       // Give the MessagePort enough time to drain before killing the process
       setTimeout(() => process.exit(1), 1000);
@@ -1304,7 +1306,7 @@ function runDuelLoop(): void {
       clearTimeout(watchdog);
       const message = err instanceof Error ? err.message : String(err);
       dlog.error('duelProcess threw', { error: message });
-      port.postMessage({ type: 'WORKER_ERROR', duelId, error: message });
+      emit.error(message);
       cleanup();
       return;
     }
@@ -1375,11 +1377,11 @@ function runDuelLoop(): void {
         // the replay precompute counterpart + the doctrine in lock-step.
         if (dto.type === 'MSG_CHAIN_SOLVING' && hasCostMoves) {
           dlog.debug('BOARD_STATE (intermediate, before chain solving)');
-          port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
+          emit.message(buildBoardState());
           hasCostMoves = false;
         }
         dlog.debug('EMIT', { type: dto.type });
-        port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
+        emit.message(dto);
         // P0-3bis.3 — drop the rollback target when a fresh
         // IDLECMD/BATTLECMD prompt is emitted. The next response will
         // re-take a snapshot for the next rollback boundary.
@@ -1411,7 +1413,7 @@ function runDuelLoop(): void {
 
     // RETRY recovery: tell the server to re-send the cached prompt
     if (hasRetry && status === OcgProcessResult.WAITING) {
-      port.postMessage({ type: 'WORKER_RETRY', duelId, playerIndex: lastResponsePlayerIndex });
+      emit.retry(lastResponsePlayerIndex);
     }
 
     if (status === OcgProcessResult.END) {
@@ -1427,7 +1429,7 @@ function runDuelLoop(): void {
       }
       // Player prompt — send BOARD_STATE snapshot then wait
       dlog.debug('BOARD_STATE (final, before prompt)');
-      port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
+      emit.message(buildBoardState());
       return;
     }
     // OcgProcessResult.CONTINUE → loop again
@@ -1548,6 +1550,7 @@ function resetDuelState(): void {
 async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promise<void> {
   duelId = msg.duelId;
   dlog = logger.forDuel(duelId);
+  emit = createWorkerEmitter(port, duelId);
   skipRpsFlag = msg.skipRps === true;
   skipShuffleFlag = msg.skipShuffle === true;
   const [deck0, deck1] = msg.decks;
@@ -1572,7 +1575,7 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
 
   const result = await initOcgEngine(seed);
   if (!result) {
-    port.postMessage({ type: 'WORKER_ERROR', duelId, error: 'Failed to create duel instance' });
+    emit.error('Failed to create duel instance');
     return;
   }
   core = result.newCore;
@@ -1586,7 +1589,7 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
 
   resetDuelState();
   core.startDuel(duel);
-  port.postMessage({ type: 'WORKER_DUEL_CREATED', duelId });
+  emit.duelCreated();
   runDuelLoop();
 }
 
@@ -1639,13 +1642,14 @@ function cleanup(): void {
 async function initReplay(msg: InitReplayMessage): Promise<void> {
   duelId = msg.duelId;
   dlog = logger.forDuel(duelId);
+  emit = createWorkerEmitter(port, duelId);
   skipRpsFlag = true;
   skipShuffleFlag = true;
 
   const seed = msg.seed.map(BigInt) as [bigint, bigint, bigint, bigint];
   const result = await initOcgEngine(seed);
   if (!result) {
-    port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_INIT_FAILED', message: 'Failed to create duel instance' });
+    emit.replayError('REPLAY_INIT_FAILED', 'Failed to create duel instance');
     return;
   }
   core = result.newCore;
@@ -1679,6 +1683,7 @@ let forkPendingSelect: OcgMessage | null = null;
 async function initFork(msg: InitForkMessage): Promise<void> {
   duelId = msg.duelId;
   dlog = logger.forDuel(duelId);
+  emit = createWorkerEmitter(port, duelId);
   skipRpsFlag = true;
   skipShuffleFlag = true;
 
@@ -1689,7 +1694,7 @@ async function initFork(msg: InitForkMessage): Promise<void> {
   const seed = msg.seed.map(BigInt) as [bigint, bigint, bigint, bigint];
   const result = await initOcgEngine(seed);
   if (!result) {
-    port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_INIT_FAILED', message: 'Failed to create duel instance' });
+    emit.forkError('REPLAY_INIT_FAILED', 'Failed to create duel instance');
     return;
   }
   core = result.newCore;
@@ -1719,7 +1724,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
   while (true) {
     if (++iterations > MAX_ITERATIONS) {
       dlog.error('Fork max iterations reached — aborting', { maxIterations: MAX_ITERATIONS });
-      port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_MAX_ITERATIONS', message: 'Fork reconstruction exceeded maximum iterations' });
+      emit.forkError('REPLAY_MAX_ITERATIONS', 'Fork reconstruction exceeded maximum iterations');
       cleanup();
       return;
     }
@@ -1730,7 +1735,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       dlog.error('Fork duelProcess threw', { error: message });
-      port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_COMPUTATION_ERROR', message: `Fork reconstruction error: ${message}` });
+      emit.forkError('REPLAY_COMPUTATION_ERROR', `Fork reconstruction error: ${message}`);
       cleanup();
       return;
     }
@@ -1740,7 +1745,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
     for (const rawMsg of messages) {
       if (rawMsg.type === OcgMessageType.RETRY) {
         dlog.error('Fork MSG_RETRY — divergence', { responseIndex });
-        port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_RETRY', message: 'Fork diverged: MSG_RETRY encountered' });
+        emit.forkError('REPLAY_DIVERGED_RETRY', 'Fork diverged: MSG_RETRY encountered');
         cleanup();
         return;
       }
@@ -1758,7 +1763,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
 
         if (responseIndex >= msg.playerResponses.length) {
           dlog.error('Fork ran out of responses', { responseIndex });
-          port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESPONSES', message: 'Fork diverged: ran out of recorded responses' });
+          emit.forkError('REPLAY_DIVERGED_NO_RESPONSES', 'Fork diverged: ran out of recorded responses');
           cleanup();
           return;
         }
@@ -1770,7 +1775,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
 
     if (status === OcgProcessResult.END) {
       dlog.error('Fork duel ended before reaching fork point', { responseIndex, target: msg.targetResponseCount });
-      port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESULT', message: 'Fork failed: duel ended before reaching target response count' });
+      emit.forkError('REPLAY_DIVERGED_NO_RESULT', 'Fork failed: duel ended before reaching target response count');
       cleanup();
       return;
     }
@@ -1802,7 +1807,7 @@ function performSanityCheck(expectedState: InitForkMessage['expectedState']): vo
   dlog.log('Fork sanity check', { result: match ? 'PASS' : 'MISMATCH', details: details ?? undefined });
 
   forkMode = true;
-  port.postMessage({ type: 'WORKER_FORK_READY', duelId, sanityResult: { match, details } });
+  emit.forkReady({ match, details });
   // Worker stays alive — waiting for PLAYER_RESPONSE messages in solo mode
 }
 
@@ -1817,35 +1822,24 @@ const PHASE_MAP_REVERSE: Record<Phase, number> = Object.fromEntries(
 port.on('message', (msg: MainToWorkerMessage) => {
   if (msg.type === 'INIT_DUEL') {
     initDuel(msg).catch(err => {
-      port.postMessage({
-        type: 'WORKER_ERROR', duelId,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      emit.error(err instanceof Error ? err.message : String(err));
     });
   } else if (msg.type === 'INIT_REPLAY') {
     initReplay(msg).catch(err => {
-      port.postMessage({
-        type: 'WORKER_REPLAY_ERROR', duelId,
-        code: 'REPLAY_COMPUTATION_ERROR',
-        message: err instanceof Error ? err.message : String(err),
-      });
+      emit.replayError('REPLAY_COMPUTATION_ERROR', err instanceof Error ? err.message : String(err));
     });
   } else if (msg.type === 'INIT_FORK') {
     initFork(msg).catch(err => {
-      port.postMessage({
-        type: 'WORKER_FORK_ERROR', duelId,
-        code: 'REPLAY_COMPUTATION_ERROR',
-        message: err instanceof Error ? err.message : String(err),
-      });
+      emit.forkError('REPLAY_COMPUTATION_ERROR', err instanceof Error ? err.message : String(err));
     });
   } else if (msg.type === 'FORK_RESUME') {
     // Both clients connected — emit current board state + pending SELECT prompt
     if (forkMode && core && duel) {
-      port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
+      emit.message(buildBoardState());
       if (forkPendingSelect) {
         const dto = transformMessage(forkPendingSelect);
         if (dto) {
-          port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
+          emit.message(dto);
         }
         forkPendingSelect = null;
       }
@@ -1857,7 +1851,7 @@ port.on('message', (msg: MainToWorkerMessage) => {
       cleanup();
     } catch (err) {
       dlog.error('emitReplayData failed', { error: err instanceof Error ? err.message : String(err) });
-      port.postMessage({ type: 'WORKER_ERROR', duelId, error: `emitReplayData failed: ${err instanceof Error ? err.message : err}` });
+      emit.error(`emitReplayData failed: ${err instanceof Error ? err.message : err}`);
     }
   } else if (msg.type === 'PLAYER_RESPONSE') {
     if (!core || !duel) {
@@ -1967,7 +1961,7 @@ port.on('message', (msg: MainToWorkerMessage) => {
     // Re-emit BOARD_STATE so the client re-syncs visual state to the
     // pre-action point, then ask the server to re-send the cached
     // IDLECMD/BATTLECMD prompt without counting it as a retry.
-    port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
-    port.postMessage({ type: 'WORKER_CANCEL_DONE', duelId, playerIndex: msg.playerIndex });
+    emit.message(buildBoardState());
+    emit.cancelDone(msg.playerIndex);
   }
 });
