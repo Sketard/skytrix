@@ -45,7 +45,7 @@ import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
 import { tagAsAbsorbed, isAbsorbed } from './absorbed-event-registry';
-import { AnimatingZoneProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, TargetedZoneKeysProjection, type ScopeCategory } from '../projections';
+import { AnimatingZoneProjection, BaseProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, TargetedZoneKeysProjection, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 // `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
@@ -397,6 +397,21 @@ export class AnimationOrchestratorService {
     reducedMotion: () => this.ctx.reducedMotion(),
   });
 
+  /**
+   * C3 + C5 (2026-06-01) — registry of every `BaseProjection` attached to
+   * `_eventStream`. Populated by `attachProjection` in the constructor
+   * wiring block (one call per projection). `destroy()` iterates this list
+   * to detach symmetrically, closing the C5 latent leak (missing
+   * `targetedZoneKeys.detachEventStream()`) by construction: adding the 8th
+   * projection means adding ONE `attachProjection` call, not three.
+   *
+   * The smoke spec walks the orchestrator instance via reflection and
+   * asserts every own field that is `instanceof BaseProjection` appears in
+   * this list — so a future field forgotten by `attachProjection` surfaces
+   * as a red test instead of a silent effect leak.
+   */
+  private readonly _streamProjections: BaseProjection<unknown>[] = [];
+
   private get rbs() { return this.dataSource.renderedBoardState; }
 
   private scheduleTimeout(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
@@ -608,57 +623,36 @@ export class AnimationOrchestratorService {
     // the unit tests that exercise it directly.
     this.scopeDispatcher?.register(this.deferredProcessor);
 
-    // β.3 Lot 1b — register + attach the overlay-show-ready projection.
-    // Register first (so a checkpoint reset fired during attach can
-    // reach the projection); attach to the orchestrator's eventStream
-    // so the projection's `applyEvent` drains DEP + boundary events
-    // pushed AFTER attach. Events pushed BEFORE attach are missed by
-    // design (the projection starts from a clean slate; an in-flight
-    // overlay-show from a pre-bootstrap chain is lost — acceptable
-    // because the chain-overlay component's onChainEnd handler will
-    // hide it anyway when MSG_CHAIN_END arrives).
-    this.scopeDispatcher?.register(this.overlayShowReady);
-    this.overlayShowReady.attachEventStream(this._eventStream, this.injector);
-
-    // β.3 Lot 2.3 — register + attach the counter-pulse projection.
-    // Same wiring shape as overlayShowReady; the projection's
-    // PERSPECTIVE_LIFETIME scope means SOLO switchPlayer clears the
-    // pulse alongside the chain manager.
-    this.scopeDispatcher?.register(this.counterPulse);
-    this.counterPulse.attachEventStream(this._eventStream, this.injector);
-
-    // β.3 Lot 2.6 — animating-zone projection: tracks flip/activate
-    // animation on a field zone. PERSPECTIVE_LIFETIME scope.
-    this.scopeDispatcher?.register(this.animatingZone);
-    this.animatingZone.attachEventStream(this._eventStream, this.injector);
-
-    // β.3 Lot 3.1 — is-animating projection: lifts the runner's
-    // `_isRunning` flag to a §3.5 PERSPECTIVE_LIFETIME projectable
-    // surface via `runner-started` / `runner-stopped` on the stream.
-    this.scopeDispatcher?.register(this.isAnimating);
-    this.isAnimating.attachEventStream(this._eventStream, this.injector);
-
-    // β.3 Lot 2.4-REDO — swap-grave-deck projection: tracks the GY+DECK
-    // pulse during MSG_SWAP_GRAVE_DECK's glow sub-phase, cleared by
-    // AnimationPhaseCompleted emitted by `phaseWait` in the handler.
-    this.scopeDispatcher?.register(this.swapGraveDeckKeys);
-    this.swapGraveDeckKeys.attachEventStream(this._eventStream, this.injector);
-
-    // β.3 Lot 2.2-REDO — animating-lp projection lives on the
-    // `lpTracker` but is registered + attached here so the
-    // orchestrator owns the wiring symmetrically with the other
-    // projections. The tracker still owns the mutating `trackedLp` +
-    // `_pendingLpCommits` lifecycle; the projection only owns the
-    // visual `LpAnimData | null` slice (PERSPECTIVE_LIFETIME).
-    this.scopeDispatcher?.register(this.lpTracker.animatingLpPlayerProjection);
-    this.lpTracker.animatingLpPlayerProjection.attachEventStream(this._eventStream, this.injector);
-
-    // β.3 Lot 4.1-REDO — targeted-zone-keys projection: accumulates FIELD
-    // zone keys across back-to-back MSG_BECOME_TARGET, cleared by
-    // AnimationPhaseCompleted({phase:'reticle-pulse'}) emitted by the
-    // handler via `phaseWait`.
-    this.scopeDispatcher?.register(this.targetedZoneKeys);
-    this.targetedZoneKeys.attachEventStream(this._eventStream, this.injector);
+    // C3 + C5 (2026-06-01) — symmetric register + attach for every
+    // `BaseProjection`. `attachProjection` registers with the scope
+    // dispatcher, attaches to `_eventStream`, AND pushes the projection
+    // onto `_streamProjections` so `destroy()` can detach all 7 in one
+    // loop. Adding the 8th projection means adding ONE call below, not
+    // editing destroy() + 3 other sites.
+    //
+    // Order MUST stay: register first (so a checkpoint reset fired during
+    // attach can reach the projection); attach next so `applyEvent`
+    // drains DEP + boundary events pushed AFTER attach. Events pushed
+    // BEFORE attach are missed by design (the projection starts clean;
+    // an in-flight overlay-show from a pre-bootstrap chain is lost —
+    // acceptable because chain-overlay's onChainEnd hides it on
+    // MSG_CHAIN_END anyway).
+    //
+    // Inventory (see CLAUDE.md "Projections β.3 — inventory"):
+    //   · overlayShowReady  — β.3 Lot 1b
+    //   · counterPulse      — β.3 Lot 2.3 (PERSPECTIVE_LIFETIME, SOLO switchPlayer clears)
+    //   · animatingZone     — β.3 Lot 2.6 (flip/activate field zone)
+    //   · isAnimating       — β.3 Lot 3.1 (lifts runner._isRunning to §3.5)
+    //   · swapGraveDeckKeys — β.3 Lot 2.4-REDO (glow sub-phase via phaseWait)
+    //   · animatingLp       — β.3 Lot 2.2-REDO (lpTracker-owned but wired here for symmetry)
+    //   · targetedZoneKeys  — β.3 Lot 4.1-REDO (reticle-pulse via phaseWait)
+    this.attachProjection(this.overlayShowReady);
+    this.attachProjection(this.counterPulse);
+    this.attachProjection(this.animatingZone);
+    this.attachProjection(this.isAnimating);
+    this.attachProjection(this.swapGraveDeckKeys);
+    this.attachProjection(this.lpTracker.animatingLpPlayerProjection);
+    this.attachProjection(this.targetedZoneKeys);
 
     // F15 (2026-05-31) — `chain-resolution-announce` projection retired.
     // The state is now a single signal owned by `ChainResolutionManager`
@@ -922,19 +916,37 @@ export class AnimationOrchestratorService {
     // subscriber dies with the same scope so emitting closures would
     // only pollute a stream nobody reads.
     this.deferredProcessor.silentReset();
-    // β.3 Lot 1b — detach the projection's effect subscription. The
-    // injector's DestroyRef would handle this implicitly on page
-    // teardown, but explicit detach avoids relying on injector lifetime
-    // for a hard reset path.
-    this.overlayShowReady.detachEventStream();
-    this.counterPulse.detachEventStream();
-    this.animatingZone.detachEventStream();
-    this.isAnimating.detachEventStream();
-    this.swapGraveDeckKeys.detachEventStream();
-    this.lpTracker.animatingLpPlayerProjection.detachEventStream();
+    // β.3 Lot 1b / C3 + C5 (2026-06-01) — detach every projection's
+    // effect subscription in one loop. The injector's DestroyRef would
+    // handle this implicitly on page teardown, but explicit detach
+    // avoids relying on injector lifetime for a hard reset path. The
+    // list IS the manifest — adding a projection means adding ONE
+    // `attachProjection` call in the constructor wiring block; no
+    // matching destroy edit needed. Closes the C5 latent leak
+    // (`targetedZoneKeys.detachEventStream` was missing pre-C3 fix).
+    for (const p of this._streamProjections) p.detachEventStream();
     this.drawManager.clearTimeouts();
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
+  }
+
+  /**
+   * C3 + C5 (2026-06-01) — atomic register + attach + track for a
+   * `BaseProjection`. The 3 sites that used to live separately
+   * (`scopeDispatcher.register`, `attachEventStream`, manual
+   * `detachEventStream` in `destroy`) collapse into one call here:
+   *   1. Register with the scope dispatcher (no-op if dispatcher absent
+   *      via `{ optional: true }` — the orchestrator's own spec suite
+   *      doesn't provide one).
+   *   2. Attach to `_eventStream` so the projection drains via
+   *      `applyEvent`.
+   *   3. Track on `_streamProjections` so `destroy()` can detach all
+   *      registered projections symmetrically.
+   */
+  private attachProjection(p: BaseProjection<unknown>): void {
+    this.scopeDispatcher?.register(p);
+    p.attachEventStream(this._eventStream, this.injector);
+    this._streamProjections.push(p);
   }
 
   /**
