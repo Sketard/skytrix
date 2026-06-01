@@ -11,6 +11,7 @@ import {
   scheduleTimerStart,
   startInactivityTimer,
   sendTimerStateToAll,
+  shouldRunTurnTimer,
 } from './timer-management.js';
 import {
   handleDuelEnd,
@@ -125,14 +126,15 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
     case 'WORKER_DUEL_CREATED':
       logger.log('Duel created in worker', { duelId: liveMsg.duelId });
       session.startedAt = Date.now();
-      // F5-bis (2026-05-31) — turn timer is meaningless against oneself.
-      // SOLO multiplex (POST quick-duel) and fork-solo (forkMode implies
-      // soloMode) both skip timer init. Inactivity timer stays enabled
+      // F5-bis (2026-05-31) / U25 (2026-06-01) — turn timer is meaningless
+      // against oneself. The decision lives in `shouldRunTurnTimer` so a
+      // future mode (tutorial / practice) that also opts out extends the
+      // predicate, not this call site. Inactivity timer stays enabled
       // (load-bearing: protects against worker leaks when the socket stays
       // open without activity ; see CLAUDE.md → "Fork-solo unification (F5-bis)").
       // All timer-management functions early-return on `timerContext === null`
       // so no further branches are required.
-      if (!session.soloMode) {
+      if (shouldRunTurnTimer(session)) {
         session.timerContext = {
           pools: [session.turnTimeSecs * 1000, session.turnTimeSecs * 1000],
           running: false,

@@ -11,6 +11,7 @@ import {
   clearAllDuelTimers,
   startGracePeriod,
   startInactivityTimer,
+  shouldRunTurnTimer,
   type TimerManagementConfig,
 } from './timer-management.js';
 import type { ActiveDuelSession } from './types.js';
@@ -729,6 +730,33 @@ describe('timer-management', () => {
         player: 1,
         remainingSec: 20,
       });
+    });
+  });
+
+  // ==========================================================================
+  // shouldRunTurnTimer (U25, 2026-06-01) — F5-bis predicate
+  // ==========================================================================
+  // Centralises the "no turn timer in SOLO / fork-solo" rule. The
+  // `WORKER_DUEL_CREATED` branch in worker-message-router.ts reads this
+  // to decide whether to allocate `session.timerContext`. A future mode
+  // that should also skip the turn timer extends the predicate, not the
+  // call site.
+
+  describe('shouldRunTurnTimer (U25)', () => {
+    function sessionWith(opts: { soloMode: boolean; forkMode?: boolean }): ActiveDuelSession {
+      return { soloMode: opts.soloMode, forkMode: opts.forkMode ?? false } as unknown as ActiveDuelSession;
+    }
+
+    it('returns true for PvP normal (soloMode=false)', () => {
+      expect(shouldRunTurnTimer(sessionWith({ soloMode: false }))).toBe(true);
+    });
+
+    it('returns false for SOLO multiplex (soloMode=true, forkMode=false)', () => {
+      expect(shouldRunTurnTimer(sessionWith({ soloMode: true, forkMode: false }))).toBe(false);
+    });
+
+    it('returns false for fork-solo (forkMode=true implies soloMode=true)', () => {
+      expect(shouldRunTurnTimer(sessionWith({ soloMode: true, forkMode: true }))).toBe(false);
     });
   });
 

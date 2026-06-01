@@ -19,6 +19,16 @@ import * as logger from './logger.js';
  * session) are injected via callbacks at boot through `configureTimerManagement`.
  * The host (server.ts) wires these to the actual implementations — this lets
  * the timer module stay decoupled from the message router and session manager.
+ *
+ * **Null-guarded by design** (U25, 2026-06-01) — every turn-timer function
+ * in this module early-returns when `session.timerContext === null`. SOLO
+ * multiplex and fork-solo sessions skip turn-timer allocation entirely
+ * (see `shouldRunTurnTimer` below + CLAUDE.md "Turn timer disabled in
+ * SOLO + fork (F5-bis behavior change)"). The `if (!ctx) return` pattern
+ * is load-bearing, not defensive — `session.timerContext` is typed
+ * `TimerContext | null`, TS `strictNullChecks` enforces the guard.
+ * Inactivity timer is independent (handled separately via
+ * `startInactivityTimer` / `clearInactivityTimer`).
  */
 
 export interface TimerManagementConfig {
@@ -47,6 +57,27 @@ const configurable = createConfigurable<TimerManagementConfig>('timer-management
 export const configureTimerManagement = configurable.configure;
 export const isTimerManagementConfigured = configurable.isConfigured;
 const getCfg = configurable.get;
+
+/**
+ * U25 (audit-4-modes-2026-06-01) / F5-bis (2026-05-31) — turn timer is
+ * meaningless against oneself, so SOLO multiplex and fork-solo
+ * (`forkMode` implies `soloMode`) skip turn-timer allocation entirely.
+ *
+ * The decision is centralised here so the rule has ONE named source
+ * instead of being inlined as `if (!session.soloMode)` at the
+ * `WORKER_DUEL_CREATED` boundary. Future modes (tutorial / practice)
+ * that should also skip the turn timer extend this predicate, not the
+ * call site.
+ *
+ * The 5 early-returns in this module (`sendTimerStateToAll`,
+ * `sendTimerStateToPlayer`, `startTurnTimer`, `pauseTurnTimer`,
+ * `scheduleTimerStart`) all key off `session.timerContext === null`,
+ * which is the runtime consequence of this predicate returning false
+ * at init.
+ */
+export function shouldRunTurnTimer(session: ActiveDuelSession): boolean {
+  return !session.soloMode;
+}
 
 // =============================================================================
 // TIMER_STATE broadcast
