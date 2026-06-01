@@ -1,12 +1,9 @@
 import { computed, DestroyRef, effect, inject, Injectable, Injector, runInInjectionContext, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection } from './duel-connection';
-import { wireConnectionDebugSinks } from './duel-connection-wiring';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
-import { DebugLogService } from './debug-log.service';
 import { DuelLogger, DuelLogCategory } from './duel-logger';
-import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
 import { WebSocketFactoryService } from './websocket-factory.service';
 import { SOLO_SWITCH_PLAYER_MS } from './ui-timing-constants';
@@ -70,9 +67,7 @@ export class SoloDuelOrchestratorService {
   private readonly wsService = inject(DuelWebSocketService);
   private readonly animationService = inject(AnimationOrchestratorService);
   private readonly duelCtx = inject(DuelContext);
-  private readonly debugLog = inject(DebugLogService);
   private readonly logger = inject(DuelLogger);
-  private readonly artService = inject(DuelCardArtService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   /** γ Option C PR2 c7a (A15) — factory indirection forwarded to the SOLO
@@ -171,7 +166,10 @@ export class SoloDuelOrchestratorService {
     // visible en perspective=1.
     this.wsService.setSoloMode(true);
 
-    wireConnectionDebugSinks(conn, { artService: this.artService, debugLog: this.debugLog });
+    // U31 (audit-4-modes-2026-06-01) — debug-sink wiring (cardArt + debugLog)
+    // moved into `wsService.applySinks(conn)` called by `bindSoloConnection`
+    // below. The orchestrator no longer needs to know about debug sinks ;
+    // adding a 5th sink is now a single edit in `applySinks`.
 
     this._transport_connection.set(conn);
 

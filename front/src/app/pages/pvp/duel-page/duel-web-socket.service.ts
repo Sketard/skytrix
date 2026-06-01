@@ -91,9 +91,23 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
       environment.wsUrl, true, undefined, this.logger,
       { duelCtx: this.duelCtx, wsFactory: this.wsFactory },
     );
-    wireConnectionDebugSinks(defaultConn, { artService: this.artService, debugLog: this.debugLog });
-    defaultConn.onStateSync = (msg) => { this.onStateSync?.(msg); };
+    this.applySinks(defaultConn);
     this._transport_connection = signal<DuelConnection>(defaultConn);
+  }
+
+  /** U31 (audit-4-modes-2026-06-01) — wires every sink the wsService owns
+   *  on a fresh `DuelConnection`. Called once in the ctor (PvP-normal
+   *  default conn) and once in `bindSoloConnection` (SOLO multiplex
+   *  swap). Previously the two call sites had divergent wiring —
+   *  `wireConnectionDebugSinks` was duplicated in the SOLO orchestrator
+   *  but the lifecycle sinks (`_outOfBandSink`, `_drawNewTurnSink`,
+   *  `onStateSync`) were only re-applied on bind. Adding a 5th sink
+   *  required coordinated edits in 3 places ; this method makes it 1. */
+  private applySinks(conn: DuelConnection): void {
+    wireConnectionDebugSinks(conn, { artService: this.artService, debugLog: this.debugLog });
+    if (this._outOfBandSink) conn.attachOutOfBandSink(this._outOfBandSink);
+    if (this._drawNewTurnSink) conn.onDrawNewTurn = this._drawNewTurnSink;
+    conn.onStateSync = (msg) => { this.onStateSync?.(msg); };
   }
 
   // ───────────────────────────────────────────────
@@ -150,12 +164,12 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    *  `SoloDuelOrchestratorService.init()`. Replaces the c6a-era pair
    *  `bindSharedProcessor(conn.processor) + bindTransports(conn, conn)`.
    *
-   *  **Caller contract** — `conn` MUST have its `artService`, `onMessage`,
-   *  and `onResponse` wired BEFORE this call. The wsService re-applies
-   *  only the lifecycle sinks it owns (Palier 0 out-of-band, draw-new-turn,
-   *  onStateSync). The debug-log message/response hooks belong to the
-   *  caller because the ctor-built default conn wires them inline and we
-   *  don't keep a registry of them for re-binding.
+   *  **Caller contract** — `conn` MUST have its `onMessage` / `onResponse`
+   *  callbacks wired BEFORE this call (those carry async closures that
+   *  depend on caller-side state and aren't owned by the wsService).
+   *  Every sink the WSSERVICE owns — debug-log (cardArt/debugLog hooks),
+   *  Palier 0 out-of-band, draw-new-turn, onStateSync — is re-applied
+   *  here via `applySinks` (U31).
    *
    *  **Default conn cleanup** — the ctor-built default conn is orphaned
    *  by this swap (in SOLO it never receives `connect()`, so no live
@@ -172,9 +186,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     if (previous !== conn) previous.cleanup();
 
     this._transport_connection.set(conn);
-    if (this._outOfBandSink) conn.attachOutOfBandSink(this._outOfBandSink);
-    if (this._drawNewTurnSink) conn.onDrawNewTurn = this._drawNewTurnSink;
-    conn.onStateSync = (msg) => { this.onStateSync?.(msg); };
+    this.applySinks(conn);
   }
 
   /** Active transport for all reads. c8: a single `_transport_connection`
