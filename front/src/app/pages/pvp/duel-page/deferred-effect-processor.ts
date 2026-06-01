@@ -236,9 +236,10 @@ export type CloseReason = 'matched' | 'timeout' | 'checkpoint';
  * nouveau use case ; à faire en revue d'archi, pas opportunément.
  *
  * Le sink par défaut (`NO_OP_SINKS`) fait rien — utilisable comme test
- * seam et en prod tant qu'aucun `RewriterRule` n'est défini. Le wiring
- * réel (vers `dataSource.enqueueVirtualMoves` + `rbs.lockZone`) est
- * fait par l'orchestrator au Commit 2.
+ * seam ET comme câblage de production. Voir doctrine ci-dessous : la
+ * production utilise `NO_OP_SINKS` par choix (pas par dette), parce
+ * qu'aucune anim de remplacement n'est désirée pour les settlings
+ * absorbés (cf. xyzLeaveWithMaterials).
  *
  * Résolution Q5 audit Commit 1 (Axel 2026-05-26) — 2 méthodes.
  * `lockZone(zoneId, absolutePlayer)` accepte un index absolu ; la
@@ -295,14 +296,27 @@ export interface ZoneLock {
 }
 
 /**
- * Default sinks — no-op pour tests + back-compat tant qu'aucun
- * `RewriterRule` n'est défini en prod. Le constructor du DEP les
- * utilise par défaut, ce qui garantit qu'une instanciation sans
- * sinks (test legacy 4-args, prod si pas encore wired) ne casse rien
- * et n'a aucun side-effect.
+ * Default sinks — no-op pour tests ET pour la production. Le câblage
+ * réel (`dataSource.enqueueVirtualMoves` + `rbs.lockZone`) a été
+ * envisagé puis abandonné par décision design (Axel 2026-06-01) :
+ *
+ *   Le settling XYZ matériaux GY→GY n'a PAS besoin d'animation de
+ *   remplacement. Le `RewriterRule` `xyzLeaveWithMaterials` absorbe
+ *   correctement les N MSG_MOVE settlings côté journal (plus de
+ *   doublons "→ Graveyard"), et l'absence de visuel pour ces
+ *   settlings est volontaire — un travel OVERLAY→GRAVE depuis la
+ *   zone MZONE du XYZ source ne porte aucune information utile au
+ *   joueur. Le `pileToPile` pré-U16 (flashs dans le GY) était de
+ *   toute façon laid.
+ *
+ * `enqueueVirtualMoves` reste no-op + l'`onTrigger` du rule peut
+ * encore synthétiser des virtuels (ils partent dans le vide) pour
+ * garder la rule auto-suffisante côté contract — si un futur
+ * scenario veut réellement un visuel de remplacement, il suffit
+ * de câbler ce sink sans toucher au rule.
  */
 export const NO_OP_SINKS: RuleSinks = {
-  enqueueVirtualMoves: () => { /* wired by orchestrator in prod (Commit 2) */ },
+  enqueueVirtualMoves: () => { /* by design: no replacement anim for absorbed settlings */ },
   lockZone: () => ({ release: () => { /* no-op */ } }),
 };
 

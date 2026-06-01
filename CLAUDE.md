@@ -676,6 +676,20 @@ distinct `kind:'rewriter'` type that rewrites the event stream
 in-place rather than producing deferred markers) ; 6 stubs documented
 inline (`#3` through `#11` — see the file).
 
+**RuleSinks doctrine (2026-06-01)** — production uses `NO_OP_SINKS`
+**by design**. `xyzLeaveWithMaterials` absorbs the N XYZ-material
+settling MSG_MOVE (GY→GY reason=0x600) cleanly side-journal (closes
+the duplicate "→ Graveyard" rows), and the absence of a replacement
+travel animation is **intentional** : a synthetic OVERLAY→GRAVE travel
+from the XYZ source's MZONE carries no user-visible information, and
+the pre-U16 `pileToPile` flash visual was ugly anyway. The rule's
+`onTrigger` keeps synthesizing virtuals + acquiring a no-op lock so
+the rule contract is self-sufficient — wire the real sinks
+(`dataSource.enqueueVirtualMoves` + `rbs.lockZone`) only if a future
+scenario actually wants a replacement visual. Do NOT call the
+`NO_OP_SINKS` state "dette" or "Commit 2 missing" — it's the chosen
+production behavior.
+
 ### Projections β.3 — inventory
 
 7 production projections in `front/src/app/pages/pvp/projections/`,

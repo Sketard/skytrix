@@ -331,22 +331,17 @@ export const xyzLeaveWithMaterials: RewriterRule = {
   }),
 
   /**
-   * Side-effect au trigger : acquiert le lock externe sur la zone
-   * MZONE source + synthétise N MSG_MOVE virtuels OVERLAY→GRAVE
-   * (taggués via `tagAsVirtual`).
+   * Side-effect au trigger : ARMÉ pour acquérir un lock externe MZONE
+   * + synthétiser N MSG_MOVE virtuels OVERLAY→GRAVE, MAIS la
+   * production utilise `NO_OP_SINKS` (cf. doctrine sur ce sink) —
+   * les virtuels synthétisés ici partent dans le vide. C'est
+   * volontaire : GY→GY settling n'a pas besoin d'animation de
+   * remplacement (décision Axel 2026-06-01).
    *
-   * Le sink fait la conversion absolu→relatif via `ctx.relativePlayer`
-   * et construit la zone key DOM `${zoneId}-${relPlayer}` en interne
-   * (résolution Q5 audit, Axel 2026-05-26) — le rule reste agnostique
-   * de la convention DOM.
-   *
-   * ⚠️ Pass 1 d'impl Commit 2 : la signature `lockZone(zoneId,
-   * absolutePlayer)` doit-elle aussi prendre `sequence` pour cibler
-   * la zone MZONE-N spécifique (pas juste la zone MZONE générique) ?
-   * Question Q5 résiduelle — à figer en début de Commit 2 selon le
-   * format réel des zone keys construites par `locationToZoneKey`. En
-   * attendant, NO_OP_SINKS.lockZone est un no-op release (tests OK,
-   * prod inerte tant que Commit 2 n'est pas wired).
+   * Le code de synthèse reste pour 2 raisons : (1) garder la rule
+   * auto-suffisante côté contract si un futur scenario câble réellement
+   * le sink, (2) le payload retourné porte `xyzZoneLock` consommé par
+   * `onClose?` (release pattern, idempotent même sur no-op lock).
    */
   onTrigger: (e, _ref, sinks) => {
     const m = e as MoveMsg;
