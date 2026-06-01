@@ -1,0 +1,48 @@
+name: Protocol byte-sync check
+
+# C1 (audit-4-modes-2026-06-01) — Defense-in-depth for the byte-sync between
+# duel-server and front WS protocol files. Pre-C1 the only gates were:
+#   - `scripts/hooks/pre-commit` (requires manual `setup-hooks.sh` post-clone)
+#   - `duel-server/package.json` prebuild (only fires when duel-server is built)
+#
+# Both can be bypassed: `git commit --no-verify`, a dev who never installed
+# hooks, a front-only push that never triggers a duel-server build. This
+# workflow runs the byte-sync check + perspective-isolation check on every
+# PR + push to feat/master, closing the gap without depending on developer
+# discipline.
+#
+# The scripts are pure Node, dependency-free, ~50ms each. Total job time is
+# dominated by the checkout step. No npm install needed.
+
+on:
+  pull_request:
+    paths:
+      - 'duel-server/src/ws-protocol-*.ts'
+      - 'duel-server/src/ws-protocol.ts'
+      - 'duel-server/src/game-log/**'
+      - 'duel-server/src/ocgcore-reason-flags.ts'
+      - 'front/src/app/pages/pvp/duel-ws-*.types.ts'
+      - 'front/src/app/pages/pvp/duel-ws.types.ts'
+      - 'front/src/app/pages/pvp/game-log/**'
+      - 'front/src/app/pages/pvp/ocgcore-reason-flags.ts'
+      - 'front/src/app/pages/pvp/duel-page/**'
+      - 'scripts/check-ws-protocol-sync.mjs'
+      - 'scripts/check-perspective-isolation.mjs'
+      - '.github/workflows/protocol-sync.yml'
+  push:
+    branches:
+      - master
+      - 'feat/**'
+
+jobs:
+  byte-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify ws-protocol byte-sync (front ↔ duel-server)
+        run: node scripts/check-ws-protocol-sync.mjs
+      - name: Verify notifyPerspectiveSwitch call-site uniqueness
+        run: node scripts/check-perspective-isolation.mjs
