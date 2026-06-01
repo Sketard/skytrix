@@ -139,6 +139,12 @@ export function createForkSoloSession({
   worker.removeAllListeners('exit');
   worker.removeAllListeners('error');
   session.worker = worker;
+  // U18 (2026-06-01) — attachWorkerHandlers lives in worker-lifecycle.ts and
+  // requires configureWorkerLifecycle() to have been called. Production
+  // wires it in the server.ts boot block (ordered before fork-handlers'
+  // first call site, with the boot invariant catching any missing module).
+  // Tests must call configureWorkerLifecycle in their setup — cf.
+  // fork-handlers.spec.ts wireUpstreams().
   attachWorkerHandlers(session);
 
   return { token1 };

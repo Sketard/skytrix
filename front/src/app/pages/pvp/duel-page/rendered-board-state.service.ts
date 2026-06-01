@@ -296,7 +296,34 @@ export class RenderedBoardStateService implements BoardStateView {
 
   // ── commitAll ────────────────────────────────────────────────────────
 
-  commitAll(): void {
+  /**
+   * Drop every active lock + commit logical state to rendered. Two flavours
+   * of caller exist, differentiated by intent rather than by code path :
+   *
+   *   - **Reset boundaries** (orchestrator destroy, STATE_SYNC, REMATCH_STARTING).
+   *     Call `rbs.assertNoLocks(site)` BEFORE this — if locks survive, the
+   *     pipeline upstream forgot to release them (real bug). F19 sites enforce
+   *     the cleanliness invariant.
+   *   - **Voluntary-skip paths** (replay `collapseRemainingSteps`, `abort`,
+   *     `jumpToState`). Locks from the interrupted mid-step are expected ;
+   *     dropping them silently is the intended cleanup. Pass `site` so the
+   *     U13 warn surfaces regressions where the dropped count creeps up
+   *     (e.g. a new handler that fails to release on every step, masked
+   *     today by `commitAll` clearing the leak on the next user skip).
+   *
+   * The `site` param is observational only — `commitAll` always succeeds.
+   * U13 (2026-06-01) — added the warn so silent leaks at skip paths become
+   * detectable without throwing.
+   */
+  commitAll(site?: string): void {
+    if (site && this._locks.size > 0) {
+      this.logger?.warn(
+        'commitAll dropped %d active lock(s) at %s: %s',
+        this._locks.size,
+        site,
+        [...this._locks.keys()].join(', '),
+      );
+    }
     for (const tid of this._safetyTimeouts) clearTimeout(tid);
     this._safetyTimeouts.clear();
     this._locks.clear();

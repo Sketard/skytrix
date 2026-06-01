@@ -317,7 +317,9 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     this._activeDecision.set(null);
     // Clear any active zone locks before re-feeding — animations may still hold locks
     // from the interrupted step. commitAll() is the replay equivalent of PvP's onStateSync().
-    this.rbs.commitAll();
+    // U13 site tag — observational ; surfaces a regression when the dropped
+    // lock count creeps up across versions.
+    this.rbs.commitAll('replay:collapseRemainingSteps');
     const remainingSteps = this._steps.filter((s): s is AnimateStep => s.kind === 'animate');
     const remaining = remainingSteps.flatMap(s => s.events);
     // Extract the last pendingState — fixes absorbed bug where intermediate state was lost
@@ -360,7 +362,8 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     // F19 skip site (audit C6, 2026-06-01) — replay tear-down ; locks from
     // the interrupted dispatch are expected by design.
     this.processor.reset();
-    this.rbs.commitAll();
+    // U13 site tag — see commitAll docblock.
+    this.rbs.commitAll('replay:abort');
     this._steps = [];
     this._activeDecision.set(null);
     this.busy.set(false);
@@ -371,7 +374,11 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     // rationale as abort().
     this.abort();
     this.rbs.updateLogical(this.swapBs(state.boardState));
-    this.rbs.commitAll();
+    // U13 site tag — see commitAll docblock. The previous abort() already
+    // tagged its own commitAll('replay:abort') — this second call is the
+    // post-jump fresh-state commit so a separate tag preserves the audit
+    // trail without conflating the two semantic events.
+    this.rbs.commitAll('replay:jumpToState');
   }
 
   ngOnDestroy(): void {

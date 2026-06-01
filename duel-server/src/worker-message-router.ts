@@ -287,6 +287,23 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
   }
 }
 
+/**
+ * broadcastMessage pipeline — 7 stages, ORDER IS LOAD-BEARING.
+ * (U14, 2026-06-01 — comment-table to make the implicit ordering explicit.)
+ *
+ *   1. ingestGameLog              — BEFORE 2 (natural-end row built from raw MSG_WIN).
+ *   2. handleDuelEndAndWin        — DUEL_END + MSG_WIN→DUEL_END synthesis + mode tag.
+ *   3. applyChainTransition       — BEFORE 4 (sets session.currentSolvingChainIndex).
+ *   4. tagConfirmCardsChainIndex  — M22 (reads session.currentSolvingChainIndex).
+ *   5. cacheBoardStateAndTurn     — BEFORE 7 STATE_SYNC reconnect path (sets session.lastBoardState).
+ *   6. armSelectTimers            — awaiting + WAITING_RESPONSE + cancel cache + inactivity.
+ *   7. sendPerPlayerFiltered      — SOLO omniscient short-circuit ; OR per-player loop.
+ *
+ * Mutating dependencies between stages (1→2, 3→4, 5→7, 6→7) prevent
+ * extraction into a declarative pipeline ; the SOLO early-return at stage 7
+ * also resists factoring. To add an 8th responsibility, slot it between two
+ * existing stages and document the new ordering dependency above.
+ */
 export function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): void {
   const cfg = getCfg();
   const send = cfg.sendToPlayer;

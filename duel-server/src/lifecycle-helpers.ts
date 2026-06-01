@@ -72,6 +72,38 @@ export function isFullyDisconnected(session: ActiveDuelSession): boolean {
  * which sends each to socket 0 ONCE with full omniscient visibility, so the
  * `sendToPlayer` slot-1 emission is correctly a no-op.
  */
+/**
+ * SOLO-AWARE MESSAGE CONTRACT — anchor (U27, 2026-06-01).
+ *
+ * Adding a new message type that routes per-slot in SOLO multiplex requires
+ * touching FOUR sites. None of them is enforced by a type or a test ; the
+ * fail-modes are detectable but distributed.
+ *
+ *   1. **Whitelist** (this file, `PSEUDO_PAIRWISE_SOLO_ROUTED` below).
+ *      `decideSoloRouting` returns `'route-to-0'` for whitelisted types and
+ *      `'noop'` otherwise. **Forget → server drops the slot-1 send silently.**
+ *
+ *   2. **Sanitize passthrough** (`message-filter.ts`, `sanitizeMessage` switch).
+ *      Non-whitelisted types fall into the `default → DROP + logger.error`
+ *      branch. **Forget → server omniscient filter logs "Dropped unknown
+ *      message type" on every emission.**
+ *
+ *   3. **Broadcast SOLO branch** (`worker-message-router.ts:391-406`, the
+ *      `if (session.soloMode)` block). If the new message is emitted via
+ *      `broadcastMessage` rather than direct `sendToPlayer`, ensure the SOLO
+ *      omniscient path handles it. **Forget → SOLO omniscient pass misses it.**
+ *
+ *   4. **Receive-side** (`front/.../duel-connection.ts` ~l.1280-1450).
+ *      Populate `message.player` / `message.targetPlayer` server-side, then
+ *      `_slots[message.player ?? 0].X.set(...)` on the front, with the
+ *      F-2.4 assert `duelAssert(!soloMode || message.player !== undefined, ...)`
+ *      to surface a regression in dev. **Forget → SOLO viewer perspective=1
+ *      misses the message ; F-2.4 assert fires in dev.**
+ *
+ * When a 5th message type joins, consider promoting to one of the heavier
+ * alternatives evaluated in the audit (factored whitelist or a full
+ * SoloMessageContract table). For now this anchor is the documented gate.
+ */
 export const PSEUDO_PAIRWISE_SOLO_ROUTED: ReadonlySet<ServerMessage['type']> = new Set([
   'WAITING_RESPONSE',
   'INACTIVITY_WARNING',

@@ -476,7 +476,12 @@ function createForkWorker(
       } else {
         // Sanity OK — hand off to host-supplied session manager
         conn.state = 'transitioning';
-        transitionForkToSolo(conn, worker, forkDuelId, replayData);
+        // U17 (2026-06-01) — symmetric log to 'Fork sanity mismatch' so
+        // "session created with sanity=PASS" is observable without
+        // deduction by absence. Pairs with the enriched `Fork transitioned`
+        // log inside transitionForkToSolo (carries sanityWarningAccepted).
+        logger.log('Fork sanity check', { replayId: conn.replayId, result: 'PASS' });
+        transitionForkToSolo(conn, worker, forkDuelId, replayData, /* sanityWarningAccepted */ false);
       }
     } else if (wmsg.type === 'WORKER_FORK_ERROR') {
       logger.error('Fork worker error', { replayId: conn.replayId, error: wmsg.message });
@@ -516,7 +521,18 @@ function createForkWorker(
   });
 }
 
-function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId: string, replayData: WorkerReplayPayload): void {
+function transitionForkToSolo(
+  conn: ReplayConnection,
+  worker: Worker,
+  forkDuelId: string,
+  replayData: WorkerReplayPayload,
+  // U17 (2026-06-01) — true iff this transition followed a divergence
+  // warning the user explicitly accepted via REPLAY_FORK_CONTINUE.
+  // Logged on the final `Fork transitioned` line so audit can answer
+  // "did this session start from a clean sanity or a warning-accepted one?"
+  // without correlating across 3 separate logs.
+  sanityWarningAccepted: boolean,
+): void {
   const c = getCfg();
 
   // Hand off to the host: it allocates tokens, builds the ActiveDuelSession,
@@ -560,7 +576,11 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
   // Clean up replay connection but PRESERVE cache (needed for return/re-fork)
   cleanupReplayConnection(conn, true);
 
-  logger.log('Fork transitioned to solo session', { replayId: conn.replayId, duelId: forkDuelId });
+  logger.log('Fork transitioned to solo session', {
+    replayId: conn.replayId,
+    duelId: forkDuelId,
+    sanityWarningAccepted,
+  });
 }
 
 function handleReplayForkContinue(conn: ReplayConnection): void {
@@ -572,7 +592,10 @@ function handleReplayForkContinue(conn: ReplayConnection): void {
   if (!pending) return;
   pendingForkWorkers.delete(conn);
   conn.state = 'transitioning';
-  transitionForkToSolo(conn, pending.worker, pending.forkDuelId, pending.replayData);
+  // U17 (2026-06-01) — divergence warning was shown and the user explicitly
+  // accepted it via REPLAY_FORK_CONTINUE. Propagate the flag so the
+  // transition log distinguishes "PASS" sessions from "warning-accepted" ones.
+  transitionForkToSolo(conn, pending.worker, pending.forkDuelId, pending.replayData, /* sanityWarningAccepted */ true);
 }
 
 function handleReplayForkCancel(conn: ReplayConnection): void {
