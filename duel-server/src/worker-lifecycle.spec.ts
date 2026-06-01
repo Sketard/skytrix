@@ -347,6 +347,25 @@ describe('worker-lifecycle', () => {
       vi.advanceTimersByTime(100);
       expect(spy.rematchExpirations).toEqual([{ session: s }]);
     });
+
+    // F5-bis (2026-05-31) — fork-solo is an exploratory one-shot; the rematch
+    // arm is intentionally skipped. The endedAt + timer-clear path still runs.
+    // Regression guard for U1 (audit-4-modes-2026-06-01): a refactor that
+    // re-orders this skip past the `setTimeout(...)` call would silently start
+    // offering rematch invitations for fork-solo sessions.
+    it('does NOT arm rematch timer when session.forkMode (U1)', () => {
+      const spy = makeSpy();
+      configureWorkerLifecycle(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+      s.forkMode = true;
+
+      handleDuelEnd(s);
+
+      expect(s.endedAt).not.toBeNull();
+      expect(spy.timerClears).toHaveLength(1);
+      expect(s.rematchTimeout).toBeNull();
+    });
   });
 
   // ==========================================================================

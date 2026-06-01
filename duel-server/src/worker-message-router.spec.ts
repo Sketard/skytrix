@@ -9,6 +9,7 @@ import {
 import { configureWorkerLifecycle, _resetTotalDuelsServedForTest } from './worker-lifecycle.js';
 import { configureReplayPersist } from './replay-persist.js';
 import { configureTimerManagement } from './timer-management.js';
+import * as logger from './logger.js';
 import type { ActiveDuelSession, WorkerToMainMessage } from './types.js';
 import type { ServerMessage } from './ws-protocol.js';
 
@@ -392,6 +393,85 @@ describe('worker-message-router', () => {
   });
 
   // ==========================================================================
+  // handleWorkerMessage — WORKER_REPLAY_DATA (fork carve-out)
+  // ==========================================================================
+
+  describe('handleWorkerMessage — WORKER_REPLAY_DATA (U1)', () => {
+    // Minimal payload — the router only logs `payload.playerResponses.length`
+    // and forwards the whole struct to `persistReplay`, which reads
+    // `payload.metadata` to build the POST body. For fork-mode the call site
+    // is skipped, so the payload shape doesn't matter — but we keep it
+    // realistic for the non-fork sibling test.
+    function makeReplayDataMsg(): WorkerToMainMessage {
+      return {
+        type: 'WORKER_REPLAY_DATA',
+        duelId: 'd1',
+        payload: {
+          seed: ['0', '0', '0', '0'],
+          decks: [{ main: [], extra: [] }, { main: [], extra: [] }],
+          playerResponses: [],
+          metadata: {
+            playerUsernames: ['p0', 'p1'],
+            deckNames: ['d0', 'd1'],
+            turnCount: 1,
+            result: 'win',
+            date: '2026-06-01',
+            scriptsHash: 'h',
+            ocgcoreVersion: 'v',
+            durationSec: 1,
+          },
+        },
+      } as unknown as WorkerToMainMessage;
+    }
+
+    it('forkMode session SKIPS persistReplay (no fetch POST) and terminates the worker (U1)', async () => {
+      const fetchSpy = vi.fn(async () => new Response('{"id":"x"}', { status: 200 })) as unknown as typeof fetch;
+      // Re-configure replay-persist with our own fetch spy so the absence of
+      // an outbound POST is observable.
+      configureReplayPersist({
+        springBootApiUrl: 'http://stub/api',
+        internalApiKey: 'stub',
+        fetch: fetchSpy,
+        maxRetries: 1,
+        retryDelayMs: () => 0,
+      });
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+      s.forkMode = true;
+
+      handleWorkerMessage(s, makeReplayDataMsg());
+      // Let any deferred persistReplay branches resolve (none should fire).
+      await Promise.resolve();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(s.workerTerminated).toBe(true);
+    });
+
+    it('non-fork session DOES POST the replay (sibling guard)', async () => {
+      const fetchSpy = vi.fn(async () => new Response('{"id":"x"}', { status: 200 })) as unknown as typeof fetch;
+      configureReplayPersist({
+        springBootApiUrl: 'http://stub/api',
+        internalApiKey: 'stub',
+        fetch: fetchSpy,
+        maxRetries: 1,
+        retryDelayMs: () => 0,
+      });
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+
+      handleWorkerMessage(s, makeReplayDataMsg());
+      // persistReplay returns a Promise that we await transitively via the
+      // .finally chain in the router. Flush the microtask queue.
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ==========================================================================
   // broadcastMessage — DUEL_END / MSG_WIN paths
   // ==========================================================================
 
@@ -420,6 +500,49 @@ describe('worker-message-router', () => {
       // MSG_WIN is also forwarded through the per-player filter loop (one
       // per player after filterMessage).
       expect(allMessagesOfType(spy, 'MSG_WIN').length).toBeGreaterThanOrEqual(2);
+    });
+
+    // U1 (audit-4-modes-2026-06-01) — fork-solo writes a distinct `mode` tag
+    // on the DUEL_END log line for audit-log filtering. A refactor that
+    // collapses the tag back to `'solo' / 'pvp'` would silently lose the
+    // ability to filter fork-solo runs in production logs.
+    it('writes mode: "fork_solo" on DUEL_END log line for forkMode sessions (U1)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+      s.forkMode = true;
+      const logSpy = vi.spyOn(logger, 'log');
+      try {
+        broadcastMessage(s, { type: 'MSG_WIN', player: 0 } as unknown as ServerMessage);
+
+        const duelEndCall = logSpy.mock.calls.find(
+          ([msg, ctx]) => msg === 'DUEL_END' && (ctx as { mode?: string } | undefined)?.mode !== undefined,
+        );
+        expect(duelEndCall).toBeDefined();
+        expect((duelEndCall![1] as { mode: string }).mode).toBe('fork_solo');
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+
+    it('writes mode: "solo" on DUEL_END log line for soloMode (non-fork) sessions (U1 sibling)', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.soloMode = true;
+      s.forkMode = false;
+      const logSpy = vi.spyOn(logger, 'log');
+      try {
+        broadcastMessage(s, { type: 'MSG_WIN', player: 0 } as unknown as ServerMessage);
+
+        const duelEndCall = logSpy.mock.calls.find(
+          ([msg, ctx]) => msg === 'DUEL_END' && (ctx as { mode?: string } | undefined)?.mode !== undefined,
+        );
+        expect((duelEndCall![1] as { mode: string }).mode).toBe('solo');
+      } finally {
+        logSpy.mockRestore();
+      }
     });
   });
 
