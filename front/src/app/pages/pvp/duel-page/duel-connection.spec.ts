@@ -797,3 +797,180 @@ describe('DuelConnection.cleanup() — idempotence (Transport Lifecycle Invarian
     expect(() => conn.cleanup()).not.toThrow();
   });
 });
+
+// =============================================================================
+// U6 (audit-4-modes-2026-06-01) — Mass-reset matrix per spec §4.3 A8.
+//
+// 4 lifecycle events in handleMessage / _applyStateSync mass-reset the
+// per-slot prompt-flow state. The clears differ per event; the
+// authoritative table lives in
+// `_bmad-output/planning-artifacts/phase-gamma-option-c-multiplex-spec.md`
+// §4.3 A8 ("per-perspective field reset rules"). Pre-U6 the only
+// regression net was one DUEL_END test covering 3 fields out of 8. A
+// new field added on the slot or a clear silently dropped on one of
+// the 4 events would surface only when a user notices stale state
+// crossing a duel boundary (e.g. inactivity warning surviving a
+// rematch). The matrix below pins every event × every field.
+// =============================================================================
+
+describe('DuelConnection — mass-reset matrix (spec §4.3 A8, U6)', () => {
+  // Prime every per-slot field of `_slots[slot]` to a non-default value
+  // so reset-vs-skip is observable. The accessors used here are the same
+  // public read-side surface (`getXxxFor(p)`) consumers actually use.
+  function primeSlot(conn: DuelConnection, slot: 0 | 1): void {
+    const internals = conn as unknown as {
+      _slots: Array<{
+        pendingPrompt: { set: (v: unknown) => void };
+        inactivityWarning: { set: (v: unknown) => void };
+        waitingForOpponent: { set: (v: boolean) => void };
+        hintContext: { set: (v: unknown) => void };
+        lastConfirmedCards: CardInfo[];
+        lastSelectedCards: CardInfo[];
+        lastSelectedPromptType: string | null;
+        hintCardConsumed: boolean;
+      }>;
+    };
+    const s = internals._slots[slot];
+    s.pendingPrompt.set({ type: 'SELECT_CARD', player: slot });
+    s.inactivityWarning.set({ type: 'INACTIVITY_WARNING', player: slot, remainingMs: 20_000 });
+    s.waitingForOpponent.set(true);
+    s.hintContext.set({ hintType: 9, player: slot, value: 1, cardName: 'PrimedHint' });
+    s.lastConfirmedCards = [{ cardCode: 1, name: 'A', player: slot as Player, location: 1, sequence: 0 }];
+    s.lastSelectedCards = [{ cardCode: 2, name: 'B', player: slot as Player, location: 1, sequence: 0 }];
+    s.lastSelectedPromptType = 'SELECT_CARD';
+    s.hintCardConsumed = true;
+  }
+
+  type SlotProbe = {
+    pendingPrompt: unknown;
+    inactivityWarning: unknown;
+    waitingForOpponent: boolean;
+    hintContext: { hintType: number; cardName: string };
+    lastConfirmedCards: ReadonlyArray<CardInfo>;
+    lastSelectedCards: ReadonlyArray<CardInfo>;
+    lastSelectedPromptType: string | null;
+    hintCardConsumed: boolean;
+  };
+
+  function probeSlot(conn: DuelConnection, slot: 0 | 1): SlotProbe {
+    return {
+      pendingPrompt: conn.getPendingPromptFor(slot)(),
+      inactivityWarning: conn.getInactivityWarningFor(slot)(),
+      waitingForOpponent: conn.getWaitingForOpponentFor(slot)(),
+      hintContext: conn.getHintContextFor(slot)(),
+      lastConfirmedCards: conn.getLastConfirmedCardsFor(slot),
+      lastSelectedCards: conn.getLastSelectedCardsFor(slot),
+      lastSelectedPromptType: conn.getLastSelectedPromptTypeFor(slot),
+      hintCardConsumed: conn.getHintCardConsumedFor(slot),
+    };
+  }
+
+  // Minimal BOARD_STATE-shaped payload for STATE_SYNC (the RBS sanitization
+  // path tolerates an empty-zone shape).
+  const emptyBoardData = {
+    players: [
+      { lp: 8000, deckCount: 40, extraCount: 0, hand: [], zones: [] },
+      { lp: 8000, deckCount: 40, extraCount: 0, hand: [], zones: [] },
+    ],
+    turnPlayer: 0, turnCount: 0, phase: 1,
+  } as never;
+
+  it('DUEL_END clears 5 fields on BOTH slots, leaves selection state untouched', () => {
+    const { conn } = makeConn();
+    primeSlot(conn, 0);
+    primeSlot(conn, 1);
+
+    dispatch(conn, { type: 'DUEL_END', winner: 0 as Player, reason: 'lp_zero' } as unknown as ServerMessage);
+
+    for (const slot of [0, 1] as const) {
+      const p = probeSlot(conn, slot);
+      expect(p.pendingPrompt).toBeNull();
+      expect(p.inactivityWarning).toBeNull();
+      expect(p.waitingForOpponent).toBeFalse();
+      expect(p.hintContext.cardName).toBe(''); // empty hintContext
+      expect(p.hintContext.hintType).toBe(0);
+      expect(p.lastConfirmedCards).toEqual([]);
+      // DUEL_END intentionally does NOT touch selection-history fields;
+      // they survive until next STATE_SYNC. Pinning the carve-out so a
+      // future "clear everything" PR cannot silently broaden the reset.
+      expect(p.lastSelectedCards.length).toBe(1);
+      expect(p.lastSelectedPromptType).toBe('SELECT_CARD');
+      expect(p.hintCardConsumed).toBeTrue();
+    }
+  });
+
+  it('REMATCH_STARTING clears the same 5 fields as DUEL_END on BOTH slots', () => {
+    const { conn } = makeConn();
+    primeSlot(conn, 0);
+    primeSlot(conn, 1);
+
+    dispatch(conn, { type: 'REMATCH_STARTING' } as unknown as ServerMessage);
+
+    for (const slot of [0, 1] as const) {
+      const p = probeSlot(conn, slot);
+      expect(p.pendingPrompt).toBeNull();
+      expect(p.inactivityWarning).toBeNull();
+      expect(p.waitingForOpponent).toBeFalse();
+      expect(p.hintContext.cardName).toBe('');
+      expect(p.hintContext.hintType).toBe(0);
+      expect(p.lastConfirmedCards).toEqual([]);
+      // Same carve-out as DUEL_END — selection history survives.
+      expect(p.lastSelectedCards.length).toBe(1);
+      expect(p.lastSelectedPromptType).toBe('SELECT_CARD');
+      expect(p.hintCardConsumed).toBeTrue();
+    }
+  });
+
+  it('FIRST_PLAYER_RESULT clears ONLY pendingPrompt + waitingForOpponent on BOTH slots', () => {
+    const { conn } = makeConn();
+    primeSlot(conn, 0);
+    primeSlot(conn, 1);
+
+    dispatch(conn, { type: 'FIRST_PLAYER_RESULT', goFirst: true } as unknown as ServerMessage);
+
+    for (const slot of [0, 1] as const) {
+      const p = probeSlot(conn, slot);
+      expect(p.pendingPrompt).toBeNull();
+      expect(p.waitingForOpponent).toBeFalse();
+      // FIRST_PLAYER_RESULT is the narrowest of the 4 mass-resets —
+      // it ends the pre-duel prompt phase but leaves every other
+      // per-slot field intact (no chain state, no hints, no selection
+      // history yet at this point in the duel lifecycle).
+      expect(p.inactivityWarning).not.toBeNull();
+      expect(p.hintContext.cardName).toBe('PrimedHint');
+      expect(p.lastConfirmedCards.length).toBe(1);
+      expect(p.lastSelectedCards.length).toBe(1);
+      expect(p.lastSelectedPromptType).toBe('SELECT_CARD');
+      expect(p.hintCardConsumed).toBeTrue();
+    }
+  });
+
+  it('STATE_SYNC (applied via CHAIN_STATE atomic flush) clears 6 fields on BOTH slots', () => {
+    const { conn } = makeConn({ ws: makeMockWs(true) });
+    primeSlot(conn, 0);
+    primeSlot(conn, 1);
+
+    // F14 — STATE_SYNC is buffered; CHAIN_STATE consumes it and flushes
+    // _applyStateSync synchronously in the same tick.
+    dispatch(conn, { type: 'STATE_SYNC', data: emptyBoardData } as unknown as ServerMessage);
+    dispatch(conn, { type: 'CHAIN_STATE', links: [], phase: 'idle', negatedIndices: [] } as unknown as ServerMessage);
+
+    for (const slot of [0, 1] as const) {
+      const p = probeSlot(conn, slot);
+      expect(p.pendingPrompt).toBeNull();
+      expect(p.hintContext.cardName).toBe('');
+      expect(p.hintContext.hintType).toBe(0);
+      expect(p.lastConfirmedCards).toEqual([]);
+      expect(p.lastSelectedCards).toEqual([]);
+      expect(p.lastSelectedPromptType).toBeNull();
+      expect(p.hintCardConsumed).toBeFalse();
+      // STATE_SYNC intentionally does NOT touch inactivityWarning or
+      // waitingForOpponent — the server re-sends a fresh WAITING_RESPONSE
+      // after the resync, and INACTIVITY_WARNING is a transport-time event
+      // that does not survive a reconnect on the server side anyway.
+      // (The audit doc's A8 table shows these as "–" for STATE_SYNC.)
+      expect(p.inactivityWarning).not.toBeNull();
+      expect(p.waitingForOpponent).toBeTrue();
+    }
+  });
+});
