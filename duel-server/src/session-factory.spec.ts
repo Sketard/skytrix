@@ -99,7 +99,7 @@ describe('createInitialSessionState (U15)', () => {
     expect(s.turnTimeSecs).toBe(600);
   });
 
-  it('all 35 ActiveDuelSession fields are populated (no undefined slots)', () => {
+  it('every ActiveDuelSession field is populated by the factory (enumeration)', () => {
     const s = createInitialSessionState({
       duelId: 'd1',
       players: [makePlayer(0), makePlayer(1)],
@@ -108,15 +108,39 @@ describe('createInitialSessionState (U15)', () => {
       playerUsernames: ['Alice', 'Bob'],
       deckNames: ['ABC', 'DEF'],
     });
-    // Spot-check the load-bearing fields that the runtime reads without a
-    // null-check. `chainPhase` / `activeChainLinks` / `negatedChainIndices` /
-    // `currentSolvingChainIndex` come from `emptyChainState()`.
+
+    // Enumeration : assert that EVERY key the factory writes resolves to a
+    // defined value (no missing field that would surface as `undefined` at
+    // runtime). Drift detection : if a future ActiveDuelSession field is
+    // added but the factory forgets to populate it, TS will catch the type
+    // error AND this loop will assert the missing key.
+    const EXPECTED_KEYS: ReadonlyArray<keyof typeof s> = [
+      'duelId', 'phase', 'firstPlayerState', 'chosenFirstPlayer', 'players',
+      'createdAt', 'startedAt', 'endedAt', 'worker', 'workerTerminated',
+      'awaitingResponse', 'lastBoardState', 'lastSentPrompt', 'lastSentHint',
+      'decks', 'rematchRequested', 'rematchTimeout', 'preservationTimer',
+      'bothDisconnected', 'combinedGraceTimer', 'storedDuelResult',
+      'lastStateSyncAt', 'lastCancelAt', 'cancelTargetPrompt', 'timerContext',
+      'soloMode', 'forkMode', 'skipShuffle', 'turnTimeSecs',
+      'invalidResponseCount', 'promptSentAt', 'activeChainLinks',
+      'chainPhase', 'negatedChainIndices', 'currentSolvingChainIndex',
+      'playerUsernames', 'deckNames', 'pendingReplayResult',
+      'forkConnectionTimeout', 'gameLog',
+    ];
+    for (const key of EXPECTED_KEYS) {
+      // `undefined` is the failure mode we want to catch. `null` is a
+      // legitimate baseline for `worker`, `endedAt`, `timerContext`, etc.
+      expect(s[key], `field ${String(key)} is undefined`).not.toBeUndefined();
+    }
+
+    // Spot-check the load-bearing baseline values that the runtime reads
+    // without a null-check. `chainPhase` / `activeChainLinks` /
+    // `negatedChainIndices` / `currentSolvingChainIndex` come from
+    // `emptyChainState()`.
     expect(s.chainPhase).toBe('idle');
     expect(s.activeChainLinks).toEqual([]);
     expect(s.negatedChainIndices).toBeInstanceOf(Set);
     expect(s.currentSolvingChainIndex).toBeNull();
-    expect(s.gameLog).toBeDefined();
-    // Tuple defaults that mutate per-prompt — must start at the "no-prompt" baseline.
     expect(s.awaitingResponse).toEqual([false, false]);
     expect(s.lastSentPrompt).toEqual([null, null]);
     expect(s.lastSentHint).toEqual([null, null]);
@@ -230,5 +254,58 @@ describe('resetSessionForRematch (U15)', () => {
 
     expect(s.gameLog).toBeDefined();
     expect(s.gameLog).not.toBe(originalLog);
+  });
+
+  it('clears per-player gracePeriodTimer (U15-review #5)', () => {
+    // A rematch can fire while a player is in the disconnect grace window.
+    // Without the clear, the timer callback would tire on the freshly-reset
+    // session — observable here via the spy on clearTimeout.
+    const s = createInitialSessionState({
+      duelId: 'd1',
+      players: [makePlayer(0), makePlayer(1)],
+      decks: [makeDeck(), makeDeck()],
+      soloMode: false,
+      playerUsernames: ['Alice', 'Bob'],
+      deckNames: ['ABC', 'DEF'],
+    });
+    const timer0 = setTimeout(() => undefined, 99_999);
+    const timer1 = setTimeout(() => undefined, 99_999);
+    s.players[0].gracePeriodTimer = timer0;
+    s.players[1].gracePeriodTimer = timer1;
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    resetSessionForRematch(s);
+
+    expect(s.players[0].gracePeriodTimer).toBeNull();
+    expect(s.players[1].gracePeriodTimer).toBeNull();
+    expect(clearSpy).toHaveBeenCalledWith(timer0);
+    expect(clearSpy).toHaveBeenCalledWith(timer1);
+    clearSpy.mockRestore();
+  });
+
+  it('does NOT reset firstPlayerState / chosenFirstPlayer / phase (caller responsibility)', () => {
+    // U15-review #2 — pin the explicit non-clear of these 3 fields. The
+    // caller (server.ts startRematch) is responsible for `disposeFirstPlayer`
+    // (which clears firstPlayerState + chosenFirstPlayer) and the subsequent
+    // `startFirstPlayerPhase` / `startDuelWithOrder` re-write `phase`.
+    // Breaking this carve-out in a future refactor must be explicit.
+    const s = createInitialSessionState({
+      duelId: 'd1',
+      players: [makePlayer(0), makePlayer(1)],
+      decks: [makeDeck(), makeDeck()],
+      soloMode: false,
+      playerUsernames: ['Alice', 'Bob'],
+      deckNames: ['ABC', 'DEF'],
+    });
+    // Simulate end-of-duel state.
+    s.phase = 'DUELING';
+    s.firstPlayerState = { rolls: [null, null], timers: [], round: 0, resolvedWinner: 0 };
+    s.chosenFirstPlayer = 0;
+
+    resetSessionForRematch(s);
+
+    expect(s.phase).toBe('DUELING');
+    expect(s.firstPlayerState).not.toBeNull();
+    expect(s.chosenFirstPlayer).toBe(0);
   });
 });

@@ -129,10 +129,35 @@ export function createInitialSessionState(opts: CreateInitialSessionStateOpts): 
  * `decks`, `soloMode`, `forkMode`, `skipShuffle`, `turnTimeSecs`,
  * `playerUsernames`, `deckNames` all carry over.
  *
- * Does NOT clear `session.players[*].gracePeriodTimer` / `inactivitySlot` —
- * those are owned by `clearAllDuelTimers` which the rematch path calls
- * separately. Does NOT spawn a worker — `startDuelWithOrder` or the dice
- * coordinator handles that.
+ * Per-player `inactivitySlot` is cleared by `clearAllDuelTimers`
+ * (timer-management.ts) which the rematch path calls SEPARATELY after this
+ * helper. Per-player `gracePeriodTimer` was historically only cleared by
+ * `cleanupDuelSession` and by the reconnect path — meaning a rematch that
+ * fires while a player is in grace period would leave the timer alive,
+ * with its callback firing on the freshly-reset session. U15 audit-review
+ * fix : clear `gracePeriodTimer` here too.
+ *
+ * `phase`, `firstPlayerState`, `chosenFirstPlayer` are NOT reset by this
+ * helper :
+ *   - `firstPlayerState` / `chosenFirstPlayer` are owned by
+ *     `disposeFirstPlayer(session)`, which the rematch path MUST call
+ *     BEFORE this helper (server.ts startRematch enforces the order).
+ *   - `phase` is immediately re-written by `startFirstPlayerPhase` (PvP)
+ *     or `startDuelWithOrder` (SOLO) the next tick — resetting it here
+ *     would be cosmetic, and asymmetric with the pre-refactor behavior.
+ *     The audit review accepted the asymmetry as parity-preserving
+ *     (D1 acted 2026-06-02).
+ *
+ * MUST NOT be called on a `forkMode: true` session. Fork-solo is
+ * exploratory one-shot and never reaches the rematch flow — see
+ * CLAUDE.md F5-bis (`worker-lifecycle.ts:165` skips the rematch arm
+ * when `session.forkMode`). The invariant is by-construction ; no
+ * runtime assertion is added here to keep the helper pure (D2 acted
+ * 2026-06-02). Calling it on a fork session would leave `forkMode: true`
+ * intact but reset every per-duel field — a zombie state.
+ *
+ * Does NOT spawn a worker — `startDuelWithOrder` or the dice coordinator
+ * handles that.
  */
 export function resetSessionForRematch(session: ActiveDuelSession): void {
   session.worker = null;
@@ -151,6 +176,15 @@ export function resetSessionForRematch(session: ActiveDuelSession): void {
   session.cancelTargetPrompt = [null, null];
   session.invalidResponseCount = [0, 0];
   session.promptSentAt = [0, 0];
+  // U15-review #5 — clear per-player grace timers. A rematch can fire while
+  // a player is in the disconnect grace window ; without this, the timer
+  // callback would tire on the freshly-reset session.
+  for (const p of session.players) {
+    if (p.gracePeriodTimer) {
+      clearTimeout(p.gracePeriodTimer);
+      p.gracePeriodTimer = null;
+    }
+  }
   Object.assign(session, emptyChainState());
   // Fresh builders for the rematch — the prior duel's entries must NOT bleed
   // into the new journal.
