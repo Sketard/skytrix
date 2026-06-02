@@ -155,7 +155,6 @@ function wireUpstreams(): void {
   configureFirstPlayerCoordinator({
     sendToPlayer: () => undefined,
     filterMessage: (m) => m,
-    startDuelWithOrder: () => undefined,
     diceRollTimeoutMs: 30_000,
     firstPlayerTimeoutMs: 15_000,
   });

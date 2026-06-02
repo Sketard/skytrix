@@ -1,6 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { Worker } from 'node:worker_threads';
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { resolve, join } from 'node:path';
 import {
@@ -39,11 +38,11 @@ import {
   SOLVER_RESULT, SOLVER_CANCELLED, SOLVER_ERROR, SOLVER_HANDTRAPS,
 } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
-import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
+import { validateData, initScriptsHash } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, type ChainStateContainer } from './chain-state-tracker.js';
-import { createInitialSessionState, resetSessionForRematch } from './session-factory.js';
+import { createInitialSessionState } from './session-factory.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { startWsRateLimitSweep } from './ws-rate-limit.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
@@ -62,13 +61,10 @@ import {
 import {
   configureFirstPlayerCoordinator,
   isFirstPlayerCoordinatorConfigured,
-  startFirstPlayerPhase,
-  disposeFirstPlayer,
 } from './first-player-coordinator.js';
 import {
   configureWorkerLifecycle,
   isWorkerLifecycleConfigured,
-  attachWorkerHandlers,
 } from './worker-lifecycle.js';
 import {
   configureDuelEndCoordinator,
@@ -98,7 +94,7 @@ import {
   configureClientMessageRouter,
   isClientMessageRouterConfigured,
 } from './client-message-router.js';
-import { isFullyDisconnected, buildDuelStartingMessage } from './lifecycle-helpers.js';
+import { isFullyDisconnected } from './lifecycle-helpers.js';
 import { sendToPlayer } from './ws-write.js';
 import {
   configureSessionOrchestrator,
@@ -106,6 +102,9 @@ import {
   cleanupDuelSession,
   sendStateSnapshot,
   resendPendingPrompt,
+  startRematch,
+  rematchExpired,
+  startDuelWithOrder,
 } from './session-orchestrator.js';
 import {
   configurePvpConnectionHandler,
@@ -283,7 +282,6 @@ configureTimerManagement({
 configureFirstPlayerCoordinator({
   sendToPlayer,
   filterMessage,
-  startDuelWithOrder,
   diceRollTimeoutMs: DICE_ROLL_TIMEOUT_MS,
   firstPlayerTimeoutMs: FIRST_PLAYER_TIMEOUT_MS,
 });
@@ -307,6 +305,17 @@ configureReplayPersist({
 configureWorkerMessageRouter({
   sendToPlayer,
   maxInvalidResponses: MAX_INVALID_RESPONSES,
+});
+
+// session-orchestrator owns cleanupDuelSession + startRematch + sendStateSnapshot
+// + resendPendingPrompt, which downstream modules below consume via cfg
+// (forkHandlers, clientMessageRouter). Configure it before those modules so
+// any synchronous side-effect during their configure call resolves through a
+// configured cfg. Today no configure has such a side-effect — but topological
+// boot ordering is cheap defensive insurance (3-layer review chunk E, BH-4).
+configureSessionOrchestrator({
+  sessionManager,
+  dataDir: DATA_DIR,
 });
 
 configureForkHandlers({
@@ -337,16 +346,11 @@ configureClientMessageRouter({
   cancelPromptRateLimitMs: CANCEL_PROMPT_RATE_LIMIT_MS,
 });
 
-configureSessionOrchestrator({
-  sessionManager,
-});
-
 configurePvpConnectionHandler({
   port: PORT,
   isProduction: IS_PRODUCTION,
   sessionManager,
   incrementProtocolMismatch: () => { protocolMismatchCount++; },
-  startDuelWithOrder,
 });
 
 // =============================================================================
@@ -533,132 +537,23 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 // H1-suite phase 2.1). `safeTerminateWorker` / `handleDuelEnd` /
 // `requestReplayFromWorker` / `totalDuelsServed` counter live in
 // duel-end-coordinator.ts (U34 cosmetic, audit-4-modes-2026-06-01).
-// `persistReplay` lives in replay-persist.ts (phase 2.2). Server.ts
-// keeps the actual `new Worker(...)` calls (the host owns where the
-// worker URL resolves) — the modules own the listener wiring, lifecycle
-// flags, and HTTP retry loop.
+// `persistReplay` lives in replay-persist.ts (phase 2.2). `new Worker(...)`
+// itself moved to session-orchestrator.ts (U32 #3b) — the worker URL is
+// now resolved relative to that module ; server.ts injects `dataDir`
+// via the SessionOrchestratorConfig.
 
 // =============================================================================
-// Rematch
+// Rematch + Duel Start
 // =============================================================================
-
-function startRematch(session: ActiveDuelSession): void {
-  if (session.rematchTimeout) {
-    clearTimeout(session.rematchTimeout);
-    session.rematchTimeout = null;
-  }
-
-  sendToPlayer(session, 0, { type: 'REMATCH_STARTING' });
-  sendToPlayer(session, 1, { type: 'REMATCH_STARTING' });
-
-  // Remove old worker handlers to prevent cleanupDuelSession on exit
-  safeTerminateWorker(session);
-
-  // Reset all per-duel session state. The worker is NOT spawned here —
-  // a rematch re-runs the full pre-duel dice flow (startFirstPlayerPhase)
-  // so the players re-roll for turn order, exactly like a fresh duel.
-  // The worker is spawned later by startDuelWithOrder once the dice
-  // coordinator resolves the first player.
-  // U15 (audit-4-modes-2026-06-01) — per-duel state wipe consolidated in
-  // `resetSessionForRematch`. Long-lived fields (decks, soloMode, forkMode,
-  // playerUsernames, deckNames, turnTimeSecs, players) are preserved.
-  disposeFirstPlayer(session);
-  resetSessionForRematch(session);
-
-  clearAllDuelTimers(session);
-
-  if (session.soloMode) {
-    // Solo mode has no dice flow — the first duel skips it too (see the
-    // WAITING_PLAYERS branch). A solo rematch keeps the same starting
-    // player: `players[]` is already ordered so index 0 leads, so spawn
-    // the worker directly via startDuelWithOrder(0).
-    startDuelWithOrder(session, 0);
-    return;
-  }
-
-  // Re-enter the pre-duel dice coordinator — sends DICE_ROLL to both
-  // players, resolves a winner, lets them pick who starts, then bridges
-  // into startDuelWithOrder (which spawns the worker with skipRps: true).
-  startFirstPlayerPhase(session);
-}
-
-function rematchExpired(session: ActiveDuelSession): void {
-  session.rematchTimeout = null;
-  sendToPlayer(session, 0, { type: 'REMATCH_CANCELLED', reason: 'timeout' });
-  sendToPlayer(session, 1, { type: 'REMATCH_CANCELLED', reason: 'timeout' });
-  cleanupDuelSession(session);
-}
-
-// =============================================================================
-// Pre-Duel First-Player Coordinator (dice 2D6, since 2026-05-13)
-// =============================================================================
-// startFirstPlayerPhase / handlePreDuelResponse / disposeFirstPlayer live in
-// first-player-coordinator.ts. The bridge into worker spawning below
-// (startDuelWithOrder) is injected back into the coordinator via configure.
-
-function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): void {
-  session.phase = 'DUELING';
-  disposeFirstPlayer(session);
-
-  // Swap decks and player sessions so firstPlayer becomes OCGCore player 0
-  let decks = session.decks;
-  if (firstPlayer === 1) {
-    decks = [session.decks[1], session.decks[0]];
-    session.decks = decks;
-    // Swap player sessions so players[0] = OCGCore player 0
-    const [p0, p1] = session.players;
-    session.players = [p1, p0];
-    session.players[0].playerIndex = 0;
-    session.players[1].playerIndex = 1;
-    sessionManager.remapReconnectTokensAfterSwap(session);
-    // Swap usernames + deckNames pour rester aligné avec players[] : tout au
-    // long du duel (live + replay persisté) `playerUsernames[i]` doit décrire
-    // OCGCore player `i`, et `replay-persist` lit `session.players[i].playerId`
-    // → toute désynchro ici décale les pseudos/decks par rapport aux IDs
-    // persistés côté Spring (bug "vs admin au lieu de vs admin2", 2026-05-17).
-    session.playerUsernames = [session.playerUsernames[1], session.playerUsernames[0]];
-    session.deckNames = [session.deckNames[1], session.deckNames[0]];
-  }
-
-  // Tell each player their OCGCore index (after potential swap). Each side
-  // receives only their own decklist's card codes — sending the union would
-  // let the opponent's deck be reconstructed from the upfront image prefetch.
-  // γ Option C A1bis — SOLO multiplex sends a single DUEL_STARTING on socket 0
-  // carrying BOTH decks (the user is both players; both perspectives need
-  // their images pre-fetched). PvP normal stays per-player.
-  if (session.soloMode) {
-    sendToPlayer(session, 0, buildDuelStartingMessage(session, 0));
-  } else {
-    sendToPlayer(session, 0, buildDuelStartingMessage(session, 0));
-    sendToPlayer(session, 1, buildDuelStartingMessage(session, 1));
-  }
-
-  // Spawn worker
-  const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
-    workerData: { dataDir: DATA_DIR },
-  });
-
-  session.worker = worker;
-  session.workerTerminated = false;
-  session.awaitingResponse = [false, false];
-  session.lastSentPrompt = [null, null];
-  session.lastSentHint = [null, null];
-  session.startedAt = Date.now();
-
-  attachWorkerHandlers(session);
-
-  worker.postMessage({
-    type: 'INIT_DUEL',
-    duelId: session.duelId,
-    decks,
-    playerUsernames: session.playerUsernames,
-    deckNames: session.deckNames,
-    skipRps: true, // Always skip OCGCore's RPS — we handle it at app layer
-    skipShuffle: session.skipShuffle,
-    scriptsHash: getScriptsHash(),
-    ocgcoreVersion: getOcgcoreVersion(),
-  });
-}
+// startRematch / rematchExpired / startDuelWithOrder moved to
+// session-orchestrator.ts (U32 #3b, audit-4-modes-2026-06-01).
+// `startRematch` is consumed by client-message-router via cfg ;
+// `rematchExpired` is wired into DuelEndCoordinator.handleDuelEnd's
+// `onRematchExpired` callback ; `startDuelWithOrder` is consumed by
+// first-player-coordinator (PvP dice flow) and by pvp-connection-handler
+// (SOLO direct path). The Worker URL is now resolved relative to
+// session-orchestrator.ts (duel-worker.js lives next to it in
+// duel-server/src/).
 
 // =============================================================================
 // Worker → Main Message Handler

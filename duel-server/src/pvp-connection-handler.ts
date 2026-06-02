@@ -29,6 +29,7 @@ import {
   cleanupDuelSession,
   sendStateSnapshot,
   resendPendingPrompt,
+  startDuelWithOrder,
 } from './session-orchestrator.js';
 import { safeTerminateWorker } from './duel-end-coordinator.js';
 import * as logger from './logger.js';
@@ -48,12 +49,14 @@ import * as logger from './logger.js';
  *      and `close` (pause timers + grace start OR rematch teardown).
  *
  * Pattern : `createConfigurable<PvpConnectionHandlerConfig>` — aligned
- * with the 11 other server modules and participates in the boot
- * invariant. Two `getCfg()` reads happen per connection (entry of
- * `handlePvpConnection` + on each 4426 mismatch via
- * `checkProtocolVersion`). Per-message dispatch does NOT touch the
- * cfg — the per-WS closure caches `cfg.startDuelWithOrder` /
- * `sessionManager` once and reuses them.
+ * with the 12 other server modules and participates in the boot
+ * invariant. One `getCfg()` read happens per connection (entry of
+ * `handlePvpConnection`). `checkProtocolVersion` receives
+ * `incrementProtocolMismatch` as a param, no second `getCfg()` call.
+ * Per-message dispatch does NOT touch the cfg — the per-WS closure
+ * caches `sessionManager` once and reuses it. `startDuelWithOrder`
+ * (SOLO bridge) is imported directly from session-orchestrator since
+ * U32 #3b — no cfg field for it.
  *
  * The chunk plan accepted by Axel originally proposed a pure factory
  * (`createPvpConnectionHandler(deps) → handler`). Switched to
@@ -75,9 +78,9 @@ import * as logger from './logger.js';
  *     is read via `currentPlayerIndex()` because
  *     `startDuelWithOrder` can swap `session.players[]` after the
  *     connection lands (see comment at the helper definition).
- *   - `cfg` — captured once from `getCfg()` at entry. Reused for the
- *     SOLO-mode `startDuelWithOrder` bridge and for the per-WS rate-limit
- *     check.
+*   - `cfg` — captured once from `getCfg()` at entry. Reused for the
+ *     `sessionManager` lookup and for the `incrementProtocolMismatch`
+ *     callback passed down to `checkProtocolVersion`.
  */
 
 export interface PvpConnectionHandlerConfig {
@@ -93,14 +96,6 @@ export interface PvpConnectionHandlerConfig {
    * stays a pure reader otherwise.
    */
   incrementProtocolMismatch: () => void;
-  /**
-   * Bridge into the worker-spawn + duel-start. server.ts wires this
-   * to `startDuelWithOrder` ; SOLO mode skips the dice flow and calls
-   * this directly. U32 #3b (chunk E) will move it into
-   * session-orchestrator and let the handler import directly, dropping
-   * this cfg field.
-   */
-  startDuelWithOrder: (session: ActiveDuelSession, firstPlayer: 0 | 1) => void;
 }
 
 const configurable = createConfigurable<PvpConnectionHandlerConfig>('pvp-connection-handler');
@@ -394,7 +389,7 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
     if (session.phase === 'WAITING_PLAYERS') {
       if (session.soloMode) {
         // Solo mode: backend already placed the first player at index 0
-        cfg.startDuelWithOrder(session, 0);
+        startDuelWithOrder(session, 0);
       } else {
         startFirstPlayerPhase(session);
       }

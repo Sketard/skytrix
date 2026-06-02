@@ -1705,7 +1705,7 @@ with the list of unconfigured modules. New configurable modules MUST
 register their `isXxxConfigured()` in the boot block — that block is
 the regression fence for the whole pattern.
 
-**Current extracts** (10 modules, each owns its slice of `server.ts`):
+**Current extracts** (13 modules, each owns its slice of `server.ts`):
 
 - **`http-routes`** — `/health`, `/status`, `/api/update-data`,
   `/api/validate-passcodes`.
@@ -1716,12 +1716,19 @@ the regression fence for the whole pattern.
 - **`solver-handlers`** — solver WS attach/detach + deck cache +
   per-userId SOLVER_START mutex.
 - **`first-player-coordinator`** — pre-duel RPS + turn-player selection
-  state machine; spawns the OCGCore worker via injected
-  `startDuelWithOrder`.
-- **`worker-lifecycle`** — per-session worker spawn handle, listener
-  attach, idempotent terminate, natural-end bookkeeping
-  (`endedAt`, `totalDuelsServed`, rematch timer arm). Owns the
-  `workerTerminated` flag.
+  state machine. Since U32 #3b (audit-4-modes-2026-06-01) imports
+  `startDuelWithOrder` directly from `session-orchestrator` (ES module
+  cycle tolerated — both sides consume each other at call time).
+- **`worker-lifecycle`** — narrow scope post-U34 : owns
+  `attachWorkerHandlers` (per-session worker handle wiring of
+  `message`/`exit`/`error` listeners). The `exit` handler coordinates
+  the duels-served counter with `duel-end-coordinator` via
+  `_incrementTotalDuelsServed`.
+- **`duel-end-coordinator`** — U34 cosmetic (audit-4-modes-2026-06-01).
+  Owns the end-of-duel sequence : `safeTerminateWorker` (idempotent
+  + counter), `handleDuelEnd` (sets `endedAt` + arms rematch timer,
+  skips fork-solo), `requestReplayFromWorker`, and the `totalDuelsServed`
+  counter.
 - **`worker-message-router`** — dispatches worker→main messages
   (`WORKER_*`) + `broadcastMessage` outbound (chain-state update,
   CONFIRM_CARDS chainIndex tag, BOARD_STATE cache, per-player
@@ -1732,18 +1739,31 @@ the regression fence for the whole pattern.
   `CANCEL_PROMPT_SEQUENCE`), invalid-response strike count,
   cancelTargetPrompt snapshot.
 - **`fork-handlers`** — fork-solo `ActiveDuelSession` construction +
-  fork-specific worker handlers (omniscient filtering, no
-  chain/turn/inactivity tracking, MSG_WIN logged as `mode:
-  'fork_solo'`).
+  worker handler attach. Behavioral skips (no replay persist, no
+  rematch arm, log tag) live in `worker-message-router` and
+  `duel-end-coordinator` gated on `session.forkMode`.
 - **`replay-persist`** — POST replay payload to Spring Boot with
   `3^(attempt-1)s` back-off; consumes `pendingReplayResult` override
   for TIMEOUT/SURRENDER/RESIGN cases.
+- **`session-orchestrator`** — U32 #3a + #3b (audit-4-modes-2026-06-01).
+  Per-session lifecycle helpers : `cleanupDuelSession` (idempotent
+  teardown), `sendStateSnapshot` (pre-duel + DUELING resync),
+  `resendPendingPrompt` (cached prompt re-arm on reconnect),
+  `startRematch` (terminate + reset + SOLO direct / PvP dice flow),
+  `rematchExpired` (timer fire → REMATCH_CANCELLED + cleanup), and
+  `startDuelWithOrder` (player/deck swap + Worker spawn + INIT_DUEL).
+- **`pvp-connection-handler`** — U32 #2 (audit-4-modes-2026-06-01).
+  The `wss.on('connection', ...)` handler body. Routes 4 modes
+  (replay / solver / PvP-init / PvP-reconnect), handshake +
+  grace-period + dispatch, per-WS `message` + `close` lifecycle.
+- **`ws-write`** — U32 #1 (audit-4-modes-2026-06-01). Pure export
+  (no `createConfigurable<T>` — zero injectable deps) : `sendToPlayer`
+  with STATE_SYNC decoration, SOLO routing decision, `safeSend` wire.
 
-`server.ts` retains: WS server, session map drives (via
-`DuelSessionManager`), `cleanupDuelSession`, `safeSend`,
-`sendToPlayer`, `broadcastMessage` plumbing closures, the new-PvP
-duel POST handler. Everything that was a long inline closure now lives
-in one of the modules above.
+`server.ts` residual (~751 LOC) : boot wiring (13 `configureXxx` calls
++ boot invariant), HTTP `handleRequest` (POST /api/duels + DELETE
+/api/duels/:id + /api/duels/active passthrough), heartbeat, signal
+handlers, graceful shutdown, `server.listen`.
 
 ## WS Protocol Module Split (barrel)
 

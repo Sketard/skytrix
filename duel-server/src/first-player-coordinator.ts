@@ -3,6 +3,14 @@ import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import type { DiceRoll } from './types.js';
 import { diceSum, extractCardCodesForPlayer } from './types.js';
+// ES module live binding — session-orchestrator imports `startFirstPlayerPhase`
+// from us, creating a cycle. Tolerated because both sides only consume each
+// other's exports at call time (handlers, not module-top-level), so by the
+// time either function runs both modules are fully evaluated. The cfg also
+// exposes an optional `startDuelWithOrder` override so specs can inject a
+// spy without mocking the whole module — production paths leave it
+// undefined and the imported function is used.
+import { startDuelWithOrder as productionStartDuelWithOrder } from './session-orchestrator.js';
 
 /**
  * Pre-duel first-player coordinator (2D6 dice mechanic, since 2026-05-13).
@@ -50,11 +58,13 @@ export interface FirstPlayerCoordinatorConfig {
    */
   filterMessage: (msg: ServerMessage, playerIndex: Player) => ServerMessage | null;
   /**
-   * Bridge into worker spawning + duel start. Called once after the
-   * winner has chosen turn order (or the first-player-timeout auto-picks
-   * "go first"). Server.ts owns the actual Worker construction + INIT_DUEL.
+   * Optional override for the imported `startDuelWithOrder`. Production
+   * leaves this undefined and the helper imported from
+   * session-orchestrator is used. Specs may inject a spy here to assert
+   * the call without mocking the whole module (U32 #3b,
+   * audit-4-modes-2026-06-01).
    */
-  startDuelWithOrder: (session: ActiveDuelSession, firstPlayer: 0 | 1) => void;
+  startDuelWithOrder?: (session: ActiveDuelSession, firstPlayer: 0 | 1) => void;
   /** Timeout before each dice round is auto-rolled for stalled players. */
   diceRollTimeoutMs: number;
   /** Timeout before SELECT_FIRST_PLAYER auto-resolves as "winner goes first". */
@@ -245,7 +255,7 @@ function broadcastFinalAndBridge(session: ActiveDuelSession, firstPlayer: 0 | 1)
   session.chosenFirstPlayer = firstPlayer;
   pushTimer(session, setTimeout(() => {
     if (session.phase !== 'FIRST_PLAYER_RESOLVED') return;
-    cfg.startDuelWithOrder(session, firstPlayer);
+    (cfg.startDuelWithOrder ?? productionStartDuelWithOrder)(session, firstPlayer);
   }, FINAL_BANNER_MS));
 }
 

@@ -4,6 +4,7 @@ import {
   cleanupDuelSession,
   resendPendingPrompt,
   sendStateSnapshot,
+  rematchExpired,
 } from './session-orchestrator.js';
 import { configureTimerManagement } from './timer-management.js';
 import { configureFirstPlayerCoordinator } from './first-player-coordinator.js';
@@ -37,7 +38,6 @@ function wireUpstreams(): void {
   configureFirstPlayerCoordinator({
     sendToPlayer: () => undefined,
     filterMessage: (m) => m,
-    startDuelWithOrder: () => undefined,
     diceRollTimeoutMs: 30_000,
     firstPlayerTimeoutMs: 30_000,
   });
@@ -98,7 +98,7 @@ describe('session-orchestrator', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     manager = new DuelSessionManager();
-    configureSessionOrchestrator({ sessionManager: manager });
+    configureSessionOrchestrator({ sessionManager: manager, dataDir: '/tmp/skytrix-test' });
     wireUpstreams();
   });
   afterEach(() => vi.useRealTimers());
@@ -434,6 +434,37 @@ describe('session-orchestrator', () => {
       // drop). If the routing returns 'noop', send is never called;
       // either way the contract is "no throw, no slot-1 WS access".
       // The key invariant : we did NOT try to call .send on null ws.
+    });
+  });
+
+  // ==========================================================================
+  // rematchExpired (U32 #3b)
+  // ==========================================================================
+
+  describe('rematchExpired', () => {
+    it('clears rematchTimeout, sends REMATCH_CANCELLED to both slots, runs cleanup', () => {
+      const s = makeSession();
+      manager.register(s, ['tok0', 'tok1']);
+      const ws0 = makeWs(true);
+      const ws1 = makeWs(true);
+      s.players[0].ws = ws0 as never;
+      s.players[1].ws = ws1 as never;
+      s.players[0].connected = true;
+      s.players[1].connected = true;
+      s.rematchTimeout = setTimeout(() => undefined, 1_000);
+
+      rematchExpired(s);
+
+      expect(s.rematchTimeout).toBeNull();
+      // REMATCH_CANCELLED sent to both players
+      const sent0 = ws0.send.mock.calls.map(c => JSON.parse(c[0] as string));
+      const sent1 = ws1.send.mock.calls.map(c => JSON.parse(c[0] as string));
+      expect(sent0.some(m => m.type === 'REMATCH_CANCELLED' && m.reason === 'timeout')).toBe(true);
+      expect(sent1.some(m => m.type === 'REMATCH_CANCELLED' && m.reason === 'timeout')).toBe(true);
+      // cleanupDuelSession ran — session dropped from manager + WSes closed
+      expect(manager.get('d1')).toBeUndefined();
+      expect(ws0.close).toHaveBeenCalled();
+      expect(ws1.close).toHaveBeenCalled();
     });
   });
 });
