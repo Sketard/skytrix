@@ -113,27 +113,32 @@ const getCfg = configurable.get;
  * `startDuelWithOrder` swap of `players[]` or a reconnect that replaced
  * the slot's `ws`.
  *
- * IMPORTANT — F4 (TBD next commit) : the third branch currently returns
- * `capturedIndex` as a fallback when neither slot matches. That fallback
- * misattributes a stale-ws event (`close` fired after a reconnect already
- * swapped the slot to a NEW `ws`) to the slot the original capture
+ * F4 fix (audit-4-modes-2026-06-01) — returns `null` when the ws matches
+ * NEITHER slot. The pre-fix fallback returned `capturedIndex`, which
+ * misattributed a stale-ws event (e.g. `close` fired after a reconnect
+ * already swapped the slot to a NEW ws) to the slot the original capture
  * pointed at — silently flipping `connected = false` on a slot that's
- * actually OPEN. The next commit changes the fallback to `null` so
- * callers can ignore the stale event explicitly.
+ * actually OPEN, then arming a grace timer that forfeited the player
+ * at `RECONNECT_GRACE_MS`.
  *
- * Until then, this extraction preserves byte-identical runtime behavior
- * — the spec test 'STALE-WS — returns capturedIndex' below pins the
- * current (buggy) fallback so the next commit's flip surfaces as a
- * visible test diff.
+ * The three callers (`ws.on('message')`, `ws.on('error')`, `ws.on('close')`)
+ * now narrow against `null` and ignore the stale event :
+ *   - message  → drop the frame (the live ws will receive its own copies).
+ *   - error    → log with `player: 'stale-ws'`.
+ *   - close    → no state mutation, no grace timer, no OPPONENT_DISCONNECTED.
+ *
+ * The `capturedIndex` parameter is dropped : the pre-fix code path used
+ * it as a fallback, but the new null-return contract makes any
+ * handshake-time capture irrelevant — only the live `session.players[].ws`
+ * identity matters.
  */
 export function resolveLivePlayerIndex(
   session: ActiveDuelSession,
   ws: WebSocket,
-  capturedIndex: 0 | 1,
-): 0 | 1 {
+): 0 | 1 | null {
   if (session.players[0].ws === ws) return 0;
   if (session.players[1].ws === ws) return 1;
-  return capturedIndex;
+  return null;
 }
 
 /**
@@ -468,15 +473,22 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   // Required because startDuelWithOrder() may swap session.players[] after
   // the connection — the closure's captured `playerIndex` then points to the
   // wrong player. A live lookup against session.players[*].ws is immune to
-  // the swap. See `resolveLivePlayerIndex` at the top of this module for
-  // the F4 stale-ws fallback caveat.
-  const currentPlayerIndex = (): 0 | 1 =>
-    resolveLivePlayerIndex(session!, ws, playerIndex);
+  // the swap. Returns `null` if the ws is no longer attached (stale-ws after
+  // a reconnect swapped the slot) — every call site narrows against null
+  // and ignores the stale event. See `resolveLivePlayerIndex` JSDoc.
+  const currentPlayerIndex = (): 0 | 1 | null =>
+    resolveLivePlayerIndex(session!, ws);
 
   // WebSocket message handling
   ws.on('message', (data: Buffer) => {
-    let parsed: unknown;
     const captured = currentPlayerIndex();
+    if (captured === null) {
+      // F4 — stale ws (this socket has been replaced by a reconnect).
+      // Drop the message ; the live ws will receive its own copies.
+      logger.warn('Dropping message from stale ws', { duelId: session!.duelId });
+      return;
+    }
+    let parsed: unknown;
     try {
       parsed = JSON.parse(data.toString());
     } catch {
@@ -502,15 +514,26 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   // propagates silently through the `ws` library and is only observable via the
   // subsequent 'close' event — losing the correlation to the underlying cause.
   ws.on('error', (error) => {
+    const live = currentPlayerIndex();
     logger.error('[PvP] ws error', {
       duelId: session!.duelId,
-      player: currentPlayerIndex(),
+      player: live ?? 'stale-ws', // F4 — log stale-ws errors with a marker, not a wrong slot
       error: error instanceof Error ? error.message : String(error),
     });
   });
 
   ws.on('close', () => {
     const live = currentPlayerIndex();
+    if (live === null) {
+      // F4 — stale ws closing after a reconnect already swapped the slot,
+      // OR after `cleanupDuelSession` nullified `players[].ws`. The fresh
+      // ws (bound to the slot now) is still OPEN ; if we let the pre-fix
+      // fallback fire, we'd flip `connected = false` on a healthy slot
+      // and arm a grace timer against a working socket → forfeit
+      // faux-positif at RECONNECT_GRACE_MS.
+      logger.log('Stale ws close ignored', { duelId: session!.duelId });
+      return;
+    }
     session!.players[live].connected = false;
     session!.players[live].disconnectedAt = Date.now();
     logger.log('Player disconnected', { duelId: session!.duelId, player: live });

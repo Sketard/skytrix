@@ -41,38 +41,52 @@ describe('resolveLivePlayerIndex', () => {
     const session = makeSession();
     const ws = makeWs();
     session.players[0].ws = ws as never;
-    expect(resolveLivePlayerIndex(session, ws, 0)).toBe(0);
+    expect(resolveLivePlayerIndex(session, ws)).toBe(0);
   });
 
   it('returns 1 when ws is bound to players[1]', () => {
     const session = makeSession();
     const ws = makeWs();
     session.players[1].ws = ws as never;
-    expect(resolveLivePlayerIndex(session, ws, 1)).toBe(1);
+    expect(resolveLivePlayerIndex(session, ws)).toBe(1);
   });
 
   // Post-swap scenario : startDuelWithOrder(firstPlayer=1) swapped
   // `players[]`. The connection handler captured `playerIndex=0` at
   // handshake, but `session.players[1].ws` now points to this socket.
   // The live lookup must follow the swap and return 1.
-  it('follows a startDuelWithOrder swap (captured=0, ws now at slot 1)', () => {
+  it('follows a startDuelWithOrder swap (ws moved from slot 0 to slot 1)', () => {
     const session = makeSession();
     const wsA = makeWs();
     session.players[1].ws = wsA as never;
-    expect(resolveLivePlayerIndex(session, wsA, /*captured=*/ 0)).toBe(1);
+    expect(resolveLivePlayerIndex(session, wsA)).toBe(1);
   });
 
-  // F4 — current (buggy) fallback pinned. Next commit flips this branch
-  // to return `null` so the close handler can ignore stale events. The
-  // test below WILL be flipped (to `.toBeNull()` + a sibling regression
-  // guard) in the F4 fix commit. See the JSDoc of `resolveLivePlayerIndex`.
-  it('STALE-WS — returns capturedIndex when ws matches NEITHER slot (pre-F4 fallback)', () => {
+  // F4 fix — stale-ws after a reconnect already swapped the slot to a NEW
+  // ws. The pre-fix fallback returned `capturedIndex`, which misattributed
+  // the stale event (e.g. wsA.close fired after wsB took over slot 0) to
+  // slot 0 and forfeited the healthy player. The fix returns `null` so
+  // the close handler ignores the event.
+  it('STALE-WS — returns null when ws matches NEITHER slot (F4 fix)', () => {
     const session = makeSession();
     const wsA = makeWs(); // alice's first ws (now stale)
     const wsB = makeWs(); // alice's reconnect ws
     session.players[0].ws = wsB as never;
-    // BUG: returns capturedIndex=0 even though wsA is no longer attached.
-    // Pinned so the next commit's flip surfaces as a visible test diff.
-    expect(resolveLivePlayerIndex(session, wsA, /*captured=*/ 0)).toBe(0);
+    expect(resolveLivePlayerIndex(session, wsA)).toBeNull();
+  });
+
+  // F4 regression guard — DELETE /api/duels (and any other path that
+  // calls `cleanupDuelSession`) nullifies `players[].ws` BEFORE the OS
+  // delivers the deferred `close` event. The close handler then runs
+  // with the stale ws and `players[i].ws === null`. The fix must return
+  // null here too — a fallback to capturedIndex would re-write
+  // `connected = false` (harmless no-op, but pollutes the log with
+  // "Player disconnected" lines for an already-cleaned session).
+  it('STALE-WS — returns null after cleanupDuelSession nullifies players[].ws', () => {
+    const session = makeSession();
+    const wsA = makeWs();
+    session.players[0].ws = null;
+    session.players[1].ws = null;
+    expect(resolveLivePlayerIndex(session, wsA)).toBeNull();
   });
 });
