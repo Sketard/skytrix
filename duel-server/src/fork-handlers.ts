@@ -1,8 +1,7 @@
 import type { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import type { ActiveDuelSession, WorkerReplayPayload } from './types.js';
-import { emptyChainState } from './chain-state-tracker.js';
-import { createSessionGameLog } from './session-game-log.js';
+import { createInitialSessionState } from './session-factory.js';
 import type { ServerMessage } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import { attachWorkerHandlers, safeTerminateWorker } from './worker-lifecycle.js';
@@ -75,11 +74,13 @@ export function createForkSoloSession({
   const cfg = getCfg();
   const token1 = randomUUID();
 
-  const session: ActiveDuelSession = {
+  // U15 (audit-4-modes-2026-06-01) — closes U37 too: previously this ~45-line
+  // ctor was a hand-maintained duplicate of the PvP server.ts ctor with
+  // forkMode-specific tweaks. Now both share `createInitialSessionState`,
+  // mode-specific defaults (`phase: 'DUELING'`, `startedAt: Date.now()`,
+  // `skipShuffle: true`) are derived from `forkMode: true`.
+  const session: ActiveDuelSession = createInitialSessionState({
     duelId: forkDuelId,
-    phase: 'DUELING',
-    firstPlayerState: null,
-    chosenFirstPlayer: null,
     players: [
       { playerId: userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
       // Slot 1 is reserved but never connected (mirror of SOLO multiplex —
@@ -87,39 +88,13 @@ export function createForkSoloSession({
       // `isFullyDisconnected` branch on `soloMode` to read slot 0 only.
       { playerId: userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
     ],
-    createdAt: Date.now(),
-    startedAt: Date.now(),
-    endedAt: null,
-    worker,
-    workerTerminated: false,
-    awaitingResponse: [false, false],
-    lastBoardState: null,
-    lastSentPrompt: [null, null],
-    lastSentHint: [null, null],
     decks: replayData.decks,
-    rematchRequested: [false, false],
-    rematchTimeout: null,
-    preservationTimer: null,
-    bothDisconnected: false,
-    combinedGraceTimer: null,
-    storedDuelResult: null,
-    lastStateSyncAt: [0, 0],
-    lastCancelAt: [0, 0],
-    cancelTargetPrompt: [null, null],
-    timerContext: null,
     soloMode: true,
     forkMode: true,
-    skipShuffle: true,
-    turnTimeSecs: 300,
-    invalidResponseCount: [0, 0],
-    promptSentAt: [0, 0],
-    ...emptyChainState(),
+    worker,
     playerUsernames: replayData.metadata.playerUsernames,
     deckNames: replayData.metadata.deckNames,
-    pendingReplayResult: null,
-    forkConnectionTimeout: null,
-    gameLog: createSessionGameLog(),
-  };
+  });
 
   cfg.sessionManager.register(session, [token1]);
 

@@ -46,8 +46,9 @@ import { derivePhase } from './session-phase.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
-import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
+import { applyChainTransition, type ChainStateContainer } from './chain-state-tracker.js';
 import { createSessionGameLog, entriesForPlayer } from './session-game-log.js';
+import { createInitialSessionState, resetSessionForRematch } from './session-factory.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { checkProtocolVersionPure } from './protocol-version-check.js';
@@ -449,49 +450,23 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const token0 = randomUUID();
     const token1 = randomUUID();
 
-    // Create DuelSession — worker spawn is deferred until RPS/TP is resolved
-    const session: ActiveDuelSession = {
+    // Create DuelSession — worker spawn is deferred until RPS/TP is resolved.
+    // U15 (audit-4-modes-2026-06-01) — `createInitialSessionState` consolidates
+    // PvP normal + fork-solo construction. PvP defaults are `phase:
+    // 'WAITING_PLAYERS'` + `startedAt: null` so the dice flow can populate them.
+    const session: ActiveDuelSession = createInitialSessionState({
       duelId,
-      phase: 'WAITING_PLAYERS',
-      firstPlayerState: null,
-      chosenFirstPlayer: null,
       players: [
         { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
         { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
       ],
-      createdAt: Date.now(),
-      startedAt: null,
-      endedAt: null,
-      worker: null,
-      workerTerminated: false,
-      awaitingResponse: [false, false],
-      lastBoardState: null,
-      lastSentPrompt: [null, null],
-      lastSentHint: [null, null],
       decks: [parsed.player1.deck, parsed.player2.deck],
-      rematchRequested: [false, false],
-      rematchTimeout: null,
-      preservationTimer: null,
-      bothDisconnected: false,
-      combinedGraceTimer: null,
-      storedDuelResult: null,
-      lastStateSyncAt: [0, 0],
-      lastCancelAt: [0, 0],
-      cancelTargetPrompt: [null, null],
-      timerContext: null,
       soloMode,
-      forkMode: false,
-      skipShuffle,
-      turnTimeSecs,
-      invalidResponseCount: [0, 0],
-      promptSentAt: [0, 0],
-      ...emptyChainState(),
       playerUsernames: [parsed.player1.username ?? parsed.player1.id, parsed.player2.username ?? parsed.player2.id],
       deckNames: [parsed.player1.deckName ?? 'Deck', parsed.player2.deckName ?? 'Deck'],
-      pendingReplayResult: null,
-      forkConnectionTimeout: null,
-      gameLog: createSessionGameLog(),
-    };
+      skipShuffle,
+      turnTimeSecs,
+    });
 
     // Store in active duels and pending tokens. γ Option C A6 — SOLO multiplex
     // issues a single token; socket 0 plays both perspectives. token1 is left
@@ -568,27 +543,11 @@ function startRematch(session: ActiveDuelSession): void {
   // so the players re-roll for turn order, exactly like a fresh duel.
   // The worker is spawned later by startDuelWithOrder once the dice
   // coordinator resolves the first player.
+  // U15 (audit-4-modes-2026-06-01) — per-duel state wipe consolidated in
+  // `resetSessionForRematch`. Long-lived fields (decks, soloMode, forkMode,
+  // playerUsernames, deckNames, turnTimeSecs, players) are preserved.
   disposeFirstPlayer(session);
-  session.worker = null;
-  session.workerTerminated = true;
-  session.awaitingResponse = [false, false];
-  session.lastBoardState = null;
-  session.lastSentPrompt = [null, null];
-  session.lastSentHint = [null, null];
-  session.rematchRequested = [false, false];
-  session.endedAt = null;
-  session.startedAt = Date.now();
-  session.bothDisconnected = false;
-  session.storedDuelResult = null;
-  session.lastStateSyncAt = [0, 0];
-  session.lastCancelAt = [0, 0];
-  session.cancelTargetPrompt = [null, null];
-  session.invalidResponseCount = [0, 0];
-  session.promptSentAt = [0, 0];
-  Object.assign(session, emptyChainState());
-  // Fresh builders for the rematch — the prior duel's entries must NOT bleed
-  // into the new journal.
-  session.gameLog = createSessionGameLog();
+  resetSessionForRematch(session);
 
   clearAllDuelTimers(session);
 
