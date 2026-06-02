@@ -31,50 +31,38 @@ import type {
   ReplayMetadata,
 } from './types.js';
 import type {
-  ClientMessage, Player,
   SolverStartMessage, SolverResultMessage, SolverCancelledMessage,
   SolverProgressMessage, SolverErrorMessage, SolverHandtrapsMessage, SolverWsError,
 } from './ws-protocol.js';
 import {
   SOLVER_START, SOLVER_CANCEL, SOLVER_INIT, SOLVER_PROGRESS,
   SOLVER_RESULT, SOLVER_CANCELLED, SOLVER_ERROR, SOLVER_HANDTRAPS,
-  PROTOCOL_VERSION,
 } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
-import { derivePhase } from './session-phase.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, type ChainStateContainer } from './chain-state-tracker.js';
 import { createInitialSessionState, resetSessionForRematch } from './session-factory.js';
 import { DuelSessionManager } from './duel-session-manager.js';
-import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
-import { checkProtocolVersionPure } from './protocol-version-check.js';
+import { startWsRateLimitSweep } from './ws-rate-limit.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes, isHttpRoutesConfigured } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
-import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState, isReplayHandlersConfigured } from './replay-handlers.js';
+import { configureReplayHandlers, cleanupAllReplayState, isReplayHandlersConfigured } from './replay-handlers.js';
 import {
   configureTimerManagement,
   isTimerManagementConfigured,
-  startTurnTimer, pauseTurnTimer, scheduleTimerStart, commitPendingTimer,
-  addTurnIncrement, handleTurnChange,
-  startInactivityTimer, clearInactivityTimer,
   clearAllDuelTimers,
-  startGracePeriod,
 } from './timer-management.js';
 import {
   configureSolverHandlers,
-  handleSolverMessage,
   isSolverHandlersConfigured,
-  attachSolverConnection,
-  detachSolverConnection,
 } from './solver-handlers.js';
 import {
   configureFirstPlayerCoordinator,
   isFirstPlayerCoordinatorConfigured,
   startFirstPlayerPhase,
-  handlePreDuelResponse,
   disposeFirstPlayer,
 } from './first-player-coordinator.js';
 import {
@@ -109,10 +97,8 @@ import {
 import {
   configureClientMessageRouter,
   isClientMessageRouterConfigured,
-  handleClientMessage,
 } from './client-message-router.js';
-import { validateClientMessageForPlayer } from './client-message-validator.js';
-import { isReadyToStart, isFullyDisconnected, buildDuelStartingMessage } from './lifecycle-helpers.js';
+import { isFullyDisconnected, buildDuelStartingMessage } from './lifecycle-helpers.js';
 import { sendToPlayer } from './ws-write.js';
 import {
   configureSessionOrchestrator,
@@ -121,6 +107,11 @@ import {
   sendStateSnapshot,
   resendPendingPrompt,
 } from './session-orchestrator.js';
+import {
+  configurePvpConnectionHandler,
+  isPvpConnectionHandlerConfigured,
+  handlePvpConnection,
+} from './pvp-connection-handler.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -348,6 +339,14 @@ configureClientMessageRouter({
 
 configureSessionOrchestrator({
   sessionManager,
+});
+
+configurePvpConnectionHandler({
+  port: PORT,
+  isProduction: IS_PRODUCTION,
+  sessionManager,
+  incrementProtocolMismatch: () => { protocolMismatchCount++; },
+  startDuelWithOrder,
 });
 
 // =============================================================================
@@ -713,32 +712,10 @@ const wss = new WebSocketServer({ server, maxPayload: MAX_WS_FRAME_SIZE });
 // WS rate limiting moved to ws-rate-limit.ts (H1 split)
 const wsRateLimitSweepTimer = startWsRateLimitSweep();
 
-/**
- * Reject the handshake when the client's `pv` query param does not match
- * server-side `PROTOCOL_VERSION`. Returns true on accept, false on reject
- * (after closing the WS with code 4426 — analog to HTTP 426 Upgrade Required).
- *
- * Applied to PvP + Replay handshakes. Solver handshakes are exempt (their
- * protocol shape is request/response style and currently has no version
- * surface worth gating).
- */
-function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string): boolean {
-  const result = checkProtocolVersionPure(url.searchParams.get('pv'));
-  if (!result.ok) {
-    logger.warn('WS handshake rejected — protocol version mismatch', {
-      mode, clientVersion: result.rawClientVersion, serverVersion: result.serverVersion, ip,
-    });
-    // Count protocol mismatch as a failed handshake — otherwise an attacker
-    // can spam connections with `?pv=99` and bypass the rate limiter (which
-    // only counts failed AUTH attempts via recordFailedWsAttempt). Audit
-    // review 2026-05-09 H2.
-    recordFailedWsAttempt(ip);
-    protocolMismatchCount++;
-    ws.close(4426, `Protocol version mismatch (server=${result.serverVersion}, client=${result.rawClientVersion ?? 'missing'})`);
-    return false;
-  }
-  return true;
-}
+// checkProtocolVersion moved to pvp-connection-handler.ts (U32 #2,
+// audit-4-modes-2026-06-01). The `protocolMismatchCount` counter stays
+// in server.ts (read by `configureHttpRoutes` for /status). The handler
+// bumps it through the `incrementProtocolMismatch` cfg getter.
 
 // Boot invariant: every configurable module must be wired before we accept
 // connections. Catches a future refactor that adds a 5th module but forgets
@@ -757,358 +734,19 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isForkHandlersConfigured()) unconfigured.push('fork-handlers');
   if (!isClientMessageRouterConfigured()) unconfigured.push('client-message-router');
   if (!isSessionOrchestratorConfigured()) unconfigured.push('session-orchestrator');
+  if (!isPvpConnectionHandlerConfigured()) unconfigured.push('pvp-connection-handler');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
 }
 
-wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-  // Trust x-real-ip only behind a reverse proxy in production; fall back to socket IP otherwise
-  const ip = (IS_PRODUCTION && req.headers['x-real-ip'] as string) || req.socket.remoteAddress || 'unknown';
-
-  // Atomic "count + check" closes the race where N concurrent handshakes
-  // from the same IP could all pass a stale read at threshold-1.
-  if (IS_PRODUCTION && consumeWsAttempt(ip)) {
-    ws.close(4029, 'Too many connections');
-    return;
-  }
-
-  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
-
-  // Replay mode branch — separate flow from PvP duels
-  const mode = url.searchParams.get('mode');
-  if (mode === 'replay') {
-    if (!checkProtocolVersion(ws, url, 'replay', ip)) return;
-    const replayId = url.searchParams.get('replayId');
-    const jwt = url.searchParams.get('token');
-    if (!replayId || !jwt) {
-      ws.close(4001, 'Missing replayId or token');
-      return;
-    }
-    handleReplayConnection(ws, jwt, replayId, ip);
-    return;
-  }
-
-  // Solver mode branch — separate flow from PvP duels (Story 1.4)
-  if (mode === 'solver') {
-    if (!checkProtocolVersion(ws, url, 'solver', ip)) return;
-    const jwt = url.searchParams.get('token');
-    if (!jwt) {
-      ws.close(4001, 'Missing token');
-      return;
-    }
-
-    // Decode JWT to extract userId (same pattern as replay)
-    let userId: string;
-    try {
-      const parts = jwt.split('.');
-      if (parts.length !== 3) throw new Error('Invalid JWT format');
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-      userId = String(payload.sub ?? payload.userId ?? payload.id ?? '');
-      if (!userId) throw new Error('No user ID in JWT');
-    } catch (err) {
-      logger.error('[Solver] JWT decode error', { error: err instanceof Error ? err.message : String(err) });
-      recordFailedWsAttempt(ip);
-      ws.close(4001, 'Invalid token');
-      return;
-    }
-
-    // Atomic connection register (limit check + replace + set in one go).
-    // server.ts owns WS IO: closing the rejected/replaced socket happens here.
-    const attached = attachSolverConnection(userId, ws, jwt);
-    if (attached.kind === 'limit') {
-      ws.close(4029, 'Too many solver connections');
-      return;
-    }
-    if (attached.replaced) {
-      attached.replaced.close(4001, 'Replaced by new connection');
-    }
-
-    // Heartbeat
-    (ws as AliveWebSocket).isAlive = true;
-    ws.on('pong', () => { (ws as AliveWebSocket).isAlive = true; });
-
-    // Message handler
-    ws.on('message', (data: Buffer) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(data.toString());
-      } catch {
-        ws.close(4002, 'Invalid JSON');
-        return;
-      }
-      handleSolverMessage(userId, ws, parsed);
-    });
-
-    // Close handler — release state; solver-handlers guards against the
-    // race where a replace already swapped this WS out (idempotent).
-    ws.on('close', () => detachSolverConnection(userId, ws));
-
-    ws.on('error', (error) => {
-      logger.error('[Solver] ws error', { userId, error: error instanceof Error ? error.message : String(error) });
-    });
-
-    logger.log('[Solver] connected', { userId });
-    return;
-  }
-
-  // PvP duel branch (default — neither replay nor solver)
-  if (!checkProtocolVersion(ws, url, 'pvp', ip)) return;
-
-  const token = url.searchParams.get('token');
-  const reconnect = url.searchParams.get('reconnect');
-
-  if (!token && !reconnect) {
-    recordFailedWsAttempt(ip);
-    ws.close(4001, 'Missing token');
-    return;
-  }
-
-  let session: ActiveDuelSession | undefined;
-  let playerIndex: 0 | 1;
-
-  if (reconnect) {
-    // --- Reconnection flow ---
-    const reconResult = sessionManager.consumeReconnectToken(reconnect);
-    if (reconResult.kind === 'unknown') {
-      recordFailedWsAttempt(ip);
-      ws.close(4001, 'Invalid or expired reconnect token');
-      return;
-    }
-    if (reconResult.kind === 'session-gone') {
-      recordFailedWsAttempt(ip);
-      ws.close(4001, 'Duel not found');
-      return;
-    }
-    session = reconResult.session;
-    playerIndex = reconResult.playerIndex;
-
-    // Cancel grace period timer
-    const reconPs = session.players[playerIndex];
-    if (reconPs.gracePeriodTimer) {
-      clearTimeout(reconPs.gracePeriodTimer);
-      reconPs.gracePeriodTimer = null;
-    }
-
-    logger.log('Player reconnected', { duelId: session.duelId, player: playerIndex });
-
-    // Story 3.2 — Resume turn timer on reconnect if a prompt is pending.
-    // Use commitPendingTimer so we don't wait for ANIMATIONS_DONE from the
-    // freshly reconnected client (board re-render is fast, timer starts immediately).
-    if (session.awaitingResponse.some(a => a)) {
-      commitPendingTimer(session);
-      // Restart inactivity timer for the prompted player
-      for (const p of [0, 1] as const) {
-        if (session.awaitingResponse[p]) {
-          startInactivityTimer(session, p);
-        }
-      }
-    }
-  } else {
-    // --- Initial connection flow ---
-    const tokenResult = sessionManager.consumePendingToken(token!);
-    if (tokenResult.kind !== 'ok') {
-      recordFailedWsAttempt(ip);
-      const reason = tokenResult.kind === 'session-gone'
-        ? 'token-orphaned (duel ended before handshake)'
-        : 'token-unknown (never issued or already consumed)';
-      logger.warn('Initial handshake rejected', { reason });
-      ws.close(4001, 'Invalid or expired token');
-      return;
-    }
-    session = tokenResult.session;
-    playerIndex = tokenResult.playerIndex;
-
-    logger.log('Player connected', { duelId: session.duelId, player: playerIndex });
-  }
-
-  // Associate WebSocket to player
-  session.players[playerIndex].ws = ws;
-  session.players[playerIndex].connected = true;
-  session.players[playerIndex].disconnectedAt = null;
-
-  // H2 — Clear fork connection timeout on first connect
-  if (session.forkConnectionTimeout) {
-    clearTimeout(session.forkConnectionTimeout);
-    session.forkConnectionTimeout = null;
-  }
-
-  // Issue reconnect token (rotate: old token is dropped if any).
-  const newReconnectToken = randomUUID();
-  sessionManager.rotateReconnectToken(session, playerIndex, newReconnectToken);
-  session.players[playerIndex].reconnectToken = newReconnectToken;
-
-  // Send SESSION_TOKEN to client
-  sendToPlayer(session, playerIndex, { type: 'SESSION_TOKEN', token: newReconnectToken });
-
-  // Mount-discriminant: tells the client whether to mount the dice arena
-  // (PRE_DUEL), the board skeleton (DUELING), or the preservation-period
-  // end-screen (ENDED). Emitted exactly once per WS attachment, right after
-  // SESSION_TOKEN, so the discrimination is deterministic (no message-sniff
-  // or timeout). Helper is pure — see session-phase.ts.
-  sendToPlayer(session, playerIndex, { type: 'SESSION_PHASE', phase: derivePhase(session) });
-
-  // Mark as alive for heartbeat
-  (ws as AliveWebSocket).isAlive = true;
-  ws.on('pong', () => { (ws as AliveWebSocket).isAlive = true; });
-
-  // Story 5.2 — Check if reconnecting during preservation period (duel already ended)
-  if (reconnect && session.storedDuelResult) {
-    sendToPlayer(session, playerIndex, session.storedDuelResult);
-    // [Review M3 fix] Only cleanup if both players have received the result
-    const otherIdx: Player = playerIndex === 0 ? 1 : 0;
-    if (session.players[otherIdx].connected) {
-      if (session.preservationTimer) {
-        clearTimeout(session.preservationTimer);
-        session.preservationTimer = null;
-      }
-      cleanupDuelSession(session);
-      safeTerminateWorker(session);
-    }
-    // Otherwise keep session alive — other player may still reconnect
-  } else {
-    // Story 5.2 — Handle reconnection during combined grace period
-    if (reconnect && session.bothDisconnected) {
-      // First player reconnecting during combined grace — cancel combined timer
-      if (session.combinedGraceTimer) {
-        clearTimeout(session.combinedGraceTimer);
-        session.combinedGraceTimer = null;
-      }
-      session.bothDisconnected = false;
-      // Start individual grace timer for the still-disconnected player
-      const otherIndex: Player = playerIndex === 0 ? 1 : 0;
-      if (!session.players[otherIndex].connected) {
-        startGracePeriod(session, otherIndex);
-      }
-    }
-
-    // Send state snapshot (DRY — used by both reconnection and REQUEST_STATE_SYNC)
-    sendStateSnapshot(session, playerIndex);
-
-    // Story 3.3 — Reconnection: notify opponent
-    if (reconnect) {
-      const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
-      sendToPlayer(session, opponentIndex, { type: 'OPPONENT_RECONNECTED' });
-    }
-
-    // γ Option C PR2 c6bis (A29) — SOLO multiplex re-arms BOTH slots
-    // on reconnect (single socket carries both server identities).
-    if (session.soloMode) {
-      resendPendingPrompt(session, 0);
-      resendPendingPrompt(session, 1);
-    } else {
-      resendPendingPrompt(session, playerIndex);
-    }
-  }
-
-  // Check if the session is ready to start — trigger pre-duel RPS or fork resume.
-  // SOLO multiplex only needs socket 0 connected; PvP normal needs both.
-  if (isReadyToStart(session)) {
-    logger.log('Both players connected', { duelId: session.duelId });
-    if (session.phase === 'WAITING_PLAYERS') {
-      if (session.soloMode) {
-        // Solo mode: backend already placed the first player at index 0
-        startDuelWithOrder(session, 0);
-      } else {
-        startFirstPlayerPhase(session);
-      }
-    } else if (session.phase === 'DUELING' && session.forkMode) {
-      // Fork session: worker already reconstructed the duel, tell it to emit state + prompt
-      if (session.forkConnectionTimeout) {
-        clearTimeout(session.forkConnectionTimeout);
-        session.forkConnectionTimeout = null;
-      }
-      session.worker?.postMessage({ type: 'FORK_RESUME' });
-    }
-  }
-
-  // Resolve the current OCG playerIndex of THIS WebSocket on every event.
-  // Required because startDuelWithOrder() may swap session.players[] after
-  // the connection — the closure's captured `playerIndex` then points to the
-  // wrong player. A live lookup against session.players[*].ws is immune to
-  // the swap.
-  const currentPlayerIndex = (): 0 | 1 => {
-    if (session!.players[0].ws === ws) return 0;
-    if (session!.players[1].ws === ws) return 1;
-    return playerIndex; // fallback to capture if the WS isn't attached yet
-  };
-
-  // WebSocket message handling
-  ws.on('message', (data: Buffer) => {
-    let parsed: unknown;
-    const captured = currentPlayerIndex();
-    try {
-      parsed = JSON.parse(data.toString());
-    } catch {
-      logger.error('Invalid JSON from player', { duelId: session!.duelId, player: captured });
-      return;
-    }
-
-    // γ Option C A2 — validates `forPlayer` semantics + the payload shape.
-    // PvP normal rejects any `forPlayer` (impersonation guard); SOLO accepts
-    // a strict `0 | 1` as the routing override. Non-object payloads
-    // (`null`, primitives, arrays from JSON) are dropped here so the
-    // dispatch below can treat `parsed` as a structurally-valid message.
-    const validated = validateClientMessageForPlayer(
-      parsed, session!.soloMode, captured, session!.duelId,
-    );
-    if (validated.kind === 'reject') return;
-
-    handleClientMessage(session!, validated.live, parsed as ClientMessage);
-  });
-
-  ws.on('close', () => {
-    const live = currentPlayerIndex();
-    session!.players[live].connected = false;
-    session!.players[live].disconnectedAt = Date.now();
-    logger.log('Player disconnected', { duelId: session!.duelId, player: live });
-
-    if (!session!.endedAt) {
-      // Story 3.2 — Pause turn timer and clear inactivity on disconnect
-      pauseTurnTimer(session!);
-      clearInactivityTimer(session!, live as Player);
-
-      // γ Option C A18 — SOLO multiplex has no opponent socket to notify and
-      // no grace period to start: there's only one user, and a closed socket
-      // = the page is gone. Skip OPPONENT_DISCONNECTED + startGracePeriod.
-      // `players[1].connected` is never written here (stays `false` for the
-      // whole duel — the canonical SOLO invariant). Reconnect still works:
-      // the user's next `wsToken` consumption lands at socket 0 via the
-      // normal handshake path and resendPendingPrompt re-arms the prompt.
-      if (session!.soloMode) return;
-
-      // Story 3.3 — Notify opponent of disconnection
-      const opponentIndex: Player = live === 0 ? 1 : 0;
-      sendToPlayer(session!, opponentIndex, { type: 'OPPONENT_DISCONNECTED', gracePeriodSec: RECONNECT_GRACE_MS / 1000 });
-
-      startGracePeriod(session!, live);
-    } else {
-      // γ Option C A31 — post-duel SOLO close: preserve the rematch window.
-      // PvP normal cleans up once both sockets are down (`isFullyDisconnected`
-      // → cleanup), because no one is left to ask for a rematch. In SOLO the
-      // user might just be refreshing the tab during the rematch grace; the
-      // `rematchTimeout` (armed by `handleDuelEnd`) already owns the deadline,
-      // so let it fire `onRematchExpired` → `rematchExpired` → cleanup.
-      // Bypassing here would race against a legitimate reconnect.
-      if (session!.soloMode) return;
-
-      // Post-duel disconnect: notify opponent rematch is cancelled
-      const opponentIndex: Player = live === 0 ? 1 : 0;
-      sendToPlayer(session!, opponentIndex, { type: 'REMATCH_CANCELLED', reason: 'opponent_left' });
-
-      // If the session is fully disconnected after duel end, cleanup.
-      // PvP normal needs both sockets down; SOLO has its own path above.
-      if (isFullyDisconnected(session!)) {
-        cleanupDuelSession(session!);
-      }
-    }
-  });
-});
+wss.on('connection', handlePvpConnection);
 
 // resendPendingPrompt + sendStateSnapshot moved to session-orchestrator.ts
-// (U32 #3a, audit-4-modes-2026-06-01). They're consumed inline from
-// wss.on('connection') below, and by the client-message-router via the
-// `onStateSyncRequested` cfg hook (REQUEST_STATE_SYNC dispatch).
+// (U32 #3a, audit-4-modes-2026-06-01). They're consumed by
+// pvp-connection-handler.ts (U32 #2) on initial connect / reconnect, and by
+// client-message-router via the `onStateSyncRequested` cfg hook
+// (REQUEST_STATE_SYNC dispatch).
 
 // startGracePeriod moved to timer-management.ts (H1-suite phase 4).
 
