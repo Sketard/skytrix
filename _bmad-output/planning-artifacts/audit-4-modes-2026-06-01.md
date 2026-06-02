@@ -175,6 +175,25 @@ U5, U7, U8, U9, U10, U11, U19, U21, U23, U26, U35, U36, U37, C9 — réfutés ou
 
 ---
 
+#### Statut session 2026-06-02 — bilan final
+
+**Tous les Buckets 0-4 sont LIVRÉS.** Branche `feat/anim-pipeline-v2`, **33 commits** ahead `origin/feat/anim-pipeline-v2` depuis le triage `de7133d9`. Tests : 1715/1715 vitest duel-server + 1460/1460 pvp Karma + 4 static checks passent. tsc front + duel-server clean.
+
+| Bucket | Statut | Findings clos |
+|---|---|---|
+| 0 (DONE en triage) | ✅ | C2, C6, C7, C8, C10, U30, U21, U9 (memory update) |
+| 1 (bugs latents) | ✅ | U28, U16, C5 (via C3 structural) |
+| 2 (quick wins) | ✅ | C3, C1, U33, U2, U3, U18, U22, U25, U14, U27, U17, U29 |
+| 3 (spec coverage) | ✅ | U1, C4, U6, U12, U13, U24, U31 |
+| 4 (refacto moyens) | ✅ | U15+U37, U38, U20, U4 |
+| **5 (KEEP-LATER)** | **🔵 EN ATTENTE** | **U32 + U34** — à reprendre dans une session dédiée |
+
+Le triage a explicitement défini U32 + U34 comme "à rediscuter ensemble dans un chantier server-side dédié". Aucun bug attribué au monolithe restant. server.ts évolue ~1 modif/3 mois. Pas d'urgence opérationnelle. Le Bucket 5 reste comme tel jusqu'à un trigger explicite (4e mode, bug d'orchestration cross-cutting, ou décision Axel de lancer le chantier).
+
+**Prochaine étape proposée** : session dédiée Bucket 5 avec analyse poussée préalable (cf. prompt de reprise sauvegardé).
+
+---
+
 ### Investigation détaillée par finding
 
 #### U1 — 3 carve-outs fork-spécifiques sans test dédié → **KEEP**
