@@ -507,6 +507,13 @@ export class DuelConnection {
     this._duelCtx = options?.duelCtx;
     this._wsFactory = options?.wsFactory;
     this._soloModeSource = options?.soloModeSource;
+    // U20 E3 review-fix : build the routing table here, AFTER `this.processor`
+    // is assigned. As a class field initializer this would run BEFORE the ctor
+    // body — a future memoization (e.g. `const proc = this.processor; table[t]
+    // = (m) => proc.processMessage(m);`) would then read `undefined`. Lazy
+    // closures over `this.processor` work either way today, but moving the
+    // assignment makes the init-order dependency explicit.
+    this._messageHandlers = this._buildHandlerTable();
   }
 
   clearStorageToken(): void {
@@ -1037,9 +1044,19 @@ export class DuelConnection {
 
   /** Game-event MSG_* types forwarded to the processor with no extra
    *  side-effect on the connection. MSG_DRAW, MSG_CONFIRM_CARDS, MSG_CHAINING
-   *  have their own methods. */
+   *  have their own methods.
+   *
+   *  U20 E2 review-fix : MSG_SET added. It was missing from the prior switch
+   *  (pre-U20 bug), so face-down Sets were silently dropped — the processor
+   *  never saw them and chain-resolution buffering missed them. The animation
+   *  orchestrator returns 0 for MSG_SET (no anim — position change handled by
+   *  the next BOARD_STATE), but the processor still needs to see it for
+   *  buffer-replay semantics during chain resolution. Pre-existing latent
+   *  bug, fixed in passing since the routing-table refacto surfaced it via
+   *  the new `unhandled-type` warn (the warn would have flooded on every
+   *  Set otherwise). */
   private static readonly _GAME_EVENT_TYPES = [
-    'MSG_MOVE', 'MSG_SHUFFLE_HAND', 'MSG_SHUFFLE_DECK',
+    'MSG_MOVE', 'MSG_SET', 'MSG_SHUFFLE_HAND', 'MSG_SHUFFLE_DECK',
     'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
     'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_BECOME_TARGET',
     'MSG_SWAP', 'MSG_ATTACK', 'MSG_BATTLE',
@@ -1048,12 +1065,28 @@ export class DuelConnection {
     'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
   ] as const;
 
-  /** Routing table built once at construction. Lookup is O(1) by message type.
-   *  Unknown types log a `warn` (see `handleMessage` default branch). */
-  private readonly _messageHandlers: Record<string, (msg: ServerMessage) => void> = this._buildHandlerTable();
+  /** Routing table built once during construction. Lookup is O(1) by message type.
+   *  Unknown types log a `warn` (see `handleMessage` default branch).
+   *
+   *  U20 E1+E3 review-fix : assigned inside the ctor body (NOT a field
+   *  initializer) AFTER `this.processor` is constructed. The closures in
+   *  the table reference `this.processor` lazily at dispatch time, which
+   *  works today because `connect()` is called from outside the ctor — but
+   *  a future memoization refactor (`const proc = this.processor;` inside
+   *  `_buildHandlerTable`) would crash with TDZ if the table were a field
+   *  initializer. Moving the assignment makes the dependency explicit. */
+  private readonly _messageHandlers: Record<string, (msg: ServerMessage) => void>;
 
   private _buildHandlerTable(): Record<string, (msg: ServerMessage) => void> {
-    const table: Record<string, (msg: ServerMessage) => void> = {
+    // U20 E1 review-fix : null-prototype table so a forged message with
+    // `type: "constructor"` / `"toString"` / `"hasOwnProperty"` etc. doesn't
+    // resolve to `Object.prototype.<name>` and silently invoke an inherited
+    // method as if it were a registered handler. `Object.create(null)` strips
+    // the prototype chain entirely ; the bracket access `table[message.type]`
+    // returns `undefined` for any non-own key, falling through to the warn
+    // branch in `handleMessage`.
+    const table: Record<string, (msg: ServerMessage) => void> = Object.create(null);
+    const entries: Record<string, (msg: ServerMessage) => void> = {
       'BOARD_STATE':           (m) => this._handleBoardState(m as BoardStateMsg),
       'STATE_SYNC':            (m) => this._handleStateSyncBuffer(m as StateSyncMsg),
       'CHAIN_STATE':           (m) => this._handleChainState(m as ChainStateMsg),
@@ -1081,6 +1114,7 @@ export class DuelConnection {
       'MSG_CONFIRM_CARDS':     (m) => this._handleMsgConfirmCards(m as ConfirmCardsMsg),
       'MSG_DRAW':              (m) => this._handleMsgDraw(m as DrawMsg),
     };
+    Object.assign(table, entries);
     for (const t of DuelConnection._SELECT_MODAL_TYPES) {
       table[t] = (m) => this._handleSelectModal(m as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg);
     }

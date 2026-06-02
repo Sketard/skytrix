@@ -981,3 +981,65 @@ describe('DuelConnection — mass-reset matrix (spec §4.3 A8, U6)', () => {
     }
   });
 });
+
+// =============================================================================
+// U20 review-fix (E1 + E2) — routing table hardening
+// =============================================================================
+
+describe('DuelConnection — U20 routing table hardening', () => {
+  /**
+   * E1 — bracket lookup on a plain `{}` would resolve `_messageHandlers["constructor"]`
+   * to `Object.prototype.constructor` (truthy), bypass the `if (handler)` guard,
+   * and silently invoke an inherited Object method. The fix uses `Object.create(null)`
+   * so any non-own key returns `undefined` and falls through to the warn branch.
+   *
+   * Probe : send a forged message with `type: "constructor"` (or `"toString"`,
+   * `"hasOwnProperty"`). A logger spy MUST see the warn — if it doesn't, the
+   * prototype-pollution guard is broken.
+   */
+  it('E1 — does NOT invoke Object.prototype methods via inherited key lookup', () => {
+    const warn = jasmine.createSpy('warn');
+    const logSpy = jasmine.createSpy('log');
+    const { conn } = makeConn();
+    // Stub logger covering both `warn` (asserted) and `log` (called by the
+    // PIPELINE trace at the top of handleMessage). The DuelLogger interface
+    // also surfaces `setTraceId` + `isEnabled` ; not needed for this flow.
+    (conn as unknown as { logger: { warn: jasmine.Spy; log: jasmine.Spy } }).logger = { warn, log: logSpy };
+    for (const poisonType of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+      warn.calls.reset();
+      expect(() =>
+        dispatch(conn, { type: poisonType } as unknown as ServerMessage),
+      ).not.toThrow();
+      // The unhandled-type warn MUST fire (proves the lookup returned undefined).
+      expect(warn).toHaveBeenCalled();
+      const lastArgs = warn.calls.mostRecent().args.join(' ');
+      expect(lastArgs).toContain('unhandled message type');
+      expect(lastArgs).toContain(poisonType);
+    }
+  });
+
+  /**
+   * E2 — MSG_SET was missing from the prior switch's game-event fall-through.
+   * Pre-U20 it was silently dropped (chain-buffering missed it). U20 review-fix
+   * added it to `_GAME_EVENT_TYPES` ; the processor now sees it during chain
+   * resolution. The orchestrator returns 0 for MSG_SET (no anim) but the
+   * processor still needs to ingest it for buffer semantics.
+   *
+   * Probe : dispatch MSG_SET and verify it's forwarded to `processor.processMessage`.
+   */
+  it('E2 — MSG_SET forwards to processor.processMessage', () => {
+    const { conn } = makeConn();
+    const spy = spyOn(conn.processor, 'processMessage').and.callThrough();
+    const msg = {
+      type: 'MSG_SET',
+      player: 0,
+      cardCode: 12345,
+      cardName: 'Trap Card',
+      location: 4, // SZONE
+      sequence: 0,
+      position: 8, // face-down defense
+    } as unknown as ServerMessage;
+    dispatch(conn, msg);
+    expect(spy).toHaveBeenCalledWith(msg);
+  });
+});

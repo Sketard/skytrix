@@ -1106,6 +1106,19 @@ private _handleDiceRoll(msg: DiceRollMsg): void {
 
 **Risque si on jette** : pas de bug, juste un coût de maintenance qui grossit lentement. La fonction continue à accumuler des context-comments à chaque fix par case.
 
+**Livré 2026-06-02** : commits `3f63f533` (refacto) + `<review-fix>` (E1+E2+E3
+post-BMad review). 3 fixes appliqués : E1 prototype-pollution (`Object.create(null)`
+sur le Record), E2 MSG_SET ajouté à `_GAME_EVENT_TYPES` (bug latent pré-U20),
+E3 init dans le ctor body. Acceptance Auditor PASS. Blind Hunter NONE.
+
+**Defer (E4)** : `WORKER_ERROR` (union member réel émis serveur) génère
+désormais un `logger.warn` au lieu du silencieux pré-U20. Pas régression nette
+(le warn n'efface pas une UX antérieure — `WORKER_ERROR` n'a JAMAIS eu de
+handler client utile), juste plus visible. Le vrai fix est UX (surface au
+user via toast / disconnect banner) et sort du scope U20. À ressortir si le
+warn pollue les logs en production OU si on chasse les "messages serveur
+sans handler client" lors d'un futur sweep PvP-stability.
+
 ---
 
 #### U21 — SELECT prompt resend sans whitelist pre-duel → **DROP**
