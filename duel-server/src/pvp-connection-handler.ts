@@ -107,6 +107,36 @@ const getCfg = configurable.get;
 // AliveWebSocket interface lives in ws-types.ts (F1 cleanup 2026-06-02).
 
 /**
+ * Resolve the live OCG playerIndex of a WebSocket against the session's
+ * current `players[]` mapping. Used by the per-WS event handlers
+ * (`message` / `error` / `close`) to attribute events even after a
+ * `startDuelWithOrder` swap of `players[]` or a reconnect that replaced
+ * the slot's `ws`.
+ *
+ * IMPORTANT — F4 (TBD next commit) : the third branch currently returns
+ * `capturedIndex` as a fallback when neither slot matches. That fallback
+ * misattributes a stale-ws event (`close` fired after a reconnect already
+ * swapped the slot to a NEW `ws`) to the slot the original capture
+ * pointed at — silently flipping `connected = false` on a slot that's
+ * actually OPEN. The next commit changes the fallback to `null` so
+ * callers can ignore the stale event explicitly.
+ *
+ * Until then, this extraction preserves byte-identical runtime behavior
+ * — the spec test 'STALE-WS — returns capturedIndex' below pins the
+ * current (buggy) fallback so the next commit's flip surfaces as a
+ * visible test diff.
+ */
+export function resolveLivePlayerIndex(
+  session: ActiveDuelSession,
+  ws: WebSocket,
+  capturedIndex: 0 | 1,
+): 0 | 1 {
+  if (session.players[0].ws === ws) return 0;
+  if (session.players[1].ws === ws) return 1;
+  return capturedIndex;
+}
+
+/**
  * Reject the handshake when the client's `pv` query param does not match
  * server-side `PROTOCOL_VERSION`. Returns true on accept, false on reject
  * (after closing the WS with code 4426 — analog to HTTP 426 Upgrade Required).
@@ -438,12 +468,10 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   // Required because startDuelWithOrder() may swap session.players[] after
   // the connection — the closure's captured `playerIndex` then points to the
   // wrong player. A live lookup against session.players[*].ws is immune to
-  // the swap.
-  const currentPlayerIndex = (): 0 | 1 => {
-    if (session!.players[0].ws === ws) return 0;
-    if (session!.players[1].ws === ws) return 1;
-    return playerIndex; // fallback to capture if the WS isn't attached yet
-  };
+  // the swap. See `resolveLivePlayerIndex` at the top of this module for
+  // the F4 stale-ws fallback caveat.
+  const currentPlayerIndex = (): 0 | 1 =>
+    resolveLivePlayerIndex(session!, ws, playerIndex);
 
   // WebSocket message handling
   ws.on('message', (data: Buffer) => {
