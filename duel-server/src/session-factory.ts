@@ -78,6 +78,13 @@ export interface CreateInitialSessionStateOpts {
 
 export function createInitialSessionState(opts: CreateInitialSessionStateOpts): ActiveDuelSession {
   const isFork = opts.forkMode === true;
+  // U15 review-fix (audit-4-modes-2026-06-01) — enforce CLAUDE.md F5-bis
+  // invariant: `forkMode: true` implies `soloMode: true` and is NEVER set
+  // on a PvP normal session. Documented but unenforced pre-fix; a future
+  // 3rd call-site (tutorial / practice mode) could violate it silently.
+  if (isFork && !opts.soloMode) {
+    throw new Error('createInitialSessionState: forkMode requires soloMode (CLAUDE.md F5-bis)');
+  }
   const phase: SessionPhase = opts.phase ?? (isFork ? 'DUELING' : 'WAITING_PLAYERS');
   const startedAt = opts.startedAt !== undefined ? opts.startedAt : (isFork ? Date.now() : null);
 

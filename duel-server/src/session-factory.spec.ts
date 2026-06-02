@@ -99,6 +99,24 @@ describe('createInitialSessionState (U15)', () => {
     expect(s.turnTimeSecs).toBe(600);
   });
 
+  it('throws when forkMode: true is paired with soloMode: false (F5-bis invariant)', () => {
+    // U15 review-fix — CLAUDE.md F5-bis: forkMode implies soloMode. Pre-fix
+    // the factory accepted the pathological pair silently, then the
+    // resulting session would walk through SOLO-aware code paths without
+    // the soloMode gate, surfacing as obscure runtime bugs downstream.
+    expect(() =>
+      createInitialSessionState({
+        duelId: 'd-bad',
+        players: [makePlayer(0), makePlayer(1)],
+        decks: [makeDeck(), makeDeck()],
+        soloMode: false,
+        forkMode: true,
+        playerUsernames: ['x', 'y'],
+        deckNames: ['x', 'y'],
+      })
+    ).toThrowError(/forkMode requires soloMode/);
+  });
+
   it('every ActiveDuelSession field is populated by the factory (enumeration)', () => {
     const s = createInitialSessionState({
       duelId: 'd1',

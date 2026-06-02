@@ -201,6 +201,12 @@ export function performSanityCheck(
 
   dlog.log('Fork sanity check', { result: match ? 'PASS' : 'MISMATCH', details: details ?? undefined });
 
+  // U4 review-fix (audit-4-modes-2026-06-01) — MUST flip `forkMode` BEFORE
+  // emitting `forkReady`. The worker's `FORK_RESUME` port handler
+  // (duel-worker.ts) gates on `if (forkMode && core && duel)` ; the client
+  // replies to `forkReady` with a `FORK_RESUME` that arrives in the next
+  // tick. Inverting these two lines lets the gate fail silently → no board
+  // state, no pending SELECT, fork screen stays black.
   ctx.setForkMode(true);
   ctx.emit().forkReady({ match, details });
   // Worker stays alive — waiting for PLAYER_RESPONSE messages in solo mode
