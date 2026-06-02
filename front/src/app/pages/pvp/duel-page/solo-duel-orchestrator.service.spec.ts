@@ -302,6 +302,52 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
     });
   });
 
+  // 2026-06-02 — rematch effect contract pinned. The SOLO orchestrator
+  // MUST NOT call `conn.resetRematchStarting()` from this effect: doing
+  // so flips the `rematchStarting` signal to `false` synchronously in the
+  // same Angular drain, which steals the value the bridge effect (Story 5.1)
+  // would otherwise observe → `animationService.onStateSync()` never fires
+  // at rematch SOLO → `drawManager._initialDrawDone` stays `[true, true]`
+  // from the previous duel → the new duel's MSG_DRAW × 5 route through
+  // `processMidGameDraw` instead of `launchInitialDraw` (cards travel
+  // without appearing, last one glows, all reveal at once). Bug reproduced
+  // 2026-06-02 (console-export-2026-6-2_18-9-53.log).
+  describe('rematch effect — signal preservation (2026-06-02 initial draw fix)', () => {
+    it('flips perspective to 0, increments _rematchReset, but does NOT call resetRematchStarting', async () => {
+      spyOn(DuelConnection.prototype, 'connect');
+      service.init('fake-token-solo');
+      wsService.soloModeSource.set(true);
+
+      const conn = service.connection()!;
+      const resetSpy = spyOn(conn, 'resetRematchStarting');
+      duelCtx.setPerspective(1); // simulate viewer was on P1
+      const initialResetCount = service.rematchReset();
+
+      // Drive `rematchStarting` to true on the real DuelConnection (the
+      // server-side trigger that arrives via `_handleRematchStarting`).
+      (conn as unknown as { _rematchStarting: { set: (v: boolean) => void } })
+        ._rematchStarting.set(true);
+
+      await Promise.resolve();
+      TestBed.tick();
+
+      // Perspective MUST reset to P0 (new-duel convention).
+      expect(duelCtx.perspective()()).toBe(0);
+      // Rematch reset counter MUST increment (drives the SOLO UX transition
+      // in solo-mode-effects: roomState → active + thumbnailsReady → true).
+      expect(service.rematchReset()).toBe(initialResetCount + 1);
+      // The signal MUST stay `true` so the bridge effect Story 5.1 can
+      // observe it and call `animationService.onStateSync()`. It will be
+      // reset to `false` later by the 1st BOARD_STATE handler of the new
+      // duel (DuelConnection line ~1216), keeping the «Starting new duel…»
+      // overlay visible during the transition window.
+      expect(resetSpy).not.toHaveBeenCalled();
+      expect(conn.rematchStarting()).toBeTrue();
+
+      service.cleanup();
+    });
+  });
+
   // F18 (2026-05-31) — the localStorage A5 (c6c + c6d) sub-suite is
   // retired with the underlying mechanism. The orchestrator no longer
   // reads or writes `localStorage['solo-duel-perspective']`; the

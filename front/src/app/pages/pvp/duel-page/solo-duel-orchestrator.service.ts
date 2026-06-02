@@ -364,15 +364,29 @@ export class SoloDuelOrchestratorService {
         if (conn.rematchState() === 'invited') conn.sendRematchRequest();
       });
 
-      // REMATCH_STARTING reçu une fois ⇒ 1 reset orchestrator.
+      // REMATCH_STARTING reçu une fois ⇒ resync perspective + déclenche la
+      // transition UI SOLO via `_rematchReset`. Le signal `rematchStarting`
+      // est PRÉSERVÉ (pas de `conn.resetRematchStarting()` ici) — il vit
+      // jusqu'au 1er BOARD_STATE du nouveau duel (ligne ~1216 de
+      // DuelConnection) afin que :
+      //
+      //  1. L'overlay « Starting new duel… » reste visible pendant la
+      //     fenêtre de transition (~RTT serveur) — masque le board vide.
+      //  2. Le bridge effect Story 5.1 fire correctement → reset DUEL_LIFETIME
+      //     (drawManager._initialDrawDone repasse à [false, false]) → les
+      //     MSG_DRAW initiaux du nouveau duel routent vers
+      //     `launchInitialDraw` (pas `processMidGameDraw`).
+      //
+      // Le `resetRematchStarting()` historique court-circuitait le bridge
+      // effect via une course dans le drain Angular (le SOLO effect fire
+      // avant le bridge → flippe le signal → le bridge voit `false` et ne
+      // déclenche jamais `onStateSync`). Bug réservoir « initial draw mid-
+      // game » au rematch SOLO observé 2026-06-02.
       effect(() => {
         if (conn.rematchStarting()) {
           // Perspective P0 par convention en début de nouvelle partie.
           this.duelCtx.setPerspective(0);
-          conn.resetRematchStarting();
           this._rematchReset.update(v => v + 1);
-          // Pas d'orchestrator.reset ici : STATE_SYNC qui suit déclenche
-          // onStateSync({DUEL_LIFETIME}) qui purge tout proprement.
         }
       });
     });

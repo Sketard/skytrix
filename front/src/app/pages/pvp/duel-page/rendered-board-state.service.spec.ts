@@ -217,13 +217,13 @@ describe('RenderedBoardStateService', () => {
   });
 
   describe('syncPileCounts', () => {
-    it('should sync deckCount and extraCount from logical, preserve zones and LP', () => {
-      const initial = makeState({ p0: { lp: 8000, deckCount: 40, extraCount: 15, zones: [zone('M1', 100)] } });
+    it('should sync deckCount/extraCount + EXTRA zone from logical, preserve other zones and LP', () => {
+      const initial = makeState({ p0: { lp: 8000, deckCount: 40, extraCount: 15, zones: [zone('M1', 100), zone('EXTRA', 200)] } });
       rbs.updateLogical(initial);
       rbs.syncRendered();
 
       const updated = makeState({
-        p0: { lp: 3000, deckCount: 38, extraCount: 14, zones: [zone('M1', 999)] },
+        p0: { lp: 3000, deckCount: 38, extraCount: 14, zones: [zone('M1', 999), zone('EXTRA', 888)] },
         turn: 2, phase: 'BATTLE_START',
       });
       rbs.updateLogical(updated);
@@ -233,7 +233,12 @@ describe('RenderedBoardStateService', () => {
       expect(p0.deckCount).toBe(38);    // synced
       expect(p0.extraCount).toBe(14);   // synced
       expect(p0.lp).toBe(8000);         // preserved from rendered
-      expect(p0.zones.find(z => z.zoneId === 'M1')!.cards[0].cardCode).toBe(100); // zone NOT synced
+      // M1 (non-EXTRA field zone) — NOT synced (preserved at rendered state)
+      expect(p0.zones.find(z => z.zoneId === 'M1')!.cards[0].cardCode).toBe(100);
+      // EXTRA pile — sync'd from logical alongside the scalar count. EXTRA is
+      // never part of the boot animation pipeline, so syncing it here avoids
+      // a visual lag at rematch bootstrap (EXTRA appearing later than DECK).
+      expect(p0.zones.find(z => z.zoneId === 'EXTRA')!.cards[0].cardCode).toBe(888);
       expect(rbs.renderedState().turnCount).toBe(2);  // global metadata synced
       expect(rbs.renderedState().phase).toBe('BATTLE_START');
     });
@@ -249,6 +254,41 @@ describe('RenderedBoardStateService', () => {
 
       expect(rbs.renderedState().players[0].extraCount).toBe(15); // locked, not synced
       lock.release(); // avoid leaving a safety-timeout armed past spec teardown
+    });
+
+    it('should sync EXTRA zone array (cards in pile) alongside its scalar count', () => {
+      // Rematch bootstrap regression guard (2026-06-02): the rendered EXTRA
+      // pile MUST surface its cards as soon as syncPileCounts runs (1st
+      // BOARD_STATE of the new duel) — not 600ms later when the post-initial-
+      // draw commitUnlocked happens. Without this, EXTRA visibly appears
+      // after DECK.
+      rbs.updateLogical(makeState({ p0: { zones: [zone('EXTRA', 111)] } }));
+      rbs.syncRendered();
+
+      rbs.updateLogical(makeState({ p0: { extraCount: 14, zones: [zone('EXTRA', 222)] } }));
+      rbs.syncPileCounts();
+
+      const extraZone = rbs.renderedState().players[0].zones.find(z => z.zoneId === 'EXTRA');
+      expect(extraZone).withContext('EXTRA zone present in rendered').toBeDefined();
+      expect(extraZone!.cards[0].cardCode).withContext('EXTRA card synced from logical').toBe(222);
+    });
+
+    it('should NOT sync EXTRA zone array when EXTRA is locked', () => {
+      // Defensive: production never locks EXTRA, but the lock-aware contract
+      // for the scalar `extraCount` MUST extend to the zone array — a future
+      // animation that locks EXTRA (e.g. summoning from Extra Deck with a
+      // visual effect) would otherwise see its rendered zone clobbered
+      // mid-animation.
+      rbs.updateLogical(makeState({ p0: { extraCount: 15, zones: [zone('EXTRA', 111)] } }));
+      rbs.syncRendered();
+
+      const lock = rbs.lockZone('EXTRA-0');
+      rbs.updateLogical(makeState({ p0: { extraCount: 13, zones: [zone('EXTRA', 999)] } }));
+      rbs.syncPileCounts();
+
+      const extraZone = rbs.renderedState().players[0].zones.find(z => z.zoneId === 'EXTRA');
+      expect(extraZone!.cards[0].cardCode).withContext('locked → preserved').toBe(111);
+      lock.release();
     });
   });
 

@@ -144,18 +144,36 @@ export class RenderedBoardStateService implements BoardStateView {
   }
 
   /**
-   * Sync only DECK/EXTRA counts and global metadata (turn, phase) from logical.
-   * Used when the animation queue has events whose zones may not be pre-locked
-   * yet — full syncRendered() would expose those zones prematurely.
+   * Sync DECK/EXTRA counts, the EXTRA zone array, and global metadata
+   * (turn, phase) from logical. Used when the animation queue has events
+   * whose zones may not be pre-locked yet — full syncRendered() would
+   * expose those zones (HAND in particular) prematurely.
+   *
+   * The EXTRA zone array itself is sync'd alongside its scalar count
+   * because EXTRA is NEVER part of the boot animation pipeline (initial
+   * draws come from DECK, not EXTRA). Without this, the rendered EXTRA
+   * pile stays empty at rematch bootstrap until the first
+   * `commitUnlocked` post-initial-draw fires (~600ms after DECK becomes
+   * visible) — observed 2026-06-02 as "EXTRA appears later than DECK".
+   * Lock-aware (defensive: production never locks EXTRA but specs do).
    */
   syncPileCounts(): void {
     const logical = this._logical();
     const rendered = this._rendered();
-    const players = rendered.players.map((rp, i) => ({
-      ...rp,
-      deckCount: logical.players[i].deckCount,
-      extraCount: this._locks.has(`EXTRA-${i}`) ? rp.extraCount : logical.players[i].extraCount,
-    })) as [PlayerBoardState, PlayerBoardState];
+    const players = rendered.players.map((rp, i) => {
+      const extraLocked = this._locks.has(`EXTRA-${i}`);
+      const logicalExtraZone = logical.players[i].zones.find(z => z.zoneId === 'EXTRA');
+      const renderedZonesWithoutExtra = rp.zones.filter(z => z.zoneId !== 'EXTRA');
+      const zones = extraLocked || !logicalExtraZone
+        ? rp.zones
+        : [...renderedZonesWithoutExtra, logicalExtraZone];
+      return {
+        ...rp,
+        deckCount: logical.players[i].deckCount,
+        extraCount: extraLocked ? rp.extraCount : logical.players[i].extraCount,
+        zones,
+      };
+    }) as [PlayerBoardState, PlayerBoardState];
     this._rendered.set({
       turnPlayer: logical.turnPlayer, turnCount: logical.turnCount, phase: logical.phase,
       players,
