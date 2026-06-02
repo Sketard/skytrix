@@ -386,6 +386,15 @@ Alternative considérée : règle ESLint `no-restricted-imports` ciblée. Plus p
 
 **Risque si on jette** : duel-worker.ts continue de grossir à chaque nouvelle message type, passe les 2000 LOC, diff PR illisible, transforms non-testables unitairement.
 
+**Livré 2026-06-02** : 2 commits sur `feat/anim-pipeline-v2` :
+- `c84d72a2` `refactor(server): U4 — extract ocg-message-transforms.ts` (14 transforms + dispatcher + transformResponse + 7 helpers, 672 LOC) + 14 specs unit
+- `11facf7a` `refactor(server): U4 — extract duel-worker-fork.ts` (runForkReconstruction + performSanityCheck + PHASE_MAP_REVERSE, 192 LOC)
+- `<review-fix>` `test(server): harden U4 per review (B1, E1, E2)` — restore `duelInstr.time('getCardName')` instrumentation via context (B1 MED), drop unused `ForkContext.transformMessage` field (E1 LOW), fix misleading "defaulting to 0" comment (E2 LOW)
+
+Bilan : duel-worker.ts 1908 → 1269 LOC (-639 / -33%). 1715/1715 vitest verts.
+
+**Déviation acceptée (2026-06-02)** vs liste "À NE PAS extraire" ci-dessus : `transformMessage` (le big switch) **A ÉTÉ extrait** avec les 14 transforms helpers. Raison : laisser le switch dans le worker l'aurait obligé à passer les 2 contextes (`OcgContext` + `LookupContext`) à chaque appel, et le switch n'a aucun consommateur externe — il existe uniquement pour appeler les 14 transforms. Garder helpers + dispatcher ensemble préserve la cohésion logique. Doc canonique d'origine inconsistante elle-même (L.377 "Sortir les 14 transforms" implique le dispatcher ; L.385 le forbid). Acceptance Auditor a flaggé la déviation comme "défendable, dismiss" — le worker wrapper préserve la signature originale, aucun call-site externe impacté.
+
 ---
 
 #### U5 — 3 sources de vérité prompt slot ownership → **DROP**

@@ -33,7 +33,7 @@ import { SELECT_MESSAGE_TYPES } from './replay-precompute.js';
 import type { WorkerEmitter } from './duel-worker-emit.js';
 import type { DuelLogger } from './logger.js';
 import type { InitForkMessage } from './types.js';
-import type { Phase, ServerMessage } from './ws-protocol.js';
+import type { Phase } from './ws-protocol.js';
 
 // =============================================================================
 // Phase reverse lookup (only consumer is `performSanityCheck`)
@@ -66,10 +66,6 @@ export interface ForkContext {
   /** Worker callbacks. */
   updateState: (msg: OcgMessage) => void;
   cleanup: () => void;
-  /** Worker-side `transformMessage` wrapper — only used by FORK_RESUME, NOT
-   *  by `runForkReconstruction` itself. Threaded through so the worker can
-   *  retain a single source of truth. */
-  transformMessage?: (msg: OcgMessage) => ServerMessage | null;
 
   /** Setters for the 2 fork state slots that live on the worker. */
   setForkMode: (v: boolean) => void;
@@ -179,7 +175,14 @@ export function performSanityCheck(
   const actualPhase = ctx.phaseMap[phaseStr];
   const dlog = ctx.dlog();
   if (actualPhase === undefined) {
-    dlog.warn('Fork unknown phase during sanity check — defaulting to 0', { phase: phaseStr });
+    // Reviewfix E2 (audit-4-modes-2026-06-01) — comment used to say
+    // "defaulting to 0" but no `?? 0` fallback actually runs ; `actualPhase`
+    // stays `undefined` and the comparison below propagates it into the
+    // mismatch report. Warn here so the operator notices that PHASE_MAP
+    // lost coverage for a value the engine emitted, then let the existing
+    // mismatch flow surface "got undefined" to the client UI (preserves
+    // the pre-extract semantics, just stops lying about it).
+    dlog.warn('Fork unknown phase during sanity check', { phase: phaseStr });
   }
 
   const mismatches: string[] = [];

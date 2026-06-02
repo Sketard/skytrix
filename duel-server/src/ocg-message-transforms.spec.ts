@@ -52,6 +52,9 @@ function makeMockLookup(opts: {
     } as unknown as import('./types.js').CardDB),
     systemStrings: () => opts.systemStrings ?? new Map(),
     dlog: () => dlog,
+    // Reviewfix B1 — `getCardName` is now part of the contract. Tests inject
+    // the same `nameFn` so the assertions on cardName resolution still pass.
+    getCardName: nameFn,
     isTokenCard: () => false,
     setLastAnnounceNumberOptions: () => {},
     getLastAnnounceNumberOptions: () => opts.lastAnnounceNumberOptions ?? [],

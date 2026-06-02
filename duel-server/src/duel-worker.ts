@@ -278,6 +278,11 @@ const lookupContext: LookupContext = {
   cardDb: () => cardDb,
   systemStrings: () => systemStrings,
   dlog: () => dlog,
+  // Reviewfix B1 (audit-4-modes-2026-06-01) — forward the worker's
+  // instrumented `getCardName` (wrapped with `duelInstr.time('getCardName',
+  // ...)`) so per-OCG-message hot-path metrics keep surfacing in
+  // DUEL_INSTRUMENT=1 snapshots.
+  getCardName,
   isTokenCard,
   setLastAnnounceNumberOptions: (opts) => { lastAnnounceNumberOptions = opts; },
   getLastAnnounceNumberOptions: () => lastAnnounceNumberOptions,
@@ -1079,7 +1084,6 @@ const forkContext: ForkContext = {
   emit: () => emit,
   updateState,
   cleanup,
-  transformMessage,
   setForkMode: (v) => { forkMode = v; },
   setForkPendingSelect: (v) => { forkPendingSelect = v; },
 };

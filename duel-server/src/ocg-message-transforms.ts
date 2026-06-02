@@ -81,6 +81,14 @@ export interface LookupContext {
   cardDb: () => CardDB | null;
   systemStrings: () => Map<number, string>;
   dlog: () => DuelLogger;
+  /** SQLite name lookup (`cardDb.nameStmt.get(code)`) wrapped with the
+   *  worker's `duelInstr.time('getCardName', ...)` so the per-OCG-message
+   *  hot path keeps surfacing in `DUEL_INSTRUMENT=1` snapshots (perf-audit
+   *  chantier 2026-05-22 baselines). Reviewfix B1 (audit-4-modes-2026-06-01)
+   *  — extracted module passes the worker's instrumented version through
+   *  the context rather than re-implementing the lookup inline, which would
+   *  silently lose instrumentation. */
+  getCardName: (code: number) => string;
   /** `cardDbCache.get(cardDb, code).cardType & TYPE_TOKEN`. Worker keeps the
    *  cache so the same memoization is shared with `buildBoardState`. */
   isTokenCard: (code: number) => boolean;
@@ -214,15 +222,13 @@ export function resolvePromptDescription(
 // 4 transforms (Battle / BecomeTarget / Equip / ShuffleSetCard) are pure —
 // they only walk the OcgMessage payload, no context required.
 
-/** Resolves `getCardName` lazily from the lookup context. Used by the
- *  coupled transforms below. */
+/** Reviewfix B1 — alias for the worker's instrumented `getCardName` (wrapped
+ *  with `duelInstr.time('getCardName', ...)`). Earlier drafts of this module
+ *  re-rolled the SQLite lookup inline, which lost the per-OCG-message
+ *  instrumentation. The lookup now flows through `LookupContext.getCardName`
+ *  so the perf-audit buckets stay accurate. */
 function makeGetCardName(lookup: LookupContext): (code: number) => string {
-  return (code: number) => {
-    const db = lookup.cardDb();
-    if (!db || !code) return '';
-    const row = db.nameStmt.get(code) as { name: string } | undefined;
-    return row?.name ?? '';
-  };
+  return lookup.getCardName;
 }
 
 export function transformMove(
