@@ -75,11 +75,15 @@ import * as logger from './logger.js';
  * Three closure-level locals on each incoming connection :
  *   - `session: ActiveDuelSession | undefined` — resolved from token
  *     OR reconnect-token, used by the message / close handlers.
- *   - `playerIndex: 0 | 1` — captured at handshake ; the live index
- *     is read via `currentPlayerIndex()` because
- *     `startDuelWithOrder` can swap `session.players[]` after the
- *     connection lands (see comment at the helper definition).
-*   - `cfg` — captured once from `getCfg()` at entry. Reused for the
+ *   - `playerIndex: 0 | 1` — captured at handshake, used only by the
+ *     synchronous handshake flow (ws attach + SESSION_TOKEN +
+ *     sendStateSnapshot + resendPendingPrompt + isReadyToStart). The
+ *     post-attach event handlers (message / error / close) read the
+ *     LIVE index via `currentPlayerIndex()` → `resolveLivePlayerIndex`
+ *     so they tolerate (a) a `startDuelWithOrder` swap of
+ *     `session.players[]` and (b) a reconnect replacing this slot's ws
+ *     (F4 stale-ws contract — returns `null` in that case).
+ *   - `cfg` — captured once from `getCfg()` at entry. Reused for the
  *     `sessionManager` lookup and for the `incrementProtocolMismatch`
  *     callback passed down to `checkProtocolVersion`.
  */
@@ -470,12 +474,16 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   }
 
   // Resolve the current OCG playerIndex of THIS WebSocket on every event.
-  // Required because startDuelWithOrder() may swap session.players[] after
-  // the connection — the closure's captured `playerIndex` then points to the
-  // wrong player. A live lookup against session.players[*].ws is immune to
-  // the swap. Returns `null` if the ws is no longer attached (stale-ws after
-  // a reconnect swapped the slot) — every call site narrows against null
-  // and ignores the stale event. See `resolveLivePlayerIndex` JSDoc.
+  // Two reasons a live lookup is needed instead of the handshake-time
+  // `playerIndex` capture :
+  //   1. `startDuelWithOrder` may swap `session.players[]` after the
+  //      handshake — the captured index then points to the wrong slot.
+  //   2. A reconnect may replace `session.players[i].ws` with a fresh
+  //      socket before this connection's deferred events drain — the
+  //      stale `ws` no longer matches any slot.
+  // Returns `null` in case (2) so the message / error / close handlers
+  // can ignore the stale event explicitly. See `resolveLivePlayerIndex`
+  // JSDoc for the F4 contract.
   const currentPlayerIndex = (): 0 | 1 | null =>
     resolveLivePlayerIndex(session!, ws);
 
@@ -485,7 +493,10 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
     if (captured === null) {
       // F4 — stale ws (this socket has been replaced by a reconnect).
       // Drop the message ; the live ws will receive its own copies.
-      logger.warn('Dropping message from stale ws', { duelId: session!.duelId });
+      // logger.log (not warn) : normal race condition between in-flight
+      // frames and OS-delivered close on the replaced ws — symmetric with
+      // the 'close' handler's "Stale ws close ignored" log level.
+      logger.log('Stale ws message dropped', { duelId: session!.duelId });
       return;
     }
     let parsed: unknown;

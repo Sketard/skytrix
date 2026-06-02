@@ -177,7 +177,7 @@ U5, U7, U8, U9, U10, U11, U19, U21, U23, U26, U35, U36, U37, C9 — réfutés ou
 
 #### Statut session 2026-06-02 — bilan final
 
-**TOUS LES BUCKETS LIVRÉS — chantier audit-4-modes-2026-06-01 clos (F4 inclus, 2026-06-02 post-review).** Branche `feat/anim-pipeline-v2`, **~42 commits** ahead `origin/feat/anim-pipeline-v2` depuis le triage `de7133d9`. Tests : 1810/1810 vitest duel-server + 1460/1460 pvp Karma + 4 static checks passent. tsc front + duel-server clean.
+**TOUS LES BUCKETS LIVRÉS — chantier audit-4-modes-2026-06-01 clos (F4 inclus, 2026-06-02 post-review).** Branche `feat/anim-pipeline-v2`, **~44 commits** ahead `origin/feat/anim-pipeline-v2` depuis le triage `de7133d9`. Tests : 1810/1810 vitest duel-server + 1460/1460 pvp Karma + 4 static checks passent. tsc front + duel-server clean.
 
 | Bucket | Statut | Findings clos |
 |---|---|---|
@@ -200,8 +200,8 @@ U5, U7, U8, U9, U10, U11, U19, U21, U23, U26, U35, U36, U37, C9 — réfutés ou
 | D | U32 #2 | `4d83635a` | `pvp-connection-handler.ts` (~484 LOC) | wss.on('connection') body (~342 LOC) + `checkProtocolVersion` | 1746/1746 |
 | E | U32 #3b | `4727400e` | session-orchestrator.ts extended (+ `rematchExpired` test) | `startRematch` + `rematchExpired` + `startDuelWithOrder` (~140 LOC) | 1747/1747 |
 | F (post-chantier follow-ups) | F1-F3, F5-F9 | `caf0d30f` | `ws-types.ts` (F1) + 8 fixes inline | AliveWebSocket hoist + ws.on('error') PvP + rate-limit fixes + handshake reject + fork rematch guard + JWT type-narrow + 6 specs F9 | 1753/1753 |
-| G (F4 prep) | F4 #1 | `95f0cbbf` | `pvp-connection-handler.spec.ts` (4 tests) | extract `resolveLivePlayerIndex` (~7 LOC neutre) | 1809/1809 |
-| H (F4 fix) | F4 #2 | `af635bd2` | — | flip fallback `null` + 3 call sites + flip pin + regression guard (~30 LOC) | 1810/1810 |
+| G (F4 prep) | F4 prep | `95f0cbbf` | `pvp-connection-handler.spec.ts` (4 tests) | extract `resolveLivePlayerIndex` (~7 LOC neutre) | 1809/1809 |
+| H (F4 fix) | F4 fix | `af635bd2` | — | flip fallback `null` + 3 call sites + flip pin + regression guard (~30 LOC) | 1810/1810 |
 
 **Bilan agrégé** :
 - server.ts : **1334 → 751 LOC** (-583, soit -44%).

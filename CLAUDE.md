@@ -1756,6 +1756,11 @@ the regression fence for the whole pattern.
   The `wss.on('connection', ...)` handler body. Routes 4 modes
   (replay / solver / PvP-init / PvP-reconnect), handshake +
   grace-period + dispatch, per-WS `message` + `close` lifecycle.
+  Also exports `resolveLivePlayerIndex(session, ws): 0 | 1 | null` —
+  the `null` branch (F4, 2026-06-02) lets the per-WS event handlers
+  ignore stale-ws events after a reconnect already swapped the slot,
+  preventing a faux-positif `OPPONENT_DISCONNECTED` / grace-timer
+  forfeit at `RECONNECT_GRACE_MS` against a healthy live ws.
 - **`ws-write`** — U32 #1 (audit-4-modes-2026-06-01). Pure export
   (no `createConfigurable<T>` — zero injectable deps) : `sendToPlayer`
   with STATE_SYNC decoration, SOLO routing decision, `safeSend` wire.
