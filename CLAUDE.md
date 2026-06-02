@@ -183,7 +183,7 @@ cost, etc.) and `MSG_CHAIN_SOLVING`, but via **two different mechanisms**
 that achieve the same effect by construction :
 
 - **PvP** — explicit BOARD_STATE between cost and `MSG_CHAIN_SOLVING`.
-  [duel-worker.ts:1376-1380](duel-server/src/duel-worker.ts#L1376-L1380)
+  [duel-worker.ts:697-758](duel-server/src/duel-worker.ts#L697-L758)
   tracks `hasCostMoves` (any `MSG_MOVE` emitted since the last reset)
   and emits an extra `BOARD_STATE` message right before
   `MSG_CHAIN_SOLVING` when the flag is true. Client consumes it through
@@ -328,9 +328,11 @@ forkMode: false` = SOLO multiplex, `soloMode: true / forkMode: true`
    `case 'WORKER_REPLAY_DATA'` skips `persistReplay` when
    `session.forkMode`. Fork-solo derives from an existing replay,
    recording the variant doesn't make sense.
-2. **No rematch** — `worker-lifecycle.ts handleDuelEnd` skips the
-   `rematchTimeout = setTimeout(...)` arm when `session.forkMode`.
-   Fork-solo is exploratory one-shot.
+2. **No rematch** — `duel-end-coordinator.ts handleDuelEnd`
+   ([duel-end-coordinator.ts:126](duel-server/src/duel-end-coordinator.ts#L126))
+   skips the `rematchTimeout = setTimeout(...)` arm when
+   `session.forkMode`. Fork-solo is exploratory one-shot. (Pre-U34
+   audit-4-modes-2026-06-01 this lived in `worker-lifecycle.ts`.)
 3. **Log tag** — `broadcastMessage` `case 'MSG_WIN'` writes
    `mode: 'fork_solo'` on the DUEL_END log line, alongside `'solo'`
    for SOLO multiplex and `'pvp'` for PvP normal. For audit-log
@@ -341,8 +343,9 @@ forkMode: false` = SOLO multiplex, `soloMode: true / forkMode: true`
 Everything else flows through the SAME code path as a regular SOLO
 multiplex session, no per-fork branches :
 
-- **Omniscient filter** : `broadcastMessage:320-335` SOLO branch fires
-  on `session.soloMode`, applies to fork.
+- **Omniscient filter** : `broadcastMessage` SOLO branch
+  ([worker-message-router.ts:358-380](duel-server/src/worker-message-router.ts#L358-L380))
+  fires on `session.soloMode`, applies to fork.
 - **1-socket routing** : `decideSoloRouting` / `PSEUDO_PAIRWISE_SOLO_ROUTED`
   in `lifecycle-helpers.ts` handle slot-1 sends via tag (no-op or
   route-to-0). Same for fork.
@@ -356,7 +359,7 @@ multiplex session, no per-fork branches :
   `ingestIntoSessionGameLog(session.gameLog, message)`. Same for fork.
 - **Cancel-rollback** : `takeWorkerSnapshot()` fires at every
   IDLECMD/BATTLECMD boundary
-  ([duel-worker.ts:1875](duel-server/src/duel-worker.ts#L1875))
+  ([duel-worker.ts:1182](duel-server/src/duel-worker.ts#L1182))
   regardless of `forkMode`. Fork-solo inherits the anti-fat-finger
   discipline. (The worker's own `forkMode` flag is scoped to other
   bootstrap concerns : bypassing `capturedSetResponse`, gating
@@ -418,7 +421,7 @@ is the only constructor that sets `forkMode: true`. It :
 ### Worker `forkMode` variable (not the same as `session.forkMode`)
 
 [duel-worker.ts](duel-server/src/duel-worker.ts) has an internal
-`forkMode: boolean` variable (line 1676) set on `INIT_FORK`
+`forkMode: boolean` variable ([duel-worker.ts:1063](duel-server/src/duel-worker.ts#L1063)) set on `INIT_FORK`
 that gates worker-side behavior : bypassing `capturedSetResponse` (for
 deterministic replay reconstruction), skipping `emitReplayData` (the
 worker doesn't auto-emit on END/WIN), the `FORK_RESUME` handler.
@@ -458,7 +461,7 @@ false` with `_duelCtx` set) is harmless but pointless. The cleanup landed (F-2.3
 **getter derived from `soloModeSource`**
 ([duel-connection.ts:251-253](front/src/app/pages/pvp/duel-page/duel-connection.ts#L251-L253)),
 passed in as a ctor option by `SoloDuelOrchestratorService`
-([solo-duel-orchestrator.service.ts:164](front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts#L164)),
+([solo-duel-orchestrator.service.ts:159](front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts#L159)),
 so the "pair flip" is structurally impossible to break — there is no
 longer a `setSoloMode` writer on the conn. Anyone adding a third
 SOLO-only field to `DuelConnection` SHOULD follow the same pattern
@@ -1769,6 +1772,45 @@ the regression fence for the whole pattern.
 + boot invariant), HTTP `handleRequest` (POST /api/duels + DELETE
 /api/duels/:id + /api/duels/active passthrough), heartbeat, signal
 handlers, graceful shutdown, `server.listen`.
+
+### Non-configurable server-side extracts (audit-4-modes-2026-06-01)
+
+Three modules landed in the audit-4-modes Bucket 4 + 5 that are NOT
+`createConfigurable<T>` modules — they're shared factories / pure
+helpers consumed by both `server.ts` and `fork-handlers.ts`, or
+worker-side extracts that live outside the main-process `server.ts`
+slice. They have no `configureXxx()` boot call and don't participate
+in the boot invariant.
+
+- **`session-factory.ts`** — U15 + U37 (commit `d5f3ca2b`).
+  `createInitialSessionState(opts)` consolidates the 2 hand-built
+  `ActiveDuelSession` constructors (PvP normal in `server.ts` POST
+  `/api/duels` + fork-solo in `fork-handlers.ts createForkSoloSession`)
+  + `resetSessionForRematch(session)` consolidates the rematch reset
+  that previously lived inline in `server.ts startRematch`. Wipes
+  per-duel state without touching long-lived fields (`duelId`,
+  `players`, `decks`, `soloMode`, `forkMode`, …) ; replaces `gameLog`
+  with a fresh `createSessionGameLog()` so the new duel's journal does
+  NOT bleed in from the previous one.
+- **`duel-worker-fork.ts`** — U4 (commit `11facf7a`). Worker-side
+  extract (NOT `server.ts`). Holds `runForkReconstruction` +
+  `performSanityCheck` + local `PHASE_MAP_REVERSE`. The `initFork`
+  bootstrap stays in `duel-worker.ts` because it touches the OCGCore
+  init pipeline ; this module is the pure replay-driver + sanity gate
+  that runs AFTER engine init. Receives setters via a `ForkContext`
+  interface, mirroring the `WorkerStateAccessors` pattern used by
+  `wasm-snapshot-wrapper.ts`.
+- **`ocg-message-transforms.ts`** — U4 (commit `c84d72a2`).
+  Worker-side extract (NOT `server.ts`). Holds the ~14 OcgMessage →
+  ServerMessage transforms, the `transformMessage` dispatch switch,
+  the prompt→OCGCore `transformResponse`, plus 7 pure decode helpers
+  (`decodePlaces` / `decodePositions` / `decodeBitmask` /
+  `decodeAttributes` / `countersToRecord` / `locName` / `toCardInfo`).
+  Two context objects (`OcgContext` carrying `core` + `duel` ;
+  `LookupContext` carrying `cardDb` + `systemStrings` + `dlog` +
+  `isTokenCard` + `setLastAnnounceNumberOptions`) are built once by
+  the worker and forwarded on every call so the transforms don't
+  reach module-level worker state.
 
 ## WS Protocol Module Split (barrel)
 
