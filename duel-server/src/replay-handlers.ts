@@ -9,6 +9,7 @@ import { extractCardCodes, type WorkerReplayPayload, type ReplayMetadata } from 
 import { validateWorkerMessage } from './validation/worker-message-validation.js';
 import { getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import type { ReplayCache } from './replay-cache.js';
+import type { AliveWebSocket } from './ws-types.js';
 
 /**
  * Replay-mode WebSocket connection state machine + worker pool.
@@ -39,9 +40,7 @@ export interface ReplayConnection {
   state: ReplayConnectionState;
 }
 
-interface AliveWebSocket extends WebSocket {
-  isAlive: boolean;
-}
+// AliveWebSocket interface lives in ws-types.ts (F1 cleanup 2026-06-02).
 
 interface PendingForkEntry {
   worker: Worker;

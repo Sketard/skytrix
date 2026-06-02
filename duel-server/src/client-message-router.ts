@@ -196,6 +196,17 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
     case 'REMATCH_REQUEST': {
       // Only valid post-duel.
       if (session.endedAt === null) break;
+      // F7 cleanup (2026-06-02) — fork-solo is exploratory one-shot per
+      // F5-bis doctrine : no rematch invitation flow, no rematch arm,
+      // no rematch UI. Reject any REMATCH_REQUEST that reaches the
+      // server for a fork-solo session (the front-end should not even
+      // surface the button, but defense-in-depth at the dispatch level).
+      if (session.forkMode) {
+        logger.warn('REMATCH_REQUEST rejected — fork-solo session has no rematch flow', {
+          duelId: session.duelId, player: playerIndex,
+        });
+        break;
+      }
       // γ Option C PR2 c6e (A27) — SOLO court-circuit. Le user est le
       // seul opérateur des 2 identités via 1 socket, la gate "both
       // requested" n'a pas de sens : on démarre rematch dès le 1er

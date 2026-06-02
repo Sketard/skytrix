@@ -32,6 +32,7 @@ import {
   startDuelWithOrder,
 } from './session-orchestrator.js';
 import { safeTerminateWorker } from './duel-end-coordinator.js';
+import type { AliveWebSocket } from './ws-types.js';
 import * as logger from './logger.js';
 
 /**
@@ -103,9 +104,7 @@ export const configurePvpConnectionHandler = configurable.configure;
 export const isPvpConnectionHandlerConfigured = configurable.isConfigured;
 const getCfg = configurable.get;
 
-interface AliveWebSocket extends WebSocket {
-  isAlive: boolean;
-}
+// AliveWebSocket interface lives in ws-types.ts (F1 cleanup 2026-06-02).
 
 /**
  * Reject the handshake when the client's `pv` query param does not match
@@ -163,6 +162,10 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
     const replayId = url.searchParams.get('replayId');
     const jwt = url.searchParams.get('token');
     if (!replayId || !jwt) {
+      // F3 cleanup (2026-06-02) — count as failed handshake so an attacker
+      // can't spam `?mode=replay` to bypass the rate limiter (mirrors the PvP
+      // missing-token branch's existing behavior).
+      recordFailedWsAttempt(ip);
       ws.close(4001, 'Missing replayId or token');
       return;
     }
@@ -175,6 +178,8 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
     if (!checkProtocolVersion(ws, url, 'solver', ip, cfg.incrementProtocolMismatch)) return;
     const jwt = url.searchParams.get('token');
     if (!jwt) {
+      // F3 cleanup (2026-06-02) — same as replay branch above.
+      recordFailedWsAttempt(ip);
       ws.close(4001, 'Missing token');
       return;
     }
@@ -185,7 +190,13 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
       const parts = jwt.split('.');
       if (parts.length !== 3) throw new Error('Invalid JWT format');
       const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-      userId = String(payload.sub ?? payload.userId ?? payload.id ?? '');
+      // F8 cleanup (2026-06-02) — type-narrow before coercion. Without
+      // the typeof check, a payload like `{sub: {}}` would yield the
+      // literal '[object Object]' as a userId (truthy, non-empty, but
+      // semantic garbage). JWT signatures protect against malformed
+      // payloads from non-issuer parties — this is defense-in-depth.
+      const claim = payload.sub ?? payload.userId ?? payload.id;
+      userId = typeof claim === 'string' ? claim : '';
       if (!userId) throw new Error('No user ID in JWT');
     } catch (err) {
       logger.error('[Solver] JWT decode error', { error: err instanceof Error ? err.message : String(err) });
@@ -245,6 +256,20 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
     return;
   }
 
+  // F5 cleanup (2026-06-02) — reject ambiguous handshake. A client that
+  // sends BOTH ?token=X&reconnect=Y is likely buggy (stale localStorage
+  // reconnect carried into a fresh-token connect). The previous behavior
+  // silently picked reconnect ; if the reconnect was stale, the user got
+  // a misleading 'Duel not found' close instead of the fresh token's
+  // legitimate handshake. Reject explicitly so the client surfaces the
+  // bug instead.
+  if (token && reconnect) {
+    recordFailedWsAttempt(ip);
+    logger.warn('Handshake rejected — both token and reconnect present', { ip });
+    ws.close(4001, 'Ambiguous handshake (token + reconnect)');
+    return;
+  }
+
   let session: ActiveDuelSession | undefined;
   let playerIndex: 0 | 1;
 
@@ -278,10 +303,16 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
     // freshly reconnected client (board re-render is fast, timer starts immediately).
     if (session.awaitingResponse.some(a => a)) {
       commitPendingTimer(session);
-      // Restart inactivity timer for the prompted player
+      // Restart inactivity timer for the prompted player(s).
+      // F6 cleanup (2026-06-02) — in SOLO multiplex the user is both
+      // players on a single socket ; arming TWO inactivity timers is
+      // redundant (both fire OPPONENT_FORFEIT against the same lone WS).
+      // Arm only the first awaiting slot in SOLO ; PvP normal keeps the
+      // full loop because each slot is a distinct opponent socket.
       for (const p of [0, 1] as const) {
         if (session.awaitingResponse[p]) {
           startInactivityTimer(session, p);
+          if (session.soloMode) break;
         }
       }
     }
@@ -436,6 +467,18 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
     if (validated.kind === 'reject') return;
 
     handleClientMessage(session!, validated.live, parsed as ClientMessage);
+  });
+
+  // F2 cleanup (2026-06-02) — symmetric with the solver branch's ws.on('error').
+  // Without this listener, a socket-level error (ECONNRESET, RSV1 framing, etc.)
+  // propagates silently through the `ws` library and is only observable via the
+  // subsequent 'close' event — losing the correlation to the underlying cause.
+  ws.on('error', (error) => {
+    logger.error('[PvP] ws error', {
+      duelId: session!.duelId,
+      player: currentPlayerIndex(),
+      error: error instanceof Error ? error.message : String(error),
+    });
   });
 
   ws.on('close', () => {

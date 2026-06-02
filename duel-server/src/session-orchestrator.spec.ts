@@ -1,13 +1,41 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// F9 cleanup (2026-06-02) — mock node:worker_threads so `startDuelWithOrder`
+// tests can run without spawning an actual OCGCore worker. The mock must be
+// declared BEFORE the import of session-orchestrator (vi.mock is hoisted by
+// vitest, but the order keeps it visually grouped with the imports it
+// affects). Tests access the captured constructor via `mockWorkerCtor`.
+const mockWorkerCtor = vi.fn();
+const mockWorkerPostMessage = vi.fn();
+const mockWorkerOn = vi.fn();
+const mockWorkerRemoveAllListeners = vi.fn();
+const mockWorkerTerminate = vi.fn();
+vi.mock('node:worker_threads', () => ({
+  Worker: function MockWorker(this: object, url: URL, opts: unknown) {
+    mockWorkerCtor(url, opts);
+    Object.assign(this, {
+      postMessage: mockWorkerPostMessage,
+      on: mockWorkerOn,
+      removeAllListeners: mockWorkerRemoveAllListeners,
+      terminate: mockWorkerTerminate,
+    });
+  },
+}));
+
 import {
   configureSessionOrchestrator,
   cleanupDuelSession,
   resendPendingPrompt,
   sendStateSnapshot,
   rematchExpired,
+  startRematch,
+  startDuelWithOrder,
 } from './session-orchestrator.js';
 import { configureTimerManagement } from './timer-management.js';
 import { configureFirstPlayerCoordinator } from './first-player-coordinator.js';
+import { configureWorkerLifecycle } from './worker-lifecycle.js';
+import { configureDuelEndCoordinator, _resetTotalDuelsServedForTest } from './duel-end-coordinator.js';
+import { setScriptsHash, setOcgcoreVersion } from './ocg-scripts.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { createInitialSessionState } from './session-factory.js';
 import type { ActiveDuelSession } from './types.js';
@@ -41,6 +69,19 @@ function wireUpstreams(): void {
     diceRollTimeoutMs: 30_000,
     firstPlayerTimeoutMs: 30_000,
   });
+  // F9 cleanup — startDuelWithOrder calls attachWorkerHandlers
+  // (worker-lifecycle) which needs handleWorkerMessage + cleanupDuelSession
+  // in its cfg. startRematch + duel-end-coordinator funnel through too.
+  configureWorkerLifecycle({
+    handleWorkerMessage: () => undefined,
+    cleanupDuelSession: () => undefined,
+  });
+  configureDuelEndCoordinator({
+    clearAllDuelTimers: () => undefined,
+    rematchExpiryMs: 300_000,
+    onRematchExpired: () => undefined,
+  });
+  _resetTotalDuelsServedForTest();
 }
 
 // =============================================================================
@@ -100,6 +141,18 @@ describe('session-orchestrator', () => {
     manager = new DuelSessionManager();
     configureSessionOrchestrator({ sessionManager: manager, dataDir: '/tmp/skytrix-test' });
     wireUpstreams();
+    // F9 — startDuelWithOrder reads scriptsHash + ocgcoreVersion to put
+    // them in the INIT_DUEL payload. Seed test values so getScriptsHash()
+    // / getOcgcoreVersion() don't throw.
+    setScriptsHash('test-scripts-hash');
+    setOcgcoreVersion('test-ocgcore-version');
+    // F9 — reset Worker constructor counters between tests so each one
+    // observes a clean slate of spawn calls.
+    mockWorkerCtor.mockClear();
+    mockWorkerPostMessage.mockClear();
+    mockWorkerOn.mockClear();
+    mockWorkerRemoveAllListeners.mockClear();
+    mockWorkerTerminate.mockClear();
   });
   afterEach(() => vi.useRealTimers());
 
@@ -465,6 +518,144 @@ describe('session-orchestrator', () => {
       expect(manager.get('d1')).toBeUndefined();
       expect(ws0.close).toHaveBeenCalled();
       expect(ws1.close).toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================================================
+  // startDuelWithOrder (U32 #3b — F9 coverage 2026-06-02)
+  // ==========================================================================
+
+  describe('startDuelWithOrder', () => {
+    it('firstPlayer === 0 : no swap, sends DUEL_STARTING ×2 in PvP, spawns worker', () => {
+      const s = makeSession();
+      const ws0 = makeWs();
+      const ws1 = makeWs();
+      s.players[0].ws = ws0 as never;
+      s.players[1].ws = ws1 as never;
+      s.players[0].connected = true;
+      s.players[1].connected = true;
+      const decksBefore = s.decks;
+      const playersBefore = [s.players[0].playerId, s.players[1].playerId];
+
+      startDuelWithOrder(s, 0);
+
+      expect(s.phase).toBe('DUELING');
+      // No swap occurred
+      expect(s.decks).toBe(decksBefore);
+      expect([s.players[0].playerId, s.players[1].playerId]).toEqual(playersBefore);
+      // DUEL_STARTING sent to both
+      const sent0 = ws0.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
+      const sent1 = ws1.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
+      expect(sent0).toContain('DUEL_STARTING');
+      expect(sent1).toContain('DUEL_STARTING');
+      // Worker spawned with the configured dataDir
+      expect(mockWorkerCtor).toHaveBeenCalledTimes(1);
+      const [url, opts] = mockWorkerCtor.mock.calls[0]!;
+      expect(String(url)).toMatch(/duel-worker\.js$/);
+      expect(opts).toMatchObject({ workerData: { dataDir: '/tmp/skytrix-test' } });
+      // INIT_DUEL posted with skipRps + the deck pair
+      expect(mockWorkerPostMessage).toHaveBeenCalledTimes(1);
+      const init = mockWorkerPostMessage.mock.calls[0]![0] as Record<string, unknown>;
+      expect(init.type).toBe('INIT_DUEL');
+      expect(init.skipRps).toBe(true);
+    });
+
+    it('firstPlayer === 1 : swaps decks + players + usernames + deckNames', () => {
+      const s = makeSession();
+      s.decks = [
+        { main: [1, 1], extra: [] },
+        { main: [2, 2], extra: [] },
+      ];
+      s.playerUsernames = ['axel', 'bob'];
+      s.deckNames = ['deckA', 'deckB'];
+      const originalP0Id = s.players[0].playerId;
+      const originalP1Id = s.players[1].playerId;
+
+      startDuelWithOrder(s, 1);
+
+      // Decks swapped : main=[2,2] now at index 0
+      expect(s.decks[0].main).toEqual([2, 2]);
+      expect(s.decks[1].main).toEqual([1, 1]);
+      // Players swapped : original p1 at index 0
+      expect(s.players[0].playerId).toBe(originalP1Id);
+      expect(s.players[1].playerId).toBe(originalP0Id);
+      expect(s.players[0].playerIndex).toBe(0);
+      expect(s.players[1].playerIndex).toBe(1);
+      // Usernames + deckNames swapped (must stay aligned with players[] — see
+      // the "vs admin au lieu de vs admin2" bug guard in startDuelWithOrder)
+      expect(s.playerUsernames).toEqual(['bob', 'axel']);
+      expect(s.deckNames).toEqual(['deckB', 'deckA']);
+    });
+
+    it('SOLO multiplex : sends a single DUEL_STARTING on slot 0 only', () => {
+      const s = makeSession({ soloMode: true } as never);
+      const ws0 = makeWs();
+      s.players[0].ws = ws0 as never;
+      s.players[0].connected = true;
+      // players[1] has no ws — invariant SOLO
+
+      startDuelWithOrder(s, 0);
+
+      const sent0 = ws0.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
+      const duelStartingCount = sent0.filter(t => t === 'DUEL_STARTING').length;
+      // PvP would send 2 (one per player) ; SOLO sends a single DUEL_STARTING
+      // with bothCardCodes on slot 0 — γ Option C A1bis.
+      expect(duelStartingCount).toBe(1);
+    });
+  });
+
+  // ==========================================================================
+  // startRematch (U32 #3b — F9 coverage 2026-06-02)
+  // ==========================================================================
+
+  describe('startRematch', () => {
+    it('PvP : terminates worker, resets session state, calls startFirstPlayerPhase (NOT startDuelWithOrder)', () => {
+      const s = makeSession();
+      manager.register(s, ['tok0', 'tok1']);
+      const ws0 = makeWs();
+      const ws1 = makeWs();
+      s.players[0].ws = ws0 as never;
+      s.players[1].ws = ws1 as never;
+      s.players[0].connected = true;
+      s.players[1].connected = true;
+      s.worker = { postMessage: vi.fn(), terminate: vi.fn(), removeAllListeners: vi.fn() } as never;
+      s.endedAt = Date.now();
+      s.rematchTimeout = setTimeout(() => undefined, 1_000);
+
+      startRematch(s);
+
+      // REMATCH_STARTING sent to both
+      const sent0 = ws0.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
+      const sent1 = ws1.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
+      expect(sent0).toContain('REMATCH_STARTING');
+      expect(sent1).toContain('REMATCH_STARTING');
+      // Worker terminated : workerTerminated flag flipped (handle reference
+      // kept on session — safeTerminateWorker is idempotent on this flag).
+      expect(s.workerTerminated).toBe(true);
+      // Rematch timeout cleared
+      expect(s.rematchTimeout).toBeNull();
+      // PvP path : NO new worker spawned (startFirstPlayerPhase runs first,
+      // which sends DICE_ROLL prompts — worker spawns later after dice resolve)
+      expect(mockWorkerCtor).not.toHaveBeenCalled();
+    });
+
+    it('SOLO : spawns worker directly via startDuelWithOrder(session, 0) — no dice flow', () => {
+      const s = makeSession({ soloMode: true } as never);
+      manager.register(s, ['tok0']);
+      const ws0 = makeWs();
+      s.players[0].ws = ws0 as never;
+      s.players[0].connected = true;
+      s.worker = { postMessage: vi.fn(), terminate: vi.fn(), removeAllListeners: vi.fn() } as never;
+      s.endedAt = Date.now();
+
+      startRematch(s);
+
+      // Worker spawned immediately (SOLO bypasses dice)
+      expect(mockWorkerCtor).toHaveBeenCalledTimes(1);
+      // DUEL_STARTING sent on slot 0
+      const sent0 = ws0.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
+      expect(sent0).toContain('REMATCH_STARTING');
+      expect(sent0).toContain('DUEL_STARTING');
     });
   });
 });

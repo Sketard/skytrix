@@ -207,18 +207,26 @@ U5, U7, U8, U9, U10, U11, U19, U21, U23, U26, U35, U36, U37, C9 — réfutés ou
 - ES module cycle session-orchestrator ↔ first-player-coordinator (function-declaration hoisting documenté).
 - Doctrine U34 résolue : version **cosmetic** retenue (regroupement + clarification d'intent), pas le deep refactor. Phase 2 R5+R9 du plan ont montré que la proposition deep ne cassait pas vraiment le cycle d'invocation runtime et qu'aucun bug n'y était attribué.
 
-**Findings 3-layer review déferrés** (listés dans les commit messages, non-bloquants) — surfacés par les nouvelles frontières modulaires mais préexistants à l'extraction :
-- `AliveWebSocket` interface dupliquée 3 fichiers (cosmetic).
-- PvP branche n'a pas `ws.on('error')` (préexistant).
-- Missing `recordFailedWsAttempt` sur replay/solver missing-token (préexistant).
-- `currentPlayerIndex` fallback stale-ws (bug latent préexistant à examiner séparément).
-- `token + reconnect` ambigu (reconnect wins silently — préexistant).
-- SOLO inactivity timer ×2 sur reconnect (préexistant ; timer-mgmt dédupe via inactivitySlot).
-- forkMode REMATCH_REQUEST passe à startRematch (préexistant).
-- `productionStartDuelWithOrder` fallback path uncovered (couvert par intégration).
-- startRematch/startDuelWithOrder unit tests deferred (nécessitent mock node:worker_threads).
+**Findings 3-layer review** (surfacés par les nouvelles frontières modulaires mais préexistants à l'extraction). Triage 2026-06-02 par risque/effort :
 
-Si l'un des findings préexistants venait à mordre (bug user-facing remonté), ils peuvent être ressortis depuis les commit messages des chunks A-E.
+**🟢 Option A — Quick wins triviaux (à faire dans ce chantier)** :
+- F1. `AliveWebSocket` interface dupliquée 3 fichiers → hoist vers fichier partagé.
+- F2. PvP branche n'a pas `ws.on('error')` → ajouter `logger.error` listener symétrique au solver.
+- F3. Missing `recordFailedWsAttempt(ip)` sur replay/solver missing-token → rate-limit bypass.
+- F6. SOLO inactivity timer armé 2× sur reconnect → SOLO guard.
+- F8. Solver `String(payload.sub)` accepte non-string → type-narrow `typeof === 'string'`.
+
+**🟡 Option B — Hardenings défensifs (à faire dans ce chantier)** :
+- F5. `token + reconnect` simultanés : reconnect wins silently → reject ambiguous handshake.
+- F7. forkMode REMATCH_REQUEST passe à startRematch → guard `if (session.forkMode)` (fork-solo = one-shot per F5-bis).
+
+**🟠 Option C — Spec coverage (à faire dans ce chantier)** :
+- F9. `startRematch` / `startDuelWithOrder` unit tests → mock `node:worker_threads`. `productionStartDuelWithOrder` fallback path covered.
+
+**🔴 Deferred — session bug-hunt dédiée (PAS dans ce chantier)** :
+- **F4. `currentPlayerIndex` fallback stale-ws** — bug latent identifié pendant l'audit Chunk D (3-layer review EH-6/EH-14). Cause potentielle : un event `close` arrivant sur une `ws` déjà remplacée par un reconnect → `currentPlayerIndex()` fallback retourne le `playerIndex` capturé original → `session.players[wrongIdx].connected = false` sur un slot qui héberge maintenant la `ws` reconnectée → `OPPONENT_DISCONNECTED` + grace-timer firés contre le joueur sain. Le fix simple (early-return si `ws` ne match ni players[0] ni players[1]) touche le cœur du WS lifecycle et nécessite des tests E2E qui n'existent pas. **À investiguer dans une session dédiée bug-hunt** quand un bug user-facing remontera ou quand l'occasion se présentera. Détail technique : voir commit message `4d83635a` (chunk D) section "Deferred per triage".
+
+Si un finding préexistant non listé venait à mordre, ressortable depuis les commit messages des chunks A-E.
 
 ---
 

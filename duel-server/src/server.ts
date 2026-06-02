@@ -96,6 +96,7 @@ import {
 } from './client-message-router.js';
 import { isFullyDisconnected } from './lifecycle-helpers.js';
 import { sendToPlayer } from './ws-write.js';
+import type { AliveWebSocket } from './ws-types.js';
 import {
   configureSessionOrchestrator,
   isSessionOrchestratorConfigured,
@@ -168,10 +169,8 @@ const sessionManager = new DuelSessionManager();
 // server.ts owns its lifecycle (passed to configureReplayHandlers below).
 const replayCache = createReplayCache();
 
-// Track WebSocket liveness for heartbeat
-interface AliveWebSocket extends WebSocket {
-  isAlive: boolean;
-}
+// AliveWebSocket interface lives in ws-types.ts (shared with
+// pvp-connection-handler + replay-handlers — F1 cleanup 2026-06-02).
 
 // =============================================================================
 // Startup Validation

@@ -483,6 +483,28 @@ describe('client-message-router', () => {
       expect(s.rematchRequested[0]).toBe(false);
     });
 
+    // F7 cleanup (2026-06-02) — fork-solo has no rematch flow per F5-bis.
+    // The dispatch must reject REMATCH_REQUEST before reaching cfg.startRematch
+    // (which would resetSessionForRematch a forkMode session in a half-defined
+    // state). Front should not surface the button ; this is defense-in-depth.
+    it('fork-solo: REMATCH_REQUEST is rejected (no rematch flow, F5-bis doctrine)', () => {
+      const spy = makeSpy();
+      configureClientMessageRouter(makeConfig(spy));
+      const s = makeSession(spy);
+      s.soloMode = true;
+      s.forkMode = true;
+      s.endedAt = Date.now();
+
+      handleClientMessage(s, 0, { type: 'REMATCH_REQUEST' } as ClientMessage);
+
+      // startRematch must NOT be called.
+      expect(spy.rematches).toEqual([]);
+      // No REMATCH_INVITATION either (the SOLO branch is never reached).
+      expect(findMsg(spy, 'REMATCH_INVITATION')).toBeUndefined();
+      // rematchRequested flag untouched (rejected before bookkeeping).
+      expect(s.rematchRequested[0]).toBe(false);
+    });
+
     it('SOLO: still rejected when duel is still active (endedAt null)', () => {
       const spy = makeSpy();
       configureClientMessageRouter(makeConfig(spy));
