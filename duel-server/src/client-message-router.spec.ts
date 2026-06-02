@@ -4,7 +4,8 @@ import {
   handleClientMessage,
   type ClientMessageRouterConfig,
 } from './client-message-router.js';
-import { configureWorkerLifecycle, _resetTotalDuelsServedForTest } from './worker-lifecycle.js';
+import { configureWorkerLifecycle } from './worker-lifecycle.js';
+import { configureDuelEndCoordinator, _resetTotalDuelsServedForTest } from './duel-end-coordinator.js';
 import { configureTimerManagement } from './timer-management.js';
 import { configureFirstPlayerCoordinator } from './first-player-coordinator.js';
 import type { ActiveDuelSession } from './types.js';
@@ -131,6 +132,8 @@ function wireUpstreams(): void {
   configureWorkerLifecycle({
     handleWorkerMessage: () => undefined,
     cleanupDuelSession: () => undefined,
+  });
+  configureDuelEndCoordinator({
     clearAllDuelTimers: () => undefined,
     rematchExpiryMs: 1000,
     onRematchExpired: () => undefined,

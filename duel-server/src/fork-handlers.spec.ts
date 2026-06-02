@@ -4,7 +4,8 @@ import {
   createForkSoloSession,
   type ForkHandlersConfig,
 } from './fork-handlers.js';
-import { configureWorkerLifecycle, _resetTotalDuelsServedForTest } from './worker-lifecycle.js';
+import { configureWorkerLifecycle } from './worker-lifecycle.js';
+import { configureDuelEndCoordinator, _resetTotalDuelsServedForTest } from './duel-end-coordinator.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import type { ActiveDuelSession, WorkerReplayPayload } from './types.js';
 import type { ServerMessage } from './ws-protocol.js';
@@ -68,6 +69,8 @@ function wireUpstreams(): void {
   configureWorkerLifecycle({
     cleanupDuelSession: () => undefined,
     handleWorkerMessage: () => undefined,
+  });
+  configureDuelEndCoordinator({
     clearAllDuelTimers: () => undefined,
     rematchExpiryMs: 30_000,
     onRematchExpired: () => undefined,

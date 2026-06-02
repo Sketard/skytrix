@@ -17,7 +17,7 @@ import {
   handleDuelEnd,
   requestReplayFromWorker,
   safeTerminateWorker,
-} from './worker-lifecycle.js';
+} from './duel-end-coordinator.js';
 import { persistReplay } from './replay-persist.js';
 import * as logger from './logger.js';
 

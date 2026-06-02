@@ -7,7 +7,7 @@ import {
   pauseTurnTimer, startTurnTimer,
   startInactivityTimer, clearInactivityTimer,
 } from './timer-management.js';
-import { handleDuelEnd, requestReplayFromWorker } from './worker-lifecycle.js';
+import { handleDuelEnd, requestReplayFromWorker } from './duel-end-coordinator.js';
 import { handlePreDuelResponse } from './first-player-coordinator.js';
 import { snapshotCancelTarget } from './cancel-rollback-main.js';
 import * as logger from './logger.js';

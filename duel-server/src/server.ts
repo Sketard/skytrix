@@ -80,12 +80,16 @@ import {
 import {
   configureWorkerLifecycle,
   isWorkerLifecycleConfigured,
-  safeTerminateWorker,
   attachWorkerHandlers,
+} from './worker-lifecycle.js';
+import {
+  configureDuelEndCoordinator,
+  isDuelEndCoordinatorConfigured,
+  safeTerminateWorker,
   handleDuelEnd,
   requestReplayFromWorker,
   getTotalDuelsServed,
-} from './worker-lifecycle.js';
+} from './duel-end-coordinator.js';
 import {
   configureReplayPersist,
   isReplayPersistConfigured,
@@ -296,6 +300,9 @@ configureFirstPlayerCoordinator({
 configureWorkerLifecycle({
   handleWorkerMessage,
   cleanupDuelSession,
+});
+
+configureDuelEndCoordinator({
   clearAllDuelTimers,
   rematchExpiryMs: REMATCH_EXPIRY_MS,
   onRematchExpired: rematchExpired,
@@ -521,15 +528,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 }
 
 // =============================================================================
-// Worker Lifecycle + Replay Persistence
+// Worker Lifecycle + Duel End + Replay Persistence
 // =============================================================================
-// safeTerminateWorker / attachWorkerHandlers / handleDuelEnd /
-// requestReplayFromWorker / totalDuelsServed counter live in
-// worker-lifecycle.ts (extracted at H1-suite phase 2.1). persistReplay
-// lives in replay-persist.ts (phase 2.2). Server.ts keeps the actual
-// `new Worker(...)` calls (the host owns where the worker URL
-// resolves) — the modules own the listener wiring, lifecycle flags,
-// and HTTP retry loop.
+// `attachWorkerHandlers` lives in worker-lifecycle.ts (extracted at
+// H1-suite phase 2.1). `safeTerminateWorker` / `handleDuelEnd` /
+// `requestReplayFromWorker` / `totalDuelsServed` counter live in
+// duel-end-coordinator.ts (U34 cosmetic, audit-4-modes-2026-06-01).
+// `persistReplay` lives in replay-persist.ts (phase 2.2). Server.ts
+// keeps the actual `new Worker(...)` calls (the host owns where the
+// worker URL resolves) — the modules own the listener wiring, lifecycle
+// flags, and HTTP retry loop.
 
 // =============================================================================
 // Rematch
@@ -743,6 +751,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isSolverHandlersConfigured()) unconfigured.push('solver-handlers');
   if (!isFirstPlayerCoordinatorConfigured()) unconfigured.push('first-player-coordinator');
   if (!isWorkerLifecycleConfigured()) unconfigured.push('worker-lifecycle');
+  if (!isDuelEndCoordinatorConfigured()) unconfigured.push('duel-end-coordinator');
   if (!isReplayPersistConfigured()) unconfigured.push('replay-persist');
   if (!isWorkerMessageRouterConfigured()) unconfigured.push('worker-message-router');
   if (!isForkHandlersConfigured()) unconfigured.push('fork-handlers');

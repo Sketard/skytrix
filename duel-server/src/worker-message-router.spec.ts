@@ -6,7 +6,8 @@ import {
   isSelectMessage,
   type WorkerMessageRouterConfig,
 } from './worker-message-router.js';
-import { configureWorkerLifecycle, _resetTotalDuelsServedForTest } from './worker-lifecycle.js';
+import { configureWorkerLifecycle } from './worker-lifecycle.js';
+import { configureDuelEndCoordinator, _resetTotalDuelsServedForTest } from './duel-end-coordinator.js';
 import { configureReplayPersist } from './replay-persist.js';
 import { configureTimerManagement } from './timer-management.js';
 import * as logger from './logger.js';
@@ -109,6 +110,8 @@ function wireUpstreamStubs(): void {
   configureWorkerLifecycle({
     handleWorkerMessage: () => undefined,
     cleanupDuelSession: () => undefined,
+  });
+  configureDuelEndCoordinator({
     clearAllDuelTimers: () => undefined,
     rematchExpiryMs: 1000,
     onRematchExpired: () => undefined,

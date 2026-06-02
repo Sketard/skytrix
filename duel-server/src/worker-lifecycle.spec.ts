@@ -1,14 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   configureWorkerLifecycle,
-  safeTerminateWorker,
   attachWorkerHandlers,
-  handleDuelEnd,
-  requestReplayFromWorker,
-  getTotalDuelsServed,
-  _resetTotalDuelsServedForTest,
   type WorkerLifecycleConfig,
 } from './worker-lifecycle.js';
+import {
+  configureDuelEndCoordinator,
+  safeTerminateWorker,
+  getTotalDuelsServed,
+  _resetTotalDuelsServedForTest,
+} from './duel-end-coordinator.js';
 import type { ActiveDuelSession, WorkerToMainMessage } from './types.js';
 
 // =============================================================================
@@ -88,23 +89,42 @@ function makeSession(worker: FakeWorker | null = makeWorker()): ActiveDuelSessio
 interface SpyHooks {
   routed: { session: ActiveDuelSession; wmsg: WorkerToMainMessage }[];
   cleanups: { session: ActiveDuelSession }[];
-  timerClears: { session: ActiveDuelSession }[];
-  rematchExpirations: { session: ActiveDuelSession }[];
 }
 
 function makeSpy(): SpyHooks {
-  return { routed: [], cleanups: [], timerClears: [], rematchExpirations: [] };
+  return { routed: [], cleanups: [] };
 }
 
 function makeConfig(spy: SpyHooks, overrides: Partial<WorkerLifecycleConfig> = {}): WorkerLifecycleConfig {
   return {
     handleWorkerMessage: (session, wmsg) => spy.routed.push({ session, wmsg }),
     cleanupDuelSession: (session) => spy.cleanups.push({ session }),
-    clearAllDuelTimers: (session) => spy.timerClears.push({ session }),
-    rematchExpiryMs: 300_000,
-    onRematchExpired: (session) => spy.rematchExpirations.push({ session }),
     ...overrides,
   };
+}
+
+/**
+ * `attachWorkerHandlers`' `exit` handler shares the `totalDuelsServed`
+ * counter with `safeTerminateWorker` (which lives in
+ * duel-end-coordinator.ts since U34). The test "does NOT double-count
+ * when safeTerminateWorker already incremented before exit fires"
+ * (below) verifies the coordination — it needs the coordinator wired
+ * with a no-op cfg so `safeTerminateWorker` can run.
+ *
+ * EH-6 (3-layer review, chunk C) : `totalDuelsServed` is a module-local
+ * `let` shared with `duel-end-coordinator.spec.ts`. This spec assumes
+ * vitest file-isolation (the default `pool: 'forks'` runs each spec
+ * file in its own process so the module state can't leak). If a future
+ * CI change to `--no-isolate` lands, the cross-spec `_resetTotalDuelsServedForTest`
+ * calls would race and the counter assertions would flake. Moving the
+ * counter to a per-session field is out of scope for U34 cosmetic.
+ */
+function wireDuelEndCoordinatorNoOp(): void {
+  configureDuelEndCoordinator({
+    clearAllDuelTimers: () => undefined,
+    rematchExpiryMs: 300_000,
+    onRematchExpired: () => undefined,
+  });
 }
 
 // =============================================================================
@@ -117,61 +137,6 @@ describe('worker-lifecycle', () => {
     _resetTotalDuelsServedForTest();
   });
   afterEach(() => vi.useRealTimers());
-
-  // ==========================================================================
-  // safeTerminateWorker
-  // ==========================================================================
-
-  describe('safeTerminateWorker', () => {
-    it('removes listeners, terminates, flips workerTerminated, increments counter', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const w = makeWorker();
-      const s = makeSession(w);
-
-      safeTerminateWorker(s);
-
-      expect(s.workerTerminated).toBe(true);
-      expect(w.removeAllListeners).toHaveBeenCalledTimes(1);
-      expect(w.terminate).toHaveBeenCalledTimes(1);
-      expect(getTotalDuelsServed()).toBe(1);
-    });
-
-    it('is idempotent — second call is a no-op', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const w = makeWorker();
-      const s = makeSession(w);
-
-      safeTerminateWorker(s);
-      safeTerminateWorker(s);
-
-      expect(w.terminate).toHaveBeenCalledTimes(1);
-      expect(getTotalDuelsServed()).toBe(1);
-    });
-
-    it('no-ops when session.worker is null', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const s = makeSession(null);
-
-      expect(() => safeTerminateWorker(s)).not.toThrow();
-      expect(s.workerTerminated).toBe(false);
-      expect(getTotalDuelsServed()).toBe(0);
-    });
-
-    it('counter is shared across sessions (cumulative)', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const s1 = makeSession(makeWorker());
-      const s2 = makeSession(makeWorker());
-
-      safeTerminateWorker(s1);
-      safeTerminateWorker(s2);
-
-      expect(getTotalDuelsServed()).toBe(2);
-    });
-  });
 
   // ==========================================================================
   // attachWorkerHandlers — message routing
@@ -249,9 +214,15 @@ describe('worker-lifecycle', () => {
       expect(getTotalDuelsServed()).toBe(1);
     });
 
+    // Cross-module coordination test : pin the contract that the exit
+    // handler's counter increment AND safeTerminateWorker's counter
+    // increment share the same `workerTerminated` short-circuit. A
+    // double-count regression would surface here — and ONLY here —
+    // because the two writers live in two distinct modules since U34.
     it('does NOT double-count when safeTerminateWorker already incremented before exit fires', () => {
       const spy = makeSpy();
       configureWorkerLifecycle(makeConfig(spy));
+      wireDuelEndCoordinatorNoOp();
       const w = makeWorker();
       const s = makeSession(w);
       attachWorkerHandlers(s);
@@ -274,146 +245,6 @@ describe('worker-lifecycle', () => {
 
       expect(() => w._handlers.error!(new Error('boom'))).not.toThrow();
       expect(spy.cleanups).toHaveLength(0);
-    });
-  });
-
-  // ==========================================================================
-  // handleDuelEnd
-  // ==========================================================================
-
-  describe('handleDuelEnd', () => {
-    it('sets endedAt + clears timers + arms rematch (PvP)', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const s = makeSession();
-
-      handleDuelEnd(s);
-
-      expect(s.endedAt).not.toBeNull();
-      expect(spy.timerClears).toHaveLength(1);
-      expect(s.rematchTimeout).not.toBeNull();
-    });
-
-    // γ Option C A31 — T-S16 — SOLO sessions ARM the rematch timer (was
-    // skipped pre-γ). Combined with A18 ws.on('close') SOLO branch in
-    // server.ts, this is the only thing that cleans up a SOLO post-duel
-    // session: the user may refresh the tab during the rematch grace and
-    // expect to come back to the rematch invitation.
-    it('arms rematch timer for solo-mode sessions too (γ Option C A31 / T-S16)', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const s = makeSession();
-      s.soloMode = true;
-
-      handleDuelEnd(s);
-
-      expect(s.rematchTimeout).not.toBeNull();
-      // Timers still cleared.
-      expect(spy.timerClears).toHaveLength(1);
-    });
-
-    // γ defensive (BMad code review c3 finding E5) — handleDuelEnd is idempotent
-    // on `endedAt`. A re-entry (TIMEOUT-after-MSG_WIN race) would otherwise
-    // overwrite `rematchTimeout` and leak the prior Node timer.
-    it('is idempotent on endedAt (second call leaves rematchTimeout untouched)', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const s = makeSession();
-
-      handleDuelEnd(s);
-      const firstEndedAt = s.endedAt;
-      const firstTimer = s.rematchTimeout;
-      expect(firstEndedAt).not.toBeNull();
-      expect(firstTimer).not.toBeNull();
-
-      // Advance the clock so the second call's Date.now() would differ.
-      vi.advanceTimersByTime(50);
-      handleDuelEnd(s);
-
-      expect(s.endedAt).toBe(firstEndedAt);
-      expect(s.rematchTimeout).toBe(firstTimer);
-      // No second clearAllDuelTimers call either.
-      expect(spy.timerClears).toHaveLength(1);
-    });
-
-    it('the rematch timer calls onRematchExpired after the configured ms', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy, { rematchExpiryMs: 100 }));
-      const s = makeSession();
-
-      handleDuelEnd(s);
-      expect(spy.rematchExpirations).toHaveLength(0);
-
-      vi.advanceTimersByTime(100);
-      expect(spy.rematchExpirations).toEqual([{ session: s }]);
-    });
-
-    // F5-bis (2026-05-31) — fork-solo is an exploratory one-shot; the rematch
-    // arm is intentionally skipped. The endedAt + timer-clear path still runs.
-    // Regression guard for U1 (audit-4-modes-2026-06-01): a refactor that
-    // re-orders this skip past the `setTimeout(...)` call would silently start
-    // offering rematch invitations for fork-solo sessions.
-    it('does NOT arm rematch timer when session.forkMode (U1)', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy, { rematchExpiryMs: 100 }));
-      const s = makeSession();
-      s.soloMode = true;
-      s.forkMode = true;
-
-      handleDuelEnd(s);
-
-      expect(s.endedAt).not.toBeNull();
-      expect(spy.timerClears).toHaveLength(1);
-      expect(s.rematchTimeout).toBeNull();
-
-      // #17 (audit review) — verify the rematch CALLBACK is never invoked
-      // even after the timer would have fired. Asserting `=== null`
-      // passes trivially if the default state is `null` ; advancing the
-      // clock past `rematchExpiryMs` then checking `rematchExpirations`
-      // proves the timer was never armed in the first place.
-      vi.advanceTimersByTime(200);
-      expect(spy.rematchExpirations).toEqual([]);
-    });
-  });
-
-  // ==========================================================================
-  // requestReplayFromWorker
-  // ==========================================================================
-
-  describe('requestReplayFromWorker', () => {
-    it('stashes the override + posts EMIT_REPLAY_DATA', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const w = makeWorker();
-      const s = makeSession(w);
-
-      requestReplayFromWorker(s, 'TIMEOUT');
-
-      expect(s.pendingReplayResult).toBe('TIMEOUT');
-      expect(w.postMessage).toHaveBeenCalledWith({ type: 'EMIT_REPLAY_DATA' });
-    });
-
-    it('no-ops when worker is null', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const s = makeSession(null);
-
-      requestReplayFromWorker(s, 'SURRENDER');
-
-      expect(s.pendingReplayResult).toBeNull();
-    });
-
-    it('no-ops when worker is already terminated', () => {
-      const spy = makeSpy();
-      configureWorkerLifecycle(makeConfig(spy));
-      const w = makeWorker();
-      const s = makeSession(w);
-      s.workerTerminated = true;
-
-      requestReplayFromWorker(s, 'SURRENDER');
-
-      expect(s.pendingReplayResult).toBeNull();
-      expect(w.postMessage).not.toHaveBeenCalled();
     });
   });
 });
