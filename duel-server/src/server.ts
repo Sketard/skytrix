@@ -31,7 +31,7 @@ import type {
   ReplayMetadata,
 } from './types.js';
 import type {
-  ServerMessage, ClientMessage, Player,
+  ClientMessage, Player,
   SolverStartMessage, SolverResultMessage, SolverCancelledMessage,
   SolverProgressMessage, SolverErrorMessage, SolverHandtrapsMessage, SolverWsError,
 } from './ws-protocol.js';
@@ -41,13 +41,11 @@ import {
   PROTOCOL_VERSION,
 } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
-import { buildPreDuelSnapshot } from './pre-duel-snapshot.js';
 import { derivePhase } from './session-phase.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, type ChainStateContainer } from './chain-state-tracker.js';
-import { createSessionGameLog } from './session-game-log.js';
 import { createInitialSessionState, resetSessionForRematch } from './session-factory.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
@@ -59,7 +57,6 @@ import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState,
 import {
   configureTimerManagement,
   isTimerManagementConfigured,
-  sendTimerStateToAll, sendTimerStateToPlayer,
   startTurnTimer, pauseTurnTimer, scheduleTimerStart, commitPendingTimer,
   addTurnIncrement, handleTurnChange,
   startInactivityTimer, clearInactivityTimer,
@@ -113,6 +110,13 @@ import {
 import { validateClientMessageForPlayer } from './client-message-validator.js';
 import { isReadyToStart, isFullyDisconnected, buildDuelStartingMessage } from './lifecycle-helpers.js';
 import { sendToPlayer } from './ws-write.js';
+import {
+  configureSessionOrchestrator,
+  isSessionOrchestratorConfigured,
+  cleanupDuelSession,
+  sendStateSnapshot,
+  resendPendingPrompt,
+} from './session-orchestrator.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -333,6 +337,10 @@ configureClientMessageRouter({
   maxInvalidResponses: MAX_INVALID_RESPONSES,
   stateSyncRateLimitMs: STATE_SYNC_RATE_LIMIT_MS,
   cancelPromptRateLimitMs: CANCEL_PROMPT_RATE_LIMIT_MS,
+});
+
+configureSessionOrchestrator({
+  sessionManager,
 });
 
 // =============================================================================
@@ -669,73 +677,11 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
 // =============================================================================
 // Duel Session Cleanup
 // =============================================================================
-
-function cleanupDuelSession(session: ActiveDuelSession): void {
-  session.endedAt = session.endedAt ?? Date.now();
-  session.lastSentPrompt = [null, null];
-  session.lastSentHint = [null, null];
-
-  // Clear pre-duel RPS timeout
-  disposeFirstPlayer(session);
-
-  // Clear rematch timeout
-  if (session.rematchTimeout) {
-    clearTimeout(session.rematchTimeout);
-    session.rematchTimeout = null;
-  }
-
-  // H2 — Clear fork connection timeout
-  if (session.forkConnectionTimeout) {
-    clearTimeout(session.forkConnectionTimeout);
-    session.forkConnectionTimeout = null;
-  }
-
-  // Story 5.2 — Clear both-disconnect timers
-  if (session.combinedGraceTimer) {
-    clearTimeout(session.combinedGraceTimer);
-    session.combinedGraceTimer = null;
-  }
-  if (session.preservationTimer) {
-    clearTimeout(session.preservationTimer);
-    session.preservationTimer = null;
-  }
-  session.bothDisconnected = false;
-  session.storedDuelResult = null;
-
-  // Clear all timer state (turn timer, inactivity, race windows)
-  clearAllDuelTimers(session);
-
-  // Release the per-perspective GameLogBuilders. Pending closures (replay
-  // persist Promise, fork timeout callbacks) capture `session` by reference,
-  // so the builders would otherwise live as long as the longest-running
-  // captured callback. Replace with a fresh empty pair: the GC drops the
-  // old entries arrays, and any belated outbound message (cleanupDuelSession
-  // is idempotent, but a queued setTimeout could still fire) ingests into
-  // an empty builder rather than throwing.
-  session.gameLog = createSessionGameLog();
-
-  // Close WebSocket connections + per-player grace timers. Reconnect tokens
-  // are dropped by sessionManager.terminate() below (it nulls each player's
-  // reconnectToken back-pointer too, so this loop only handles WS + timers).
-  for (const player of session.players) {
-    if (player.ws && player.ws.readyState === WebSocket.OPEN) {
-      player.ws.close(1000, 'Duel ended');
-    }
-    player.ws = null;
-    player.connected = false;
-
-    if (player.gracePeriodTimer) {
-      clearTimeout(player.gracePeriodTimer);
-      player.gracePeriodTimer = null;
-    }
-  }
-
-  // Drop the session from the manager (activeDuels + pendingTokens of this
-  // duel + every reconnectToken on either player). Idempotent — safe under
-  // the multi-call cleanup paths (worker exit, rematch expiry, both-disconnect,
-  // DELETE /api/duels, connection timeout, post-duel close, preservation).
-  sessionManager.terminate(session);
-}
+// cleanupDuelSession moved to session-orchestrator.ts (U32 #3a,
+// audit-4-modes-2026-06-01) — owns the idempotent timer + WS + manager
+// teardown sequence. Consumers (worker-lifecycle, fork-handlers,
+// timer-management) continue to receive it via cfg ; the import is now
+// from session-orchestrator instead of a server.ts local function.
 
 // =============================================================================
 // HTTP Server
@@ -801,6 +747,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isWorkerMessageRouterConfigured()) unconfigured.push('worker-message-router');
   if (!isForkHandlersConfigured()) unconfigured.push('fork-handlers');
   if (!isClientMessageRouterConfigured()) unconfigured.push('client-message-router');
+  if (!isSessionOrchestratorConfigured()) unconfigured.push('session-orchestrator');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
@@ -1149,52 +1096,10 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   });
 });
 
-/** Re-send cached hint + prompt if the player has a pending selection. */
-function resendPendingPrompt(session: ActiveDuelSession, playerIndex: 0 | 1): void {
-  if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
-    if (session.lastSentHint[playerIndex]) {
-      sendToPlayer(session, playerIndex, session.lastSentHint[playerIndex]!);
-    }
-    sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
-  }
-}
-
-// Story 5.2 — DRY: reusable state snapshot for reconnection + REQUEST_STATE_SYNC.
-// Pre-duel resync (refresh during dice / first-player pick / announce) is
-// delegated to `buildPreDuelSnapshot` (pure, easily testable). DUELING-phase
-// resync (re-emit DUEL_STARTING + STATE_SYNC + CHAIN_STATE) stays inline.
-function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void {
-  if (session.phase !== 'DUELING') {
-    for (const msg of buildPreDuelSnapshot(session, playerIndex)) {
-      // DICE_RESULT needs per-player filter (swaps dice0/dice1 so each side
-      // reads its own roll as "player 1"). Other messages pass through.
-      const out = msg.type === 'DICE_RESULT' ? filterMessage(msg, playerIndex) : msg;
-      if (out) sendToPlayer(session, playerIndex, out);
-    }
-    sendTimerStateToPlayer(session, playerIndex);
-    return;
-  }
-
-  // Re-send OCGCore player index (lost on page refresh).
-  // γ Option C A20 — SOLO reconnect mirrors the initial site: ship both decks
-  // so the front rebuilds its prefetch cache for both perspectives.
-  sendToPlayer(session, playerIndex, buildDuelStartingMessage(session, playerIndex));
-  if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
-    const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
-    const filtered = filterMessage(stateSync, playerIndex);
-    if (filtered) sendToPlayer(session, playerIndex, filtered);
-  }
-  // Re-send active chain links so the client can restore reveal state
-  if (session.activeChainLinks.length > 0) {
-    sendToPlayer(session, playerIndex, {
-      type: 'CHAIN_STATE',
-      links: session.activeChainLinks,
-      phase: session.chainPhase,
-      negatedIndices: [...session.negatedChainIndices],
-    } as ServerMessage);
-  }
-  sendTimerStateToPlayer(session, playerIndex);
-}
+// resendPendingPrompt + sendStateSnapshot moved to session-orchestrator.ts
+// (U32 #3a, audit-4-modes-2026-06-01). They're consumed inline from
+// wss.on('connection') below, and by the client-message-router via the
+// `onStateSyncRequested` cfg hook (REQUEST_STATE_SYNC dispatch).
 
 // startGracePeriod moved to timer-management.ts (H1-suite phase 4).
 
