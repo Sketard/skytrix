@@ -177,7 +177,7 @@ U5, U7, U8, U9, U10, U11, U19, U21, U23, U26, U35, U36, U37, C9 — réfutés ou
 
 #### Statut session 2026-06-02 — bilan final
 
-**TOUS LES BUCKETS LIVRÉS — chantier audit-4-modes-2026-06-01 clos.** Branche `feat/anim-pipeline-v2`, **~40 commits** ahead `origin/feat/anim-pipeline-v2` depuis le triage `de7133d9`. Tests : 1747/1747 vitest duel-server + 1460/1460 pvp Karma + 4 static checks passent. tsc front + duel-server clean.
+**TOUS LES BUCKETS LIVRÉS — chantier audit-4-modes-2026-06-01 clos (F4 inclus, 2026-06-02 post-review).** Branche `feat/anim-pipeline-v2`, **~42 commits** ahead `origin/feat/anim-pipeline-v2` depuis le triage `de7133d9`. Tests : 1810/1810 vitest duel-server + 1460/1460 pvp Karma + 4 static checks passent. tsc front + duel-server clean.
 
 | Bucket | Statut | Findings clos |
 |---|---|---|
@@ -199,6 +199,9 @@ U5, U7, U8, U9, U10, U11, U19, U21, U23, U26, U35, U36, U37, C9 — réfutés ou
 | C | U34 (cosmetic) | `c19ffef7` | `duel-end-coordinator.ts` (~140 LOC) + spec dédiée (12 tests) | `safeTerminateWorker` + `handleDuelEnd` + `requestReplayFromWorker` + counter (~120 LOC, worker-lifecycle.ts gut) | 1746/1746 |
 | D | U32 #2 | `4d83635a` | `pvp-connection-handler.ts` (~484 LOC) | wss.on('connection') body (~342 LOC) + `checkProtocolVersion` | 1746/1746 |
 | E | U32 #3b | `4727400e` | session-orchestrator.ts extended (+ `rematchExpired` test) | `startRematch` + `rematchExpired` + `startDuelWithOrder` (~140 LOC) | 1747/1747 |
+| F (post-chantier follow-ups) | F1-F3, F5-F9 | `caf0d30f` | `ws-types.ts` (F1) + 8 fixes inline | AliveWebSocket hoist + ws.on('error') PvP + rate-limit fixes + handshake reject + fork rematch guard + JWT type-narrow + 6 specs F9 | 1753/1753 |
+| G (F4 prep) | F4 #1 | `95f0cbbf` | `pvp-connection-handler.spec.ts` (4 tests) | extract `resolveLivePlayerIndex` (~7 LOC neutre) | 1809/1809 |
+| H (F4 fix) | F4 #2 | `af635bd2` | — | flip fallback `null` + 3 call sites + flip pin + regression guard (~30 LOC) | 1810/1810 |
 
 **Bilan agrégé** :
 - server.ts : **1334 → 751 LOC** (-583, soit -44%).
@@ -223,8 +226,8 @@ U5, U7, U8, U9, U10, U11, U19, U21, U23, U26, U35, U36, U37, C9 — réfutés ou
 **🟠 Option C — Spec coverage (à faire dans ce chantier)** :
 - F9. `startRematch` / `startDuelWithOrder` unit tests → mock `node:worker_threads`. `productionStartDuelWithOrder` fallback path covered.
 
-**🔴 Deferred — session bug-hunt dédiée (PAS dans ce chantier)** :
-- **F4. `currentPlayerIndex` fallback stale-ws** — bug latent identifié pendant l'audit Chunk D (3-layer review EH-6/EH-14). Cause potentielle : un event `close` arrivant sur une `ws` déjà remplacée par un reconnect → `currentPlayerIndex()` fallback retourne le `playerIndex` capturé original → `session.players[wrongIdx].connected = false` sur un slot qui héberge maintenant la `ws` reconnectée → `OPPONENT_DISCONNECTED` + grace-timer firés contre le joueur sain. Le fix simple (early-return si `ws` ne match ni players[0] ni players[1]) touche le cœur du WS lifecycle et nécessite des tests E2E qui n'existent pas. **À investiguer dans une session dédiée bug-hunt** quand un bug user-facing remontera ou quand l'occasion se présentera. Détail technique : voir commit message `4d83635a` (chunk D) section "Deferred per triage".
+**✅ F4 — shipped session 2026-06-02 (post-chantier review adversariale)** :
+- **F4. `currentPlayerIndex` fallback stale-ws** — bug latent identifié pendant l'audit Chunk D (3-layer review EH-6/EH-14). Cause : un event `close` arrivant sur une `ws` déjà remplacée par un reconnect → `currentPlayerIndex()` fallback retournait le `playerIndex` capturé original → `session.players[wrongIdx].connected = false` sur un slot qui hébergeait maintenant la `ws` reconnectée → `OPPONENT_DISCONNECTED` + grace-timer firés contre le joueur sain → forfait à `RECONNECT_GRACE_MS`. **Fix livré en 2 commits** : (1) `95f0cbbf` extrait `resolveLivePlayerIndex` en pure function exportée + spec dédié pinnant le comportement actuel (refactor neutre, byte-identical) ; (2) `af635bd2` flip le fallback `return capturedIndex` → `return null`, adapte les 3 call sites (`message` drop, `error` log `'stale-ws'`, `close` ignore + log) + flip le test pin + ajoute le regression guard pour `cleanupDuelSession`-nullifie-`players[].ws`. Tests : 1810/1810 (1805 baseline + 5 nouveaux), tsc clean, ws-protocol-sync OK. Détail technique : commit messages `95f0cbbf` + `af635bd2`. **Bucket 5 + Options A+B+C + F4 = chantier audit-4-modes-2026-06-01 intégralement clos.**
 
 Si un finding préexistant non listé venait à mordre, ressortable depuis les commit messages des chunks A-E.
 
