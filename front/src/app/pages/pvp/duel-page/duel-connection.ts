@@ -5,7 +5,7 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, ErrorMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WinMsg } from '../duel-ws.types';
+import { BoardStateMsg, BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DeckPrefetchMsg, DiceResultMsg, DiceRollPromptMsg, DrawMsg, DuelEndMsg, DuelStartingMsg, ErrorMsg, FirstPlayerResultMsg, HintMsg, InactivityWarningMsg, OpponentDisconnectedMsg, PROTOCOL_VERSION, RematchCancelledMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectFirstPlayerMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionPhaseMsg, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WaitingResponseMsg, WinMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { swapBoardState } from '../board-state-swap';
 import type { WebSocketFactory } from './websocket-factory.service';
@@ -989,6 +989,113 @@ export class DuelConnection {
     };
   }
 
+  // ===========================================================================
+  // U20 (audit-4-modes-2026-06-01) — handleMessage routing table
+  //
+  // The switch was ~580 LOC with ~30 distinct cases mixing slot routing,
+  // processor delegation, signal mutations, and per-case context comments
+  // (F-bugB / F10 / F12 / F14 / F19 / U6-D3 / γ-c regression fixes). Each
+  // case is now its own private method, owning its context comments. The
+  // dispatch is a `Record<string, (msg) => void>` built once in the ctor.
+  //
+  // The 4 fall-through groups (SELECT modal / SELECT idle / CHAIN pipeline /
+  // game-event MSG_*) are preserved by pointing multiple Record entries at
+  // the same method — see `_SELECT_MODAL_TYPES`, `_SELECT_SIMPLE_TYPES`,
+  // `_CHAIN_PIPELINE_TYPES`, `_GAME_EVENT_TYPES` below.
+  //
+  // Doctrine : ne PAS DRY-er les méthodes partageant ~80 % de teardown
+  // (e.g. DUEL_END + REMATCH_STARTING). Chacune a ses comments load-bearing
+  // (spec §4.3, F10/F12, U6-D3) qui doivent rester attached à l'événement
+  // sémantique correspondant.
+  // ===========================================================================
+
+  /** SELECT prompt types that share the modal-prompt branch (processor +
+   *  per-slot pendingPrompt + auto-respond empty-cards + lastSelectedPromptType
+   *  reset). */
+  private static readonly _SELECT_MODAL_TYPES = [
+    'SELECT_CARD', 'SELECT_CHAIN', 'SELECT_TRIBUTE', 'SELECT_SUM',
+    'SELECT_UNSELECT_CARD', 'SELECT_COUNTER',
+  ] as const;
+
+  /** SELECT / ANNOUNCE / SORT prompt types that share the simple branch
+   *  (processor + per-slot pendingPrompt, no auto-respond, no accumulator
+   *  reset). These are the "idle phase" prompts (IDLECMD/BATTLECMD) and the
+   *  one-shot announces/sorts. */
+  private static readonly _SELECT_SIMPLE_TYPES = [
+    'SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_EFFECTYN', 'SELECT_YESNO',
+    'SELECT_PLACE', 'SELECT_DISFIELD', 'SELECT_POSITION', 'SELECT_OPTION',
+    'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_NUMBER',
+    'SORT_CARD', 'SORT_CHAIN', 'ANNOUNCE_CARD',
+  ] as const;
+
+  /** Chain-pipeline MSG_* types that are silently forwarded to the processor
+   *  with no extra side-effect (chain state machine drives them). MSG_CHAINING
+   *  and MSG_CHAIN_END have their own methods (extra logic). */
+  private static readonly _CHAIN_PIPELINE_TYPES = [
+    'MSG_CHAIN_SOLVING', 'MSG_CHAIN_SOLVED', 'MSG_CHAIN_NEGATED',
+  ] as const;
+
+  /** Game-event MSG_* types forwarded to the processor with no extra
+   *  side-effect on the connection. MSG_DRAW, MSG_CONFIRM_CARDS, MSG_CHAINING
+   *  have their own methods. */
+  private static readonly _GAME_EVENT_TYPES = [
+    'MSG_MOVE', 'MSG_SHUFFLE_HAND', 'MSG_SHUFFLE_DECK',
+    'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
+    'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_BECOME_TARGET',
+    'MSG_SWAP', 'MSG_ATTACK', 'MSG_BATTLE',
+    'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
+    'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER',
+    'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
+  ] as const;
+
+  /** Routing table built once at construction. Lookup is O(1) by message type.
+   *  Unknown types log a `warn` (see `handleMessage` default branch). */
+  private readonly _messageHandlers: Record<string, (msg: ServerMessage) => void> = this._buildHandlerTable();
+
+  private _buildHandlerTable(): Record<string, (msg: ServerMessage) => void> {
+    const table: Record<string, (msg: ServerMessage) => void> = {
+      'BOARD_STATE':           (m) => this._handleBoardState(m as BoardStateMsg),
+      'STATE_SYNC':            (m) => this._handleStateSyncBuffer(m as StateSyncMsg),
+      'CHAIN_STATE':           (m) => this._handleChainState(m as ChainStateMsg),
+      'DICE_ROLL':             (m) => this._handleDiceRoll(m as DiceRollPromptMsg),
+      'DICE_RESULT':           (m) => this._handleDiceResult(m as DiceResultMsg),
+      'SELECT_FIRST_PLAYER':   (m) => this._handleSelectFirstPlayer(m as SelectFirstPlayerMsg),
+      'FIRST_PLAYER_RESULT':   (m) => this._handleFirstPlayerResult(m as FirstPlayerResultMsg),
+      'DECK_PREFETCH':         (m) => this._handleDeckPrefetch(m as DeckPrefetchMsg),
+      'DUEL_STARTING':         (m) => this._handleDuelStarting(m as DuelStartingMsg),
+      'MSG_HINT':              (m) => this._handleMsgHint(m as HintMsg),
+      'TIMER_STATE':           (m) => this._handleTimerState(m as TimerStateMsg),
+      'INACTIVITY_WARNING':    (m) => this._handleInactivityWarning(m as InactivityWarningMsg),
+      'DUEL_END':              (m) => this._handleDuelEnd(m as DuelEndMsg),
+      'ERROR':                 (m) => this._handleError(m as ErrorMsg),
+      'REMATCH_INVITATION':    () => this._handleRematchInvitation(),
+      'REMATCH_CANCELLED':     (m) => this._handleRematchCancelled(m as RematchCancelledMsg),
+      'REMATCH_STARTING':      () => this._handleRematchStarting(),
+      'OPPONENT_DISCONNECTED': (m) => this._handleOpponentDisconnected(m as OpponentDisconnectedMsg),
+      'OPPONENT_RECONNECTED':  () => this._handleOpponentReconnected(),
+      'WAITING_RESPONSE':      (m) => this._handleWaitingResponse(m as WaitingResponseMsg),
+      'SESSION_TOKEN':         (m) => this._handleSessionToken(m as SessionTokenMsg),
+      'SESSION_PHASE':         (m) => this._handleSessionPhase(m as SessionPhaseMsg),
+      'MSG_CHAINING':          (m) => this._handleMsgChaining(m),
+      'MSG_CHAIN_END':         (m) => this._handleMsgChainEnd(m),
+      'MSG_CONFIRM_CARDS':     (m) => this._handleMsgConfirmCards(m as ConfirmCardsMsg),
+      'MSG_DRAW':              (m) => this._handleMsgDraw(m as DrawMsg),
+    };
+    for (const t of DuelConnection._SELECT_MODAL_TYPES) {
+      table[t] = (m) => this._handleSelectModal(m as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg);
+    }
+    for (const t of DuelConnection._SELECT_SIMPLE_TYPES) {
+      table[t] = (m) => this._handleSelectSimple(m as Extract<ServerMessage, { type: typeof t }>);
+    }
+    for (const t of DuelConnection._CHAIN_PIPELINE_TYPES) {
+      table[t] = (m) => this.processor.processMessage(m);
+    }
+    for (const t of DuelConnection._GAME_EVENT_TYPES) {
+      table[t] = (m) => this.processor.processMessage(m);
+    }
+    return table;
+  }
+
   private handleMessage(message: ServerMessage): void {
     this.logger?.log(DuelLogCategory.PIPELINE, 'ws.recv type=%s', message.type);
     // γ Option C (PR2 c4.4, A17) — SOLO multiplex receives omniscient (absolute)
@@ -1001,586 +1108,544 @@ export class DuelConnection {
     this._maybeSwapBoardStateAfter(message);
     this.onMessage?.(message);
     this.prefetchRevealedCards(message);
-    switch (message.type) {
-      case 'BOARD_STATE': {
-        // γ Option C (PR2 c4.4, A17) — same swap as above but on the top-level
-        // payload. Swap once and pass the relativized `data` to every consumer
-        // below (syncAfterBoardState, observeBoardState, the turn-coord cache),
-        // so the BoundaryProcessor sees the relativized `turnPlayer` and the
-        // RBS `updateLogical` sees relativized `players[]`.
-        const data = this._maybeSwapBoardState(message.data);
-        this._rematchStarting.set(false);
-        this._justReconnected.set(false);
-        syncAfterBoardState(this.rbs, this.processor.chainPhase(),
-          this.processor.animationQueue().length, data, this._boardActive);
-        // β.1 — feed the BoundaryProcessor for Turn/Phase delta detection.
-        // Runs after the sync tier decision so the BP's emit fires AFTER
-        // the board state is reflected in the rendered/logical layers.
-        this.processor.observeBoardState(data);
-        // β.3 cas #13 — cache the turn coordinates for the next MSG_DRAW
-        // turn-delta detection. We do NOT fire `onDrawNewTurn` here: the
-        // MSG_DRAW handler does, so the announce always enqueues right
-        // before its triggering MSG_DRAW in the queue (correct order).
-        this._lastTurnPlayer = data.turnPlayer;
-        this._lastTurnCount = data.turnCount;
-        break;
-      }
-
-      case 'STATE_SYNC':
-        // STATE_SYNC fires on TWO paths: reconnection re-sync, AND the
-        // server-side cancel rollback (CANCEL_PROMPT_SEQUENCE). Both
-        // require a clean slate.
-        //
-        // For the FULL inventory of state slots reset on cancel (worker
-        // + server + client), see
-        // `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
-        // READ IT BEFORE ADDING A NEW PRIVATE FIELD TO DuelConnection
-        // that holds prompt-flow state.
-        //
-        // F14 (2026-05-31) — STATE_SYNC is BUFFERED rather than applied
-        // immediately. The companion CHAIN_STATE (when there's an active
-        // chain to restore) arrives in the same Node.js tick server-side
-        // and consumes the buffer ; STATE_SYNC + restoreChainState happen
-        // atomically in the same client tick, no transient window. If
-        // CHAIN_STATE never arrives (server-contract: only sent when
-        // session.activeChainLinks.length > 0), the `stateSyncFlush`
-        // timer applies STATE_SYNC alone after a short delay.
-        if (this._pendingStateSync !== null) {
-          // Two STATE_SYNCs back-to-back without a CHAIN_STATE between
-          // them — flush the prior one before parking the new payload so
-          // no resync silently shadows another.
-          this._applyStateSync(this._pendingStateSync);
-        }
-        this._pendingStateSync = message;
-        this.armTimeout('stateSyncFlush', () => {
-          const pending = this._pendingStateSync;
-          if (pending !== null) {
-            this._pendingStateSync = null;
-            this._applyStateSync(pending);
-          }
-        }, STATE_SYNC_FLUSH_MS);
-        break;
-
-      case 'CHAIN_STATE': {
-        const cs = message as ChainStateMsg;
-        // F14 (2026-05-31) — consume the buffered STATE_SYNC and apply
-        // STATE_SYNC + restoreChainState atomically (same tick, no
-        // transient empty-chain window observable to any reader).
-        const pending = this._pendingStateSync;
-        if (pending === null) {
-          // CHAIN_STATE without preceding STATE_SYNC is a true protocol
-          // violation (the server-contract pairs them). Log loud but
-          // best-effort restore so the user isn't stuck.
-          this.logger?.warn(
-            'CHAIN_STATE received without buffered STATE_SYNC — applying chain restore on current state'
-          );
-        } else {
-          this.clearTimeoutSlot('stateSyncFlush');
-          this._pendingStateSync = null;
-          this._applyStateSync(pending);
-        }
-        const negatedSet = new Set(cs.negatedIndices);
-        const links: ChainLinkState[] = cs.links.map(msg => ({
-          chainIndex: msg.chainIndex,
-          cardCode: msg.cardCode,
-          cardName: msg.cardName,
-          player: msg.player,
-          zoneId: locationToZoneId(msg.location, msg.sequence),
-          location: msg.location,
-          sequence: msg.sequence,
-          resolving: false,
-          negated: negatedSet.has(msg.chainIndex),
-        }));
-        // Queue already cleared by processor.reset() inside _applyStateSync.
-        this.processor.restoreChainState(links, cs.phase);
-        break;
-      }
-
-      case 'SELECT_CARD':
-      case 'SELECT_CHAIN':
-      case 'SELECT_TRIBUTE':
-      case 'SELECT_SUM':
-      case 'SELECT_UNSELECT_CARD':
-      case 'SELECT_COUNTER':
-        this.processor.processMessage(message);
-        // Palier 0 — only `SELECT_CARD` belongs to the EventStream (the
-        // game-log builder uses it as the secondary `MSG_BECOME_TARGET`
-        // resolver). The other prompts in this branch do not feed the log.
-        if (message.type === 'SELECT_CARD') this._outOfBandSink?.(message);
-        // γ Option C (PR2 c4.2) — single-source slot write per `message.player`.
-        {
-          // F-bugB3 verbose — visibility on every card-selection prompt arrival.
-          // The slot route (`message.player` → `_slotFor` → slot identity) is
-          // load-bearing in SOLO multiplex; in PvP normal both should resolve
-          // to slot 0 for the receiver. `cardsLen` distinguishes a real
-          // re-offer (cards present) from the auto-respond empty-cards path.
-          this.logger?.log(DuelLogCategory.PIPELINE,
-            'ws.recv %s player=%s cardsLen=%s forced=%s prevPending=%s',
-            message.type, message.player,
-            'cards' in message ? (message as { cards: unknown[] }).cards.length : 'n/a',
-            message.type === 'SELECT_CHAIN' ? (message as SelectChainMsg).forced : 'n/a',
-            this._slots[message.player].pendingPrompt()?.type ?? null);
-          const slot = this._slotFor(message.player, message.type);
-          // Reset exclusion accumulator when the prompt type changes mid-sequence
-          // (must happen before pendingPrompt.set so attachComponent reads the correct value)
-          if (slot.lastSelectedPromptType !== null && slot.lastSelectedPromptType !== message.type) {
-            slot.lastSelectedCards = [];
-            slot.lastSelectedPromptType = null;
-          }
-          if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) {
-            this.logger?.log(DuelLogCategory.PIPELINE,
-              'ws.recv %s player=%s → auto-respond empty (cards=0)', message.type, message.player);
-            break;
-          }
-          slot.waitingForOpponent.set(false);
-          slot.pendingPrompt.set(message);
-        }
-        break;
-      case 'SELECT_IDLECMD':
-      case 'SELECT_BATTLECMD':
-      case 'SELECT_EFFECTYN':
-      case 'SELECT_YESNO':
-      case 'SELECT_PLACE':
-      case 'SELECT_DISFIELD':
-      case 'SELECT_POSITION':
-      case 'SELECT_OPTION':
-      case 'ANNOUNCE_RACE':
-      case 'ANNOUNCE_ATTRIB':
-      case 'ANNOUNCE_NUMBER':
-      case 'SORT_CARD':
-      case 'SORT_CHAIN':
-      case 'ANNOUNCE_CARD':
-        this.processor.processMessage(message);
-        // γ Option C (PR2 c4.2) — single-source slot write per `message.player`.
-        {
-          const slot = this._slotFor(message.player, message.type);
-          slot.waitingForOpponent.set(false);
-          slot.pendingPrompt.set(message);
-        }
-        break;
-
-      case 'DICE_ROLL':
-        // DICE_ROLL is a *prompt* (server asking the client to roll). It is NOT
-        // "in progress" yet — `inProgress` flips to true only when the client
-        // sends its response (see sendResponse). Receiving DICE_ROLL is the
-        // signal to enter the `'ready'` stage of the dice arena (intro text +
-        // auto-roll countdown).
-        // A rematch re-runs the pre-duel dice flow: the first DICE_ROLL means
-        // the dice arena now owns the screen, so clear `rematchStarting` here
-        // (it would otherwise stay true until the new duel's BOARD_STATE, ~6s
-        // later, leaving the "Starting new duel…" modal on top of — and
-        // blocking — the dice arena).
-        this._rematchStarting.set(false);
-        this._diceResult.set(null);
-        this._diceInProgress.set(false);
-        // γ-c regression fix (2026-05-29) — pre-duel prompts route to BOTH
-        // slots, NOT `_slots[message.player]`. DICE_ROLL is a single-recipient
-        // prompt always addressed to the receiver (server sends `player:0` to
-        // P0, `player:1` to P1). The dice-arena reads it via `perspectiveSlot()`
-        // = `ownPlayerIndex()` in PvP-normal. That index is UNRESOLVED
-        // (`ocgPlayerIndex() ?? 0` = 0) on the first duel (→ reads `_slots[0]`),
-        // but ALREADY RESOLVED on a rematch (`_ocgPlayerIndex` is not cleared at
-        // REMATCH_STARTING → joiner reads `_slots[1]`). Routing to a single
-        // slot is correct for exactly one of the two cases, never both — so the
-        // joiner missed the dice on either the first duel (slot-1 route) or the
-        // rematch (slot-0 route). Writing both slots is unconditionally visible.
-        // Safe: the receiver is the sole reader, and DICE_ROLL is dead in SOLO
-        // (startFirstPlayerPhase throws), so the unread slot is inert.
-        for (const s of this._slots) s.pendingPrompt.set(message);
-        break;
-
-      case 'DICE_RESULT':
-        this._diceInProgress.set(false);
-        this._diceResult.set(message);
-        break;
-
-      case 'SELECT_FIRST_PLAYER':
-        // γ-c regression fix (2026-05-29) — same as DICE_ROLL: write BOTH slots.
-        // Single-recipient pre-duel prompt (sent only to the dice winner), read
-        // via `perspectiveSlot()` which is `0` on the first duel but the resolved
-        // `ownPlayerIndex` on a rematch (`_ocgPlayerIndex` survives
-        // REMATCH_STARTING). Dead in SOLO. See the DICE_ROLL comment for the
-        // full rationale.
-        for (const s of this._slots) {
-          s.waitingForOpponent.set(false);
-          s.pendingPrompt.set(message);
-        }
-        break;
-
-      case 'FIRST_PLAYER_RESULT':
-        this._firstPlayerResponseSent.set(false);
-        this._firstPlayerResult.set({ goFirst: message.goFirst });
-        // γ Option C (PR2 c4.1+c4.2, F3 from code review) — FIRST_PLAYER_RESULT
-        // has no `.player` field (broadcast to both with perspective-flipped
-        // `goFirst`). Dead in SOLO. Clear BOTH slots so PvP-normal P1's slot
-        // gets `waitingForOpponent` cleared too (the c5 reader projects via
-        // `slotIndex` — clearing both is the safe equivalent of the prior global).
-        //
-        // γ-c regression fix (2026-05-30) — ALSO clear `pendingPrompt` on both
-        // slots. The pre-duel prompts (DICE_ROLL / SELECT_FIRST_PLAYER) are
-        // written to BOTH slots (see those cases). The dice loser never sends a
-        // response, so its residual prompt is never cleared by `sendResponse`.
-        // When DUEL_STARTING flips `ocgPlayerIndex` 0→1 for the joiner,
-        // `perspectiveSlot()` switches the read from `_slots[0]` to `_slots[1]`,
-        // resurfacing the stale DICE_ROLL still parked there. The dice-arena's
-        // "fresh DICE_ROLL" effect then resets `_finalSeen=false`, dropping the
-        // stage `final → result` → the loser is stuck on "opponent choosing"
-        // forever. FIRST_PLAYER_RESULT is the end of the pre-duel prompt phase,
-        // so wiping pendingPrompt on both slots here is the correct closure.
-        for (const s of this._slots) {
-          s.waitingForOpponent.set(false);
-          s.pendingPrompt.set(null);
-        }
-        break;
-
-      case 'DECK_PREFETCH':
-        // Phase 3.16: warmup hint sent right before FIRST_PLAYER_RESULT.
-        // Populate _cardCodes early so the dice-arena's `final` stage can
-        // prime the browser image cache during the 2.5s announce window.
-        // DUEL_STARTING will overwrite this with the same data (post-swap)
-        // a moment later — idempotent.
-        if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
-        break;
-
-      case 'DUEL_STARTING':
-        this._firstPlayerResult.set(null);
-        this._ocgPlayerIndex.set(message.playerIndex as 0 | 1);
-        if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
-        this.logger?.setTraceId(message.traceId);
-        break;
-
-      case 'MSG_HINT': {
-        const isSelectMsg = message.hintType === 3;
-        const isCardHint = !isSelectMsg; // type 10/13/15 identify a new card
-        // γ Option C (PR2 c4.1+c4.2, A34) — write the SAME slot the message
-        // targets, with `prev` read from THAT slot (intra-slot inheritance).
-        // A naive `prev = currentPerspective.hintContext()` would break
-        // inheritance across a `switchPerspective` between 2 MSG_HINT of the
-        // same slot: the cardName would be inherited from the wrong slot's
-        // history. Spec §4.3 A34.
-        //
-        // γ c5d A39-bis — when the hint is broadcast public (server filter
-        // SAFE_PUBLIC_HINT_TYPES), every viewer sees the same payload regardless
-        // of forPlayer. Writing only `_slots[message.player]` makes the hint
-        // invisible to a reader whose `slotIndex !== message.player` (PvP
-        // normal P0 receiving an opponent-originated public hint, or SOLO
-        // after a perspective switch). Detect the broadcast case and write
-        // BOTH slots with the same `merged`. The `prev` for inheritance is
-        // read from the ORIGIN slot (`_slots[message.player]`) in both
-        // branches — A34 inheritance is attached to the origin, not the
-        // destinataire.
-        const slot = this._slotFor(message.player, 'MSG_HINT');
-        if (isCardHint) slot.hintCardConsumed = false;
-        const prev = slot.hintContext();
-        // Only preserve prev cardName if it hasn't been consumed by a prior prompt response
-        const canInherit = isSelectMsg && !slot.hintCardConsumed;
-        const merged = {
-          hintType: message.hintType,
-          player: message.player,
-          value: message.value,
-          cardName: message.cardName || (canInherit ? prev.cardName : ''),
-        };
-        const isBroadcast = SAFE_PUBLIC_HINT_TYPES.has(message.hintType);
-        this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o (broadcast=%s)', { hintType: message.hintType, cardName: message.cardName, value: message.value, isSelectMsg, canInherit }, merged, isBroadcast);
-        if (isBroadcast) {
-          // A39-bis broadcast — write both slots so any reader surfaces it.
-          for (const s of this._slots) s.hintContext.set(merged);
-        } else {
-          slot.hintContext.set(merged);
-        }
-        break;
-      }
-
-      case 'TIMER_STATE': {
-        const timerMsg = message as TimerStateMsg;
-        this._timerState.set(timerMsg);
-        this._timerStatePerPlayer.update(states => {
-          const updated: [TimerStateMsg | null, TimerStateMsg | null] = [...states] as [TimerStateMsg | null, TimerStateMsg | null];
-          updated[timerMsg.player] = timerMsg;
-          return updated;
-        });
-        break;
-      }
-
-      case 'INACTIVITY_WARNING':
-        // γ Option C (PR2 c4.1+c4.2, A8.1) — `message.player` is optional on
-        // the protocol type (back-compat). Default to slot 0 when absent: PvP
-        // normal emits without player and the legacy reader was slot-agnostic,
-        // so slot 0 is the equivalent slot. In SOLO multiplex the server
-        // populates it.
-        //
-        // γ-c cleanup F-2.4 (audit) — assert presence in SOLO. A server
-        // regression that omits `player` in SOLO would silently land the
-        // warning in slot 0 = invisible to a viewer in perspective=1.
-        // PvP normal keeps the fallback (legacy slot-agnostic behavior).
-        duelAssert(!this.soloMode || message.player !== undefined,
-          'INACTIVITY_WARNING',
-          'SOLO multiplex requires server to populate `player` (got undefined)');
-        this._slots[message.player ?? 0].inactivityWarning.set(message);
-        break;
-
-      case 'DUEL_END':
-        // Palier 0 — server converts MSG_WIN → DUEL_END at the WS boundary
-        // (it drops the engine event and emits the lifecycle message). When
-        // the duel ended naturally in the engine (winner+winReasonCode
-        // present), reconstruct a synthetic MSG_WIN for the EventStream so
-        // the Game Log renders its 🏆 row in PvP live — matching what the
-        // Replay sees via the precompute's final state (which retains the
-        // original MSG_WIN). Non-engine ends (surrender, timeout,
-        // disconnect) leave `winReasonCode` undefined and do NOT synthesize
-        // a MSG_WIN: replay's `ingestState` doesn't see one for those
-        // cases either, so the journal stays consistent across modes.
-        if (message.winner !== null && message.winReasonCode !== undefined) {
-          const synthetic: WinMsg = {
-            type: 'MSG_WIN',
-            player: message.winner,
-            reason: message.winReasonCode,
-          };
-          this._outOfBandSink?.(synthetic);
-        }
-        this._confirmedCardsByChain.clear();
-        // β.1 — emit `*Ended` for every still-open boundary group BEFORE
-        // wiping chain state so the journal sees the duel closure in
-        // causality order (Chain → Phase → Turn). Runs AFTER the MSG_WIN
-        // synthesis so the journal order is `…events… → MSG_WIN → *Ended`,
-        // matching the natural reading.
-        this.processor.forceBoundaryClosure('DuelEnded');
-        this.processor.reset();
-        this._firstPlayerResult.set(null);
-        this._firstPlayerResponseSent.set(false);
-        this._duelResult.set(message);
-        this._opponentDisconnected.set(false);
-        this._disconnectGraceSec.set(0);
-        // γ Option C (PR2 c4.1+c4.2) — DUEL_END clears BOTH slots' prompt flow.
-        // F12 (code review): `hintContext` clear mandated by spec §4.3 A8
-        // row `_hintContext` ("clear LES DEUX au DUEL_END + REMATCH_STARTING
-        // + STATE_SYNC"). Legacy did NOT clear it at DUEL_END, but the spec
-        // table is authoritative for the per-slot semantics.
-        // U6-D3 (audit-4-modes-2026-06-01 review): also clear the
-        // selection-accumulator pair. Without this, a duel 2 SELECT_CARD
-        // matching the duel 1 last promptType inherits stale `excludedCards`
-        // into `pvp-prompt-dialog.attachComponent` → user sees ghost
-        // exclusions on the very first prompt of the rematch.
-        for (const s of this._slots) {
-          s.lastConfirmedCards = [];
-          s.lastSelectedCards = [];
-          s.lastSelectedPromptType = null;
-          s.pendingPrompt.set(null);
-          s.inactivityWarning.set(null);
-          s.waitingForOpponent.set(false);
-          s.hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
-        }
-        try { localStorage.removeItem(this.storageKey); } catch {}
-        break;
-
-      case 'ERROR':
-        // γ Option C (PR2 c4.4, A32) — surface the server's error payload to
-        // the wsService / duel-page consumer (toast). Perspective-agnostic:
-        // the global signal `lastError` is read by a perspective-independent
-        // consumer (a single user, no matter which slot they look at).
-        // Consumer is responsible for `clearLastError()` after rendering.
-        // BH-6 from c4.4 code review — warn-level log so the debug harness
-        // captures the payload even when no consumer is mounted.
-        this.logger?.warn('server ERROR received: %o', message);
-        this._lastError.set(message);
-        break;
-
-      case 'REMATCH_INVITATION':
-        this._rematchState.set('invited');
-        break;
-
-      case 'REMATCH_CANCELLED':
-        this._rematchState.set(message.reason === 'opponent_left' ? 'opponent-left' : 'expired');
-        break;
-
-      case 'REMATCH_STARTING':
-        this._confirmedCardsByChain.clear();
-        // β.1 — close any still-open boundary groups before resetting.
-        // The next duel's BOARD_STATE will open fresh ones.
-        this.processor.forceBoundaryClosure('RematchStarted');
-        this.processor.reset();
-        this._rematchStarting.set(true);
-        this._duelResult.set(null);
-        this._cardCodes.set([]);
-        // γ Option C (PR2 c4.4, A23) — reset the board-active gate so the
-        // next BOARD_STATE re-enters `syncAfterBoardState` tier 1
-        // (`!boardActive → syncPileCounts`) and `drainPreActivationBuffer`
-        // fires for the new duel's initial 5 MSG_DRAW. Without this, the
-        // flag stays `true` from the prior duel and the rematch's opening
-        // hand never animates (the buffer never drains).
-        // `DuelLoadingEffectsService` re-flips it to `true` once the new
-        // BOARD_STATE lands via the `duel-loading → active` chain.
-        this._boardActive = false;
-        this.rbs.updateLogical(EMPTY_DUEL_STATE);
-        // F19 (2026-05-31) — assert lock state at the reset boundary BEFORE
-        // commitAll() wipes everything inconditionally. The previous duel's
-        // animation pipeline MUST have settled all its locks (chain end,
-        // queue drained) by the time REMATCH_STARTING fires. A leak here
-        // is a regression: somewhere a `lockZone` never paired with a
-        // commit/release. Throws in dev, console.errors in prod via duelAssert.
-        this.rbs.assertNoLocks('REMATCH_STARTING');
-        this.rbs.commitAll();
-        this._firstPlayerResult.set(null);
-        this._firstPlayerResponseSent.set(false);
-        this._opponentDisconnected.set(false);
-        this._disconnectGraceSec.set(0);
-        this._rematchState.set('idle');
-        // γ Option C (PR2 c4.1+c4.2) — REMATCH_STARTING clears BOTH slots.
-        // The next duel re-populates them per `message.player`.
-        // F10 (code review): `hintContext` + `inactivityWarning` clears
-        // mandated by spec §4.3 A8 (rows _hintContext "clear LES DEUX au
-        // DUEL_END + REMATCH_STARTING + STATE_SYNC" and _inactivityWarning
-        // "clear LES DEUX au DUEL_END + REMATCH_STARTING"). Legacy did
-        // not clear either at REMATCH_STARTING; spec table is authoritative.
-        // U6-D3 (audit-4-modes-2026-06-01 review): same selection-accumulator
-        // clear as DUEL_END — REMATCH_STARTING typically arrives without an
-        // intervening STATE_SYNC, so without this clear the first SELECT_*
-        // of the rematch inherits stale `lastSelectedCards` when the
-        // promptType matches.
-        for (const s of this._slots) {
-          s.lastConfirmedCards = [];
-          s.lastSelectedCards = [];
-          s.lastSelectedPromptType = null;
-          s.pendingPrompt.set(null);
-          s.waitingForOpponent.set(false);
-          s.inactivityWarning.set(null);
-          s.hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
-        }
-        break;
-
-      case 'OPPONENT_DISCONNECTED':
-        this._opponentDisconnected.set(true);
-        this._disconnectGraceSec.set(message.gracePeriodSec);
-        break;
-
-      case 'OPPONENT_RECONNECTED':
-        this._opponentDisconnected.set(false);
-        this._disconnectGraceSec.set(0);
-        break;
-
-      case 'WAITING_RESPONSE':
-        this.processor.processMessage(message);
-        // γ Option C (PR2 c4.1+c4.2, A8.2) — `targetPlayer` is optional on the
-        // protocol type (back-compat). Server populates it in both modes
-        // (PR1 c2c). Default slot 0 if absent (= legacy PvP normal behavior
-        // where the message was sent to the opponent socket whose connection
-        // implicitly represented slot 0 of its own perspective).
-        //
-        // γ-c cleanup F-2.4 (audit) — assert presence in SOLO. Same
-        // rationale as `INACTIVITY_WARNING` above.
-        duelAssert(!this.soloMode || message.targetPlayer !== undefined,
-          'WAITING_RESPONSE',
-          'SOLO multiplex requires server to populate `targetPlayer` (got undefined)');
-        this._slots[message.targetPlayer ?? 0].waitingForOpponent.set(true);
-        break;
-
-      case 'SESSION_TOKEN':
-        // Server confirmed the session — connection is genuinely alive.
-        this.clearTimeoutSlot('sessionToken');
-        this._connectionStatus.set('connected');
-        this._retryCount.set(0);
-        // wsToken is consumed once server-side at the first handshake (pendingTokens.delete);
-        // clear our copy so future reconnects rely solely on the rotating reconnectToken.
-        this.wsToken = null;
-        this.reconnectToken = (message as SessionTokenMsg).token;
-        this._hasToken.set(true);
-        if (this._autoReconnect) {
-          try { localStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
-        }
-        break;
-
-      case 'SESSION_PHASE':
-        // Mount-discriminant from the server (PRE_DUEL | DUELING | ENDED).
-        // Frozen after first set — the UI bases its initial mount on this
-        // value once and does not re-react if the server were to re-emit.
-        if (this._sessionPhase() === null) this._sessionPhase.set(message.phase);
-        break;
-
-      case 'MSG_CHAINING':
-        this.processor.processMessage(message);
-        break;
-
-      case 'MSG_CHAIN_SOLVING':
-      case 'MSG_CHAIN_SOLVED':
-      case 'MSG_CHAIN_NEGATED':
-        this.processor.processMessage(message);
-        break;
-
-      case 'MSG_CHAIN_END':
-        // M22 — Symmetric with server-side activeChainLinks reset.
-        // Reveals tagged with this chain's link indices are no longer
-        // relevant to any future prompt (next chain = different chainIndex
-        // namespace, next prompt outside chain = chainIndex null).
-        this._confirmedCardsByChain.clear();
-        this.processor.processMessage(message);
-        break;
-
-      case 'MSG_CONFIRM_CARDS': {
-        const confirm = message as ConfirmCardsMsg;
-        // γ Option C (PR2 c4.1+c4.2) — write the slot of `confirm.player`.
-        // `_confirmedCardsByChain` stays GLOBAL (keyed by chainIndex which is
-        // already a global namespace per chain).
-        this._slotFor(confirm.player, 'MSG_CONFIRM_CARDS').lastConfirmedCards = confirm.cards;
-        // M22 — Tagged reveals accumulate per chain link. Untagged reveals
-        // (CONFIRM outside chain resolution) only land in slot.lastConfirmedCards
-        // (used by SELECT_OPTION lastConfirmedName fallback).
-        if (confirm.chainIndex !== undefined) {
-          const existing = this._confirmedCardsByChain.get(confirm.chainIndex) ?? [];
-          this._confirmedCardsByChain.set(confirm.chainIndex, [...existing, ...confirm.cards]);
-        }
-        this.processor.processMessage(message);
-        break;
-      }
-      case 'MSG_DRAW': {
-        // β.3 cas #13 — fire `onDrawNewTurn` BEFORE handing the message
-        // off to the processor, so the bridge can enqueue the DRAW
-        // announce directive in front of the MSG_DRAW that triggered it.
-        // Hash composite `${player}:${count}` (cf. _lastTurnPlayer +
-        // _lastTurnCount field doc) — only one announce per new turn.
-        //
-        // Gate on `_boardActive` : boot's 5 initial MSG_DRAW arrive before
-        // the dice arena dismisses (`roomState !== 'active'`). Firing
-        // the announce there would burn its 2s timer behind the arena
-        // overlay, then MAIN1 would overwrite it before the user sees
-        // anything. By skipping the gate at boot, we silently swallow
-        // the initial draw (it's the opening hand, not a meaningful
-        // "new turn" — the engine starts in MAIN1 directly). The first
-        // real DRAW announce happens at the next turn start.
-        if (this._boardActive) {
-          const hash = `${this._lastTurnPlayer}:${this._lastTurnCount}`;
-          if (hash !== this._lastDrawAnnouncedHash) {
-            this._lastDrawAnnouncedHash = hash;
-            this.onDrawNewTurn?.(this._lastTurnPlayer, this._lastTurnCount);
-          }
-        }
-        this.processor.processMessage(message);
-        break;
-      }
-      case 'MSG_MOVE':
-      case 'MSG_SHUFFLE_HAND':
-      case 'MSG_SHUFFLE_DECK':
-      case 'MSG_DAMAGE':
-      case 'MSG_RECOVER':
-      case 'MSG_PAY_LPCOST':
-      case 'MSG_FLIP_SUMMONING':
-      case 'MSG_CHANGE_POS':
-      case 'MSG_BECOME_TARGET':
-      case 'MSG_SWAP':
-      case 'MSG_ATTACK':
-      case 'MSG_BATTLE':
-      case 'MSG_TOSS_COIN':
-      case 'MSG_TOSS_DICE':
-      case 'MSG_EQUIP':
-      case 'MSG_ADD_COUNTER':
-      case 'MSG_REMOVE_COUNTER':
-      case 'MSG_SHUFFLE_SET_CARD':
-      case 'MSG_SWAP_GRAVE_DECK':
-        this.processor.processMessage(message);
-        break;
-
-      default:
-        break;
+    const handler = this._messageHandlers[message.type];
+    if (handler) {
+      handler(message);
+    } else {
+      // U20 — unknown message type is a true bug (server emitted something
+      // the client doesn't model). Warn so the debug harness captures it ;
+      // no throw because the old `default: break;` silently swallowed it
+      // and we keep that fail-soft behavior in prod.
+      this.logger?.warn('handleMessage — unhandled message type: %s', message.type);
     }
+  }
+
+  private _handleBoardState(message: BoardStateMsg): void {
+    // γ Option C (PR2 c4.4, A17) — same swap as in handleMessage's prelude
+    // but on the top-level payload. Swap once and pass the relativized
+    // `data` to every consumer below (syncAfterBoardState, observeBoardState,
+    // the turn-coord cache), so the BoundaryProcessor sees the relativized
+    // `turnPlayer` and the RBS `updateLogical` sees relativized `players[]`.
+    const data = this._maybeSwapBoardState(message.data);
+    this._rematchStarting.set(false);
+    this._justReconnected.set(false);
+    syncAfterBoardState(this.rbs, this.processor.chainPhase(),
+      this.processor.animationQueue().length, data, this._boardActive);
+    // β.1 — feed the BoundaryProcessor for Turn/Phase delta detection.
+    // Runs after the sync tier decision so the BP's emit fires AFTER
+    // the board state is reflected in the rendered/logical layers.
+    this.processor.observeBoardState(data);
+    // β.3 cas #13 — cache the turn coordinates for the next MSG_DRAW
+    // turn-delta detection. We do NOT fire `onDrawNewTurn` here: the
+    // MSG_DRAW handler does, so the announce always enqueues right
+    // before its triggering MSG_DRAW in the queue (correct order).
+    this._lastTurnPlayer = data.turnPlayer;
+    this._lastTurnCount = data.turnCount;
+  }
+
+  /** STATE_SYNC entry point — buffers the payload then schedules a flush.
+   *  The companion CHAIN_STATE (when present) consumes the buffer and applies
+   *  STATE_SYNC + restoreChainState atomically (see `_handleChainState`).
+   *  Falls back to the timer flush if CHAIN_STATE never arrives.
+   *
+   *  Background — STATE_SYNC fires on TWO paths: reconnection re-sync, AND
+   *  the server-side cancel rollback (CANCEL_PROMPT_SEQUENCE). Both require
+   *  a clean slate. For the FULL inventory of state slots reset on cancel
+   *  (worker + server + client), see
+   *  `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+   *  READ IT BEFORE ADDING A NEW PRIVATE FIELD TO DuelConnection that holds
+   *  prompt-flow state.
+   *
+   *  F14 (2026-05-31) — STATE_SYNC is BUFFERED rather than applied
+   *  immediately. The companion CHAIN_STATE (when there's an active chain
+   *  to restore) arrives in the same Node.js tick server-side and consumes
+   *  the buffer ; STATE_SYNC + restoreChainState happen atomically in the
+   *  same client tick, no transient window. If CHAIN_STATE never arrives
+   *  (server-contract: only sent when session.activeChainLinks.length > 0),
+   *  the `stateSyncFlush` timer applies STATE_SYNC alone after a short delay. */
+  private _handleStateSyncBuffer(message: StateSyncMsg): void {
+    if (this._pendingStateSync !== null) {
+      // Two STATE_SYNCs back-to-back without a CHAIN_STATE between them —
+      // flush the prior one before parking the new payload so no resync
+      // silently shadows another.
+      this._applyStateSync(this._pendingStateSync);
+    }
+    this._pendingStateSync = message;
+    this.armTimeout('stateSyncFlush', () => {
+      const pending = this._pendingStateSync;
+      if (pending !== null) {
+        this._pendingStateSync = null;
+        this._applyStateSync(pending);
+      }
+    }, STATE_SYNC_FLUSH_MS);
+  }
+
+  private _handleChainState(message: ChainStateMsg): void {
+    // F14 (2026-05-31) — consume the buffered STATE_SYNC and apply
+    // STATE_SYNC + restoreChainState atomically (same tick, no transient
+    // empty-chain window observable to any reader).
+    const pending = this._pendingStateSync;
+    if (pending === null) {
+      // CHAIN_STATE without preceding STATE_SYNC is a true protocol
+      // violation (the server-contract pairs them). Log loud but
+      // best-effort restore so the user isn't stuck.
+      this.logger?.warn(
+        'CHAIN_STATE received without buffered STATE_SYNC — applying chain restore on current state'
+      );
+    } else {
+      this.clearTimeoutSlot('stateSyncFlush');
+      this._pendingStateSync = null;
+      this._applyStateSync(pending);
+    }
+    const negatedSet = new Set(message.negatedIndices);
+    const links: ChainLinkState[] = message.links.map(msg => ({
+      chainIndex: msg.chainIndex,
+      cardCode: msg.cardCode,
+      cardName: msg.cardName,
+      player: msg.player,
+      zoneId: locationToZoneId(msg.location, msg.sequence),
+      location: msg.location,
+      sequence: msg.sequence,
+      resolving: false,
+      negated: negatedSet.has(msg.chainIndex),
+    }));
+    // Queue already cleared by processor.reset() inside _applyStateSync.
+    this.processor.restoreChainState(links, message.phase);
+  }
+
+  private _handleSelectModal(
+    message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg,
+  ): void {
+    this.processor.processMessage(message);
+    // Palier 0 — only `SELECT_CARD` belongs to the EventStream (the
+    // game-log builder uses it as the secondary `MSG_BECOME_TARGET`
+    // resolver). The other prompts in this branch do not feed the log.
+    if (message.type === 'SELECT_CARD') this._outOfBandSink?.(message);
+    // γ Option C (PR2 c4.2) — single-source slot write per `message.player`.
+    // F-bugB3 verbose — visibility on every card-selection prompt arrival.
+    // The slot route (`message.player` → `_slotFor` → slot identity) is
+    // load-bearing in SOLO multiplex; in PvP normal both should resolve
+    // to slot 0 for the receiver. `cardsLen` distinguishes a real
+    // re-offer (cards present) from the auto-respond empty-cards path.
+    this.logger?.log(DuelLogCategory.PIPELINE,
+      'ws.recv %s player=%s cardsLen=%s forced=%s prevPending=%s',
+      message.type, message.player,
+      'cards' in message ? (message as { cards: unknown[] }).cards.length : 'n/a',
+      message.type === 'SELECT_CHAIN' ? (message as SelectChainMsg).forced : 'n/a',
+      this._slots[message.player].pendingPrompt()?.type ?? null);
+    const slot = this._slotFor(message.player, message.type);
+    // Reset exclusion accumulator when the prompt type changes mid-sequence
+    // (must happen before pendingPrompt.set so attachComponent reads the correct value)
+    if (slot.lastSelectedPromptType !== null && slot.lastSelectedPromptType !== message.type) {
+      slot.lastSelectedCards = [];
+      slot.lastSelectedPromptType = null;
+    }
+    if (this.tryAutoRespondEmptyCards(message)) {
+      this.logger?.log(DuelLogCategory.PIPELINE,
+        'ws.recv %s player=%s → auto-respond empty (cards=0)', message.type, message.player);
+      return;
+    }
+    slot.waitingForOpponent.set(false);
+    slot.pendingPrompt.set(message);
+  }
+
+  /** Common branch for SELECT_IDLECMD / SELECT_BATTLECMD / SELECT_EFFECTYN /
+   *  SELECT_YESNO / SELECT_PLACE / SELECT_DISFIELD / SELECT_POSITION /
+   *  SELECT_OPTION / ANNOUNCE_* / SORT_*. The message type narrowing happens
+   *  upstream in the routing table; here we treat them uniformly. */
+  private _handleSelectSimple(message: Extract<Prompt, { player: 0 | 1 }>): void {
+    this.processor.processMessage(message);
+    // γ Option C (PR2 c4.2) — single-source slot write per `message.player`.
+    const slot = this._slotFor(message.player, message.type);
+    slot.waitingForOpponent.set(false);
+    slot.pendingPrompt.set(message);
+  }
+
+  private _handleDiceRoll(message: DiceRollPromptMsg): void {
+    // DICE_ROLL is a *prompt* (server asking the client to roll). It is NOT
+    // "in progress" yet — `inProgress` flips to true only when the client
+    // sends its response (see sendResponse). Receiving DICE_ROLL is the
+    // signal to enter the `'ready'` stage of the dice arena (intro text +
+    // auto-roll countdown).
+    // A rematch re-runs the pre-duel dice flow: the first DICE_ROLL means
+    // the dice arena now owns the screen, so clear `rematchStarting` here
+    // (it would otherwise stay true until the new duel's BOARD_STATE, ~6s
+    // later, leaving the "Starting new duel…" modal on top of — and
+    // blocking — the dice arena).
+    this._rematchStarting.set(false);
+    this._diceResult.set(null);
+    this._diceInProgress.set(false);
+    // γ-c regression fix (2026-05-29) — pre-duel prompts route to BOTH
+    // slots, NOT `_slots[message.player]`. DICE_ROLL is a single-recipient
+    // prompt always addressed to the receiver (server sends `player:0` to
+    // P0, `player:1` to P1). The dice-arena reads it via `perspectiveSlot()`
+    // = `ownPlayerIndex()` in PvP-normal. That index is UNRESOLVED
+    // (`ocgPlayerIndex() ?? 0` = 0) on the first duel (→ reads `_slots[0]`),
+    // but ALREADY RESOLVED on a rematch (`_ocgPlayerIndex` is not cleared at
+    // REMATCH_STARTING → joiner reads `_slots[1]`). Routing to a single
+    // slot is correct for exactly one of the two cases, never both — so the
+    // joiner missed the dice on either the first duel (slot-1 route) or the
+    // rematch (slot-0 route). Writing both slots is unconditionally visible.
+    // Safe: the receiver is the sole reader, and DICE_ROLL is dead in SOLO
+    // (startFirstPlayerPhase throws), so the unread slot is inert.
+    for (const s of this._slots) s.pendingPrompt.set(message);
+  }
+
+  private _handleDiceResult(message: DiceResultMsg): void {
+    this._diceInProgress.set(false);
+    this._diceResult.set(message);
+  }
+
+  private _handleSelectFirstPlayer(message: SelectFirstPlayerMsg): void {
+    // γ-c regression fix (2026-05-29) — same as DICE_ROLL: write BOTH slots.
+    // Single-recipient pre-duel prompt (sent only to the dice winner), read
+    // via `perspectiveSlot()` which is `0` on the first duel but the resolved
+    // `ownPlayerIndex` on a rematch (`_ocgPlayerIndex` survives
+    // REMATCH_STARTING). Dead in SOLO. See the DICE_ROLL comment for the
+    // full rationale.
+    for (const s of this._slots) {
+      s.waitingForOpponent.set(false);
+      s.pendingPrompt.set(message);
+    }
+  }
+
+  private _handleFirstPlayerResult(message: FirstPlayerResultMsg): void {
+    this._firstPlayerResponseSent.set(false);
+    this._firstPlayerResult.set({ goFirst: message.goFirst });
+    // γ Option C (PR2 c4.1+c4.2, F3 from code review) — FIRST_PLAYER_RESULT
+    // has no `.player` field (broadcast to both with perspective-flipped
+    // `goFirst`). Dead in SOLO. Clear BOTH slots so PvP-normal P1's slot
+    // gets `waitingForOpponent` cleared too (the c5 reader projects via
+    // `slotIndex` — clearing both is the safe equivalent of the prior global).
+    //
+    // γ-c regression fix (2026-05-30) — ALSO clear `pendingPrompt` on both
+    // slots. The pre-duel prompts (DICE_ROLL / SELECT_FIRST_PLAYER) are
+    // written to BOTH slots (see those cases). The dice loser never sends a
+    // response, so its residual prompt is never cleared by `sendResponse`.
+    // When DUEL_STARTING flips `ocgPlayerIndex` 0→1 for the joiner,
+    // `perspectiveSlot()` switches the read from `_slots[0]` to `_slots[1]`,
+    // resurfacing the stale DICE_ROLL still parked there. The dice-arena's
+    // "fresh DICE_ROLL" effect then resets `_finalSeen=false`, dropping the
+    // stage `final → result` → the loser is stuck on "opponent choosing"
+    // forever. FIRST_PLAYER_RESULT is the end of the pre-duel prompt phase,
+    // so wiping pendingPrompt on both slots here is the correct closure.
+    for (const s of this._slots) {
+      s.waitingForOpponent.set(false);
+      s.pendingPrompt.set(null);
+    }
+  }
+
+  private _handleDeckPrefetch(message: DeckPrefetchMsg): void {
+    // Phase 3.16: warmup hint sent right before FIRST_PLAYER_RESULT.
+    // Populate _cardCodes early so the dice-arena's `final` stage can
+    // prime the browser image cache during the 2.5s announce window.
+    // DUEL_STARTING will overwrite this with the same data (post-swap)
+    // a moment later — idempotent.
+    if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
+  }
+
+  private _handleDuelStarting(message: DuelStartingMsg): void {
+    this._firstPlayerResult.set(null);
+    this._ocgPlayerIndex.set(message.playerIndex as 0 | 1);
+    if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
+    this.logger?.setTraceId(message.traceId);
+  }
+
+  private _handleMsgHint(message: HintMsg): void {
+    const isSelectMsg = message.hintType === 3;
+    const isCardHint = !isSelectMsg; // type 10/13/15 identify a new card
+    // γ Option C (PR2 c4.1+c4.2, A34) — write the SAME slot the message
+    // targets, with `prev` read from THAT slot (intra-slot inheritance).
+    // A naive `prev = currentPerspective.hintContext()` would break
+    // inheritance across a `switchPerspective` between 2 MSG_HINT of the
+    // same slot: the cardName would be inherited from the wrong slot's
+    // history. Spec §4.3 A34.
+    //
+    // γ c5d A39-bis — when the hint is broadcast public (server filter
+    // SAFE_PUBLIC_HINT_TYPES), every viewer sees the same payload regardless
+    // of forPlayer. Writing only `_slots[message.player]` makes the hint
+    // invisible to a reader whose `slotIndex !== message.player` (PvP
+    // normal P0 receiving an opponent-originated public hint, or SOLO
+    // after a perspective switch). Detect the broadcast case and write
+    // BOTH slots with the same `merged`. The `prev` for inheritance is
+    // read from the ORIGIN slot (`_slots[message.player]`) in both
+    // branches — A34 inheritance is attached to the origin, not the
+    // destinataire.
+    const slot = this._slotFor(message.player, 'MSG_HINT');
+    if (isCardHint) slot.hintCardConsumed = false;
+    const prev = slot.hintContext();
+    // Only preserve prev cardName if it hasn't been consumed by a prior prompt response
+    const canInherit = isSelectMsg && !slot.hintCardConsumed;
+    const merged = {
+      hintType: message.hintType,
+      player: message.player,
+      value: message.value,
+      cardName: message.cardName || (canInherit ? prev.cardName : ''),
+    };
+    const isBroadcast = SAFE_PUBLIC_HINT_TYPES.has(message.hintType);
+    this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o (broadcast=%s)', { hintType: message.hintType, cardName: message.cardName, value: message.value, isSelectMsg, canInherit }, merged, isBroadcast);
+    if (isBroadcast) {
+      // A39-bis broadcast — write both slots so any reader surfaces it.
+      for (const s of this._slots) s.hintContext.set(merged);
+    } else {
+      slot.hintContext.set(merged);
+    }
+  }
+
+  private _handleTimerState(message: TimerStateMsg): void {
+    this._timerState.set(message);
+    this._timerStatePerPlayer.update(states => {
+      const updated: [TimerStateMsg | null, TimerStateMsg | null] = [...states] as [TimerStateMsg | null, TimerStateMsg | null];
+      updated[message.player] = message;
+      return updated;
+    });
+  }
+
+  private _handleInactivityWarning(message: InactivityWarningMsg): void {
+    // γ Option C (PR2 c4.1+c4.2, A8.1) — `message.player` is optional on
+    // the protocol type (back-compat). Default to slot 0 when absent: PvP
+    // normal emits without player and the legacy reader was slot-agnostic,
+    // so slot 0 is the equivalent slot. In SOLO multiplex the server
+    // populates it.
+    //
+    // γ-c cleanup F-2.4 (audit) — assert presence in SOLO. A server
+    // regression that omits `player` in SOLO would silently land the
+    // warning in slot 0 = invisible to a viewer in perspective=1.
+    // PvP normal keeps the fallback (legacy slot-agnostic behavior).
+    duelAssert(!this.soloMode || message.player !== undefined,
+      'INACTIVITY_WARNING',
+      'SOLO multiplex requires server to populate `player` (got undefined)');
+    this._slots[message.player ?? 0].inactivityWarning.set(message);
+  }
+
+  private _handleDuelEnd(message: DuelEndMsg): void {
+    // Palier 0 — server converts MSG_WIN → DUEL_END at the WS boundary
+    // (it drops the engine event and emits the lifecycle message). When
+    // the duel ended naturally in the engine (winner+winReasonCode
+    // present), reconstruct a synthetic MSG_WIN for the EventStream so
+    // the Game Log renders its 🏆 row in PvP live — matching what the
+    // Replay sees via the precompute's final state (which retains the
+    // original MSG_WIN). Non-engine ends (surrender, timeout,
+    // disconnect) leave `winReasonCode` undefined and do NOT synthesize
+    // a MSG_WIN: replay's `ingestState` doesn't see one for those
+    // cases either, so the journal stays consistent across modes.
+    if (message.winner !== null && message.winReasonCode !== undefined) {
+      const synthetic: WinMsg = {
+        type: 'MSG_WIN',
+        player: message.winner,
+        reason: message.winReasonCode,
+      };
+      this._outOfBandSink?.(synthetic);
+    }
+    this._confirmedCardsByChain.clear();
+    // β.1 — emit `*Ended` for every still-open boundary group BEFORE
+    // wiping chain state so the journal sees the duel closure in
+    // causality order (Chain → Phase → Turn). Runs AFTER the MSG_WIN
+    // synthesis so the journal order is `…events… → MSG_WIN → *Ended`,
+    // matching the natural reading.
+    this.processor.forceBoundaryClosure('DuelEnded');
+    this.processor.reset();
+    this._firstPlayerResult.set(null);
+    this._firstPlayerResponseSent.set(false);
+    this._duelResult.set(message);
+    this._opponentDisconnected.set(false);
+    this._disconnectGraceSec.set(0);
+    // γ Option C (PR2 c4.1+c4.2) — DUEL_END clears BOTH slots' prompt flow.
+    // F12 (code review): `hintContext` clear mandated by spec §4.3 A8
+    // row `_hintContext` ("clear LES DEUX au DUEL_END + REMATCH_STARTING
+    // + STATE_SYNC"). Legacy did NOT clear it at DUEL_END, but the spec
+    // table is authoritative for the per-slot semantics.
+    // U6-D3 (audit-4-modes-2026-06-01 review): also clear the
+    // selection-accumulator pair. Without this, a duel 2 SELECT_CARD
+    // matching the duel 1 last promptType inherits stale `excludedCards`
+    // into `pvp-prompt-dialog.attachComponent` → user sees ghost
+    // exclusions on the very first prompt of the rematch.
+    for (const s of this._slots) {
+      s.lastConfirmedCards = [];
+      s.lastSelectedCards = [];
+      s.lastSelectedPromptType = null;
+      s.pendingPrompt.set(null);
+      s.inactivityWarning.set(null);
+      s.waitingForOpponent.set(false);
+      s.hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
+    }
+    try { localStorage.removeItem(this.storageKey); } catch {}
+  }
+
+  private _handleError(message: ErrorMsg): void {
+    // γ Option C (PR2 c4.4, A32) — surface the server's error payload to
+    // the wsService / duel-page consumer (toast). Perspective-agnostic:
+    // the global signal `lastError` is read by a perspective-independent
+    // consumer (a single user, no matter which slot they look at).
+    // Consumer is responsible for `clearLastError()` after rendering.
+    // BH-6 from c4.4 code review — warn-level log so the debug harness
+    // captures the payload even when no consumer is mounted.
+    this.logger?.warn('server ERROR received: %o', message);
+    this._lastError.set(message);
+  }
+
+  private _handleRematchInvitation(): void {
+    this._rematchState.set('invited');
+  }
+
+  private _handleRematchCancelled(message: RematchCancelledMsg): void {
+    this._rematchState.set(message.reason === 'opponent_left' ? 'opponent-left' : 'expired');
+  }
+
+  private _handleRematchStarting(): void {
+    this._confirmedCardsByChain.clear();
+    // β.1 — close any still-open boundary groups before resetting.
+    // The next duel's BOARD_STATE will open fresh ones.
+    this.processor.forceBoundaryClosure('RematchStarted');
+    this.processor.reset();
+    this._rematchStarting.set(true);
+    this._duelResult.set(null);
+    this._cardCodes.set([]);
+    // γ Option C (PR2 c4.4, A23) — reset the board-active gate so the
+    // next BOARD_STATE re-enters `syncAfterBoardState` tier 1
+    // (`!boardActive → syncPileCounts`) and `drainPreActivationBuffer`
+    // fires for the new duel's initial 5 MSG_DRAW. Without this, the
+    // flag stays `true` from the prior duel and the rematch's opening
+    // hand never animates (the buffer never drains).
+    // `DuelLoadingEffectsService` re-flips it to `true` once the new
+    // BOARD_STATE lands via the `duel-loading → active` chain.
+    this._boardActive = false;
+    this.rbs.updateLogical(EMPTY_DUEL_STATE);
+    // F19 (2026-05-31) — assert lock state at the reset boundary BEFORE
+    // commitAll() wipes everything inconditionally. The previous duel's
+    // animation pipeline MUST have settled all its locks (chain end,
+    // queue drained) by the time REMATCH_STARTING fires. A leak here
+    // is a regression: somewhere a `lockZone` never paired with a
+    // commit/release. Throws in dev, console.errors in prod via duelAssert.
+    this.rbs.assertNoLocks('REMATCH_STARTING');
+    this.rbs.commitAll();
+    this._firstPlayerResult.set(null);
+    this._firstPlayerResponseSent.set(false);
+    this._opponentDisconnected.set(false);
+    this._disconnectGraceSec.set(0);
+    this._rematchState.set('idle');
+    // γ Option C (PR2 c4.1+c4.2) — REMATCH_STARTING clears BOTH slots.
+    // The next duel re-populates them per `message.player`.
+    // F10 (code review): `hintContext` + `inactivityWarning` clears
+    // mandated by spec §4.3 A8 (rows _hintContext "clear LES DEUX au
+    // DUEL_END + REMATCH_STARTING + STATE_SYNC" and _inactivityWarning
+    // "clear LES DEUX au DUEL_END + REMATCH_STARTING"). Legacy did
+    // not clear either at REMATCH_STARTING; spec table is authoritative.
+    // U6-D3 (audit-4-modes-2026-06-01 review): same selection-accumulator
+    // clear as DUEL_END — REMATCH_STARTING typically arrives without an
+    // intervening STATE_SYNC, so without this clear the first SELECT_*
+    // of the rematch inherits stale `lastSelectedCards` when the
+    // promptType matches.
+    for (const s of this._slots) {
+      s.lastConfirmedCards = [];
+      s.lastSelectedCards = [];
+      s.lastSelectedPromptType = null;
+      s.pendingPrompt.set(null);
+      s.waitingForOpponent.set(false);
+      s.inactivityWarning.set(null);
+      s.hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
+    }
+  }
+
+  private _handleOpponentDisconnected(message: OpponentDisconnectedMsg): void {
+    this._opponentDisconnected.set(true);
+    this._disconnectGraceSec.set(message.gracePeriodSec);
+  }
+
+  private _handleOpponentReconnected(): void {
+    this._opponentDisconnected.set(false);
+    this._disconnectGraceSec.set(0);
+  }
+
+  private _handleWaitingResponse(message: WaitingResponseMsg): void {
+    this.processor.processMessage(message);
+    // γ Option C (PR2 c4.1+c4.2, A8.2) — `targetPlayer` is optional on the
+    // protocol type (back-compat). Server populates it in both modes
+    // (PR1 c2c). Default slot 0 if absent (= legacy PvP normal behavior
+    // where the message was sent to the opponent socket whose connection
+    // implicitly represented slot 0 of its own perspective).
+    //
+    // γ-c cleanup F-2.4 (audit) — assert presence in SOLO. Same
+    // rationale as `INACTIVITY_WARNING` above.
+    duelAssert(!this.soloMode || message.targetPlayer !== undefined,
+      'WAITING_RESPONSE',
+      'SOLO multiplex requires server to populate `targetPlayer` (got undefined)');
+    this._slots[message.targetPlayer ?? 0].waitingForOpponent.set(true);
+  }
+
+  private _handleSessionToken(message: SessionTokenMsg): void {
+    // Server confirmed the session — connection is genuinely alive.
+    this.clearTimeoutSlot('sessionToken');
+    this._connectionStatus.set('connected');
+    this._retryCount.set(0);
+    // wsToken is consumed once server-side at the first handshake (pendingTokens.delete);
+    // clear our copy so future reconnects rely solely on the rotating reconnectToken.
+    this.wsToken = null;
+    this.reconnectToken = message.token;
+    this._hasToken.set(true);
+    if (this._autoReconnect) {
+      try { localStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
+    }
+  }
+
+  private _handleSessionPhase(message: SessionPhaseMsg): void {
+    // Mount-discriminant from the server (PRE_DUEL | DUELING | ENDED).
+    // Frozen after first set — the UI bases its initial mount on this
+    // value once and does not re-react if the server were to re-emit.
+    if (this._sessionPhase() === null) this._sessionPhase.set(message.phase);
+  }
+
+  private _handleMsgChaining(message: ServerMessage): void {
+    this.processor.processMessage(message);
+  }
+
+  private _handleMsgChainEnd(message: ServerMessage): void {
+    // M22 — Symmetric with server-side activeChainLinks reset.
+    // Reveals tagged with this chain's link indices are no longer
+    // relevant to any future prompt (next chain = different chainIndex
+    // namespace, next prompt outside chain = chainIndex null).
+    this._confirmedCardsByChain.clear();
+    this.processor.processMessage(message);
+  }
+
+  private _handleMsgConfirmCards(message: ConfirmCardsMsg): void {
+    // γ Option C (PR2 c4.1+c4.2) — write the slot of `message.player`.
+    // `_confirmedCardsByChain` stays GLOBAL (keyed by chainIndex which is
+    // already a global namespace per chain).
+    this._slotFor(message.player, 'MSG_CONFIRM_CARDS').lastConfirmedCards = message.cards;
+    // M22 — Tagged reveals accumulate per chain link. Untagged reveals
+    // (CONFIRM outside chain resolution) only land in slot.lastConfirmedCards
+    // (used by SELECT_OPTION lastConfirmedName fallback).
+    if (message.chainIndex !== undefined) {
+      const existing = this._confirmedCardsByChain.get(message.chainIndex) ?? [];
+      this._confirmedCardsByChain.set(message.chainIndex, [...existing, ...message.cards]);
+    }
+    this.processor.processMessage(message);
+  }
+
+  private _handleMsgDraw(message: DrawMsg): void {
+    // β.3 cas #13 — fire `onDrawNewTurn` BEFORE handing the message
+    // off to the processor, so the bridge can enqueue the DRAW
+    // announce directive in front of the MSG_DRAW that triggered it.
+    // Hash composite `${player}:${count}` (cf. _lastTurnPlayer +
+    // _lastTurnCount field doc) — only one announce per new turn.
+    //
+    // Gate on `_boardActive` : boot's 5 initial MSG_DRAW arrive before
+    // the dice arena dismisses (`roomState !== 'active'`). Firing
+    // the announce there would burn its 2s timer behind the arena
+    // overlay, then MAIN1 would overwrite it before the user sees
+    // anything. By skipping the gate at boot, we silently swallow
+    // the initial draw (it's the opening hand, not a meaningful
+    // "new turn" — the engine starts in MAIN1 directly). The first
+    // real DRAW announce happens at the next turn start.
+    if (this._boardActive) {
+      const hash = `${this._lastTurnPlayer}:${this._lastTurnCount}`;
+      if (hash !== this._lastDrawAnnouncedHash) {
+        this._lastDrawAnnouncedHash = hash;
+        this.onDrawNewTurn?.(this._lastTurnPlayer, this._lastTurnCount);
+      }
+    }
+    this.processor.processMessage(message);
   }
 
   /** Walk a server message and request prefetch of every revealed cardCode.
