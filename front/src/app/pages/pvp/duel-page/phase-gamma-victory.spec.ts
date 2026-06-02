@@ -366,14 +366,19 @@ describe('γ — prompt-active guard logs a PIPELINE trace', () => {
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  // Defence in depth — random other modal prompts must keep blocking.
-  it('switchPerspective with SELECT_CHAIN pending is still blocked', () => {
-    const { service, animService, setPrompt } = setupStubHarness();
+  // (2026-06-02) — SELECT_CHAIN added to whitelist. The chain-building wait
+  // state IS the moment a SOLO viewer must be able to switch to answer for
+  // the other side (e.g. activate Ash Blossom on opponent's NS-trigger).
+  // Bug reproduced: NS Lukias → SELECT_CHAIN(P1) with Ash → button disabled.
+  it('switchPerspective with SELECT_CHAIN pending IS allowed (2026-06-02 SOLO chain answer fix)', () => {
+    const { service, animService, duelCtx, setPrompt } = setupStubHarness();
     setPrompt({ type: 'SELECT_CHAIN' });
     service.switchPerspective();
-    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
   });
 
+  // Defence in depth — other prompts NOT in the whitelist still block.
   it('switchPerspective with SELECT_PLACE pending is still blocked', () => {
     const { service, animService, setPrompt } = setupStubHarness();
     setPrompt({ type: 'SELECT_PLACE' });

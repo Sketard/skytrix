@@ -26,6 +26,13 @@ import { SOLO_SWITCH_PLAYER_MS } from './ui-timing-constants';
 const IDLE_PHASE_PROMPT_TYPES: ReadonlySet<string> = new Set([
   'SELECT_IDLECMD',
   'SELECT_BATTLECMD',
+  // SELECT_CHAIN is the stable wait-state during chain building — the engine
+  // walks each player's response window in sequence and the viewer NEEDS to
+  // switch perspective precisely to answer for the other side (e.g. activate
+  // Ash Blossom on opponent's NS-trigger). Allowing the switch here is the
+  // SOLO multiplex raison d'être. Safe because `isBoardStableForSwitch`
+  // (chain phase + isAnimating) still gates the actual transport state.
+  'SELECT_CHAIN',
 ]);
 
 /**

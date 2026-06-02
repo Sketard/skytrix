@@ -431,6 +431,11 @@ export class DuelConnection {
   private _lastTurnPlayer = 0;
   private _lastTurnCount = 0;
   private _lastDrawAnnouncedHash: string | null = null;
+  /** SOLO board re-projection cache (2026-06-02) — last BOARD_STATE payload
+   *  stored in ABSOLUTE (pre-swap) shape so `onPerspectiveSwitched` can
+   *  re-feed it with the new perspective. Null until the first BOARD_STATE
+   *  arrives. PvP normal / replay never read this. */
+  private _lastAbsoluteBoardState: BoardStatePayload | null = null;
 
   // --- Callbacks (set by wrapper services) ---
   onMessage?: (msg: ServerMessage) => void;
@@ -794,6 +799,24 @@ export class DuelConnection {
    */
   onPerspectiveSwitched(): void {
     this._lastDrawAnnouncedHash = null;
+    // SOLO board re-projection (2026-06-02). `_maybeSwapBoardState` only
+    // fires when a fresh BOARD_STATE arrives over the wire ; if the server
+    // is waiting for a response (no new BOARD_STATE coming), the rendered
+    // board stays frozen on the pre-switch orientation. Re-feed the cached
+    // absolute payload through the swap helper with the now-flipped
+    // perspective so the user sees their cards on their side.
+    //
+    // Safe: this method is only called by `SoloDuelOrchestratorService`
+    // after `isBoardStableForSwitch` has been verified (chain phase ∈
+    // {idle, building} AND !isAnimating → no held locks). `syncRendered`
+    // is the strongest sync tier and matches the equivalent replay path
+    // (`adapter.jumpToState(currentState)`).
+    if (this._lastAbsoluteBoardState !== null) {
+      const reprojected = this._maybeSwapBoardState(this._lastAbsoluteBoardState);
+      this.rbs.updateLogical(reprojected);
+      this.rbs.syncRendered();
+      this._lastTurnPlayer = reprojected.turnPlayer;
+    }
   }
 
   setBoardActive(active: boolean): void {
@@ -873,12 +896,22 @@ export class DuelConnection {
     // Don't auto-respond if mustSelect has candidates the player must choose from.
     if (message.type === 'SELECT_SUM' && ((message as SelectSumMsg).mustSelect?.length ?? 0) > 0) return false;
 
+    // SOLO multiplex: the conn carries both identities on a single socket — the
+    // server routes PLAYER_RESPONSE by the `forPlayer` tag. Pass `message.player`
+    // so the auto-respond is attributed to the right slot. Without it, an
+    // auto-respond to a `player=1` prompt arrives untagged and the server treats
+    // it as `player=0`, logs `Unexpected PLAYER_RESPONSE` and stays blocked on
+    // `awaiting=[false, true]` — every downstream prompt (incl. the optional
+    // trigger effect window that should follow the interrupt-summon timing) is
+    // never emitted. PvP normal MUST pass `undefined` (server's A2 validator
+    // rejects a `forPlayer` field present in non-SOLO mode — see `_tagForPlayer`).
+    const forPlayer = this.soloMode ? message.player : undefined;
     if (message.type === 'SELECT_CHAIN' || message.type === 'SELECT_UNSELECT_CARD') {
-      this.sendResponse(message.type, { index: null });
+      this.sendResponse(message.type, { index: null }, forPlayer);
     } else if (message.type === 'SELECT_COUNTER') {
-      this.sendResponse(message.type, { counters: [] });
+      this.sendResponse(message.type, { counters: [] }, forPlayer);
     } else {
-      this.sendResponse(message.type, { indices: [] });
+      this.sendResponse(message.type, { indices: [] }, forPlayer);
     }
     return true;
   }
@@ -1160,6 +1193,14 @@ export class DuelConnection {
     // `data` to every consumer below (syncAfterBoardState, observeBoardState,
     // the turn-coord cache), so the BoundaryProcessor sees the relativized
     // `turnPlayer` and the RBS `updateLogical` sees relativized `players[]`.
+    //
+    // SOLO board re-projection (2026-06-02) — cache the ABSOLUTE (pre-swap)
+    // payload so `onPerspectiveSwitched` can re-feed it with the new
+    // perspective. Without this cache the board stays frozen on the last
+    // received orientation when the server is waiting for a response (no
+    // new BOARD_STATE arrives → `_maybeSwapBoardState` never re-fires →
+    // Lukias stays at its pre-switch position).
+    this._lastAbsoluteBoardState = message.data;
     const data = this._maybeSwapBoardState(message.data);
     this._rematchStarting.set(false);
     this._justReconnected.set(false);
@@ -1604,7 +1645,19 @@ export class DuelConnection {
     duelAssert(!this.soloMode || message.targetPlayer !== undefined,
       'WAITING_RESPONSE',
       'SOLO multiplex requires server to populate `targetPlayer` (got undefined)');
-    this._slots[message.targetPlayer ?? 0].waitingForOpponent.set(true);
+    // Invariant: at any instant, AT MOST one slot is in `waitingForOpponent`.
+    // The server emits `WAITING_RESPONSE{targetPlayer:X}` when it has just sent
+    // a SELECT_* to the OPPOSITE of X — i.e. X is the side that waits, 1-X is
+    // the side that must act. Setting slot[X] without clearing slot[1-X] lets
+    // a stale "waiting" flag from a prior turn persist on both sides, which
+    // (a) glows the SOLO switch button when no action is actually pending,
+    // (b) corrupts `waitingForOpponentOnOtherSlot` reads after a switch.
+    // Bug reproduced 2026-06-02: `slot0.waiting=true slot1.waiting=true`
+    // simultaneously after an auto-respond sequence on a chain interrupt
+    // window.
+    const targetPlayer = (message.targetPlayer ?? 0) as 0 | 1;
+    this._slots[targetPlayer].waitingForOpponent.set(true);
+    this._slots[(1 - targetPlayer) as 0 | 1].waitingForOpponent.set(false);
   }
 
   private _handleSessionToken(message: SessionTokenMsg): void {

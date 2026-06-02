@@ -165,3 +165,91 @@ describe('AnimationOrchestratorService — C3 + C5 projection registry invariant
     expect(projectionFields.length).toBeGreaterThanOrEqual(7);
   });
 });
+
+// =============================================================================
+// (2026-06-02) — `isBoardStableForSwitch` reduced to `!isAnimating`. The
+// `chainPhase` clause was dropped because mid-resolving pauses (e.g. Faimena
+// requires SELECT_CARD on the controller side) leave the runner stopped
+// (isAnimating=false) even though phase==='resolving' — a SOLO viewer must
+// still be able to switch to answer for the other slot. Without this fix the
+// switch is gated, POLL-DROP REGRESSION fires after 10s.
+//
+// The `!isAnimating` floor remains load-bearing : the runner's
+// `finalizeAndCommit` commits every lock BEFORE flipping `_isRunning` off
+// (CLAUDE.md invariant), so any phase + `!isAnimating` implies no held locks.
+// =============================================================================
+describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)', () => {
+  function makeOrchestrator(): AnimationOrchestratorService {
+    TestBed.configureTestingModule({
+      providers: [
+        AnimationOrchestratorService,
+        { provide: DuelLogger, useClass: StubLogger },
+        { provide: ANIMATION_DATA_SOURCE, useClass: StubDataSource },
+        { provide: DuelContext, useClass: StubCtx },
+        { provide: LpAnimationTracker, useClass: StubLpTracker },
+        { provide: ChainResolutionManager, useClass: StubManager },
+        { provide: DrawSequenceManager, useClass: StubManager },
+        { provide: MoveAnimationRouter, useClass: StubManager },
+        { provide: BattleAnimationTracker, useClass: StubManager },
+        { provide: TargetIndicatorManager, useClass: StubManager },
+        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        { provide: CardTravelEngine, useValue: {} },
+        { provide: BoardEffectsService, useValue: {} },
+        { provide: FloatRegistryService, useClass: StubFloatRegistry },
+        { provide: DuelToastService, useValue: { show: () => undefined } },
+        { provide: DuelCardArtService, useValue: { getArtUrl: () => '' } },
+        { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
+      ],
+    });
+    return TestBed.inject(AnimationOrchestratorService);
+  }
+
+  function setAnimating(orch: AnimationOrchestratorService, value: boolean): void {
+    // `IsAnimatingProjection` self-tracks via the `runner-started` / `runner-stopped`
+    // flux events. Booting the runner here is overkill — flip the underlying
+    // `_running` signal directly as the minimal mutation for a guard-condition
+    // spec. Field name pinned by `is-animating.projection.ts`.
+    const projection = (orch as unknown as {
+      isAnimating: { _running: { set: (v: boolean) => void } };
+    }).isAnimating;
+    projection._running.set(value);
+  }
+
+  it('returns true when chainPhase=idle AND !isAnimating (baseline)', () => {
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    ds.chainPhase.set('idle');
+    setAnimating(orch, false);
+    expect(orch.isBoardStableForSwitch).toBeTrue();
+  });
+
+  it('returns true when chainPhase=building AND !isAnimating', () => {
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    ds.chainPhase.set('building');
+    setAnimating(orch, false);
+    expect(orch.isBoardStableForSwitch).toBeTrue();
+  });
+
+  it('returns true when chainPhase=resolving AND !isAnimating (2026-06-02 SOLO mid-resolve fix)', () => {
+    // Faimena scenario: chain resolving, runner paused on SELECT_CARD for the
+    // other slot. The viewer MUST be able to switch to answer.
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    ds.chainPhase.set('resolving');
+    setAnimating(orch, false);
+    expect(orch.isBoardStableForSwitch).toBeTrue();
+  });
+
+  it('returns false whenever isAnimating=true (regardless of phase)', () => {
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    setAnimating(orch, true);
+    for (const phase of ['idle', 'building', 'resolving'] as const) {
+      ds.chainPhase.set(phase);
+      expect(orch.isBoardStableForSwitch)
+        .withContext(`phase=${phase} isAnimating=true → must block`)
+        .toBeFalse();
+    }
+  });
+});

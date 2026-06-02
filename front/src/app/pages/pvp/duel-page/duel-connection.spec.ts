@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { DuelConnection } from './duel-connection';
 import type {
   ServerMessage,
@@ -555,6 +556,83 @@ describe('DuelConnection — sendResponse', () => {
     expect(slotPrompt(0)).toBeNull();
   });
 
+  // (2026-06-02) — auto-respond `forPlayer` tag in SOLO multiplex.
+  //
+  // `tryAutoRespondEmptyCards` fires on SELECT_CHAIN / SELECT_CARD / SELECT_TRIBUTE
+  // / SELECT_SUM / SELECT_UNSELECT_CARD / SELECT_COUNTER when `cards.length===0`.
+  // It calls `sendResponse(type, data)` synthetically. In SOLO multiplex the
+  // single socket carries both player identities — the server routes by the
+  // `forPlayer` tag — so an untagged auto-respond to a `player=1` prompt was
+  // attributed to slot 0, the server logged `Unexpected PLAYER_RESPONSE` and
+  // stayed blocked on `awaiting=[false, true]`. Every downstream prompt (incl.
+  // the SELECT_EFFECTYN that should follow the chain-build window) was never
+  // emitted.
+  //
+  // Bug reproduced 2026-06-02 in the Lukias NS + Ash Blossom scenario.
+  it('auto-respond on empty SELECT_CHAIN(player=1) tags forPlayer=1 in SOLO multiplex', () => {
+    const ws = makeMockWs(true);
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const soloModeSource = signal(true);
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const perspectiveSource = signal<0 | 1>(0);
+    // SOLO multiplex requires `duelCtx` — `_maybeSwapBoardStateAfter` runs
+    // on every handleMessage and asserts the ctx presence when soloMode=true.
+    const duelCtx = { perspective: () => perspectiveSource.asReadonly() };
+    const conn = new DuelConnection('/ws/test', false, 'duel-test-solo-auto', undefined, { soloModeSource, duelCtx });
+    (conn as unknown as { ws: MockWs }).ws = ws;
+
+    // SELECT_CHAIN with empty cards → auto-respond fires.
+    dispatch(conn, {
+      type: 'SELECT_CHAIN', player: 1, cards: [], forced: false, hintTiming: 0,
+    } as unknown as ServerMessage);
+
+    expect(ws.send).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(ws.send.calls.argsFor(0)[0] as string);
+    expect(sent.type).toBe('PLAYER_RESPONSE');
+    expect(sent.promptType).toBe('SELECT_CHAIN');
+    expect(sent.data).toEqual({ index: null });
+    // The SOLO routing contract: server reads `forPlayer` to attribute the
+    // response to the right slot. Without this tag (regression), the response
+    // is dropped as `Unexpected PLAYER_RESPONSE`.
+    expect(sent.forPlayer).toBe(1);
+  });
+
+  it('auto-respond on empty SELECT_CHAIN(player=0) tags forPlayer=0 in SOLO multiplex', () => {
+    const ws = makeMockWs(true);
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const soloModeSource = signal(true);
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const perspectiveSource = signal<0 | 1>(0);
+    const duelCtx = { perspective: () => perspectiveSource.asReadonly() };
+    const conn = new DuelConnection('/ws/test', false, 'duel-test-solo-auto-p0', undefined, { soloModeSource, duelCtx });
+    (conn as unknown as { ws: MockWs }).ws = ws;
+
+    dispatch(conn, {
+      type: 'SELECT_CHAIN', player: 0, cards: [], forced: false, hintTiming: 0,
+    } as unknown as ServerMessage);
+
+    expect(ws.send).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(ws.send.calls.argsFor(0)[0] as string);
+    expect(sent.forPlayer).toBe(0);
+  });
+
+  it('auto-respond on empty SELECT_CHAIN does NOT add forPlayer in PvP normal', () => {
+    // PvP normal: the server's A2 validator rejects a `forPlayer` field
+    // present in non-SOLO mode. The auto-respond must omit it.
+    const ws = makeMockWs(true);
+    const { conn } = makeConn({ ws });
+
+    dispatch(conn, {
+      type: 'SELECT_CHAIN', player: 1, cards: [], forced: false, hintTiming: 0,
+    } as unknown as ServerMessage);
+
+    expect(ws.send).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(ws.send.calls.argsFor(0)[0] as string);
+    expect(sent.type).toBe('PLAYER_RESPONSE');
+    expect(sent.promptType).toBe('SELECT_CHAIN');
+    expect(sent.forPlayer).toBeUndefined();
+  });
+
   it('forPlayer wins over the prompt-player heuristic (SOLO path, F-bugB3 scope)', () => {
     // In SOLO multiplex `wsService.sendForPlayer()` returns the active
     // perspective and is passed explicitly. The heuristic that fixes PvP
@@ -1041,5 +1119,166 @@ describe('DuelConnection — U20 routing table hardening', () => {
     } as unknown as ServerMessage;
     dispatch(conn, msg);
     expect(spy).toHaveBeenCalledWith(msg);
+  });
+});
+
+// =============================================================================
+// (2026-06-02) — SOLO board re-projection on perspective switch.
+// -----------------------------------------------------------------------------
+// `_maybeSwapBoardState` fires when a fresh BOARD_STATE arrives. If the server
+// is waiting for a response (no new BOARD_STATE coming), the rendered board
+// stays frozen on the pre-switch orientation. `onPerspectiveSwitched` now
+// re-feeds the cached absolute payload through the swap helper with the
+// now-flipped perspective. PvP normal / replay never reach this branch
+// (`_lastAbsoluteBoardState===null` until a BOARD_STATE arrives ; their conn
+// has `soloMode===false` so `_shouldSwapForSolo` returns false anyway).
+//
+// Bug reproduced 2026-06-02: NS Lukias + chain on opponent → switch P2 → board
+// stays in P1 orientation because the engine is waiting on SELECT_CARD.
+// =============================================================================
+describe('DuelConnection — onPerspectiveSwitched re-projects board (2026-06-02)', () => {
+  function makeSoloConn(initialPerspective: 0 | 1 = 0): {
+    conn: DuelConnection;
+    perspectiveSource: ReturnType<typeof signal<0 | 1>>;
+  } {
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const perspectiveSource = signal<0 | 1>(initialPerspective);
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const soloModeSource = signal(true);
+    const duelCtx = { perspective: () => perspectiveSource.asReadonly() };
+    const conn = new DuelConnection(
+      '/ws/test', false, `duel-test-reproject-${Math.random().toString(36).slice(2, 8)}`,
+      undefined, { duelCtx, soloModeSource },
+    );
+    return { conn, perspectiveSource };
+  }
+
+  // Minimal BOARD_STATE payload — empty zones + a turnPlayer we can flip.
+  function boardWithTurnPlayer(turnPlayer: 0 | 1): unknown {
+    return {
+      type: 'BOARD_STATE',
+      data: {
+        players: [
+          { lp: 8000, deckCount: 40, extraCount: 0, hand: [], zones: [] },
+          { lp: 8000, deckCount: 40, extraCount: 0, hand: [], zones: [] },
+        ],
+        turnPlayer, turnCount: 1, phase: 1,
+      },
+    };
+  }
+
+  it('caches the absolute BOARD_STATE and re-applies it with the new perspective', () => {
+    const { conn, perspectiveSource } = makeSoloConn(0);
+    // Server emits an absolute board with turnPlayer=0 (P0's turn).
+    // Perspective=0 → no swap → logicalState.turnPlayer stays 0.
+    dispatch(conn, boardWithTurnPlayer(0) as ServerMessage);
+    // Pre-switch board orientation.
+    expect(conn.boardStateView.logicalState().turnPlayer).toBe(0);
+
+    // SOLO viewer switches to perspective 1 — DuelContext flips first,
+    // then `onPerspectiveSwitched` is called by the orchestrator.
+    perspectiveSource.set(1);
+    conn.onPerspectiveSwitched();
+
+    // Re-projection: the cached absolute (turnPlayer=0) is re-swapped through
+    // `_maybeSwapBoardState` with the now-perspective=1 → turnPlayer flips to 1.
+    expect(conn.boardStateView.logicalState().turnPlayer).toBe(1);
+  });
+
+  it('is a no-op when no BOARD_STATE has arrived yet', () => {
+    const { conn, perspectiveSource } = makeSoloConn(0);
+    // No BOARD_STATE dispatched. `_lastAbsoluteBoardState` is null.
+    perspectiveSource.set(1);
+    // Must not throw, must not mutate the RBS into a phantom state.
+    expect(() => conn.onPerspectiveSwitched()).not.toThrow();
+  });
+
+  it('still clears the draw-announce dedup hash (pre-existing F-2.2 contract)', () => {
+    // Regression safety — the new re-projection logic added to onPerspectiveSwitched
+    // must not break the original responsibility of clearing the draw dedup hash.
+    const { conn, perspectiveSource } = makeSoloConn(0);
+    const internals = conn as unknown as { _lastDrawAnnouncedHash: string | null };
+    internals._lastDrawAnnouncedHash = 'p0:1';
+    perspectiveSource.set(1);
+    conn.onPerspectiveSwitched();
+    expect(internals._lastDrawAnnouncedHash).toBeNull();
+  });
+});
+
+// =============================================================================
+// (2026-06-02) — WAITING_RESPONSE invariant: at most ONE slot is waiting.
+// -----------------------------------------------------------------------------
+// The server emits `WAITING_RESPONSE{targetPlayer:X}` when it has just sent a
+// SELECT_* prompt to slot (1-X) — i.e. X waits, 1-X must act. Setting slot[X]
+// without clearing slot[1-X] lets a stale flag from a prior turn persist on
+// both sides simultaneously. Symptoms (observed 2026-06-02):
+//   (a) `slot0.waiting=true slot1.waiting=true` simultaneously after an
+//       auto-respond + WAITING_RESPONSE sequence on a chain interrupt window.
+//   (b) SOLO `waitingForOpponentOnOtherSlot` glows incorrectly after switch.
+//   (c) "Opponent thinking" overlay flickers on the wrong side.
+// =============================================================================
+describe('DuelConnection — WAITING_RESPONSE invariant (2026-06-02)', () => {
+  it('clears the opposite slot when setting waitingForOpponent on targetPlayer', () => {
+    const { conn } = makeConn();
+    const slotWaiting = (slot: 0 | 1) => (conn as unknown as {
+      getWaitingForOpponentFor(p: 0 | 1): () => boolean;
+    }).getWaitingForOpponentFor(slot)();
+
+    // Seed: both slots stale-positive (the exact polluted state observed
+    // in the 2026-06-02 bug log).
+    const internals = conn as unknown as {
+      _slots: Array<{ waitingForOpponent: { set: (v: boolean) => void } }>;
+    };
+    internals._slots[0].waitingForOpponent.set(true);
+    internals._slots[1].waitingForOpponent.set(true);
+
+    // WAITING_RESPONSE{targetPlayer:0} arrives — P0 waits, P1 acts.
+    dispatch(conn, {
+      type: 'WAITING_RESPONSE', targetPlayer: 0,
+    } as unknown as ServerMessage);
+
+    expect(slotWaiting(0)).toBeTrue();
+    expect(slotWaiting(1)).toBeFalse();
+  });
+
+  it('clears slot0 when targetPlayer=1', () => {
+    const { conn } = makeConn();
+    const slotWaiting = (slot: 0 | 1) => (conn as unknown as {
+      getWaitingForOpponentFor(p: 0 | 1): () => boolean;
+    }).getWaitingForOpponentFor(slot)();
+
+    const internals = conn as unknown as {
+      _slots: Array<{ waitingForOpponent: { set: (v: boolean) => void } }>;
+    };
+    internals._slots[0].waitingForOpponent.set(true);
+    internals._slots[1].waitingForOpponent.set(true);
+
+    dispatch(conn, {
+      type: 'WAITING_RESPONSE', targetPlayer: 1,
+    } as unknown as ServerMessage);
+
+    expect(slotWaiting(0)).toBeFalse();
+    expect(slotWaiting(1)).toBeTrue();
+  });
+
+  it('default targetPlayer=0 (legacy PvP normal) still clears slot 1', () => {
+    // Pre-PR2 PvP normal protocol omitted `targetPlayer`. The handler defaults
+    // to 0 in that case. The invariant must still hold: slot 1 → cleared.
+    const { conn } = makeConn();
+    const slotWaiting = (slot: 0 | 1) => (conn as unknown as {
+      getWaitingForOpponentFor(p: 0 | 1): () => boolean;
+    }).getWaitingForOpponentFor(slot)();
+
+    const internals = conn as unknown as {
+      _slots: Array<{ waitingForOpponent: { set: (v: boolean) => void } }>;
+    };
+    internals._slots[1].waitingForOpponent.set(true);
+
+    dispatch(conn, {
+      type: 'WAITING_RESPONSE',
+    } as unknown as ServerMessage);
+
+    expect(slotWaiting(0)).toBeTrue();
+    expect(slotWaiting(1)).toBeFalse();
   });
 });

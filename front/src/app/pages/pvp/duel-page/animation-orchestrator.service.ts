@@ -159,9 +159,28 @@ export class AnimationOrchestratorService {
    * `rbs.hasLockedZones`: the runner's `finalizeAndCommit()` commits every lock
    * BEFORE `setRunning(false)` flips `isAnimating` off (CLAUDE.md invariant),
    * so `!isAnimating` already implies "no held locks".
+   *
+   * (2026-06-02) `chainPhase === 'building'` is the wait-state between
+   * MSG_CHAINING and the next chain-link's SELECT_CHAIN response window — the
+   * engine is precisely waiting for the OTHER player to decide whether to
+   * chain in (e.g. Ash Blossom on the opponent's NS-trigger). The SOLO viewer
+   * MUST be allowed to switch here to answer for the other side.
+   *
+   * (2026-06-02b) `chainPhase === 'resolving'` is ALSO a valid switch window
+   * when the engine pauses mid-resolution for a `SELECT_CARD` / `SELECT_EFFECTYN`
+   * targeted at the OTHER slot (e.g. Faimena requires its controller to pick
+   * a target to add from deck — engine emits SELECT_CARD player=0 while the
+   * SOLO viewer is on perspective 1). Without allowing the switch, the user is
+   * deadlocked: prompt is on slot 0, viewer reads slot 1, button disabled,
+   * POLL-DROP REGRESSION fires after 10s. The `!isAnimating` floor is what
+   * actually keeps the swap safe: the runner's `finalizeAndCommit` commits
+   * every lock BEFORE flipping `_isRunning` off, so any phase + `!isAnimating`
+   * implies no held locks, regardless of `chainPhase`. The chain manager's
+   * buffered events + activeLinks survive `applyReset({PERSPECTIVE_LIFETIME})`
+   * (CONNECTION_LIFETIME scope).
    */
   get isBoardStableForSwitch(): boolean {
-    return this.dataSource.chainPhase() === 'idle' && !this.isAnimating.value();
+    return !this.isAnimating.value();
   }
 
   /** Current speed multiplier (0.5 when speed toggle is Off, 1 otherwise). */
