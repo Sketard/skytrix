@@ -41,6 +41,11 @@ import {
   type OcgContext,
   type LookupContext,
 } from './ocg-message-transforms.js';
+import {
+  runForkReconstruction as runForkReconstructionExtracted,
+  type ForkContext,
+  type PhaseToCodeMap,
+} from './duel-worker-fork.js';
 import type {
   ServerMessage,
   BoardStateMsg,
@@ -1043,9 +1048,41 @@ async function initReplay(msg: InitReplayMessage): Promise<void> {
 // =============================================================================
 // Fork Reconstruction
 // =============================================================================
+//
+// U4 (audit-4-modes-2026-06-01) — `runForkReconstruction` + `performSanityCheck`
+// moved to `duel-worker-fork.ts`. `initFork` stays here (touches the OCGCore
+// init pipeline) ; the 2 fork-state slots also stay here (read by FORK_RESUME
+// + cleanup port handlers). The extracted module receives setters + getters
+// via `forkContext` below.
 
 let forkMode = false;
 let forkPendingSelect: OcgMessage | null = null;
+
+/** Phase → OCGCore code lookup — only `performSanityCheck` reads it. Built
+ *  once from the worker's `PHASE_MAP` so the inverse stays in sync. */
+const PHASE_MAP_REVERSE: PhaseToCodeMap = Object.fromEntries(
+  Object.entries(PHASE_MAP).map(([k, v]) => [v, Number(k)]),
+) as PhaseToCodeMap;
+
+/** Bound context for the extracted fork module. Closures (`() => state`)
+ *  because the worker re-assigns `core / duel / dlog / emit` and the
+ *  state slots each `init*` call. Setters wire the 2 fork-state slots
+ *  back into the worker. */
+const forkContext: ForkContext = {
+  core: () => core,
+  duel: () => duel,
+  lp: () => lp,
+  turnCount: () => turnCount,
+  phase: () => phase,
+  phaseMap: PHASE_MAP_REVERSE,
+  dlog: () => dlog,
+  emit: () => emit,
+  updateState,
+  cleanup,
+  transformMessage,
+  setForkMode: (v) => { forkMode = v; },
+  setForkPendingSelect: (v) => { forkPendingSelect = v; },
+};
 
 async function initFork(msg: InitForkMessage): Promise<void> {
   duelId = msg.duelId;
@@ -1076,111 +1113,9 @@ async function initFork(msg: InitForkMessage): Promise<void> {
 
   resetDuelState();
   core.startDuel(duel);
-  runForkReconstruction(msg);
+  runForkReconstructionExtracted(msg, forkContext);
 }
 
-function runForkReconstruction(msg: InitForkMessage): void {
-  if (!core || !duel) return;
-
-  let responseIndex = 0;
-  const MAX_ITERATIONS = 100_000;
-  let iterations = 0;
-
-  dlog.log('Fork starting reconstruction', { targetResponses: msg.targetResponseCount });
-
-  while (true) {
-    if (++iterations > MAX_ITERATIONS) {
-      dlog.error('Fork max iterations reached — aborting', { maxIterations: MAX_ITERATIONS });
-      emit.forkError('REPLAY_MAX_ITERATIONS', 'Fork reconstruction exceeded maximum iterations');
-      cleanup();
-      return;
-    }
-
-    let status: number;
-    try {
-      status = core.duelProcess(duel);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      dlog.error('Fork duelProcess threw', { error: message });
-      emit.forkError('REPLAY_COMPUTATION_ERROR', `Fork reconstruction error: ${message}`);
-      cleanup();
-      return;
-    }
-
-    const messages = core.duelGetMessage(duel);
-
-    for (const rawMsg of messages) {
-      if (rawMsg.type === OcgMessageType.RETRY) {
-        dlog.error('Fork MSG_RETRY — divergence', { responseIndex });
-        emit.forkError('REPLAY_DIVERGED_RETRY', 'Fork diverged: MSG_RETRY encountered');
-        cleanup();
-        return;
-      }
-
-      updateState(rawMsg);
-
-      if (SELECT_MESSAGE_TYPES.has(rawMsg.type)) {
-        if (responseIndex >= msg.targetResponseCount) {
-          // Reached fork point — WASM is waiting for player input
-          dlog.log('Fork reached fork point', { responseIndex });
-          forkPendingSelect = rawMsg;
-          performSanityCheck(msg.expectedState);
-          return;
-        }
-
-        if (responseIndex >= msg.playerResponses.length) {
-          dlog.error('Fork ran out of responses', { responseIndex });
-          emit.forkError('REPLAY_DIVERGED_NO_RESPONSES', 'Fork diverged: ran out of recorded responses');
-          cleanup();
-          return;
-        }
-
-        core.duelSetResponse(duel, msg.playerResponses[responseIndex].data as never);
-        responseIndex++;
-      }
-    }
-
-    if (status === OcgProcessResult.END) {
-      dlog.error('Fork duel ended before reaching fork point', { responseIndex, target: msg.targetResponseCount });
-      emit.forkError('REPLAY_DIVERGED_NO_RESULT', 'Fork failed: duel ended before reaching target response count');
-      cleanup();
-      return;
-    }
-  }
-}
-
-function performSanityCheck(expectedState: InitForkMessage['expectedState']): void {
-  const actualLp: [number, number] = [lp[0], lp[1]];
-  const actualTurn = turnCount;
-  const actualPhase = PHASE_MAP_REVERSE[phase];
-  if (actualPhase === undefined) {
-    dlog.warn('Fork unknown phase during sanity check — defaulting to 0', { phase });
-  }
-
-  const mismatches: string[] = [];
-  if (expectedState.lp[0] !== actualLp[0] || expectedState.lp[1] !== actualLp[1]) {
-    mismatches.push(`LP mismatch: expected [${expectedState.lp}] got [${actualLp}]`);
-  }
-  if (expectedState.turnNumber !== actualTurn) {
-    mismatches.push(`Turn mismatch: expected ${expectedState.turnNumber} got ${actualTurn}`);
-  }
-  if (expectedState.phase !== actualPhase) {
-    mismatches.push(`Phase mismatch: expected ${expectedState.phase} got ${actualPhase}`);
-  }
-
-  const match = mismatches.length === 0;
-  const details = match ? undefined : mismatches.join('; ');
-
-  dlog.log('Fork sanity check', { result: match ? 'PASS' : 'MISMATCH', details: details ?? undefined });
-
-  forkMode = true;
-  emit.forkReady({ match, details });
-  // Worker stays alive — waiting for PLAYER_RESPONSE messages in solo mode
-}
-
-const PHASE_MAP_REVERSE: Record<Phase, number> = Object.fromEntries(
-  Object.entries(PHASE_MAP).map(([k, v]) => [v, Number(k)]),
-) as Record<Phase, number>;
 
 // =============================================================================
 // Message Handler
