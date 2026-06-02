@@ -47,12 +47,12 @@ import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, type ChainStateContainer } from './chain-state-tracker.js';
-import { createSessionGameLog, entriesForPlayer } from './session-game-log.js';
+import { createSessionGameLog } from './session-game-log.js';
 import { createInitialSessionState, resetSessionForRematch } from './session-factory.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { checkProtocolVersionPure } from './protocol-version-check.js';
-import { json, readBody, safeSend, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
+import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes, isHttpRoutesConfigured } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
 import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState, isReplayHandlersConfigured } from './replay-handlers.js';
@@ -111,7 +111,8 @@ import {
   handleClientMessage,
 } from './client-message-router.js';
 import { validateClientMessageForPlayer } from './client-message-validator.js';
-import { isReadyToStart, isFullyDisconnected, decideSoloRouting, buildDuelStartingMessage } from './lifecycle-helpers.js';
+import { isReadyToStart, isFullyDisconnected, buildDuelStartingMessage } from './lifecycle-helpers.js';
+import { sendToPlayer } from './ws-write.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -651,32 +652,8 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
 // handleWorkerMessage + broadcastMessage + isSelectMessage + SELECT_TYPES
 // moved to worker-message-router.ts at H1-suite phase 2.3.
 // configureWorkerMessageRouter wires sendToPlayer + maxInvalidResponses
-// at boot. Server.ts keeps sendToPlayer as the WS-write helper (37
-// inline call sites depend on it).
-function sendToPlayer(session: ActiveDuelSession, playerIndex: 0 | 1, message: ServerMessage): void {
-  // Attach the per-perspective game-log snapshot to every outgoing STATE_SYNC.
-  // Three construction sites funnel through here so the attach is uniform:
-  //   1. `broadcastMessage` forward (reconnect resync path).
-  //   2. `sendStateSnapshot` on connect/sync (initial post-reconnect snapshot).
-  //   3. Cancel-rollback re-broadcast (`worker-message-router` WORKER_CANCEL_DONE).
-  // Path 3 is technically out of the F5 scope but reuses the same plumbing —
-  // the client's `onStateSync` clears + restores the journal on every
-  // STATE_SYNC, so a right-click-cancel correctly preserves the journal too.
-  // Guards: skip when `gameLogEntries` is already populated (no current caller
-  // sets it upstream — defence-in-depth) or when the session has no log
-  // (test fixtures with the field omitted).
-  if (message.type === 'STATE_SYNC' && !message.gameLogEntries && session.gameLog) {
-    message = { ...message, gameLogEntries: entriesForPlayer(session.gameLog, playerIndex) };
-  }
-
-  // γ Option C A1 + A28 — SOLO multiplex routes via the pure decision in
-  // lifecycle-helpers so it stays unit-testable without booting the server.
-  const decision = decideSoloRouting(session.soloMode, playerIndex, message.type);
-  if (decision === 'noop') return;
-  const targetWs = decision === 'route-to-0' ? session.players[0].ws : session.players[playerIndex].ws;
-  safeSend(targetWs, message);
-}
-
+// at boot. sendToPlayer itself lives in ws-write.ts (U32 #1,
+// audit-4-modes-2026-06-01) — pure export, no configurable.
 
 // Response data validation (bounds checking before FFI) — extracted to
 // validation/response-validation.ts so it can be unit-tested in isolation
