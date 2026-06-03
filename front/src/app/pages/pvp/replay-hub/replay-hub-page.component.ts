@@ -95,6 +95,7 @@ export class ReplayHubPageComponent implements OnInit {
   readonly sortModes: ReplaySortMode[] = ['newest', 'oldest', 'mostTurns'];
   readonly filterModes: { id: ReplayFilter; icon?: string }[] = [
     { id: 'all' },
+    { id: 'favorites',  icon: 'star' },
     { id: 'wins',       icon: 'emoji_events' },
     { id: 'losses',     icon: 'close' },
     { id: 'solo',       icon: 'person' },
@@ -106,7 +107,10 @@ export class ReplayHubPageComponent implements OnInit {
   readonly showEmptyState = computed(() =>
     !this.store.loading()
     && !this.store.error()
-    && this.store.replays().length === 0,
+    && this.store.replays().length === 0
+    // Favorites is a server-filtered view — empty there means "no favorites"
+    // (handled by `showFavoritesEmptyState`), not "no replays at all".
+    && this.store.activeFilter() !== 'favorites',
   );
 
   readonly showNoResultsState = computed(() =>
@@ -114,6 +118,17 @@ export class ReplayHubPageComponent implements OnInit {
     && !this.store.error()
     && this.store.replays().length > 0
     && this.store.filteredReplays().length === 0,
+  );
+
+  /** Specific empty-state when the user activates the Favorites filter but
+   *  has never starred a replay. Distinct UX from the generic "no results"
+   *  (no clear-filter CTA — the user explicitly asked for favorites; the
+   *  right action is to teach how to add one, not to abandon the intent). */
+  readonly showFavoritesEmptyState = computed(() =>
+    !this.store.loading()
+    && !this.store.error()
+    && this.store.activeFilter() === 'favorites'
+    && this.store.replays().length === 0,
   );
 
   readonly winratePercent = computed(() => {
@@ -278,6 +293,15 @@ export class ReplayHubPageComponent implements OnInit {
     } finally {
       this.deletingId.set(null);
     }
+  }
+
+  /** Toggle favorite — optimistic write managed by the store. We swallow
+   *  the click event so the parent `<a [routerLink]>` doesn't navigate to
+   *  the replay viewer (same pattern as `deleteReplay`). */
+  toggleFavorite(replay: ReplayDTO, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+    void this.store.toggleFavorite(replay.id);
   }
 
   // ── Virtual scroll pagination ──────────────────────────────────────────────

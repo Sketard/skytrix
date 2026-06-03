@@ -24,6 +24,42 @@ public interface ReplayRepository extends CrudRepository<Replay, UUID>, PagingAn
     @EntityGraph(attributePaths = {"player1", "player2"})
     Page<Replay> findByPlayer1IdOrPlayer2Id(Long player1Id, Long player2Id, Pageable pageable);
 
+    /**
+     * Paginated list of replays the user has favorited. Ordering follows the
+     * `Pageable.sort` argument; callers typically sort by replay `createdAt`
+     * DESC to mirror the main history view. The match also requires the user
+     * to be one of the two players (or admin via a separate code path) to
+     * prevent a leaked favorite row from exposing a replay the user lost
+     * access to.
+     */
+    @EntityGraph(attributePaths = {"player1", "player2"})
+    @Query("""
+            SELECT r FROM Replay r
+            JOIN User u ON u.id = :userId
+            WHERE r MEMBER OF u.favoriteReplays
+              AND (r.player1.id = :userId OR r.player2.id = :userId)
+            """)
+    Page<Replay> findFavoritedByUser(@Param("userId") Long userId, Pageable pageable);
+
+    /**
+     * Returns the IDs of replays favorited by the user among the provided set.
+     * Cheaper than fetching the full join — used by the list mapper to enrich
+     * `isFavorite` on every DTO of a page in a single query.
+     */
+    @Query("""
+            SELECT r.id FROM User u JOIN u.favoriteReplays r
+            WHERE u.id = :userId AND r.id IN :replayIds
+            """)
+    java.util.Set<UUID> findFavoritedIdsByUserIn(
+            @Param("userId") Long userId,
+            @Param("replayIds") java.util.Collection<UUID> replayIds);
+
+    @Query("""
+            SELECT COUNT(r) > 0 FROM User u JOIN u.favoriteReplays r
+            WHERE u.id = :userId AND r.id = :replayId
+            """)
+    boolean isFavoritedByUser(@Param("userId") Long userId, @Param("replayId") UUID replayId);
+
     @Modifying(clearAutomatically = true)
     @Query(value = "DELETE FROM replay WHERE id IN (SELECT id FROM replay WHERE created_at < :threshold LIMIT :batchSize)", nativeQuery = true)
     int deleteExpiredBatch(@Param("threshold") Instant threshold, @Param("batchSize") int batchSize);

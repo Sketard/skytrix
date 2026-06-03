@@ -17,4 +17,5 @@ export interface ReplayDTO {
   player2Id: number;
   metadata: ReplayMetadata;
   createdAt: string;
+  isFavorite?: boolean;
 }

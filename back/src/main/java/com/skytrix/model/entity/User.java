@@ -51,4 +51,11 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "card_id")
     )
     private List<Card> favoriteCards;
+
+    @ManyToMany
+    @JoinTable(
+            name = "favorite_replays",
+            joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "replay_id")
+    )
+    private List<Replay> favoriteReplays;
 }

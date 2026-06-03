@@ -187,4 +187,64 @@ describe('ReplayHubPageComponent', () => {
     expect(component.isSolo(makeReplay('pvp', { player1Id: ME_ID, player2Id: 99 }))).toBe(false);
     expect(component.isSolo(makeReplay('solo', { player1Id: ME_ID, player2Id: ME_ID }))).toBe(true);
   });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Favorites — empty-state branching
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe('favorites empty state', () => {
+    it('showFavoritesEmptyState is true on favorites filter with no replays', () => {
+      initialFetchFlush([], { total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0 });
+      component['store'].setActiveFilter('favorites');
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({ elements: [], size: 0 });
+      fixture.detectChanges();
+
+      expect(component.showFavoritesEmptyState()).toBe(true);
+      // Generic "no replays yet" is suppressed so the user doesn't see the
+      // wrong onboarding message when they have replays but no favorites.
+      expect(component.showEmptyState()).toBe(false);
+    });
+
+    it('showEmptyState is true on default filter with no replays', () => {
+      initialFetchFlush([], { total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0 });
+      expect(component.showEmptyState()).toBe(true);
+      expect(component.showFavoritesEmptyState()).toBe(false);
+    });
+
+    it('showFavoritesEmptyState is false on favorites filter once a favorite lands', () => {
+      initialFetchFlush([], { total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0 });
+      component['store'].setActiveFilter('favorites');
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({ elements: [makeReplay('fav1', { isFavorite: true })], size: 1 });
+      fixture.detectChanges();
+
+      expect(component.showFavoritesEmptyState()).toBe(false);
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // toggleFavorite handler
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe('toggleFavorite handler', () => {
+    it('swallows the click event so the parent routerLink does not navigate', () => {
+      const r = makeReplay('a');
+      initialFetchFlush([r], { total: 1, victories: 1, defeats: 0, draws: 0, winrate: 1 });
+
+      const event = new Event('click');
+      const stopSpy = spyOn(event, 'stopPropagation');
+      const preventSpy = spyOn(event, 'preventDefault');
+
+      component.toggleFavorite(r, event);
+
+      expect(stopSpy).toHaveBeenCalled();
+      expect(preventSpy).toHaveBeenCalled();
+      // Optimistic flip is observable immediately — confirms the store was called.
+      expect(component['store'].replays().find(rp => rp.id === 'a')?.isFavorite).toBe(true);
+
+      // Drain the in-flight POST so afterEach http.verify() is clean.
+      http.expectOne({ url: '/api/replays/a/favorite', method: 'POST' }).flush(null);
+    });
+  });
 });

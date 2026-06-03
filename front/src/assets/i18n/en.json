@@ -891,6 +891,7 @@
       },
       "filter": {
         "all": "All",
+        "favorites": "Favorites",
         "wins": "Wins",
         "losses": "Losses",
         "solo": "Solo",
@@ -909,6 +910,10 @@
         "title": "No replays yet",
         "desc": "Play a duel online or in sandbox — your matches will be saved here to replay, fork, and improve."
       },
+      "favoritesEmpty": {
+        "title": "No favorites yet",
+        "desc": "Click the star on a replay to add it to your favorites and find it here."
+      },
       "noResults": {
         "title": "No results",
         "desc": "Adjust filters or search to see more replays.",
@@ -926,6 +931,8 @@
         "delete": "Delete",
         "deleteTitle": "Delete replay",
         "deleteConfirm": "Delete this replay permanently?",
+        "favoriteAdd": "Add to favorites",
+        "favoriteRemove": "Remove from favorites",
         "turns": "{{n}} turns",
         "solo": "Solo",
         "soloHint": "Solo game — not counted in statistics",

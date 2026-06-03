@@ -263,4 +263,184 @@ describe('ReplayHubStore', () => {
     });
   });
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Favorites filter — endpoint routing
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe('favorites filter — endpoint routing', () => {
+    function seedFromAll(replays: ReplayDTO[]): void {
+      store.start();
+      http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+        .flush({ elements: replays, size: replays.length });
+      http.expectOne('/api/replays/stats').flush({
+        total: replays.length, victories: 0, defeats: 0, draws: 0, winrate: 0,
+      });
+    }
+
+    it('crossing into favorites re-fetches against /replays/favorites', () => {
+      seedFromAll([makeReplay({ id: 'a' })]);
+      store.setActiveFilter('favorites');
+      // New page-0 fetch routed to the favorites endpoint.
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({ elements: [makeReplay({ id: 'fav1', isFavorite: true })], size: 1 });
+      expect(store.replays().map(r => r.id)).toEqual(['fav1']);
+    });
+
+    it('crossing out of favorites re-fetches against /replays', () => {
+      seedFromAll([makeReplay({ id: 'a' })]);
+      store.setActiveFilter('favorites');
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({ elements: [makeReplay({ id: 'fav1', isFavorite: true })], size: 1 });
+      // Back to "all" — must re-fetch on the main endpoint, not stay on /favorites.
+      store.setActiveFilter('all');
+      http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+        .flush({ elements: [makeReplay({ id: 'a' }), makeReplay({ id: 'b' })], size: 2 });
+      expect(store.replays().map(r => r.id).sort()).toEqual(['a', 'b']);
+    });
+
+    it('switching between non-favorites filters does NOT re-fetch', () => {
+      seedFromAll([
+        makeReplay({ id: 'a', metadataOverrides: { result: DuelResult.VICTORY } }),
+        makeReplay({ id: 'b', metadataOverrides: { result: DuelResult.DEFEAT } }),
+      ]);
+      store.setActiveFilter('wins');
+      store.setActiveFilter('losses');
+      // No re-fetch on either transition — `afterEach` http.verify() will
+      // throw if a stray request landed.
+      expect(store.filteredReplays().map(r => r.id)).toEqual(['b']);
+    });
+
+    it('loadNextPage routes to /favorites when active filter is favorites', () => {
+      seedFromAll([makeReplay({ id: 'a' })]);
+      store.setActiveFilter('favorites');
+      // First page on /favorites — flush enough rows so hasMore() is true.
+      const initialFavs = Array.from({ length: 20 }, (_, i) =>
+        makeReplay({ id: `fav${i}`, isFavorite: true }));
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({ elements: initialFavs, size: 25 });
+
+      store.loadNextPage();
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({ elements: [makeReplay({ id: 'fav20', isFavorite: true })], size: 25 });
+      expect(store.replays().length).toBe(21);
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // toggleFavorite — optimistic + rollback
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe('toggleFavorite', () => {
+    function seedFromAll(replays: ReplayDTO[]): void {
+      store.start();
+      http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+        .flush({ elements: replays, size: replays.length });
+      http.expectOne('/api/replays/stats').flush({
+        total: replays.length, victories: 0, defeats: 0, draws: 0, winrate: 0,
+      });
+    }
+
+    it('flips isFavorite=true optimistically and POSTs /favorite', async () => {
+      seedFromAll([makeReplay({ id: 'a', isFavorite: false })]);
+
+      const promise = store.toggleFavorite('a');
+      // Optimistic flip BEFORE the HTTP roundtrip.
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(true);
+
+      const req = http.expectOne({ url: '/api/replays/a/favorite', method: 'POST' });
+      req.flush(null);
+      await promise;
+      // Still favorited post-success.
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(true);
+      expect(store.favoritingId()).toBeNull();
+    });
+
+    it('flips isFavorite=false optimistically and DELETEs /favorite', async () => {
+      seedFromAll([makeReplay({ id: 'a', isFavorite: true })]);
+
+      const promise = store.toggleFavorite('a');
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(false);
+
+      const req = http.expectOne({ url: '/api/replays/a/favorite', method: 'DELETE' });
+      req.flush(null);
+      await promise;
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(false);
+    });
+
+    it('rolls back on backend error and surfaces the error', async () => {
+      seedFromAll([makeReplay({ id: 'a', isFavorite: false })]);
+
+      const promise = store.toggleFavorite('a');
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(true);
+
+      http.expectOne({ url: '/api/replays/a/favorite', method: 'POST' })
+        .error(new ProgressEvent('error'), { status: 500, statusText: 'Server Error' });
+      await promise;
+
+      // Reverted to the pre-toggle state.
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(false);
+      expect(notify.error).toHaveBeenCalled();
+      expect(store.favoritingId()).toBeNull();
+    });
+
+    it('on favorites filter, un-favoriting removes the row from the visible list', async () => {
+      // Seed from the favorites endpoint directly — simulates the user
+      // landing on the Favorites tab and toggling one of their favorites off.
+      store.start();
+      http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+        .flush({ elements: [], size: 0 });
+      http.expectOne('/api/replays/stats').flush({ total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0 });
+      store.setActiveFilter('favorites');
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({
+          elements: [
+            makeReplay({ id: 'a', isFavorite: true }),
+            makeReplay({ id: 'b', isFavorite: true }),
+          ],
+          size: 2,
+        });
+      expect(store.replays().length).toBe(2);
+
+      const promise = store.toggleFavorite('a');
+      // Optimistically drop from the visible list (server-side it'd disappear
+      // from the next /favorites page anyway — keeping it on-screen would lie).
+      expect(store.replays().map(r => r.id)).toEqual(['b']);
+
+      http.expectOne({ url: '/api/replays/a/favorite', method: 'DELETE' }).flush(null);
+      await promise;
+      expect(store.replays().map(r => r.id)).toEqual(['b']);
+    });
+
+    it('on favorites filter, un-favorite rollback restores the row', async () => {
+      store.start();
+      http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+        .flush({ elements: [], size: 0 });
+      http.expectOne('/api/replays/stats').flush({ total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0 });
+      store.setActiveFilter('favorites');
+      http.expectOne(req => req.url === '/api/replays/favorites' && req.method === 'GET')
+        .flush({
+          elements: [makeReplay({ id: 'a', isFavorite: true })],
+          size: 1,
+        });
+
+      const promise = store.toggleFavorite('a');
+      expect(store.replays().length).toBe(0); // dropped optimistically
+
+      http.expectOne({ url: '/api/replays/a/favorite', method: 'DELETE' })
+        .error(new ProgressEvent('error'), { status: 500, statusText: 'Server Error' });
+      await promise;
+
+      // Restored to the visible list with isFavorite=true.
+      expect(store.replays().map(r => r.id)).toEqual(['a']);
+      expect(store.replays()[0].isFavorite).toBe(true);
+    });
+
+    it('is a no-op when the id is not in the current list', async () => {
+      seedFromAll([makeReplay({ id: 'a' })]);
+      await store.toggleFavorite('ghost-id');
+      // No HTTP request issued — afterEach http.verify() will fail if any did.
+      expect(store.replays().map(r => r.id)).toEqual(['a']);
+    });
+  });
+
 });

@@ -891,6 +891,7 @@
       },
       "filter": {
         "all": "Tous",
+        "favorites": "Favoris",
         "wins": "Victoires",
         "losses": "Défaites",
         "solo": "Solo",
@@ -909,6 +910,10 @@
         "title": "Aucun replay pour le moment",
         "desc": "Joue un duel en ligne ou en bac à sable — tes parties seront automatiquement enregistrées ici pour les rejouer, les forker, et progresser."
       },
+      "favoritesEmpty": {
+        "title": "Aucun favori pour l'instant",
+        "desc": "Clique sur l'étoile d'un replay pour l'ajouter à tes favoris et le retrouver ici."
+      },
       "noResults": {
         "title": "Aucun résultat",
         "desc": "Modifie les filtres ou la recherche pour voir d'autres replays.",
@@ -926,6 +931,8 @@
         "delete": "Supprimer",
         "deleteTitle": "Supprimer le replay",
         "deleteConfirm": "Voulez-vous vraiment supprimer définitivement ce replay ?",
+        "favoriteAdd": "Ajouter aux favoris",
+        "favoriteRemove": "Retirer des favoris",
         "turns": "{{n}} tours",
         "solo": "Solo",
         "soloHint": "Partie solo — non comptée dans les statistiques",

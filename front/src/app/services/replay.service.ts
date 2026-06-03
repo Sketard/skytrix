@@ -23,4 +23,17 @@ export class ReplayService {
   deleteReplay(id: string): Observable<void> {
     return this.httpClient.delete<void>(`/api/replays/${id}`);
   }
+
+  getFavoritedReplays(offset: number, quantity: number): Observable<CustomPageable<ReplayDTO>> {
+    const params = new HttpParams().set('offset', offset).set('quantity', quantity);
+    return this.httpClient.get<CustomPageable<ReplayDTO>>('/api/replays/favorites', { params });
+  }
+
+  addFavorite(id: string): Observable<void> {
+    return this.httpClient.post<void>(`/api/replays/${id}/favorite`, null);
+  }
+
+  removeFavorite(id: string): Observable<void> {
+    return this.httpClient.delete<void>(`/api/replays/${id}/favorite`);
+  }
 }

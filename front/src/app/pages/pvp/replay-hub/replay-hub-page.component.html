@@ -91,6 +91,13 @@
       titleKey="replay.hub.empty.title"
       descKey="replay.hub.empty.desc">
     </app-empty-state>
+  } @else if (showFavoritesEmptyState()) {
+    <app-empty-state
+      variant="rich"
+      icon="star_border"
+      titleKey="replay.hub.favoritesEmpty.title"
+      descKey="replay.hub.favoritesEmpty.desc">
+    </app-empty-state>
   } @else if (showNoResultsState()) {
     <app-empty-state
       variant="no-results"
@@ -177,6 +184,21 @@
                 <span>{{ 'replay.hub.card.open' | translate }}</span>
                 <mat-icon>arrow_forward</mat-icon>
               </span>
+              <app-icon-button
+                      size="md" variant="ghost"
+                      class="replay-card__favorite"
+                      [class.replay-card__favorite--active]="replay.isFavorite"
+                      [active]="!!replay.isFavorite"
+                      [ariaLabel]="(replay.isFavorite ? 'replay.hub.card.favoriteRemove' : 'replay.hub.card.favoriteAdd') | translate"
+                      [matTooltip]="(replay.isFavorite ? 'replay.hub.card.favoriteRemove' : 'replay.hub.card.favoriteAdd') | translate"
+                      [disabled]="store.favoritingId() === replay.id"
+                      (click)="toggleFavorite(replay, $event)">
+                @if (store.favoritingId() === replay.id) {
+                  <mat-progress-spinner mode="indeterminate" diameter="16"></mat-progress-spinner>
+                } @else {
+                  <mat-icon>{{ replay.isFavorite ? 'star' : 'star_border' }}</mat-icon>
+                }
+              </app-icon-button>
               <app-icon-button
                       size="md" variant="danger"
                       class="replay-card__delete"

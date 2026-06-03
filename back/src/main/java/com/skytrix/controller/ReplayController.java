@@ -73,6 +73,31 @@ public class ReplayController {
         replayService.deleteReplay(id, userId, authService.isAdmin());
     }
 
+    @GetMapping("/replays/favorites")
+    public CustomPageable<ReplayDTO> getFavoritedReplays(
+            @RequestParam(value = "offset", defaultValue = "0") int page,
+            @RequestParam(value = "quantity", defaultValue = "20") int quantity) {
+        if (page < 0 || quantity < 1 || quantity > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offset must be >= 0 and quantity must be between 1 and 100");
+        }
+        var userId = authService.getConnectedUserId();
+        return replayService.getFavoritedReplays(userId, page, quantity);
+    }
+
+    @PostMapping("/replays/{id}/favorite")
+    @ResponseStatus(code = HttpStatus.NO_CONTENT)
+    public void addFavorite(@PathVariable UUID id) {
+        var userId = authService.getConnectedUserId();
+        replayService.addFavorite(id, userId);
+    }
+
+    @DeleteMapping("/replays/{id}/favorite")
+    @ResponseStatus(code = HttpStatus.NO_CONTENT)
+    public void removeFavorite(@PathVariable UUID id) {
+        var userId = authService.getConnectedUserId();
+        replayService.removeFavorite(id, userId);
+    }
+
     @GetMapping("/internal/replays/{id}")
     public ReplayDTO getReplayDetail(
             @RequestHeader(value = "X-Internal-Key", required = false) String providedKey,

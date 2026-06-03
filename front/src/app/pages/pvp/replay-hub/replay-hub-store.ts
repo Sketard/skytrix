@@ -14,7 +14,7 @@ const NEXT_PAGE_TRIGGER_OFFSET = 5;
 const LAST_7_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type ReplaySortMode = 'newest' | 'oldest' | 'mostTurns';
-export type ReplayFilter = 'all' | 'wins' | 'losses' | 'solo' | 'last7days';
+export type ReplayFilter = 'all' | 'favorites' | 'wins' | 'losses' | 'solo' | 'last7days';
 
 /**
  * Owns the Replay Hub state machine. Extends `ListStore<ReplayDTO>` for the
@@ -51,6 +51,12 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
   private readonly totalElements = signal<number | null>(null);
   private readonly _fetchingMore = signal(false);
 
+  /** ID of the replay currently being toggled (HTTP in-flight), or null.
+   *  Drives the per-row spinner in the favorite icon-button — same pattern
+   *  as `deletingId` in the component, kept in the store so the page reload
+   *  doesn't lose mid-flight state (mirrors the optimistic update model). */
+  readonly favoritingId = signal<string | null>(null);
+
   /** Public read-only view of the "loading more" flag — drives the inline
    *  skeleton at the bottom of the virtual-scroll viewport (Q6-3). The
    *  internal `_fetchingMore` stays private so writes go through
@@ -71,12 +77,14 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
     this.fetchStats();
   }
 
-  /** Re-fetches the entire first page (clears the list). */
+  /** Re-fetches the entire first page (clears the list). When the active
+   *  filter is `'favorites'`, the source endpoint is `/replays/favorites` —
+   *  paginated server-side. Otherwise the full match-history endpoint. */
   fetchSnapshot(): void {
     this.setLoading(true);
     this.error.set(null);
     this.currentOffset.set(0);
-    this.replayService.getMatchHistory(0, PAGE_SIZE).subscribe({
+    this.pageFetcher(0).subscribe({
       next: page => {
         this.items.set(page.elements);
         this.totalElements.set(page.size);
@@ -92,6 +100,17 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
         this.setLoading(false);
       },
     });
+  }
+
+  /** Routes paginated fetches to the right endpoint based on `activeFilter`.
+   *  `'favorites'` hits `/replays/favorites` (server-side filter — pagination
+   *  is correct even when the user has 500 replays and 10 favorites); every
+   *  other filter mode runs against the full `/replays` list with the
+   *  filter applied client-side. */
+  private pageFetcher(pageIndex: number) {
+    return this.activeFilter() === 'favorites'
+      ? this.replayService.getFavoritedReplays(pageIndex, PAGE_SIZE)
+      : this.replayService.getMatchHistory(pageIndex, PAGE_SIZE);
   }
 
   fetchStats(): void {
@@ -111,7 +130,7 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
     // offset (e.g. 20 after one page of 20) would resolve to page=20 and
     // return an empty array, which was the Q5-6 bug.
     const pageIndex = this.currentOffset();
-    this.replayService.getMatchHistory(pageIndex, PAGE_SIZE).subscribe({
+    this.pageFetcher(pageIndex).subscribe({
       next: page => {
         this.items.update(prev => [...prev, ...page.elements]);
         this.currentOffset.set(pageIndex + 1);
@@ -124,6 +143,56 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
         this._fetchingMore.set(false);
       },
     });
+  }
+
+  /** Override the base `setActiveFilter` to re-fetch when crossing the
+   *  `favorites` boundary — the two filter modes use different endpoints, so
+   *  swapping between them requires a fresh page-0 fetch. Other filters
+   *  (wins/losses/solo/last7days) keep the in-memory list and only re-run
+   *  `passesFilter` via the `filteredItems` computed. */
+  override setActiveFilter(filter: ReplayFilter): void {
+    const previous = this.activeFilter();
+    if (previous === filter) return;
+    super.setActiveFilter(filter);
+    if (previous === 'favorites' || filter === 'favorites') {
+      this.fetchSnapshot();
+    }
+  }
+
+  /** Optimistic favorite toggle. Flips `isFavorite` locally + fires HTTP;
+   *  rollbacks on error. When the active filter is `'favorites'` and the
+   *  user un-favorites a replay, we ALSO remove it from the visible list
+   *  (server-side it disappears from the next page fetch — keeping it
+   *  on-screen would lie to the user). */
+  async toggleFavorite(id: string): Promise<void> {
+    const current = this.replays().find(r => r.id === id);
+    if (!current) return;
+    const willBeFavorited = !current.isFavorite;
+    const snapshot = this.replays();
+    const wasFavoritesFilter = this.activeFilter() === 'favorites';
+
+    this.items.update(list => list.map(r => r.id === id ? { ...r, isFavorite: willBeFavorited } : r));
+    if (wasFavoritesFilter && !willBeFavorited) {
+      this.items.update(list => list.filter(r => r.id !== id));
+      this.totalElements.update(n => (n === null ? null : Math.max(0, n - 1)));
+    }
+
+    this.favoritingId.set(id);
+    try {
+      await firstValueFrom(
+        willBeFavorited
+          ? this.replayService.addFavorite(id)
+          : this.replayService.removeFavorite(id),
+      );
+    } catch (err) {
+      this.items.set(snapshot);
+      if (wasFavoritesFilter && !willBeFavorited) {
+        this.totalElements.update(n => (n === null ? null : n + 1));
+      }
+      this.notify.error(err instanceof HttpErrorResponse ? err : String(err));
+    } finally {
+      this.favoritingId.set(null);
+    }
   }
 
   /** Threshold check used by the virtual-scroll `(scrolledIndexChange)` host.
@@ -185,6 +254,11 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
         return isSolo(r);
       case 'last7days':
         return new Date(r.createdAt).getTime() >= Date.now() - LAST_7_DAYS_MS;
+      // Items already come from `/replays/favorites` server-side, so this
+      // predicate is normally a no-op pass — but during the optimistic
+      // un-favorite window the flipped item must drop out of the list.
+      case 'favorites':
+        return r.isFavorite === true;
       case 'all':
       default:
         return true;

@@ -22,4 +22,5 @@ public class ReplayDTO {
     @Valid
     private ReplayData replayData;
     private Instant createdAt;
+    private Boolean isFavorite;
 }

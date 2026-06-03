@@ -187,23 +187,38 @@
   // Desktop — hover-revealed delete button (opacity 0 at rest). Was the
   // `.icon-btn--ghost-hover-only` DS variant; now a local card concern
   // since `<app-icon-button>` has no hover-reveal variant.
+  //
+  // The favorite button follows the same reveal pattern AS LONG AS the
+  // replay is NOT favorited — once favorited, the gold star must stay
+  // visible so the user sees their favorite status at-a-glance without
+  // hovering. `.replay-card__favorite--active` is set on the host from
+  // the template based on `replay.isFavorite`.
   @include r.respond-above(r.$bp-pvp-narrow) {
-    .replay-card__delete {
+    .replay-card__delete,
+    .replay-card__favorite:not(.replay-card__favorite--active) {
       opacity: 0;
       transition: opacity var(--transition-fast) var(--ease-out);
     }
 
     &:hover .replay-card__delete,
-    &:focus-within .replay-card__delete {
+    &:focus-within .replay-card__delete,
+    &:hover .replay-card__favorite,
+    &:focus-within .replay-card__favorite {
       opacity: 1;
     }
   }
 
-  // Mobile — the delete button stays visible (no hover). Pinned to the
-  // bottom-right of the meta row so it doesn't squeeze the title.
+  // Mobile — both actions always visible (no hover). Pinned to the
+  // bottom-right of the meta row so they don't squeeze the title.
   @include r.respond-below(r.$bp-pvp-narrow) {
-    .replay-card__delete {
+    .replay-card__delete,
+    .replay-card__favorite {
       opacity: 0.7;
+    }
+    // Active favorite stays full-strength even on mobile — it's a status,
+    // not a hover affordance.
+    .replay-card__favorite--active {
+      opacity: 1;
     }
   }
 }
