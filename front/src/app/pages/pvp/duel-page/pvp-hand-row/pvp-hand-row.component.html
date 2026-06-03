@@ -30,7 +30,7 @@
           <img src="assets/images/card_back.jpg" alt="Card back" class="hand-card-art">
         }
         @if (chainNum) {
-          <div class="chain-badge">{{ chainNum }}</div>
+          <div class="chain-badge" [class.chain-badge--own]="side() === 'player'">{{ chainNum }}</div>
         }
       }
     </div>

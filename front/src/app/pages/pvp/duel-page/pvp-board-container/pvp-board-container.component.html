@@ -277,7 +277,7 @@
                 </div>
               }
               @if (chainBadges().get(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0')); as chainNum) {
-                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10" [class.chain-badge--own]="!emz.isOpponent">{{ chainNum }}</div>
               }
               <ng-container [ngTemplateOutlet]="indicators"
                             [ngTemplateOutletContext]="{ $implicit: card, zoneId: emz.zoneId, relPlayer: emz.isOpponent ? 1 : 0 }"></ng-container>
@@ -334,7 +334,7 @@
           }
         }
         @if (chainBadges().get('BANISHED-0'); as chainNum) {
-          <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+          <div class="chain-badge chain-badge--own" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
         }
       </div>
       @if (isHighlighted('BANISHED-0')) {
@@ -392,7 +392,7 @@
               }
             }
             @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
-              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+              <div class="chain-badge chain-badge--own" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
             }
           </div>
         } @else if (zone.card) {
@@ -436,7 +436,7 @@
                 </div>
               }
               @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
-                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+                <div class="chain-badge chain-badge--own" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
               }
               <ng-container [ngTemplateOutlet]="indicators"
                             [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId, relPlayer: 0 }"></ng-container>

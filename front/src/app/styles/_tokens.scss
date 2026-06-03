@@ -488,10 +488,24 @@
   --pvp-zone-browser-bg: rgba(20, 20, 40, 0.95);
 
   // --- Chain Badges ---
+  // Convention: BLUE = opponent, GOLD = viewer (own player). Applies in EVERY
+  // context (board zones, hand cards, chain overlay) regardless of how the
+  // badge is rendered (filled disc vs text stroke).
+  //
+  // - `--pvp-chain-badge-bg` / `--pvp-chain-badge-own-bg` — fill/stroke base.
+  //   Board + hand consume these as `background`. Overlay consumes them as
+  //   `-webkit-text-stroke` color.
+  // - `--pvp-chain-badge-color` — text/number color. Single value (white) for
+  //   filled disc surfaces.
+  // - `--pvp-chain-badge-*-glow-*` — overlay-only halo (text-shadow). Not
+  //   consumed by board/hand which rely on their own box-shadow.
   --pvp-chain-badge-bg: #4a90d9;
   --pvp-chain-badge-color: #fff;
-  --pvp-chain-badge-glow-strong: rgba(74, 144, 217, 0.8);  // text-shadow halo
-  --pvp-chain-badge-glow-soft:   rgba(74, 144, 217, 0.5);  // text-shadow halo soft
+  --pvp-chain-badge-glow-strong: rgba(74, 144, 217, 0.8);  // overlay text-shadow halo
+  --pvp-chain-badge-glow-soft:   rgba(74, 144, 217, 0.5);  // overlay text-shadow halo soft
+  --pvp-chain-badge-own-bg: var(--gold);
+  --pvp-chain-badge-own-glow-strong: var(--gold-soft-80);  // overlay text-shadow halo
+  --pvp-chain-badge-own-glow-soft:   var(--gold-soft-50);  // overlay text-shadow halo soft
 
   // --- Chain Overlay (Story 6.1) ---
   --pvp-chain-overlay-backdrop: rgba(0, 0, 0, 0.6);

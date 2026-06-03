@@ -632,4 +632,56 @@ describe('PvpBoardContainerComponent — chain/link badges + animation (C4.3)', 
     fixture.detectChanges();
     expect(getProtected().animatingEmzKeys().size).toBe(0);
   });
+
+  // DS convention pin (CLAUDE.md "Chain Badges" tokens): GOLD = viewer (own
+  // player), BLUE = opponent — applies to every rendered .chain-badge across
+  // board zones, EMZ, hand cards, and the chain overlay. Catch silent
+  // regressions where a new <div class="chain-badge"> is added without the
+  // own/opponent class binding.
+  it('every rendered .chain-badge carries .chain-badge--own iff its zone-key suffix is "-0" (own side)', () => {
+    // 2 links to force chainBadges to populate (threshold ≥ 2). One on each
+    // side (M3 own + M3 opp) plus piles + EMZ to cover the 4 distinct
+    // template sites (terrain face-up, EMZ, BANISHED, pile-faceup GY).
+    const p0Cards = [
+      makeZone('M3', [makeCard({ cardCode: 100 })]),
+      makeZone('GY', [makeCard({ cardCode: 101 })]),
+      makeZone('BANISHED', [makeCard({ cardCode: 102 })]),
+      makeZone('EMZ_L', [makeCard({ cardCode: 103 })]),
+    ];
+    const p1Cards = [
+      makeZone('M3', [makeCard({ cardCode: 200 })]),
+      makeZone('GY', [makeCard({ cardCode: 201 })]),
+      makeZone('BANISHED', [makeCard({ cardCode: 202 })]),
+      makeZone('EMZ_R', [makeCard({ cardCode: 203 })]),
+    ];
+    fixture.componentRef.setInput('duelState', makeState(p0Cards, p1Cards));
+    // preview=true (set in beforeEach) is fine — the full template still renders;
+    // only ngAfterViewInit's CardTravelEngine registrations are skipped.
+    fixture.componentRef.setInput('activeChainLinks', [
+      // Own side links (relPlayer === 0 → '-0' suffix)
+      makeLink({ chainIndex: 0, zoneId: 'M3',       player: 0, location: LOCATION.MZONE,    sequence: 0 }),
+      makeLink({ chainIndex: 1, zoneId: 'GY',       player: 0, location: LOCATION.GRAVE,    sequence: 0 }),
+      makeLink({ chainIndex: 2, zoneId: 'BANISHED', player: 0, location: LOCATION.BANISHED,  sequence: 0 }),
+      makeLink({ chainIndex: 3, zoneId: 'EMZ_L',    player: 0, location: LOCATION.MZONE,    sequence: 5 }),
+      // Opponent side links (relPlayer === 1 → '-1' suffix)
+      makeLink({ chainIndex: 4, zoneId: 'M3',       player: 1, location: LOCATION.MZONE,    sequence: 0 }),
+      makeLink({ chainIndex: 5, zoneId: 'GY',       player: 1, location: LOCATION.GRAVE,    sequence: 0 }),
+      makeLink({ chainIndex: 6, zoneId: 'BANISHED', player: 1, location: LOCATION.BANISHED,  sequence: 0 }),
+      makeLink({ chainIndex: 7, zoneId: 'EMZ_R',    player: 1, location: LOCATION.MZONE,    sequence: 5 }),
+    ]);
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const ownBadges = host.querySelectorAll<HTMLElement>('.player-field .chain-badge, .central-strip .zone--banished:not(.zone--banished-opponent) .chain-badge, .central-strip .emz:not(.emz--opponent) .chain-badge');
+    const oppBadges = host.querySelectorAll<HTMLElement>('.opponent-field .chain-badge, .central-strip .zone--banished-opponent .chain-badge, .central-strip .emz.emz--opponent .chain-badge');
+
+    // Sanity: both sides actually rendered badges.
+    expect(ownBadges.length).toBeGreaterThan(0);
+    expect(oppBadges.length).toBeGreaterThan(0);
+
+    ownBadges.forEach(el => expect(el.classList.contains('chain-badge--own'))
+      .withContext(`own-side badge missing .chain-badge--own (content="${el.textContent?.trim()}")`).toBe(true));
+    oppBadges.forEach(el => expect(el.classList.contains('chain-badge--own'))
+      .withContext(`opponent-side badge wrongly carries .chain-badge--own (content="${el.textContent?.trim()}")`).toBe(false));
+  });
 });

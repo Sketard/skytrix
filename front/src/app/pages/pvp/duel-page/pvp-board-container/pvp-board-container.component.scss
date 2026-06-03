@@ -632,10 +632,16 @@
   &.chain-badge--double {
     font-size: clamp(0.55rem, 1.4dvh, 0.95rem);
   }
-  color: var(--white);
+  color: var(--pvp-chain-badge-color);
   pointer-events: none;
   z-index: 5;
   animation: ds-chain-badge-pulse 1s var(--ease-inout) infinite alternate;
+
+  // DS convention: GOLD = viewer (own player), BLUE = opponent.
+  // Default above is BLUE (opponent); `--own` overrides to GOLD.
+  &.chain-badge--own {
+    background: var(--pvp-chain-badge-own-bg);
+  }
 }
 
 // `@keyframes chain-badge-pulse` removed — consolidated into `_motion.scss`

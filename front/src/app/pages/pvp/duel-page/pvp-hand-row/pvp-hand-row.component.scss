@@ -75,6 +75,8 @@
 }
 
 // === Chain Badge ===
+// DS convention: GOLD = viewer (own player), BLUE = opponent.
+// Default below is BLUE (opponent); `--own` overrides to GOLD.
 .chain-badge {
   position: absolute;
   top: 50%;
@@ -83,17 +85,21 @@
   width: 50%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: rgba(255, 180, 0, 0.9);
+  background: var(--pvp-chain-badge-bg);
   border: 2px solid rgba(255, 255, 255, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: clamp(0.8rem, 2dvh, 1.4rem);
   font-weight: 900;
-  color: var(--text-inverse);
+  color: var(--pvp-chain-badge-color);
   pointer-events: none;
   z-index: 5;
   animation: ds-chain-badge-pulse 1s ease-in-out infinite alternate;
+
+  &.chain-badge--own {
+    background: var(--pvp-chain-badge-own-bg);
+  }
 }
 
 // `@keyframes chain-badge-pulse` removed — consolidated into `_motion.scss`
