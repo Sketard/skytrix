@@ -133,14 +133,39 @@ export class FloatRegistryService implements OnDestroy {
    * Cancel running animations on a float and pin it at its current visual
    * position using fixed CSS coords. `baseRotateCSS` (e.g. 'rotateZ(180deg)')
    * is preserved so opponent cards keep facing their owner.
-   * Returns the rect captured before cancellation.
+   * Returns the rect captured before cancellation (in viewport coords).
+   *
+   * `containerRect` is the bounding rect of the float's positioning
+   * ancestor (`CardTravelEngine.getContainer()`). Floats are
+   * `position: absolute` under that container (γ commit 6) so writing raw
+   * viewport coords into `style.left/top` teleports the float by
+   * `containerRect.left/top` against its rendered position. The conversion
+   * is a no-op when the container is at `(0, 0)` of the viewport — which
+   * is why the bug only surfaced on layouts where a navbar / top chrome
+   * offsets `.board-host`. Optional for backward compat, but callers
+   * SHOULD pass it.
    */
-  stabilizeFloat(el: HTMLElement, baseRotateCSS: string): DOMRect {
+  stabilizeFloat(el: HTMLElement, baseRotateCSS: string, containerRect?: DOMRect): DOMRect {
     const rect = el.getBoundingClientRect();
     el.getAnimations().forEach(a => a.cancel());
-    el.style.left = `${rect.left}px`;
-    el.style.top = `${rect.top}px`;
+    const cx = containerRect?.left ?? 0;
+    const cy = containerRect?.top ?? 0;
+    el.style.left = `${rect.left - cx}px`;
+    el.style.top = `${rect.top - cy}px`;
     el.style.transform = baseRotateCSS;
+    // The landed float sits on the player's hand. Levels in play:
+    //   - `.hand-player` / `.hand-opponent` containers: z-index 50
+    //   - `.hand-card` internal z-indexes are CAPPED by the `.hand-player`
+    //     stacking context (50), so 1000+chainNum on a revealed card never
+    //     escapes that container — at the outer level they all act as 50.
+    //   - replay topbar / transport-bar / timeline-bar / timeline-stepper:
+    //     `$z-pvp-card-travel + 20` (= 920) so the user can still interact
+    //     with playback controls while a float sits on the hand.
+    //   - chain overlay: 950.
+    // We want the float ABOVE the hand (50) but BELOW the replay chrome
+    // (920) and the chain overlay (950). 800 leaves a comfortable margin
+    // on both sides for future siblings.
+    el.style.zIndex = '800';
     return rect;
   }
 

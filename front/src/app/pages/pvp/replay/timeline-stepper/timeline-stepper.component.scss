@@ -1,5 +1,6 @@
 @use '../../../../styles/responsive' as r;
 @use '../../../../styles/mixin' as *;
+@use '../../../../styles/z-layers' as z;
 
 // Layout-only — icon-btn / typography come from DS Wave 1.
 // The pill is a viewer-specific composite (gold-soft glow + dot progress +
@@ -11,6 +12,11 @@
   padding: var(--space-2) var(--space-3);
   background: linear-gradient(180deg, var(--surface-bg-deep), var(--surface-bg));
   border-top: 1px solid var(--gold-soft-25);
+  // Mirror transport-bar / timeline-bar — sit above traveling card floats
+  // so a tutored card overlay on the hand never occludes the narrow-mode
+  // step controls.
+  position: relative;
+  z-index: z.$z-pvp-card-travel + 20;
 }
 
 // Visible only on narrow viewports (D1 — width-driven) or when the page host

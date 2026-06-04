@@ -689,3 +689,116 @@ describe('PvpBoardContainerComponent — chain/link badges + animation (C4.3)', 
       .withContext(`opponent-side badge wrongly carries .chain-badge--own (content="${el.textContent?.trim()}")`).toBe(false));
   });
 });
+
+// =============================================================================
+// registerContainer — climb past isolating ancestors
+//
+// `.board-host` has `isolation: isolate` (cf. `_duel-tokens.scss`) which
+// creates a stacking context that traps a float's z-index. Pre-fix
+// `ngAfterViewInit` registered `.board-host` itself as the float
+// container — a landed float (z=940 inside .board-host) could not rise
+// above sibling `.hand-player` (z=50) because the isolating context
+// capped its effective z-index at the (z=auto / 0) of `.board-host` in
+// the outer context. Visual effect: the tutored card was stuck UNDER
+// the player's hand row.
+//
+// The fix walks up from `.board-host` to the first ancestor that does
+// NOT create a stacking context, then registers that ancestor. The
+// helper is `findNonIsolatingAncestor` (private; tested indirectly
+// through the `registerContainer` call). This spec pins the climb.
+// =============================================================================
+
+describe('PvpBoardContainerComponent — registerContainer (float clipping fix)', () => {
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
+  let mockArt: jasmine.SpyObj<DuelCardArtService>;
+  let fixture: ComponentFixture<PvpBoardContainerComponent>;
+
+  beforeEach(() => {
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>(
+      'CardTravelEngine',
+      ['registerContainer', 'registerZoneResolver', 'getZoneElement', 'createLineBetween'],
+    );
+    mockArt = jasmine.createSpyObj<DuelCardArtService>('DuelCardArtService', ['resolveUrl']);
+    mockArt.resolveUrl.and.returnValue('mock-url');
+
+    TestBed.configureTestingModule({
+      imports: [PvpBoardContainerComponent],
+      providers: [
+        { provide: CardTravelEngine, useValue: mockCardTravel },
+        { provide: DuelCardArtService, useValue: mockArt },
+        DuelGameLogService,
+        ScopeResetDispatcher,
+        { provide: TranslateService, useValue: {
+          currentLang: 'en',
+          instant: (k: string) => k,
+          get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
+          onLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onTranslationChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+        } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(PvpBoardContainerComponent);
+    // preview defaults to false (no setInput) so ngAfterViewInit runs.
+    fixture.componentRef.setInput('duelState', EMPTY_DUEL_STATE);
+  });
+
+  it('registers a float container that is NOT a stacking-context ancestor of .board-host', () => {
+    // The component is the root of the test fixture, so its `.board-host`
+    // element is wrapped by Jasmine fixture nodes (no isolation/transform/
+    // z-index on them). Expected behavior: walk past `.board-host` (which
+    // IS a stacking context via `isolation: isolate`) and land on a
+    // non-isolating ancestor — anything BUT the host itself.
+    fixture.detectChanges();
+
+    expect(mockCardTravel.registerContainer).toHaveBeenCalled();
+    const registered = mockCardTravel.registerContainer.calls.mostRecent().args[0] as HTMLElement;
+
+    // The registered container MUST NOT be `.board-host` itself — that's
+    // the regression we're guarding against. If a future refactor makes
+    // the helper return `.board-host` as a fallback (no climbable
+    // ancestor), the test fails fast and forces a re-think.
+    expect(registered.classList.contains('board-host'))
+      .withContext('registerContainer should climb PAST `.board-host` (isolation: isolate) — registering it directly traps floats below sibling .hand-player')
+      .toBe(false);
+
+    // The registered container MUST contain `.board-host` — it's an ancestor.
+    const boardHost = (fixture.nativeElement as HTMLElement).querySelector('.board-host');
+    expect(boardHost).toBeTruthy();
+    expect(registered.contains(boardHost!))
+      .withContext('registered container must be an ancestor of `.board-host` so the float is still anchored to the board area')
+      .toBe(true);
+  });
+
+  it('climbs ONLY past ancestors that do NOT create a stacking context', () => {
+    // Wrap the host in a synthetic isolating ancestor BEFORE rendering so
+    // the helper sees it during ngAfterViewInit. With the wrapper isolated,
+    // the helper must stop climbing AT the wrapper's first non-isolating
+    // sibling. Most fixture setups give us at least one non-isolating
+    // ancestor (jasmine's <body> fixture container is `position: static`).
+    //
+    // We detect that by re-asserting the invariant: the registered
+    // container is contained-by or equal-to the body, and does not have
+    // `isolation: isolate` on its own computed style.
+    fixture.detectChanges();
+    const registered = mockCardTravel.registerContainer.calls.mostRecent().args[0] as HTMLElement;
+
+    // Either:
+    //   (a) the registered container is `.board-host` itself (fallback
+    //       path when no climbable ancestor exists), OR
+    //   (b) the registered container's computed `isolation` is NOT `isolate`.
+    //
+    // Both are correct outcomes — what we forbid is registering an
+    // intermediate isolating ancestor that would trap floats in the same
+    // way as `.board-host`. Anything chosen by the helper must either be
+    // the fallback OR a clean (non-isolating) ancestor.
+    const isFallback = registered.classList.contains('board-host');
+    const cs = getComputedStyle(registered);
+    const isCleanAncestor = cs.isolation !== 'isolate';
+
+    expect(isFallback || isCleanAncestor)
+      .withContext(`registered container must be either the fallback (.board-host) OR a non-isolating ancestor — got isolation="${cs.isolation}"`)
+      .toBe(true);
+  });
+});

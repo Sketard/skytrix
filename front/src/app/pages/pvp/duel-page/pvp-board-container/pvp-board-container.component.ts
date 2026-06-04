@@ -24,6 +24,41 @@ const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3'
 
 type ZoneRenderMode = 'terrain' | 'pile-faceup' | 'pile-facedown' | 'deck';
 
+/**
+ * Walk up from `el` until we find an ancestor that does NOT create a
+ * stacking context, or hit the document root. An element creates a
+ * stacking context when ANY of these is true (excerpt of MDN/spec):
+ *   - `position: fixed | sticky`
+ *   - `position: relative | absolute` with `z-index !== auto`
+ *   - `opacity !== 1`
+ *   - `transform`, `filter`, `perspective`, `clip-path`, `mask` set
+ *   - `isolation: isolate`
+ *   - `will-change` listing any property that creates one
+ *   - `mix-blend-mode !== normal`
+ *
+ * Returns `null` if every ancestor up to the root creates a stacking
+ * context (very unlikely in practice — the body usually doesn't).
+ */
+function findNonIsolatingAncestor(el: HTMLElement): HTMLElement | null {
+  let parent = el.parentElement;
+  while (parent && parent !== document.documentElement) {
+    const cs = getComputedStyle(parent);
+    const creates =
+      cs.isolation === 'isolate'
+      || (cs.position !== 'static' && cs.zIndex !== 'auto')
+      || cs.position === 'fixed' || cs.position === 'sticky'
+      || cs.opacity !== '1'
+      || cs.transform !== 'none'
+      || cs.filter !== 'none'
+      || cs.perspective !== 'none'
+      || cs.mixBlendMode !== 'normal'
+      || (cs.willChange !== 'auto' && /transform|opacity|filter|perspective|isolation|z-index/.test(cs.willChange));
+    if (!creates) return parent;
+    parent = parent.parentElement;
+  }
+  return null;
+}
+
 /** Maps ZoneId → CSS grid-area name (M1→mz1, S1→st1, etc.) */
 const ZONE_GRID_AREA: Record<string, string> = {
   M1: 'mz1', M2: 'mz2', M3: 'mz3', M4: 'mz4', M5: 'mz5',
@@ -159,7 +194,21 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     // registration) don't override the live duel's container.
     const boardHost = (this.elementRef.nativeElement as HTMLElement).querySelector<HTMLElement>('.board-host');
     if (boardHost) {
-      this.cardTravelEngine.registerContainer(boardHost);
+      // `.board-host` has `isolation: isolate` (cf. `_duel-tokens.scss`) which
+      // creates a stacking context that **clips floats below sibling layers**
+      // like `.hand-player` (z-index: 50) when `.board-host` itself has no
+      // z-index in the outer context. The travel float lifts to `z-index: 940`
+      // via `FloatRegistryService.stabilizeFloat` to sit above hand cards once
+      // landed, but that z-index is interpreted inside the isolated context —
+      // it cannot rise above `.hand-player` from the outside.
+      //
+      // Walk up to the first ancestor that is NOT a stacking context (or fall
+      // back to `boardHost` if none found before the document root). That
+      // gives floats a parent that encloses BOTH the board and the
+      // `.hand-player`/`.hand-opponent` siblings, so a landed float can cover
+      // the hand without bumping `.board-host` z-index against other layers.
+      const container = findNonIsolatingAncestor(boardHost) ?? boardHost;
+      this.cardTravelEngine.registerContainer(container);
     } else {
       this._logger?.warn('PvpBoardContainerComponent: `.board-host` not found at ngAfterViewInit — floats will use the default container');
     }

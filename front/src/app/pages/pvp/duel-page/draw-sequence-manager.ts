@@ -570,9 +570,10 @@ export class DrawSequenceManager {
     const handPrefix = `HAND-${relPlayer}`;
     const landedFloats = this.floatRegistry.getLandedFloatsByDstPrefix(handPrefix);
     const baseRZ = this.ctx.cardBaseRotateCSS(relPlayer);
+    const containerRect = this.cardTravelEngine.getContainer().getBoundingClientRect();
     const floatByCode = new Map<string, { el: HTMLDivElement; rect: DOMRect }[]>();
     for (const el of landedFloats) {
-      const rect = this.floatRegistry.stabilizeFloat(el, baseRZ);
+      const rect = this.floatRegistry.stabilizeFloat(el, baseRZ, containerRect);
       const code = el.dataset['cardCode'] ?? '';
       if (!floatByCode.has(code)) floatByCode.set(code, []);
       floatByCode.get(code)!.push({ el, rect });
@@ -603,6 +604,14 @@ export class DrawSequenceManager {
       // Force-sync ALL state — clears any stacked locks from move/travel
       // so the rendered hand includes the newly added cards.
       this.rbs.commitAll();
+
+      // Retire the expansion slot reserved by `BufferReplayBuilder` BEFORE
+      // we measure post-commit positions. Otherwise the new real card lands
+      // at its "with-expansion" position, the float slides there, and the
+      // expansion is only retired at `batch-end` → the fan shrinks AFTER
+      // the float has landed (visible "pop"). Idempotent vs the second
+      // `endHandBatch` at `batch-end` (no-op when no batch is active).
+      this.endHandBatch(relPlayer);
 
       await new Promise<void>(resolve =>
         afterNextRender(() => resolve(), { injector: this.injector })
@@ -752,7 +761,8 @@ export class DrawSequenceManager {
       const relPlayer = this.ctx.relativePlayer(card.player);
 
       const baseRZ = this.ctx.cardBaseRotateCSS(relPlayer);
-      this.floatRegistry.stabilizeFloat(floatEl, baseRZ);
+      const containerRect = this.cardTravelEngine.getContainer().getBoundingClientRect();
+      this.floatRegistry.stabilizeFloat(floatEl, baseRZ, containerRect);
 
       if (relPlayer === 1) {
         const img = floatEl.querySelector('img');

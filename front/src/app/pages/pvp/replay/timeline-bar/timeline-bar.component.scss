@@ -13,9 +13,13 @@
 // classes from `_chain-owner-palette.scss` (Viewer F0 partial).
 // =============================================================================
 
+// `z-index` mirrors `replay-topbar` / `transport-bar` — keeps the
+// timeline above traveling card floats (z=940 when landed) so a tutored
+// card overlay does not occlude the chain-cluster markers / playhead.
 :host {
   display: block;
   position: relative;
+  z-index: z.$z-pvp-card-travel + 20;
   user-select: none;
 }
 

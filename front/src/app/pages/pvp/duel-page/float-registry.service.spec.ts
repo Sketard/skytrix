@@ -359,4 +359,108 @@ describe('FloatRegistryService', () => {
       expect(registry.getLastLandedFloat()).toBe(el2);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // stabilizeFloat — viewport→container-local conversion + z-index bump.
+  //
+  // Floats created by `CardTravelEngine` are `position: absolute` children
+  // of `.board-host` (γ commit 6). Pre-fix `stabilizeFloat` wrote raw
+  // viewport coords into `style.left/top`, which teleported the float by
+  // `containerRect.left/top` against its rendered position whenever the
+  // container had a non-zero origin (e.g. a navbar pushes `.board-host`
+  // down → float jumps down by ~63px after stabilize → tutored card
+  // disappears under the timeline-bar on the replay viewer).
+  //
+  // The z-index bump pins the landed float above the fan's `.hand-card`
+  // (z=50 effective via `.hand-player` stacking context) AND below the
+  // replay chrome (transport-bar / timeline-bar / topbar at
+  // `$z-pvp-card-travel + 20` = 920) so the user can still drive
+  // playback while a float sits on the hand.
+  //
+  // Regression history: docs/CLAUDE.md — `stabilizeFloat` viewport bug fix.
+  // ---------------------------------------------------------------------------
+
+  describe('stabilizeFloat', () => {
+    /** Build a float with style.left/top tracked + a getBoundingClientRect
+     *  stub so we can simulate any viewport coord regardless of layout. */
+    function makeFloatWithRect(viewportLeft: number, viewportTop: number, w = 80, h = 120): HTMLDivElement {
+      const el = document.createElement('div');
+      el.style.position = 'absolute';
+      document.body.appendChild(el);
+      spyOn(el, 'getBoundingClientRect').and.returnValue(new DOMRect(viewportLeft, viewportTop, w, h));
+      // Tests only care about the cancellation contract; no real animations.
+      spyOn(el, 'getAnimations').and.returnValue([]);
+      return el;
+    }
+
+    it('subtracts containerRect.left/top so the float stays at the same visual position', () => {
+      // Container offset 100 horizontally, 63 vertically (typical replay
+      // layout with a navbar pushing the board down).
+      const containerRect = new DOMRect(100, 63, 1600, 900);
+      const el = makeFloatWithRect(500, 400);
+
+      registry.stabilizeFloat(el, '', containerRect);
+
+      // style.left/top are container-local: viewport coord minus container origin.
+      expect(el.style.left).toBe(`${500 - 100}px`); // 400px
+      expect(el.style.top).toBe(`${400 - 63}px`);   // 337px
+    });
+
+    it('falls back to (0,0) when containerRect is omitted (back-compat path)', () => {
+      // The back-compat path is only correct when the container is at the
+      // viewport origin (test environment, root-mounted previews). Real
+      // callers MUST pass the rect — see CLAUDE.md.
+      const el = makeFloatWithRect(500, 400);
+
+      registry.stabilizeFloat(el, '');
+
+      // No conversion applied → raw viewport coords written to style.
+      expect(el.style.left).toBe('500px');
+      expect(el.style.top).toBe('400px');
+    });
+
+    it('bumps style.zIndex to 800 so the float covers the hand below the replay chrome', () => {
+      const el = makeFloatWithRect(0, 0);
+      // Simulate the in-flight float's initial z-index (set by createFloatingElement).
+      el.style.zIndex = '900';
+
+      registry.stabilizeFloat(el, '', new DOMRect(0, 0, 100, 100));
+
+      expect(el.style.zIndex).toBe('800');
+    });
+
+    it('preserves `baseRotateCSS` on style.transform (opponent cards face their owner)', () => {
+      const el = makeFloatWithRect(0, 0);
+      el.style.transform = 'translate(100px, 200px)'; // residual from the travel animation
+
+      registry.stabilizeFloat(el, 'rotateZ(180deg)', new DOMRect(0, 0, 100, 100));
+
+      expect(el.style.transform).toBe('rotateZ(180deg)');
+    });
+
+    it('returns the viewport rect captured before cancellation (caller uses it for slide-to-target math)', () => {
+      const el = makeFloatWithRect(500, 400, 80, 120);
+
+      const rect = registry.stabilizeFloat(el, '', new DOMRect(0, 0, 100, 100));
+
+      // Caller (processShuffleEvent) reads this rect to compute the slide
+      // vector from the stabilized position to the post-shuffle slot.
+      expect(rect.left).toBe(500);
+      expect(rect.top).toBe(400);
+      expect(rect.width).toBe(80);
+      expect(rect.height).toBe(120);
+    });
+
+    it('cancels every Web Animations API entry attached to the float', () => {
+      const el = makeFloatWithRect(0, 0);
+      const animA = jasmine.createSpyObj<Animation>('animA', ['cancel']);
+      const animB = jasmine.createSpyObj<Animation>('animB', ['cancel']);
+      (el.getAnimations as jasmine.Spy).and.returnValue([animA, animB]);
+
+      registry.stabilizeFloat(el, '', new DOMRect(0, 0, 100, 100));
+
+      expect(animA.cancel).toHaveBeenCalled();
+      expect(animB.cancel).toHaveBeenCalled();
+    });
+  });
 });

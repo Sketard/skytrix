@@ -1,5 +1,6 @@
 @use '../../../../styles/responsive' as r;
 @use '../../../../styles/mixin' as *;
+@use '../../../../styles/z-layers' as z;
 
 // =============================================================================
 // Transport-bar — Holographic Arena refonte (F3 viewer-rework 2026-05-14).
@@ -12,8 +13,14 @@
 // on-screen, so a 4s loop animation was too noisy in peripheral vision.
 // =============================================================================
 
+// Stay above traveling card floats (z=940 when landed). Mirrors the
+// `replay-topbar` precedent (`$z-pvp-card-travel + 20`) so the
+// transport-bar and timeline-bar at the bottom of the viewer remain
+// hover-/click-able while a tutored card sits on the hand.
 :host {
   display: block;
+  position: relative;
+  z-index: z.$z-pvp-card-travel + 20;
 }
 
 .transport-bar {
