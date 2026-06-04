@@ -206,6 +206,7 @@ describe('QueueRunner.decideNextStep', () => {
 
   describe('empty queue terminal branches', () => {
     it('returns pre-replay-buffer when isResolving + hasBufferedEvents + hasPendingPrompt', () => {
+      // T2 (legacy gate) — mid-chain pre-replay forced by a prompt waiting.
       const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: true,
@@ -214,24 +215,43 @@ describe('QueueRunner.decideNextStep', () => {
       expect(step.action).toBe('pre-replay-buffer');
     });
 
-    it('returns finalize when isResolving + hasBufferedEvents but NO prompt', () => {
-      // Missing prompt — pre-replay condition fails, falls through.
-      // commitMode=per-event by default → poll branch also skipped.
+    it('returns pre-replay-buffer when isResolving + hasBufferedEvents + NO prompt (straggler post-CHAIN_SOLVED)', () => {
+      // T1 (2026-06-04 buffer-drain rescue) — covers the post-MSG_CHAIN_SOLVED
+      // straggler scenario. A BOARD_CHANGING event was buffered AFTER the
+      // overlay-driven replayBuffer drained this link's queue but BEFORE
+      // chainPhase flipped to 'idle' (which only happens at MSG_CHAIN_END
+      // dispatch). In replay, MSG_CHAIN_END is segmented into a distinct
+      // state by replay-precompute.ts and won't be requested until
+      // chainPhase=idle → deadlock circulaire without an autonomous drain.
+      // See `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
       const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: true,
         hasPendingPrompt: false,
       }));
-      expect(step.action).toBe('finalize');
+      expect(step.action).toBe('pre-replay-buffer');
     });
 
     it('returns finalize when isResolving + hasPendingPrompt but NO buffered events', () => {
+      // T3 — nothing to drain, the prompt path drives the next tick.
       const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: false,
         hasPendingPrompt: true,
       }));
       expect(step.action).toBe('finalize');
+    });
+
+    it('pause-external priority wins over pre-replay-buffer (isWaitingForOverlay=true + hasBufferedEvents)', () => {
+      // T4 — priority 1 (overlay wait / draws in flight) preempts the
+      // mid-chain buffer-drain rescue. Otherwise we would drain while the
+      // overlay-driven replayBuffer is mid-flight via onChainLinkResolved.
+      const step = decideNextStep(baseInputs({
+        isWaitingForOverlay: true,
+        isResolving: true,
+        hasBufferedEvents: true,
+      }));
+      expect(step.action).toBe('pause-external');
     });
 
     it('returns finalize for empty queue with default state (per-event commitMode)', () => {

@@ -221,10 +221,22 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
   }
 
   // 4. Queue empty — three terminal branches.
-  // 4a. Mid-chain pre-replay: prompt arrived while chain still resolving
-  // and buffered events exist → flush them so player sees animations
-  // before answering.
-  if (input.isResolving && input.hasBufferedEvents && input.hasPendingPrompt) {
+  // 4a. Mid-chain buffer drain rescue (2026-06-04). Drain the buffer
+  // whenever it's non-empty and the runner would otherwise finalize while
+  // the chain is still resolving. Covers two scenarios:
+  //   · Mid-chain pre-replay: a prompt arrived while chain still resolving
+  //     and buffered events exist → flush them so the player sees animations
+  //     before answering (legacy gate, hasPendingPrompt=true).
+  //   · Post-MSG_CHAIN_SOLVED straggler (no prompt): a BOARD_CHANGING event
+  //     was buffered AFTER the overlay-driven `replayBuffer` already drained
+  //     this link's queue but BEFORE `chainPhase` flipped to 'idle' (which
+  //     only happens at MSG_CHAIN_END dispatch). In replay, MSG_CHAIN_END is
+  //     segmented into a distinct state by `replay-precompute.ts` and won't
+  //     be requested until `chainPhase=idle` → deadlock circulaire without
+  //     an autonomous drain. PvP gets a bonus side-effect: 2 batches separated
+  //     instead of one with lock GY-0 ref-count=2 shared.
+  // Voir `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+  if (input.isResolving && input.hasBufferedEvents) {
     return { action: 'pre-replay-buffer' };
   }
 

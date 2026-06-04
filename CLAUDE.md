@@ -1079,6 +1079,29 @@ Key rules:
    chain state as a safety net. During `building` phase, `commitMode` is
    `'per-event'` — queue-empty finalizes normally.
 
+6. **Mid-chain buffer drain rescue (2026-06-04)** — `decideNextStep`'s
+   `pre-replay-buffer` branch fires whenever `isResolving && hasBufferedEvents`,
+   regardless of `hasPendingPrompt`. Covers two scenarios with the same remedy
+   (`replayBuffer(inlineFromLoop=true)`) :
+   - **Mid-chain pre-replay (legacy)** — a prompt arrived while the chain is
+     still resolving and the buffer is non-empty. Flushing ensures the player
+     sees animations before answering.
+   - **Post-MSG_CHAIN_SOLVED straggler** — a BOARD_CHANGING event was buffered
+     AFTER the overlay-driven `replayBuffer` already drained this link's queue
+     but BEFORE `chainPhase` flipped to `'idle'` (which only happens at
+     MSG_CHAIN_END dispatch). In replay, `MSG_CHAIN_END` is segmented into a
+     distinct `PreComputedState` by `replay-precompute.ts` (chain separator
+     in the timeline) and won't be requested until `chainPhase=idle` — without
+     an autonomous drain, the deadlock is circular (buffer holds the event →
+     `chainPhase` stuck `resolving` → adapter refuses to feed the CHAIN_END
+     state). PvP bonus side-effect : 2 batches separated instead of one with
+     lock GY-0 ref-count=2 shared on stacked MSG_MOVE.
+
+   `pause-external` (priority 1 — `isWaitingForOverlay || hasDrawsInFlight`)
+   preempts this rescue ; the overlay-driven `replayBuffer` from
+   `onChainLinkResolved` handles the first drain. The rescue handles whatever
+   straggles after.
+
 ## Perspective Convention (absolute vs relative player index)
 
 Two player-index referentials coexist — mixing them is a recurring bug
