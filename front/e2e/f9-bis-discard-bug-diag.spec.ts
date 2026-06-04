@@ -16,7 +16,12 @@ import { setupReplaySession } from './replay-debug-driver';
 
 const REPLAY_ID = 'a1eed2d6-5bad-486a-b743-9639b8049790';
 
-test('Diagnose discard chain link badge bug at seek=7', async ({ browser }) => {
+// Diagnostic spec — kept around for future F9-bis investigations but
+// skipped by default. The test has no assertions (only console.log dumps)
+// and the discard-fix is regression-pinned by `chain-badge.utils.spec.ts`
+// + `pre-process-hand-counts.spec.ts`. To run it manually, flip
+// `test.skip` → `test`.
+test.skip('Diagnose discard chain link badge bug at seek=7', async ({ browser }) => {
   test.setTimeout(180_000);
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
   const session = await setupReplaySession(ctx, {
@@ -27,14 +32,7 @@ test('Diagnose discard chain link badge bug at seek=7', async ({ browser }) => {
   });
 
   try {
-    // Wait until precompute stable.
-    let prevTotal = -1, stable = 0;
-    while (stable < 6) {
-      const cur = await session.driver.totalBoardStates();
-      if (cur === prevTotal) stable++;
-      else { stable = 0; prevTotal = cur; }
-      await session.page.waitForTimeout(500);
-    }
+    await session.driver.waitUntilPrecomputeStable();
 
     await session.driver.seek(7);
     await session.capture('at-seek-7');

@@ -161,17 +161,67 @@ export interface SkytrixReplayDebugSurface {
 export class ReplayDebugDriver {
   constructor(private readonly page: Page) {}
 
+  /** Wait until `currentIndex()` matches a target. Replaces a fixed
+   *  `waitForTimeout(50)` after seek-family methods — Angular signals
+   *  propagate synchronously today, but `waitForFunction` is the safer
+   *  contract: if a future async effect lands between handler entry and
+   *  the index update, the wait grows with it instead of silently
+   *  reading the pre-update value. */
+  private async awaitCurrentIndex(target: number, label: string): Promise<void> {
+    try {
+      await this.page.waitForFunction(
+        t => {
+          const r = (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
+            .__skytrixDebug?.replay;
+          return r ? r.currentIndex() === t : false;
+        },
+        target,
+        { timeout: 5_000, polling: 50 },
+      );
+    } catch (err) {
+      const cur = await this.currentIndex();
+      throw new Error(`awaitCurrentIndex(${label}, target=${target}) timed out; current=${cur}; cause: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** Wait until a single-getter changes from `prev` (the value seen
+   *  before the action fired). Used by toggle methods + step methods
+   *  where the post-condition is "the value moved". */
+  private async awaitValueChange<K extends 'isPlaying' | 'perspectiveIndex' | 'animationsEnabled' | 'promptMode'>(
+    getter: K,
+    prev: ReturnType<SkytrixReplayDebugSurface[K]>,
+    label: string,
+  ): Promise<void> {
+    try {
+      await this.page.waitForFunction(
+        ({ key, before }) => {
+          const r = (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
+            .__skytrixDebug?.replay;
+          if (!r) return false;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const current = (r[key as keyof SkytrixReplayDebugSurface] as () => any)();
+          return current !== before;
+        },
+        { key: getter, before: prev },
+        { timeout: 5_000, polling: 50 },
+      );
+    } catch (err) {
+      throw new Error(`awaitValueChange(${label}, ${getter} from ${JSON.stringify(prev)}) timed out; cause: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   // ───── Navigation ─────
 
   /** Pause + jump to event index N. Equivalent to clicking a sub-event tick
    *  in the timeline. Fires `abortAndClean()` (orchestrator reset + journal
-   *  rebuild) — same path the transport-bar uses. */
+   *  rebuild) — same path the transport-bar uses. Returns once
+   *  `currentIndex() === idx` (signal propagated). */
   async seek(idx: number): Promise<void> {
     await this.page.evaluate(([i]) => {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.seek(i as number);
     }, [idx]);
-    await this.page.waitForTimeout(50); // microtask flush; signals propagate
+    await this.awaitCurrentIndex(idx, `seek(${idx})`);
   }
 
   /** Pause + jump to the LAST event index. Fires `abortAndClean()`. */
@@ -180,7 +230,8 @@ export class ReplayDebugDriver {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.skipEnd();
     });
-    await this.page.waitForTimeout(50);
+    const last = (await this.totalBoardStates()) - 1;
+    await this.awaitCurrentIndex(last, `skipEnd(last=${last})`);
   }
 
   /** Pause + jump to event 0. Fires `abortAndClean()`. */
@@ -189,36 +240,57 @@ export class ReplayDebugDriver {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.skipStart();
     });
-    await this.page.waitForTimeout(50);
+    await this.awaitCurrentIndex(0, 'skipStart');
   }
 
   /** Step one event forward without seeking (preserves the orchestrator
-   *  state via the natural advanceStep path). Does NOT fire `abortAndClean`. */
+   *  state via the natural advanceStep path). Does NOT fire `abortAndClean`.
+   *  Returns once `currentIndex` has advanced past `prevIdx`. Some forward
+   *  steps don't change currentIndex synchronously (prompt-gated,
+   *  animation-queue gated) — the wait then resolves silently after the
+   *  5s budget so the caller can assert manually. */
   async stepForward(): Promise<void> {
+    const prevIdx = await this.currentIndex();
     await this.page.evaluate(() => {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.stepForward();
     });
-    await this.page.waitForTimeout(50);
+    try {
+      await this.page.waitForFunction(
+        before => {
+          const r = (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
+            .__skytrixDebug?.replay;
+          return r ? r.currentIndex() > before : false;
+        },
+        prevIdx,
+        { timeout: 5_000, polling: 50 },
+      );
+    } catch {
+      // Step didn't advance — could be intentional (prompt waiting). Caller
+      // should assert `currentIndex()` to confirm intent.
+    }
   }
 
   /** Step one event backward. Fires `abortAndClean()`. */
   async stepBack(): Promise<void> {
+    const prevIdx = await this.currentIndex();
+    if (prevIdx <= 0) return; // already at start; handler is a no-op
     await this.page.evaluate(() => {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.stepBack();
     });
-    await this.page.waitForTimeout(50);
+    await this.awaitCurrentIndex(prevIdx - 1, `stepBack(prev=${prevIdx})`);
   }
 
   /** Toggle play / pause. Toggling play from an idle paused state starts
    *  the playback loop; from playing pauses it. */
   async playPause(): Promise<void> {
+    const wasPlaying = await this.isPlaying();
     await this.page.evaluate(() => {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.playPause();
     });
-    await this.page.waitForTimeout(50);
+    await this.awaitValueChange('isPlaying', wasPlaying, `playPause(was=${wasPlaying})`);
   }
 
   // ───── Toggles ─────
@@ -229,31 +301,34 @@ export class ReplayDebugDriver {
    *  page re-jumpsToState after the flip; today it does NOT (see
    *  `onTogglePerspective` in `replay-page.component.ts`). */
   async togglePerspective(): Promise<void> {
+    const prev = await this.perspectiveIndex();
     await this.page.evaluate(() => {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.togglePerspective();
     });
-    await this.page.waitForTimeout(100); // perspective flip cascades through the pipeline
+    await this.awaitValueChange('perspectiveIndex', prev, `togglePerspective(was=${prev})`);
   }
 
   /** Toggle animations ON ↔ OFF. Fires `abortAndClean()` + re-jumps. */
   async toggleAnimations(): Promise<void> {
+    const prev = await this.animationsEnabled();
     await this.page.evaluate(() => {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.toggleAnimations();
     });
-    await this.page.waitForTimeout(50);
+    await this.awaitValueChange('animationsEnabled', prev, `toggleAnimations(was=${prev})`);
   }
 
   /** Toggle prompt mode (decision ↔ result). In decision mode, replay
    *  pauses at every player choice; in result mode the choice is auto-
    *  applied and playback continues. */
   async togglePromptMode(): Promise<void> {
+    const prev = await this.promptMode();
     await this.page.evaluate(() => {
       (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
         .__skytrixDebug?.replay?.togglePromptMode();
     });
-    await this.page.waitForTimeout(50);
+    await this.awaitValueChange('promptMode', prev, `togglePromptMode(was=${prev})`);
   }
 
   // ───── Read-only inspectors ─────
@@ -341,7 +416,8 @@ export class ReplayDebugDriver {
 
   /** Poll until the precompute has at least `target` board states. Use
    *  this after navigating to wait for the WS REPLAY_BOARD_STATES batches
-   *  to land. */
+   *  to land. Use `waitUntilPrecomputeStable` instead when the final
+   *  total is unknown ahead of time (most diagnostic scenarios). */
   async waitForBoardStates(target: number, timeoutMs = 30_000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -350,6 +426,39 @@ export class ReplayDebugDriver {
       await this.page.waitForTimeout(150);
     }
     throw new Error(`waitForBoardStates(${target}) timed out at ${await this.totalBoardStates()}`);
+  }
+
+  /** Poll until `totalBoardStates` has been stable for `stableTicks`
+   *  consecutive samples (default 6 × 500 ms = 3 s of no growth). Use
+   *  when the test doesn't know the final count up-front — typical for
+   *  diagnostic / scan-every-state scenarios where we only want to wait
+   *  until the WS REPLAY_BOARD_STATES batches stop arriving.
+   *
+   *  Companion of `waitForBoardStates(target)`: use that one when you
+   *  have a known target index. Use this one when you'll iterate over
+   *  `totalBoardStates()` and want to be sure the precompute is done.
+   *
+   *  Returns the final stable count. Throws on timeout. */
+  async waitUntilPrecomputeStable(
+    stableTicks = 6,
+    tickMs = 500,
+    timeoutMs = 60_000,
+  ): Promise<number> {
+    const deadline = Date.now() + timeoutMs;
+    let prevTotal = -1;
+    let stable = 0;
+    while (Date.now() < deadline) {
+      const cur = await this.totalBoardStates();
+      if (cur === prevTotal) {
+        stable++;
+        if (stable >= stableTicks) return cur;
+      } else {
+        stable = 0;
+        prevTotal = cur;
+      }
+      await this.page.waitForTimeout(tickMs);
+    }
+    throw new Error(`waitUntilPrecomputeStable timed out at ${await this.totalBoardStates()} states (last delta ${stable} ticks ago)`);
   }
 
   /** Poll until the end overlay is mounted (the replay played to the
@@ -476,7 +585,32 @@ export async function setupReplaySession(
     ? `${baseURL}/pvp/replay/${opts.replayId}?seekTo=${opts.fromEvent}`
     : `${baseURL}/pvp/replay/${opts.replayId}`;
   await page.goto(target);
-  await page.waitForSelector('[data-zone]', { timeout: 30_000 });
+  // Race the board-ready selector against the error-redirect: when the
+  // server tells the front the replay doesn't exist, the replay-page's
+  // error effect calls `router.navigate(['/pvp/history'])` and the URL
+  // path drops back to /pvp/history. Without this race, an inexistent
+  // replayId burns 30s on the [data-zone] timeout then dies with the
+  // generic "Timeout 30000ms exceeded" — unhelpful diagnostic. Polling
+  // page.url() every 200ms catches the redirect within 1-2s.
+  const navStart = Date.now();
+  let boardReady = false;
+  while (Date.now() - navStart < 30_000) {
+    if (page.url().includes('/pvp/history')) {
+      throw new Error(
+        `setupReplaySession(${opts.replayId}): page redirected to ${page.url()} — replay not found in local DB or auth failed. ` +
+        `Seed the replay first (POST to the back's replay endpoint with the recorded WorkerReplayPayload), ` +
+        `or pick a different replayId. Aborting.`,
+      );
+    }
+    if (await page.locator('[data-zone]').count() > 0) { boardReady = true; break; }
+    await page.waitForTimeout(200);
+  }
+  if (!boardReady) {
+    throw new Error(
+      `setupReplaySession(${opts.replayId}): board didn't render within 30s at ${page.url()}. ` +
+      `Stack down? Check the duel-server (port 3001) and back (8080) are healthy.`,
+    );
+  }
   await page.waitForSelector('app-transport-bar', { timeout: 20_000 });
   // Initial-draw breathe beat — 500ms in code, give it 1s of margin.
   await page.waitForTimeout(opts.fromEvent != null ? 5_000 : 1_500);

@@ -3,7 +3,15 @@ import { setupReplaySession } from './replay-debug-driver';
 
 const REPLAY_ID = 'a1eed2d6-5bad-486a-b743-9639b8049790';
 
-test('F9-bis diagnostic — dump chainSnapshot of every state', async ({ browser }) => {
+// Diagnostic spec — kept around for future F9-bis investigations but
+// skipped by default. The test has no assertions (only console.log dumps)
+// and takes ~10s per run, so it should not squat the full Playwright
+// suite. To run it manually:
+//   - remove the `.skip` below, OR
+//   - `npx playwright test e2e/f9-bis-diagnostic.spec.ts --grep "dump"`
+//     (Playwright still respects test.skip even when explicitly targeted)
+//     so flip the `.skip` instead.
+test.skip('F9-bis diagnostic — dump chainSnapshot of every state', async ({ browser }) => {
   test.setTimeout(180_000);
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
   const session = await setupReplaySession(ctx, {
@@ -14,14 +22,7 @@ test('F9-bis diagnostic — dump chainSnapshot of every state', async ({ browser
   });
 
   try {
-    // Wait until precompute stable.
-    let prevTotal = -1, stable = 0;
-    while (stable < 6) {
-      const cur = await session.driver.totalBoardStates();
-      if (cur === prevTotal) stable++;
-      else { stable = 0; prevTotal = cur; }
-      await session.page.waitForTimeout(500);
-    }
+    await session.driver.waitUntilPrecomputeStable();
 
     const total = await session.driver.totalBoardStates();
     // eslint-disable-next-line no-console

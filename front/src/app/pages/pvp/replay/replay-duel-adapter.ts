@@ -387,12 +387,16 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     // snapshot on every state captured while `chainPhase !== 'idle'`, and
     // we restore via the SAME code path as the PvP `CHAIN_STATE` reconnect
     // handshake (`processor.restoreChainState` + `chainingMsgsToLinkStates`
-    // helper) so the two paths can't drift. `applyChainSolving` mirrors
-    // the live worker emitting `MSG_CHAIN_SOLVING` after the handshake:
-    // it sets `chainPhase='resolving'` (no-op if already resolving from
-    // restoreChainState) AND flips the matched link's `resolving` flag so
-    // the in-resolution link is visually distinguished — without it, all
-    // restored links look identical even when one is mid-resolution.
+    // helper) so the two paths can't drift. `applyChainSolving` re-uses
+    // the live worker's MSG_CHAIN_SOLVING handler — semantically two
+    // effects:
+    //   - `chainPhase = 'resolving'`: idempotent if `restoreChainState`
+    //      already set it from the snapshot's `phase` field.
+    //   - flip `resolving = true` on the matched link: NOT idempotent.
+    //     `restoreChainState` always restores links with `resolving: false`
+    //     by convention (the field is set by applyChainSolving, not by
+    //     the snapshot), so this call is the only path that distinguishes
+    //     the in-resolution link visually after a mid-chain seek.
     // Legacy replays without `chainSnapshot` keep today's empty-overlay
     // behavior on mid-chain seek; reprocomputing a replay attaches the
     // field (replay-handlers.ts caches the source WorkerReplayPayload,

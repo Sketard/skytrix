@@ -245,5 +245,75 @@ describe('chain-badge.utils', () => {
       const result = buildHandChainBadges(links, 0, 'resolving', hand);
       expect(result.has(0)).toBeFalse();
     });
+
+    // PvP live, non-omniscient viewer: opponent's hand contains face-down
+    // cards rendered as { cardCode: null }. Strict `currentCount` would
+    // skip these (null !== cardCode) and the filter would reject every
+    // badge on the opponent hand mid-chain. Face-down slots must count
+    // as "potential matches" (unknownCount) so a face-down card can
+    // still be the activated link we just can't yet identify.
+    it('opponent face-down: 2 copies at chaining, 0 revealed + 2 face-down → still allows badging by proximity', () => {
+      const links = [
+        { ...makeLink(0, 200, 1, 1), handCopiesAtChaining: 2 } as ChainLinkState,
+      ];
+      // Both Faimena copies face-down on opponent side
+      const hand = handCards([null, null]);
+      const { badges } = buildOpponentHandChainData(links, 0, 'resolving', hand);
+      // Pre-fix behavior preserved: filter doesn't reject (unknownCount=2 covers
+      // the 2 expected copies) → fallback to originalSeq → badge at index 1.
+      expect(badges.get(1)).toBe(1);
+    });
+
+    it('opponent face-down: 2 at chaining, 1 revealed + 1 face-down → covers + badges revealed', () => {
+      const links = [
+        { ...makeLink(0, 200, 1, 1), handCopiesAtChaining: 2 } as ChainLinkState,
+      ];
+      // 1 visible Faimena + 1 face-down: currentCount=1, unknownCount=1,
+      // 1+1 >= 2 → filter passes, bestDist finds the visible Faimena.
+      const hand = handCards([200, null]);
+      const { badges } = buildOpponentHandChainData(links, 0, 'resolving', hand);
+      expect(badges.get(0)).toBe(1);
+    });
+
+    it('opponent face-down: 2 at chaining, 1 face-down + 0 revealed → 1 copy discarded, filter rejects', () => {
+      // currentCount=0, unknownCount=1, 0+1 < 2 → at least one copy is
+      // provably gone (only 1 hand slot left, but 2 were expected). The
+      // activated card has left the hand → no badge on the remaining
+      // face-down slot (which could be unrelated).
+      const links = [
+        { ...makeLink(0, 200, 1, 0), handCopiesAtChaining: 2 } as ChainLinkState,
+      ];
+      const hand = handCards([null]);
+      const { badges } = buildOpponentHandChainData(links, 0, 'resolving', hand);
+      expect(badges.has(0)).toBeFalse();
+    });
+
+    it('own hand: own player has no face-down (cardCode never null) — filter behaves as pre-face-down version', () => {
+      // Regression guard: face-down handling adds `unknownCount` but
+      // must NOT silently un-reject the own-hand discard scenario.
+      const links = [
+        { ...makeLink(0, 200, 0, 1), handCopiesAtChaining: 2 } as ChainLinkState,
+      ];
+      const hand = handCards([100, 200]); // own hand: 1 Faimena, 1 other (visible)
+      const result = buildHandChainBadges(links, 0, 'resolving', hand);
+      expect(result.has(1)).toBeFalse();
+    });
+
+    it('currentCount > handCopiesAtChaining (extra draw after activation) — badges by proximity, NOT rejected', () => {
+      // Rare scenario: an effect draws a copy of the same card AFTER the
+      // CHAINING was emitted (e.g. a continuous spell that draws on cost
+      // payment). currentCount (2) > handCopiesAtChaining (1) → strict
+      // less-than predicate is false → filter does NOT reject. The
+      // proximity heuristic then badges the copy closest to the original
+      // sequence — the activated copy (still in hand because cost didn't
+      // discard it). Pinning this so a future `!==` strictness regression
+      // is caught.
+      const links = [
+        { ...makeLink(0, 200, 0, 0), handCopiesAtChaining: 1 } as ChainLinkState,
+      ];
+      const hand = handCards([200, 200]); // 2 copies now, 1 expected
+      const result = buildHandChainBadges(links, 0, 'resolving', hand);
+      expect(result.get(0)).toBe(1);
+    });
   });
 });

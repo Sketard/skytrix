@@ -45,17 +45,10 @@ test('F9-bis mid-chain seek restores chain overlay + badges', async ({ browser }
   });
 
   try {
-    // Wait for the precompute to settle — some replays are short. We poll
-    // for a stable count instead of a fixed floor: when totalBoardStates
-    // stops growing for ~3s, the precompute is done.
-    let prevTotal = -1;
-    let stableTicks = 0;
-    while (stableTicks < 6) {
-      const cur = await session.driver.totalBoardStates();
-      if (cur === prevTotal) stableTicks++;
-      else { stableTicks = 0; prevTotal = cur; }
-      await session.page.waitForTimeout(500);
-    }
+    // Wait for the precompute to settle — some replays are short, so a
+    // fixed floor doesn't work. The driver's `waitUntilPrecomputeStable`
+    // polls totalBoardStates and returns when growth stops.
+    await session.driver.waitUntilPrecomputeStable();
 
     // Discover the first mid-chain state. We can't hard-code the index
     // because precompute timing depends on the OCG state machine — but
