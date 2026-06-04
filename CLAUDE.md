@@ -816,6 +816,56 @@ directly (not `handleEntryAndAwait`) ; a `pendingCompletions` array
 captures each event's ref + `AnimationCompleted` is emitted for every
 event after the group's `Promise.all` resolves.
 
+## Replay-as-max-rate-PvP doctrine (2026-06-04)
+
+Conceptually, a replay is a PvP duel played at **maximum rate without
+latency or human reflection**. The server (replay precompute) emits
+states as fast as it can ; the client paces playback to whatever its
+own animation pipeline can sustain. **The client is the source of
+truth for the minimum tempo** — server events queue, animations gate.
+
+This has one structural consequence : any visual animation OUTSIDE the
+main `QueueRunner` (overlays, prompt fade transitions, deck shuffles)
+needs to contribute to a gate the replay scheduler observes ; otherwise
+the auto-advance scheduler steps forward over an animation that is
+still drawing, and the user sees a half-rendered transition before the
+next state lands. The PvP side has the user clicking a button as the
+natural rate limiter ; replay has no such pacing humans.
+
+**The contract today is `PvpChainOverlayComponent.overlayActive`** — a
+computed bool gating both `pvp-prompt-dialog`'s visible `dialogState`
+(Approach A, F1 gate, 2026-06-03) and `ReplayTransportService.maybeAdvance`'s
+`schedulePromptDismiss` window. The full list of bounded animations
+that contribute, and the load-bearing list of state flags that MUST
+NOT contribute (gating on `resolvingIndex` causes a POLL-DROP deadlock,
+discovered the hard way during 2026-06-03 diagnosis), lives in the
+docblock on the computed itself — see
+[pvp-chain-overlay.component.ts:434-457](front/src/app/pages/pvp/duel-page/pvp-chain-overlay/pvp-chain-overlay.component.ts#L434-L457).
+
+**Adding a new out-of-queue animation** — a 4-point checklist :
+
+1. **The animation MUST be bounded by construction** — entry / body /
+   exit timers all known ahead of time, no waits on user input or on
+   external signals that may not arrive. The chain overlay enforces
+   this via per-phase `scheduleTimeout` with explicit hold tails
+   (`OVERLAY_ANIM_HOLD_MS`, 400ms with 200ms floor).
+2. **Contribute the animation's "in flight" flag to `overlayActive`** —
+   or to a sibling aggregate signal a future evolution adds. The flag
+   MUST flip false WITHIN the bounded window from (1) ; an unbounded
+   flag will deadlock the replay scheduler.
+3. **No new replay-side wiring is needed** — `ReplayTransportService.maybeAdvance`
+   already gates on `overlayActive` (F1) ; new contributions to the
+   aggregate naturally extend the gate. PvP's prompt-dialog reads the
+   same signal via Approach A.
+4. **Do not pile on `resolvingIndex` / `negatedResolvingIndex` / logical
+   chain state** — these stay true across async cleanup flows
+   (`replayBuffer`, `impactPause`) that the gate must NOT wait for.
+   The "INTENTIONALLY NOT included" block in the docblock is authoritative.
+
+PvP is unaffected by the gate (no auto-advance scheduler ; the user
+clicks). The gate is replay-only, but the contract lives in a component
+shared by both modes so the doctrine stays unified.
+
 ## Replay Board State Parity Rule
 
 Replay must provide equivalent intermediate board states so
