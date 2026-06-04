@@ -579,8 +579,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     effect(() => this.gameLog.setPerspective(this.perspectiveIndex()));
     // Mutual exclusion with the zone-browser pills — both share the right
     // sidebar flex column; opening the game-log closes any open zone-browser.
+    // The predicate gates on `state === 'open'` (panelOpen && !panelClosing),
+    // NOT `panelOpen` alone — `panelOpen()` stays true during the 150ms
+    // slide-out window, and an `onZonePillRequest` that fires during that
+    // window would otherwise tear the just-opened browser back down.
     effect(() => {
-      if (this.gameLog.panelOpen() && this.zoneBrowserState()) {
+      const open = this.gameLog.panelOpen() && !this.gameLog.panelClosing();
+      if (open && this.zoneBrowserState()) {
         untracked(() => this.closeZoneBrowser());
       }
     });

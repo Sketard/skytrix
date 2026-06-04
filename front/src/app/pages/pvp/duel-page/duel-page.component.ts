@@ -606,9 +606,21 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     effect(() => this.gameLog.setPerspective(this.ownPlayerIndex()));
     // Mutual exclusion with the zone-browser pills — both share the right
     // sidebar flex column; opening the game-log closes any open zone-browser.
+    // The predicate gates on `state === 'open'` (panelOpen && !panelClosing),
+    // NOT `panelOpen` alone — `panelOpen()` stays true during the 150ms
+    // slide-out window, and an `onZonePillRequest` that fires during that
+    // window would otherwise tear the just-opened browser back down.
+    // The close emulates the click-outside slide-out (add `--closing` class,
+    // teardown after `ZONE_BROWSER_CLOSE_MS`) so the exit transition matches
+    // the document-click path instead of snapping the overlay away.
     effect(() => {
-      if (this.gameLog.panelOpen() && this.zoneBrowserState()) {
-        untracked(() => this.closeZoneBrowser());
+      const open = this.gameLog.panelOpen() && !this.gameLog.panelClosing();
+      if (open && this.zoneBrowserState()) {
+        untracked(() => {
+          const zoneEl = document.querySelector('app-pvp-zone-browser-overlay');
+          zoneEl?.querySelector('.zone-browser')?.classList.add('zone-browser--closing');
+          setTimeout(() => this.closeZoneBrowser(), ZONE_BROWSER_CLOSE_MS);
+        });
       }
     });
     this.wsService.onStateSync = (msg) => {

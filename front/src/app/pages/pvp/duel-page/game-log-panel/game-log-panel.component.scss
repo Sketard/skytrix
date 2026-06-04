@@ -138,10 +138,12 @@
   }
 }
 
-// Mobile landscape (small viewport height) — the parent `.right-sidebar`
-// flips to `flex-direction: row-reverse` so the mini-toolbar sits beside
-// the panel instead of below. Mirror the `pvp-zone-browser-overlay`
-// :host adjustment so the journal still grows full-height in that mode.
+// Mobile landscape (small viewport height) — in PvP the parent
+// `.right-sidebar` flips to `flex-direction: row-reverse` so the mini-toolbar
+// sits beside the panel instead of below; replay keeps `column` (no
+// mini-toolbar there). In both cases the host switches to a content-sized
+// row item so the journal grows full-height in landscape. Mirrors the
+// `pvp-zone-browser-overlay` :host adjustment.
 @media (max-height: 500px) {
   :host(.gamelog-host--open) {
     flex: 0 0 auto;
