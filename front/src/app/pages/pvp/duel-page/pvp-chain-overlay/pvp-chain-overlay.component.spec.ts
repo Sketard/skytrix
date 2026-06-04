@@ -1208,4 +1208,20 @@ describe('PvpChainOverlayComponent', () => {
       flush();
     }));
   });
+
+  // ---------------------------------------------------------------------------
+  // F21 deferred (2026-06-04) — side routing
+  // ---------------------------------------------------------------------------
+  // Commit bd9ec8e8 (DS chain-badge owner doctrine) deferred the overlay-side
+  // spec for `chain-card--left/right` routing because it depends on a
+  // DuelContext mock refresh that lives on a sibling branch. `xit` keeps the
+  // pending entry visible in Karma output so we don't lose track. When the
+  // mock refresh lands, drop the `x` and implement: build a 2-link chain with
+  // links from both players, render via `setLinks`, assert `chain-card--left`
+  // appears on the viewer's card and `chain-card--right` on the opponent's.
+  describe('side routing (F21 deferred)', () => {
+    xit('routes chain-card to .chain-card--left/right per link owner (DEFERRED — needs DuelContext mock refresh)', () => {
+      // Implementation pending — see commit bd9ec8e8 + memory note.
+    });
+  });
 });

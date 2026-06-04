@@ -199,12 +199,13 @@
   opacity: 0;
 
   @media (prefers-reduced-motion: no-preference) {
-    // `animation-delay` = overlay fade-in duration (300ms hardcoded mirror of
-    // `--pvp-chain-overlay-transition`) so the swoop only starts AFTER the
-    // overlay container is fully opaque. Without this, the 0% → 40% keyframe
-    // steps (the visible swoop from below) play during the fade-in and are
-    // invisible to the user.
-    animation: chain-entry-pulse var(--chain-entry-duration, var(--transition-theme)) var(--ease-out) 300ms both;
+    // `animation-delay` = `--chain-overlay-fadein-ms` (bound from
+    // `cssDurations().overlayFadeIn` — SCALED by playback speed). The swoop
+    // only starts AFTER the overlay container is fully opaque. Without this
+    // delay the 0% → 40% keyframe (the visible swoop from below) plays
+    // during the fade-in and is invisible to the user. Pre-F4 (2026-06-04)
+    // this was hardcoded 300ms which broke under slow playback.
+    animation: chain-entry-pulse var(--chain-entry-duration, var(--transition-theme)) var(--ease-out) var(--chain-overlay-fadein-ms, 300ms) both;
   }
 }
 
@@ -222,11 +223,11 @@
 
 .chain-card--shoved {
   @media (prefers-reduced-motion: no-preference) {
-    // Same 300ms delay as `chain-card--entering` so the shove plays in sync
-    // with the new card's swoop — both kick in once the overlay is fully
-    // opaque. Otherwise the older card visibly moves up while the container
-    // is still half-transparent.
-    animation: chain-shove-up var(--chain-shove-duration, var(--transition-theme)) var(--ease-out) 300ms both;
+    // Same `--chain-overlay-fadein-ms` delay as `chain-card--entering`
+    // (F4 2026-06-04) so the shove plays in sync with the new card's
+    // swoop — both kick in once the overlay is fully opaque. Scaled by
+    // playback speed via the CSS var.
+    animation: chain-shove-up var(--chain-shove-duration, var(--transition-theme)) var(--ease-out) var(--chain-overlay-fadein-ms, 300ms) both;
     // The card is mid-flight between slots — boost z-index so it overlays the
     // incoming entering card while the swap happens.
     z-index: 5;

@@ -1051,4 +1051,21 @@ describe('ReplayPageComponent — provider doctrine (2026-06-03 bug 5 regression
     expect(typeof dispatcher.dispatch).toBe('function');
     expect(typeof dispatcher.register).toBe('function');
   });
+
+  // F2 (2026-06-04) — `chainOverlayActive` is built on `viewChild()` which
+  // returns `undefined` until `ngAfterViewInit`. The computed defends with
+  // `?? false`. `transport.configure({overlayActive: this.chainOverlayActive})`
+  // is wired in the constructor (BEFORE the view is created), so during the
+  // bootstrap window the gate reads `false`. This is acceptable because
+  // `adapter.activePrompt()` is null at mount — there's nothing for
+  // `maybeAdvance` to dismiss. The defensive guard is what makes the
+  // constructor-wired call to `transport.configure` safe.
+  it('chainOverlayActive defends false during bootstrap (viewChild undefined)', () => {
+    const fixture = TestBed.createComponent(ReplayPageComponent);
+    // No detectChanges yet — view is not created, viewChild() returns undefined.
+    // The computed must NOT throw — the `?? false` fallback is what makes
+    // `transport.configure` safe to call from the constructor.
+    const cmp = fixture.componentInstance as unknown as { chainOverlayActive: () => boolean };
+    expect(cmp.chainOverlayActive()).toBeFalse();
+  });
 });

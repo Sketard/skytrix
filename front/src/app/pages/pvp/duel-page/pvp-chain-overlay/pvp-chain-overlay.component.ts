@@ -301,6 +301,11 @@ export class PvpChainOverlayComponent {
       exit: this.orchestrator.chainExitDuration(),
       exitVisual: scale(300),
       overlayFadeOut: Math.max(200, scale(300)),
+      // F4 (2026-06-04) — `overlayFadeIn` ALSO feeds the SCSS
+      // `animation-delay` on `chain-card--entering` / `chain-card--shoved`
+      // (see `cssDurations.overlayFadeIn` below + the template style
+      // binding `--chain-overlay-fadein-ms`). Hardcoding 300ms in SCSS
+      // diverged from this scaled JS value under slow playback.
       overlayFadeIn: Math.max(200, scale(300)),
       impactPause: Math.max(200, scale(300)),
       constructAppear: scale(800),
@@ -467,6 +472,10 @@ export class PvpChainOverlayComponent {
       entry: `${d.entry}ms`,
       overflow: `${d.overflow}ms`,
       shove: `${d.shove}ms`,
+      // F4 (2026-06-04) — fed into SCSS as `--chain-overlay-fadein-ms`
+      // so the entering/shoved animation-delay matches the SCALED fade-in
+      // (used to be hardcoded 300ms — broke under slow playback).
+      overlayFadeIn: `${d.overlayFadeIn}ms`,
       // Cascade cards (chain links shifting forward to fill the slot a
       // resolved card vacated) hold this long before sliding — so the
       // exiting card has visibly cleared the slot BEFORE the replacement

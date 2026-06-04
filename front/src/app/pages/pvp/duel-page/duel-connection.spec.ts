@@ -1217,9 +1217,24 @@ describe('DuelConnection — onPerspectiveSwitched re-projects board (2026-06-02
 //   (b) SOLO `waitingForOpponentOnOtherSlot` glows incorrectly after switch.
 //   (c) "Opponent thinking" overlay flickers on the wrong side.
 // =============================================================================
-describe('DuelConnection — WAITING_RESPONSE invariant (2026-06-02)', () => {
-  it('clears the opposite slot when setting waitingForOpponent on targetPlayer', () => {
-    const { conn } = makeConn();
+describe('DuelConnection — WAITING_RESPONSE invariant (2026-06-02 / F8 2026-06-04)', () => {
+  // F8 (2026-06-04) — the single-waiter clear is SOLO-only. In PvP normal
+  // each side lives on its own conn so the cross-slot race cannot happen
+  // by construction, and PvP normal protocol typically omits `targetPlayer`
+  // → defaulting to 0 would wipe slot[1].waitingForOpponent
+  // unconditionally on every WAITING_RESPONSE. Gated on `soloMode`.
+
+  function makeSoloConn(storageKey: string) {
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const soloModeSource = signal(true);
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const perspectiveSource = signal<0 | 1>(0);
+    const duelCtx = { perspective: () => perspectiveSource.asReadonly() };
+    return new DuelConnection('/ws/test', false, storageKey, undefined, { soloModeSource, duelCtx });
+  }
+
+  it('SOLO: clears the opposite slot when setting waitingForOpponent on targetPlayer=0', () => {
+    const conn = makeSoloConn('duel-test-waiting-solo-0');
     const slotWaiting = (slot: 0 | 1) => (conn as unknown as {
       getWaitingForOpponentFor(p: 0 | 1): () => boolean;
     }).getWaitingForOpponentFor(slot)();
@@ -1241,8 +1256,8 @@ describe('DuelConnection — WAITING_RESPONSE invariant (2026-06-02)', () => {
     expect(slotWaiting(1)).toBeFalse();
   });
 
-  it('clears slot0 when targetPlayer=1', () => {
-    const { conn } = makeConn();
+  it('SOLO: clears slot0 when targetPlayer=1', () => {
+    const conn = makeSoloConn('duel-test-waiting-solo-1');
     const slotWaiting = (slot: 0 | 1) => (conn as unknown as {
       getWaitingForOpponentFor(p: 0 | 1): () => boolean;
     }).getWaitingForOpponentFor(slot)();
@@ -1261,9 +1276,12 @@ describe('DuelConnection — WAITING_RESPONSE invariant (2026-06-02)', () => {
     expect(slotWaiting(1)).toBeTrue();
   });
 
-  it('default targetPlayer=0 (legacy PvP normal) still clears slot 1', () => {
-    // Pre-PR2 PvP normal protocol omitted `targetPlayer`. The handler defaults
-    // to 0 in that case. The invariant must still hold: slot 1 → cleared.
+  it('PvP normal: does NOT clear opposite slot when targetPlayer omitted (F8 2026-06-04)', () => {
+    // PvP normal protocol typically omits `targetPlayer`. The handler defaults
+    // to 0, sets slot[0].waitingForOpponent=true, but MUST NOT touch slot[1].
+    // Pre-F8 the unconditional cross-clear wiped slot[1] on every
+    // WAITING_RESPONSE — a regression that the SOLO-only single-waiter
+    // invariant inadvertently introduced.
     const { conn } = makeConn();
     const slotWaiting = (slot: 0 | 1) => (conn as unknown as {
       getWaitingForOpponentFor(p: 0 | 1): () => boolean;
@@ -1272,6 +1290,7 @@ describe('DuelConnection — WAITING_RESPONSE invariant (2026-06-02)', () => {
     const internals = conn as unknown as {
       _slots: Array<{ waitingForOpponent: { set: (v: boolean) => void } }>;
     };
+    // Pre-seed slot[1] as if a separate code path set it (e.g. reconnect grace).
     internals._slots[1].waitingForOpponent.set(true);
 
     dispatch(conn, {
@@ -1279,6 +1298,9 @@ describe('DuelConnection — WAITING_RESPONSE invariant (2026-06-02)', () => {
     } as unknown as ServerMessage);
 
     expect(slotWaiting(0)).toBeTrue();
-    expect(slotWaiting(1)).toBeFalse();
+    // Slot 1 SURVIVES — F8 invariant. In PvP normal each side lives on its
+    // own conn so this slot tracking is per-conn, and the cross-slot race
+    // is structurally impossible.
+    expect(slotWaiting(1)).toBeTrue();
   });
 });

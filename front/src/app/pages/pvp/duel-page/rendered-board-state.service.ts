@@ -57,6 +57,18 @@ export class RenderedBoardStateService implements BoardStateView {
   private _locks = new Map<string, number>();
   private _safetyTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
+  /**
+   * F5 (2026-06-04) — cumulative count of locks dropped via `commitAll(site)`
+   * skip paths (replay seek, abort, jumpToState, collapseRemainingSteps,
+   * resetForReplaySeek). Pure observational counter; exposed via
+   * `__skytrixDebug.snapshot()` so a future regression that strands 100+
+   * locks per seek becomes visible without a Datadog hook. Reset only at
+   * service destroy.
+   */
+  private _tolerateLocksDroppedCount = 0;
+  /** Public read of the tolerateLocks drop counter (F5 — debug snapshot). */
+  get tolerateLocksDroppedCount(): number { return this._tolerateLocksDroppedCount; }
+
   readonly logicalState = this._logical.asReadonly();
   readonly renderedState = this._rendered.asReadonly();
   /**
@@ -163,6 +175,23 @@ export class RenderedBoardStateService implements BoardStateView {
     const players = rendered.players.map((rp, i) => {
       const extraLocked = this._locks.has(`EXTRA-${i}`);
       const logicalExtraZone = logical.players[i].zones.find(z => z.zoneId === 'EXTRA');
+      // F22 (2026-06-04) — split the conflated branches:
+      //   · `!logicalExtraZone` (logical state missing EXTRA) on a board
+      //     that ALREADY has other zones is a real bug upstream — assert
+      //     in dev, fall back to rendered in prod so we don't crash a
+      //     duel for a missing pile array.
+      //   · `extraLocked` is the intentional skip — silent.
+      //   · Bootstrap (`logical.players[i].zones.length === 0`, e.g.
+      //     EMPTY_DUEL_STATE before the 1st BOARD_STATE) is not a bug —
+      //     no zones at all, EXTRA legitimately absent.
+      // Pre-F22: `extraLocked || !logicalExtraZone` conflated all three
+      // into a silent "use rp.zones" branch, masking the upstream bug.
+      const logicalHasZones = logical.players[i].zones.length > 0;
+      duelAssert(
+        !logicalHasZones || !!logicalExtraZone,
+        'syncPileCounts',
+        `EXTRA zone missing in logical state for player ${i} (logical has ${logical.players[i].zones.length} other zones)`,
+      );
       const renderedZonesWithoutExtra = rp.zones.filter(z => z.zoneId !== 'EXTRA');
       const zones = extraLocked || !logicalExtraZone
         ? rp.zones
@@ -341,6 +370,11 @@ export class RenderedBoardStateService implements BoardStateView {
         site,
         [...this._locks.keys()].join(', '),
       );
+      // F5 (2026-06-04) — accumulate so __skytrixDebug.snapshot() shows the
+      // trend. A regression that strands locks at every skip path bumps the
+      // counter visibly. The warn covers the per-call signal ; the counter
+      // covers the session-aggregate signal.
+      this._tolerateLocksDroppedCount += this._locks.size;
     }
     for (const tid of this._safetyTimeouts) clearTimeout(tid);
     this._safetyTimeouts.clear();

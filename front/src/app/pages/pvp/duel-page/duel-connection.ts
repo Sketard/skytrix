@@ -807,9 +807,13 @@ export class DuelConnection {
     // perspective so the user sees their cards on their side.
     //
     // Safe: this method is only called by `SoloDuelOrchestratorService`
-    // after `isBoardStableForSwitch` has been verified (chain phase ∈
-    // {idle, building} AND !isAnimating → no held locks). `syncRendered`
-    // is the strongest sync tier and matches the equivalent replay path
+    // after `isBoardStableForSwitch` has been verified. Post-2026-06-02
+    // that predicate is just `!isAnimating` (chain phase clause dropped —
+    // see fix #3 in commit 8d3eee53). `!isAnimating` is sufficient
+    // because the QueueRunner's `finalizeAndCommit` commits every held
+    // lock BEFORE flipping `_isRunning=false` — so any phase + idle
+    // runner implies no held locks. `syncRendered` is the strongest
+    // sync tier and matches the equivalent replay path
     // (`adapter.jumpToState(currentState)`).
     if (this._lastAbsoluteBoardState !== null) {
       const reprojected = this._maybeSwapBoardState(this._lastAbsoluteBoardState);
@@ -1645,19 +1649,27 @@ export class DuelConnection {
     duelAssert(!this.soloMode || message.targetPlayer !== undefined,
       'WAITING_RESPONSE',
       'SOLO multiplex requires server to populate `targetPlayer` (got undefined)');
-    // Invariant: at any instant, AT MOST one slot is in `waitingForOpponent`.
-    // The server emits `WAITING_RESPONSE{targetPlayer:X}` when it has just sent
-    // a SELECT_* to the OPPOSITE of X — i.e. X is the side that waits, 1-X is
-    // the side that must act. Setting slot[X] without clearing slot[1-X] lets
-    // a stale "waiting" flag from a prior turn persist on both sides, which
-    // (a) glows the SOLO switch button when no action is actually pending,
-    // (b) corrupts `waitingForOpponentOnOtherSlot` reads after a switch.
-    // Bug reproduced 2026-06-02: `slot0.waiting=true slot1.waiting=true`
-    // simultaneously after an auto-respond sequence on a chain interrupt
-    // window.
+    // SOLO multiplex single-waiter invariant (fix #5, 2026-06-02): at any
+    // instant, AT MOST one slot is in `waitingForOpponent`. The server emits
+    // `WAITING_RESPONSE{targetPlayer:X}` when it has just sent a SELECT_* to
+    // the OPPOSITE of X — i.e. X is the side that waits, 1-X is the side
+    // that must act. Setting slot[X] without clearing slot[1-X] lets a stale
+    // "waiting" flag from a prior turn persist on both sides, which (a) glows
+    // the SOLO switch button when no action is actually pending, (b) corrupts
+    // `waitingForOpponentOnOtherSlot` reads after a switch. Bug reproduced
+    // 2026-06-02: `slot0.waiting=true slot1.waiting=true` simultaneously
+    // after an auto-respond sequence on a chain interrupt window.
+    //
+    // PvP normal LIMIT (F8 2026-06-04): in PvP normal each side lives on its
+    // own conn so the cross-slot race cannot happen by construction, and
+    // `message.targetPlayer` is typically undefined → the ?? 0 default
+    // would wipe slot[1].waitingForOpponent unconditionally. Gated on
+    // `soloMode` so PvP normal keeps the legacy single-slot semantic.
     const targetPlayer = (message.targetPlayer ?? 0) as 0 | 1;
     this._slots[targetPlayer].waitingForOpponent.set(true);
-    this._slots[(1 - targetPlayer) as 0 | 1].waitingForOpponent.set(false);
+    if (this.soloMode) {
+      this._slots[(1 - targetPlayer) as 0 | 1].waitingForOpponent.set(false);
+    }
   }
 
   private _handleSessionToken(message: SessionTokenMsg): void {

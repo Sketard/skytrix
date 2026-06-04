@@ -44,6 +44,13 @@ export interface DebugSnapshot {
    *  input — useful to diagnose why `switchPerspective` no-ops without
    *  having to enable the PIPELINE log category. */
   pendingPromptType?: string | null;
+  /** F5 (2026-06-04) — cumulative count of locks dropped via the
+   *  `commitAll(site)` skip paths (replay seek, abort, jumpToState,
+   *  collapseRemainingSteps, resetForReplaySeek). A regression that
+   *  strands 100+ locks per seek surfaces as a bumped counter without
+   *  Datadog instrumentation. Healthy steady-state ~ 0–10 over a long
+   *  session ; anything > 100 deserves an investigation. */
+  tolerateLocksDroppedCount?: number;
 }
 
 /**
@@ -103,6 +110,9 @@ export class DuelDebugService {
       domZones: () => this.dumpDomZones(),
       preActivationBuffer: this.preActivationBufferAccessor?.() ?? [],
       pendingPromptType: this.pendingPromptTypeAccessor?.() ?? null,
+      // F5 (2026-06-04) — observational counter for the tolerateLocks skip
+      // paths. Bumps in this number across a session = real signal.
+      tolerateLocksDroppedCount: rbs.tolerateLocksDroppedCount,
     };
   }
 
