@@ -837,9 +837,12 @@ reset points via `duelAssert()`. Throws in dev, `console.error`s in prod.
     before the rematch transition.
   · `cleanup()` — duel teardown.
 - **Animation orchestrator (`animation-orchestrator.service.ts`)** :
-  · `resetAllState(scopes)` — before `commitAll`, after `finalizeAndCommit`.
-    Any zone still locked here means a `lockZone` was never paired with a
-    commit/release in the dispatch path that triggered the reset.
+  · `resetAllState(scopes, tolerateLocks=false)` — before `commitAll`, after
+    `finalizeAndCommit`. Any zone still locked here means a `lockZone` was
+    never paired with a commit/release in the dispatch path that triggered
+    the reset. The `tolerateLocks` parameter skips the assert at the single
+    user-triggered seek caller (`resetForReplaySeek`) — see the 4th NOT-asserted
+    site below.
 - **Replay (`replay-duel-adapter.ts`)** :
   · `feedTransition()` — every new state transition starts clean.
   · `feedTransitionPhased()` — same.
@@ -853,6 +856,16 @@ reset points via `duelAssert()`. Throws in dev, `console.error`s in prod.
 - `replay-duel-adapter.ts:abort` — replay tear-down ; locks from the
   interrupted dispatch are expected.
 - `replay-duel-adapter.ts:jumpToState` — user-triggered seek ; same.
+- `animation-orchestrator.service.ts:resetForReplaySeek` — user-triggered
+  replay seek mid-animation. Passes `tolerateLocks=true` to `resetAllState`
+  to skip the assert. Same rationale as the 3 sites above : a seek can
+  fire while a queued MSG_MOVE still holds its pre-locks (HAND / GY) or
+  while `handleChaining`'s async IIFE is mid-flight ; `runner.requestStop()`
+  aborts the loop without consuming the pre-locks. Without the skip the
+  assert throws in `abortAndClean` and interrupts the rest of the cleanup
+  chain (`adapter.abort`, `gameLog.reset`, `gameLogRebuildTick++`) so the
+  seek never lands. Added 2026-06-04 after observing 4× repeated assert
+  throws on a user-clicked sub-event during a chain build.
 
 Other `commitAll()` call-sites (draw-sequence-manager fallback paths,
 buffer-replay-builder shuffle merge) are mid-pipeline flow recoveries,

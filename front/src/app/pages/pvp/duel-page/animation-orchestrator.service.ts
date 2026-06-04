@@ -1019,9 +1019,22 @@ export class AnimationOrchestratorService {
     // here means a `lockZone` was never paired. Throws in dev, console.errors
     // in prod via duelAssert — the alternative is `commitAll` silently
     // covering the leak.
-    this.rbs.assertNoLocks('resetAllState');
-    this.rbs.commitAll(); // Lifecycle: force-sync all zones + clear locks
-    this.scopeDispatcher?.dispatch(scopes);
+    //
+    // `tolerateLocks` skip — a user-triggered replay seek mid-animation can
+    // legitimately leave pre-locks / handler locks behind (queued MSG_MOVE
+    // pre-locks not yet consumed, `handleChaining` IIFE still in flight when
+    // `runner.requestStop()` aborts the loop). Same rationale as the 3
+    // skip sites in `replay-duel-adapter.ts` (collapseRemainingSteps / abort
+    // / jumpToState) — see "Replay Board State Parity Rule" in CLAUDE.md.
+    if (!tolerateLocks) this.rbs.assertNoLocks('resetAllState');
+    // Site tag when the assert was skipped — preserves visibility on the
+    // skipped path : `commitAll(site)` logs `commitAll dropped N active
+    // lock(s)` when locks are actually dropped. The assert was the throw
+    // signal ; this warn is the soft signal. A genuine pre-lock leak in
+    // a non-seek dispatch path will still surface (via the warn) instead
+    // of being silently masked by the `tolerateLocks` skip.
+    this.rbs.commitAll(tolerateLocks ? 'resetAllState:tolerateLocks' : undefined);
+    this.scopeDispatcher.dispatch(scopes);
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
     // F12 (2026-05-31) — `targetIndicator.reset()` removed from this
@@ -1221,7 +1234,13 @@ export class AnimationOrchestratorService {
    */
   resetForReplaySeek(): void {
     this.logger.log(DuelLogCategory.QUEUE, 'resetForReplaySeek — clearing all state & timeouts');
-    this.resetAllState(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
+    // tolerateLocks=true — user-triggered seek mid-animation can leave
+    // unconsumed pre-locks / in-flight handler locks behind. Aligned with
+    // the 3 skip sites in `replay-duel-adapter.ts` (see CLAUDE.md "Replay
+    // Board State Parity Rule"). Without this skip the assert throws and
+    // interrupts `abortAndClean` before `adapter.abort()` runs → the
+    // seek never lands.
+    this.resetAllState(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']), true);
     document.querySelectorAll<HTMLElement>('.pvp-deck-shuffle').forEach(el => {
       el.classList.remove('pvp-deck-shuffle');
       el.style.removeProperty('--pvp-shuffle-duration');
