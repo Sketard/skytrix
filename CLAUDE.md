@@ -997,6 +997,21 @@ Key rules:
    optional: `filterMessage` sanitizes the snapshot per-player (opponent
    hand/deck hidden unless omniscient) to prevent info leak.
 
+   **Window scope (2026-06-04 Option 2b)** — the `chainResolving` window
+   spans the FIRST `MSG_CHAIN_SOLVING` of a chain through `MSG_CHAIN_END`
+   (NOT `MSG_CHAIN_SOLVED`). Reason : a card that self-destroys reacting
+   to its own resolution emits `MSG_MOVE` AFTER its `MSG_CHAIN_SOLVED`
+   but BEFORE `MSG_CHAIN_END`. Without the extension, that MOVE has no
+   `boardStateAfter` → client logical state lags → `preSrcLock.commit()`
+   for the straggler copies a stale logical state to rendered → source
+   card stays visible during the travel animation ("card in 2 places"
+   symptom). Side-effect : the live PvP `CANCEL_PROMPT_SEQUENCE` gate
+   (which reads `liveChainTracker.isResolving`) is now also active
+   between the last `MSG_CHAIN_SOLVED` and `MSG_CHAIN_END` — cancel is
+   semantically incorrect there (chain not finished, OCGCore still
+   emitting effect-bound events), so the broader gate is the right
+   behavior.
+
    **Replay perspective swap** — `boardStateAfter` arrives in absolute
    server P0 order (replay precompute is perspective-agnostic). The
    orchestrator is shared with PvP and assumes already-relative data, so
@@ -1590,10 +1605,12 @@ dispatches `{DUEL_LIFETIME}` which cascades and fully clears LP state.
 4. **Per-event `boardStateAfter` snapshot** — both `runReplayPreComputation`
    (in `replay-precompute.ts`) and `runDuelLoop` (in `duel-worker.ts`)
    delegate to a `ChainSnapshotTracker` instance (one per duel) which
-   tracks a `chainResolving` flag (set at MSG_CHAIN_SOLVING, cleared at
-   MSG_CHAIN_SOLVED) and attaches `buildBoardState().data` as
-   `boardStateAfter` on each filtered event whose type is in
-   `BOARD_CHANGING_EVENT_TYPES` during resolving. Payload growth is
+   tracks a `chainResolving` flag (set at the first MSG_CHAIN_SOLVING of
+   a chain, cleared at MSG_CHAIN_END — Option 2b, 2026-06-04) and
+   attaches `buildBoardState().data` as `boardStateAfter` on each
+   filtered event whose type is in `BOARD_CHANGING_EVENT_TYPES` during
+   resolving. The window stays open across SOLVING/SOLVED pairs in a
+   multi-link chain and across the post-SOLVED straggler gap. Payload growth is
    ~50-150 KB gzipped per duel (snapshots are highly redundant). Both
    modes use the same shared class so the attach predicate, the field
    name, and the timing are identical by construction. Z-index-style
@@ -2053,8 +2070,9 @@ live inline in `duel-worker.ts` / `server.ts`. Future bugs touching chain
 state on the server side belong in these files, not in their former hosts.
 
 - **`ChainSnapshotTracker`** (`duel-server/src/chain-snapshot-tracker.ts`)
-  — owns the `chainResolving` flag (set at MSG_CHAIN_SOLVING, cleared at
-  MSG_CHAIN_SOLVED) and attaches `boardStateAfter` snapshots to outgoing
+  — owns the `chainResolving` flag (set at the first MSG_CHAIN_SOLVING
+  of a chain, cleared at MSG_CHAIN_END — Option 2b, 2026-06-04) and
+  attaches `boardStateAfter` snapshots to outgoing
   BOARD_CHANGING events while resolving. Single instance per duel run.
   Used by both `runDuelLoop` (live PvP, `duel-worker.ts`) and
   `runReplayPreComputation` (replay precompute, `replay-precompute.ts`)

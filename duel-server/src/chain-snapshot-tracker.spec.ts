@@ -44,10 +44,38 @@ describe('ChainSnapshotTracker', () => {
       expect(t.isResolving).toBe(true);
     });
 
-    it('becomes false after MSG_CHAIN_SOLVED', () => {
+    it('stays true after MSG_CHAIN_SOLVED — Option 2b window extension', () => {
+      // 2026-06-04 Option 2b — window now closes on MSG_CHAIN_END, not
+      // MSG_CHAIN_SOLVED. Events between the last SOLVED and END (typically
+      // a card self-destroy reacting to its own resolution) keep getting
+      // `boardStateAfter` so the client's logical state advances atomically
+      // with the dispatch.
       const t = new ChainSnapshotTracker();
       t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
       t.process(msg('MSG_CHAIN_SOLVED'), () => FAKE_SNAPSHOT);
+      expect(t.isResolving).toBe(true);
+    });
+
+    it('becomes false after MSG_CHAIN_END — Option 2b window extension', () => {
+      const t = new ChainSnapshotTracker();
+      t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
+      t.process(msg('MSG_CHAIN_SOLVED'), () => FAKE_SNAPSHOT);
+      t.process(msg('MSG_CHAIN_END'), () => FAKE_SNAPSHOT);
+      expect(t.isResolving).toBe(false);
+    });
+
+    it('multi-link chain stays resolving across SOLVING/SOLVED pairs until END', () => {
+      // 2026-06-04 Option 2b — verifies the window spans multiple links
+      // (chain of 2+ links). The flag stays true through every link's
+      // SOLVING/SOLVED pair and only flips on END.
+      const t = new ChainSnapshotTracker();
+      t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
+      t.process(msg('MSG_CHAIN_SOLVED'), () => FAKE_SNAPSHOT);
+      expect(t.isResolving).toBe(true);
+      t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
+      t.process(msg('MSG_CHAIN_SOLVED'), () => FAKE_SNAPSHOT);
+      expect(t.isResolving).toBe(true);
+      t.process(msg('MSG_CHAIN_END'), () => FAKE_SNAPSHOT);
       expect(t.isResolving).toBe(false);
     });
 
@@ -58,9 +86,12 @@ describe('ChainSnapshotTracker', () => {
       expect(t.isResolving).toBe(true);
     });
 
-    it('idempotent: double SOLVED stays false', () => {
+    it('idempotent: standalone MSG_CHAIN_END stays false', () => {
+      // 2026-06-04 — verifies MSG_CHAIN_END alone (no prior SOLVING) is a
+      // no-op transition (false → false), matching the prior MSG_CHAIN_SOLVED
+      // idempotence guarantee.
       const t = new ChainSnapshotTracker();
-      t.process(msg('MSG_CHAIN_SOLVED'), () => FAKE_SNAPSHOT);
+      t.process(msg('MSG_CHAIN_END'), () => FAKE_SNAPSHOT);
       expect(t.isResolving).toBe(false);
     });
 
@@ -113,10 +144,24 @@ describe('ChainSnapshotTracker', () => {
       expect(evt.boardStateAfter).toBeUndefined();
     });
 
-    it('stops attaching after MSG_CHAIN_SOLVED', () => {
+    it('keeps attaching between MSG_CHAIN_SOLVED and MSG_CHAIN_END — Option 2b', () => {
+      // 2026-06-04 Option 2b — straggler MOVE post-SOLVED (e.g.
+      // Radiant Typhoon Vision self-destroying after its draw resolution)
+      // must carry `boardStateAfter` so the client logical state
+      // advances atomically with the dispatch.
       const t = new ChainSnapshotTracker();
       t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
       t.process(msg('MSG_CHAIN_SOLVED'), () => FAKE_SNAPSHOT);
+      const evt = msg(SAMPLE_BOARD_CHANGING) as { boardStateAfter?: BoardStatePayload; type: string };
+      t.process(evt as ServerMessage, () => FAKE_SNAPSHOT);
+      expect(evt.boardStateAfter).toBe(FAKE_SNAPSHOT);
+    });
+
+    it('stops attaching after MSG_CHAIN_END', () => {
+      const t = new ChainSnapshotTracker();
+      t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
+      t.process(msg('MSG_CHAIN_SOLVED'), () => FAKE_SNAPSHOT);
+      t.process(msg('MSG_CHAIN_END'), () => FAKE_SNAPSHOT);
       const evt = msg(SAMPLE_BOARD_CHANGING) as { boardStateAfter?: BoardStatePayload; type: string };
       t.process(evt as ServerMessage, () => FAKE_SNAPSHOT);
       expect(evt.boardStateAfter).toBeUndefined();
@@ -180,7 +225,7 @@ describe('ChainSnapshotTracker', () => {
   });
 
   describe('Full lifecycle (integration)', () => {
-    it('chain with 3 board-changing events between SOLVING and SOLVED', () => {
+    it('chain with 3 board-changing events between SOLVING and END (Option 2b)', () => {
       const t = new ChainSnapshotTracker();
       const capture = vi.fn(() => FAKE_SNAPSHOT);
 
@@ -192,13 +237,24 @@ describe('ChainSnapshotTracker', () => {
       t.process(msg('MSG_CHAIN_SOLVING'), capture);
       const solvingCalls = capture.mock.calls.length; // 0 or 1 depending on whether SOLVING is board-changing
 
-      // 3 board-changing events
-      const events = [msg(SAMPLE_BOARD_CHANGING), msg(SAMPLE_BOARD_CHANGING), msg(SAMPLE_BOARD_CHANGING)];
-      for (const e of events) t.process(e, capture);
+      // 2 board-changing events BEFORE MSG_CHAIN_SOLVED
+      const preEvents = [msg(SAMPLE_BOARD_CHANGING), msg(SAMPLE_BOARD_CHANGING)];
+      for (const e of preEvents) t.process(e, capture);
+      expect(capture.mock.calls.length).toBe(solvingCalls + 2);
+
+      // MSG_CHAIN_SOLVED — window stays open under Option 2b
+      t.process(msg('MSG_CHAIN_SOLVED'), capture);
+      expect(t.isResolving).toBe(true);
+
+      // 1 straggler board-changing event AFTER SOLVED (the self-destroy case)
+      // — must still get its snapshot under Option 2b.
+      const straggler = msg(SAMPLE_BOARD_CHANGING) as { boardStateAfter?: BoardStatePayload; type: string };
+      t.process(straggler as ServerMessage, capture);
+      expect(straggler.boardStateAfter).toBe(FAKE_SNAPSHOT);
       expect(capture.mock.calls.length).toBe(solvingCalls + 3);
 
-      // Close window
-      t.process(msg('MSG_CHAIN_SOLVED'), capture);
+      // Close window on END
+      t.process(msg('MSG_CHAIN_END'), capture);
       expect(t.isResolving).toBe(false);
 
       // Post-chain — no snapshot

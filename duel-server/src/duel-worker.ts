@@ -184,7 +184,15 @@ const SNAPSHOT_TTL_MS = 30_000;
  *  call to preserve the original per-call semantics. The
  *  `runReplayPreComputation` path uses its own local instance since cancel
  *  never applies in replay. Audit finding H2 — same code path on both sides
- *  guarantees PvP↔Replay parity by construction. */
+ *  guarantees PvP↔Replay parity by construction.
+ *
+ *  2026-06-04 Option 2b — the tracker's window now extends from
+ *  `MSG_CHAIN_SOLVING` to `MSG_CHAIN_END` (previously
+ *  `MSG_CHAIN_SOLVING`→`MSG_CHAIN_SOLVED`). Side-effect: cancel-rollback
+ *  is now also gated between the last `MSG_CHAIN_SOLVED` and
+ *  `MSG_CHAIN_END` — semantically more correct (the OCGCore is still
+ *  emitting effect-bound events ; the chain is not finished). See
+ *  `chain-snapshot-tracker.ts` for the rationale. */
 const liveChainTracker = new ChainSnapshotTracker();
 
 /**

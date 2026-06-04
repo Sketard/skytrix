@@ -209,3 +209,194 @@ Ajouter une ligne dans la section "Chain State Machine Rules" :
 2. (optionnel) `test(replay): pin radiant-typhoon-draw-discard harness regression` — si on veut pinner explicitement le harness comme test de non-régression.
 
 Pas de migration BMad. Pas de doc CLAUDE.md section nouvelle.
+
+---
+
+# Suite (post-Fix C) — chantier session 2026-06-04 après-midi
+
+Le **Fix C** (committé `8c30a325`) débloque le deadlock chain. Mais 2
+symptômes cosmétiques restent post-fix, remontés par Axel via test
+visuel et harness instrumenté à 5 niveaux.
+
+## Symptômes cosmétiques résiduels (post-Fix C)
+
+Sur la même chain Radiant Typhoon Vision (replay 18a55f97 seek=2) :
+
+1. **Krosea discard reste en double pendant le travel HAND→GY** — la
+   carte source en main ne quitte pas le DOM pendant l'animation. Le
+   float voyage, mais la carte source reste affichée.
+2. **Krosea n'apparait JAMAIS au cimetière** — même quand le float
+   landed sur GY-0, le DOM cimetière reste vide. Plus tard, la Vision
+   self-destroy arrive et prend la place.
+3. **Vision reste sur S5 pendant son travel** — même pattern que
+   symptôme 1 pour le 2ᵉ MOVE.
+
+## Investigation — 5 couches d'instrumentation harness
+
+Pour traquer le disconnect signal-vs-DOM, instrumentation ajoutée :
+
+- `[BSA-CHECK]` côté `processEvent` — confirmer `boardStateAfter`
+  PRÉSENT ou MISSING pour chaque MSG_MOVE, et contenu S5+GY.
+- `[RBS-LOGICAL]` côté `updateLogical` — montrer prev→next pour HAND+GY.
+- `[RBS-COMMIT]` côté `commitZone` — logical vs rendered pour S5/GY/HAND.
+- `[LOCK-HAND-0]` ACQUIRE/COMMIT/RELEASE avec ID unique par lock.
+- `[PRELOCK-HAND-0]` lifecycle du `_preLocks` map du `MoveAnimationRouter`.
+
+Probe DOM enrichie : `cardCodes` extraits des `<img src>`, `floatsInDOM`,
+visibility/opacity de chaque élément.
+
+## Cause racine — `processShuffleEvent.commitAll()` zombifie les ZoneLocks
+
+**Discovery** : pendant le pre-replay-buffer drain (Fix C), le buffer
+contient `[MSG_DRAW × 2, MSG_SHUFFLE_HAND]`. Le `processShuffleEvent`
+(`draw-sequence-manager.ts:639`) appelle `this.rbs.commitAll()` en
+happy path pour synchroniser HAND avec les nouvelles cartes drawn.
+
+**Anti-pattern** : `commitAll()` est nucléaire — il appelle
+`this._locks.clear()` qui wipe TOUS les locks du `_locks` map, sans
+notifier les `ZoneLock` closures encore actives. Or à ce moment, le
+runner a un pre-lock HAND-0 acquis par `preLockQueuedSources` AVANT le
+drain (pour anticiper le MOVE Krosea à venir). Ce pre-lock devient un
+**zombie** :
+
+- Son closure `released=false` (pas commit ni release).
+- Son entrée dans `_locks` map a été wipée par `commitAll()`.
+
+Quand le MOVE Krosea HAND→GY arrive plus tard et fait
+`consumePreLock(HAND-0)`, le pre-lock zombie est retourné.
+`discardFromHand` appelle `mc.preSrcLock?.commit()`. Le closure entre
+dans son `commit()` (released=false), met `released=true`, puis check
+`if (!this._locks.has('HAND-0')) return` → **early return silencieux**.
+Aucun `commitZone(HAND-0)` ne fire. Le rendered HAND reste figé sur
+l'état pré-1er-MOVE → la Krosea reste en double dans le DOM.
+
+## Plan de fix — Option I (G + H + 2b ensemble)
+
+### Option 2b — Server-side : étendre la fenêtre `chainResolving`
+
+`ChainSnapshotTracker` (server) attache `boardStateAfter` aux events
+BOARD_CHANGING uniquement pendant la fenêtre `MSG_CHAIN_SOLVING →
+MSG_CHAIN_SOLVED`. **Problème** : les events post-CHAIN_SOLVED
+(comme le self-destroy Vision) n'ont pas de snapshot. Côté client, la
+logical state ne s'avance pas, le commit copie une logical stale.
+
+**Fix** : étendre la fenêtre à `MSG_CHAIN_SOLVING → MSG_CHAIN_END`
+(une seule fenêtre par chain, ne ferme qu'au CHAIN_END). Effet de
+bord acceptable : le gate `liveChainTracker.isResolving` du PvP
+cancel-rollback devient aussi plus restrictif — un cancel entre
+SOLVED et END devient impossible. Sémantiquement plus correct (chain
+pas finie).
+
+Diff :
+
+```diff
+-    } else if (dto.type === 'MSG_CHAIN_SOLVED') {
++    } else if (dto.type === 'MSG_CHAIN_END') {
+       this._chainResolving = false;
+     }
+```
+
+22 tests vitest mis à jour pour le nouveau contrat.
+
+### Option G — Client-side : zombie-safe `ZoneLock.commit()`
+
+**Fix** : dans `ZoneLock.commit()` closure, si `_locks.has(zoneKey)` est
+false, **forcer `commitZone(zoneKey)` quand même** au lieu de
+l'early return.
+
+Rationale : `commitZone` est idempotent (logical→rendered sync). Si la
+zone a déjà été syncée par un `commitAll()` antérieur ET pas mutée
+depuis, c'est un no-op visuel. Si elle a été mutée (notre cas via
+`updateLogical(boardStateAfter)` post-Option 2b), c'est le sync que
+le caller attend.
+
+Diff :
+
+```diff
+       if (released) return;
+       released = true;
+       clearTimeout(timeoutId);
+       this._safetyTimeouts.delete(timeoutId);
+-      if (!this._locks.has(zoneKey)) return;
++      if (!this._locks.has(zoneKey)) {
++        this.commitZone(zoneKey);
++        return;
++      }
+       const rc = this._locks.get(zoneKey)! - 1;
+```
+
+Defense-in-depth : protège contre toute future utilisation abusive de
+`commitAll()` qui réintroduirait le zombification pattern.
+
+### Option H — `processShuffleEvent`: `commitAll()` → `commitZone(handZoneKey)`
+
+**Fix** : remplacer 2 sites dans `draw-sequence-manager.ts`
+(`processShuffleEvent` happy path ligne 639 + reducedMotion fallback
+ligne 596) par un sync ciblé HAND-${player} seulement.
+
+Diff :
+
+```diff
+-      this.rbs.commitAll();
++      this.rbs.commitZone(handZoneKey);
+```
+
+Préserve l'invariant "un lock acquis par un acteur n'est libéré que par
+cet acteur". Les pre-locks d'autres zones (GY-0, S5-0) restent actifs
+pour leurs MOVE futurs.
+
+### Doctrine — warning sur `commitAll()` doctring
+
+Ajouter à `rendered-board-state.service.ts:commitAll()` un bloc DANGER :
+
+> ⚠️ DANGER (2026-06-04) — DO NOT call `commitAll()` mid-batch to "just
+> sync one zone". Sites comme `processShuffleEvent` faisaient ça et
+> zombifiaient tous les ZoneLocks des autres acteurs.
+> For partial syncs, prefer `commitZone(key)` — surgical, leaves other
+> actors' locks alive, no zombie.
+
+## Audit régression
+
+### Autres `commitAll()` audités (8 sites)
+
+- `orchestrator.resetAllState` — TERMINAL boundary ✅
+- `BufferReplayBuilder.applyReducedMotion` — pas de locks attendus en reduced-motion ⚠️ surveillé
+- `processShuffleEvent` catch (×2) — accepté en panic path ✅
+- `duel-connection.skipPendingAnimations` — user skip-to-end ✅
+- `duel-connection RematchStarted` — TERMINAL ✅
+- `duel-connection._applyStateSync` — précédé par `assertNoLocks` ✅
+- `rbs.destroy` — TERMINAL ✅
+
+**Verdict** : aucun autre site n'a le pattern toxique (commitAll
+mid-batch avec d'autres acteurs lockés).
+
+### Régressions Options G + H
+
+- **Option G** : `commitZone(key)` idempotent → no-op si déjà synced,
+  proper sync si nécessaire. Pas de side-effect transversal.
+- **Option H** : les zones non-HAND conservent leurs locks (GY, S5,
+  etc.). C'est PRÉCISÉMENT ce que les pre-locks sont censés faire.
+  Aucun scénario laissant une zone désync indéfiniment identifié.
+
+## Tests + validation
+
+- **Karma** : 73/73 specs vertes (RBS + draw-sequence-manager) post-cleanup.
+- **Vitest** : 22/22 vertes (chain-snapshot-tracker).
+- **Harness** : Krosea visible au GY à t=22.491s, HAND a 5 cards (1 Krosea),
+  Vision arrive et prend la top de pile correctement.
+
+## Commits planifiés
+
+3 commits sur la branche `feat/anim-pipeline-v2`, après le commit Fix C
+(`8c30a325`) :
+
+1. `fix(server): extend chainResolving window to MSG_CHAIN_END` —
+   `chain-snapshot-tracker.ts` + spec + `duel-worker.ts` + CLAUDE.md sections.
+2. `fix(anim): zombie-safe ZoneLock.commit() + ciblé shuffle commit` —
+   `rendered-board-state.service.ts` (Option G + warning) +
+   `draw-sequence-manager.ts` (Option H ×2) + spec md update.
+3. (potentiel) `test(replay): pin radiant-typhoon-draw-discard harness` —
+   si on veut pinner explicitement.
+
+Possible de fusionner 1+2 en un seul commit "fix(anim): Krosea discard
+zombie lock" si on préfère un atomic fix du même bug. À voir.
