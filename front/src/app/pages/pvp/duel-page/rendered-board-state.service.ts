@@ -237,7 +237,20 @@ export class RenderedBoardStateService implements BoardStateView {
         released = true;
         clearTimeout(timeoutId);
         this._safetyTimeouts.delete(timeoutId);
-        if (!this._locks.has(zoneKey)) return;
+        // 2026-06-04 — zombie-lock-safe path. A prior `commitAll()` (typically
+        // from `processShuffleEvent` mid-chain) wipes `_locks` map without
+        // notifying outstanding ZoneLock closures. If we arrive here without
+        // our key in the map, our caller still wants the zone synced from
+        // the current logical state — `commitZone` is idempotent vs an
+        // already-synced rendered, so the call is a no-op when logical
+        // hasn't been modified since `commitAll()`, and a proper sync when
+        // it has (e.g. a subsequent `updateLogical(boardStateAfter)`).
+        // Bug repro: Radiant Typhoon discard scenario, replay 18a55f97,
+        // see `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+        if (!this._locks.has(zoneKey)) {
+          this.commitZone(zoneKey);
+          return;
+        }
         const rc = this._locks.get(zoneKey)! - 1;
         if (rc <= 0) {
           this._locks.delete(zoneKey);
@@ -361,6 +374,24 @@ export class RenderedBoardStateService implements BoardStateView {
    * The `site` param is observational only — `commitAll` always succeeds.
    * U13 (2026-06-01) — added the warn so silent leaks at skip paths become
    * detectable without throwing.
+   *
+   * **⚠️ DANGER (2026-06-04) — DO NOT call `commitAll()` mid-batch to "just
+   * sync one zone".** Calling sites like `processShuffleEvent` previously did
+   * this and zombified every other actor's `ZoneLock` closures : the lock
+   * holder's subsequent `commit()` becomes a silent no-op because `_locks.has(key)`
+   * is false, so its rendered zone never syncs. Symptoms : a card stays in
+   * its source zone DOM during the travel animation, even though the logical
+   * state has updated.
+   *
+   * Mitigation : `ZoneLock.commit()` now has a zombie-safe path that fires
+   * `commitZone(key)` even when `_locks.has(key)` is false (Option G,
+   * 2026-06-04). Defense-in-depth — the lock holder still gets its sync.
+   *
+   * **For partial syncs, prefer `commitZone(key)`** — surgical, leaves other
+   * actors' locks alive, no zombie. `commitAll()` is for terminal teardowns
+   * only.
+   *
+   * Spec : `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
    */
   commitAll(site?: string): void {
     if (site && this._locks.size > 0) {

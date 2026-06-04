@@ -593,7 +593,11 @@ export class DrawSequenceManager {
 
     if (this.ctx.reducedMotion() || !handZone) {
       this.floatRegistry.clearLandedByDstPrefix('HAND');
-      this.rbs.commitAll();
+      // 2026-06-04 Option H — sync HAND only. Was `commitAll()` which wipes
+      // every other actor's lock and zombifies their ZoneLock closures. The
+      // shuffle phase only needs HAND-${player} synced; other zones'
+      // pre-locks must stay alive for their owners' subsequent commits.
+      this.rbs.commitZone(handZoneKey);
       return;
     }
 
@@ -634,9 +638,16 @@ export class DrawSequenceManager {
         oldPositions.get(code)!.push(el.getBoundingClientRect());
       });
 
-      // Force-sync ALL state — clears any stacked locks from move/travel
-      // so the rendered hand includes the newly added cards.
-      this.rbs.commitAll();
+      // Force-sync HAND only so the rendered hand includes the newly added
+      // cards (so DOM measurement below sees them). 2026-06-04 Option H —
+      // was `commitAll()` which wipes every other actor's lock and zombifies
+      // their ZoneLock closures (concretely, the runner's `preLockQueuedSources`
+      // pre-lock on HAND-${player} acquired before the buffer drain, which
+      // a subsequent discard MOVE Krosea would `consumePreLock` and call
+      // `commit()` on — leading to a no-op silent skip because the wiped
+      // `_locks` map made the closure orphan). See spec
+      // `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+      this.rbs.commitZone(handZoneKey);
 
       // Retire the expansion slot reserved by `BufferReplayBuilder` BEFORE
       // we measure post-commit positions. Otherwise the new real card lands

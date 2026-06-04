@@ -26,7 +26,7 @@ import { setupReplaySession } from './replay-debug-driver';
  * a float vanishes or a lock leaks.
  */
 
-const REPLAY_ID = '11f6e3ec-d32b-45d3-9fb0-ded9e6d51fbd';
+const REPLAY_ID = '18a55f97-7076-4716-9032-dcf88c9a86f4';
 const SEEK_TO = 2;
 
 const FULL_CAPTURE_PREFIXES = [
@@ -108,24 +108,94 @@ test('replay seek=2 Radiant Typhoon — draw 2 + discard sequence', async ({ bro
             .map(el => el.dataset['cardCode'] ?? '?');
           out['hand0'] = { expansion, real, hidden, realCodes };
         }
-        // GY-0 — find any zone container marked GY-0 (data-zone attr or zone-pile + GY)
-        const gyZone = document.querySelector<HTMLElement>('[data-zone="GY-0"]');
-        if (gyZone) {
-          out['gy0DataZone'] = { exists: true, html: gyZone.outerHTML.slice(0, 200) };
-        }
+        // 2026-06-04 — extended DOM probe to investigate signal-vs-DOM
+        // disconnect. Capture every direct visual child of the zone +
+        // its key attrs (img.src, data-card-code, style.visibility,
+        // style.opacity, classList).
+        const inspectZone = (selector: string) => {
+          const zone = document.querySelector<HTMLElement>(selector);
+          if (!zone) return { exists: false };
+          // Match any descendant with a card-like signature: img with src
+          // ending in a numeric .jpg/.png, or any element with data-card-code.
+          const imgs = Array.from(zone.querySelectorAll<HTMLImageElement>('img'));
+          const imgDetails = imgs.map(img => {
+            const src = img.src ?? '';
+            const m = src.match(/\/(\d+)\.(jpg|png|webp)/);
+            return {
+              code: m ? m[1] : '?',
+              src: src.slice(-40),
+              visibility: img.style.visibility || 'visible',
+              opacity: img.style.opacity || '',
+              display: img.style.display || '',
+              classes: img.className,
+              hidden: img.hidden,
+              parentTag: img.parentElement?.tagName ?? '',
+              parentVisibility: img.parentElement?.style?.visibility || 'visible',
+            };
+          });
+          // Any element with data-card-code attribute (may not be img — e.g.
+          // float, card overlay component).
+          const cardEls = Array.from(zone.querySelectorAll<HTMLElement>('[data-card-code]'));
+          const cardDetails = cardEls.map(el => ({
+            tag: el.tagName,
+            code: el.dataset['cardCode'] ?? '?',
+            visibility: el.style.visibility || 'visible',
+            display: el.style.display || '',
+            classes: el.className,
+          }));
+          // Outer HTML head (first 250 chars) for raw inspection.
+          const html = zone.outerHTML.slice(0, 250);
+          return {
+            exists: true,
+            imgCount: imgs.length,
+            imgs: imgDetails,
+            cardEls: cardDetails,
+            zoneVisibility: zone.style.visibility || 'visible',
+            zoneOpacity: zone.style.opacity || '',
+            html,
+          };
+        };
+        out['gy0'] = inspectZone('[data-zone="GY-0"]');
+        out['s5'] = inspectZone('[data-zone="S5-0"]');
+        // Also probe globally for any floating element whose dataset says it
+        // belongs to S5-0 or GY-0 (the travel floats are NOT inside the zone).
+        const allFloats = Array.from(document.querySelectorAll<HTMLElement>('[data-float-dst-key]'));
+        out['floatsInDOM'] = allFloats.map(f => ({
+          dst: f.dataset['floatDstKey'] ?? '?',
+          code: f.dataset['cardCode'] ?? '?',
+          visibility: f.style.visibility || 'visible',
+          opacity: f.style.opacity || '',
+        }));
         // Travel floats
         const w = window as unknown as { __skytrixDebug?: { snapshot?: () => { landedFloats?: Array<{ dstKey: string; cardCode?: string }>; inFlightFloats?: Array<{ dstKey: string; cardCode?: string }>; lockedZoneKeys?: string[] } } };
         const snap = w.__skytrixDebug?.snapshot?.();
         out['inFlight'] = snap?.inFlightFloats ?? [];
         out['landed'] = snap?.landedFloats ?? [];
         out['locks'] = snap?.lockedZoneKeys ?? [];
+        // F-bug-radiant — expose chain + queue + buffer states for deadlock diagnosis.
+        const fullSnap = w.__skytrixDebug?.snapshot?.() as Record<string, unknown> | undefined;
+        out['qLen'] = (fullSnap?.['animationQueue'] as unknown[] | undefined)?.length ?? null;
+        const chain = fullSnap?.['chain'] as { phase?: string; activeChainLinks?: unknown[] } | undefined;
+        out['chainPhase'] = chain?.phase ?? null;
+        out['chainLinks'] = chain?.activeChainLinks?.length ?? null;
+        out['busy'] = (fullSnap?.['isAnimating'] ?? null);
+        // Also probe the replay adapter directly for its `busy()` signal
+        // and current step queue length — they're not in the standard
+        // snapshot.
+        const w2 = window as unknown as { __skytrixDebug?: { replay?: { isPlaying?: () => boolean; currentIndex?: () => number; totalBoardStates?: () => number } } };
+        const r = w2.__skytrixDebug?.replay;
+        out['replay'] = r ? {
+          isPlaying: r.isPlaying?.() ?? null,
+          currentIndex: r.currentIndex?.() ?? null,
+          totalBoardStates: r.totalBoardStates?.() ?? null,
+        } : null;
         return out;
       });
       denseLog.push({ t: (Date.now() - tStart) / 1000, type: 'probe',
         text: `[PROBE] ${JSON.stringify(stats)}` });
     };
 
-    const deadline = Date.now() + 30_000;
+    const deadline = Date.now() + 60_000;
     let lastIdx = -1;
     while (Date.now() < deadline) {
       const idx = await session.driver.currentIndex();
@@ -135,8 +205,16 @@ test('replay seek=2 Radiant Typhoon — draw 2 + discard sequence', async ({ bro
         lastIdx = idx;
       }
       await probe();
-      if (idx >= startIdx + 5) break;
-      await session.page.waitForTimeout(80);
+      // F-bug-radiant — must let the replay run long enough to reach
+      // state 4 (MSG_CHAIN_END) so we can verify that `handleChainEnd`
+      // drains the residual `_bufferedBoardEvents` (the post-resolution
+      // MSG_MOVE for Radiant Typhoon Vision's self-destroy). Going to
+      // startIdx+3 cut the run BEFORE CHAIN_END arrived; the buffered
+      // MOVE never animated and the GY-0 lock leaked.
+      if (idx >= startIdx + 8) break;
+      // 2026-06-04 — faster probe to catch sub-frame DOM transitions
+      // (every ~25ms during the bug window vs 80ms originally).
+      await session.page.waitForTimeout(25);
     }
 
     await session.capture(`after-play-idx${lastIdx}`);
