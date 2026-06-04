@@ -441,7 +441,7 @@
     }
 
     <!-- Story 6.1 / 6.3 — Chain Overlay (H1: services injected directly, only promptActive as input) -->
-    <app-pvp-chain-overlay [promptActive]="hasActivePrompt()" />
+    <app-pvp-chain-overlay #chainOverlay [promptActive]="hasActivePrompt()" />
 
     <!-- Game Log — Surface 2: opponent effect bubble (renders zero DOM here;
          drives its own CDK overlay anchored on the opponent duelist card). -->
@@ -518,6 +518,7 @@
                            [passiveMessage]="tpPassiveMessage()"
                            [ownPlayerIndex]="ownPlayerIndex()"
                            [responseOverride]="pilePrompt() ? pileResponseHandler : null"
+                           [overlayActive]="chainOverlay.overlayActive()"
                            (dialogExpanded)="promptSheetExpanded.set($event)"
                            (longPressInspect)="onLongPressInspect($event)"
                            (preTargetCards)="onPreTargetCards($event)" />

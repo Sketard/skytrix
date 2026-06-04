@@ -2,7 +2,12 @@
 @use '../../../../styles/responsive' as r;
 
 :host {
-  position: fixed;
+  // `position: absolute` (was `fixed`) so the overlay is bounded by its
+  // nearest positioned ancestor — `.duel-container` in PvP (full viewport
+  // minus chrome) and `.board-area` in Replay (board zone, excluding
+  // timeline + action bar). Without this, `fixed` makes the overlay cover
+  // the entire viewport and bleed onto the replay chrome.
+  position: absolute;
   inset: 0;
   z-index: z.$z-pvp-chain-overlay;
   pointer-events: none;
@@ -16,11 +21,6 @@
 
   &.visible {
     opacity: 1;
-  }
-
-  // Hide overlay during prompts without destroying DOM (preserves animation state)
-  &.chain-overlay--hidden {
-    visibility: hidden;
   }
 }
 
@@ -70,6 +70,7 @@
                       0ms,
                       0ms;
   }
+
 }
 
 .chain-card__art {
@@ -80,56 +81,155 @@
   border-radius: 8px;
 }
 
-// --- Position: Back (C1 — oldest, smallest, top-right, partially off-screen) ---
+// --- Sizing & vertical position per level (SHARED across both sides) ---
+// 5 vertical levels: 0 = topmost (oldest, smallest), 4 = bottom (newest,
+// largest). Caps: desktop 2/2 = 4 cards (levels 1-4 used), short viewport
+// 2/1 = 3 cards (levels 2-4 used). Level 0 stays defined as a safety net.
+//
+// Overlap rule: each card's bottom 30% sits behind the card below it
+// (overlap = 30% × card_height). Front card is fully visible; each card
+// above shows 70% of its art above the next-front edge. Z-index is set
+// so the lower card stays in front (covers the bottom of the upper card).
+//
+// Anchor level 4 at 5% from bottom. For level N above:
+//   level_N.bottom = level_N+1.top - 0.30 × level_N.height
+//
+// Sizes (heights in dvh): 16, 20, 26, 32, 38. At 4 cards (levels 1-4):
+//   level_4.top = 43dvh
+//   level_3.bottom = 43 - 0.30×32 = 33.4dvh, top = 65.4dvh
+//   level_2.bottom = 65.4 - 0.30×26 = 57.6dvh, top = 83.6dvh
+//   level_1.bottom = 83.6 - 0.30×20 = 77.6dvh, top = 97.6dvh ✓ (5% top margin)
 
-.chain-card--back {
-  top: -10%;
-  left: calc(80% - 20dvh * 59 / 86);
-  height: 20dvh;
-  width: calc(20dvh * 59 / 86);
-  transform: perspective(1200px) rotateZ(-12deg) rotateY(8deg) rotateX(-3deg);
-  filter: brightness(0.7);
-  opacity: 0.8;
-  z-index: 1;
+.chain-card--level-4 {
+  height: 38dvh; width: calc(38dvh * 59 / 86);
+  bottom: 5%;
+  filter: brightness(1); opacity: 1; z-index: 5;
+}
+.chain-card--level-3 {
+  // level_4.top = 5% + 38dvh
+  // level_3.bottom = level_4.top - 0.30 × 32dvh = 5% + 38 - 9.6 = 5% + 28.4dvh
+  height: 32dvh; width: calc(32dvh * 59 / 86);
+  bottom: calc(5% + 28.4dvh);
+  filter: brightness(0.93); opacity: 0.96; z-index: 4;
+}
+.chain-card--level-2 {
+  // level_3.top = 5% + 28.4 + 32 = 5% + 60.4dvh
+  // level_2.bottom = 5% + 60.4 - 0.30 × 26 = 5% + 52.6dvh
+  height: 26dvh; width: calc(26dvh * 59 / 86);
+  bottom: calc(5% + 52.6dvh);
+  filter: brightness(0.85); opacity: 0.9; z-index: 3;
+}
+.chain-card--level-1 {
+  // level_2.top = 5% + 52.6 + 26 = 5% + 78.6dvh
+  // level_1.bottom = 5% + 78.6 - 0.30 × 20 = 5% + 72.6dvh
+  height: 20dvh; width: calc(20dvh * 59 / 86);
+  bottom: calc(5% + 72.6dvh);
+  filter: brightness(0.75); opacity: 0.85; z-index: 2;
+}
+.chain-card--level-0 {
+  // level_1.top = 5% + 72.6 + 20 = 5% + 92.6dvh
+  // level_0.bottom = 5% + 92.6 - 0.30 × 16 = 5% + 87.8dvh
+  // Level 0 unreachable with cap 2/2 (max 4 cards = levels 1-4).
+  height: 16dvh; width: calc(16dvh * 59 / 86);
+  bottom: calc(5% + 87.8dvh);
+  filter: brightness(0.65); opacity: 0.78; z-index: 1;
 }
 
-// --- Position: Mid (C2 — middle card) ---
+// --- Per-side horizontal placement + base rotation ---
+// Slight inward zigzag amplitude: level 4 (bottom, biggest) sits closest to
+// its outer edge; level 3 leans slightly toward the center; level 2 returns
+// toward the edge; level 1 inward again; level 0 toward the edge. Amplitude
+// kept narrow (~3-5%) so the columns read as straight stacks with a subtle
+// fan, not a wide cross-stitch.
+//
+// Rotations: every card on the LEFT tilts toward the right (rotateY ~+5°,
+// rotateZ ~−2°) so it faces the opposite column. Right side mirrors.
+//
+// `--card-transform` is set per side so animations (entry-pulse, shove,
+// resolve-exit, etc.) can compose `var(--card-transform) <delta>` without
+// losing the base perspective + rotation.
 
-.chain-card--mid {
-  top: 10%;
-  left: 30%;
-  height: 30dvh;
-  width: calc(30dvh * 59 / 86);
-  transform: perspective(1200px) rotateZ(5deg) rotateY(6deg) rotateX(-2deg);
-  filter: brightness(0.85);
-  opacity: 0.9;
-  z-index: 2;
+.chain-card--left {
+  --card-transform: perspective(1200px) rotateZ(-2deg) rotateY(7deg);
+  transform: var(--card-transform);
 }
+// Columns positioned ~32% from each side (cards visibly separated, with a
+// clear gap at center). Drift 0.35% per level (1.4% total) — subtle fan
+// outward as cards climb the stack.
+//   level 4 (front, largest): 32% — closest to center
+//   level 3:                  31.65%
+//   level 2:                  31.3%
+//   level 1:                  30.95%
+//   level 0:                  30.6%
+.chain-card--left.chain-card--level-4 { left: 32%; }
+.chain-card--left.chain-card--level-3 { left: 31.65%; }
+.chain-card--left.chain-card--level-2 { left: 31.3%; }
+.chain-card--left.chain-card--level-1 { left: 30.95%; }
+.chain-card--left.chain-card--level-0 { left: 30.6%; }
 
-// --- Position: Front (C3 — newest, largest, bottom-right) ---
-
-.chain-card--front {
-  top: calc(80% - 45dvh);
-  left: calc(70% - 45dvh * 59 / 86);
-  height: 45dvh;
-  width: calc(45dvh * 59 / 86);
-  transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg);
-  filter: brightness(1);
-  opacity: 1;
-  z-index: 3;
+.chain-card--right {
+  --card-transform: perspective(1200px) rotateZ(2deg) rotateY(-7deg);
+  transform: var(--card-transform);
 }
+.chain-card--right.chain-card--level-4 { right: 32%; }
+.chain-card--right.chain-card--level-3 { right: 31.65%; }
+.chain-card--right.chain-card--level-2 { right: 31.3%; }
+.chain-card--right.chain-card--level-1 { right: 30.95%; }
+.chain-card--right.chain-card--level-0 { right: 30.6%; }
 
-// --- Entry animation (new card appears and pulses once) ---
+// --- Entry animation (new card swoops up from below + pulses) ---
+// Composes with `var(--card-transform)` (set by side+slot classes) so the
+// pulse preserves the base rotation/perspective of whichever side the card
+// is on. The translateY(+30%) → 0 brings the card up into its front slot,
+// like a card being slammed onto the chain stack.
 
 @keyframes chain-entry-pulse {
-  0% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
-  50% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1.08); box-shadow: 0 0 30px 8px var(--pvp-chain-glow-resolving); }
-  100% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+  // Card enters from below at a smaller size (0.65 — roughly the size of the
+  // slot it's coming from) and grows to its final size as it slides up. The
+  // 40% peak overshoots to 1.08 for the "slam" feel before settling to 1.
+  0%   { transform: var(--card-transform) translateY(40%) scale(0.65); opacity: 0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+  40%  { transform: var(--card-transform) translateY(0)   scale(1.08); opacity: 1; box-shadow: 0 0 30px 8px var(--pvp-chain-glow-resolving); }
+  100% { transform: var(--card-transform) translateY(0)   scale(1);    opacity: 1; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
 }
 
 .chain-card--entering {
+  // The base layout class (.chain-card--front etc.) sets opacity: 1. We need
+  // the card hidden BEFORE the entry keyframe fires its 0% step, so we
+  // override opacity here. The keyframe restores it via opacity:0 → 1.
+  opacity: 0;
+
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-entry-pulse var(--chain-entry-duration, var(--transition-theme)) var(--ease-inout) both;
+    // `animation-delay` = overlay fade-in duration (300ms hardcoded mirror of
+    // `--pvp-chain-overlay-transition`) so the swoop only starts AFTER the
+    // overlay container is fully opaque. Without this, the 0% → 40% keyframe
+    // steps (the visible swoop from below) play during the fade-in and are
+    // invisible to the user.
+    animation: chain-entry-pulse var(--chain-entry-duration, var(--transition-theme)) var(--ease-out) 300ms both;
+  }
+}
+
+// --- Shove animation (older same-side link gets pushed from front to mid) ---
+// When a new chain link arrives on a side that already had a link at front,
+// the previous front link is marked `--shoved` for `--chain-shove-duration` ms.
+// The position change (front → mid CSS class swap) is what actually moves the
+// card; this keyframe overlays a brief scale-down + brightness dim to make
+// the displacement feel like an explicit shove rather than a passive transition.
+
+@keyframes chain-shove-up {
+  0%   { transform: var(--card-transform) scale(1.05);  filter: brightness(1); }
+  100% { transform: var(--card-transform) scale(1);     filter: brightness(0.85); }
+}
+
+.chain-card--shoved {
+  @media (prefers-reduced-motion: no-preference) {
+    // Same 300ms delay as `chain-card--entering` so the shove plays in sync
+    // with the new card's swoop — both kick in once the overlay is fully
+    // opaque. Otherwise the older card visibly moves up while the container
+    // is still half-transparent.
+    animation: chain-shove-up var(--chain-shove-duration, var(--transition-theme)) var(--ease-out) 300ms both;
+    // The card is mid-flight between slots — boost z-index so it overlays the
+    // incoming entering card while the swap happens.
+    z-index: 5;
   }
 }
 
@@ -156,34 +256,30 @@
   }
 }
 
-// --- Resolution exit (front card fades out in place) ---
-// Fades on the spot (no slide) so the cascade card arriving at the front
-// slot doesn't look like it shoves the resolved card sideways — the
-// resolved card simply dims and shrinks slightly where it stands.
+// --- Resolution exit (front card slides DOWN + fades out) ---
+// The resolved card drops OUT below the bottom edge as the card above it
+// (next-newest of its side) glides down + grows into the front slot. Both
+// move in the same direction (down) at the same time, so the exiting card
+// clears the slot just as the new one lands in it. translateY(40%) is
+// roughly the front card's half-height — far enough to be out of the way
+// of the incoming card.
 
 @keyframes chain-resolve-exit {
-  from {
-    top: calc(80% - 45dvh);
-    left: calc(70% - 45dvh * 59 / 86);
-    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1);
-    opacity: 1;
-  }
-  to {
-    top: calc(80% - 45dvh);
-    left: calc(70% - 45dvh * 59 / 86);
-    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(0.92);
-    opacity: 0;
-  }
+  // Shrinks aggressively (1 → 0.65) while sliding down so the card visually
+  // "diminishes" out of the stack instead of dropping at full size.
+  from { transform: var(--card-transform) translateY(0)   scale(1);    opacity: 1; }
+  to   { transform: var(--card-transform) translateY(40%) scale(0.65); opacity: 0; }
 }
 
 .chain-card--resolve-exiting {
-  height: 45dvh;
-  width: calc(45dvh * 59 / 86);
   z-index: 4;
   opacity: 1;
 
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-resolve-exit var(--chain-resolve-exit, var(--transition-theme)) var(--ease-in) forwards;
+    // Uses `--chain-resolve-exit-visual` (shorter than `--chain-resolve-exit`
+    // which is the orchestrator's timing contract) so the exiting card
+    // clears its slot quickly while the cascade replacement glides in.
+    animation: chain-resolve-exit var(--chain-resolve-exit-visual, var(--transition-theme)) var(--ease-in) forwards;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -194,29 +290,19 @@
 // --- Negated treatment (greyscale + grey shake + collapse exit) ---
 
 @keyframes chain-negated-shake {
-  0%   { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(0); }
-  20%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(-3px); }
-  40%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(3px); }
-  60%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(-2px); }
-  80%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(1px); }
-  100% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(0); }
+  0%   { transform: var(--card-transform) translateX(0); }
+  20%  { transform: var(--card-transform) translateX(-3px); }
+  40%  { transform: var(--card-transform) translateX(3px); }
+  60%  { transform: var(--card-transform) translateX(-2px); }
+  80%  { transform: var(--card-transform) translateX(1px); }
+  100% { transform: var(--card-transform) translateX(0); }
 }
 
 @keyframes chain-negated-exit {
-  from {
-    top: calc(80% - 45dvh);
-    left: calc(70% - 45dvh * 59 / 86);
-    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1);
-    filter: grayscale(1) brightness(1);
-    opacity: 1;
-  }
-  to {
-    top: calc(80% - 45dvh);
-    left: calc(70% - 45dvh * 59 / 86);
-    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(0.6);
-    filter: grayscale(1) brightness(0.5);
-    opacity: 0;
-  }
+  // Already shrinks (1 → 0.6) — the negated variant collapses harder than
+  // the resolve variant to communicate "this card was nullified".
+  from { transform: var(--card-transform) translateY(0)   scale(1);   filter: grayscale(1) brightness(1);   opacity: 1; }
+  to   { transform: var(--card-transform) translateY(40%) scale(0.5); filter: grayscale(1) brightness(0.5); opacity: 0; }
 }
 
 .chain-card--negated {
@@ -235,19 +321,16 @@
   }
 }
 
-// Badge position for negated state — explicit to avoid reliance on chain-card--front co-occurrence
-.chain-card--negated .chain-badge {
-  right: -2%;
-}
+// Badge position for negated/exit states relies on the side classes
+// (.chain-card--left .chain-badge / .chain-card--right .chain-badge),
+// no override needed here.
 
 .chain-card--negated-exiting {
-  height: 45dvh;
-  width: calc(45dvh * 59 / 86);
   z-index: 4;
   opacity: 1;
 
   @media (prefers-reduced-motion: no-preference) {
-    animation: chain-negated-exit var(--chain-resolve-exit, var(--transition-theme)) var(--ease-in) forwards;
+    animation: chain-negated-exit var(--chain-resolve-exit-visual, var(--transition-theme)) var(--ease-in) forwards;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -257,35 +340,23 @@
 
 .chain-card--negated-exiting .chain-badge {
   font-size: calc(45dvh * 0.20);
-  right: -2%;
   text-shadow:
     0 0 8px var(--pvp-chain-glow-negated),
     2px 4px 6px rgba(0, 0, 0, 0.7);
   -webkit-text-stroke: 2px rgba(160, 160, 160, 0.8);
 }
 
-// --- Overflow exit (oldest card pushed out from C1 upward) ---
+// --- Overflow exit (oldest card pushed out from the back slot upward) ---
+// The exiting card already has its side+back position class applied; this
+// keyframe slides it further up and shrinks it. Position is held by the
+// combo classes; the keyframe only animates transform + opacity + filter.
 
 @keyframes chain-overflow-exit {
-  from {
-    top: -10%;
-    left: calc(80% - 20dvh * 59 / 86);
-    transform: perspective(1200px) rotateZ(-12deg) rotateY(8deg) rotateX(3deg);
-    opacity: 0.8;
-    filter: brightness(0.7);
-  }
-  to {
-    top: -25%;
-    left: calc(85% - 20dvh * 59 / 86);
-    transform: perspective(1200px) rotateZ(-15deg) rotateY(8deg) rotateX(3deg) scale(0.5);
-    opacity: 0;
-    filter: brightness(0.3);
-  }
+  from { transform: var(--card-transform);                    opacity: 0.8; filter: brightness(0.7); }
+  to   { transform: var(--card-transform) translateY(-30%) scale(0.5); opacity: 0;   filter: brightness(0.3); }
 }
 
 .chain-card--exiting {
-  height: 20dvh;
-  width: calc(20dvh * 59 / 86);
   z-index: 0;
   opacity: 0.8;
 
@@ -320,48 +391,89 @@
     2px 4px 6px rgba(0, 0, 0, 0.7);
 }
 
-// Badge position per card slot
-.chain-card--back .chain-badge,
-.chain-card--front .chain-badge,
-.chain-card--exiting .chain-badge,
+// Badge position per side — always points toward the center of the screen.
+// Left-side cards have the badge on their right edge, right-side on the left.
+.chain-card--left .chain-badge  { right: -2%; }
+.chain-card--right .chain-badge { left: -2%; }
+
+// Badge color per side — DS convention: GOLD = viewer (own player),
+// BLUE = opponent. Applies regardless of board/hand/overlay context.
+// Default stroke + glow (set on `.chain-badge` above) is the BLUE opponent
+// variant; the LEFT (viewer) override swaps to gold.
+.chain-card--left .chain-badge {
+  -webkit-text-stroke: 2px var(--pvp-chain-badge-own-bg);
+  text-shadow:
+    0 0 8px var(--pvp-chain-badge-own-glow-strong),
+    0 0 16px var(--pvp-chain-badge-own-glow-soft),
+    2px 4px 6px rgba(0, 0, 0, 0.7);
+}
+
+// Badge size proportional to card (each level has its own card height).
+.chain-card--level-0 .chain-badge { font-size: calc(16dvh * 0.20); }
+.chain-card--level-1 .chain-badge { font-size: calc(20dvh * 0.20); }
+.chain-card--level-2 .chain-badge { font-size: calc(26dvh * 0.20); }
+.chain-card--level-3 .chain-badge { font-size: calc(32dvh * 0.20); }
+.chain-card--level-4 .chain-badge { font-size: calc(38dvh * 0.20); }
 .chain-card--resolve-exiting .chain-badge {
-  right: -2%;
+  font-size: calc(38dvh * 0.20);
 }
 
-.chain-card--mid .chain-badge {
-  left: -2%;
-}
+// --- Cramped viewport (portrait phones + landscape compact) ---
+// Uses the DS `mobile-full` mixin — matches portrait < tablet OR landscape
+// ≤ 1023px × ≤ 500px (so a landscape phone like 800×400 matches, but iPad
+// landscape 1024×768 keeps the full layout). The TS side mirrors the same
+// expression via `matchMedia(CRAMPED_MQ)` so card count caps and CSS sizes
+// flip together.
 
-// Badge size proportional to card
-.chain-card--back .chain-badge {
-  font-size: calc(20dvh * 0.20);
-}
-
-.chain-card--mid .chain-badge {
-  font-size: calc(30dvh * 0.20);
-}
-
-.chain-card--front .chain-badge,
-.chain-card--resolve-exiting .chain-badge {
-  font-size: calc(45dvh * 0.20);
-}
-
-// --- Narrow viewport (portrait phones) ---
-// Shift cards inward so they stay visible on narrow screens:
-// back → 70% (from 80%), mid → 15% (from 30%), front → centered horizontally
-
-@include r.respond-below(r.$bp-mobile) {
-  .chain-card--back {
-    left: calc(70% - 20dvh * 59 / 86);
+@include r.mobile-full {
+  // 3 cards max (cap 2/1). Levels 2, 3, 4 used. 30% overlap rule.
+  // Sizes 30 / 36 / 42dvh — use the full vertical room left available by
+  // the smaller card count. Top of level 2 lands at ~93%, ~2% top margin.
+  .chain-card--level-4 {
+    height: 42dvh; width: calc(42dvh * 59 / 86);
+    bottom: 5%;
+  }
+  .chain-card--level-3 {
+    // level_4.top = 5% + 42dvh
+    // level_3.bottom = 5% + 42 - 0.30 × 36 = 5% + 31.2dvh
+    height: 36dvh; width: calc(36dvh * 59 / 86);
+    bottom: calc(5% + 31.2dvh);
+  }
+  .chain-card--level-2 {
+    // level_3.top = 5% + 31.2 + 36 = 5% + 67.2dvh
+    // level_2.bottom = 5% + 67.2 - 0.30 × 30 = 5% + 58.2dvh
+    height: 30dvh; width: calc(30dvh * 59 / 86);
+    bottom: calc(5% + 58.2dvh);
+  }
+  // Levels 0 and 1 unreachable when cap = 2/1, kept defined for safety.
+  .chain-card--level-1 {
+    height: 24dvh; width: calc(24dvh * 59 / 86);
+    bottom: calc(5% + 81dvh);
+  }
+  .chain-card--level-0 {
+    height: 19dvh; width: calc(19dvh * 59 / 86);
+    bottom: calc(5% + 99dvh);
   }
 
-  .chain-card--mid {
-    left: 15%;
-  }
+  // Mobile badge sizes
+  .chain-card--level-0 .chain-badge { font-size: calc(19dvh * 0.20); }
+  .chain-card--level-1 .chain-badge { font-size: calc(24dvh * 0.20); }
+  .chain-card--level-2 .chain-badge { font-size: calc(30dvh * 0.20); }
+  .chain-card--level-3 .chain-badge { font-size: calc(36dvh * 0.20); }
+  .chain-card--level-4 .chain-badge { font-size: calc(42dvh * 0.20); }
 
-  .chain-card--front {
-    left: calc(50% - 45dvh * 59 / 86 / 2);
-  }
+  // Compact viewport: columns hugging center, subtle drift (0.35% per level).
+  .chain-card--left.chain-card--level-4 { left: 26%; }
+  .chain-card--left.chain-card--level-3 { left: 25.65%; }
+  .chain-card--left.chain-card--level-2 { left: 25.3%; }
+  .chain-card--left.chain-card--level-1 { left: 24.95%; }
+  .chain-card--left.chain-card--level-0 { left: 24.6%; }
+
+  .chain-card--right.chain-card--level-4 { right: 26%; }
+  .chain-card--right.chain-card--level-3 { right: 25.65%; }
+  .chain-card--right.chain-card--level-2 { right: 25.3%; }
+  .chain-card--right.chain-card--level-1 { right: 24.95%; }
+  .chain-card--right.chain-card--level-0 { right: 24.6%; }
 }
 
 // --- Reduced motion ---
@@ -387,15 +499,11 @@
     filter: grayscale(1);
   }
 
-  .chain-card--front {
-    transform: none;
-  }
-
-  .chain-card--mid {
-    transform: none;
-  }
-
-  .chain-card--back {
+  .chain-card--level-0,
+  .chain-card--level-1,
+  .chain-card--level-2,
+  .chain-card--level-3,
+  .chain-card--level-4 {
     transform: none;
   }
 }

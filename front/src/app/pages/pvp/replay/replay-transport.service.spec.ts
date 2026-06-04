@@ -59,6 +59,7 @@ interface Setup {
   computedUpTo: ReturnType<typeof signal<number>>;
   animationsEnabled: ReturnType<typeof signal<boolean>>;
   promptMode: ReturnType<typeof signal<'result' | 'decision'>>;
+  overlayActive: ReturnType<typeof signal<boolean>>;
 }
 
 function setup(opts: {
@@ -78,6 +79,10 @@ function setup(opts: {
   const computedUpTo = signal<number>(opts.computedUpTo ?? -1);
   const animationsEnabled = signal<boolean>(opts.animationsEnabled ?? true);
   const promptMode = signal<'result' | 'decision'>(opts.promptMode ?? 'result');
+  // F1 (2026-06-03) — chain-overlay activity gate. Default false so most
+  // existing tests don't have to opt in ; specs that exercise the gate
+  // can flip it via the returned signal.
+  const overlayActive = signal<boolean>(false);
   svc.configure({
     adapter: adapter as unknown as ReplayDuelAdapter,
     phaseService: phase as unknown as PhaseAnnouncementService,
@@ -85,8 +90,9 @@ function setup(opts: {
     computedUpTo,
     animationsEnabled,
     promptMode,
+    overlayActive,
   });
-  return { svc, adapter, phase, boardStates, computedUpTo, animationsEnabled, promptMode };
+  return { svc, adapter, phase, boardStates, computedUpTo, animationsEnabled, promptMode, overlayActive };
 }
 
 // =============================================================================
@@ -333,6 +339,65 @@ describe('ReplayTransportService — maybeAdvance', () => {
     svc.maybeAdvance();
     expect(adapter.feedTransition).not.toHaveBeenCalled();
   });
+
+  // --- F1 (2026-06-03) — chain-overlay activity gate ---
+  //
+  // The gate prevents `schedulePromptDismiss` from firing while the chain
+  // overlay is mid-animation. Without it, the auto-dismiss timer starts
+  // ticking against a prompt that the user cannot see yet (the prompt-dialog
+  // gates its visible state on the same signal via Approach A) — and may
+  // dismiss before the player has had a chance to read it. Cf. chat 2026-06-03
+  // "prompt dismiss aligns on visible window, not logical".
+
+  it('F1: with overlayActive=true, does NOT schedule prompt dismiss even if a prompt is active', fakeAsync(() => {
+    const { svc, adapter, overlayActive } = setup({
+      states: [stubState('s0', 1), stubState('s1', 2)],
+      computedUpTo: 1,
+    });
+    adapter.activePrompt.and.returnValue({ type: 'SELECT_YESNO' } as never);
+    overlayActive.set(true);
+    svc.isPlaying.set(true);
+
+    svc.maybeAdvance();
+    // PROMPT_DISPLAY_MIN = 800ms ; far past should still be no-op because
+    // the gate refused to schedule anything.
+    tick(2000);
+    expect(adapter.resumeAfterPrompt).not.toHaveBeenCalled();
+  }));
+
+  it('F1: with overlayActive=true and no prompt, also no advance (gate runs early)', () => {
+    const { svc, adapter, overlayActive } = setup({
+      states: [stubState('s0'), stubState('s1')],
+      computedUpTo: 1,
+    });
+    overlayActive.set(true);
+    svc.isPlaying.set(true);
+
+    svc.maybeAdvance();
+    expect(adapter.feedTransition).not.toHaveBeenCalled();
+    expect(adapter.feedTransitionPhased).not.toHaveBeenCalled();
+  });
+
+  it('F1: after overlayActive flips to false, schedule resumes on next maybeAdvance call', fakeAsync(() => {
+    const { svc, adapter, overlayActive } = setup({
+      states: [stubState('s0', 1), stubState('s1', 2)],
+      computedUpTo: 1,
+    });
+    adapter.activePrompt.and.returnValue({ type: 'SELECT_YESNO' } as never);
+    overlayActive.set(true);
+    svc.isPlaying.set(true);
+
+    // First call gated — no schedule.
+    svc.maybeAdvance();
+    tick(100);
+    expect(adapter.resumeAfterPrompt).not.toHaveBeenCalled();
+
+    // Gate releases ; component effect re-fires maybeAdvance.
+    overlayActive.set(false);
+    svc.maybeAdvance();
+    tick(1500); // PROMPT_DISPLAY_FALLBACK
+    expect(adapter.resumeAfterPrompt).toHaveBeenCalled();
+  }));
 });
 
 // =============================================================================

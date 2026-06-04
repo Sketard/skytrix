@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, OnDestroy, OnInit, signal, untracked,
+  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, OnDestroy, OnInit, signal, untracked, viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
@@ -67,6 +67,7 @@ import { DrawSequenceManager } from '../duel-page/draw-sequence-manager';
 import { MoveAnimationRouter } from '../duel-page/move-animation-router';
 import { TargetIndicatorManager } from '../duel-page/target-indicator-manager';
 import { BufferReplayBuilder } from '../duel-page/buffer-replay-builder';
+import { ScopeResetDispatcher } from '../projections';
 import { PvpChainOverlayComponent } from '../duel-page/pvp-chain-overlay/pvp-chain-overlay.component';
 import { EffectBubbleComponent } from '../duel-page/effect-bubble/effect-bubble.component';
 import { GameLogPanelComponent } from '../duel-page/game-log-panel/game-log-panel.component';
@@ -80,6 +81,15 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
+    // ScopeResetDispatcher — required by the orchestrator + every
+    // `ResetTarget` manager (Chain, Lp, Battle, GameLog, TargetIndicator).
+    // Without it, `resetForReplaySeek` would not fan out the
+    // PERSPECTIVE_LIFETIME reset, leaving projections like
+    // `OverlayShowReadyProjection` with stale chainId entries across a
+    // seek (bug 2026-06-03: post-seek replays the chain with overlay
+    // firing instantly because `_ready.has(chainIndex)` returned true
+    // from the residual set).
+    ScopeResetDispatcher,
     ReplayConnectionService, ReplayForkService, ReplayTransportService,
     CardDataCacheService, CardInspectionService, CardTravelEngine, BoardEffectsService, FloatRegistryService, DuelCardArtService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
@@ -143,6 +153,17 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly toastService = inject(DuelToastService);
   readonly fork = inject(ReplayForkService);
   readonly transport = inject(ReplayTransportService);
+
+  /**
+   * `viewChild` signal for the chain overlay template ref (`#chainOverlay`).
+   * Used to derive `chainOverlayActive` for the transport service —
+   * `viewChild()` is null until the first render, the computed below
+   * returns `false` defensively. Cf. chat 2026-06-03 F1.
+   */
+  private readonly chainOverlayRef = viewChild(PvpChainOverlayComponent);
+  readonly chainOverlayActive = computed<boolean>(
+    () => this.chainOverlayRef()?.overlayActive() ?? false,
+  );
 
   // Transport state — owned by ReplayTransportService, re-exposed for the template (audit M10).
   readonly currentIndex = this.transport.currentIndex;
@@ -591,6 +612,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       computedUpTo: this.computedUpTo,
       animationsEnabled: this.animationsEnabled,
       promptMode: this.promptMode,
+      overlayActive: this.chainOverlayActive,
     });
 
     // Hide the global full-screen spinner while our own skeleton owns the
@@ -669,11 +691,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
     // Playback continuation — reactively drives auto-play when adapter.busy()
     // changes, a decision prompt appears, or a phase announcement finishes.
+    // F1 (2026-06-03) — also subscribed to `chainOverlayActive` so a flip
+    // from true → false re-fires `maybeAdvance` and lets the scheduler
+    // schedule the prompt dismiss against a now-visible prompt.
     effect(() => {
-      // Subscribe to all 3 signals so the effect re-fires when any of them flips.
+      // Subscribe to all signals so the effect re-fires when any of them flips.
       this.adapter.busy();
       this.adapter.activePrompt();
       this.phaseService.announcement();
+      this.chainOverlayActive();
       untracked(() => this.transport.maybeAdvance());
     });
 

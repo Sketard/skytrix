@@ -163,6 +163,15 @@ export const CHAIN_ACTIVATE_MIN_MS = 250;
 /** MSG_CHAINING fallback budget when no zone resolves (HAND-only or unknown). */
 export const CHAIN_ACTIVATE_FALLBACK_MS = 400;
 
+/** Chain overlay "breathing room" — extra hold after an entry / pulse anim
+ *  so the user has time to perceive the card before the next link pushes
+ *  it (building) or before the prompt opens (animate → decide replay edge).
+ *  Inserted between the visual end of the per-card animation and the
+ *  clearing of the index that gates `overlayActive`. Cf. chat
+ *  2026-06-03 "breathing room après animations card". */
+export const OVERLAY_ANIM_HOLD_MS = 400;
+export const OVERLAY_ANIM_HOLD_MIN_MS = 200;
+
 // --- Opponent effect bubble (Surface 2 — `<app-effect-bubble>`) ---------------
 /** How long the effect bubble holds a content before fading out (Lot 3b). */
 export const EFFECT_BUBBLE_MS = 3500;

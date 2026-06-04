@@ -118,6 +118,17 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   readonly readOnly = input(false);
   /** Replay mode: the response that was chosen (highlights the selected option). */
   readonly preSelectedResponse = input<unknown>(undefined);
+  /**
+   * Gate signal: when `true`, the dialog defers opening until the gate
+   * releases. The sub-component is still prepared (portal attach, hint
+   * text refresh) so the open transition is instant + animated once
+   * the gate flips to `false` — cf. chat 2026-06-03 "Approach A".
+   *
+   * Wired by the duel/replay page to `chainOverlay.overlayActive()` so
+   * a chain-overlay entry / pulse animation always plays through
+   * before the prompt slides into view, in BOTH PvP and Replay.
+   */
+  readonly overlayActive = input(false);
 
   readonly dialogState = signal<DialogState>('closed');
   readonly hintText = signal<string | null>(null);
@@ -141,6 +152,15 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
    *  object). Cleared on `openForPrompt` when the OBJECT changes, on
    *  `closeDialog`, and after the first emission within `attachComponent`. */
   private _answeredPrompt: Prompt | null = null;
+  /**
+   * Identity of the prompt currently mounted on the portal. Set by
+   * `attachComponent`, cleared by `detachComponent`. Used by
+   * `openForPrompt` (Approach A) to short-circuit when the gate
+   * (`overlayActive`) flips to false and the effect re-fires with the
+   * SAME prompt object — we must NOT re-swap the sub-component (which
+   * would destroy the user's in-progress selection), just set
+   * `dialogState='open'` to play the entry transition. */
+  private _mountedPromptOnPortal: Prompt | null = null;
 
   constructor() {
     // Warm the FR/EN system-string tables so prompt descriptions resolve
@@ -161,6 +181,11 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       const prompt = this.prompt();
       const msg = this.passiveMessage();
       const diceIp = this.wsService.diceInProgress();
+      // Track overlayActive so a flip from true → false re-fires this
+      // effect and lets the gated prompt finally open (Approach A).
+      // Reading it here also keeps it tracked alongside `prompt` so the
+      // single-effect-lifecycle invariant is preserved.
+      this.overlayActive();
       untracked(() => {
         // F-bugB3 verbose — lifecycle visibility on every prompt-input flap.
         // Identity (`promptObjectId`) lets us correlate a re-emit with the
@@ -345,8 +370,32 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     this.refreshHintText(prompt);
 
     if (this.portalOutlet) {
-      this.swapComponent(prompt, componentType);
-      this.dialogState.set('open');
+      // Approach A (2026-06-03) — if the same prompt object is already
+      // mounted on the portal (re-entry from the overlay-gate flip with
+      // the same prompt), skip swapComponent so the sub-component's
+      // in-progress state survives. Only `dialogState` needs to flip.
+      if (this._mountedPromptOnPortal !== prompt) {
+        this.swapComponent(prompt, componentType);
+      }
+      // Approach A (2026-06-03) — overlayActive gates the visible
+      // `dialogState`. Two cases :
+      //   · overlayActive=true at this entry → keep dialog closed.
+      //   · overlayActive=false → open ; if `_runOverlayShowSequence`
+      //     flips overlayActive=true in the same Angular tick (via the
+      //     chain-overlay's `_gateOverlayShowOnReady` deferred effect),
+      //     the lifecycle effect re-fires and we re-enter with the new
+      //     overlayActive value → forces dialogState='closed'.
+      //
+      // The re-entry path catches the intra-tick race ; we don't need an
+      // explicit `queueMicrotask` defer because Angular flushes all
+      // effects before the browser repaints. The "prompt flash under
+      // overlay" symptom (chat 2026-06-03) is invisible to the user as
+      // long as both flips land in the same CD cycle.
+      if (this.overlayActive()) {
+        if (this.dialogState() !== 'closed') this.dialogState.set('closed');
+      } else {
+        this.dialogState.set('open');
+      }
     } else {
       // Defer visibility until ngAfterViewInit attaches the content
       this.pendingAttach = { prompt, componentType };
@@ -444,6 +493,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
 
     const portal = new ComponentPortal(componentType);
     const ref = this.portalOutlet.attach(portal);
+    this._mountedPromptOnPortal = prompt;
 
     ref.instance.promptData = prompt;
     ref.instance.hintContext = this.hintContext() ?? this.wsService.hintContext();
@@ -521,6 +571,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     if (this.portalOutlet?.hasAttached()) {
       this.portalOutlet.detach();
     }
+    this._mountedPromptOnPortal = null;
   }
 
   private closeDialog(): void {

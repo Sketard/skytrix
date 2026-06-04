@@ -98,6 +98,19 @@ function isAddOrRemoveCounter(e: StreamEvent): e is AddCounterMsg | RemoveCounte
 // DIFFERENT card than the activator (Solemn series banishing a board
 // monster, Pot of Desires banishing 10 deck cards). Those need
 // per-card narrowing in β.x.
+//
+// **Replay pacing note (2026-06-03)** — the predicate above fires
+// when the cost MSG_MOVE's AnimationCompleted lands ; this is the
+// LOGICAL signal that the overlay is ready to show. The VISUAL
+// pacing (don't pop the overlay UNDER a prompt that arrived in the
+// same tick ; hold the rendered card a beat before the next link
+// pushes ; let the activation flash finish before showing) is owned
+// by the `overlay-show-ready` projection + `pvp-chain-overlay`'s
+// `overlayActive` computed + the breathing-room hold added to
+// `_startEnterAndShoveAnims` / `applyResolvingPulse` /
+// `onChainLinkResolved` step 2. Cf. session 2026-06-03 "overlay
+// pacing chantier" — the DEP layer stays focused on causal
+// correlation, the visual layer owns the timing.
 
 const overlayShow: DeferredRule = {
   trigger: e => isChaining(e) && e.chainIndex >= 1,

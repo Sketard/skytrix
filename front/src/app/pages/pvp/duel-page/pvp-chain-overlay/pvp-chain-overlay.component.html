@@ -1,11 +1,12 @@
 @if (activeChainLinks().length > 0) {
   <div class="chain-overlay-container"
-       [class.chain-overlay--hidden]="promptActive() && phase() === 'building'"
        [class.visible]="overlayVisible()"
        [style.--chain-resolve-pulse]="cssDurations().pulse"
        [style.--chain-resolve-exit]="cssDurations().exit"
+       [style.--chain-resolve-exit-visual]="cssDurations().exitVisual"
        [style.--chain-entry-duration]="cssDurations().entry"
        [style.--chain-overflow-duration]="cssDurations().overflow"
+       [style.--chain-shove-duration]="cssDurations().shove"
        [style.--chain-cascade-delay]="cssDurations().cascadeDelay"
        role="status"
        aria-live="polite">
@@ -15,6 +16,13 @@
       <!-- Exiting card (overflow or resolve-exit) -->
       @if (exitingCard(); as exiting) {
         <div class="chain-card"
+             [class.chain-card--left]="exiting.card.side === 'left'"
+             [class.chain-card--right]="exiting.card.side === 'right'"
+             [class.chain-card--level-0]="exiting.card.level === 0"
+             [class.chain-card--level-1]="exiting.card.level === 1"
+             [class.chain-card--level-2]="exiting.card.level === 2"
+             [class.chain-card--level-3]="exiting.card.level === 3"
+             [class.chain-card--level-4]="exiting.card.level === 4"
              [class.chain-card--exiting]="exiting.type === 'overflow'"
              [class.chain-card--resolve-exiting]="exiting.type === 'resolved' && !exiting.negated"
              [class.chain-card--negated-exiting]="exiting.type === 'resolved' && exiting.negated">
@@ -26,15 +34,23 @@
         </div>
       }
 
-      <!-- Visible cards (max 3) — cascade positions -->
+      <!-- Visible cards (max 5 — 3 per majority side, 2 per minority side) -->
       @for (card of visibleCards(); track card.chainIndex; let i = $index) {
         <div class="chain-card"
              [class.chain-card--entering]="card.chainIndex === enteringCardIndex()"
-             [class.chain-card--resolving]="card.position === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && resolvingIndex() === card.chainIndex"
-             [class.chain-card--negated]="card.position === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && negatedResolvingIndex() === card.chainIndex && card.chainIndex !== enteringCardIndex()"
-             [class.chain-card--front]="card.position === 'front'"
-             [class.chain-card--mid]="card.position === 'mid'"
-             [class.chain-card--back]="card.position === 'back'">
+             [class.chain-card--shoved]="card.chainIndex === shovedCardIndex()"
+             [class.chain-card--resolving]="card.slot === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && resolvingIndex() === card.chainIndex"
+             [class.chain-card--negated]="card.slot === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && negatedResolvingIndex() === card.chainIndex && card.chainIndex !== enteringCardIndex()"
+             [class.chain-card--left]="card.side === 'left'"
+             [class.chain-card--right]="card.side === 'right'"
+             [class.chain-card--level-0]="card.level === 0"
+             [class.chain-card--level-1]="card.level === 1"
+             [class.chain-card--level-2]="card.level === 2"
+             [class.chain-card--level-3]="card.level === 3"
+             [class.chain-card--level-4]="card.level === 4"
+             [class.chain-card--front]="card.slot === 'front'"
+             [class.chain-card--mid]="card.slot === 'mid'"
+             [class.chain-card--back]="card.slot === 'back'">
           <img class="chain-card__art"
                [src]="getCardImageUrl(card.cardCode)"
                [alt]="card.cardName"

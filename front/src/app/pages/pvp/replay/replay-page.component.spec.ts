@@ -45,6 +45,7 @@ import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DebugLogService } from '../duel-page/debug-log.service';
 import { DuelDebugService } from '../duel-page/duel-debug.service';
 import { DuelGameLogService } from '../duel-page/duel-game-log.service';
+import { ScopeResetDispatcher } from '../projections';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
 import { AnimationOrchestratorService } from '../duel-page/animation-orchestrator.service';
 import { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
@@ -314,6 +315,7 @@ function setupTestBed(): void {
         // Real service — pure (signals + GameLogBuilder), no DI deps, inert
         // until the orchestrator taps it. The page wires it in its constructor.
         DuelGameLogService,
+        ScopeResetDispatcher,
         { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
       ],
     },
@@ -1000,5 +1002,53 @@ describe('ReplayPageComponent — F4 wiring', () => {
   it('mySide returns 0 when auth pseudo matches the first player (or default)', () => {
     conn.metadata.set({ playerUsernames: ['AxelTest', 'Other'] } as unknown);
     expect(component.mySide()).toBe(0);
+  });
+});
+
+// =============================================================================
+// Couche 3 — Provider doctrine (bug 5 of 2026-06-03 session)
+//
+// Context: `ScopeResetDispatcher` MUST be provided in the page's providers
+// array so that `AnimationOrchestratorService.inject(ScopeResetDispatcher,
+// { optional: true })` resolves to a real instance. If forgotten, every
+// `resetForReplaySeek` / `resetForPerspectiveSwitch` becomes a silent
+// no-op : projections like `OverlayShowReadyProjection` keep their state
+// across the seek, causing the post-seek 2nd-play "overlay shows
+// instantly without waiting for cost MSG_MOVE" bug (originally root-caused
+// 2026-06-03 via Playwright).
+//
+// LIMITATION : the `setupTestBed()` harness `overrideComponent`'s the
+// providers, REPLACING the component's own providers array. So this spec
+// CAN'T detect a missing `ScopeResetDispatcher` in the component's
+// `@Component({ providers: ... })` directly — the test harness always
+// provides it. To make the missing-provider scenario detectable would
+// require booting the component WITHOUT the override (full provider
+// graph + http/router stubs at the root injector level), which is a
+// bigger refactor.
+//
+// What this spec DOES pin : `ScopeResetDispatcher` is resolved without
+// `{ optional: true }` at the component's injector level. The shape of
+// the service (dispatch / register methods) is also asserted, so any
+// future API change is caught. If the production code drops the
+// `optional: true` flag entirely (the cleaner fix discussed for a
+// follow-up session — see the "retire optional:true" task), this spec
+// remains correct.
+// =============================================================================
+
+describe('ReplayPageComponent — provider doctrine (2026-06-03 bug 5 regression filet)', () => {
+  beforeEach(() => {
+    clearReplayPrefs();
+    setupTestBed();
+  });
+
+  it('resolves ScopeResetDispatcher non-optional at the component injector', () => {
+    const fixture = TestBed.createComponent(ReplayPageComponent);
+    // Non-optional inject — throws if missing, which is the contract we
+    // want : the dispatcher MUST be reachable from the orchestrator's
+    // injection scope.
+    const dispatcher = fixture.componentRef.injector.get(ScopeResetDispatcher);
+    expect(dispatcher).toBeTruthy();
+    expect(typeof dispatcher.dispatch).toBe('function');
+    expect(typeof dispatcher.register).toBe('function');
   });
 });

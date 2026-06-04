@@ -117,7 +117,7 @@
                          (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Chain Overlay -->
-      <app-pvp-chain-overlay [promptActive]="adapter.activePrompt() !== null" />
+      <app-pvp-chain-overlay #chainOverlay [promptActive]="adapter.activePrompt() !== null" />
 
       <!-- Game Log — Surface 2: opponent effect bubble (zero DOM here; drives
            its own CDK overlay anchored on the opponent duelist card). -->
@@ -137,6 +137,7 @@
                               [ownPlayerIndex]="adapter.activePlayer()"
                               [hintContext]="adapter.activeHint()"
                               [confirmedCards]="adapter.activeConfirmedCards()"
+                              [overlayActive]="chainOverlay.overlayActive()"
                               (longPressInspect)="onCardInspectRequest($event)" />
 
       <!-- F4 — End overlay slides in when atEnd(). Single Restart CTA;

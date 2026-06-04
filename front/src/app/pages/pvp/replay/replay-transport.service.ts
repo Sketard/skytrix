@@ -37,6 +37,18 @@ interface ReplayTransportConfig {
   computedUpTo: Signal<number>;
   animationsEnabled: Signal<boolean>;
   promptMode: Signal<'result' | 'decision'>;
+  /**
+   * Chain-overlay activity gate (F1, 2026-06-03). When `true`, the chain
+   * overlay is mid-animation (entry swoop / pulse / exit) and the replay
+   * scheduler must NOT call `schedulePromptDismiss` yet — otherwise the
+   * auto-dismiss window starts ticking against an invisible prompt that
+   * is hidden by the overlay-gate of `pvp-prompt-dialog` (Approach A).
+   *
+   * Wired by the component to `chainOverlay.overlayActive()`. PvP has no
+   * equivalent — its scheduler doesn't auto-dismiss prompts (the player
+   * clicks). Cf. chat 2026-06-03.
+   */
+  overlayActive: Signal<boolean>;
 }
 
 const PLAYBACK_INTERVAL = 500;
@@ -164,6 +176,15 @@ export class ReplayTransportService {
   maybeAdvance(): void {
     if (!this.isPlaying()) return;
     const c = this.getCfg();
+
+    // F1 (2026-06-03) — chain overlay mid-animation. The prompt-dialog
+    // gates its `dialogState=open` on this same signal (Approach A), so
+    // calling `schedulePromptDismiss` now would start the auto-dismiss
+    // timer against a prompt that the user cannot see yet. Bail — the
+    // component effect that drives `maybeAdvance` re-fires when
+    // `overlayActive` flips back to false, and we land here again with
+    // the gate clear.
+    if (c.overlayActive()) return;
 
     // Decision prompt appeared → auto-dismiss after proportional duration
     if (c.adapter.activePrompt()) {

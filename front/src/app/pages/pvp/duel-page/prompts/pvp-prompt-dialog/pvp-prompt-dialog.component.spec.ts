@@ -660,3 +660,132 @@ describe('PvpPromptDialogComponent — HostListeners + readOnly (C2.3)', () => {
     expect(component.portalOutlet.hasAttached()).toBe(true);
   });
 });
+
+// =============================================================================
+// PvpPromptDialogComponent — overlayActive gate (Approach A, bug 2026-06-03)
+//
+// The dialog defers its visible open transition until the chain overlay has
+// finished its card-level animation (entry / pulse). Three contracts under
+// test :
+//   1. Prompt arrives with `overlayActive=true` → dialog stays `closed`
+//      (sub-component is prepared on the portal so re-open is instant).
+//   2. `overlayActive` flips false → dialog opens.
+//   3. Race condition : prompt arrives with `overlayActive=false` synchronously
+//      BUT `overlayActive` flips to true within the same microtask (the chain
+//      overlay's `_runOverlayShowSequence` fires from a deferred effect that
+//      lands AFTER the prompt-dialog effect in the Angular flush order) →
+//      dialog must NOT open, because the open is deferred via `queueMicrotask`
+//      which re-checks `overlayActive` before committing.
+//
+// Cf. session log 2026-06-03 — race tracked via a Playwright spec showing
+// `openForPrompt overlayActive=false setOpen=true` followed 3ms later by
+// `_runOverlayShowSequence` then `openForPrompt overlayActive=true setOpen=false`.
+// The microtask defer makes the open-decision converge on the correct state.
+// =============================================================================
+
+describe('PvpPromptDialogComponent — overlayActive gate (Approach A, 2026-06-03)', () => {
+  let ws: WsStub;
+  let fixture: ComponentFixture<PvpPromptDialogComponent>;
+  let component: PvpPromptDialogComponent;
+  let originalMap: Record<string, unknown>;
+
+  beforeEach(() => {
+    originalMap = { ...PROMPT_COMPONENT_MAP };
+    for (const k of Object.keys(PROMPT_COMPONENT_MAP)) delete PROMPT_COMPONENT_MAP[k];
+    PROMPT_COMPONENT_MAP['SELECT_YESNO'] = StubYesNoComponent;
+    PROMPT_COMPONENT_MAP['SELECT_OPTION'] = StubOptionComponent;
+
+    ws = makeWsStub();
+
+    TestBed.configureTestingModule({
+      imports: [PvpPromptDialogComponent],
+      providers: [
+        { provide: DuelWebSocketService, useValue: ws },
+        { provide: TranslateService, useValue: {
+          instant: (k: string) => k,
+          get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
+          onLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onTranslationChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+        } },
+        { provide: LiveAnnouncer, useValue: { announce: jasmine.createSpy('announce') } },
+        ...descriptionServiceStubs(),
+      ],
+    });
+
+    fixture = TestBed.createComponent(PvpPromptDialogComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    for (const k of Object.keys(PROMPT_COMPONENT_MAP)) delete PROMPT_COMPONENT_MAP[k];
+    Object.assign(PROMPT_COMPONENT_MAP, originalMap);
+  });
+
+  it('default overlayActive=false → dialog opens normally', () => {
+    fixture.detectChanges();
+    fixture.componentRef.setInput('prompt', makeYesNoPrompt());
+    fixture.detectChanges();
+    expect(component.dialogState()).toBe('open');
+  });
+
+  it('prompt arriving with overlayActive=true → dialog stays closed (sub-component prepared on portal)', () => {
+    fixture.componentRef.setInput('overlayActive', true);
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('prompt', makeYesNoPrompt());
+    fixture.detectChanges();
+
+    // Dialog deferred — visible state = closed.
+    expect(component.dialogState()).toBe('closed');
+    // Sub-component IS already attached to the portal so the eventual open
+    // animates instantly (no FOUC).
+    expect(component.portalOutlet.hasAttached()).toBe(true);
+  });
+
+  it('overlayActive flips false while prompt is present → dialog opens', () => {
+    fixture.componentRef.setInput('overlayActive', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('prompt', makeYesNoPrompt());
+    fixture.detectChanges();
+    expect(component.dialogState()).toBe('closed');
+
+    fixture.componentRef.setInput('overlayActive', false);
+    fixture.detectChanges();
+    expect(component.dialogState()).toBe('open');
+  });
+
+  it('overlayActive flips true while dialog is open → dialog closes (defensive re-gate)', () => {
+    fixture.componentRef.setInput('prompt', makeYesNoPrompt());
+    fixture.detectChanges();
+    expect(component.dialogState()).toBe('open');
+
+    fixture.componentRef.setInput('overlayActive', true);
+    fixture.detectChanges();
+    // The lifecycle effect re-fires when overlayActive flips ; openForPrompt
+    // is called again with the same prompt object and detects
+    // overlayActive=true → forces dialogState=closed. This catches the
+    // intra-tick race condition where the prompt-dialog effect would have
+    // opened the dialog before the chain-overlay effect flipped
+    // overlayActive to true (the original 2026-06-03 bug 2).
+    expect(component.dialogState()).toBe('closed');
+  });
+
+  it('does not re-swapComponent on re-entry with the same prompt object (avoid destroying sub-component state)', () => {
+    fixture.componentRef.setInput('prompt', makeYesNoPrompt());
+    fixture.detectChanges();
+    const firstRef = component.portalOutlet.attachedRef as { instance: unknown };
+    expect(firstRef.instance).toBeInstanceOf(StubYesNoComponent);
+
+    // Flip overlayActive a few times — lifecycle effect re-fires, openForPrompt
+    // is called again with the SAME prompt object. _mountedPromptOnPortal
+    // must short-circuit swapComponent so the instance survives.
+    fixture.componentRef.setInput('overlayActive', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('overlayActive', false);
+    fixture.detectChanges();
+
+    const finalRef = component.portalOutlet.attachedRef as { instance: unknown };
+    expect(finalRef.instance).toBe(firstRef.instance);
+  });
+});
