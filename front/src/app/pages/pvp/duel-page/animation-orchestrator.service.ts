@@ -92,23 +92,20 @@ export class AnimationOrchestratorService {
   private readonly artService = inject(DuelCardArtService);
   private readonly bufferReplayBuilder = inject(BufferReplayBuilder);
   /**
-   * Optional Game Log handle — used only for `reset()` on rematch / state
-   * sync (R8). The journal is fed by subscribing to `eventStream` from the
+   * Game Log handle — used only for `reset()` on rematch / state sync
+   * (R8). The journal is fed by subscribing to `eventStream` from the
    * page (`attachEventStream` at Lot 2d), no tap method is called from
-   * here. Injected `{ optional: true }` so the orchestrator's own spec
-   * suite (which does not provide the service) keeps compiling.
+   * here.
    */
-  private readonly gameLog = inject(DuelGameLogService, { optional: true });
+  private readonly gameLog = inject(DuelGameLogService);
   /**
    * α.5 — the duel-page-scoped `ScopeResetDispatcher`. Used by
    * `notifyPerspectiveSwitch` + `resetForReplaySeek` (both dispatch
    * PERSPECTIVE_LIFETIME) and `onStateSync` (dispatches DUEL_LIFETIME)
    * to fan-out resets to the 4 `ResetTarget` managers (Chain, Lp,
-   * Battle, Log). `{ optional: true }` for the same reason as `gameLog`
-   * — the orchestrator's own spec suite (`animation-orchestrator.service.spec.ts`)
-   * does not provide it. Cf. duel-session-chantier.md §3.5.
+   * Battle, Log). Cf. duel-session-chantier.md §3.5.
    */
-  private readonly scopeDispatcher = inject(ScopeResetDispatcher, { optional: true });
+  private readonly scopeDispatcher = inject(ScopeResetDispatcher);
 
   // --- Public read-only signals ---
   /**
@@ -635,12 +632,8 @@ export class AnimationOrchestratorService {
     // β.2a — auto-register the DEP with the scope-reset dispatcher so
     // STATE_SYNC / RematchStarted (DUEL_LIFETIME → cascades to
     // CONNECTION) abandon every pending deferred with
-    // `EffectAbandoned(reason='checkpoint')`. `{ optional: true }` on
-    // the dispatcher inject above means the orchestrator's own spec
-    // suite (which does not provide the dispatcher) keeps compiling —
-    // the DEP simply never receives a reset there, which is fine for
-    // the unit tests that exercise it directly.
-    this.scopeDispatcher?.register(this.deferredProcessor);
+    // `EffectAbandoned(reason='checkpoint')`.
+    this.scopeDispatcher.register(this.deferredProcessor);
 
     // C3 + C5 (2026-06-01) — symmetric register + attach for every
     // `BaseProjection`. `attachProjection` registers with the scope
@@ -924,7 +917,7 @@ export class AnimationOrchestratorService {
     this.chainManager.reset();
     this.lpTracker.reset();
     this.battleTracker.reset();
-    this.gameLog?.reset();
+    this.gameLog.reset();
     // F12 (2026-05-31) — symmetric with the other ResetTarget managers
     // above. The dispatcher's auto-fire path covers production resets ;
     // this defensive call covers the explicit teardown.
@@ -954,16 +947,14 @@ export class AnimationOrchestratorService {
    * `BaseProjection`. The 3 sites that used to live separately
    * (`scopeDispatcher.register`, `attachEventStream`, manual
    * `detachEventStream` in `destroy`) collapse into one call here:
-   *   1. Register with the scope dispatcher (no-op if dispatcher absent
-   *      via `{ optional: true }` — the orchestrator's own spec suite
-   *      doesn't provide one).
+   *   1. Register with the scope dispatcher.
    *   2. Attach to `_eventStream` so the projection drains via
    *      `applyEvent`.
    *   3. Track on `_streamProjections` so `destroy()` can detach all
    *      registered projections symmetrically.
    */
   private attachProjection(p: BaseProjection<unknown>): void {
-    this.scopeDispatcher?.register(p);
+    this.scopeDispatcher.register(p);
     p.attachEventStream(this._eventStream, this.injector);
     this._streamProjections.push(p);
   }
@@ -1011,7 +1002,7 @@ export class AnimationOrchestratorService {
    * now `implements ResetTarget` and is dispatched alongside the
    * `targetedZoneKeys` projection (its FIELD-side equivalent).
    */
-  private resetAllState(scopes: ReadonlySet<ScopeCategory>): void {
+  private resetAllState(scopes: ReadonlySet<ScopeCategory>, tolerateLocks = false): void {
     this.clearTimersAndPolling();
     // β.3 Lot 3.1 — `isAnimating` projection flips false via the
     // `runner-stopped` event emitted by `clearTimersAndPolling →
@@ -1197,7 +1188,7 @@ export class AnimationOrchestratorService {
     // retiré le pre-reset rematch via l'ancien `resetForSwitch`. Le
     // rematch SOLO compte désormais sur `onStateSync({DUEL_LIFETIME})`
     // qui suit immédiatement le REMATCH_STARTING (handler unique).
-    this.scopeDispatcher?.dispatch(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
+    this.scopeDispatcher.dispatch(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
     this.logger.log(DuelLogCategory.PIPELINE,
       'notifyPerspectiveSwitch %d → %d → dispatch({PERSPECTIVE_LIFETIME})', from, to);
   }

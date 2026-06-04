@@ -34,16 +34,12 @@ export class LpAnimationTracker implements ResetTarget {
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
-  // `optional: true` so isolated unit specs (which test the manager without
-  // a DuelPageComponent host) don't need to provide the dispatcher. In
-  // production every DuelPageComponent providers list includes
-  // ScopeResetDispatcher so the register call fires.
-  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+  private readonly dispatcher = inject(ScopeResetDispatcher);
 
   readonly scope: ScopeCategory = 'DUEL_LIFETIME';
 
   constructor() {
-    this.dispatcher?.register(this);
+    this.dispatcher.register(this);
   }
 
   private get rbs() { return this.dataSource.renderedBoardState; }

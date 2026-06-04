@@ -35,6 +35,7 @@ import { DuelLogger, DuelLogCategory } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
 import { DuelGameLogService } from './duel-game-log.service';
+import { ScopeResetDispatcher } from '../projections';
 import { ReducedMotionService } from '../../../services/reduced-motion.service';
 import { WebSocketFactoryService } from './websocket-factory.service';
 import { createMockWebSocketFactory } from './_test-utils/mock-websocket';
@@ -282,6 +283,7 @@ describe('γ R10 — DuelGameLogService re-relativises journal on perspective fl
     TestBed.configureTestingModule({
       providers: [
         DuelGameLogService,
+        ScopeResetDispatcher,
         DuelLogger,
         DuelContext,
         DuelCardArtService,
@@ -507,6 +509,7 @@ describe('γ T-F6 — chain SOLO multiplex (real pipeline)', () => {
         DuelLogger,
         DuelCardArtService,
         DuelGameLogService,
+        ScopeResetDispatcher,
         { provide: AnimationOrchestratorService, useValue: animMock },
         { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
         // why: ReducedMotionService stub — Source-tagged in prod.

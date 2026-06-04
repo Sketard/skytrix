@@ -45,9 +45,7 @@ export class TargetIndicatorManager implements OnDestroy, ResetTarget {
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
   private readonly logger = inject(DuelLogger, { optional: true });
-  // `optional: true` so isolated unit specs don't need to provide the
-  // dispatcher; production DuelPageComponent providers always include it.
-  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+  private readonly dispatcher = inject(ScopeResetDispatcher);
 
   /**
    * F12 (2026-05-31) — aligned with the FIELD-target side of
@@ -60,7 +58,7 @@ export class TargetIndicatorManager implements OnDestroy, ResetTarget {
   readonly scope: ScopeCategory = 'PERSPECTIVE_LIFETIME';
 
   constructor() {
-    this.dispatcher?.register(this);
+    this.dispatcher.register(this);
   }
 
   private floats: TrackedFloat[] = [];

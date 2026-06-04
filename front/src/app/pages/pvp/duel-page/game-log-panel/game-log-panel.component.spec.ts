@@ -24,6 +24,7 @@ import {
 import { GameLogPanelComponent } from './game-log-panel.component';
 import { DuelGameLogService } from '../duel-game-log.service';
 import { DuelCardArtService } from '../duel-card-art.service';
+import { ScopeResetDispatcher } from '../../projections';
 import type { DuelState, GameEvent } from '../../types';
 import type { AttackMsg, ChainingMsg, DrawMsg } from '../../duel-ws.types';
 import type { PreComputedState } from '../../duel-ws-replay.types';
@@ -98,7 +99,7 @@ describe('GameLogPanelComponent', () => {
           loader: { provide: TranslateLoader, useClass: TranslateFakeLoader },
         }),
       ],
-      providers: [DuelGameLogService, DuelCardArtService],
+      providers: [DuelGameLogService, DuelCardArtService, ScopeResetDispatcher],
     });
 
     gameLog = TestBed.inject(DuelGameLogService);

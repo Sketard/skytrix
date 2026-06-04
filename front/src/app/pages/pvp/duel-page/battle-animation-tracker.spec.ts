@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { BattleAnimationTracker } from './battle-animation-tracker';
 import { CardTravelEngine } from './card-travel-engine.service';
 import { DuelContext } from './duel-context';
+import { ScopeResetDispatcher } from '../projections';
 import type { AttackMsg, BattleMsg } from '../duel-ws.types';
 
 /**
@@ -62,6 +63,7 @@ describe('BattleAnimationTracker', () => {
     TestBed.configureTestingModule({
       providers: [
         BattleAnimationTracker,
+        ScopeResetDispatcher,
         { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: DuelContext, useValue: mockCtx },
       ],

@@ -47,14 +47,12 @@ import { DuelLogCategory, DuelLogger } from './duel-logger';
 export class ChainResolutionManager implements ResetTarget {
   private readonly logger = inject(DuelLogger);
   private readonly injector = inject(Injector);
-  // `optional: true` so isolated unit specs don't need to provide the
-  // dispatcher; production DuelPageComponent providers always include it.
-  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+  private readonly dispatcher = inject(ScopeResetDispatcher);
 
   readonly scope: ScopeCategory = 'PERSPECTIVE_LIFETIME';
 
   constructor() {
-    this.dispatcher?.register(this);
+    this.dispatcher.register(this);
   }
 
   // --- Public signals (overlay contract) ---

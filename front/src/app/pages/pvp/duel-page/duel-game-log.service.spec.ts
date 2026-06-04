@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { DuelGameLogService } from './duel-game-log.service';
+import { ScopeResetDispatcher } from '../projections';
 import type { DuelState, GameEvent } from '../types';
 import type { ChainingMsg, DrawMsg } from '../duel-ws.types';
 import type { PreComputedState } from '../duel-ws-replay.types';
@@ -61,7 +62,7 @@ describe('DuelGameLogService', () => {
   let service: DuelGameLogService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [DuelGameLogService] });
+    TestBed.configureTestingModule({ providers: [DuelGameLogService, ScopeResetDispatcher] });
     service = TestBed.inject(DuelGameLogService);
     // Default perspective is 0; attach a board source so the builder can
     // synthesise turn/phase separators.

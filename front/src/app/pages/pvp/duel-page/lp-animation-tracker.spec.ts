@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { LpAnimationTracker } from './lp-animation-tracker';
 import { DuelContext } from './duel-context';
+import { ScopeResetDispatcher } from '../projections';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { RenderedBoardStateService } from './rendered-board-state.service';
 import type { DamageMsg, RecoverMsg, PayLpCostMsg, Player } from '../duel-ws.types';
@@ -27,6 +28,7 @@ describe('LpAnimationTracker', () => {
     TestBed.configureTestingModule({
       providers: [
         LpAnimationTracker,
+        ScopeResetDispatcher,
         { provide: DuelContext, useValue: mockCtx },
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },
         { provide: LiveAnnouncer, useValue: mockAnnouncer },
@@ -311,6 +313,7 @@ describe('LpAnimationTracker', () => {
       TestBed.configureTestingModule({
         providers: [
           LpAnimationTracker,
+          ScopeResetDispatcher,
           { provide: DuelContext, useValue: invertedCtx },
           { provide: ANIMATION_DATA_SOURCE, useValue: { renderedBoardState: mockRbs1 } },
           { provide: LiveAnnouncer, useValue: mockAnnouncer1 },

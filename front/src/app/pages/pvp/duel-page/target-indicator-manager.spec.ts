@@ -12,6 +12,7 @@ import { BoardEffectsService } from './board-effects.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
+import { ScopeResetDispatcher } from '../projections';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import type { BecomeTargetMsg, BoardZone } from '../duel-ws.types';
 import { EMPTY_DUEL_STATE, type DuelState } from '../types';
@@ -118,6 +119,7 @@ describe('TargetIndicatorManager', () => {
     TestBed.configureTestingModule({
       providers: [
         TargetIndicatorManager,
+        ScopeResetDispatcher,
         { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: BoardEffectsService, useValue: mockBoardEffects },
         { provide: DuelCardArtService, useValue: mockArtService },

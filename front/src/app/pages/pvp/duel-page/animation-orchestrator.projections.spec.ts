@@ -24,7 +24,8 @@ import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
 import { DuelToastService } from './duel-toast.service';
 import { DuelCardArtService } from './duel-card-art.service';
-import { AnimatingLpProjection, BaseProjection } from '../projections';
+import { DuelGameLogService } from './duel-game-log.service';
+import { AnimatingLpProjection, BaseProjection, ScopeResetDispatcher } from '../projections';
 import { EMPTY_DUEL_STATE } from '../types';
 
 // =============================================================================
@@ -109,6 +110,8 @@ describe('AnimationOrchestratorService — C3 + C5 projection registry invariant
     TestBed.configureTestingModule({
       providers: [
         AnimationOrchestratorService,
+        ScopeResetDispatcher,
+        DuelGameLogService,
         { provide: DuelLogger, useClass: StubLogger },
         { provide: ANIMATION_DATA_SOURCE, useClass: StubDataSource },
         { provide: DuelContext, useClass: StubCtx },
@@ -183,6 +186,8 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
     TestBed.configureTestingModule({
       providers: [
         AnimationOrchestratorService,
+        ScopeResetDispatcher,
+        DuelGameLogService,
         { provide: DuelLogger, useClass: StubLogger },
         { provide: ANIMATION_DATA_SOURCE, useClass: StubDataSource },
         { provide: DuelContext, useClass: StubCtx },

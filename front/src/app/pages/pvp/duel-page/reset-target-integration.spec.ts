@@ -172,23 +172,4 @@ describe('α.4b — managers as ResetTarget (integration)', () => {
     });
   });
 
-  describe('back-compat — managers work without dispatcher', () => {
-    it('LpAnimationTracker instantiates standalone (no ScopeResetDispatcher in providers)', () => {
-      // Fresh TestBed without ScopeResetDispatcher — proves the
-      // `{ optional: true }` injection skips registration silently and
-      // the manager remains functional for isolated unit specs.
-      TestBed.resetTestingModule();
-      TestBed.configureTestingModule({
-        providers: [
-          LpAnimationTracker, DuelLogger, DuelContext,
-          { provide: LiveAnnouncer, useValue: liveAnnouncerStub },
-          { provide: ANIMATION_DATA_SOURCE, useValue: dataSourceStub },
-        ],
-      });
-
-      const lp = TestBed.inject(LpAnimationTracker);
-      expect(lp).toBeTruthy();
-      expect((lp as unknown as ResetTarget).scope).toBe('DUEL_LIFETIME');
-    });
-  });
 });

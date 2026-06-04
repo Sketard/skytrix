@@ -4,6 +4,7 @@ import { PvpBoardContainerComponent } from './pvp-board-container.component';
 import { CardTravelEngine } from '../card-travel-engine.service';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { DuelGameLogService } from '../duel-game-log.service';
+import { ScopeResetDispatcher } from '../../projections';
 import { ChainLinkState, DuelState, EMPTY_DUEL_STATE } from '../../types';
 import { BoardZone, CardOnField, ZoneId, POSITION, LOCATION, SelectIdleCmdMsg, SelectBattleCmdMsg, CardInfo } from '../../duel-ws.types';
 import { CardAction } from '../idle-action-codes';
@@ -63,6 +64,7 @@ describe('PvpBoardContainerComponent — field zones + EMZ (C4.1)', () => {
         { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: DuelCardArtService, useValue: mockArt },
         DuelGameLogService,
+        ScopeResetDispatcher,
         { provide: TranslateService, useValue: {
           currentLang: 'en',
           instant: (k: string) => k,
@@ -311,6 +313,7 @@ describe('PvpBoardContainerComponent — action dispatch + clicks (C4.2)', () =>
         { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: DuelCardArtService, useValue: mockArt },
         DuelGameLogService,
+        ScopeResetDispatcher,
         { provide: TranslateService, useValue: {
           currentLang: 'en',
           instant: (k: string) => k,
@@ -517,6 +520,7 @@ describe('PvpBoardContainerComponent — chain/link badges + animation (C4.3)', 
         { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: DuelCardArtService, useValue: mockArt },
         DuelGameLogService,
+        ScopeResetDispatcher,
         { provide: TranslateService, useValue: {
           currentLang: 'en',
           instant: (k: string) => k,

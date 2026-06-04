@@ -8,6 +8,7 @@ import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { signal, type WritableSignal } from '@angular/core';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelLogger } from './duel-logger';
+import { ScopeResetDispatcher } from '../projections';
 import type { GameEvent } from '../types';
 import type { ChainSolvingMsg, ChainSolvedMsg, ConfirmCardsMsg } from '../duel-ws.types';
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION } from '../duel-ws.types';
@@ -59,6 +60,7 @@ describe('ChainResolutionManager', () => {
     TestBed.configureTestingModule({
       providers: [
         ChainResolutionManager,
+        ScopeResetDispatcher,
         { provide: DuelLogger, useValue: mockLogger },
       ],
     });

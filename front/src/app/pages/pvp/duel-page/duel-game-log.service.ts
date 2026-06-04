@@ -192,9 +192,7 @@ export class DuelGameLogService implements ResetTarget {
   private _streamEffect: EffectRef | null = null;
 
   private readonly injector = inject(Injector);
-  // `optional: true` so isolated unit specs don't need to provide the
-  // dispatcher; production DuelPageComponent providers always include it.
-  private readonly dispatcher = inject(ScopeResetDispatcher, { optional: true });
+  private readonly dispatcher = inject(ScopeResetDispatcher);
 
   constructor() {
     this.gameLogEntries = this._entries.asReadonly();
@@ -204,7 +202,7 @@ export class DuelGameLogService implements ResetTarget {
     this.panelOpen = computed(() => this._panelState() !== 'closed');
     this.panelClosing = computed(() => this._panelState() === 'closing');
     this.journalRebuiltTick = this._journalRebuiltTick.asReadonly();
-    this.dispatcher?.register(this);
+    this.dispatcher.register(this);
   }
 
   // ---------------------------------------------------------------------------
