@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { setupReplaySession } from './replay-debug-driver';
@@ -220,6 +220,55 @@ test('replay seek=2 Radiant Typhoon — draw 2 + discard sequence', async ({ bro
     await session.capture(`after-play-idx${lastIdx}`);
     denseLog.push({ t: (Date.now() - tStart) / 1000, type: 'marker',
       text: `=== MARKER === exiting bug window at idx=${lastIdx}` });
+
+    // T7.1 (2026-06-04) — pin the invariants the whole Krosea/Vision
+    // chantier was about. Without these, the harness is "debug-only"
+    // and a future regression would be invisible until manually
+    // re-investigated. Each expect() targets a specific bug class :
+    //
+    //   - currentIndex >= startIdx + 1 — Fix C, queue runner drains the
+    //     post-CHAIN_SOLVED MOVE straggler (without the fix, the replay
+    //     would deadlock at startIdx and stay there for 60s).
+    //   - hand0.real === 5 — Options 2b + O + G + H, the Krosea
+    //     discard actually leaves the rendered HAND (zombie-lock
+    //     symptom : it would stay at 6 cards if any of those broke).
+    //   - hand0.realCodes contains 16922142 EXACTLY ONCE — there were
+    //     2 Krosea drawn ; only ONE was discarded, so the rendered
+    //     HAND must keep exactly 1.
+    //   - gy0.imgCount >= 1 with src=20508881 — Option N, the Vision
+    //     self-destroy reaches the GY pile and is visible as top card.
+    //     If Option N were too aggressive (skip too much), Vision
+    //     would never arrive ; if Option O were dropped, Vision would
+    //     appear AT the GY before its travel.
+    const finalIdx = await session.driver.currentIndex();
+    expect(finalIdx).toBeGreaterThanOrEqual(startIdx + 1);
+    const finalProbe = await session.page.evaluate(() => {
+      const out: Record<string, unknown> = {};
+      const handRow = document.querySelector<HTMLElement>('app-pvp-hand-row[data-zone="HAND-0"]');
+      if (handRow) {
+        const real = handRow.querySelectorAll('.hand-card:not(.hand-card--expansion)').length;
+        const realCodes = Array.from(handRow.querySelectorAll<HTMLElement>('.hand-card:not(.hand-card--expansion)'))
+          .map(el => el.dataset['cardCode'] ?? '?');
+        out['hand0'] = { real, realCodes };
+      }
+      const gyZone = document.querySelector<HTMLElement>('[data-zone="GY-0"]');
+      if (gyZone) {
+        const imgs = Array.from(gyZone.querySelectorAll<HTMLImageElement>('img'));
+        out['gy0'] = {
+          imgCount: imgs.length,
+          imgSrcs: imgs.map(img => img.src ?? ''),
+        };
+      }
+      return out;
+    });
+    const hand0 = finalProbe['hand0'] as { real: number; realCodes: string[] } | undefined;
+    expect(hand0?.real).toBe(5);
+    expect(hand0?.realCodes.filter(c => c === '16922142').length).toBe(1);
+    const gy0 = finalProbe['gy0'] as { imgCount: number; imgSrcs: string[] } | undefined;
+    expect(gy0?.imgCount).toBeGreaterThanOrEqual(1);
+    expect(gy0?.imgSrcs.some(s => s.includes('20508881'))).toBe(true);
+    denseLog.push({ t: (Date.now() - tStart) / 1000, type: 'marker',
+      text: `=== ASSERT === finalIdx=${finalIdx} hand0.real=${hand0?.real} gy0.imgCount=${gy0?.imgCount}` });
 
     const dumpPath = path.join(session.outDir, 'dense-log.txt');
     fs.writeFileSync(dumpPath, denseLog

@@ -400,3 +400,156 @@ mid-batch avec d'autres acteurs lockés).
 
 Possible de fusionner 1+2 en un seul commit "fix(anim): Krosea discard
 zombie lock" si on préfère un atomic fix du même bug. À voir.
+
+---
+
+# Suite (post-G/H) — 4ᵉ phase Vision-pre-travel-GY
+
+Après livraison de Fix C + 2b + G + H (commits `8c30a325`, `fca2ec80`,
+`af3195fa`), un dernier symptôme PvP est remonté par Axel : **"la carte
+en spell zone apparait dans le cimetière avant son animation"**. Confirmé
+via screenshots PvP + 3 cycles d'instrumentation/repro :
+- `console-export-2026-6-4_21-13-0.log` : 1er PvP capture, montre que
+  Vision visible au GY avant son travel.
+- `console-export-2026-6-4_21-28-35.log` : 2ᵉ avec timing
+  `animation.finished elapsed=Xms` — confirme travels durent vraiment
+  400ms, pas une cancellation.
+- `console-export-2026-6-4_21-33-10.log` : 3ᵉ avec server-side dump du
+  duel-worker.
+
+## Décomposition du chemin BOARD_STATE / boardStateAfter
+
+Côté server, OCGCore émet les messages d'une chain en plusieurs
+`duelProcess()` calls :
+1. Call N : `MSG_CHAIN_SOLVING + MSG_DRAW + MSG_SHUFFLE_HAND + SELECT_CARD`
+2. (PLAYER_RESPONSE arrive → re-appel `runDuelLoop`)
+3. Call N+1 : `MSG_MOVE Krosea + MSG_CHAIN_SOLVED + MSG_MOVE Vision + MSG_CHAIN_END`
+
+Le `liveChainTracker` était reset à chaque entrée de `runDuelLoop`
+("preserve original per-call semantics" — commentaire historique). Cela
+faisait que **TOUS les MOVEs de Call N+1 (post-prompt) étaient émis avec
+`_chainResolving = false`** → aucun `boardStateAfter` attaché.
+
+Côté client, sans `boardStateAfter`, la logical mid-chain est mise à jour
+**uniquement par le BOARD_STATE final** que le server envoie après
+MSG_CHAIN_END. Ce BOARD_STATE arrive via WS PENDANT le 1er travel
+Krosea, déclenche `updateLogical(boardState)` → logical GY = `[Krosea,
+Vision]` (état final). Quand le 1er travel finit (400ms après), le
+`commitZone(GY-0)` copie cette logical → rendered GY = `[Krosea, Vision]`
+→ **Vision visible au GY avant son propre travel S5→GY commence**.
+
+## Options de fix
+
+### Option N (client) — skip `updateLogical` en resolving + queue non-vide
+
+**Fichier** : `front/src/app/pages/pvp/duel-page/animation-data-source.ts`
+(`syncAfterBoardState`).
+
+**Patch** : ajouter une garde avant `rbs.updateLogical(boardState)` :
+```ts
+const skipUpdateLogical = chainPhase === 'resolving' && queueLength > 0;
+if (!skipUpdateLogical) {
+  rbs.updateLogical(boardState);
+}
+```
+
+**Effet** : le mid-chain BOARD_STATE qui aurait écrasé la logical
+n'est plus appliqué pendant le resolving avec events pendants. La
+logical reste à l'état post-dernier-event-dispatché.
+
+**Pré-requis** : que les events post-prompt aient leur `boardStateAfter`,
+sinon la logical ne s'avance plus du tout → bug "carte stuck en main".
+**Option O est ce pré-requis.**
+
+### Option O (server) — `liveChainTracker.reset()` retiré de `runDuelLoop`
+
+**Fichier** : `duel-server/src/duel-worker.ts:645`.
+
+**Patch** : remplacer `liveChainTracker.reset();` par un commentaire
+explicatif. Le tracker se gère lui-même via `MSG_CHAIN_SOLVING` (open)
+et `MSG_CHAIN_END` (close). Module-level state survives across
+`PLAYER_RESPONSE`-driven `runDuelLoop` re-entries.
+
+**Effet** : les MOVE post-prompt ont leur `boardStateAfter` attaché. La
+logical client s'avance correctement à chaque dispatch.
+
+**Risque** : si une chain se termine sans `MSG_CHAIN_END` émis (cas
+d'erreur OCGCore), le tracker reste à `true` indéfiniment. Inoffensif
+en flow normal (OCGCore émet TOUJOURS CHAIN_END).
+
+### Pourquoi N seul ou O seul ne suffisent pas
+
+- **O seul** : sans N, le BOARD_STATE final mid-chain pollue toujours la
+  logical avant le commit du 1er MOVE.
+- **N seul** : sans O, les MOVE post-prompt n'ont pas de `boardStateAfter`,
+  la logical ne s'avance plus → bug "rendered figé en état pré-chain".
+
+**N + O ensemble** : N coupe la pollution par BOARD_STATE, O assure que
+les snapshots per-event prennent le relais comme source unique de sync
+logical mid-chain.
+
+## Audit régression
+
+### Effets de bord Option O
+
+- Le gate `CANCEL_PROMPT_SEQUENCE` (`liveChainTracker.isResolving` côté
+  worker) est désormais préservé à travers les prompts mid-chain. Cancel
+  était déjà bloqué entre SOLVING et END par Option 2b ; le gate ne
+  change pas de scope.
+- Au démarrage d'un nouveau duel : worker terminé/recréé, tracker
+  neuf. OK.
+- Au rematch : idem worker terminé. OK.
+
+### Effets de bord Option N
+
+- 4 cas usages de `updateLogical(boardState)` audités :
+  1. **Bootstrap / reconnect** : chainPhase=idle → skip ne s'applique pas. ✅
+  2. **F10 (intermediate BOARD_STATE pré-CHAIN_SOLVING)** : chainPhase=building → skip ne s'applique pas. ✅
+  3. **Fin de chain (notre cible)** : chainPhase=resolving + queue>0 → skip ✅
+  4. **Post-event normal** : chainPhase=idle → skip ne s'applique pas. ✅
+- **Reconnect mid-chain** : STATE_SYNC path (`_applyStateSync`) est
+  séparé, ne passe pas par `syncAfterBoardState`. ✅
+- **Edge case : BOARD_STATE arrive en resolving + queue vide** : skip
+  ne s'applique pas, updateLogical fire. La logical est mise à jour
+  avec l'état final, ce qui est OK puisque tous les events ont été
+  dispatched et commitZone copierait de toute façon le même état. ✅
+
+### Audit pour autres `syncAfterBoardState` consumers
+
+- `DuelConnection._handleBoardState` → un seul caller en PvP. ✅
+- `ReplayDuelAdapter.feedTransition` → utilise la même fonction. **Pas
+  régression** parce qu'en replay, le `pendingState` joue le rôle du
+  BOARD_STATE mais arrive APRÈS l'arrivée des events (pas en mid-anim).
+  Le skip s'applique probablement parfois en replay mais c'est neutre
+  (la logical sera updated par `processMessage(BOARD_STATE)` ou par les
+  events suivants). ✅
+
+## Tests pinning livrés (par couche)
+
+- **T1.1 / T1.2** : `ChainSnapshotTracker` survives sans reset, no auto-reset on `MSG_NEW_TURN/SELECT_*/WAITING_RESPONSE` (vitest).
+- **T2.1** : source-level guard sur `duel-worker.ts` — `liveChainTracker.reset()` ligne marquée "intentionally not called here" (vitest).
+- **T3.1-4** : `syncAfterBoardState` Option N branches (Karma).
+- **T4.1 / T4.2** : `ZoneLock.commit()` zombie-safe path + ref-counting non-zombified (Karma).
+- **T5.1** : source-level guard sur `draw-sequence-manager.ts` — Option H markers + `commitZone(handZoneKey)` calls (vitest).
+- **Option N source guard** : source-level guard sur `animation-data-source.ts` (vitest).
+- **T7.1** : harness e2e `debug-radiant-typhoon-draw-discard.spec.ts`
+  enrichi avec ASSERT mode (Playwright) : `currentIndex >= startIdx+1`,
+  `hand0.real === 5`, Krosea exactly once, GY contains Vision src.
+
+**Total 194 tests verts** sur les suites critiques (chain-snapshot-tracker
+27, replay-precompute 32, animation-data-source 21, RBS 41, draw 32,
+queue-runner 40, e2e 1).
+
+## Sortie
+
+3 commits sur `feat/anim-pipeline-v2` après les 3 commits précédents
+(`8c30a325`, `fca2ec80`, `af3195fa`) :
+
+1. (potentiel) `fix(server): liveChainTracker survives runDuelLoop re-entry (Option O)`
+   — `duel-worker.ts` + tests + CLAUDE.md.
+2. (potentiel) `fix(anim): skip BOARD_STATE updateLogical mid-chain when queue non-empty (Option N)`
+   — `animation-data-source.ts` + tests + CLAUDE.md.
+3. (potentiel) `test(anim): pin Krosea/Vision invariants via 8 new tests`
+   — récap des tests.
+
+Possible de fusionner les 3 en un seul commit "fix(anim): Vision pre-travel GY bug — Options N + O + tests".

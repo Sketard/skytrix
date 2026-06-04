@@ -1012,6 +1012,44 @@ Key rules:
    emitting effect-bound events), so the broader gate is the right
    behavior.
 
+   **Tracker lifetime across `runDuelLoop` calls (2026-06-04 Option O)** —
+   `liveChainTracker` is hoisted to module scope in `duel-worker.ts` and
+   was historically `.reset()`-ed at every `runDuelLoop` entry to "preserve
+   per-call semantics". Post-Option 2b that reset became a bug : a chain
+   that includes a player prompt mid-resolution (e.g. `SELECT_CARD` for a
+   discard cost — `MSG_CHAIN_SOLVING + MSG_DRAW + MSG_SHUFFLE_HAND +
+   SELECT_CARD` in one call, then `MSG_MOVE + MSG_CHAIN_SOLVED + MSG_MOVE
+   + MSG_CHAIN_END` in the next call) loses its window between the two
+   calls — every post-prompt MOVE was emitted with `_chainResolving =
+   false`, no `boardStateAfter` attached, client logical never advances
+   for those events. The fix : the per-call `.reset()` is NO LONGER
+   called. The tracker self-resets at `MSG_CHAIN_END` (its only legitimate
+   close trigger). Module-level state survives across PLAYER_RESPONSEs
+   inside a chain. Terminal resets still happen at duel start (fresh
+   module instance), rematch (worker terminated), and STATE_SYNC (the
+   tracker is recreated locally for the replay precompute path).
+
+   **Client BOARD_STATE skip during resolving + queue non-empty
+   (2026-06-04 Option N)** — `syncAfterBoardState` (animation-data-source.ts)
+   skips its `updateLogical(boardState)` when `chainPhase === 'resolving'
+   && queueLength > 0`. Reason : the server emits a BOARD_STATE
+   immediately after `MSG_CHAIN_END` while events from the chain are
+   still pending in the client queue. If that BOARD_STATE were applied
+   to logical now, the next MOVE's `commitZone` (e.g. GY-0 at the end of
+   the first MOVE's travel) would copy the FINAL post-chain state to
+   rendered — including cards that haven't been animated yet — and the
+   following MOVE's destination card appears at its DOM destination
+   before its own travel even starts ("card appears in cemetery before
+   self-destroy travel" symptom). With Option O above, per-event
+   `boardStateAfter` snapshots are the canonical source of logical
+   advancement during the resolving window ; the mid-chain BOARD_STATE
+   is redundant for these zones and harmful for the dispatch-order
+   invariant. The skip is bounded : as soon as `queueLength === 0` the
+   skip lifts and the next BOARD_STATE (or STATE_SYNC) syncs normally.
+   The previous DOCTRINE that "BOARD_STATE was the sole source of
+   logical sync mid-chain" no longer holds — per-event snapshots ARE
+   the source, BOARD_STATE is the fallback.
+
    **Replay perspective swap** — `boardStateAfter` arrives in absolute
    server P0 order (replay precompute is perspective-agnostic). The
    orchestrator is shared with PvP and assumes already-relative data, so
@@ -1610,7 +1648,10 @@ dispatches `{DUEL_LIFETIME}` which cascades and fully clears LP state.
    attaches `buildBoardState().data` as `boardStateAfter` on each
    filtered event whose type is in `BOARD_CHANGING_EVENT_TYPES` during
    resolving. The window stays open across SOLVING/SOLVED pairs in a
-   multi-link chain and across the post-SOLVED straggler gap. Payload growth is
+   multi-link chain, across the post-SOLVED straggler gap, AND across
+   `runDuelLoop` re-entries triggered by PLAYER_RESPONSE during a
+   resolution prompt (Option O, 2026-06-04 — `liveChainTracker.reset()`
+   is no longer called at runDuelLoop entry). Payload growth is
    ~50-150 KB gzipped per duel (snapshots are highly redundant). Both
    modes use the same shared class so the attach predicate, the field
    name, and the timing are identical by construction. Z-index-style
@@ -2079,6 +2120,16 @@ state on the server side belong in these files, not in their former hosts.
   via `tracker.process(dto, captureSnapshot)` — the same predicate, the
   same field, the same code path on both sides → PvP↔Replay parity by
   construction.
+
+  **Lifetime contract (Option O, 2026-06-04)** — the live PvP instance is
+  module-level in `duel-worker.ts` (NOT reset per `runDuelLoop` entry —
+  the historical reset was removed when Option 2b extended the window
+  past `MSG_CHAIN_SOLVED`, see "Per-event `boardStateAfter` snapshot →
+  Tracker lifetime across `runDuelLoop` calls"). The replay precompute
+  instance is local to `runReplayPreComputation` (one per replay run,
+  re-created at each open). Terminal resets only fire on worker
+  start/rematch (worker terminated, fresh process) and STATE_SYNC
+  (separate path, doesn't go through this tracker).
 
 - **`ChainStateTracker`** (`duel-server/src/chain-state-tracker.ts` —
   `ChainStateContainer` interface, `emptyChainState()`, and the

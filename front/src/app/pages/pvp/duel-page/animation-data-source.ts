@@ -150,7 +150,26 @@ export function syncAfterBoardState(
   boardState: DuelState,
   boardActive: boolean,
 ): void {
-  rbs.updateLogical(boardState);
+  // 2026-06-04 Option N — Skip updateLogical if the chain is resolving AND
+  // there are still events in the queue. The BOARD_STATE that arrives mid-
+  // chain (typically right after MSG_CHAIN_END is enqueued via WS) carries
+  // the FINAL post-chain state. Letting it overwrite logical now causes the
+  // first MOVE's destination commit (e.g. GY-0 after Krosea HAND→GY travel)
+  // to copy the FINAL logical → rendered → subsequent MOVE's destination
+  // card appears at the DOM before its own travel even starts.
+  //
+  // The per-event `boardStateAfter` snapshots (server Option 2b + Option O
+  // — the tracker no longer resets per runDuelLoop, so the window survives
+  // across player prompts inside a chain) advance the logical state at
+  // each event's dispatch. The mid-chain BOARD_STATE is redundant for
+  // these zones and harmful for the dispatch-order invariant.
+  //
+  // Bug repro: PvP discard cost + self-destroy scenario, see spec
+  // `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+  const skipUpdateLogical = chainPhase === 'resolving' && queueLength > 0;
+  if (!skipUpdateLogical) {
+    rbs.updateLogical(boardState);
+  }
   if (!boardActive) {
     // Pre-activation: the orchestrator parks the initial MSG_DRAW × 5 in
     // `_preActivationBuffer` while `boardActive=false`. A full `commitAll()`

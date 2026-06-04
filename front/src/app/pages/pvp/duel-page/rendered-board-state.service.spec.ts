@@ -189,6 +189,57 @@ describe('RenderedBoardStateService', () => {
       lock.release(); // already committed, should be no-op
       expect(rbs.hasLockedZones).toBeFalse();
     });
+
+    // T4.1 (Option G, 2026-06-04) — zombie-safe `commit()`. A prior
+    // `commitAll()` (typically from a mid-batch shuffle path now retired
+    // via Option H) wipes `_locks` map without notifying outstanding
+    // ZoneLock closures. The commit() of a zombified lock MUST still
+    // sync its zone from logical to rendered ; without this, the lock
+    // holder's caller sees a silent no-op and the rendered zone never
+    // updates (concretely, the Krosea discard MOVE→GY in the
+    // Radiant Typhoon Vision scenario : rendered HAND stayed at
+    // 2 Krosea instead of 1 after the discard finished).
+    it('Option G — zombified commit() still syncs zone from logical', () => {
+      const lock = rbs.lockZone('M1-0');
+      // Mid-flight, set up a logical state that differs from rendered
+      // (rendered starts equal to logical at construction time).
+      const newState = makeState({
+        p0: { zones: [zone('M1', 1234)] },
+      });
+      rbs.updateLogical(newState);
+      expect(rbs.renderedState().players[0].zones.find(z => z.zoneId === 'M1')?.cards.length ?? 0).toBe(0);
+      // Simulate the zombification path : a separate actor wiped the
+      // locks map (cf. `commitAll()`), but our closure was never told.
+      rbs.commitAll();
+      // The closure still has `released=false` and tries to commit.
+      // Under the zombie-safe path, this MUST sync M1-0 from logical
+      // (no-op vs the `commitAll()` sync since logical hasn't been
+      // mutated since, but the safety net is what we're pinning).
+      lock.commit();
+      expect(rbs.renderedState().players[0].zones.find(z => z.zoneId === 'M1')?.cards[0]?.cardCode).toBe(1234);
+    });
+
+    // T4.2 (Option G, 2026-06-04) — pin that the zombie-safe path is
+    // ONLY taken when `_locks` map does not contain the key. The normal
+    // ref-counting path (lock still in map) must NOT short-circuit
+    // through `commitZone(key)` early — it must decrement ref-count and
+    // only fire `commitZone` when rc reaches 0.
+    it('Option G — non-zombified commit() still uses ref-counting', () => {
+      const outer = rbs.lockZone('M1-0');
+      const inner = rbs.lockZone('M1-0');
+      // Inner commit decrements rc to 1 ; commitZone should NOT fire yet.
+      const newState = makeState({
+        p0: { zones: [zone('M1', 9999)] },
+      });
+      rbs.updateLogical(newState);
+      inner.commit();
+      // Rendered must NOT contain card 9999 yet — the outer lock still
+      // protects the zone.
+      expect(rbs.renderedState().players[0].zones.find(z => z.zoneId === 'M1')?.cards.length ?? 0).toBe(0);
+      // Outer commit fires commitZone (rc → 0).
+      outer.commit();
+      expect(rbs.renderedState().players[0].zones.find(z => z.zoneId === 'M1')?.cards[0]?.cardCode).toBe(9999);
+    });
   });
 
   describe('LP commit discipline', () => {

@@ -42,9 +42,41 @@ describe('syncAfterBoardState', () => {
     expect(mockRbs.updateLogical).toHaveBeenCalledOnceWith(stubBoardState);
   });
 
-  it('always calls updateLogical(boardState) — tier 4 (resolving, no other sync)', () => {
+  // 2026-06-04 Option N — `updateLogical` is now SKIPPED when
+  // `chainPhase === 'resolving'` AND `queueLength > 0`. The mid-chain
+  // BOARD_STATE would otherwise overwrite logical with the FINAL
+  // post-chain state, leading to subsequent MOVE commits copying cards
+  // that haven't been animated yet ("card appears in cemetery before
+  // its self-destroy travel" symptom). Per-event `boardStateAfter`
+  // snapshots (server Option 2b + Option O) are the canonical source
+  // of logical advancement during the resolving window.
+  it('Option N — DOES NOT call updateLogical when resolving + queueLen > 0', () => {
     syncAfterBoardState(mockRbs as unknown as RenderedBoardStateService,
       'resolving', 5, stubBoardState, true);
+    expect(mockRbs.updateLogical).not.toHaveBeenCalled();
+  });
+
+  it('Option N — DOES call updateLogical when resolving + queueLen === 0', () => {
+    // Edge of the skip window: queue drained, the post-chain BOARD_STATE
+    // is allowed through so the final state syncs even before
+    // MSG_CHAIN_END dequeues (which flips phase to idle).
+    syncAfterBoardState(mockRbs as unknown as RenderedBoardStateService,
+      'resolving', 0, stubBoardState, true);
+    expect(mockRbs.updateLogical).toHaveBeenCalledOnceWith(stubBoardState);
+  });
+
+  it('Option N — DOES call updateLogical when idle + queueLen > 0 (skip is resolving-only)', () => {
+    syncAfterBoardState(mockRbs as unknown as RenderedBoardStateService,
+      'idle', 5, stubBoardState, true);
+    expect(mockRbs.updateLogical).toHaveBeenCalledOnceWith(stubBoardState);
+  });
+
+  it('Option N — DOES call updateLogical when building + queueLen > 0 (skip is resolving-only)', () => {
+    // F10 path : intermediate BOARD_STATE between cost MOVEs and
+    // MSG_CHAIN_SOLVING. chainPhase is 'building' here ; the skip must
+    // NOT apply or DECK/EXTRA pile counts would stay stale.
+    syncAfterBoardState(mockRbs as unknown as RenderedBoardStateService,
+      'building', 5, stubBoardState, true);
     expect(mockRbs.updateLogical).toHaveBeenCalledOnceWith(stubBoardState);
   });
 

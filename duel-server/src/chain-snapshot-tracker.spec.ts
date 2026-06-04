@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
 import { BOARD_CHANGING_EVENT_TYPES } from './ws-protocol.js';
 import type { ServerMessage, BoardStatePayload } from './ws-protocol.js';
@@ -100,6 +102,113 @@ describe('ChainSnapshotTracker', () => {
       t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
       t.process(msg('MSG_DRAW'), () => FAKE_SNAPSHOT);
       expect(t.isResolving).toBe(true);
+    });
+
+    // T1.1 (Option O, 2026-06-04) — tracker self-managed, no external reset
+    // required. The previous code path called `liveChainTracker.reset()` at
+    // every `runDuelLoop` entry on the assumption that a chain never spans
+    // multiple calls. That assumption breaks for chains with a mid-resolution
+    // player prompt (SELECT_CARD for discard cost, ANNOUNCE_*, …). Pin that
+    // the tracker survives arbitrary message sequences without reset.
+    it('Option O — survives across arbitrary non-CHAIN events without reset', () => {
+      const t = new ChainSnapshotTracker();
+      t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
+      // Simulate the messages emitted during a mid-chain prompt sequence
+      // (real OCG order: SOLVING → DRAW → SHUFFLE_HAND → SELECT_CARD prompt
+      // → PLAYER_RESPONSE → MOVE → CHAIN_SOLVED → MOVE → CHAIN_END).
+      // Between the prompt and the response, the entire runDuelLoop returns
+      // and is later re-entered ; with the historical .reset() call the
+      // post-response messages saw _chainResolving=false.
+      const events = [
+        'MSG_DRAW', 'MSG_SHUFFLE_HAND', 'SELECT_CARD', 'WAITING_RESPONSE',
+        // (PLAYER_RESPONSE arrives here, runDuelLoop re-enters — historical
+        //  reset path would have flipped the flag to false at this point.)
+        SAMPLE_BOARD_CHANGING, 'MSG_HINT', SAMPLE_BOARD_CHANGING,
+      ];
+      for (const type of events) {
+        t.process(msg(type), () => FAKE_SNAPSHOT);
+        // The flag MUST stay true through every step until MSG_CHAIN_END.
+        expect(t.isResolving).toBe(true);
+      }
+    });
+
+    // T1.2 (Option O, 2026-06-04) — pin that the tracker has NO automatic
+    // self-reset triggers other than MSG_CHAIN_END and `.reset()`. A future
+    // change that adds (e.g.) "reset on MSG_NEW_TURN" would silently break
+    // the cross-runDuelLoop lifetime contract.
+    it('Option O — no automatic reset on MSG_NEW_TURN / SELECT_* / WAITING_RESPONSE', () => {
+      const noiseTypes = [
+        'MSG_NEW_TURN', 'MSG_NEW_PHASE', 'SELECT_OPTION', 'SELECT_PLACE',
+        'SELECT_CHAIN', 'WAITING_RESPONSE', 'MSG_HINT', 'MSG_CONFIRM_CARDS',
+      ];
+      for (const noise of noiseTypes) {
+        const t = new ChainSnapshotTracker();
+        t.process(msg('MSG_CHAIN_SOLVING'), () => FAKE_SNAPSHOT);
+        t.process(msg(noise), () => FAKE_SNAPSHOT);
+        expect(t.isResolving).toBe(true);
+      }
+    });
+  });
+
+  // T2.1 (Option O, 2026-06-04) — source-level guard. The fix lives in a
+  // single line in `duel-worker.ts` and a regression would silently revert
+  // the cross-runDuelLoop tracker lifetime. Parse the source file and assert
+  // that the historical `liveChainTracker.reset()` call inside `runDuelLoop`
+  // entry stays commented out. The fix line is marked with the exact comment
+  // `intentionally not called here` — a future reviewer can grep for that
+  // string to locate the contract anchor.
+  describe('Option O — source-level guard', () => {
+    it('duel-worker.ts does NOT call liveChainTracker.reset() in runDuelLoop entry', () => {
+      const path = resolve(__dirname, 'duel-worker.ts');
+      const source = readFileSync(path, 'utf-8');
+      // The fix line MUST be present as a marker comment. A future change
+      // that removes/uncomments it would break the contract silently.
+      expect(source).toMatch(/liveChainTracker\.reset\(\);\s*\/\/\s*intentionally not called here/);
+      // No active call to `liveChainTracker.reset()` should exist outside
+      // a comment line. Strip line-comments and verify.
+      const noLineComments = source.replace(/\/\/.*$/gm, '');
+      expect(noLineComments).not.toMatch(/liveChainTracker\.reset\(\)/);
+    });
+  });
+
+  // T5.1 (Option H, 2026-06-04) — source-level guard for the client-side
+  // shuffle anti-pattern fix. `processShuffleEvent` used to call
+  // `this.rbs.commitAll()` mid-batch to "just sync HAND" but that wiped
+  // every other actor's lock and zombified their ZoneLock closures (Krosea
+  // discard scenario). Pin that the happy-path code uses `commitZone(handZoneKey)`
+  // and not `commitAll()`. The catch paths legitimately keep `commitAll()`
+  // (panic state, accepted), so we only assert on the happy-path lines.
+  describe('Option H — source-level guard (front shuffle commitZone)', () => {
+    it('draw-sequence-manager.ts uses commitZone(handZoneKey) in processShuffleEvent happy path', () => {
+      const path = resolve(__dirname, '..', '..', 'front', 'src', 'app',
+        'pages', 'pvp', 'duel-page', 'draw-sequence-manager.ts');
+      const source = readFileSync(path, 'utf-8');
+      // Both happy-path Option H comments + commitZone(handZoneKey) calls
+      // must be present (the reducedMotion fallback + the post-shuffle
+      // sync). A regression that reverts either to `commitAll()` will
+      // re-introduce the zombification.
+      const optionHRefs = source.match(/Option H/g);
+      expect(optionHRefs).withContext('Option H markers in draw-sequence-manager.ts').not.toBeNull();
+      expect(optionHRefs!.length).toBeGreaterThanOrEqual(2);
+      const commitZoneHandRefs = source.match(/this\.rbs\.commitZone\(handZoneKey\)/g);
+      expect(commitZoneHandRefs).withContext('commitZone(handZoneKey) calls').not.toBeNull();
+      expect(commitZoneHandRefs!.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // T_OPT_N_GUARD (Option N, 2026-06-04) — source-level guard for the
+  // client `syncAfterBoardState` skip. The actual behavior is covered by
+  // animation-data-source.spec.ts (Karma) ; this guard catches a silent
+  // revert (someone removes the `skipUpdateLogical` short-circuit).
+  describe('Option N — source-level guard (front syncAfterBoardState skip)', () => {
+    it('animation-data-source.ts skips updateLogical when resolving + queueLength>0', () => {
+      const path = resolve(__dirname, '..', '..', 'front', 'src', 'app',
+        'pages', 'pvp', 'duel-page', 'animation-data-source.ts');
+      const source = readFileSync(path, 'utf-8');
+      expect(source).toMatch(/Option N/);
+      expect(source).toMatch(/skipUpdateLogical/);
+      // The condition shape : chainPhase === 'resolving' && queueLength > 0
+      expect(source).toMatch(/chainPhase === 'resolving'\s*&&\s*queueLength > 0/);
     });
   });
 

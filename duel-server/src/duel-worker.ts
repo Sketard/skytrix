@@ -639,10 +639,24 @@ function emitReplayData(): void {
 function runDuelLoop(): void {
   if (!core || !duel) return;
 
-  // Reset the live chain tracker on every runDuelLoop entry to preserve the
-  // original per-call semantics (the tracker is hoisted to module-level so
-  // the CANCEL_PROMPT_SEQUENCE handler can read its `isResolving` flag).
-  liveChainTracker.reset();
+  // 2026-06-04 Option O — DO NOT reset the live chain tracker on every
+  // runDuelLoop entry. A chain naturally spans multiple runDuelLoop calls
+  // when it includes a player prompt mid-resolution (e.g. SELECT_CARD for
+  // a discard cost — the chain emits MSG_CHAIN_SOLVING + DRAW + SHUFFLE +
+  // SELECT_CARD in one call, then MSG_MOVE + MSG_CHAIN_SOLVED + MSG_MOVE +
+  // MSG_CHAIN_END in the next call after PLAYER_RESPONSE). Resetting
+  // between the two calls breaks the boardStateAfter snapshot attach for
+  // the post-prompt MOVE events — they appear outside the chainResolving
+  // window even though they're semantically inside the chain.
+  //
+  // The tracker's `_chainResolving` flag is self-managed: it flips to true
+  // at MSG_CHAIN_SOLVING and false at MSG_CHAIN_END. The reset is only
+  // needed at TERMINAL boundaries (duel start, rematch, STATE_SYNC), not
+  // at every PLAYER_RESPONSE-driven runDuelLoop entry.
+  //
+  // Bug repro: PvP Krosea discard + Vision self-destroy scenario, see
+  // `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+  // liveChainTracker.reset();  // intentionally not called here.
 
   while (true) {
     let skipRpsAutoResponded = false;
