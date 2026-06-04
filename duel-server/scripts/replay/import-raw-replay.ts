@@ -147,7 +147,16 @@ const p2Username = parseArg('p2-username') ?? 'axel';
 const deckName = parseArg('deck-name') ?? 'Imported R&D';
 const result = parseArg('result') ?? 'SURRENDER';
 const springBoot = parseArg('spring-boot') ?? process.env['SPRING_BOOT_API_URL'] ?? 'http://localhost:8080/api';
-const internalKey = parseArg('internal-key') ?? process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key';
+// F17 (2026-06-04) — no default for internal-key. Pre-F17 the fallback was
+// `'dev-internal-key'`, which would silently succeed against any environment
+// that happened to share the dev key. Now the script fails fast unless either
+// --internal-key=... or $INTERNAL_API_KEY is set, which forces the operator
+// to make an explicit choice per environment.
+const internalKey = parseArg('internal-key') ?? process.env['INTERNAL_API_KEY'];
+if (!internalKey) {
+  console.error('[import-raw-replay] required: --internal-key=<key> (or set $INTERNAL_API_KEY). No default — would fail open against prod-like targets.');
+  process.exit(2);
+}
 const dryRun = process.argv.includes('--dry-run');
 
 // -----------------------------------------------------------------------------
@@ -177,6 +186,27 @@ if (raw.format !== 'raw-replay-v1') {
 }
 if (!Array.isArray(raw.seed) || raw.seed.length !== 4) {
   throw new Error(`raw-replay seed must have 4 bigints, got ${raw.seed?.length}`);
+}
+
+// F18 (2026-06-04) — date guard for the deckOrder convention. The header
+// asserts "raw-replays captured BEFORE 2026-05-21 → deckOrder omitted"
+// because that's when `loadDeckToOcg` flipped to back-to-front sequence:0
+// (commit 92fb7f29). A raw-replay generated AFTER that date carries the
+// `verbatim` pile order, so omitting deckOrder would reverse it on load
+// and the very first card-bound prompt MSG_RETRY's. Pre-F18 the convention
+// was documented in the header only — silent miscompilation otherwise.
+// Warn-only because: (a) the date guard is a soft signal — generatedAt
+// might be missing or inaccurate; (b) the operator may know better than
+// us and want to proceed anyway (e.g. importing a CURATED legacy fixture
+// regenerated past the cutoff).
+const DECK_ORDER_FLIP_DATE = new Date('2026-05-21');
+if (raw.generatedAt) {
+  const generatedAt = new Date(raw.generatedAt);
+  if (!isNaN(generatedAt.getTime()) && generatedAt > DECK_ORDER_FLIP_DATE) {
+    console.warn(`[import-raw-replay] WARNING: raw-replay generatedAt=${raw.generatedAt} is AFTER the 2026-05-21 deckOrder flip.`);
+    console.warn('  This script omits deckOrder by convention (legacy raw-replays). Expect MSG_RETRY on the first card-bound prompt if the original capture used the new back-to-front pile.');
+    console.warn('  See header "PITFALL — deckOrder convention" for context.');
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -265,4 +295,16 @@ if (!response.ok) {
 
 const data = await response.json() as { id: string };
 console.log(`\n[import-raw-replay] ✓ persisted as replayId=${data.id}`);
-console.log(`  open in viewer: ${springBoot.replace('/api', '')}/replay/${data.id}`);
+// F17 (2026-06-04) — build the viewer URL from origin rather than a
+// `replace('/api', '')` over the full URL. The replace pattern was
+// fragile: a `--spring-boot=...localhost:8080/api/v2` would yield
+// `localhost:8080/v2/replay/...` (broken). `URL` strips the path
+// cleanly.
+try {
+  const origin = new URL(springBoot).origin;
+  console.log(`  open in viewer: ${origin}/replay/${data.id}`);
+} catch {
+  // springBoot is not a parseable URL — fall back to the replace heuristic
+  // (matches the pre-F17 behavior) so the script still logs SOMETHING useful.
+  console.log(`  open in viewer: ${springBoot.replace('/api', '')}/replay/${data.id}`);
+}
