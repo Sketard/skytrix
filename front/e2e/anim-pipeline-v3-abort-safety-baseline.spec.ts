@@ -42,16 +42,21 @@ const REPLAY_ID = 'a1eed2d6-5bad-486a-b743-9639b8049790';
 const ERROR_MARKERS = [
   'locks still active',
   'Lock safety timeout',
+  // Note : 'timed out after 5000ms' was the DEP overlay-show timeout from
+  // the pre-v3 cascade. Post-Phase 3 + Phase 4 it should not fire either,
+  // since the underlying lock cleanup also stops the deferred from
+  // hanging.
   'timed out after 5000ms',
 ];
 
-test('v3 baseline — togglePerspective mid-chain in replay throws cascading asserts (PRE-FIX)', async ({ browser }) => {
+test('v3 regression guard — togglePerspective mid-chain in replay no longer throws cascading asserts', async ({ browser }) => {
   test.setTimeout(180_000);
-  // Pre-v3 the bug throws : we EXPECT failure so CI is green until the
-  // fix lands. Flip to `test(...)` (drop the .fail) once v3 Phase 4 is
-  // shipped — the assertion below will then assert the FIX (0 errors).
-  test.fail(true, 'pre-v3 bug — flip to test() once v3 lands');
-
+  // v3 Phase 4 (2026-06-04) — `test.fail(true)` removed. Phase 3
+  // (`dropOrphanedLocks` at `runner.requestStop`) + Phase 4 (strict
+  // `assertNoLocks` at `resetAllState`) together close the cascade.
+  // The spec is now the regression guard for the whole v3 chantier —
+  // any future change that re-introduces orphan locks at a transition
+  // boundary will fail it.
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
   const session = await setupReplaySession(ctx, {
     replayId: REPLAY_ID,

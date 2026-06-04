@@ -1002,7 +1002,7 @@ export class AnimationOrchestratorService {
    * now `implements ResetTarget` and is dispatched alongside the
    * `targetedZoneKeys` projection (its FIELD-side equivalent).
    */
-  private resetAllState(scopes: ReadonlySet<ScopeCategory>, tolerateLocks = false): void {
+  private resetAllState(scopes: ReadonlySet<ScopeCategory>): void {
     this.clearTimersAndPolling();
     // β.3 Lot 3.1 — `isAnimating` projection flips false via the
     // `runner-stopped` event emitted by `clearTimersAndPolling →
@@ -1020,20 +1020,17 @@ export class AnimationOrchestratorService {
     // in prod via duelAssert — the alternative is `commitAll` silently
     // covering the leak.
     //
-    // `tolerateLocks` skip — a user-triggered replay seek mid-animation can
-    // legitimately leave pre-locks / handler locks behind (queued MSG_MOVE
-    // pre-locks not yet consumed, `handleChaining` IIFE still in flight when
-    // `runner.requestStop()` aborts the loop). Same rationale as the 3
-    // skip sites in `replay-duel-adapter.ts` (collapseRemainingSteps / abort
-    // / jumpToState) — see "Replay Board State Parity Rule" in CLAUDE.md.
-    if (!tolerateLocks) this.rbs.assertNoLocks('resetAllState');
-    // Site tag when the assert was skipped — preserves visibility on the
-    // skipped path : `commitAll(site)` logs `commitAll dropped N active
-    // lock(s)` when locks are actually dropped. The assert was the throw
-    // signal ; this warn is the soft signal. A genuine pre-lock leak in
-    // a non-seek dispatch path will still surface (via the warn) instead
-    // of being silently masked by the `tolerateLocks` skip.
-    this.rbs.commitAll(tolerateLocks ? 'resetAllState:tolerateLocks' : undefined);
+    // v3 Phase 4 (2026-06-04) — the `tolerateLocks` skip is removed.
+    // `clearTimersAndPolling` above calls `runner.requestStop()` which
+    // now (Phase 3) calls `rbs.dropOrphanedLocks('runner-requestStop')`
+    // — the locks a user-triggered seek mid-animation legitimately
+    // leaves behind are cleared THERE. The assert here can be strict
+    // again : any survivor at this point is a real bug (a lock taken
+    // OUTSIDE the runner's loop scope, i.e. not covered by the runner
+    // abort + drop). The 3 sibling sites in `replay-duel-adapter.ts`
+    // are equally strict by construction.
+    this.rbs.assertNoLocks('resetAllState');
+    this.rbs.commitAll();
     this.scopeDispatcher.dispatch(scopes);
     this.moveRouter.clearTimeouts();
     this.moveRouter.releaseAllPreLocks();
@@ -1234,13 +1231,14 @@ export class AnimationOrchestratorService {
    */
   resetForReplaySeek(): void {
     this.logger.log(DuelLogCategory.QUEUE, 'resetForReplaySeek — clearing all state & timeouts');
-    // tolerateLocks=true — user-triggered seek mid-animation can leave
-    // unconsumed pre-locks / in-flight handler locks behind. Aligned with
-    // the 3 skip sites in `replay-duel-adapter.ts` (see CLAUDE.md "Replay
-    // Board State Parity Rule"). Without this skip the assert throws and
-    // interrupts `abortAndClean` before `adapter.abort()` runs → the
-    // seek never lands.
-    this.resetAllState(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']), true);
+    // v3 Phase 4 (2026-06-04) — the `tolerateLocks=true` skip is gone.
+    // Phase 3's `runner.requestStop() → dropOrphanedLocks()` (driven by
+    // `clearTimersAndPolling` inside `resetAllState`) clears the locks
+    // a user-triggered seek mid-animation legitimately leaves behind.
+    // `assertNoLocks('resetAllState')` is now strict again — a survivor
+    // at the assert site signals a real bug in a lock taker outside
+    // the runner's loop scope.
+    this.resetAllState(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
     document.querySelectorAll<HTMLElement>('.pvp-deck-shuffle').forEach(el => {
       el.classList.remove('pvp-deck-shuffle');
       el.style.removeProperty('--pvp-shuffle-duration');

@@ -1,5 +1,17 @@
-/** Safety timeout for zone locks — auto-releases if commit/release is never called. */
-export const LOCK_SAFETY_TIMEOUT_MS = 5000;
+/**
+ * Safety timeout for zone locks — auto-releases if commit/release is never
+ * called.
+ *
+ * v3 Phase 4 (2026-06-04) — lowered from 5000ms to 1000ms. Post-Phase 3,
+ * locks orphaned by a `runner.requestStop()` are cleared synchronously via
+ * `RBS.dropOrphanedLocks` ; this safety timer becomes an early-warning net
+ * for any orphan path the v3 chantier did NOT cover (handler taken outside
+ * the runner's scope, async fork that survives `_abort.abort()`, …). At 1s
+ * scaled (≈1.5s with `ctx.safetyTimeout`'s margin), a real travel never
+ * triggers it under normal playback, but an oubliated lock surfaces fast
+ * instead of polluting the next 5s of log noise. Defense-in-depth.
+ */
+export const LOCK_SAFETY_TIMEOUT_MS = 1000;
 
 /**
  * POLL-DROP REGRESSION watchdog timeout (ms).
