@@ -143,7 +143,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   // Provided + injected at page level (R10) so the Game Log accumulates from
   // the replay's very first event — a component-level service is instantiated
   // on its first injection. Mirrors `DuelDebugService`.
-  private readonly gameLog = inject(DuelGameLogService);
+  readonly gameLog = inject(DuelGameLogService);
   readonly adapter = inject(ReplayDuelAdapter);
   readonly orchestrator = inject(AnimationOrchestratorService);
   readonly chainManager = inject(ChainResolutionManager);
@@ -577,6 +577,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     // Re-feeding `setPerspective` rebuilds the journal from the retained raw
     // events for the new viewer (R7 — handled inside the service).
     effect(() => this.gameLog.setPerspective(this.perspectiveIndex()));
+    // Mutual exclusion with the zone-browser pills — both share the right
+    // sidebar flex column; opening the game-log closes any open zone-browser.
+    effect(() => {
+      if (this.gameLog.panelOpen() && this.zoneBrowserState()) {
+        untracked(() => this.closeZoneBrowser());
+      }
+    });
 
     // Seek-rebuild — keep the journal a full HISTORY across a seek.
     // A replay seek runs `abortAndClean → reset()` (journal emptied) then
@@ -1061,6 +1068,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number }): void {
     const player = this.activeDuelState().players[event.playerIndex];
     if (!player) return;
+    // Mutual exclusion with the game-log panel — both share the right-sidebar
+    // flex column; opening one closes the other so they never stack.
+    if (this.gameLog.panelOpen()) this.gameLog.beginPanelClose();
     this.zoneBrowserState.set({
       zoneId: event.zoneId,
       cards: getZonePillCards(player.zones, event.zoneId),

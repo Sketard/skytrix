@@ -604,6 +604,13 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     // BOARD_STATE lands. Track it so the journal is rebuilt for the correct
     // viewer (`setPerspective` no-ops when unchanged, rebuilds otherwise).
     effect(() => this.gameLog.setPerspective(this.ownPlayerIndex()));
+    // Mutual exclusion with the zone-browser pills — both share the right
+    // sidebar flex column; opening the game-log closes any open zone-browser.
+    effect(() => {
+      if (this.gameLog.panelOpen() && this.zoneBrowserState()) {
+        untracked(() => this.closeZoneBrowser());
+      }
+    });
     this.wsService.onStateSync = (msg) => {
       this.animationService.onStateSync();
       // F5/reconnect journal restore — the orchestrator's onStateSync above
@@ -948,6 +955,9 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number; sourceEvent: MouseEvent }): void {
     const player = this.logicalState().players[event.playerIndex];
     if (!player) return;
+    // Mutual exclusion with the game-log panel — both share the right-sidebar
+    // flex column; opening one closes the other so they never stack.
+    if (this.gameLog.panelOpen()) this.gameLog.beginPanelClose();
     // Tag the originating click so onDocumentClick skips it as it keeps bubbling.
     this._zoneBrowserOpeningClick = event.sourceEvent;
     const isPile = event.zoneId === 'GY' || event.zoneId === 'BANISHED' || event.zoneId === 'EXTRA';

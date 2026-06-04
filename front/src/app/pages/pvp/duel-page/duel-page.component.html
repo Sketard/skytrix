@@ -333,7 +333,7 @@
                                          (dismissed)="closeInspector()" />
       }
 
-      <!-- Right Sidebar: Zone Browser + Mini-Toolbar -->
+      <!-- Right Sidebar: Zone Browser + Game Log + Mini-Toolbar -->
       <div class="right-sidebar">
         @if (zoneBrowserState(); as zb) {
           <app-pvp-zone-browser-overlay [zoneId]="zb.zoneId"
@@ -343,6 +343,12 @@
                                          (inspectCard)="inspectCardByCode($event)"
                                          (closed)="closeZoneBrowser($event)" />
         }
+
+        <!-- Game Log — Surface 1: journal panel. Sibling of the zone-browser
+             inside the right-sidebar so it shares the flex column and leaves
+             the mini-toolbar visible below (desktop) / beside (mobile
+             landscape). Open state on the shared `DuelGameLogService`. -->
+        <app-game-log-panel (inspectCard)="inspectCardByCode($event)" />
 
         <div class="mini-toolbar"
              [class.mini-toolbar--dimmed]="hasActivePrompt() && promptSheetExpanded()">
@@ -446,11 +452,6 @@
     <!-- Game Log — Surface 2: opponent effect bubble (renders zero DOM here;
          drives its own CDK overlay anchored on the opponent duelist card). -->
     <app-effect-bubble />
-
-    <!-- Game Log — Surface 1: the journal panel. Open state lives on the
-         shared `DuelGameLogService`; the trigger button (Lot 4f) in
-         `pvp-board-container` toggles it. A row click opens the inspector. -->
-    <app-game-log-panel (inspectCard)="inspectCardByCode($event)" />
 
     <!-- Story 3.4 — Rematch Starting Overlay -->
     @if (wsService.rematchStarting()) {

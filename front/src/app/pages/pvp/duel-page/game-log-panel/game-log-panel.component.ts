@@ -100,6 +100,10 @@ interface BoardGridCell {
   styleUrl: './game-log-panel.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Host class binding gates the flex layout — the host only participates in
+  // its parent (`.right-sidebar`) flex column when the panel is open, so a
+  // closed journal doesn't steal vertical space from the zone-browser.
+  host: { '[class.gamelog-host--open]': 'open()' },
   imports: [
     NgTemplateOutlet,
     MatIcon,

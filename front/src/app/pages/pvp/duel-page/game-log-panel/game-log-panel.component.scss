@@ -18,7 +18,25 @@
 // =============================================================================
 
 :host {
-  display: block;
+  // Default — collapsed. The host only participates in the `.right-sidebar`
+  // flex column while the panel is open (`.gamelog-host--open` is bound on
+  // the host by the component metadata). A closed journal therefore steals
+  // no vertical space from the zone-browser pills above it.
+  display: none;
+}
+
+:host(.gamelog-host--open) {
+  // Open — flex child of `.right-sidebar`, same layout contract as
+  // `pvp-zone-browser-overlay` (the cimetière/banished/extra pills). Claims
+  // the remaining vertical space above the mini-toolbar and provides an
+  // 8px breathing margin so the surrender / journal / devhub buttons stay
+  // clickable below.
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-top: 8px;
+  margin-bottom: 8px;
 
   // --- Bucket C — component-local derived values --------------------------
   // game-log.css invented these surfaces/gradients/combat colours; the DS has
@@ -60,43 +78,29 @@
 }
 
 // ============================================================
-// PANEL — inset side band
+// PANEL — right-sidebar flex child
 // ============================================================
-// A right-edge side band with an 8px top/bottom inset — mirrors the
-// `pvp-zone-browser-overlay` proportions (its `.right-sidebar` host gives
-// the card panel the same 8px breathing margin) rather than spanning the
-// full height. Open/close chrome (Lot 4c): a slide-in on mount, a slide-out
-// under `.gamelog--closing` before the DOM tears down.
-//
-// `position: fixed` in PvP — mounted as a bare sibling with no positioned
-// ancestor; the 8px insets are viewport-relative (no transport stack there).
+// Mounted as a sibling of `pvp-zone-browser-overlay` inside the duel page's
+// (and replay page's) `.right-sidebar`. Layout is inherited from the host's
+// flex column — `:host` claims the remaining vertical space above the
+// mini-toolbar and provides the 8px breathing inset. Open/close chrome
+// (Lot 4c): a slide-in on mount, a slide-out under `.gamelog--closing`
+// before the DOM tears down.
 .gamelog {
-  position: fixed;
-  top: 8px;
-  right: 0;
-  bottom: 8px;
-  z-index: 60;
+  position: relative;
+  flex: 1;
+  min-height: 0;
   width: 330px;
   max-width: 92vw;
   background: var(--pvp-zone-browser-bg);
   border: 1px solid var(--border-medium);
+  border-right: none;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   box-shadow: var(--elevation-3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   animation: gamelog-slide-in var(--transition-fast) var(--ease-out);
-}
-
-// Replay mode — the viewport's bottom edge holds the transport stack
-// (timeline-bar/stepper + transport-bar, in normal flow). A viewport-fixed
-// panel would extend behind it. In the replay DOM the panel is a child of
-// `.board-area` (`position: relative`, the flex:1 play region ABOVE the
-// transport stack) — switching to `position: absolute` bounds the panel
-// (and its 8px insets) to exactly that region, clearing the transport bar
-// whatever its (variable) height.
-:host-context(app-replay-page) .gamelog {
-  position: absolute;
 }
 
 .gamelog--closing {
@@ -131,6 +135,23 @@
   .gamelog,
   .gamelog--closing {
     animation: none;
+  }
+}
+
+// Mobile landscape (small viewport height) — the parent `.right-sidebar`
+// flips to `flex-direction: row-reverse` so the mini-toolbar sits beside
+// the panel instead of below. Mirror the `pvp-zone-browser-overlay`
+// :host adjustment so the journal still grows full-height in that mode.
+@media (max-height: 500px) {
+  :host(.gamelog-host--open) {
+    flex: 0 0 auto;
+    height: 100%;
+    padding-top: 0;
+    margin-bottom: 0;
+  }
+
+  .gamelog {
+    max-width: none;
   }
 }
 
