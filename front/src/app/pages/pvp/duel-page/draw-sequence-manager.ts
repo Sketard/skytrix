@@ -316,32 +316,55 @@ export class DrawSequenceManager {
       this._drawTimeouts.push(guardId);
     }
 
-    if (opts.keepFloats) {
-      // Initial draw: add all expansion slots upfront so the fan layout is
-      // computed for N cards. Each card targets its own slot by index.
-      // Slots stay until resetHandAnimationState() runs in the same
-      // synchronous block as commitAll() — Angular reuses the outer <div>
-      // elements (same track $index count), no CSS transition fires.
-      this.handExpansionSlots.update(c => {
-        const next: [number, number] = [...c];
-        next[relPlayer] += drawCount;
-        return next;
-      });
+    // Reserve N expansion slots upfront so the fan lays out for the final
+    // hand size — same upfront-reservation pattern used by `beginHandBatch`
+    // in the tutor flow (`BufferReplayBuilder` → reveal sequence). We
+    // cannot reuse `beginHandBatch` here because its `duelAssert` forbids
+    // overlap with `_drawsInFlight`, which is already non-empty in the
+    // mid-game path (`processMidGameDraw` adds to the set before calling).
+    // The bookkeeping is the same: bump the signal by `drawCount`, hand
+    // each iteration a unique slot index offset from the existing rendered
+    // hand count, drop everything back to zero after the post-commit
+    // cleanup.
+    //
+    // The slot index MUST be `existingHandCount + i`, NOT just `i`:
+    // `resolveHandTarget(numeric)` walks ALL `.hand-card` (real +
+    // expansion), so `0..N-1` would target the FIRST N real cards on
+    // the left of the fan — the "draws drift left" regression where
+    // floats flew onto existing hand cards instead of the freshly
+    // rendered expansion slots on the right.
+    const existingHandCount = this.rbs.renderedState().players[relPlayer].zones
+      .find(z => z.zoneId === 'HAND')?.cards.length ?? 0;
+    this.handExpansionSlots.update(c => {
+      const next: [number, number] = [...c];
+      next[relPlayer] += drawCount;
+      return next;
+    });
 
-      await new Promise<void>(resolve =>
-        afterNextRender(() => resolve(), { injector: this.injector })
-      );
-    }
+    await new Promise<void>(resolve =>
+      afterNextRender(() => resolve(), { injector: this.injector })
+    );
 
     for (let i = 0; i < drawCount; i++) {
       const card = msg.cards[i];
       const cardImage = isOwn && card
         ? this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card}`)
         : this.cardTravelEngine.toAbsoluteUrl('assets/images/card_back.jpg');
+      const slotIdx = existingHandCount + i;
+      // `targetIndex=slotIdx` makes `travelToHand` run in batch mode
+      // (`manageSlotsLocally=false`) — the upfront reservation above
+      // owns the slot bookkeeping.
       await this.travelToHand(srcKey, relPlayer, cardImage, {
         duration: travelDuration, showBack: true, flipDuringTravel: isOwn && !!card,
-      }, opts.keepFloats ? i : undefined, undefined, card || undefined);
-      if (!opts.keepFloats) this.floatRegistry.clearLandedTravels();
+      }, slotIdx, undefined, card || undefined);
+      // NO clearLandedTravels between cards — that was the root cause of
+      // the multi-card regression. Floats stay landed on their reserved
+      // slots until the post-commit `clearLandedByDstPrefix(dstKey)`
+      // below runs (mid-game) or `resetHandAnimationState()` clears them
+      // (initial draw). Critically, `clearLandedTravels` was UNFILTERED
+      // → removing landed floats from OTHER zones (GY, BANISHED) when
+      // they happened to be in flight at the same time as the draw —
+      // the "discard MOVE→GY disappears from GY" replay bug.
     }
 
     this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — committing locks, renderedHand=%d',
@@ -352,6 +375,23 @@ export class DrawSequenceManager {
       this.rbs.renderedState().players?.[0]?.zones?.find(z => z.zoneId === 'HAND')?.cards?.length ?? 0,
       this.rbs.lockedZoneKeys().length);
     if (guardId !== null) clearTimeout(guardId);
+
+    if (!opts.keepFloats) {
+      // Mid-game: retire the expansion slots reserved upfront + drop the
+      // landed floats targeting this player's HAND so the real `.hand-card`
+      // elements take over. `clearLandedByDstPrefix(dstKey)` is FILTERED
+      // — only floats whose dstKey === `HAND-${relPlayer}` are removed.
+      // Anything in flight or landed for OTHER zones (GY, BANISHED, the
+      // other player's HAND, …) is left intact, fixing the pre-existing
+      // global `clearLandedTravels()` regression that cancelled an
+      // in-flight discard MOVE→GY happening in the same chain replay.
+      this.floatRegistry.clearLandedByDstPrefix(dstKey);
+      this.handExpansionSlots.update(c => {
+        const next: [number, number] = [...c];
+        next[relPlayer] = Math.max(0, next[relPlayer] - drawCount);
+        return next;
+      });
+    }
 
     // Mid-game draw: highlight the drawn card with a blue frame pulse
     // before the shuffle event runs (card must be committed and rendered first).

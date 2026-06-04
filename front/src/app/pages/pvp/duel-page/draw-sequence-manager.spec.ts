@@ -398,4 +398,175 @@ describe('DrawSequenceManager', () => {
       expect(() => manager.clearTimeouts()).not.toThrow();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // runDrawSequence — multi-card batch contract (post-2026-06-04 fix)
+  //
+  // Pre-fix: `runDrawSequence` for a `MSG_DRAW` with `cards.length > 1`
+  // incremented `handExpansionSlots` per card via `travelToHand`'s
+  // `manageSlotsLocally=true` path, then called `clearLandedTravels()`
+  // between every card. Two regressions:
+  //   1. Each card landed on the same "last" slot then was immediately
+  //      destroyed by `clearLandedTravels` when the next card arrived
+  //      → "1st card disappears when 2nd arrives" (PvP) and "draws drift
+  //      to the wrong side" (replay) symptoms.
+  //   2. `clearLandedTravels` clears the ENTIRE `_landed` set — it was
+  //      not filtered by zone prefix — so a discard `MOVE→GY` happening
+  //      concurrently (chain replay where the same effect draws AND
+  //      discards) would lose its landed float → "discard disappears
+  //      from GY" + the GY lock left dangling → 7.5s safety timeout.
+  //
+  // Post-fix:
+  //   - All N expansion slots reserved upfront (matches the initial-draw
+  //     path and the tutor batch path in `BufferReplayBuilder`).
+  //   - Each card targets slot `i` explicitly via `travelToHand(..., i)`.
+  //   - NO `clearLandedTravels()` between cards.
+  //   - After the final commit, `clearLandedByDstPrefix(dstKey)` removes
+  //     only the floats landed in THIS player's HAND — anything in flight
+  //     for GY / BANISHED / the other player stays put.
+  // ---------------------------------------------------------------------------
+
+  describe('runDrawSequence — multi-card batch (2026-06-04 fix)', () => {
+    let mockFloatRegistry: jasmine.SpyObj<FloatRegistryService>;
+    let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
+    let travelCalls: Array<{ src: string; dst: HTMLElement | string }>;
+
+    /** Flip both `_initialDrawDone` slots so the next `processDrawEvent`
+     *  goes through `processMidGameDraw` (which is where the multi-card
+     *  batch contract lives). The initial-draw path uses `keepFloats=true`
+     *  and is covered by separate specs above. */
+    function markInitialDrawDone() {
+      (manager as unknown as { _initialDrawDone: [boolean, boolean] })
+        ._initialDrawDone = [true, true];
+    }
+
+    beforeEach(() => {
+      mockFloatRegistry = TestBed.inject(FloatRegistryService) as jasmine.SpyObj<FloatRegistryService>;
+      mockCardTravel = TestBed.inject(CardTravelEngine) as jasmine.SpyObj<CardTravelEngine>;
+
+      // Provide a real HAND-0 zone element so `resolveHandTarget` can
+      // query for `.hand-card--expansion` slots. The pre-fix bug would
+      // have all draws targeting the same DOM node — the post-fix
+      // contract is one slot per card index. We record what travel() was
+      // called with to assert distinct slots.
+      const zoneEl = document.createElement('div');
+      // Pre-populate the expansion DOM with N slots so `resolveHandTarget`
+      // (numeric index) finds distinct targets. Since the manager's signal
+      // and the DOM are wired separately in production but mocked here,
+      // we manually add slots so `querySelectorAll('.hand-card')[i]`
+      // returns a distinct element per index.
+      for (let i = 0; i < 4; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'hand-card hand-card--expansion';
+        slot.dataset['idx'] = String(i);
+        zoneEl.appendChild(slot);
+      }
+      mockCardTravel.getZoneElement.and.callFake((key: string) =>
+        key === 'HAND-0' ? zoneEl : null,
+      );
+
+      travelCalls = [];
+      mockCardTravel.travel.and.callFake((src, dst) => {
+        travelCalls.push({ src: src as string, dst: dst as HTMLElement | string });
+        return Promise.resolve();
+      });
+    });
+
+    it('reserves N expansion slots upfront, each travel targets a distinct slot offset by existing hand count', fakeAsync(() => {
+      // Build a HAND-0 zone with N real cards then N expansion slots so
+      // we can assert that travel destinations correspond to the
+      // expansion slots (indices `existingHandCount + i`), NOT the
+      // first N real cards (which was the pre-fix "draws drift left"
+      // regression — `targetIndex=0..N-1` was hitting the leftmost
+      // real cards instead of the freshly rendered expansion slots).
+      const zone = document.createElement('div');
+      const realCards: HTMLDivElement[] = [];
+      const expansionSlots: HTMLDivElement[] = [];
+      for (let i = 0; i < 2; i++) {
+        const c = document.createElement('div');
+        c.className = 'hand-card';
+        c.dataset['kind'] = 'real';
+        c.dataset['idx'] = String(i);
+        zone.appendChild(c);
+        realCards.push(c);
+      }
+      for (let i = 0; i < 3; i++) {
+        const s = document.createElement('div');
+        s.className = 'hand-card hand-card--expansion';
+        s.dataset['kind'] = 'expansion';
+        s.dataset['idx'] = String(2 + i);
+        zone.appendChild(s);
+        expansionSlots.push(s);
+      }
+      mockCardTravel.getZoneElement.and.callFake((key: string) => key === 'HAND-0' ? zone : null);
+
+      renderedState.set(stateWithHandCount(2));
+      markInitialDrawDone();
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101, 102, 103] } as DrawMsg);
+
+      flush();
+
+      expect(travelCalls.length).toBe(3);
+
+      // Every travel must land on an expansion slot — the post-fix
+      // contract. Hitting a real card here = the regression returned.
+      for (let i = 0; i < 3; i++) {
+        const dst = travelCalls[i].dst;
+        expect(dst).toBe(expansionSlots[i],
+          `travel ${i} should hit expansion slot ${i}, got: ${(dst as HTMLElement)?.dataset?.['kind']}=${(dst as HTMLElement)?.dataset?.['idx']}`);
+      }
+      // And in particular, the real cards must NEVER be travel destinations.
+      for (const real of realCards) {
+        expect(travelCalls.some(c => c.dst === real)).toBe(false,
+          `real card ${real.dataset['idx']} must NOT be a travel destination (that is the "draws drift left" regression)`);
+      }
+    }));
+
+    it('clearLandedByDstPrefix(HAND-0) runs once after the final commit; clearLandedTravels NEVER fires', fakeAsync(() => {
+      markInitialDrawDone();
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101, 102] } as DrawMsg);
+      flush();
+
+      // The fix replaces the global `clearLandedTravels()` (which
+      // wipes landed floats for ALL zones — the discard MOVE→GY
+      // regression) with a filtered `clearLandedByDstPrefix('HAND-0')`.
+      // Pin both halves of the contract:
+      expect(mockFloatRegistry.clearLandedTravels).not.toHaveBeenCalled();
+      expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-0');
+    }));
+
+    it('handExpansionSlots returns to 0 after the multi-card draw completes', fakeAsync(() => {
+      markInitialDrawDone();
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101, 102, 103] } as DrawMsg);
+      flush();
+
+      // Reserved upfront → 3 slots; released after commit → 0 slots.
+      // No lingering reservation that would leave the fan layout
+      // permanently expanded.
+      expect(manager.handExpansionSlots()).toEqual([0, 0]);
+    }));
+
+    it('opponent draw (player=1) reserves slots on relPlayer=1, clears HAND-1', fakeAsync(() => {
+      // From own-player=0 perspective, opponent draws → relPlayer=1
+      // → expansion slots increment on index 1 of the tuple, and the
+      // cleanup targets HAND-1, not HAND-0.
+      const hand1El = document.createElement('div');
+      for (let i = 0; i < 3; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'hand-card hand-card--expansion';
+        hand1El.appendChild(slot);
+      }
+      mockCardTravel.getZoneElement.and.callFake((key: string) =>
+        key === 'HAND-1' ? hand1El : null,
+      );
+
+      markInitialDrawDone();
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 1, cards: [201, 202] } as DrawMsg);
+      flush();
+
+      expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-1');
+      expect(mockFloatRegistry.clearLandedByDstPrefix).not.toHaveBeenCalledWith('HAND-0');
+      expect(manager.handExpansionSlots()).toEqual([0, 0]);
+    }));
+  });
 });
