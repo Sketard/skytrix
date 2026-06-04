@@ -393,24 +393,17 @@ export class DrawSequenceManager {
       });
     }
 
-    // Mid-game draw: highlight the drawn card with a blue frame pulse
-    // before the shuffle event runs (card must be committed and rendered first).
-    if (!opts.keepFloats && this.ctx.isBoardActive() && !this.ctx.reducedMotion()) {
-      this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — awaiting render for highlight');
-      await new Promise<void>(resolve =>
-        afterNextRender(() => resolve(), { injector: this.injector })
-      );
-      const zone = this.cardTravelEngine.getZoneElement(dstKey);
-      if (zone) {
-        const cards = zone.querySelectorAll<HTMLElement>('.hand-card:not(.hand-card--expansion)');
-        const lastCard = cards.length ? cards[cards.length - 1] : null;
-        this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — highlight target: cards=%d lastCard=%s', cards.length, !!lastCard);
-        if (lastCard) {
-          await this.highlightDrawnCard(lastCard, this.ctx.scaledDuration(600, 300), relPlayer === 1);
-          this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — highlight done');
-        }
-      }
-    }
+    // No post-commit highlight on draw — the user contract is:
+    //   - Draw: travel deck→hand only, no reveal/highlight pulse.
+    //   - Tutor: per-card travel + reveal (handled by the dedicated
+    //     `confirmCardsInHand` path triggered by MSG_CONFIRM_CARDS).
+    // The previous `highlightDrawnCard` call on `lastCard` only fired in
+    // PvP (replay's batch dispatch path skips it via a different code
+    // route), and `lastCard` resolved to an OLD card on the right of the
+    // fan whenever OCGCore inserted the new draws at index 0 of the hand
+    // array — so the highlight ended up pulsing a card the user never
+    // drew. Dropping it altogether matches the documented behaviour and
+    // restores PvP↔Replay parity.
   }
 
   /** Standard mid-game draw — wraps runDrawSequence with async tracking. */

@@ -568,5 +568,35 @@ describe('DrawSequenceManager', () => {
       expect(mockFloatRegistry.clearLandedByDstPrefix).not.toHaveBeenCalledWith('HAND-0');
       expect(manager.handExpansionSlots()).toEqual([0, 0]);
     }));
+
+    it('does NOT call highlightDrawnCard after a mid-game draw — draws have no reveal pulse', fakeAsync(() => {
+      // User contract:
+      //   - Draw  = travel deck→hand, no reveal/highlight pulse.
+      //   - Tutor = travel + per-card flip reveal (handled by
+      //             `confirmCardsInHand` on MSG_CONFIRM_CARDS).
+      //
+      // The pre-fix `runDrawSequence` called `highlightDrawnCard`
+      // on `lastCard` of the hand-row at the end of every mid-game
+      // draw. Two regressions:
+      //   1. PvP only — replay's batch dispatch went through a
+      //      different code path that skipped the highlight, so the
+      //      pulse fired exclusively in live duels (parity broken).
+      //   2. OCGCore inserts new draws at index 0 of the hand array
+      //      in PvP, so the DOM `lastCard` was an OLD card on the
+      //      RIGHT of the fan — the pulse fired on a card the user
+      //      never drew.
+      //
+      // Spy on the public `highlightDrawnCard` to pin the contract:
+      // never called from the post-commit cleanup. The method stays
+      // public because `confirmCardsInHand` legitimately calls it
+      // for tutor reveals — that path is not exercised here.
+      const highlightSpy = spyOn(manager, 'highlightDrawnCard').and.returnValue(Promise.resolve());
+
+      markInitialDrawDone();
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101, 102] } as DrawMsg);
+      flush();
+
+      expect(highlightSpy).not.toHaveBeenCalled();
+    }));
   });
 });
