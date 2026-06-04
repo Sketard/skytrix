@@ -486,6 +486,16 @@ export function transformMessage(
   skipRpsFlag: boolean,
   preProcessOverlays?: Map<PreProcessOverlayKey, number[]>,
   settlingFifo?: SettlingSourceFifo,
+  /** Per-player snapshot of HAND cardCode counts taken BEFORE the current
+   *  `duelProcess` batch ran. Consumed by the CHAINING transform to set
+   *  `ChainingMsg.handCopiesAtChaining`. F9-bis hand-discard fix
+   *  (2026-06-04) — without this counter, the front's hand chain-badge
+   *  resolver cannot distinguish "activated card still in hand" from
+   *  "activated card discarded, second copy still in hand" and misroutes
+   *  the badge. Optional: when omitted (legacy callers, tests), the
+   *  resulting MSG_CHAINING omits the field and the front degrades to
+   *  its pre-fix matching. */
+  handCountsPreBatch?: ReadonlyArray<ReadonlyMap<number, number>>,
 ): ServerMessage | null {
   const getCardName = makeGetCardName(lookup);
   const systemStrings = lookup.systemStrings();
@@ -533,11 +543,22 @@ export function transformMessage(
       const descriptionText = db
         ? resolveDescription(description, db, systemStrings)
         : '';
+      // F9-bis hand-discard fix (2026-06-04) — when the activation comes
+      // from HAND, embed the pre-batch hand cardCode count so the client
+      // can detect that a copy of this card has been discarded (typically
+      // by the activation's own cost) and refuse to misroute the badge to
+      // a second copy. Only HAND activations need the field; for other
+      // locations the front-side resolver doesn't run the hand-badge
+      // code path.
+      const isFromHand = (msg.location as number) === (LOCATION.HAND as number);
+      const playerCounts = isFromHand && handCountsPreBatch ? handCountsPreBatch[msg.controller] : undefined;
+      const handCopiesAtChaining = playerCounts?.get(msg.code);
       return {
         type: 'MSG_CHAINING', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
         location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
         sequence: msg.sequence, chainIndex: msg.chain_size - 1, description,
         descriptionText,
+        ...(handCopiesAtChaining != null ? { handCopiesAtChaining } : {}),
       };
     }
 

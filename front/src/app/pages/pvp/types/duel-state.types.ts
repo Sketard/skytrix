@@ -15,6 +15,15 @@ export interface ChainLinkState {
   // Resolved effect text, carried from MSG_CHAINING.descriptionText.
   // Optional: absent on legacy payloads that predate server-side resolution.
   descriptionText?: string;
+  // F9-bis hand-discard fix (2026-06-04) — count of `cardCode` copies in
+  // `player`'s HAND at the moment of activation, carried verbatim from
+  // MSG_CHAINING.handCopiesAtChaining. Only set when the activation came
+  // from HAND. The hand chain-badge resolver (`findCurrentIndex` in
+  // chain-badge.utils.ts) compares this to the current HAND count: if the
+  // current count is strictly lower, at least one copy of `cardCode`
+  // (typically the activated card itself, discarded for cost) has left
+  // the hand, so the badge is NOT placed on any remaining copy.
+  handCopiesAtChaining?: number;
 }
 
 export const EMPTY_DUEL_STATE: DuelState = {

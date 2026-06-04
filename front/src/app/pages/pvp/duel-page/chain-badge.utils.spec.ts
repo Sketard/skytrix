@@ -141,4 +141,109 @@ describe('chain-badge.utils', () => {
       expect(revealed.get(1)).toBe(200);
     });
   });
+
+  // F9-bis hand-discard fix (2026-06-04) — when the activated card is
+  // discarded for its own cost, the second copy in hand MUST NOT inherit
+  // the badge. The fix relies on the server-side `handCopiesAtChaining`
+  // counter shipped on MSG_CHAINING. Tests below pin the filter logic.
+  describe('handCopiesAtChaining filter (discard-cost scenario)', () => {
+    const linkWithCount = (chainIndex: number, cardCode: number, sequence: number, handCopiesAtChaining?: number): ChainLinkState => ({
+      ...makeLink(chainIndex, cardCode, 0, sequence),
+      handCopiesAtChaining,
+    });
+
+    it('refuses to badge a second copy when activated card was discarded (own hand)', () => {
+      // Scenario: 2 Faimena in hand at chaining time, activated copy
+      // discards itself for cost, 1 Faimena remains in hand.
+      const links = [
+        makeLink(0, 100, 0, 0),                   // CL0: some other card
+        linkWithCount(1, 200, 1, /*handCopiesAtChaining*/ 2),   // CL1: Faimena, was 2 in hand
+      ];
+      const hand = handCards([100, 200]); // 1 Faimena left (the activated one is gone)
+      const result = buildHandChainBadges(links, 0, 'building', hand);
+      // CL0 (the other card) is still badged.
+      expect(result.get(0)).toBe(1);
+      // CL1 must NOT badge index 1 — the only remaining Faimena is the
+      // unrelated second copy.
+      expect(result.has(1)).toBeFalse();
+    });
+
+    it('still badges when handCopiesAtChaining matches current count (no discard)', () => {
+      // Scenario: 2 Faimena in hand at chaining time, no discard, both
+      // copies still in hand. The activated one is still there.
+      const links = [
+        makeLink(0, 100, 0, 0),
+        linkWithCount(1, 200, 1, /*handCopiesAtChaining*/ 2),
+      ];
+      const hand = handCards([100, 200, 200]); // 2 Faimena still there
+      const result = buildHandChainBadges(links, 0, 'building', hand);
+      expect(result.get(0)).toBe(1);
+      expect(result.get(1)).toBe(2);
+    });
+
+    it('falls back to pre-fix behavior when handCopiesAtChaining is undefined (legacy)', () => {
+      // Without the counter, the resolver lands on the closest remaining
+      // copy by proximity. This is the pre-fix behavior — kept so legacy
+      // replays don't regress further.
+      const links = [
+        makeLink(0, 100, 0, 0),
+        linkWithCount(1, 200, 1 /* no handCopiesAtChaining */),
+      ];
+      const hand = handCards([100, 200]);
+      const result = buildHandChainBadges(links, 0, 'building', hand);
+      expect(result.get(0)).toBe(1);
+      // Pre-fix: badge lands on the only copy left.
+      expect(result.get(1)).toBe(2);
+    });
+
+    it('opponent hand: refuses to badge a second copy when activated card was discarded', () => {
+      const links = [
+        makeLink(0, 100, 1, 0),
+        { ...makeLink(1, 200, 1, 1), handCopiesAtChaining: 2 } as ChainLinkState,
+      ];
+      const hand = handCards([100, 200]);
+      const { badges } = buildOpponentHandChainData(links, 0, 'building', hand);
+      expect(badges.get(0)).toBe(1);
+      expect(badges.has(1)).toBeFalse();
+    });
+
+    it('opponent hand: revealed map also skips when activated card was discarded', () => {
+      const links = [
+        { ...makeLink(0, 200, 1, 1), handCopiesAtChaining: 2 } as ChainLinkState,
+      ];
+      const hand = handCards([200]);
+      const { revealed } = buildOpponentHandChainData(links, 0, 'building', hand);
+      // The remaining Faimena is the second copy — not the activated one.
+      // It must not be marked as revealed (its identity wasn't shown to
+      // the opponent via this chain).
+      expect(revealed.has(0)).toBeFalse();
+    });
+
+    it('buildHandRevealedCards: refuses to flag a second copy when activated card was discarded', () => {
+      const links = [
+        { ...makeLink(0, 200, 0, 1), handCopiesAtChaining: 2 } as ChainLinkState,
+      ];
+      const hand = handCards([200]);
+      const revealed = buildHandRevealedCards(links, 0, hand);
+      expect(revealed.has(0)).toBeFalse();
+    });
+
+    it('handles three copies → two discarded → one badge still skipped (current < 3)', () => {
+      const links = [
+        { ...makeLink(0, 200, 0, 0), handCopiesAtChaining: 3 } as ChainLinkState,
+      ];
+      const hand = handCards([200]); // 1 copy left, 2 went somewhere
+      const result = buildHandChainBadges(links, 0, 'resolving', hand);
+      expect(result.has(0)).toBeFalse();
+    });
+
+    it('handCopiesAtChaining=1 with no copies in hand → no badge (degenerate but consistent)', () => {
+      const links = [
+        { ...makeLink(0, 200, 0, 0), handCopiesAtChaining: 1 } as ChainLinkState,
+      ];
+      const hand = handCards([100]); // no Faimena at all
+      const result = buildHandChainBadges(links, 0, 'resolving', hand);
+      expect(result.has(0)).toBeFalse();
+    });
+  });
 });

@@ -5,12 +5,33 @@ import type { ChainLinkState } from '../types';
  * Find the current hand index for a chain link card by matching cardCode,
  * preferring the index closest to the original sequence. Falls back to
  * original sequence when cardCode matching fails (opponent face-down cards).
+ *
+ * F9-bis hand-discard fix (2026-06-04) — when `handCopiesAtChaining` is
+ * supplied AND the current count of `cardCode` copies in `handCards` is
+ * strictly lower than it, at least one copy has left the hand since the
+ * activation. Almost always that's the activated card itself (discarded
+ * for its own cost); the remaining copies are unrelated. Return -1 so
+ * the resolver refuses to misroute the badge. Without this guard the
+ * `bestDist` heuristic happily lands the badge on the closest remaining
+ * copy. Falsy `handCopiesAtChaining` (legacy payloads, non-HAND
+ * activations) skips the guard — pre-fix behavior preserved.
  */
 function findCurrentIndex(
   cardCode: number, originalSeq: number,
   handCards: readonly { cardCode: number | null }[],
   usedIndices: Set<number>,
+  handCopiesAtChaining?: number,
 ): number {
+  if (handCopiesAtChaining != null) {
+    let currentCount = 0;
+    for (let i = 0; i < handCards.length; i++) {
+      if (handCards[i].cardCode === cardCode) currentCount++;
+    }
+    // Strict less-than: one or more copies left the hand → assume the
+    // activated card was among them. Equal counts mean every original
+    // copy is still there, so matching by proximity is safe.
+    if (currentCount < handCopiesAtChaining) return -1;
+  }
   let bestIdx = -1;
   let bestDist = Infinity;
   for (let i = 0; i < handCards.length; i++) {
@@ -40,7 +61,7 @@ export function buildHandChainBadges(
   const used = new Set<number>();
   for (const link of links) {
     if (link.location !== LOCATION.HAND || link.player !== playerIndex) continue;
-    const idx = findCurrentIndex(link.cardCode, link.sequence, handCards, used);
+    const idx = findCurrentIndex(link.cardCode, link.sequence, handCards, used, link.handCopiesAtChaining);
     if (idx === -1) continue;
     const chainNum = link.chainIndex + 1;
     if (!map.has(idx) || map.get(idx)! < chainNum) map.set(idx, chainNum);
@@ -64,7 +85,7 @@ export function buildHandRevealedCards(
   const used = new Set<number>();
   for (const link of links) {
     if (link.location !== LOCATION.HAND || link.player !== playerIndex) continue;
-    const idx = findCurrentIndex(link.cardCode, link.sequence, handCards, used);
+    const idx = findCurrentIndex(link.cardCode, link.sequence, handCards, used, link.handCopiesAtChaining);
     if (idx === -1) continue;
     if (link.cardCode) revealed.set(idx, link.cardCode);
   }
@@ -85,7 +106,7 @@ export function buildOpponentHandChainData(
   const used = new Set<number>();
   for (const link of links) {
     if (link.location !== LOCATION.HAND || link.player === ownPlayerIndex) continue;
-    const idx = findCurrentIndex(link.cardCode, link.sequence, handCards, used);
+    const idx = findCurrentIndex(link.cardCode, link.sequence, handCards, used, link.handCopiesAtChaining);
     if (idx === -1) continue;
     if (showBadges) {
       const chainNum = link.chainIndex + 1;

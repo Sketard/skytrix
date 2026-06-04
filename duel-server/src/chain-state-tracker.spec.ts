@@ -14,6 +14,18 @@ import type { ServerMessage } from './ws-protocol.js';
 // There is currently no automated cross-side gate. Detection of a divergence
 // happens only at runtime, only on a real reconnect mid-chain (CHAIN_STATE
 // handshake → restoreChainState lands a phase the client cannot handle).
+//
+// F9-bis (2026-06-04) — `applyChainTransition` now has 3 server-side
+// consumers, all driven by this same spec's transition table:
+//   1. worker-message-router.ts   — live PvP session container
+//   2. replay-precompute.ts       — per-replay-run container; flushed as
+//                                   PreComputedState.chainSnapshot so a
+//                                   replay viewer's mid-chain seek can
+//                                   restore via the same path as the PvP
+//                                   reconnect handshake.
+//   3. chain-state-tracker.spec   — this file.
+// Adding a 4th consumer? Add it to the list above and consider whether the
+// new site needs its own integration spec on top of this transition pin.
 // =============================================================================
 
 

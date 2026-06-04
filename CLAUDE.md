@@ -310,6 +310,50 @@ pins the server-side transition matrix ; the client suite at
 pins the client-side. Any change to the chain phase semantics on
 either side MUST update both specs + this matrix.
 
+**F9-bis (2026-06-04) — `applyChainTransition` has 3 server-side
+consumers, all driven by the same transition table.** Before this fix,
+seeking into a replay mid-chain wiped `activeChainLinks` (via
+`adapter.abort()` → `processor.reset()`) and never re-fed the prior
+`MSG_CHAINING` events, leaving the chain overlay + chain badges empty
+even though the target state was semantically inside a chain. The fix
+mirrors the PvP `CHAIN_STATE` reconnect handshake, embedded into the
+precompute timeline :
+
+| Site | Driven by | Stored on | Restored by |
+|---|---|---|---|
+| `worker-message-router.ts` | live PvP/SOLO session | `session.activeChainLinks` + `chainPhase` | client `_handleChainState` on `CHAIN_STATE` |
+| `replay-precompute.ts` (F9-bis) | per-replay-run container | `PreComputedState.chainSnapshot` on every state captured while `chainPhase !== 'idle'` | client `ReplayDuelAdapter.jumpToState` |
+| `chain-state-tracker.spec.ts` | transition pin | — | — |
+
+The replay snapshot shape (`{ links: ChainingMsg[]; phase; negatedIndices;
+currentSolvingChainIndex }`) is the same as the PvP `ChainStateMsg`
+plus `currentSolvingChainIndex` (the live PvP path doesn't need it
+because the server fires `MSG_CHAIN_SOLVING` as a real message right
+after the handshake — replay can't, hence the field). Both sides
+restore via the SHARED helper
+[chain-state-restore.utils.ts](front/src/app/pages/pvp/duel-page/chain-state-restore.utils.ts)
+`chainingMsgsToLinkStates` so the link-shape conversion can't drift
+between the PvP and replay paths. Adding a 4th consumer of
+`applyChainTransition` ? Update the table above, add it to the
+[chain-state-tracker.spec.ts](duel-server/src/chain-state-tracker.spec.ts)
+F9-bis comment block, and consider whether the new site needs its own
+integration spec on top of the transition pin.
+
+**Precompute timing rule for the snapshot embed** — `applyChainTransition`
+fires AFTER any flush triggered by the current message itself
+(`MSG_CHAINING` / `MSG_CHAIN_END` branches flush events that PRECEDE
+the current message ; the snapshot at flush time must reflect the
+pre-transition state) and BEFORE the current message is pushed into
+`events[]` for any other branch (so the next flush triggered by a
+later message sees the post-transition state on the current message).
+Concretely : the `MSG_CHAINING(N)` branch flushes link N-1's events
+WITH a snapshot that includes only links 1..N-1, then transitions
+(push link N) ; the `MSG_CHAIN_END` branch flushes the last link's
+events WITH a snapshot still showing `phase='resolving'`, then
+transitions to `idle` so the separator state itself carries no
+snapshot. The contract is pinned by the F9-bis tests in
+[replay-precompute.spec.ts](duel-server/src/replay-precompute.spec.ts).
+
 ## Fork-solo unification (F5-bis, 2026-05-31)
 
 For the mode table + the high-level "fork-solo IS a SOLO multiplex"
@@ -966,6 +1010,30 @@ Key rules:
    flipped for one frame when the orchestrator calls
    `updateLogical(event.boardStateAfter)`.
 
+5. **`PreComputedState.chainSnapshot` mid-chain seek restore** (F9-bis,
+   2026-06-04). When a `PreComputedState` is captured while a chain is
+   open (`chainPhase !== 'idle'`), `replay-precompute.ts` embeds a
+   snapshot of the server-side `ChainStateContainer` :
+   `{ links: ChainingMsg[], phase, negatedIndices, currentSolvingChainIndex }`.
+   `ReplayDuelAdapter.jumpToState` applies it via the SAME restore code
+   path as the PvP `CHAIN_STATE` reconnect handshake — shared helper
+   [chain-state-restore.utils.ts](front/src/app/pages/pvp/duel-page/chain-state-restore.utils.ts)
+   `chainingMsgsToLinkStates` + `processor.restoreChainState` +
+   conditional `processor.applyChainSolving(currentSolvingChainIndex)`.
+   Without this, seeking into the middle of a chain wipes
+   `activeChainLinks` (via `adapter.abort()` → `processor.reset()`) and
+   leaves the chain overlay + chain badges empty even though the target
+   state is semantically inside a chain. The PvP reconnect handshake
+   doesn't carry `currentSolvingChainIndex` because the live worker fires
+   `MSG_CHAIN_SOLVING` as a real message immediately after — replay
+   can't, so the field is necessary for the in-resolution link to be
+   visually distinguished (`resolving: true`) on seek. Legacy replays
+   precomputed before this field landed carry `undefined` → seek degrades
+   to today's empty-overlay behavior. `replay-handlers.ts` caches the
+   source `WorkerReplayPayload` (not the precomputed states), so existing
+   replays inherit the fix on next open. See F9-bis section above for
+   the 3-consumer table + precompute timing rule.
+
 ### Chain State Machine Rules
 
 1. **`ChainResolutionManager.isResolving`** is a **pure observer** of
@@ -1607,13 +1675,65 @@ and the JSON dump goes to your clipboard for bug-report inclusion.
 
 ### Layer 3 — Playwright debug harness
 
-`front/e2e/debug-replay-harness.ts` (`runReplayDebug(ctx, { replayId,
-perspective, screenshotOn, buildFirst, fromEvent, timeoutSec })` —
-first arg is the Playwright `BrowserContext`) is the
-batch-mode equivalent: scripted replay playback, console capture,
-screenshots, JSON snapshots, and a Markdown report.
+Two stacked entry points share the same plumbing (login + optional `ng
+build` + static server + screenshot/snapshot capture + Markdown report).
+Pick the entry point that matches your scenario:
 
-Output goes to `_bmad-output/debug-replay/<tag>/`:
+**A — Play through to end.** `front/e2e/debug-replay-harness.ts` exports
+`runReplayDebug(ctx, { replayId, perspective, screenshotOn, buildFirst,
+fromEvent, timeoutSec })`. Opens the replay, clicks Play, waits for the
+end overlay. Use this when the bug surfaces during natural playback and
+you just need a captured trace. First arg is the Playwright
+`BrowserContext`.
+
+**B — Scenario-based (seek / toggle / step / assert).** `front/e2e/replay-debug-driver.ts`
+exports `setupReplaySession(ctx, opts)` + `ReplayDebugDriver`. Use this
+when the bug requires a specific user-driven trajectory — mid-chain
+seek, perspective flip, prompt-mode toggle, etc. Pattern:
+
+```ts
+const session = await setupReplaySession(ctx, { replayId, perspective: 1 });
+try {
+  await session.driver.waitForBoardStates(50);
+  await session.driver.seek(42);                 // jump into a chain
+  await session.capture('after-seek-mid-chain');
+  const cs = await session.driver.chainState();   // assert overlay restored
+  expect(cs.activeChainLinks.length).toBeGreaterThan(0);
+  await session.driver.togglePerspective();
+  await session.capture('after-perspective-flip');
+} finally {
+  await session.finalize();
+  await session.page.close();
+}
+```
+
+`ReplayDebugDriver` methods (all `async`, all go through the SAME
+component handlers the transport-bar invokes on click — fires
+`abortAndClean()` + `gameLogRebuildTick++` exactly like a real click) :
+
+- **Navigation** : `seek(idx)`, `stepForward()`, `stepBack()`,
+  `skipStart()`, `skipEnd()`, `playPause()`.
+- **Toggles** : `togglePerspective()`, `toggleAnimations()`,
+  `togglePromptMode()`.
+- **Read-only inspectors** : `currentIndex()`, `totalBoardStates()`,
+  `perspectiveIndex()`, `animationsEnabled()`, `promptMode()`,
+  `isPlaying()`, `chainState()` (live read of
+  `processor.activeChainLinks` + `chainPhase`),
+  `currentStateChainSnapshot()` (the precompute's embedded
+  `PreComputedState.chainSnapshot` for the current index — F9-bis
+  verification surface), `fullSnapshot()` (whole `__skytrixDebug.snapshot()`).
+- **Wait helpers** : `waitForIndex(target)`, `waitForBoardStates(target)`,
+  `waitForEndOverlay(timeout)`.
+
+The driver talks to a stable global surface (`window.__skytrixDebug.replay`,
+wired in `replay-page.component.ts:bindToWindow` block) instead of DOM
+selectors that may shift when the transport-bar / timeline is reworked.
+Dev-only by design — the surface is gated on `isDevMode()`. Adding a new
+debug action ? Wire it once in the component's `bindToWindow` block AND
+add the typed wrapper on `ReplayDebugDriver` so consumers get
+auto-completion + tsc drift detection.
+
+**Common to both A and B** — output goes to `_bmad-output/debug-replay/<tag>/`:
 
 - `report.md` — timeline of captures, warnings, errors, last 100 PIPELINE
   lines. Read this first.
@@ -1622,7 +1742,7 @@ Output goes to `_bmad-output/debug-replay/<tag>/`:
 - `snapshots/<idx>-<label>.json` — `__skytrixDebug.snapshot()` dump
   paired with each screenshot.
 
-Two modes:
+Two run modes:
 
 1. **`buildFirst: false`** (fast, fragile) — points at the user's running
    `ng serve`. Iterative dev mode. HMR can truncate captures if you edit
@@ -1638,11 +1758,11 @@ npm run debug:replay              # default example spec
 npx playwright test e2e/<spec>    # specific spec
 ```
 
-Copy `debug-replay-example.spec.ts` as the template for a new bug
-investigation — set the `replayId`, `perspective`, and `screenshotOn`
-trigger substrings. The trigger pattern that worked for the 2026-05-18
-EMZ resolver bug was `screenshotOn: ['travel skipped']` — every `travel
-skipped` warn captures a frame + snapshot at the bug moment.
+Copy `debug-replay-example.spec.ts` as the template for the play-to-end
+pattern. The trigger pattern that worked for the 2026-05-18 EMZ resolver
+bug was `screenshotOn: ['travel skipped']` — every `travel skipped` warn
+captures a frame + snapshot at the bug moment. For scenario-based
+debugging, write a new spec that imports `setupReplaySession` directly.
 
 ### What NOT to instrument
 
@@ -1977,6 +2097,89 @@ every connection service (`duel-connection.ts`,
 outdated, refresh" UX rather than a generic "connection lost". Losing
 this branch reads as a transient network error to the user and
 triggers an infinite reconnect loop on stale bundles.
+
+## Isolated dev-stack for e2e + Claude debug (`scripts/dev-stack.mjs`)
+
+The Playwright e2e suite needs the full stack up (postgres + back + duel
++ front). Running the suite against the user's hand-driven stack on
+canonical ports collides with whatever they're doing in the browser —
+data writes from tests pollute the dev DB, the back can't reload on
+code changes while a test holds a WS, etc. The fix : an **isolated
+parallel stack on shifted ports** that the user's stack ignores
+completely.
+
+| Service       | User stack (canonical) | dev-stack (isolated)             |
+|---------------|------------------------|----------------------------------|
+| Postgres      | `:5432`                | `:15432` (Docker, dedicated vol) |
+| back Spring   | `:8080` / `:8081`      | `:18080` / `:18081`              |
+| duel-server   | `:3001`                | `:13001`                         |
+| front Angular | `:4200`                | `:14200`                         |
+
+**CLI** — `node scripts/dev-stack.mjs <cmd>` :
+
+- `up [--only=db,back,duel,front]` — bring stack up (idempotent ; skips
+  services already responding on their probe)
+- `down [--only=...]` — stop managed services (`taskkill /T /F` on
+  Windows ; SIGTERM→SIGKILL after 5s on POSIX)
+- `restart <svc>` — `down` + `up` a single service (use after editing
+  duel-server code : ~5s vs ~30s for a full `up`)
+- `status` — table of pid / port / probe / uptime
+- `logs <svc> [--tail=N]` — tail per-service log (default N=100)
+- `sync-db` — `pg_dump` user's `:5432` → restore into `:15432` (needed
+  to debug a specific replay/deck/user that lives only in the user's DB)
+- `reset-db` — drop the Postgres volume + recreate (escape hatch when
+  the isolated DB gets polluted by tests)
+- `doctor` — pre-flight checks (Docker daemon, mvnw, port collisions)
+
+**Playwright integration** — `playwright.config.ts` targets the user's
+hand-driven stack on canonical ports (`:4200` / `:8080`) **by default**.
+This matches the typical workflow where the user is actively coding in
+the browser and wants Playwright to drive what they see.
+`PW_AUTO_STACK=1` opt-in flips on `globalSetup` → `ensureStack()` for
+the isolated stack on shifted ports — use this when Claude debugs e2e
+without colliding with the user's session. `helpers.ts` reads
+`E2E_BASE_URL` + `E2E_BACK_URL` env vars set by the config when
+auto-stack is on ; otherwise it falls back to canonical URLs.
+
+**Front config plumbing** — the `e2e` Angular configuration
+(`angular.json`) swaps `environment.ts` → `environment.e2e.ts` (which
+points `apiUrl` / `wsUrl` at the isolated ports) and uses
+`src/proxy.e2e.conf.json` for the dev-server's `/api` rewrite.
+
+**State** — `scripts/.dev-stack/` (gitignored) holds `pids.json` +
+per-service `*.log` files. Log files are append-only across runs ;
+delete the dir to start fresh.
+
+**When to use what** :
+
+- *User is running e2e against their own stack* → `npx playwright test`.
+  Default config targets `:4200` / `:8080`. Assumes the user's stack is
+  already up.
+- *I (Claude) need to run e2e without colliding with user's session* →
+  `PW_AUTO_STACK=1 npx playwright test`. `globalSetup` brings up whatever's
+  missing in the isolated stack. First run is slow (~90s for cold back) ;
+  subsequent runs reuse already-up services.
+- *I need to inspect what the back/duel/front did during a test* → read
+  `scripts/.dev-stack/{back,duel,front}.log` directly. They're written
+  in real time, no harness involvement.
+- *User changed duel-server code, I need to pick it up* →
+  `node scripts/dev-stack.mjs restart duel` (~5s). HMR covers front
+  changes ; back changes need `restart back` (slow, ~30s).
+- *User wants me to debug a replay from their DB* → `node scripts/dev-stack.mjs sync-db`.
+  Snapshots their entire DB into the isolated one. Re-run when they generate
+  new replays.
+
+**Pitfalls** :
+
+- Postgres container survives `down` — its volume is persistent by
+  design. Use `reset-db` to truly wipe.
+- The Spring Boot back takes 30-60s to start (Hibernate + Flyway). First
+  `up` of the session is the slow one ; idempotent re-`up` is ~2s.
+- `ng serve --configuration e2e` rebuilds from scratch the first time
+  (~30-60s). The build is cached on disk after that.
+- Windows `taskkill /T /F` kills the whole process tree (mvnw → java,
+  npm → node, npx → ng → node). Don't simplify to a plain `kill` — the
+  parents are shims that don't propagate signals.
 
 ## Solver Interruption Tags
 

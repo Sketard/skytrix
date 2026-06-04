@@ -34,6 +34,7 @@ export type DuelBucket =
   | 'serialize'
   | 'duelProcess'
   | 'preProcessOverlays'
+  | 'preProcessHandCounts'
   | 'workerColdStart';
 
 const BUCKETS: DuelBucket[] = [
@@ -43,6 +44,7 @@ const BUCKETS: DuelBucket[] = [
   'serialize',
   'duelProcess',
   'preProcessOverlays',
+  'preProcessHandCounts',
   'workerColdStart',
 ];
 

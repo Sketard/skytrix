@@ -7,6 +7,7 @@
 // =============================================================================
 
 import type { Player, BoardStatePayload, CardInfo } from './duel-ws-shared.types';
+import type { ChainingMsg } from './duel-ws-game.types';
 // Cross-file import: DecisionMoment.prompt is the union of all server
 // messages. Pulled lazily via the index re-export to avoid duplicating
 // the union here.
@@ -35,6 +36,29 @@ export interface PreComputedState {
   decisions?: DecisionMoment[];
   /** Chain link index (0-based) when this state is part of a chain resolution. */
   chainIndex?: number;
+  /** Server-side chain state snapshot, embedded when this state was captured
+   *  while a chain is open (`chainPhase !== 'idle'`). Mirrors the PvP
+   *  `ChainStateMsg` shape so the replay viewer restores via the same
+   *  `processor.restoreChainState` path as the PvP reconnect handshake.
+   *  Without this, a seek that lands mid-chain leaves the overlay empty and
+   *  chain badges invisible because the processor was wiped by `abort()`
+   *  and no `MSG_CHAINING(1..N-1)` is re-fed.
+   *
+   *  F9 (cross-side `chainPhase` parity) gains a 3rd consumer with this
+   *  field: `replay-precompute.ts` now also runs `applyChainTransition` to
+   *  build the snapshot. See CLAUDE.md → "Cross-side `chainPhase` parity (F9)".
+   *
+   *  Optional: states outside chain windows + legacy replays precomputed
+   *  before this field landed carry `undefined` → seek behavior degrades
+   *  to today's empty-overlay. Replay precompute runs on every viewer open
+   *  (`replay-handlers.ts` caches the source `WorkerReplayPayload`, not the
+   *  precomputed states), so existing replays inherit the fix immediately. */
+  chainSnapshot?: {
+    links: ChainingMsg[];
+    phase: 'building' | 'resolving';
+    negatedIndices: number[];
+    currentSolvingChainIndex: number | null;
+  };
 }
 
 export interface ForkSanityFields {

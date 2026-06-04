@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 
 import { syncAfterBoardState, type AnimationDataSource, type QueueDirective, type QueueEntry } from '../duel-page/animation-data-source';
+import { chainingMsgsToLinkStates } from '../duel-page/chain-state-restore.utils';
 import { DuelEventProcessor } from '../duel-page/duel-event-processor';
 import { DuelLogCategory, DuelLogger } from '../duel-page/duel-logger';
 import { RenderedBoardStateService, type BoardStateView } from '../duel-page/rendered-board-state.service';
@@ -379,6 +380,32 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
     // post-jump fresh-state commit so a separate tag preserves the audit
     // trail without conflating the two semantic events.
     this.rbs.commitAll('replay:jumpToState');
+    // F9-bis (2026-06-04) — restore chain state on mid-chain seek. Without
+    // this, the processor wiped by `abort()` leaves the overlay + chain
+    // badges empty even though the target state is semantically inside a
+    // chain. The precompute embeds the server-side `ChainStateContainer`
+    // snapshot on every state captured while `chainPhase !== 'idle'`, and
+    // we restore via the SAME code path as the PvP `CHAIN_STATE` reconnect
+    // handshake (`processor.restoreChainState` + `chainingMsgsToLinkStates`
+    // helper) so the two paths can't drift. `applyChainSolving` mirrors
+    // the live worker emitting `MSG_CHAIN_SOLVING` after the handshake:
+    // it sets `chainPhase='resolving'` (no-op if already resolving from
+    // restoreChainState) AND flips the matched link's `resolving` flag so
+    // the in-resolution link is visually distinguished — without it, all
+    // restored links look identical even when one is mid-resolution.
+    // Legacy replays without `chainSnapshot` keep today's empty-overlay
+    // behavior on mid-chain seek; reprocomputing a replay attaches the
+    // field (replay-handlers.ts caches the source WorkerReplayPayload,
+    // not the precomputed states, so existing replays inherit the fix
+    // immediately on next open).
+    if (state.chainSnapshot) {
+      const negatedSet = new Set(state.chainSnapshot.negatedIndices);
+      const links = chainingMsgsToLinkStates(state.chainSnapshot.links, negatedSet);
+      this.processor.restoreChainState(links, state.chainSnapshot.phase);
+      if (state.chainSnapshot.currentSolvingChainIndex !== null) {
+        this.processor.applyChainSolving(state.chainSnapshot.currentSolvingChainIndex);
+      }
+    }
   }
 
   ngOnDestroy(): void {

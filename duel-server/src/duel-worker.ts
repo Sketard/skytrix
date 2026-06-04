@@ -28,6 +28,7 @@ import {
   buildSettlingSourceFifo, consumeSettlingSource,
   type PreProcessOverlayKey, type SettlingSourceFifo,
 } from './pre-process-overlays.js';
+import { capturePreProcessHandCounts } from './pre-process-hand-counts.js';
 import { REASON_XYZ_MATERIAL_SETTLE } from './ocgcore-reason-flags.js';
 import { CardDbCache } from './card-db-cache.js';
 import { resolveDeckLoadOrder, normalizeReplayDeck } from './deck-load-order.js';
@@ -295,8 +296,9 @@ function transformMessage(
   msg: import('@n1xx1/ocgcore-wasm').OcgMessage,
   preProcessOverlays?: Map<import('./pre-process-overlays.js').PreProcessOverlayKey, number[]>,
   settlingFifo?: import('./pre-process-overlays.js').SettlingSourceFifo,
+  handCountsPreBatch?: import('./pre-process-hand-counts.js').HandCountSnapshot,
 ): ServerMessage | null {
-  return transformMessageExtracted(msg, ocgContext, lookupContext, skipRpsFlag, preProcessOverlays, settlingFifo);
+  return transformMessageExtracted(msg, ocgContext, lookupContext, skipRpsFlag, preProcessOverlays, settlingFifo, handCountsPreBatch);
 }
 
 /** Worker-bound `transformResponse` (audit U4) — forwards the lookup context
@@ -676,6 +678,18 @@ function runDuelLoop(): void {
     // are tagged ; shared with every transformMessage call of this batch.
     const settlingFifo = buildSettlingSourceFifo(preProcessOverlays);
 
+    // F9-bis hand-discard fix (2026-06-04) — capture HAND cardCode counts
+    // BEFORE the batch. Used by the CHAINING transform to populate
+    // `MSG_CHAINING.handCopiesAtChaining`, which lets the client refuse
+    // to misroute a chain badge to a second copy when the activated card
+    // has been discarded in the same batch (cost). Same parity contract
+    // as `preProcessOverlays` — live PvP + replay precompute use the same
+    // pre-batch snapshot mechanism.
+    const handCountsPreBatch = duelInstr.time(
+      'preProcessHandCounts',
+      () => capturePreProcessHandCounts(core!, duel!, dlog),
+    );
+
     let status: number;
     try {
       status = duelInstr.time('duelProcess', () => core!.duelProcess(duel!));
@@ -726,7 +740,7 @@ function runDuelLoop(): void {
       // on MSG_MOVE for XYZ leaving MZONE (β.3 cas #12 Commit 0bis).
       // settlingFifo tags GRAVE→GRAVE settlings with their source XYZ MZONE
       // seq for the discriminating rule predicate (B3 post-review).
-      const dto = transformMessage(msg, preProcessOverlays, settlingFifo);
+      const dto = transformMessage(msg, preProcessOverlays, settlingFifo, handCountsPreBatch);
       if (dto) {
         if (dto.type === 'MSG_MOVE') {
           dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });

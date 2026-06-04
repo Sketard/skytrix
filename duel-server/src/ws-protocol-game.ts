@@ -139,6 +139,19 @@ export interface ChainingMsg {
   // Resolved effect text for `description` — populated server-side via
   // `resolveDescription` (cards.cdb). Optional: absent on legacy payloads.
   descriptionText?: string;
+  // Number of copies of `cardCode` in `player`'s HAND at the moment of
+  // activation. Populated server-side by counting the HAND zone in
+  // `transformMessage` (CHAINING transform). Used by the front-side hand
+  // chain-badge resolver (`findCurrentIndex` in chain-badge.utils.ts) to
+  // tell apart "the activated card is still in hand (badge it)" from "the
+  // activated card has been discarded and only its second copy remains
+  // (do NOT badge the second copy)". Without this counter the resolver
+  // matches by `(cardCode, sequence proximity)` and misroutes the badge.
+  // Only emitted when `location === HAND` — the field is meaningless for
+  // activations from MZONE/SZONE/GY/etc. and stays undefined there.
+  // Legacy payloads predating the field also carry undefined; the front
+  // gracefully degrades to the pre-fix behavior in that case.
+  handCopiesAtChaining?: number;
 }
 
 export interface ChainSolvingMsg {

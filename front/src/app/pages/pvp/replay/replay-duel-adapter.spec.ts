@@ -389,6 +389,141 @@ describe('ReplayDuelAdapter', () => {
       expect(adapter.boardStateView.renderedState().players[0].lp).toBe(6000);
       expect(adapter.boardStateView.renderedState().players[1].lp).toBe(3000);
     });
+
+    // F9-bis (2026-06-04) — mid-chain seek MUST restore activeChainLinks +
+    // chainPhase + the resolving flag of the in-resolution link, otherwise
+    // the overlay and chain badges stay empty even though the target state
+    // is semantically inside a chain.
+    describe('F9-bis chainSnapshot restore', () => {
+      const link = (chainIndex: number, cardCode = 100 + chainIndex, player: Player = 0 as Player): ChainingMsg => ({
+        type: 'MSG_CHAINING', chainIndex, cardCode, cardName: `Card ${chainIndex}`,
+        player, location: LOCATION.SZONE, sequence: chainIndex, description: 0,
+      });
+
+      it('restores activeChainLinks + chainPhase from chainSnapshot on mid-chain seek', () => {
+        const target = precomputed({
+          chainSnapshot: {
+            links: [link(0), link(1)],
+            phase: 'resolving',
+            negatedIndices: [],
+            currentSolvingChainIndex: null,
+          },
+        });
+
+        adapter.jumpToState(target);
+
+        expect(adapter.activeChainLinks().length).toBe(2);
+        expect(adapter.activeChainLinks()[0].chainIndex).toBe(0);
+        expect(adapter.activeChainLinks()[1].chainIndex).toBe(1);
+        expect(adapter.chainPhase()).toBe('resolving');
+      });
+
+      it('leaves processor empty when chainSnapshot is absent (legacy replay)', () => {
+        const target = precomputed({ chainSnapshot: undefined });
+        adapter.jumpToState(target);
+        expect(adapter.activeChainLinks()).toEqual([]);
+        expect(adapter.chainPhase()).toBe('idle');
+      });
+
+      it('propagates negatedIndices to the matched link', () => {
+        const target = precomputed({
+          chainSnapshot: {
+            links: [link(0), link(1)],
+            phase: 'building',
+            negatedIndices: [0],
+            currentSolvingChainIndex: null,
+          },
+        });
+
+        adapter.jumpToState(target);
+
+        expect(adapter.activeChainLinks()[0].negated).toBeTrue();
+        expect(adapter.activeChainLinks()[1].negated).toBeFalse();
+      });
+
+      it('flips resolving=true on the link matched by currentSolvingChainIndex', () => {
+        // Without applyChainSolving after restoreChainState, all restored
+        // links would have resolving=false and the in-resolution link
+        // would not be visually distinguished.
+        const target = precomputed({
+          chainSnapshot: {
+            links: [link(0), link(1), link(2)],
+            phase: 'resolving',
+            negatedIndices: [],
+            currentSolvingChainIndex: 1,
+          },
+        });
+
+        adapter.jumpToState(target);
+
+        expect(adapter.activeChainLinks()[0].resolving).toBeFalse();
+        expect(adapter.activeChainLinks()[1].resolving).toBeTrue();
+        expect(adapter.activeChainLinks()[2].resolving).toBeFalse();
+        expect(adapter.chainPhase()).toBe('resolving');
+      });
+
+      it('skips applyChainSolving when currentSolvingChainIndex is null (building phase)', () => {
+        const target = precomputed({
+          chainSnapshot: {
+            links: [link(0), link(1)],
+            phase: 'building',
+            negatedIndices: [],
+            currentSolvingChainIndex: null,
+          },
+        });
+
+        adapter.jumpToState(target);
+
+        expect(adapter.activeChainLinks().every(l => !l.resolving)).toBeTrue();
+        expect(adapter.chainPhase()).toBe('building');
+      });
+
+      it('clears state from a previous chain before restoring the new snapshot', () => {
+        // Seed the processor with stale state by jumping to a snapshot,
+        // then re-jumping to a different snapshot. `abort()` inside
+        // jumpToState wipes activeChainLinks first; the restore then
+        // builds on a clean slate.
+        adapter.jumpToState(precomputed({
+          chainSnapshot: {
+            links: [link(0)],
+            phase: 'building',
+            negatedIndices: [],
+            currentSolvingChainIndex: null,
+          },
+        }));
+        expect(adapter.activeChainLinks().length).toBe(1);
+
+        adapter.jumpToState(precomputed({
+          chainSnapshot: {
+            links: [link(0), link(1), link(2)],
+            phase: 'resolving',
+            negatedIndices: [],
+            currentSolvingChainIndex: 2,
+          },
+        }));
+
+        expect(adapter.activeChainLinks().length).toBe(3);
+        expect(adapter.activeChainLinks()[2].resolving).toBeTrue();
+      });
+
+      it('after seek with snapshot, then jumping to a legacy state, the processor is empty', () => {
+        // Mixed-replay safety: a session that seeks into a fixed (snapshot-
+        // bearing) state then into a legacy state must NOT leak the prior
+        // chain state. The `abort()` inside jumpToState handles this.
+        adapter.jumpToState(precomputed({
+          chainSnapshot: {
+            links: [link(0)],
+            phase: 'resolving',
+            negatedIndices: [],
+            currentSolvingChainIndex: 0,
+          },
+        }));
+        adapter.jumpToState(precomputed({ chainSnapshot: undefined }));
+
+        expect(adapter.activeChainLinks()).toEqual([]);
+        expect(adapter.chainPhase()).toBe('idle');
+      });
+    });
   });
 
   describe('resetProcessorForTransition (via feedTransition)', () => {

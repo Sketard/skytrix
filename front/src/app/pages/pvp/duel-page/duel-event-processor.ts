@@ -136,6 +136,7 @@ export class DuelEventProcessor {
       resolving: false,
       negated: false,
       descriptionText: msg.descriptionText,
+      handCopiesAtChaining: msg.handCopiesAtChaining,
     };
   }
 

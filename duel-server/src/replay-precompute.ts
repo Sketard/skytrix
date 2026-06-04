@@ -1,10 +1,12 @@
 import type { OcgCoreSync, OcgDuelHandle, OcgMessage } from '@n1xx1/ocgcore-wasm';
 import { OcgMessageType, OcgProcessResult } from '@n1xx1/ocgcore-wasm';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
+import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import {
   capturePreProcessOverlays, buildSettlingSourceFifo,
   type PreProcessOverlayKey, type SettlingSourceFifo,
 } from './pre-process-overlays.js';
+import { capturePreProcessHandCounts, type HandCountSnapshot } from './pre-process-hand-counts.js';
 import { filterMessage } from './message-filter.js';
 import type { DuelLogger } from './logger.js';
 import type { InitReplayMessage } from './types.js';
@@ -16,6 +18,7 @@ import type {
   Player,
   PreComputedState,
   DecisionMoment,
+  ChainingMsg,
 } from './ws-protocol.js';
 import { LOCATION } from './ws-protocol.js';
 
@@ -184,7 +187,7 @@ export interface ReplayPrecomputeDeps {
   duelId: string;
   dlog: DuelLogger;
   port: PortLike;
-  transformMessage: (msg: OcgMessage, preProcessOverlays?: Map<PreProcessOverlayKey, number[]>, settlingFifo?: SettlingSourceFifo) => ServerMessage | null;
+  transformMessage: (msg: OcgMessage, preProcessOverlays?: Map<PreProcessOverlayKey, number[]>, settlingFifo?: SettlingSourceFifo, handCountsPreBatch?: HandCountSnapshot) => ServerMessage | null;
   updateState: (msg: OcgMessage) => void;
   buildBoardState: () => ServerMessage;
   cleanup: () => void;
@@ -253,6 +256,7 @@ function flushState(
   label: string,
   responseIndex: number,
   chainIndex?: number,
+  chainSnapshot?: PreComputedState['chainSnapshot'],
 ): void {
   // Skip empty states (only SELECT_*/WAITING_RESPONSE, no visual events)
   if (!label) return;
@@ -264,7 +268,36 @@ function flushState(
     responseCount: responseIndex,
     ...(decisions.length > 0 ? { decisions: [...decisions] } : {}),
     ...(chainIndex != null ? { chainIndex } : {}),
+    ...(chainSnapshot ? { chainSnapshot } : {}),
   });
+}
+
+/** Build a `chainSnapshot` payload from the current chain state container,
+ *  or `undefined` when no chain is open (so flushState skips the field).
+ *
+ *  Called from every flushState site so a state captured mid-chain carries
+ *  the snapshot the replay viewer needs to restore `activeChainLinks` +
+ *  `chainPhase` on a seek that lands inside the chain. Mirrors the PvP
+ *  `CHAIN_STATE` reconnect handshake — same shape, same restore code path
+ *  (`processor.restoreChainState`). F9 (cross-side `chainPhase` parity)
+ *  gains a 3rd consumer with this function: replay-precompute now also
+ *  runs `applyChainTransition` to drive `chainStateContainer`. */
+function buildChainSnapshot(container: ChainStateContainer): PreComputedState['chainSnapshot'] {
+  if (container.chainPhase === 'idle') return undefined;
+  // F9-bis bug fix (2026-06-04) — defensive shallow copy of `activeChainLinks`.
+  // `applyChainTransition` MUTATES the underlying array (push on MSG_CHAINING),
+  // so embedding a direct reference made every snapshot point to the SAME
+  // array — by the time the precompute finishes pushing all N links, all N
+  // states' snapshots displayed `[link0, …, linkN]` instead of growing
+  // [link0], [link0, link1], ... See diagnostic spec
+  // `f9-bis-diagnostic.spec.ts` for the symptom (state 5 carrying 4 links
+  // even though only 1 MSG_CHAINING was in its events[]).
+  return {
+    links: [...container.activeChainLinks] as ChainingMsg[],
+    phase: container.chainPhase,
+    negatedIndices: [...container.negatedChainIndices],
+    currentSolvingChainIndex: container.currentSolvingChainIndex,
+  };
 }
 
 export function runReplayPreComputation(
@@ -290,6 +323,16 @@ export function runReplayPreComputation(
   // Local chain tracker — replay precompute doesn't share state with cancel,
   // so a per-run instance is enough (vs `liveChainTracker` for live PvP).
   const chainTracker = new ChainSnapshotTracker();
+  // F9-bis (2026-06-04) — local chain state container driven by the same
+  // `applyChainTransition` the live worker uses (`worker-message-router.ts`).
+  // Embedded into every `PreComputedState` captured while a chain is open
+  // (`chainPhase !== 'idle'`) so the replay viewer can restore
+  // `activeChainLinks` + `chainPhase` on a mid-chain seek via
+  // `processor.restoreChainState` — the same code path as the PvP
+  // `CHAIN_STATE` reconnect handshake. Without this, seeking into a chain
+  // leaves the overlay + chain badges empty (the processor is wiped by
+  // `adapter.abort()` and no `MSG_CHAINING(1..N-1)` is re-fed).
+  const chainStateContainer: ChainStateContainer = emptyChainState();
   let iterations = 0;
 
   dlog.log('Starting pre-computation', { responses: msg.playerResponses.length });
@@ -311,6 +354,11 @@ export function runReplayPreComputation(
     // the snapshot. Same as runDuelLoop ; replay parity by construction
     // (transformMessage is shared, the FIFO is built and consumed identically).
     const settlingFifo = buildSettlingSourceFifo(preProcessOverlays);
+    // F9-bis hand-discard fix (2026-06-04) — capture HAND cardCode counts
+    // BEFORE the batch, so MSG_CHAINING carries `handCopiesAtChaining`
+    // even when its own cost MSG_MOVE is in the same batch (querying the
+    // live HAND post-process would already reflect the discard).
+    const handCountsPreBatch = capturePreProcessHandCounts(core, duel, dlog);
 
     let status: number;
     try {
@@ -337,7 +385,7 @@ export function runReplayPreComputation(
       // Flush accumulated events BEFORE phase update so boardState captures the old phase
       if (rawMsg.type === OcgMessageType.NEW_PHASE) {
         if (events.length > 0 || currentDecisions.length > 0) {
-          flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+          flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, undefined, buildChainSnapshot(chainStateContainer));
           events = [];
           currentDecisions = [];
         }
@@ -354,7 +402,7 @@ export function runReplayPreComputation(
       // Track turn changes — flush accumulated decisions before emitting turn batch
       if (rawMsg.type === OcgMessageType.NEW_TURN) {
         if (events.length > 0 || currentDecisions.length > 0) {
-          flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+          flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, undefined, buildChainSnapshot(chainStateContainer));
           events = [];
           currentDecisions = [];
         }
@@ -371,7 +419,7 @@ export function runReplayPreComputation(
       // matériaux on the resulting MSG_MOVE (β.3 cas #12 Commit 0bis).
       // settlingFifo tags GRAVE→GRAVE settlings with sourceMzoneSeq for the
       // discriminating rule predicate (B3 post-review).
-      const translated = transformMessage(rawMsg, preProcessOverlays, settlingFifo);
+      const translated = transformMessage(rawMsg, preProcessOverlays, settlingFifo, handCountsPreBatch);
       if (translated) {
         const filtered = filterMessage(translated, 0 as Player, true); // omniscient
         if (filtered) {
@@ -383,11 +431,26 @@ export function runReplayPreComputation(
           // better than no snapshot at all.
           chainTracker.process(filtered, () => (buildBoardState() as BoardStateMsg).data);
 
+          // F9-bis (2026-06-04) — chain state container transition timing.
+          // The container drives `chainSnapshot` on every flushed state. The
+          // rule is: a flushed state's snapshot must reflect the chain state
+          // AFTER the last event in the state's `events[]`. So
+          // `applyChainTransition` happens AFTER any flush triggered by
+          // `filtered` itself (CHAINING / CHAIN_END branches below — those
+          // flush events that PRECEDE `filtered`) and BEFORE `filtered` is
+          // pushed into `events[]` for any other branch (so the next flush
+          // triggered by a later message sees the post-transition state on
+          // `filtered`). Concretely: CHAINING/CHAIN_END handle their own
+          // transition timing inline; every other branch falls through to
+          // the `applyChainTransition` call at the end.
+
           // Track hint/confirmedCards accumulators (metadata, not pushed to events)
           if (filtered.type === 'MSG_HINT') {
             lastHint = { hintType: filtered.hintType, value: filtered.value, cardName: filtered.cardName };
+            applyChainTransition(chainStateContainer, filtered);
           } else if (filtered.type === 'MSG_CONFIRM_CARDS') {
             lastConfirmedCards = filtered.cards;
+            applyChainTransition(chainStateContainer, filtered);
             events.push(filtered); // Also push to events so the front-end can animate the reveal
           } else if (filtered.type !== 'SELECT_IDLECMD' && filtered.type !== 'SELECT_BATTLECMD') {
             // Flush before each chain activation so each effect gets its own timeline entry.
@@ -406,30 +469,51 @@ export function runReplayPreComputation(
             // sure the PvP counterpart still matches the new contract.
             if (filtered.type === 'MSG_CHAINING') {
               if (events.length > 0) {
-                flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, activeChainIndex ?? undefined);
+                // F9-bis — flush BEFORE applyChainTransition so the snapshot
+                // reflects the chain state as of the events being flushed
+                // (which precede this `MSG_CHAINING`). For link 1 (idle →
+                // building transition), the pre-transition state is `idle`
+                // → snapshot is undefined. For link N≥2, the pre-transition
+                // state already has links 1..N-1, matching the events.
+                flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, activeChainIndex ?? undefined, buildChainSnapshot(chainStateContainer));
                 events = [];
                 currentDecisions = [];
               }
               activeChainIndex = filtered.chainIndex;
+              applyChainTransition(chainStateContainer, filtered);
             } else if (filtered.type === 'MSG_CHAIN_END') {
               // Flush the last chain link's events BEFORE clearing activeChainIndex,
               // so the final link keeps its chainIndex for timeline grouping.
               if (events.length > 0) {
-                flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, activeChainIndex ?? undefined);
+                // F9-bis — flush BEFORE applyChainTransition so the snapshot
+                // still reflects `phase='resolving'` or `'building'` with the
+                // full link list. After applyChainTransition the container is
+                // back to `idle` and `buildChainSnapshot` returns undefined.
+                flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, activeChainIndex ?? undefined, buildChainSnapshot(chainStateContainer));
                 events = [];
                 currentDecisions = [];
               }
               activeChainIndex = null;
+              applyChainTransition(chainStateContainer, filtered);
               // Flush MSG_CHAIN_END as its own state WITHOUT chainIndex.
               // This acts as a separator between consecutive chains in the timeline.
               // The front-end hides it (HIDDEN_LABELS in subEventSegments).
+              // No `chainSnapshot` either: `applyChainTransition` flipped phase
+              // to `idle` above, so `buildChainSnapshot` returns undefined.
               events.push(filtered);
-              flushState(buildBoardState, turnStates, events, currentDecisions, 'MSG_CHAIN_END', responseIndex);
+              flushState(buildBoardState, turnStates, events, currentDecisions, 'MSG_CHAIN_END', responseIndex, undefined, buildChainSnapshot(chainStateContainer));
               events = [];
               currentDecisions = [];
               continue; // already pushed+flushed — skip the push below
+            } else {
+              applyChainTransition(chainStateContainer, filtered);
             }
             events.push(filtered);
+          } else {
+            // SELECT_IDLECMD / SELECT_BATTLECMD — not pushed to events, but
+            // still drive the chain state container (no-op for these types,
+            // but keeps the call symmetric with the other branches).
+            applyChainTransition(chainStateContainer, filtered);
           }
         }
       }
@@ -437,7 +521,7 @@ export function runReplayPreComputation(
       // Always create a state entry for the new phase (ensures every phase appears in timeline)
       if (rawMsg.type === OcgMessageType.NEW_PHASE) {
         const phaseLabel = PHASE_LABELS[rawMsg.phase as number] ?? 'Phase Change';
-        flushState(buildBoardState, turnStates, events, currentDecisions, phaseLabel, responseIndex);
+        flushState(buildBoardState, turnStates, events, currentDecisions, phaseLabel, responseIndex, undefined, buildChainSnapshot(chainStateContainer));
         events = [];
         currentDecisions = [];
       }
@@ -456,7 +540,7 @@ export function runReplayPreComputation(
           }
           dlog.log('End of recorded responses — treating as replay end', { responseIndex, result: msg.metadata.result });
           if (events.length > 0 || currentDecisions.length > 0) {
-            flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+            flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, undefined, buildChainSnapshot(chainStateContainer));
           }
           finalizeChainGroups(turnStates);
           emitTurnBatch(port, duelId, currentTurn, turnStates);
@@ -471,7 +555,7 @@ export function runReplayPreComputation(
         if (isBoundary) {
           // Boundary prompt: flush accumulated events + decisions, then feed response
           if (events.length > 0 || currentDecisions.length > 0) {
-            flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+            flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, undefined, buildChainSnapshot(chainStateContainer));
             events = [];
             currentDecisions = [];
           }
@@ -505,7 +589,7 @@ export function runReplayPreComputation(
     if (status === OcgProcessResult.END) {
       // Capture any remaining events (MSG_WIN, final damage, etc.) into a final state
       if (events.length > 0 || currentDecisions.length > 0) {
-        flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+        flushState(buildBoardState, turnStates, events, currentDecisions, generateLabel(events), responseIndex, undefined, buildChainSnapshot(chainStateContainer));
       }
       // Emit final turn batch
       finalizeChainGroups(turnStates);
@@ -555,6 +639,7 @@ export const __test__ = {
   finalizeChainGroups,
   emitTurnBatch,
   flushState,
+  buildChainSnapshot,
   PHASE_LABELS,
   TRANSITION_BOUNDARY_PROMPTS,
   DEFAULT_MAX_ITERATIONS,

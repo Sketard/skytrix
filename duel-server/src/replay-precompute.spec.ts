@@ -10,6 +10,7 @@ import {
 } from './replay-precompute.js';
 import type { InitReplayMessage, ReplayMetadata } from './types.js';
 import type { ServerMessage, BoardStatePayload } from './ws-protocol.js';
+import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -323,9 +324,273 @@ describe('runReplayPreComputation', () => {
     // CHAIN_END always becomes its own state with label 'MSG_CHAIN_END' and no chainIndex
     expect(turn0!.states.some((s) => s.label === 'MSG_CHAIN_END' && s.chainIndex == null)).toBe(true);
   });
+
+  // F9-bis (2026-06-04) — chainSnapshot embedding. Drives the replay viewer's
+  // mid-chain seek restore. Tests pin the contract:
+  //   1. States flushed mid-chain carry a chainSnapshot reflecting the chain
+  //      state AFTER the last event in their `events[]`.
+  //   2. The MSG_CHAIN_END separator state has NO chainSnapshot (phase is
+  //      flipped to idle BEFORE that flush).
+  //   3. States flushed outside any chain have NO chainSnapshot.
+  //   4. negatedIndices and currentSolvingChainIndex are propagated.
+  describe('F9-bis chainSnapshot embedding', () => {
+    interface FlushedState { label: string; chainIndex?: number; chainSnapshot?: { links: unknown[]; phase: string; negatedIndices: number[]; currentSolvingChainIndex: number | null } }
+
+    function collectStates(port: ReturnType<typeof makeDeps>['port']): FlushedState[] {
+      const batches = port.messages.filter(m => (m as { type: string }).type === 'WORKER_REPLAY_BOARD_STATES');
+      return batches.flatMap(b => (b as { states: FlushedState[] }).states);
+    }
+
+    it('embeds chainSnapshot on mid-chain states + omits it on the MSG_CHAIN_END separator', () => {
+      const { msg, deps, port } = makeDeps([
+        {
+          status: OcgProcessResult.CONTINUE,
+          messages: [
+            // CHAINING(0) — opens the chain
+            ocg(OcgMessageType.CHAINING, { chainIndex: 0 }),
+            // CHAINING(1) — flushes the link-0 state; triggers a snapshot
+            ocg(OcgMessageType.CHAINING, { chainIndex: 1 }),
+            // CHAIN_SOLVING(0) — flips phase=resolving
+            ocg(OcgMessageType.CHAIN_SOLVING, { chainIndex: 0 }),
+            ocg(OcgMessageType.CHAIN_SOLVED, { chainIndex: 0 }),
+            ocg(OcgMessageType.CHAIN_END, {}),
+            ocg(OcgMessageType.NEW_TURN, { player: 0 }),
+          ],
+        },
+        { status: OcgProcessResult.END, messages: [ocg(OcgMessageType.WIN, { player: 0 })] },
+      ]);
+      (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) => {
+        if (m.type === OcgMessageType.CHAINING) return { type: 'MSG_CHAINING', chainIndex: (m as unknown as { chainIndex: number }).chainIndex, cardName: 'X', cardCode: 100, player: 0, location: 0x2, sequence: 0 } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_SOLVING) return { type: 'MSG_CHAIN_SOLVING', chainIndex: (m as unknown as { chainIndex: number }).chainIndex } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_SOLVED) return { type: 'MSG_CHAIN_SOLVED', chainIndex: (m as unknown as { chainIndex: number }).chainIndex } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_END) return { type: 'MSG_CHAIN_END' } as unknown as ServerMessage;
+        return null;
+      });
+
+      runReplayPreComputation(msg, deps);
+
+      const states = collectStates(port);
+      // The MSG_CHAIN_END separator MUST NOT carry chainSnapshot — by then
+      // applyChainTransition has already flipped phase to idle.
+      const endState = states.find(s => s.label === 'MSG_CHAIN_END');
+      expect(endState).toBeDefined();
+      expect(endState!.chainSnapshot).toBeUndefined();
+    });
+
+    it('chainSnapshot carries currentSolvingChainIndex during the resolving window', () => {
+      // Sequence: CHAINING(0), CHAIN_SOLVING(0), MOVE (mid-resolve, flushes via NEW_PHASE),
+      //           CHAIN_SOLVED(0), CHAIN_END.
+      // The MOVE flush should see currentSolvingChainIndex=0.
+      const { msg, deps, port } = makeDeps([
+        {
+          status: OcgProcessResult.CONTINUE,
+          messages: [
+            ocg(OcgMessageType.CHAINING, { chainIndex: 0 }),
+            ocg(OcgMessageType.CHAIN_SOLVING, { chainIndex: 0 }),
+            ocg(OcgMessageType.MOVE, {}),
+            ocg(OcgMessageType.NEW_PHASE, { phase: 4 }),
+            ocg(OcgMessageType.CHAIN_SOLVED, { chainIndex: 0 }),
+            ocg(OcgMessageType.CHAIN_END, {}),
+            ocg(OcgMessageType.NEW_TURN, { player: 0 }),
+          ],
+        },
+        { status: OcgProcessResult.END, messages: [ocg(OcgMessageType.WIN, { player: 0 })] },
+      ]);
+      (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) => {
+        if (m.type === OcgMessageType.CHAINING) return { type: 'MSG_CHAINING', chainIndex: 0, cardName: 'X', cardCode: 100, player: 0, location: 0x2, sequence: 0 } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_SOLVING) return { type: 'MSG_CHAIN_SOLVING', chainIndex: 0 } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.MOVE) return { type: 'MSG_MOVE', cardCode: 100, cardName: 'X', player: 0 } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_SOLVED) return { type: 'MSG_CHAIN_SOLVED', chainIndex: 0 } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_END) return { type: 'MSG_CHAIN_END' } as unknown as ServerMessage;
+        return null;
+      });
+
+      runReplayPreComputation(msg, deps);
+
+      const states = collectStates(port);
+      // A state captured during the resolving window MUST carry phase='resolving'
+      // and currentSolvingChainIndex=0.
+      const resolvingState = states.find(s => s.chainSnapshot?.phase === 'resolving');
+      expect(resolvingState).toBeDefined();
+      expect(resolvingState!.chainSnapshot!.currentSolvingChainIndex).toBe(0);
+      expect(resolvingState!.chainSnapshot!.links.length).toBe(1);
+    });
+
+    it('snapshots are independent across flushed states (no shared array reference)', () => {
+      // Regression for the F9-bis shared-reference bug discovered 2026-06-04:
+      // `buildChainSnapshot` originally returned `links: container.activeChainLinks`
+      // (a direct ref). `applyChainTransition` mutates that array via .push(),
+      // so by serialization time every snapshot pointed at the FINAL post-push
+      // array. The fix is `links: [...container.activeChainLinks]` (shallow copy).
+      //
+      // Scenario: 3 consecutive MSG_CHAINING in the same OCG batch, plus some
+      // intermediate non-chain events to force individual flushes between each.
+      // After the buggy implementation, the first flushed state's snapshot
+      // carries 3 links. After the fix, it carries 1.
+      const { msg, deps, port } = makeDeps([
+        {
+          status: OcgProcessResult.CONTINUE,
+          messages: [
+            ocg(OcgMessageType.CHAINING, { chainIndex: 0 }),
+            ocg(OcgMessageType.CHAINING, { chainIndex: 1 }),
+            ocg(OcgMessageType.CHAINING, { chainIndex: 2 }),
+            ocg(OcgMessageType.CHAIN_SOLVING, { chainIndex: 2 }),
+            ocg(OcgMessageType.CHAIN_SOLVED, { chainIndex: 2 }),
+            ocg(OcgMessageType.CHAIN_END, {}),
+            ocg(OcgMessageType.NEW_TURN, { player: 0 }),
+          ],
+        },
+        { status: OcgProcessResult.END, messages: [ocg(OcgMessageType.WIN, { player: 0 })] },
+      ]);
+      (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) => {
+        if (m.type === OcgMessageType.CHAINING) return { type: 'MSG_CHAINING', chainIndex: (m as unknown as { chainIndex: number }).chainIndex, cardName: `Card${(m as unknown as { chainIndex: number }).chainIndex}`, cardCode: 100, player: 0, location: 0x2, sequence: 0 } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_SOLVING) return { type: 'MSG_CHAIN_SOLVING', chainIndex: (m as unknown as { chainIndex: number }).chainIndex } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_SOLVED) return { type: 'MSG_CHAIN_SOLVED', chainIndex: (m as unknown as { chainIndex: number }).chainIndex } as unknown as ServerMessage;
+        if (m.type === OcgMessageType.CHAIN_END) return { type: 'MSG_CHAIN_END' } as unknown as ServerMessage;
+        return null;
+      });
+
+      runReplayPreComputation(msg, deps);
+
+      const states = collectStates(port);
+      // Filter to mid-chain states carrying a snapshot, in flush order.
+      const snapshotStates = states.filter(s => s.chainSnapshot);
+      expect(snapshotStates.length).toBeGreaterThanOrEqual(2);
+      // Monotonic non-decreasing link counts AND, critically, NOT all equal
+      // to the final link count — that would be the shared-reference bug.
+      const linkCounts = snapshotStates.map(s => s.chainSnapshot!.links.length);
+      for (let i = 1; i < linkCounts.length; i++) {
+        expect(linkCounts[i]).toBeGreaterThanOrEqual(linkCounts[i - 1]);
+      }
+      // At least the first mid-chain snapshot MUST carry fewer links than the
+      // last — the regression collapsed them all to the same final count.
+      expect(linkCounts[0]).toBeLessThan(linkCounts[linkCounts.length - 1]);
+    });
+
+    it('omits chainSnapshot on states flushed outside any chain', () => {
+      const { msg, deps, port } = makeDeps([
+        {
+          status: OcgProcessResult.CONTINUE,
+          messages: [
+            ocg(OcgMessageType.MOVE, {}),
+            ocg(OcgMessageType.NEW_PHASE, { phase: 4 }),
+            ocg(OcgMessageType.NEW_TURN, { player: 0 }),
+          ],
+        },
+        { status: OcgProcessResult.END, messages: [ocg(OcgMessageType.WIN, { player: 0 })] },
+      ]);
+      (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) => {
+        if (m.type === OcgMessageType.MOVE) return { type: 'MSG_MOVE', cardCode: 100, cardName: 'X', player: 0 } as unknown as ServerMessage;
+        return null;
+      });
+
+      runReplayPreComputation(msg, deps);
+
+      const states = collectStates(port);
+      // No chain ever opened — every flushed state should be snapshot-free.
+      for (const s of states) {
+        expect(s.chainSnapshot).toBeUndefined();
+      }
+    });
+  });
 });
 
 // ─── Pure helpers (label generation + chain finalization) ───────────────────
+
+describe('buildChainSnapshot (F9-bis unit)', () => {
+  // applyChainTransition + emptyChainState come from chain-state-tracker; the
+  // buildChainSnapshot under test sits in replay-precompute and we reach it
+  // via __test__ to keep its module-internal status.
+  const newContainer = (): ChainStateContainer => emptyChainState();
+  const transition = (container: ChainStateContainer, msg: ServerMessage) => applyChainTransition(container, msg);
+  const chaining = (chainIndex: number): ServerMessage => ({
+    type: 'MSG_CHAINING', chainIndex, cardCode: 100 + chainIndex,
+    cardName: `Card${chainIndex}`, player: 0, location: 0x2, sequence: chainIndex,
+  } as unknown as ServerMessage);
+
+  it('returns undefined when chainPhase is idle', () => {
+    const container = newContainer();
+    expect(__test__.buildChainSnapshot(container)).toBeUndefined();
+  });
+
+  it('returns a snapshot with the current links + phase when building', () => {
+    const container = newContainer();
+    transition(container, chaining(0));
+    const snap = __test__.buildChainSnapshot(container);
+    expect(snap).toBeDefined();
+    expect(snap!.phase).toBe('building');
+    expect(snap!.links.length).toBe(1);
+    expect(snap!.currentSolvingChainIndex).toBeNull();
+    expect(snap!.negatedIndices).toEqual([]);
+  });
+
+  it('snapshots taken across mutations are INDEPENDENT (defensive copy)', () => {
+    // This is the F9-bis shared-reference regression from 2026-06-04. The
+    // buggy version returned `links: container.activeChainLinks` directly,
+    // so every snapshot pointed at the same array. By the time the precompute
+    // finished pushing all N links, every snapshot displayed N links instead
+    // of growing from 1 to N. The shallow-copy `[...container.activeChainLinks]`
+    // is the fix this test pins.
+    const container = newContainer();
+    transition(container, chaining(0));
+    const snapA = __test__.buildChainSnapshot(container);
+    transition(container, chaining(1));
+    const snapB = __test__.buildChainSnapshot(container);
+    transition(container, chaining(2));
+    const snapC = __test__.buildChainSnapshot(container);
+
+    // Each snapshot must reflect the state at its capture moment, not the
+    // final state of the container.
+    expect(snapA!.links.length).toBe(1);
+    expect(snapB!.links.length).toBe(2);
+    expect(snapC!.links.length).toBe(3);
+
+    // Identity check: the `links` arrays must be distinct objects so that
+    // future mutations to the container don't propagate retroactively.
+    expect(snapA!.links).not.toBe(snapB!.links);
+    expect(snapB!.links).not.toBe(snapC!.links);
+    expect(snapA!.links).not.toBe(container.activeChainLinks);
+  });
+
+  it('propagates currentSolvingChainIndex when phase is resolving', () => {
+    const container = newContainer();
+    transition(container, chaining(0));
+    transition(container, chaining(1));
+    transition(container, { type: 'MSG_CHAIN_SOLVING', chainIndex: 1 } as unknown as ServerMessage);
+    const snap = __test__.buildChainSnapshot(container);
+    expect(snap!.phase).toBe('resolving');
+    expect(snap!.currentSolvingChainIndex).toBe(1);
+  });
+
+  it('propagates negatedIndices', () => {
+    const container = newContainer();
+    transition(container, chaining(0));
+    transition(container, chaining(1));
+    transition(container, { type: 'MSG_CHAIN_NEGATED', chainIndex: 0 } as unknown as ServerMessage);
+    const snap = __test__.buildChainSnapshot(container);
+    expect(snap!.negatedIndices).toContain(0);
+    expect(snap!.negatedIndices).not.toContain(1);
+  });
+
+  it('negatedIndices array is defensively copied (Set mutation does not leak)', () => {
+    const container = newContainer();
+    transition(container, chaining(0));
+    transition(container, { type: 'MSG_CHAIN_NEGATED', chainIndex: 0 } as unknown as ServerMessage);
+    const snapA = __test__.buildChainSnapshot(container);
+    transition(container, chaining(1));
+    transition(container, { type: 'MSG_CHAIN_NEGATED', chainIndex: 1 } as unknown as ServerMessage);
+    const snapB = __test__.buildChainSnapshot(container);
+    expect(snapA!.negatedIndices).toEqual([0]);
+    expect(snapB!.negatedIndices.sort()).toEqual([0, 1]);
+  });
+
+  it('after MSG_CHAIN_END the container is back to idle and snapshot is undefined', () => {
+    const container = newContainer();
+    transition(container, chaining(0));
+    transition(container, { type: 'MSG_CHAIN_END' } as unknown as ServerMessage);
+    expect(__test__.buildChainSnapshot(container)).toBeUndefined();
+  });
+});
 
 describe('replay-precompute helpers', () => {
   it('SELECT_MESSAGE_TYPES contains all SELECT_* + ANNOUNCE_* + ROCK_PAPER_SCISSORS', () => {

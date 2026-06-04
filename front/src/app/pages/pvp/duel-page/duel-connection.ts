@@ -1,12 +1,12 @@
 import { computed, signal, type Signal, type WritableSignal } from '@angular/core';
-import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState, StreamEvent } from '../types';
+import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, StreamEvent } from '../types';
 import { syncAfterBoardState, type QueueDirective, type QueueEntry } from './animation-data-source';
 import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
 import { BoardStateMsg, BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DeckPrefetchMsg, DiceResultMsg, DiceRollPromptMsg, DrawMsg, DuelEndMsg, DuelStartingMsg, ErrorMsg, FirstPlayerResultMsg, HintMsg, InactivityWarningMsg, OpponentDisconnectedMsg, PROTOCOL_VERSION, RematchCancelledMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectFirstPlayerMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionPhaseMsg, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WaitingResponseMsg, WinMsg } from '../duel-ws.types';
-import { locationToZoneId } from '../pvp-zone.utils';
+import { chainingMsgsToLinkStates } from './chain-state-restore.utils';
 import { swapBoardState } from '../board-state-swap';
 import type { WebSocketFactory } from './websocket-factory.service';
 
@@ -1277,17 +1277,15 @@ export class DuelConnection {
       this._applyStateSync(pending);
     }
     const negatedSet = new Set(message.negatedIndices);
-    const links: ChainLinkState[] = message.links.map(msg => ({
-      chainIndex: msg.chainIndex,
-      cardCode: msg.cardCode,
-      cardName: msg.cardName,
-      player: msg.player,
-      zoneId: locationToZoneId(msg.location, msg.sequence),
-      location: msg.location,
-      sequence: msg.sequence,
-      resolving: false,
-      negated: negatedSet.has(msg.chainIndex),
-    }));
+    // F9-bis (2026-06-04) — extracted to `chainingMsgsToLinkStates` so the
+    // replay viewer's mid-chain seek path reuses the same conversion.
+    // Drive-by fix in passing: `descriptionText` is now propagated (the
+    // prior inline mapping omitted it, so PvP reconnect mid-chain lost the
+    // resolved effect text — silent regression vs `buildChainLinkState`
+    // which has always included it). The omission was harmless because the
+    // text is only rendered in the chain overlay tooltips which the user
+    // rarely reads during a reconnect, but it's still a divergence.
+    const links = chainingMsgsToLinkStates(message.links, negatedSet);
     // Queue already cleared by processor.reset() inside _applyStateSync.
     this.processor.restoreChainState(links, message.phase);
   }

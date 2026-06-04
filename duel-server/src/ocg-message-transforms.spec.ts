@@ -19,6 +19,8 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
+import { OcgMessageType } from '@n1xx1/ocgcore-wasm';
+import type { OcgMessage } from '@n1xx1/ocgcore-wasm';
 import {
   transformBattle,
   transformBecomeTarget,
@@ -26,9 +28,12 @@ import {
   transformShuffleSetCard,
   transformHint,
   transformResponse,
+  transformMessage,
   type LookupContext,
+  type OcgContext,
 } from './ocg-message-transforms.js';
 import type { DuelLogger } from './logger.js';
+import { LOCATION } from './ws-protocol.js';
 
 // =============================================================================
 // Helpers
@@ -214,5 +219,91 @@ describe('transformResponse (lookup-coupled)', () => {
     const { lookup } = makeMockLookup();
     const out = transformResponse('SELECT_CARD', { indices: [0, 2] }, lookup) as any;
     expect(out).toEqual({ type: 5, indicies: [0, 2] });
+  });
+});
+
+// =============================================================================
+// transformMessage (CHAINING) — F9-bis handCopiesAtChaining propagation
+// =============================================================================
+
+describe('transformMessage (CHAINING — F9-bis handCopiesAtChaining)', () => {
+  const noOcg: OcgContext = { core: () => null, duel: () => null };
+
+  function makeChainingMsg(overrides: Partial<{ code: number; controller: 0 | 1; location: number; sequence: number; chain_size: number; description: bigint | number }> = {}): OcgMessage {
+    return {
+      type: OcgMessageType.CHAINING,
+      code: 1498449,
+      controller: 0,
+      location: LOCATION.HAND as number,
+      sequence: 3,
+      chain_size: 3,
+      description: 0n,
+      ...overrides,
+    } as unknown as OcgMessage;
+  }
+
+  it('emits handCopiesAtChaining when activation comes from HAND + counts provided', () => {
+    const { lookup } = makeMockLookup();
+    const handCounts = [new Map([[1498449, 2]]), new Map<number, number>()];
+    const out = transformMessage(
+      makeChainingMsg({ code: 1498449, controller: 0, location: LOCATION.HAND as number, chain_size: 3 }),
+      noOcg, lookup, false, undefined, undefined, handCounts,
+    ) as { type: string; handCopiesAtChaining?: number; chainIndex: number; location: number };
+    expect(out.type).toBe('MSG_CHAINING');
+    expect(out.handCopiesAtChaining).toBe(2);
+    expect(out.chainIndex).toBe(2); // chain_size - 1
+    expect(out.location).toBe(LOCATION.HAND);
+  });
+
+  it('reads the count from the controller\'s map (player isolation)', () => {
+    const { lookup } = makeMockLookup();
+    const handCounts = [
+      new Map([[100, 1]]),      // P0 has 1 copy of code 100
+      new Map([[100, 3]]),      // P1 has 3 copies of code 100
+    ];
+    const outP0 = transformMessage(
+      makeChainingMsg({ code: 100, controller: 0, location: LOCATION.HAND as number }),
+      noOcg, lookup, false, undefined, undefined, handCounts,
+    ) as { handCopiesAtChaining?: number };
+    const outP1 = transformMessage(
+      makeChainingMsg({ code: 100, controller: 1, location: LOCATION.HAND as number }),
+      noOcg, lookup, false, undefined, undefined, handCounts,
+    ) as { handCopiesAtChaining?: number };
+    expect(outP0.handCopiesAtChaining).toBe(1);
+    expect(outP1.handCopiesAtChaining).toBe(3);
+  });
+
+  it('OMITS handCopiesAtChaining when activation NOT from HAND (MZONE, SZONE, GY)', () => {
+    const { lookup } = makeMockLookup();
+    const handCounts = [new Map([[1498449, 2]]), new Map<number, number>()];
+    for (const loc of [LOCATION.MZONE, LOCATION.SZONE, LOCATION.GRAVE, LOCATION.BANISHED] as number[]) {
+      const out = transformMessage(
+        makeChainingMsg({ code: 1498449, controller: 0, location: loc }),
+        noOcg, lookup, false, undefined, undefined, handCounts,
+      ) as { handCopiesAtChaining?: number };
+      expect(out.handCopiesAtChaining).toBeUndefined();
+    }
+  });
+
+  it('OMITS the field when handCountsPreBatch is not passed (legacy callers)', () => {
+    const { lookup } = makeMockLookup();
+    const out = transformMessage(
+      makeChainingMsg({ code: 1498449, controller: 0, location: LOCATION.HAND as number }),
+      noOcg, lookup, false, undefined, undefined, /* no handCounts */
+    ) as { handCopiesAtChaining?: number };
+    expect(out.handCopiesAtChaining).toBeUndefined();
+  });
+
+  it('OMITS the field when the cardCode is not in the snapshot (e.g. count=0)', () => {
+    // Defensive: an unknown card-code in HAND maps to undefined → we omit
+    // the field rather than ship `0` (which would mean "no copies expected"
+    // and would force the front to skip every badge — wrong default).
+    const { lookup } = makeMockLookup();
+    const handCounts = [new Map<number, number>(), new Map<number, number>()];
+    const out = transformMessage(
+      makeChainingMsg({ code: 1498449, controller: 0, location: LOCATION.HAND as number }),
+      noOcg, lookup, false, undefined, undefined, handCounts,
+    ) as { handCopiesAtChaining?: number };
+    expect(out.handCopiesAtChaining).toBeUndefined();
   });
 });

@@ -284,13 +284,79 @@ describe('DuelEventProcessor', () => {
   });
 
   describe('restoreChainState', () => {
+    const linkAt = (chainIndex: number, overrides: Partial<{ resolving: boolean; negated: boolean }> = {}) => ({
+      chainIndex, cardCode: 100 + chainIndex, cardName: `Card${chainIndex}`,
+      player: 0, zoneId: 'M1', location: LOCATION.MZONE, sequence: 0,
+      resolving: false, negated: false, ...overrides,
+    });
+
     it('should restore links and phase, clearing pending entry', () => {
       proc.processMessage(chaining(0));
-      const links = [{ chainIndex: 2, cardCode: 50, cardName: 'X', player: 0, zoneId: 'M1', location: LOCATION.MZONE, sequence: 0, resolving: true, negated: false }];
+      const links = [linkAt(2, { resolving: true })];
       proc.restoreChainState(links, 'resolving');
       expect(proc.activeChainLinks()).toEqual(links);
       expect(proc.chainPhase()).toBe('resolving');
       expect(proc.hasPendingChainEntry()).toBeFalse();
+    });
+
+    // F9-bis (2026-06-04) — the replay seek path calls
+    // `processor.reset()` (via adapter.abort()) BEFORE `restoreChainState`.
+    // The reset must not leave residue that the restore would compound with.
+    it('reset then restoreChainState produces a clean state (no residue)', () => {
+      proc.processMessage(chaining(0));
+      proc.processMessage(chaining(1));
+      proc.processMessage(waitingResponse());
+      proc.applyChainSolving(0);
+      // simulate seek: reset, then restore from a snapshot
+      proc.reset();
+      const links = [linkAt(0), linkAt(1)];
+      proc.restoreChainState(links, 'building');
+      expect(proc.activeChainLinks().length).toBe(2);
+      expect(proc.chainPhase()).toBe('building');
+      expect(proc.animationQueue()).toEqual([]);
+      expect(proc.hasPendingChainEntry()).toBeFalse();
+    });
+
+    // F9-bis (2026-06-04) — the replay adapter follows restoreChainState
+    // with `applyChainSolving(currentSolvingChainIndex)` when the snapshot
+    // designates an in-resolution link. The combination MUST flip
+    // resolving=true on exactly the matched link, leaving the others alone.
+    it('restoreChainState then applyChainSolving flips resolving on the matched link only', () => {
+      const links = [linkAt(0), linkAt(1), linkAt(2)];
+      proc.restoreChainState(links, 'resolving');
+      proc.applyChainSolving(1);
+      const after = proc.activeChainLinks();
+      expect(after[0].resolving).toBeFalse();
+      expect(after[1].resolving).toBeTrue();
+      expect(after[2].resolving).toBeFalse();
+      expect(proc.chainPhase()).toBe('resolving');
+    });
+
+    it('restoreChainState preserves the negated flag on links', () => {
+      const links = [linkAt(0, { negated: true }), linkAt(1)];
+      proc.restoreChainState(links, 'building');
+      expect(proc.activeChainLinks()[0].negated).toBeTrue();
+      expect(proc.activeChainLinks()[1].negated).toBeFalse();
+    });
+
+    it('restoreChainState with empty links + idle phase is a no-op for downstream consumers', () => {
+      proc.processMessage(chaining(0));
+      proc.restoreChainState([], 'idle');
+      expect(proc.activeChainLinks()).toEqual([]);
+      expect(proc.chainPhase()).toBe('idle');
+      expect(proc.hasPendingChainEntry()).toBeFalse();
+    });
+
+    // Two consecutive restoreChainState calls (e.g. user seeks twice in
+    // a row to two different mid-chain states) must NOT compound — each
+    // call replaces the previous snapshot wholesale.
+    it('a second restoreChainState replaces the previous one wholesale', () => {
+      proc.restoreChainState([linkAt(0), linkAt(1)], 'building');
+      expect(proc.activeChainLinks().length).toBe(2);
+      proc.restoreChainState([linkAt(5)], 'resolving');
+      expect(proc.activeChainLinks().length).toBe(1);
+      expect(proc.activeChainLinks()[0].chainIndex).toBe(5);
+      expect(proc.chainPhase()).toBe('resolving');
     });
   });
 
