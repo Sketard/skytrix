@@ -441,6 +441,19 @@ export class QueueRunner {
     // inner-loop finally keeps it balanced across resets ; together with
     // the entry assert they form the C4 re-entry detection.
     this._innerLoopDepth = 0;
+    // v3 Phase 3 (2026-06-04) — drop orphaned locks BEFORE setRunning(false).
+    // The cascade `setRunning(false) → onIsRunningChange(false) →
+    // setAnimating(false) → advanceStep → assertNoLocks` would otherwise
+    // throw on the locks an in-flight handler took legitimately before
+    // its travel Promise was abandoned by `_abort.abort()` above. The
+    // handler's `.then(commit, release)` still fires post-cleanup but
+    // hits the zombie-safe `commit()` path (Option G, af3195fa) which is
+    // idempotent — no double-fire, no stale state. Also clears in-flight
+    // travels (mirror of `finalizeAndCommit()`) so the
+    // commitUnlocked-vs-floats assert doesn't fire on a subsequent sync.
+    const droppedCount = this.deps.dataSource.renderedBoardState
+      .dropOrphanedLocks('runner-requestStop');
+    if (droppedCount > 0) this.trace('requestStop:dropped-locks', { count: droppedCount });
     this.setRunning(false);
     this.trace('requestStop', { aborted: true });
   }

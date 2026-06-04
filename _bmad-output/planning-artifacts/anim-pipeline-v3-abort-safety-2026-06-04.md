@@ -143,6 +143,100 @@ plus besoin de `tolerateLocks`.
   retournant le count de locks effectivement nettoyés (pour télémétrie).
 - Appeler depuis `QueueRunner.requestStop` AVANT `setRunning(false)`.
 
+> #### 📝 Note de relecture Phase 3 (Axel, 2026-06-04, transmise à l'agent)
+>
+> **Lire le commit `af3195fa` AVANT d'écrire la Phase 3.** Il introduit
+> 2 mécanismes (Fix G zombie-safe `ZoneLock.commit`, Fix H `commitZone`
+> ciblé) qui changent les hypothèses du plan initial. Synthèse des
+> ajustements à intégrer :
+>
+> **1. Pas besoin de forcer `released=true` sur les closures `ZoneLock`
+> pending.** Le plan original disait "commit()/release() post-cleanup
+> doivent être no-op (released=true set par cancelOrphaned)". Fausse
+> piste : `released` vit dans la closure, le RBS n'a pas de handle
+> dessus sans rupture API. Inutile parce que la zombie-safe path
+> ([rendered-board-state.service.ts:286-289](../../front/src/app/pages/pvp/duel-page/rendered-board-state.service.ts#L286-L289))
+> gère déjà le cas : si une IIFE bail post-cleanup et call `commit()`,
+> ça fire `commitZone(zoneKey)` qui est idempotent. Double-fire
+> théorique, no-op en pratique.
+>
+> **2. Ne PAS étendre `commitAll`, créer une méthode distincte
+> `dropOrphanedLocks(reason: string): number`.** `commitAll` fait
+> aujourd'hui 90% de ce qu'on veut, MAIS il termine par
+> `_rendered.set(_logical())` — full sync rendered ← logical. Au
+> `requestStop` (avant `jumpToState` qui va re-setter la state cible
+> dans la foulée), ce full-sync est temporaire et peut masquer un
+> état intermédiaire incorrect. La nouvelle méthode :
+>
+> ```ts
+> dropOrphanedLocks(reason: string): number {
+>   const count = this._locks.size;
+>   if (count === 0) return 0;
+>   this.logger?.warn(`[v3] dropOrphanedLocks(${reason}) clearing ${count} locks: ${[...this._locks.keys()].join(', ')}`);
+>   for (const tid of this._safetyTimeouts) clearTimeout(tid);
+>   this._safetyTimeouts.clear();
+>   this._locks.clear();
+>   // NE PAS toucher _rendered — le caller suivant (resetForReplaySeek
+>   // → jumpToState → updateLogical → commitAll OU notifyPerspectiveSwitch
+>   // → syncRendered) pose la state cible.
+>   this._tolerateLocksDroppedCount += count;  // réutilise compteur F5 existant
+>   return count;
+> }
+> ```
+>
+> Sémantique distincte assumée : `commitAll` = terminal teardown
+> (rendered ← logical full sync), `dropOrphanedLocks` = transition
+> (clear locks + safety timers, laisse rendered intact, caller suivant
+> set la state cible).
+>
+> **3. Ordre exact dans `QueueRunner.requestStop()` — insérer le call
+> APRÈS `_innerLoopDepth = 0`, AVANT `setRunning(false)`.** C'est la
+> seule fenêtre où :
+>   - Le `_abort.abort()` a déjà fait son taf (suspended loops vont
+>     bail à leur prochain `throwIfAborted()`).
+>   - `setRunning(false)` n'a PAS encore trigger la cascade
+>     `onIsRunningChange → setAnimating(false) → advanceStep →
+>     assertNoLocks throw` (qui est la cascade du log
+>     `console-export-2026-6-4_13-57-59.log` lignes 706-733).
+>
+> ```ts
+> // queue-runner.ts requestStop() — patch après _innerLoopDepth = 0
+> const droppedCount = this.deps.dataSource.renderedBoardState
+>   .dropOrphanedLocks('runner-requestStop');
+> this.trace('requestStop:dropped-locks', { count: droppedCount });
+> this.setRunning(false);
+> ```
+>
+> **4. GARDER le compteur `_postRequestStopWindow` actif post-Phase 3.**
+> Il est instrumental Phase 1 mais devient un **détecteur de
+> régression Phase 2** : tout `lockZone()` qui fire pendant la window
+> = handler async non-wiré avec l'AbortSignal. Le compteur reste utile
+> jusqu'à la fin du chantier comme signal "Phase 2 incomplète".
+>
+> **5. Vérifier interaction `FloatRegistry` en Phase 6.** Le
+> `commitUnlocked()` assert ([rendered-board-state.service.ts:380-384](../../front/src/app/pages/pvp/duel-page/rendered-board-state.service.ts#L380-L384))
+> throw si une zone a un float in-flight mais n'est plus locked.
+> Après `dropOrphanedLocks`, si un caller post-`requestStop` appelle
+> `commitUnlocked()` avec des floats survivants, throw. À vérifier
+> dans les tests : soit aucun caller ne re-trigger `commitUnlocked()`
+> dans le path post-`requestStop`, soit `dropOrphanedLocks` doit aussi
+> faire `floatRegistry.clearAllTravels()` (à confirmer manuellement).
+>
+> **6. Test critique avant Phase 4 — valider que le bug du log
+> `console-export-2026-6-4_13-57-59.log` ne se reproduit plus AVEC les
+> 3 asserts de `replay-duel-adapter.ts` toujours stricts.** Si oui →
+> Phase 3 seule suffit pour débloquer, Phase 4 (retrait
+> `tolerateLocks`) peut se faire en confiance. Sinon, audit Phase 2
+> incomplet (handler async qui leak un lock post-abort).
+>
+> **Ce que la Phase 3 NE doit PAS faire :**
+> - Retirer la zombie-safe path d'`af3195fa` — defense-in-depth contre
+>   d'autres `commitAll` non-related (terminal teardowns).
+> - Toucher au `rendered` signal dans `dropOrphanedLocks` — le caller
+>   suivant pose la state cible (sinon on masque un bug).
+> - Renommer ou modifier `commitAll` — sa sémantique terminale reste
+>   valide pour `cleanup()`, `destroy()`, STATE_SYNC, REMATCH.
+
 ### Phase 4 — retirer les `tolerateLocks` skips
 
 - Retirer le paramètre `tolerateLocks` de `resetAllState`.

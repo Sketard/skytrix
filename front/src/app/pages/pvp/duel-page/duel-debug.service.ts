@@ -57,6 +57,13 @@ export interface DebugSnapshot {
    *  `await` after the runner was stopped and posted a lock nobody
    *  releases). Healthy steady-state = 0. Drives the Phase 2 audit. */
   postRequestStopLockCount?: number;
+  /** v3 Phase 3 (2026-06-04) — cumulative count of locks dropped via
+   *  `RBS.dropOrphanedLocks(reason)`. Bumps once per `requestStop` if
+   *  any lock was active at the time. Paired observation surface
+   *  alongside F5 + Phase 1 — a healthy session shows a bounded value
+   *  (one bump per seek/perspective-switch mid-animation). A regression
+   *  that orphans more locks than expected surfaces here. */
+  orphanedLocksDroppedCount?: number;
 }
 
 /**
@@ -123,6 +130,9 @@ export class DuelDebugService {
       // posting locks inside the post-requestStop window. Drives the
       // Phase 2 audit (which handlers need AbortSignal propagation).
       postRequestStopLockCount: rbs.postRequestStopLockCount,
+      // v3 Phase 3 (2026-06-04) — observational counter for locks
+      // cleared via `dropOrphanedLocks(reason)` at `requestStop`.
+      orphanedLocksDroppedCount: rbs.orphanedLocksDroppedCount,
     };
   }
 

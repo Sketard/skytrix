@@ -326,15 +326,23 @@ class MockDataSource {
   }
   setAnimating(animating: boolean): void { this.setAnimatingCalls.push(animating); }
 
-  // v3 Phase 1 — stub the RBS surface the runner touches
-  // (`setPostRequestStopWindow` opens/closes the instrumentation window in
-  // `requestStop` / `notifyEnqueue`). The mock RBS never holds locks ; we
-  // record the toggle calls so a future test can assert lifecycle order
-  // if needed.
+  // v3 Phase 1 + Phase 3 — stub the RBS surface the runner touches.
+  // - `setPostRequestStopWindow` opens/closes the Phase 1 instrumentation
+  //   window in `requestStop` / `notifyEnqueue`.
+  // - `dropOrphanedLocks(reason)` is called by `requestStop` BEFORE
+  //   `setRunning(false)` to clear surviving locks at the transition
+  //   boundary. The mock returns 0 (no locks held) ; we record the
+  //   reasons so a future test can assert it was called with
+  //   'runner-requestStop' if needed.
   rbsSetPostRequestStopWindowCalls: boolean[] = [];
+  rbsDropOrphanedLocksCalls: string[] = [];
   readonly renderedBoardState = {
     setPostRequestStopWindow: (open: boolean): void => {
       this.rbsSetPostRequestStopWindowCalls.push(open);
+    },
+    dropOrphanedLocks: (reason: string): number => {
+      this.rbsDropOrphanedLocksCalls.push(reason);
+      return 0;
     },
   };
 }
@@ -576,6 +584,48 @@ describe('QueueRunner (loop) — Palier B', () => {
       runner.requestStop();
       expect(runner.isRunning()).toBeFalse();
       expect(isRunningHistory).toEqual([true, false]);
+    });
+
+    it('v3 Phase 3 — calls dropOrphanedLocks BEFORE setRunning(false)', () => {
+      const { runner, ds, isRunningHistory } = makeRunner({
+        handleEntry: () => new Promise<void>(() => undefined),
+      });
+      ds.setQueue([ev('MSG_MOVE')]);
+      runner.notifyEnqueue();
+      expect(isRunningHistory).toEqual([true]);
+
+      runner.requestStop();
+
+      // Phase 3 ordering invariant : dropOrphanedLocks must be called
+      // BEFORE setRunning(false) so the cascade `setRunning(false) →
+      // onIsRunningChange(false) → setAnimating(false) → advanceStep →
+      // assertNoLocks` does not throw on locks that are about to be
+      // legitimately cleared.
+      expect(ds.rbsDropOrphanedLocksCalls).toEqual(['runner-requestStop']);
+      // Concretely: `isRunningHistory` transitions to `false` AFTER the
+      // drop call was recorded — which proves ordering since both are
+      // synchronous and recorded in arrival order.
+      expect(isRunningHistory).toEqual([true, false]);
+    });
+
+    it('v3 Phase 1 — opens post-requestStop window then closes on next notifyEnqueue', () => {
+      const { runner, ds } = makeRunner({
+        handleEntry: () => new Promise<void>(() => undefined),
+      });
+      ds.setQueue([ev('MSG_MOVE')]);
+      runner.notifyEnqueue();
+      // notifyEnqueue closes the window (idempotent on first call when
+      // it was never opened, but the spec still records false).
+      expect(ds.rbsSetPostRequestStopWindowCalls).toEqual([false]);
+
+      runner.requestStop();
+      // requestStop opens the window BEFORE anything else.
+      expect(ds.rbsSetPostRequestStopWindowCalls).toEqual([false, true]);
+
+      ds.setQueue([ev('MSG_DAMAGE')]);
+      runner.notifyEnqueue();
+      // The next legitimate enqueue closes the window again.
+      expect(ds.rbsSetPostRequestStopWindowCalls).toEqual([false, true, false]);
     });
 
     it('a suspended loop bails on resume after requestStop (no parallel re-entry)', async () => {

@@ -355,6 +355,85 @@ describe('RenderedBoardStateService', () => {
     });
   });
 
+  describe('dropOrphanedLocks (v3 Phase 3)', () => {
+    it('returns 0 when no locks are held + leaves _rendered untouched', () => {
+      const initial = makeState({ p0: { lp: 8000, zones: [zone('M1', 100)] } });
+      rbs.updateLogical(initial);
+      rbs.syncRendered();
+      const renderedBefore = rbs.renderedState();
+
+      const count = rbs.dropOrphanedLocks('test:no-locks');
+
+      expect(count).toBe(0);
+      expect(rbs.renderedState()).toBe(renderedBefore);
+      expect(rbs.orphanedLocksDroppedCount).toBe(0);
+    });
+
+    it('clears all locks + safety timers + bumps the dedicated counter', () => {
+      rbs.lockZone('M1-0', 'test:src1');
+      rbs.lockZone('GY-1', 'test:src2');
+      expect(rbs.hasLockedZones).toBeTrue();
+
+      const count = rbs.dropOrphanedLocks('test:two-locks');
+
+      expect(count).toBe(2);
+      expect(rbs.hasLockedZones).toBeFalse();
+      expect(rbs.lockedZoneKeys()).toEqual([]);
+      expect(rbs.orphanedLocksDroppedCount).toBe(2);
+    });
+
+    it('does NOT bump the F5 tolerateLocks counter (separate signals)', () => {
+      rbs.lockZone('M1-0', 'test:src');
+      const f5Before = rbs.tolerateLocksDroppedCount;
+
+      rbs.dropOrphanedLocks('test:isolated-counters');
+
+      expect(rbs.tolerateLocksDroppedCount).toBe(f5Before);
+      expect(rbs.orphanedLocksDroppedCount).toBe(1);
+    });
+
+    it('does NOT touch _rendered (transition cleanup, caller sets target state)', () => {
+      const initial = makeState({ p0: { lp: 5000, zones: [zone('M1', 100)] } });
+      rbs.updateLogical(initial);
+      rbs.syncRendered();
+      rbs.lockZone('M1-0');
+      // Mutate logical AFTER taking the lock — rendered stays at the
+      // pre-mutation state because M1-0 is locked.
+      rbs.updateLogical(makeState({ p0: { lp: 5000, zones: [zone('M1', 999)] } }));
+      const renderedBeforeDrop = rbs.renderedState();
+      expect(renderedBeforeDrop.players[0].zones.find(z => z.zoneId === 'M1')!.cards[0].cardCode).toBe(100);
+
+      rbs.dropOrphanedLocks('test:rendered-untouched');
+
+      // Critical : rendered MUST stay at pre-mutation state. If
+      // `dropOrphanedLocks` had called `_rendered.set(_logical())` like
+      // `commitAll` does, the M1-0 zone would now show 999 — and a seek
+      // bug where the intermediate state is wrong would be masked.
+      expect(rbs.renderedState()).toBe(renderedBeforeDrop);
+    });
+
+    it('idempotent — second call returns 0', () => {
+      rbs.lockZone('M1-0');
+      expect(rbs.dropOrphanedLocks('test:first')).toBe(1);
+      expect(rbs.dropOrphanedLocks('test:second')).toBe(0);
+      expect(rbs.orphanedLocksDroppedCount).toBe(1);
+    });
+
+    it('disarms safety timeouts (no orphan LOCK_SAFETY_TIMEOUT after drop)', fakeAsync(() => {
+      rbs.lockZone('M1-0', 'test:safety-timer');
+      rbs.dropOrphanedLocks('test:disarm');
+
+      // Advance past the safety timeout. If `dropOrphanedLocks` had not
+      // cleared `_safetyTimeouts`, the timer would fire here and
+      // `duelAssert` would throw (the spec runs in dev mode).
+      expect(() => tick(LOCK_SAFETY_TIMEOUT_MS + 100)).not.toThrow();
+
+      // If we got here without throwing, the timer was cleared. Explicit
+      // expectation : no locks remain (sanity check on the cleared state).
+      expect(rbs.hasLockedZones).toBeFalse();
+    }));
+  });
+
   describe('commitUnlocked', () => {
     it('should sync unlocked zones, skip locked zones', () => {
       const initial = makeState({ p0: { zones: [zone('M1', 100), zone('M2', 200)] } });

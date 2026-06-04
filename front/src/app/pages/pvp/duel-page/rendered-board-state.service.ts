@@ -70,6 +70,20 @@ export class RenderedBoardStateService implements BoardStateView {
   get tolerateLocksDroppedCount(): number { return this._tolerateLocksDroppedCount; }
 
   /**
+   * v3 Phase 3 (2026-06-04) — cumulative count of locks dropped via
+   * `dropOrphanedLocks(reason)`. Kept distinct from
+   * `_tolerateLocksDroppedCount` (F5) so the two skip paths stay
+   * separately observable in the debug snapshot — F5 covers the
+   * voluntary-skip paths (`commitAll(site)`), this one covers the
+   * transition-boundary cleanup at `QueueRunner.requestStop`. A
+   * regression that strands locks at every seek bumps this counter
+   * visibly without polluting the F5 signal.
+   */
+  private _orphanedLocksDroppedCount = 0;
+  /** Public read of the orphaned-locks drop counter (v3 Phase 3 — debug snapshot). */
+  get orphanedLocksDroppedCount(): number { return this._orphanedLocksDroppedCount; }
+
+  /**
    * v3 Phase 1 (2026-06-04) — instrumentation, no behavior change.
    *
    * `QueueRunner.requestStop()` opens this window BEFORE `setRunning(false)`
@@ -447,6 +461,57 @@ export class RenderedBoardStateService implements BoardStateView {
     this._safetyTimeouts.clear();
     this._locks.clear();
     this._rendered.set(this._logical());
+  }
+
+  // ── dropOrphanedLocks ────────────────────────────────────────────────
+
+  /**
+   * v3 Phase 3 (2026-06-04) — transition-boundary lock cleanup.
+   *
+   * Sister to `commitAll(site)` but with a different intent : `commitAll`
+   * is the TERMINAL teardown (rendered ← logical full sync, called by
+   * `destroy()`, STATE_SYNC, REMATCH_STARTING). `dropOrphanedLocks` is
+   * the TRANSITION cleanup called by `QueueRunner.requestStop()` — it
+   * vacates `_locks` + safety timers + in-flight travels, but DOES NOT
+   * touch `_rendered`. The caller that triggered `requestStop` (e.g.
+   * `resetForReplaySeek` → `jumpToState` → `updateLogical + commitAll`,
+   * or `notifyPerspectiveSwitch` → `syncRendered`) is responsible for
+   * setting the target state on the very next tick.
+   *
+   * Without this distinction, `commitAll`'s final `_rendered.set(_logical())`
+   * would briefly flash the pre-jump state into the DOM before the seek
+   * target lands — masking real bugs where the intermediate state is
+   * wrong.
+   *
+   * Float travels are cleared too because `commitUnlocked()` asserts
+   * "zone has in-flight travels but is NOT locked" — after this method
+   * empties `_locks`, any subsequent `commitUnlocked()` call (e.g. a
+   * stale handler.then() that bails post-abort) would throw on the
+   * surviving floats. Mirror of `finalizeAndCommit()` ordering
+   * (clearAllTravels BEFORE commitUnlocked).
+   *
+   * Returns the count of locks effectively cleared. Drives the
+   * `_orphanedLocksDroppedCount` cumulative counter exposed in the
+   * debug snapshot — a paired observation surface alongside the F5
+   * `tolerateLocksDroppedCount` and the v3 Phase 1
+   * `postRequestStopLockCount`.
+   */
+  dropOrphanedLocks(reason: string): number {
+    const count = this._locks.size;
+    if (count === 0) return 0;
+    this.logger?.warn(
+      '[v3] dropOrphanedLocks(%s) clearing %d locks: %s',
+      reason, count, [...this._locks.keys()].join(', '),
+    );
+    for (const tid of this._safetyTimeouts) clearTimeout(tid);
+    this._safetyTimeouts.clear();
+    this._locks.clear();
+    // Clear in-flight travels too — otherwise commitUnlocked()'s
+    // lock-vs-travel assert throws on the next sync. Mirror of
+    // finalizeAndCommit()'s ordering.
+    this._floatRegistry?.clearAllTravels();
+    this._orphanedLocksDroppedCount += count;
+    return count;
   }
 
   // ── commitLp ─────────────────────────────────────────────────────────
