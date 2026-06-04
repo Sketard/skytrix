@@ -5,14 +5,15 @@ import { expect, type BrowserContext, type Page } from '@playwright/test';
  * with ≥2 callsites or an obvious next-spec reuse. Single-use
  * scenario glue stays in its own spec file.
  *
- * Stack assumed up at:
- *   - back:  http://localhost:8080
- *   - front: http://localhost:4200
- *   - duel:  http://localhost:3001
+ * Stack URLs are overridable via env (E2E_BASE_URL / E2E_BACK_URL) so
+ * the dev-stack orchestrator (scripts/dev-stack.mjs) can point Playwright
+ * at the isolated stack (ports 14200/18080) without colliding with the
+ * user's hand-driven stack on 4200/8080. Fallback values match the
+ * legacy stack so existing manual runs keep working unchanged.
  */
 
-export const BASE_URL = 'http://localhost:4200';
-export const BACK_URL = 'http://localhost:8080';
+export const BASE_URL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
+export const BACK_URL = process.env['E2E_BACK_URL'] ?? 'http://localhost:8080';
 
 export interface UserCredentials {
   pseudo: string;

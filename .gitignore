@@ -1,6 +1,9 @@
 # Variables d'environnement (ne jamais commiter)
 .env
 
+# dev-stack orchestrator state (pids + per-service logs)
+scripts/.dev-stack/
+
 # IDE IntelliJ / Android Studio
 .idea/
 
