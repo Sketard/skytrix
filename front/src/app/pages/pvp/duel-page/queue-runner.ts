@@ -372,6 +372,12 @@ export class QueueRunner {
    * callers safe.
    */
   notifyEnqueue(): void {
+    // v3 Phase 1 — close the post-requestStop instrumentation window. The
+    // runner is being kicked legitimately (fresh enqueue, new chain
+    // building, or post-seek state feed). Any lockZone call from here on
+    // is a normal handler path.
+    this.deps.dataSource.renderedBoardState.setPostRequestStopWindow(false);
+
     this.trace('notifyEnqueue', {
       isRunning: this._isRunning,
       isProcessing: this._isProcessing,
@@ -411,6 +417,12 @@ export class QueueRunner {
    * `clearTimersAndPolling`.
    */
   requestStop(): void {
+    // v3 Phase 1 — open the instrumentation window BEFORE anything else so
+    // any handler bailing past its await on the abort signal counts. The
+    // window stays open until the next legitimate `notifyEnqueue` closes
+    // it (i.e. the runner has been kicked again for a fresh duel/seek).
+    this.deps.dataSource.renderedBoardState.setPostRequestStopWindow(true);
+
     this.clearTimers();
     this.deps.pollDropWatchdog.clear();
     this._awaitSignalEffect?.destroy();

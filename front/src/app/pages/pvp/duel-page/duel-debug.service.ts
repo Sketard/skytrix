@@ -51,6 +51,12 @@ export interface DebugSnapshot {
    *  Datadog instrumentation. Healthy steady-state ~ 0–10 over a long
    *  session ; anything > 100 deserves an investigation. */
   tolerateLocksDroppedCount?: number;
+  /** v3 Phase 1 (2026-06-04) — cumulative count of `lockZone` calls
+   *  made inside the runner's post-`requestStop` instrumentation
+   *  window. A bump = an IIFE bailout (async handler that finished its
+   *  `await` after the runner was stopped and posted a lock nobody
+   *  releases). Healthy steady-state = 0. Drives the Phase 2 audit. */
+  postRequestStopLockCount?: number;
 }
 
 /**
@@ -113,6 +119,10 @@ export class DuelDebugService {
       // F5 (2026-06-04) — observational counter for the tolerateLocks skip
       // paths. Bumps in this number across a session = real signal.
       tolerateLocksDroppedCount: rbs.tolerateLocksDroppedCount,
+      // v3 Phase 1 (2026-06-04) — observational counter for IIFE bails
+      // posting locks inside the post-requestStop window. Drives the
+      // Phase 2 audit (which handlers need AbortSignal propagation).
+      postRequestStopLockCount: rbs.postRequestStopLockCount,
     };
   }
 

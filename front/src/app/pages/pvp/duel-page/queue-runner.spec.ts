@@ -325,6 +325,18 @@ class MockDataSource {
     this._queue.set([...q.slice(0, index), ...q.slice(index + 1)]);
   }
   setAnimating(animating: boolean): void { this.setAnimatingCalls.push(animating); }
+
+  // v3 Phase 1 — stub the RBS surface the runner touches
+  // (`setPostRequestStopWindow` opens/closes the instrumentation window in
+  // `requestStop` / `notifyEnqueue`). The mock RBS never holds locks ; we
+  // record the toggle calls so a future test can assert lifecycle order
+  // if needed.
+  rbsSetPostRequestStopWindowCalls: boolean[] = [];
+  readonly renderedBoardState = {
+    setPostRequestStopWindow: (open: boolean): void => {
+      this.rbsSetPostRequestStopWindowCalls.push(open);
+    },
+  };
 }
 
 /** Cast through `unknown` — `AnimationDataSource` carries a few signals our

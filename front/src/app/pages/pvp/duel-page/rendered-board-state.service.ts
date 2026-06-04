@@ -69,6 +69,31 @@ export class RenderedBoardStateService implements BoardStateView {
   /** Public read of the tolerateLocks drop counter (F5 — debug snapshot). */
   get tolerateLocksDroppedCount(): number { return this._tolerateLocksDroppedCount; }
 
+  /**
+   * v3 Phase 1 (2026-06-04) — instrumentation, no behavior change.
+   *
+   * `QueueRunner.requestStop()` opens this window BEFORE `setRunning(false)`
+   * and the next legitimate `notifyEnqueue` / `processEvent` closes it. Any
+   * `lockZone(...)` call made while the window is open is an IIFE bailout —
+   * an async handler that bailed past its `await` after the runner was
+   * stopped and is now posting a lock nobody will release. Drives the
+   * Phase 2 audit (do we need `AbortSignal` here?) without changing today's
+   * runtime behavior.
+   *
+   * The counter is monotonic-cumulative across a session ; exposed via the
+   * debug snapshot. Healthy steady-state should be 0. Bumps surface the
+   * IIFE paths that need `AbortSignal` wiring in Phase 2.
+   */
+  private _postRequestStopWindow = false;
+  private _postRequestStopLockCount = 0;
+  /** Public read of the post-requestStop lock count (v3 Phase 1). */
+  get postRequestStopLockCount(): number { return this._postRequestStopLockCount; }
+  /** Toggle the post-requestStop instrumentation window (called by
+   *  `QueueRunner.requestStop` + closed on the next legitimate enqueue). */
+  setPostRequestStopWindow(open: boolean): void {
+    this._postRequestStopWindow = open;
+  }
+
   readonly logicalState = this._logical.asReadonly();
   readonly renderedState = this._rendered.asReadonly();
   /**
@@ -212,6 +237,17 @@ export class RenderedBoardStateService implements BoardStateView {
   // ── lockZone ─────────────────────────────────────────────────────────
 
   lockZone(zoneKey: string, source?: string): ZoneLock {
+    // v3 Phase 1 — instrumentation: count locks taken while the runner is
+    // in its post-requestStop window. A bump here = an async handler that
+    // bailed past its `await` post-abort and is now posting a lock nobody
+    // will release. Phase 2 fixes via AbortSignal propagation.
+    if (this._postRequestStopWindow) {
+      this._postRequestStopLockCount++;
+      this.logger?.warn(
+        `[v3-instr][RUNNER] lockZone('%s', source=%s) inside post-requestStop window — count=%d`,
+        zoneKey, source ?? 'unknown', this._postRequestStopLockCount);
+    }
+
     this._locks.set(zoneKey, (this._locks.get(zoneKey) ?? 0) + 1);
 
     let released = false;
