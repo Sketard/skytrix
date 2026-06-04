@@ -32,8 +32,21 @@ function zone(id: ZoneId, cards: CardOnField[] = []): BoardZone {
   return { zoneId: id, cards };
 }
 
+/** Build a `PlayerBoardState` for tests. Mirrors the server contract: the
+ *  prod `buildBoardState` (duel-worker.ts) ALWAYS appends `EXTRA` to the
+ *  zones array (even when empty), and `rendered-board-state.service.ts`
+ *  syncPileCounts (F22 assert, 2026-06-04) hard-fails when a non-empty
+ *  zones array is missing EXTRA. So whenever a test specifies a zones
+ *  array WITHOUT an EXTRA entry, we append `zone('EXTRA')` here. Tests
+ *  that explicitly want to opt out (e.g. EMPTY_DUEL_STATE bootstrap with
+ *  `zones: []`) bypass naturally — the assert is gated on
+ *  `logicalHasZones`. */
 function player(overrides?: Partial<PlayerBoardState>): PlayerBoardState {
-  return { lp: 8000, deckCount: 40, extraCount: 15, zones: [], ...overrides };
+  const base = { lp: 8000, deckCount: 40, extraCount: 15, zones: [] as BoardZone[], ...overrides };
+  if (base.zones.length > 0 && !base.zones.some(z => z.zoneId === 'EXTRA')) {
+    base.zones = [...base.zones, zone('EXTRA')];
+  }
+  return base;
 }
 
 function bs(overrides?: Partial<BoardStatePayload>): BoardStatePayload {
