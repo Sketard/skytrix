@@ -75,6 +75,8 @@ import { EMPTY_DUEL_STATE } from '../types';
 import type { DuelState, ChainLinkState } from '../types';
 import type { TimerStateMsg, BoardStatePayload, PlayerBoardState, BoardZone, CardOnField } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
+import type { StateSyncMsg } from '../duel-ws-system.types';
+import type { GameLogEntry } from '../game-log/game-log-types';
 
 // =============================================================================
 // Stubs
@@ -152,7 +154,7 @@ class StubWsService {
   ngOnDestroy = jasmine.createSpy('ngOnDestroy');
   attachOutOfBandSink = jasmine.createSpy('attachOutOfBandSink');
 
-  onStateSync?: () => void;
+  onStateSync?: (msg: StateSyncMsg) => void;
 }
 
 /** Generic stub for *EffectsService classes — `initEffects` and the
@@ -1243,5 +1245,65 @@ describe('DuelPageComponent — mapDuelEndReason SOLO inactivity (U24)', () => {
     ws.duelResult.set({ winner: 0, reason: 'win' });
     fixture.detectChanges();
     expect(component.resultOutcome()?.reason).toBe('[duel.reason.win.winner]');
+  });
+});
+
+// =============================================================================
+// α F2 — STATE_SYNC restores the game log from the server snapshot
+// =============================================================================
+
+describe('DuelPageComponent — STATE_SYNC game log restore (α F2)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let ws: StubWsService;
+  let gameLog: DuelGameLogService;
+
+  beforeEach(() => {
+    setupTestBed();
+    fixture = TestBed.createComponent(DuelPageComponent);
+    ws = wsOf(fixture);
+    // DuelGameLogService + AnimationOrchestratorService are component-scoped
+    // (provided in DuelPageComponent.providers, not root) — resolve via the
+    // componentRef injector, NOT TestBed.inject which only sees root scope.
+    gameLog = fixture.componentRef.injector.get(DuelGameLogService);
+    fixture.detectChanges();
+  });
+
+  function makeSnapshot(): GameLogEntry[] {
+    return [
+      { block: 'separator', kind: 'turn', turnNumber: 1, lp: [8000, 8000] },
+    ];
+  }
+
+  function makeStateSync(entries?: GameLogEntry[]): StateSyncMsg {
+    return {
+      type: 'STATE_SYNC',
+      data: EMPTY_DUEL_STATE as unknown as BoardStatePayload,
+      ...(entries === undefined ? {} : { gameLogEntries: entries }),
+    };
+  }
+
+  it('forwards msg.gameLogEntries to gameLog.restoreFromSnapshot', () => {
+    const restoreSpy = spyOn(gameLog, 'restoreFromSnapshot');
+    const snapshot = makeSnapshot();
+    ws.onStateSync?.(makeStateSync(snapshot));
+    expect(restoreSpy).toHaveBeenCalledOnceWith(snapshot);
+  });
+
+  it('does NOT call restoreFromSnapshot when msg.gameLogEntries is absent (back-compat path)', () => {
+    const restoreSpy = spyOn(gameLog, 'restoreFromSnapshot');
+    ws.onStateSync?.(makeStateSync(undefined));
+    expect(restoreSpy).not.toHaveBeenCalled();
+  });
+
+  it('restores AFTER the orchestrator reset so the clear does not clobber the snapshot', () => {
+    // The orchestrator stub's onStateSync is the reset hook; restoreFromSnapshot
+    // is the consumer. Both must fire, and reset must fire FIRST. We assert
+    // order via a shared call log.
+    const orchestrator = fixture.componentRef.injector.get(AnimationOrchestratorService) as unknown as { onStateSync: jasmine.Spy };
+    const callOrder: string[] = [];
+    orchestrator.onStateSync.and.callFake(() => callOrder.push('reset'));
+    spyOn(gameLog, 'restoreFromSnapshot').and.callFake(() => callOrder.push('restore'));
+    ws.onStateSync?.(makeStateSync(makeSnapshot()));
+    expect(callOrder).toEqual(['reset', 'restore']);
   });
 });

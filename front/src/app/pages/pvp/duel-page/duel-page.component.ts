@@ -604,8 +604,18 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     // BOARD_STATE lands. Track it so the journal is rebuilt for the correct
     // viewer (`setPerspective` no-ops when unchanged, rebuilds otherwise).
     effect(() => this.gameLog.setPerspective(this.ownPlayerIndex()));
-    this.wsService.onStateSync = () => {
+    this.wsService.onStateSync = (msg) => {
       this.animationService.onStateSync();
+      // F5/reconnect journal restore — the orchestrator's onStateSync above
+      // dispatches DUEL_LIFETIME which clears the local journal via
+      // `gameLog.applyReset`. The server attaches a per-perspective snapshot
+      // on every STATE_SYNC (see `sendToPlayer` decoration in `ws-write.ts`),
+      // so reseed from it AFTER the reset so the clear doesn't clobber what
+      // we just restored. Optional for backward-compat with payload sources
+      // that don't carry a builder.
+      if (msg.gameLogEntries) {
+        this.gameLog.restoreFromSnapshot(msg.gameLogEntries);
+      }
       // On reconnect (STATE_SYNC), skip the duel-loading phase — thumbnails were
       // already loaded in the previous session; no need to show the loading screen again.
       this.thumbnailsReady.set(true);
