@@ -20,7 +20,7 @@ import type {
   DecisionMoment,
   ChainingMsg,
 } from './ws-protocol.js';
-import { LOCATION } from './ws-protocol.js';
+import { LOCATION, POSITION } from './ws-protocol.js';
 
 /**
  * H3.5 — extracted from `duel-worker.ts`. Owns the `runReplayPreComputation`
@@ -92,7 +92,7 @@ const DEFAULT_MAX_ITERATIONS = 100_000;
 // Label generation
 // =============================================================================
 
-function describeMoveLabel(from: number, to: number, reason: number, cardName: string): string {
+function describeMoveLabel(from: number, to: number, reason: number, cardName: string, toPosition?: number): string {
   // Summon to Monster Zone
   if (to === LOCATION.MZONE) {
     if (reason & REASON_SUMMON)    return `Normal Summon: ${cardName}`;
@@ -115,17 +115,32 @@ function describeMoveLabel(from: number, to: number, reason: number, cardName: s
   if (to === LOCATION.HAND && from !== LOCATION.DECK) return `Return to hand: ${cardName}`;
   if (to === LOCATION.DECK)                        return `Return to Deck: ${cardName}`;
   if (to === LOCATION.OVERLAY)                     return `Attach: ${cardName}`;
-  if (to === LOCATION.SZONE)                       return `Set: ${cardName}`;
+  if (to === LOCATION.SZONE) {
+    // "Set" only when the card lands face-down. A face-up SZONE landing is a
+    // Spell/Trap activation from hand (or Pendulum scale set face-up) — the
+    // sibling MSG_CHAINING / Pendulum verb in the same batch describes it
+    // better. Return generic "Move" so `generateLabel` falls through to the
+    // next event (MSG_CHAINING wins via the priority pass).
+    const isFaceDown = toPosition != null
+      && (toPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
+    return isFaceDown ? `Set: ${cardName}` : `Move: ${cardName}`;
+  }
   return `Move: ${cardName}`;
 }
 
 function generateLabel(events: ServerMessage[]): string {
+  // Priority pass — MSG_CHAINING is authoritative when a card is activated.
+  // A Spell/Trap activated from hand emits MSG_MOVE (HAND→SZONE) AND
+  // MSG_CHAINING in the same batch; without this pass the MSG_MOVE label
+  // wins and the timeline displays "Set: ..." for an activation.
+  for (const e of events) {
+    if (e.type === 'MSG_CHAINING') return `Activate: ${e.cardName}`;
+  }
   for (const e of events) {
     switch (e.type) {
-      case 'MSG_MOVE': return describeMoveLabel(e.fromLocation, e.toLocation, e.reason, e.cardName);
+      case 'MSG_MOVE': return describeMoveLabel(e.fromLocation, e.toLocation, e.reason, e.cardName, e.toPosition);
       case 'MSG_DRAW': return `Draw: ${e.cards.length} card(s)`;
       case 'MSG_DAMAGE': return `Damage: Player ${e.player + 1} -${e.amount}`;
-      case 'MSG_CHAINING': return `Activate: ${e.cardName}`;
       case 'MSG_FLIP_SUMMONING': return `Flip Summon: ${e.cardName}`;
       case 'MSG_SET': return `Set: card`;
       case 'MSG_ATTACK':

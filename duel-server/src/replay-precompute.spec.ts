@@ -609,6 +609,51 @@ describe('replay-precompute helpers', () => {
     expect(label).toBe('Activate: Ash Blossom');
   });
 
+  it('generateLabel prefers MSG_CHAINING over MSG_MOVE when a Spell is activated from hand', () => {
+    // A Spell/Trap activated from hand emits BOTH events in the same batch.
+    // Without the priority pass, MSG_MOVE → "Set: ..." would shadow the
+    // Activate verb. Regression guard for the timeline "Set" mislabel.
+    const label = __test__.generateLabel([
+      {
+        type: 'MSG_MOVE',
+        cardName: 'Pot of Greed',
+        fromLocation: 0x02, // HAND
+        toLocation: 0x08, // SZONE
+        reason: 0,
+        toPosition: 0x1, // FACEUP_ATTACK
+      } as unknown as ServerMessage,
+      { type: 'MSG_CHAINING', cardName: 'Pot of Greed' } as unknown as ServerMessage,
+    ]);
+    expect(label).toBe('Activate: Pot of Greed');
+  });
+
+  it('generateLabel returns Set only when MSG_MOVE lands the card face-down on SZONE', () => {
+    const setLabel = __test__.generateLabel([
+      {
+        type: 'MSG_MOVE',
+        cardName: 'Mirror Force',
+        fromLocation: 0x02, // HAND
+        toLocation: 0x08, // SZONE
+        reason: 0,
+        toPosition: 0x8, // FACEDOWN_DEFENSE
+      } as unknown as ServerMessage,
+    ]);
+    expect(setLabel).toBe('Set: Mirror Force');
+    // Face-up SZONE landing without a sibling MSG_CHAINING falls back to
+    // generic "Move" — the timeline should never call it "Set".
+    const moveLabel = __test__.generateLabel([
+      {
+        type: 'MSG_MOVE',
+        cardName: 'Some Spell',
+        fromLocation: 0x02,
+        toLocation: 0x08, // SZONE
+        reason: 0,
+        toPosition: 0x1, // FACEUP_ATTACK
+      } as unknown as ServerMessage,
+    ]);
+    expect(moveLabel).toBe('Move: Some Spell');
+  });
+
   it('generateLabel returns empty string for non-visual events', () => {
     const label = __test__.generateLabel([
       { type: 'WAITING_RESPONSE' } as unknown as ServerMessage,
