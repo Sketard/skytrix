@@ -172,6 +172,42 @@ export const CHAIN_ACTIVATE_FALLBACK_MS = 400;
 export const OVERLAY_ANIM_HOLD_MS = 400;
 export const OVERLAY_ANIM_HOLD_MIN_MS = 200;
 
+/**
+ * Chain overlay — number of card "slots" per side in the visible stack.
+ *
+ * Three caps drive the `visibleCards` computed in `pvp-chain-overlay` :
+ *
+ * - `MONO_CAP` — single-side stack (one side has 0 links). Both sides
+ *   draw at this cap by default.
+ * - `MAJORITY_CAP` — bi-sided ; the side carrying the most recent link
+ *   (tie-break by chainIndex) is "majority" and uses this cap.
+ * - `MINORITY_CAP` — bi-sided ; the other side uses this cap. On a
+ *   cramped viewport (mediaquery `CRAMPED_MQ` in the component) the
+ *   minority cap drops to `MINORITY_CAP_CRAMPED` so the smaller
+ *   vertical stack fits readably.
+ *
+ * Tweaking these values changes the on-screen card count limit (caps),
+ * the overflow trigger threshold (Nth link of a side triggers exit
+ * anim of the oldest), and the level-anchoring math (`levelOffset =
+ * 4 - allVisible.length + 1` — newest always lands on level 4).
+ *
+ * **Read carefully before changing** : the SCSS file
+ * (`pvp-chain-overlay.component.scss`) hard-codes per-level top/left/
+ * size at fixed cards (computed from `cap 2/2 → 4 cards = levels 1-4`,
+ * `cap 2/1 → 3 cards = levels 2-4`). A cap bump above 2 (or below
+ * 1 cramped) requires SCSS updates to draw the additional/missing
+ * level — search `// Level 0` / `// Level 1` blocks in the SCSS.
+ *
+ * Spec assertions (`pvp-chain-overlay.component.spec.ts` ›
+ * `visibleCards computed` + `overflow exit` blocks) reference these
+ * values in comments. Search `monoCap=` / `cap=` in the spec when
+ * changing.
+ */
+export const CHAIN_OVERLAY_MONO_CAP = 2;
+export const CHAIN_OVERLAY_MAJORITY_CAP = 2;
+export const CHAIN_OVERLAY_MINORITY_CAP = 2;
+export const CHAIN_OVERLAY_MINORITY_CAP_CRAMPED = 1;
+
 // --- Opponent effect bubble (Surface 2 — `<app-effect-bubble>`) ---------------
 /** How long the effect bubble holds a content before fading out (Lot 3b). */
 export const EFFECT_BUBBLE_MS = 3500;

@@ -19,7 +19,14 @@ import { AnimationOrchestratorService } from '../animation-orchestrator.service'
 import { ChainResolutionManager } from '../chain-resolution-manager';
 import { DuelContext } from '../duel-context';
 import { DuelLogCategory, DuelLogger } from '../duel-logger';
-import { OVERLAY_ANIM_HOLD_MS, OVERLAY_ANIM_HOLD_MIN_MS } from '../animation-constants';
+import {
+  OVERLAY_ANIM_HOLD_MS,
+  OVERLAY_ANIM_HOLD_MIN_MS,
+  CHAIN_OVERLAY_MONO_CAP,
+  CHAIN_OVERLAY_MAJORITY_CAP,
+  CHAIN_OVERLAY_MINORITY_CAP,
+  CHAIN_OVERLAY_MINORITY_CAP_CRAMPED,
+} from '../animation-constants';
 
 export type ChainSide = 'left' | 'right';
 /** Vertical layer in the shared zigzag — 0 = topmost (oldest visible link,
@@ -366,12 +373,14 @@ export class PvpChainOverlayComponent {
     leftLinks.sort((a, b) => b.chainIndex - a.chainIndex);
     rightLinks.sort((a, b) => b.chainIndex - a.chainIndex);
 
-    // Card caps: desktop = 2/2 (4 max), short viewport = 2/1 (3 max).
-    // Sized so all visible cards fit vertically with NO overlap.
+    // Card caps : see `CHAIN_OVERLAY_*_CAP` in `animation-constants.ts`
+    // for the doctrine — desktop 2/2 (4 max), short viewport 2/1 (3 max).
+    // SCSS depends on these values for per-level top/left/size — bump
+    // requires SCSS update.
     const short = this._isShortViewport();
-    const monoCap = 2;
-    const majorityCap = 2;
-    const minorityCap = short ? 1 : 2;
+    const monoCap = CHAIN_OVERLAY_MONO_CAP;
+    const majorityCap = CHAIN_OVERLAY_MAJORITY_CAP;
+    const minorityCap = short ? CHAIN_OVERLAY_MINORITY_CAP_CRAMPED : CHAIN_OVERLAY_MINORITY_CAP;
     let leftCap = monoCap, rightCap = monoCap;
     if (leftLinks.length > 0 && rightLinks.length > 0) {
       const leftIsMajority = leftLinks.length > rightLinks.length
@@ -687,12 +696,13 @@ export class PvpChainOverlayComponent {
     const newSide: ChainSide = newestLink.player === ownIdx ? 'left' : 'right';
     const sideLinks = links.filter(l => (l.player === ownIdx ? 'left' : 'right') === newSide);
     const otherCount = links.length - sideLinks.length;
-    // Determine this side's cap using the same rule as `visibleCards`
-    // (desktop = 2/2, short viewport = 2/1).
+    // Determine this side's cap using the same rule as `visibleCards`.
+    // Constants live in `animation-constants.ts` — see there for SCSS
+    // coupling notes.
     const short = this._isShortViewport();
-    const monoCap = 2;
-    const majorityCap = 2;
-    const minorityCap = short ? 1 : 2;
+    const monoCap = CHAIN_OVERLAY_MONO_CAP;
+    const majorityCap = CHAIN_OVERLAY_MAJORITY_CAP;
+    const minorityCap = short ? CHAIN_OVERLAY_MINORITY_CAP_CRAMPED : CHAIN_OVERLAY_MINORITY_CAP;
     let cap: number;
     if (otherCount === 0) cap = monoCap;
     else if (sideLinks.length > otherCount) cap = majorityCap;
