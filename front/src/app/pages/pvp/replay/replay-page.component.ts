@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, OnDestroy, OnInit, signal, untracked, viewChild,
+  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, isDevMode, OnDestroy, OnInit, signal, untracked, viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
@@ -775,6 +775,77 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.debugService.preActivationBufferAccessor =
       () => this.orchestrator.preActivationBufferSnapshot();
     this.debugService.bindToWindow();
+    // Replay-specific debug surface — extends `window.__skytrixDebug` with
+    // `replay.*` actions so the Playwright debug harness (see
+    // `front/e2e/debug-replay-harness.ts`) can drive the viewer without
+    // simulating clicks on UI elements that may shift between mockups
+    // (DS rework, mobile layouts, etc.). All actions call the SAME
+    // component-level handlers (`onSeek`, `onTogglePerspective`, …) the
+    // transport-bar invokes, so any side-effect a real click triggers
+    // (notably `abortAndClean` + `gameLogRebuildTick++`) fires identically.
+    // No-op in production: only the wrapping guard short-circuits, the
+    // closures are still allocated — acceptable trade-off given the
+    // harness is dev-only by design.
+    if (isDevMode()) {
+      const w = window as unknown as { __skytrixDebug?: Record<string, unknown> };
+      if (w.__skytrixDebug) {
+        w.__skytrixDebug['replay'] = {
+          // Navigation — each call mirrors the corresponding transport-bar
+          // button click, including `abortAndClean()` side-effects for the
+          // seek-family methods.
+          seek: (idx: number) => this.onSeek(idx),
+          stepForward: () => this.onStepForward(),
+          stepBack: () => this.onStepBack(),
+          skipStart: () => this.onSkipStart(),
+          skipEnd: () => this.onSkipEnd(),
+          playPause: () => this.onPlayPause(),
+          // Toggles — also identical to the transport-bar buttons.
+          togglePerspective: () => this.onTogglePerspective(),
+          toggleAnimations: () => this.onToggleAnimations(),
+          togglePromptMode: () => this.onTogglePromptMode(),
+          // Read-only helpers for the harness to assert state.
+          currentIndex: () => this.currentIndex(),
+          computedUpTo: () => this.boardStates().length - 1,
+          totalBoardStates: () => this.boardStates().length,
+          isPlaying: () => this.isPlaying(),
+          perspectiveIndex: () => this.perspectiveIndex(),
+          animationsEnabled: () => this.animationsEnabled(),
+          promptMode: () => this.promptMode(),
+          // Chain state surface — answers "is the overlay supposed to be
+          // showing N links right now?" without scraping the DOM. Reads
+          // the same signal the chain overlay component subscribes to.
+          chainState: () => ({
+            phase: this.adapter.chainPhase(),
+            activeChainLinks: this.adapter.activeChainLinks().map(l => ({
+              chainIndex: l.chainIndex,
+              cardCode: l.cardCode,
+              cardName: l.cardName,
+              player: l.player,
+              location: l.location,
+              sequence: l.sequence,
+              resolving: l.resolving,
+              negated: l.negated,
+              handCopiesAtChaining: l.handCopiesAtChaining,
+            })),
+          }),
+          // chainSnapshot present on the state currently rendered (or null
+          // if the snapshot field is absent, e.g. legacy replay). Used by
+          // the F9-bis verification spec to compare the rendered state vs
+          // the embedded snapshot.
+          currentStateChainSnapshot: () => {
+            const state = this.boardStates()[this.currentIndex()];
+            return state?.chainSnapshot ?? null;
+          },
+          // Full event types in the current state — handy for diagnosing
+          // precompute timing issues (e.g. a state that flushed multiple
+          // `MSG_CHAINING` together).
+          currentStateEventTypes: () => {
+            const state = this.boardStates()[this.currentIndex()];
+            return state?.events.map(e => e.type) ?? [];
+          },
+        };
+      }
+    }
 
     const replayId = this.route.snapshot.paramMap.get('replayId');
     if (replayId) {
