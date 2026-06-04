@@ -149,22 +149,40 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
    *  `favorites` boundary — the two filter modes use different endpoints, so
    *  swapping between them requires a fresh page-0 fetch. Other filters
    *  (wins/losses/solo/last7days) keep the in-memory list and only re-run
-   *  `passesFilter` via the `filteredItems` computed. */
+   *  `passesFilter` via the `filteredItems` computed.
+   *
+   *  F14 (2026-06-04) — skeleton-first order: flip `loading=true` BEFORE
+   *  the super call. Pre-F14 the sequence was super → fetchSnapshot →
+   *  setLoading, so `filteredItems` (computed) recomputed with the stale
+   *  list and the new filter mode during the micro-tâche between super
+   *  and fetchSnapshot — a one-frame flash of empty list when crossing
+   *  the favorites boundary. Flipping loading first lets the skeleton
+   *  cover the window. */
   override setActiveFilter(filter: ReplayFilter): void {
     const previous = this.activeFilter();
     if (previous === filter) return;
+    const willCrossFavorites = previous === 'favorites' || filter === 'favorites';
+    if (willCrossFavorites) this.setLoading(true);
     super.setActiveFilter(filter);
-    if (previous === 'favorites' || filter === 'favorites') {
-      this.fetchSnapshot();
-    }
+    if (willCrossFavorites) this.fetchSnapshot();
   }
 
   /** Optimistic favorite toggle. Flips `isFavorite` locally + fires HTTP;
    *  rollbacks on error. When the active filter is `'favorites'` and the
    *  user un-favorites a replay, we ALSO remove it from the visible list
    *  (server-side it disappears from the next page fetch — keeping it
-   *  on-screen would lie to the user). */
+   *  on-screen would lie to the user).
+   *
+   *  F13 (2026-06-04) — per-row mutex: if a toggle on the same `id` is
+   *  already in flight, early-return. Prevents the double-click race
+   *  where two concurrent toggles share the `favoritingId` signal, their
+   *  rollback paths can resurrect a pre-first-toggle state, and
+   *  `totalElements` can double-decrement under the favorites filter.
+   *  The icon-button already shows a spinner during in-flight HTTP so
+   *  the UX stays cohérent — user clicks just no-op until first roundtrip
+   *  completes. */
   async toggleFavorite(id: string): Promise<void> {
+    if (this.favoritingId() === id) return;
     const current = this.replays().find(r => r.id === id);
     if (!current) return;
     const willBeFavorited = !current.isFavorite;

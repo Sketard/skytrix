@@ -441,6 +441,35 @@ describe('ReplayHubStore', () => {
       // No HTTP request issued — afterEach http.verify() will fail if any did.
       expect(store.replays().map(r => r.id)).toEqual(['a']);
     });
+
+    // F13 (2026-06-04) — per-row mutex. A second concurrent toggle on the
+    // same id must early-return: pre-F13 a double-click could fire two
+    // HTTP requests, the second snapshot would capture the optimistic flip
+    // from the first, and the rollback paths could resurrect a pre-first-
+    // toggle state + double-decrement `totalElements` under the favorites
+    // filter. The icon-button shows a spinner during in-flight HTTP so
+    // the UX absorbs the lockout cleanly.
+    it('per-row mutex: a second toggle on the same id while one is in flight is a no-op', async () => {
+      seedFromAll([makeReplay({ id: 'a', isFavorite: false })]);
+
+      const first = store.toggleFavorite('a');
+      // First toggle has flipped + taken the lock.
+      expect(store.favoritingId()).toBe('a');
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(true);
+
+      // Second toggle while first is in flight — should early-return with NO HTTP.
+      await store.toggleFavorite('a');
+      // Still on the optimistic flip from the FIRST toggle (no re-flip back).
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(true);
+
+      // Drain the first toggle's HTTP (the only one expected).
+      http.expectOne({ url: '/api/replays/a/favorite', method: 'POST' }).flush(null);
+      await first;
+
+      expect(store.replays().find(r => r.id === 'a')?.isFavorite).toBe(true);
+      expect(store.favoritingId()).toBeNull();
+      // afterEach `http.verify()` enforces there was no second HTTP.
+    });
   });
 
 });
