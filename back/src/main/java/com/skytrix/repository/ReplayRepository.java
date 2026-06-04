@@ -31,12 +31,19 @@ public interface ReplayRepository extends CrudRepository<Replay, UUID>, PagingAn
      * to be one of the two players (or admin via a separate code path) to
      * prevent a leaked favorite row from exposing a replay the user lost
      * access to.
+     *
+     * F11 (2026-06-04) — rewritten to the canonical `FROM User JOIN
+     * u.favoriteReplays r` form. Pre-F11 used `FROM Replay r JOIN User u
+     * ON u.id = :userId WHERE r MEMBER OF u.favoriteReplays` which is a
+     * theta-join against an unrelated root + a separate MEMBER OF clause.
+     * Hibernate optimizes both forms today but the canonical form generates
+     * cleaner SQL (single INNER JOIN through the join-table mapping) and
+     * composes predictably with `@EntityGraph` for pagination count queries.
      */
     @EntityGraph(attributePaths = {"player1", "player2"})
     @Query("""
-            SELECT r FROM Replay r
-            JOIN User u ON u.id = :userId
-            WHERE r MEMBER OF u.favoriteReplays
+            SELECT r FROM User u JOIN u.favoriteReplays r
+            WHERE u.id = :userId
               AND (r.player1.id = :userId OR r.player2.id = :userId)
             """)
     Page<Replay> findFavoritedByUser(@Param("userId") Long userId, Pageable pageable);

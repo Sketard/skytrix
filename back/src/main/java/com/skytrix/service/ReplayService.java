@@ -125,12 +125,15 @@ public class ReplayService {
      * a per-row boolean check. `perspectiveUserId == null` (admin path) skips
      * the perspective flip in `toDto(replay, userId)`.
      *
-     * Implementation note: the supplier closure runs the page query EAGERLY
-     * (so we can compute `favoritedIds` before mapping). The `CustomPageable`
-     * constructor then re-invokes the supplier — that's why we cache the page
-     * in a single-element holder and the supplier returns the cached value
-     * on the second call. Cheap (one DB roundtrip total, one favorited-ids
-     * lookup) and keeps `CustomPageable`'s 2-arg signature stable.
+     * Implementation note (corrected F10 2026-06-04): the page query is run
+     * EAGERLY here (one call to `pageSupplier.get()`) so we can compute
+     * `favoritedIds` against the same content BEFORE constructing the
+     * mapper closure. The `() -> page` supplier passed to `CustomPageable`
+     * is then invoked exactly ONCE by the constructor (see
+     * `CustomPageable.java:18-23`) — it's not re-invoked. The captured
+     * `page` is just a way to thread the same content into both the
+     * favoritedIds lookup and the CustomPageable supplier without forcing
+     * two DB roundtrips. Total cost: 1 page query + 1 favorited-ids query.
      */
     private CustomPageable<ReplayDTO> buildPageWithFavorites(
             Long userId,
