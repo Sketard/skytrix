@@ -132,6 +132,35 @@ export interface DeckPrefetchMsg {
   cardCodes: number[];
 }
 
+/** animations-ready-protocol-2026-06-05 (Direction B revision) — server →
+ *  client warmup hint emitted IMMEDIATELY after SESSION_TOKEN, BEFORE the
+ *  worker spawn. Carries the receiving player's own deck card codes so
+ *  the client can start `preFetchCardImages` early enough to flip
+ *  `thumbnailsReady=true` BEFORE `ANIMATIONS_READY` gates the server-
+ *  side worker spawn. Without this message, the client would deadlock:
+ *  `thumbnailsReady` gates `ANIMATIONS_READY` which gates worker spawn
+ *  which gates BOARD_STATE which gates `roomState='duel-loading'` which
+ *  gates `preFetchCardImages` which sets `thumbnailsReady`.
+ *
+ *  - PvP normal : each side gets only its own deck (no info leak).
+ *  - SOLO multiplex : `bothCardCodes` carries both decks (the SOLO
+ *    front pre-fetches both perspectives' images upfront, same shape
+ *    as `DuelStartingMsg.bothCardCodes`).
+ *
+ *  Idempotent : re-emitting on reconnect is a no-op client-side; the
+ *  client's `_handleEarlyDeckPrefetch` re-sets `_cardCodes` (same data),
+ *  the underlying prefetch is guarded by the loading service's
+ *  `prefetchStarted` flag. Coexists with `DECK_PREFETCH` (sent later,
+ *  post-dice in PvP normal) — they carry the same shape; the early
+ *  variant simply fires earlier in the timeline. */
+export interface EarlyDeckPrefetchMsg {
+  type: 'EARLY_DECK_PREFETCH';
+  cardCodes: number[];
+  /** SOLO multiplex only — both perspectives' decklists for upfront
+   *  image preload. PvP normal omits the field (info-leak prevention). */
+  bothCardCodes?: [number[], number[]];
+}
+
 export interface RematchInvitationMsg {
   type: 'REMATCH_INVITATION';
 }
@@ -280,5 +309,25 @@ export interface AnimationsDoneMsg {
  */
 export interface CancelPromptSequenceMsg {
   type: 'CANCEL_PROMPT_SEQUENCE';
+  forPlayer?: 0 | 1;
+}
+
+/**
+ * Client → server. "I'm ready to receive and animate duel events." Sent
+ * once per duel session by each connected player once their visual setup
+ * is complete (thumbnail prefetch flipped true). Idempotent server-side.
+ *
+ * Gates the worker spawn: `isReadyToStart` returns true only when every
+ * required socket is connected AND has emitted `ANIMATIONS_READY`. In
+ * SOLO multiplex only socket 0 contributes; in PvP normal both players
+ * must emit before `startFirstPlayerPhase` fires.
+ *
+ * No timeout fallback — clients that don't know the message are rejected
+ * at the handshake by the `PROTOCOL_VERSION` mismatch (close-code 4426).
+ *
+ * Cf. animations-ready-protocol-2026-06-05.md.
+ */
+export interface AnimationsReadyMsg {
+  type: 'ANIMATIONS_READY';
   forPlayer?: 0 | 1;
 }

@@ -1441,16 +1441,33 @@ early locks commit in `finally`. Pre-locks run AFTER `syncAfterBoardState()`
 — safe because `syncAfterBoardState` only calls `syncPileCounts()` when
 the queue has events, never `syncRendered()`.
 
-### Pre-activation Buffer (initial draw breathe beat)
+### Pre-activation Buffer (defense in depth, post-`ANIMATIONS_READY`)
 
-Between `BOARD_STATE` landing (roomState transitions `connecting →
-duel-loading`) and the dice arena dismissing (`duel-loading → active`),
-`boardActive=false`. `AnimationOrchestratorService._handleEntry` parks
-incoming `BOARD_CHANGING_EVENT_TYPES` events in
-`_preActivationBuffer` instead of running them — the legacy
-`!isBoardActive` guard in `draw-sequence-manager.processDrawEvent`
-returned 0 silently, causing the initial 5-card draw to never animate
-("cartes déjà en main" symptom, 2026-05-15).
+Historically this buffer absorbed a **wide** race window in SOLO
+multiplex: the worker spawned the instant the lone WS connected, and
+emitted MSG_DRAW × 5 + BOARD_STATE before the client had finished its
+thumbnail prefetch. `boardActive=false` during that window, so events
+parked in `_preActivationBuffer` and drained later via a 200ms breathe
+beat. PvP normal hit a much narrower window — the dice arena flow
+gave 5-10s of "human pause" between connection and worker spawn.
+
+Post-`ANIMATIONS_READY` protocol (2026-06-05) the wide SOLO window is
+closed at its root: the server's `isReadyToStart` gate waits for the
+client's `ANIMATIONS_READY` message (emitted on `thumbnailsReady=true`)
+before spawning the worker. The buffer's role narrows to **defense in
+depth** absorbing the tick-level window between the first BOARD_STATE
+landing and `setBoardActive(true)` flipping :
+
+1. BOARD_STATE arrives → `_handleBoardState` → `updateLogical` → the
+   `logicalState` signal flips → `boardReady` computed flips
+2. The next Angular effect tick fires `duel-loading → active` →
+   `setBoardActive(true)` + `roomState.set('active')` + `drainPreActivationBuffer()`
+
+If MSG_DRAW × 2 arrives in the same WS batch as BOARD_STATE (Node + ws
+deliver TCP-grouped frames sequentially in the same tick), it will hit
+`_dispatchEvent` BEFORE the effect tick can flip `boardActive` → it
+parks in the buffer. The drain re-injects it 200ms later, after
+`boardActive=true`, and the animation plays correctly.
 
 `DuelLoadingEffectsService.duel-loading → active` effect orders:
 1. `setBoardActive(true)` — gates downstream handlers.
@@ -1469,6 +1486,76 @@ flag so a hard reset (rematch, switch, destroy) does not carry stale
 draws into the next duel. The `processDrawEvent` legacy guard is
 retained as defense-in-depth with a `logger.warn` — reaching it now
 indicates a bypass of the buffer, not the expected silent-skip.
+
+### `ANIMATIONS_READY` client-controlled worker spawn gate (Direction B)
+
+Client → server message that gates the server-side worker spawn on the
+client's visual readiness. Pre-protocol the SOLO bootstrap spawned the
+worker the instant the WS connected and emitted MSG_DRAW × 5 before the
+client had finished its thumbnail prefetch — events parked in the
+pre-activation buffer, the chain resolved before the drain, events lost
+permanently.
+
+**The deadlock** : the naive design "emit ANIMATIONS_READY when
+thumbnailsReady=true" is circular. `thumbnailsReady` flips when
+`preFetchCardImages` finishes, which is gated on having `cardCodes`
+populated, which historically arrived on `DUEL_STARTING` (post-worker-spawn)
+or `DECK_PREFETCH` (post-dice in PvP). Worker spawn requires
+`ANIMATIONS_READY` → cycle.
+
+**The break (Direction B)** : a new server → client message
+`EARLY_DECK_PREFETCH` is emitted by `pvp-connection-handler` immediately
+after `SESSION_PHASE`, BEFORE the worker spawn / dice flow. It carries
+`cardCodes` (always available from `session.decks` at that point). The
+client's `DuelLoadingEffectsService` triggers `preFetchCardImages` on
+`wsService.cardCodes()` non-empty (no `roomState` gate), so the chain
+runs:
+1. WS handshake → SESSION_TOKEN → SESSION_PHASE → **EARLY_DECK_PREFETCH**
+2. Client `_handleEarlyDeckPrefetch` sets `_cardCodes`
+3. Loading service effect fires `preFetchCardImages` (HTTP `/api/decks/{id}` + Image preloads)
+4. `thumbnailsReady = true`
+5. Loading service effect fires `wsService.sendAnimationsReady()` (gated on `thumbnailsReady=true` AND `connectionStatus === 'connected'`)
+6. Server `animationsReady[i] = true` → `isReadyToStart` re-eval → spawn worker / dice flow / FORK_RESUME
+
+**Server-side state** : `ActiveDuelSession.animationsReady: [boolean, boolean]`.
+Init `[false, false]` in `createInitialSessionState`, reset to
+`[false, false]` in `resetSessionForRematch`.
+
+**Server-side handler** : `client-message-router.ts` `case 'ANIMATIONS_READY'`.
+Idempotent — a second emission from the same slot is logged-and-ignored.
+Calls `cfg.onAnimationsReady(session, playerIndex)`, wired in `server.ts`
+to re-evaluate the gate and trigger the next phase:
+- PvP normal + `phase === 'WAITING_PLAYERS'` → `startFirstPlayerPhase(session)`
+- SOLO multiplex + `phase === 'WAITING_PLAYERS'` → `startDuelWithOrder(session, 0)`
+- Fork + `phase === 'DUELING' && forkMode` → `worker.postMessage({ type: 'FORK_RESUME' })`
+
+**Server-side emission of `EARLY_DECK_PREFETCH`** : in `pvp-connection-handler`,
+immediately after `sendToPlayer(... SESSION_PHASE ...)`. PvP normal sends
+own deck only (no info leak). SOLO multiplex also sends `bothCardCodes`
+(parity with `DuelStartingMsg`). Pinned source-level by
+`pvp-connection-handler.spec.ts` (order: SESSION_PHASE → EARLY_DECK_PREFETCH
+→ isReadyToStart branch).
+
+**Client-side emission of `ANIMATIONS_READY`** : `DuelLoadingEffectsService`,
+gated on `(thumbnailsReady === true) && (wsService.connectionStatus() === 'connected')`.
+The dual gate prevents the silent-drop bug where emission before
+`SESSION_TOKEN` lands would hit `safeSend`'s `readyState !== OPEN` arm.
+Idempotence : `_animationsReadySent` local flag; reset by the rematch
+effect.
+
+**Rematch flow** : `resetSessionForRematch` server-side resets
+`animationsReady = [false, false]`. Client-side, the loading service's
+rematch effect (`wsService.rematchStarting() === true`) resets
+`_animationsReadySent = false`, `prefetchStarted = false`, and
+`thumbnailsReady.set(false)`. The chain then re-fires automatically since
+`_cardCodes` is still populated (carried over from the previous duel).
+- **Backward compat** : `PROTOCOL_VERSION` bumped to `2`. Old clients
+  that don't know the message are rejected at WS handshake with
+  close-code 4426 → forced refresh → new bundle. No timeout fallback
+  server-side ; the protocol bump is the structural backward-compat
+  fence.
+
+Cf. `_bmad-output/planning-artifacts/animations-ready-protocol-2026-06-05.md`.
 
 ### Pre-lock Handle Ownership
 

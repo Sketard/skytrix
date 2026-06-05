@@ -392,6 +392,19 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this.active().sendAnimationsDone(forPlayer);
   }
 
+  /**
+   * animations-ready-protocol-2026-06-05 — signal the server that the
+   * client has finished its visual setup. Fired by
+   * `DuelLoadingEffectsService` once `thumbnailsReady=true`. SOLO
+   * multiplex tags `forPlayer: 0` (the only live slot); PvP normal
+   * omits the tag (A2 strict — server-side validation rejects PvP
+   * payloads carrying `forPlayer`).
+   */
+  sendAnimationsReady(): void {
+    const forPlayer = this.soloModeSource() ? 0 : undefined;
+    this.active().sendAnimationsReady(forPlayer);
+  }
+
   dequeueAnimation(): QueueEntry | null {
     return this.active().dequeueAnimation();
   }

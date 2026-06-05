@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { WebSocket } from 'ws';
 import { resolveLivePlayerIndex } from './pvp-connection-handler.js';
 import { createInitialSessionState } from './session-factory.js';
 import type { ActiveDuelSession } from './types.js';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // =============================================================================
 // Fixtures
@@ -88,5 +93,47 @@ describe('resolveLivePlayerIndex', () => {
     session.players[0].ws = null;
     session.players[1].ws = null;
     expect(resolveLivePlayerIndex(session, wsA)).toBeNull();
+  });
+});
+
+// =============================================================================
+// animations-ready-protocol-2026-06-05 (Direction B) — EARLY_DECK_PREFETCH
+// =============================================================================
+//
+// The Direction B revision routes around the circular deadlock (where
+// preFetchCardImages was gated on roomState='duel-loading' which gated on
+// boardReady which gated on worker spawn which gated on ANIMATIONS_READY
+// which gated on thumbnailsReady which required preFetchCardImages) by
+// having the server emit EARLY_DECK_PREFETCH immediately after
+// SESSION_PHASE. This source-level guard pins the wire order : the message
+// MUST be emitted (a) AFTER `sendToPlayer(... SESSION_PHASE ...)` and (b)
+// BEFORE any branch that could `startDuelWithOrder` / `startFirstPlayerPhase`
+// / `FORK_RESUME`. A future refactor that moves the emission elsewhere
+// breaks the gate and re-introduces the deadlock.
+
+describe('pvp-connection-handler — EARLY_DECK_PREFETCH wire order', () => {
+  const SOURCE = readFileSync(join(HERE, 'pvp-connection-handler.ts'), 'utf-8');
+
+  it("emits EARLY_DECK_PREFETCH after SESSION_PHASE in the same handshake block", () => {
+    const sessionPhaseIdx = SOURCE.indexOf("type: 'SESSION_PHASE'");
+    const earlyPrefetchIdx = SOURCE.indexOf("type: 'EARLY_DECK_PREFETCH'");
+    expect(sessionPhaseIdx, 'SESSION_PHASE emission site').toBeGreaterThan(-1);
+    expect(earlyPrefetchIdx, 'EARLY_DECK_PREFETCH emission site').toBeGreaterThan(-1);
+    expect(earlyPrefetchIdx).toBeGreaterThan(sessionPhaseIdx);
+  });
+
+  it("emits EARLY_DECK_PREFETCH BEFORE the isReadyToStart branch (so cardCodes arrive ahead of worker spawn)", () => {
+    const earlyPrefetchIdx = SOURCE.indexOf("type: 'EARLY_DECK_PREFETCH'");
+    const isReadyToStartIdx = SOURCE.indexOf('isReadyToStart(session)');
+    expect(earlyPrefetchIdx).toBeGreaterThan(-1);
+    expect(isReadyToStartIdx).toBeGreaterThan(-1);
+    expect(earlyPrefetchIdx).toBeLessThan(isReadyToStartIdx);
+  });
+
+  it("ships SOLO multiplex sessions with `bothCardCodes` (parity with DuelStartingMsg)", () => {
+    // The branch reads `session.soloMode` and constructs a different payload
+    // when true. The source-level guard pins both branches exist.
+    expect(SOURCE).toMatch(/session\.soloMode\s*\?\s*\{[^}]*type:\s*'EARLY_DECK_PREFETCH'/s);
+    expect(SOURCE).toMatch(/bothCardCodes:\s*\[/);
   });
 });

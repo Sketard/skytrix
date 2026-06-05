@@ -149,6 +149,7 @@ export const SEGMENTATION: Readonly<Record<ServerMessage['type'], SegmentationAc
   FIRST_PLAYER_RESULT: 'not-an-event',
   DUEL_STARTING: 'not-an-event',
   DECK_PREFETCH: 'not-an-event',
+  EARLY_DECK_PREFETCH: 'not-an-event',
   REMATCH_INVITATION: 'not-an-event',
   REMATCH_STARTING: 'not-an-event',
   REMATCH_CANCELLED: 'not-an-event',

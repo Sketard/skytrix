@@ -37,6 +37,12 @@ export class DuelLoadingEffectsService {
 
   private prefetchStarted = false;
 
+  /** animations-ready-protocol-2026-06-05 — one-shot flag set when
+   *  ANIMATIONS_READY has been emitted for the current duel session.
+   *  Cleared on REMATCH_STARTING so the rematch flow re-emits after
+   *  the next thumbnailsReady flip. */
+  private _animationsReadySent = false;
+
   initEffects(config: {
     boardReady: Signal<boolean>;
     duelLoadingReady: Signal<boolean>;
@@ -78,10 +84,18 @@ export class DuelLoadingEffectsService {
       }
     });
 
-    // Story 2.4 — When entering 'duel-loading', start thumbnail pre-fetch.
+    // animations-ready-protocol-2026-06-05 (Direction B) — start
+    // thumbnail prefetch as soon as `cardCodes` is populated. The server
+    // emits EARLY_DECK_PREFETCH right after SESSION_PHASE (before the
+    // worker spawns), so cardCodes lands well ahead of any BOARD_STATE.
+    // The previous gate `state === 'duel-loading'` was the deadlock root
+    // cause: roomState→duel-loading requires boardReady requires
+    // BOARD_STATE requires worker spawn requires ANIMATIONS_READY
+    // requires thumbnailsReady requires prefetch. EARLY_DECK_PREFETCH
+    // delivers cardCodes ahead of the worker, breaking the cycle.
     effect(() => {
-      const state = config.roomState();
-      if (state === 'duel-loading' && !this.prefetchStarted) {
+      const codes = this.wsService.cardCodes();
+      if (codes.length > 0 && !this.prefetchStarted) {
         untracked(() => {
           this.prefetchStarted = true;
           this.preFetchCardImages(config.thumbnailsReady);
@@ -132,6 +146,57 @@ export class DuelLoadingEffectsService {
     // would race against the user's SELECT_FIRST_PLAYER pick and hide the
     // turn-choice buttons after 3s — root cause of the "dice end → duel
     // launches immediately" regression.)
+
+    // animations-ready-protocol-2026-06-05 (Direction B) — emit
+    // ANIMATIONS_READY once (a) thumbnails are fully prefetched and
+    // (b) the WS handshake is complete. The dual gate ensures the
+    // frame is not dropped silently by safeSend (which requires
+    // ws.readyState === OPEN) AND the server has already accepted
+    // this session via SESSION_TOKEN (`connectionStatus === 'connected'`
+    // is set in `_handleSessionToken`).
+    //
+    // The server-side `isReadyToStart` gate waits for every required
+    // slot's `animationsReady` flag before triggering worker spawn /
+    // dice flow / FORK_RESUME. Without this emission the duel never
+    // starts.
+    //
+    // Idempotence : `_animationsReadySent` blocks a second emission
+    // for the same duel. Reset to false by the rematch effect below
+    // so the rematch flow re-emits after the next thumbnailsReady
+    // flip.
+    effect(() => {
+      const ready = config.thumbnailsReady();
+      const status = this.wsService.connectionStatus();
+      if (!ready || status !== 'connected') return;
+      untracked(() => {
+        if (this._animationsReadySent) return;
+        this._animationsReadySent = true;
+        this.wsService.sendAnimationsReady();
+      });
+    });
+
+    // animations-ready-protocol-2026-06-05 (Direction B) — rematch
+    // reset. The server-side `resetSessionForRematch` flips
+    // `animationsReady = [false, false]` so the rematch worker spawn
+    // re-gates on a fresh ANIMATIONS_READY. The client must therefore
+    // re-emit. Triggers:
+    //  - reset `_animationsReadySent` to false (so the emission effect
+    //    above can fire again)
+    //  - reset `prefetchStarted` to false + `thumbnailsReady=false`
+    //    (so the prefetch effect re-runs — though in practice cardCodes
+    //    are still cached, this guarantees the chain restarts cleanly)
+    // The chain then re-fires: cardCodes still set → prefetch re-runs
+    // → thumbnailsReady flips true → ANIMATIONS_READY emitted again →
+    // server flips animationsReady[i]=true → worker spawn proceeds.
+    effect(() => {
+      if (this.wsService.rematchStarting()) {
+        untracked(() => {
+          this._animationsReadySent = false;
+          this.prefetchStarted = false;
+          config.thumbnailsReady.set(false);
+        });
+      }
+    });
 
   }
 

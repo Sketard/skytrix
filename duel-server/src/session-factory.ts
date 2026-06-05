@@ -126,6 +126,7 @@ export function createInitialSessionState(opts: CreateInitialSessionStateOpts): 
     pendingReplayResult: null,
     forkConnectionTimeout: null,
     gameLog: createSessionGameLog(),
+    animationsReady: [false, false],
   };
 }
 
@@ -196,4 +197,9 @@ export function resetSessionForRematch(session: ActiveDuelSession): void {
   // Fresh builders for the rematch — the prior duel's entries must NOT bleed
   // into the new journal.
   session.gameLog = createSessionGameLog();
+  // animations-ready-protocol-2026-06-05 — both clients must re-emit
+  // `ANIMATIONS_READY` for the rematch worker to spawn. Without this the
+  // server would consider the new duel ready to start the instant a
+  // REMATCH_REQUEST landed.
+  session.animationsReady = [false, false];
 }

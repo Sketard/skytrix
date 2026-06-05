@@ -23,8 +23,17 @@
  * Version log:
  *   1 — initial baseline (PvP + Replay shipped, MR5 board, chain overlay,
  *       chainIndex-tagged CONFIRM_CARDS, boardStateAfter snapshots).
+ *   2 — `ANIMATIONS_READY` client→server message gates the worker spawn on
+ *       the client's visual readiness (thumbnail prefetch done). The
+ *       server's `isReadyToStart` requires every connected slot's
+ *       `animationsReady` flag true before triggering
+ *       `startFirstPlayerPhase` (PvP) or `startDuelWithOrder` (SOLO /
+ *       fork). Old clients that never emit `ANIMATIONS_READY` would
+ *       leave the session stuck in `WAITING_PLAYERS`; rejecting them at
+ *       handshake via this bump is the structural backward-compat fence.
+ *       Cf. animations-ready-protocol-2026-06-05.md.
  */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 // =============================================================================
 // Shared Primitive Types

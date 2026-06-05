@@ -39,12 +39,14 @@ import type {
   DuelEndMsg, TimerStateMsg,
   DiceRollPromptMsg, DiceResultMsg,
   SelectFirstPlayerMsg, FirstPlayerResultMsg, DuelStartingMsg, DeckPrefetchMsg,
+  EarlyDeckPrefetchMsg,
   RematchInvitationMsg, RematchStartingMsg, RematchCancelledMsg,
   WorkerErrorMsg, StateSyncMsg, ChainStateMsg,
   SessionTokenMsg, SessionPhaseMsg, OpponentDisconnectedMsg, OpponentReconnectedMsg,
   InactivityWarningMsg, WaitingResponseMsg, ErrorMsg,
   SurrenderMsg, RematchRequestMsg, RequestStateSyncMsg,
   ActivityPingMsg, AnimationsDoneMsg, CancelPromptSequenceMsg,
+  AnimationsReadyMsg,
 } from './duel-ws-system.types';
 
 import type {
@@ -124,6 +126,7 @@ export type ServerMessage =
   | FirstPlayerResultMsg
   | DuelStartingMsg
   | DeckPrefetchMsg
+  | EarlyDeckPrefetchMsg
   | RematchInvitationMsg
   | RematchStartingMsg
   | RematchCancelledMsg
@@ -156,6 +159,7 @@ export type ClientMessage =
   | RequestStateSyncMsg
   | ActivityPingMsg
   | AnimationsDoneMsg
+  | AnimationsReadyMsg
   | CancelPromptSequenceMsg
   // Replay messages (4)
   | ReplayLoadMsg

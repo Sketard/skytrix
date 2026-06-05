@@ -14,9 +14,10 @@ import * as logger from './logger.js';
 
 /**
  * Inbound client message routing — the mirror of `worker-message-router.ts`
- * on the client side. Dispatches the 7 ClientMessage kinds:
+ * on the client side. Dispatches the 8 ClientMessage kinds:
  *   PLAYER_RESPONSE | SURRENDER | REMATCH_REQUEST | REQUEST_STATE_SYNC |
- *   ACTIVITY_PING | ANIMATIONS_DONE | CANCEL_PROMPT_SEQUENCE
+ *   ACTIVITY_PING | ANIMATIONS_DONE | ANIMATIONS_READY |
+ *   CANCEL_PROMPT_SEQUENCE
  *
  * Owns the validation + side-effects for each: awaitingResponse gating
  * (anti-spam), M28 promptType match guard, the
@@ -48,6 +49,20 @@ export interface ClientMessageRouterConfig {
    * carry two separate hooks that always fire together.
    */
   onStateSyncRequested: (session: ActiveDuelSession, playerIndex: 0 | 1) => void;
+  /**
+   * Called after ANIMATIONS_READY flips `session.animationsReady[idx]`
+   * true. The router does not own worker-spawn / first-player-phase
+   * dispatch (those live in `pvp-connection-handler.ts`); this hook
+   * lets that module re-evaluate `isReadyToStart` and trigger
+   * `startDuelWithOrder` / `startFirstPlayerPhase` synchronously.
+   *
+   * Idempotent at the hook level — the router has already gated on
+   * the per-slot flag, so a second ANIMATIONS_READY from the same
+   * slot will NOT call this hook.
+   *
+   * Cf. animations-ready-protocol-2026-06-05.md.
+   */
+  onAnimationsReady: (session: ActiveDuelSession, playerIndex: 0 | 1) => void;
   /** Per-player strike count before forfeit on invalid-response storm. */
   maxInvalidResponses: number;
   /** Minimum interval between REQUEST_STATE_SYNC from the same player (anti-spam). */
@@ -64,6 +79,7 @@ const getCfg = configurable.get;
 const ALLOWED_CLIENT_TYPES = new Set([
   'PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST',
   'REQUEST_STATE_SYNC', 'ACTIVITY_PING', 'ANIMATIONS_DONE',
+  'ANIMATIONS_READY',
   'CANCEL_PROMPT_SEQUENCE',
 ]);
 
@@ -249,6 +265,31 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
         ctx.pendingPlayer = null;
         startTurnTimer(session);
       }
+      break;
+    }
+
+    case 'ANIMATIONS_READY': {
+      // animations-ready-protocol-2026-06-05 — client signals it has
+      // finished its visual setup (thumbnail prefetch done) and is
+      // ready to receive animatable events. Idempotent: a second
+      // emission from the same slot is a no-op.
+      //
+      // The hook re-evaluates `isReadyToStart` in
+      // `pvp-connection-handler.ts` and may trigger
+      // `startFirstPlayerPhase` (PvP normal, once both slots have
+      // emitted) or `startDuelWithOrder(0)` (SOLO multiplex, on slot 0).
+      if (session.animationsReady[playerIndex]) {
+        logger.log('ANIMATIONS_READY ignored (already true)', {
+          duelId: session.duelId, player: playerIndex,
+        });
+        break;
+      }
+      session.animationsReady[playerIndex] = true;
+      logger.log('ANIMATIONS_READY', {
+        duelId: session.duelId, player: playerIndex,
+        animationsReady: session.animationsReady.slice(),
+      });
+      cfg.onAnimationsReady(session, playerIndex);
       break;
     }
 

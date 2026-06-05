@@ -8,13 +8,27 @@ import {
 } from './lifecycle-helpers.js';
 import type { ActiveDuelSession, Deck } from './types.js';
 
-function makeSession(opts: { soloMode: boolean; p0Connected: boolean; p1Connected: boolean }): ActiveDuelSession {
+interface MakeSessionOpts {
+  soloMode: boolean;
+  p0Connected: boolean;
+  p1Connected: boolean;
+  /**
+   * animations-ready-protocol-2026-06-05 — defaults to `[true, true]`
+   * so legacy tests pre-dating the gate keep the same semantic
+   * intent (a connected socket is "ready to start"). Tests targeting
+   * the gate itself override this.
+   */
+  animationsReady?: [boolean, boolean];
+}
+
+function makeSession(opts: MakeSessionOpts): ActiveDuelSession {
   return {
     soloMode: opts.soloMode,
     players: [
       { connected: opts.p0Connected },
       { connected: opts.p1Connected },
     ],
+    animationsReady: opts.animationsReady ?? [true, true],
   } as unknown as ActiveDuelSession;
 }
 
@@ -43,6 +57,68 @@ describe('lifecycle-helpers — γ Option C A3 + A28', () => {
       expect(isReadyToStart(makeSession({ soloMode: false, p0Connected: true, p1Connected: false }))).toBe(false);
       expect(isReadyToStart(makeSession({ soloMode: false, p0Connected: false, p1Connected: true }))).toBe(false);
       expect(isReadyToStart(makeSession({ soloMode: false, p0Connected: false, p1Connected: false }))).toBe(false);
+    });
+
+    // animations-ready-protocol-2026-06-05 — the gate also requires every
+    // required slot to have signalled `ANIMATIONS_READY`. Without this,
+    // the server would spawn the worker before the client had finished
+    // its thumbnail prefetch and the initial MSG_DRAW × 5 would race the
+    // pre-activation buffer.
+    describe('animations-ready gate', () => {
+      it('SOLO: false when socket 0 connected but animationsReady[0]=false', () => {
+        expect(isReadyToStart(makeSession({
+          soloMode: true, p0Connected: true, p1Connected: false,
+          animationsReady: [false, false],
+        }))).toBe(false);
+      });
+
+      it('SOLO: true when socket 0 connected AND animationsReady[0]=true', () => {
+        expect(isReadyToStart(makeSession({
+          soloMode: true, p0Connected: true, p1Connected: false,
+          animationsReady: [true, false],
+        }))).toBe(true);
+      });
+
+      it('SOLO: ignores animationsReady[1] entirely (slot 1 is never expected)', () => {
+        // Both connected + ready[0] true is sufficient; ready[1] state is irrelevant.
+        expect(isReadyToStart(makeSession({
+          soloMode: true, p0Connected: true, p1Connected: false,
+          animationsReady: [true, false],
+        }))).toBe(true);
+        // And ready[1] true alone doesn't unlock anything if ready[0] is false.
+        expect(isReadyToStart(makeSession({
+          soloMode: true, p0Connected: true, p1Connected: false,
+          animationsReady: [false, true],
+        }))).toBe(false);
+      });
+
+      it('PvP normal: false when only one slot has emitted animationsReady', () => {
+        expect(isReadyToStart(makeSession({
+          soloMode: false, p0Connected: true, p1Connected: true,
+          animationsReady: [true, false],
+        }))).toBe(false);
+        expect(isReadyToStart(makeSession({
+          soloMode: false, p0Connected: true, p1Connected: true,
+          animationsReady: [false, true],
+        }))).toBe(false);
+      });
+
+      it('PvP normal: true only when both connected AND both animations-ready', () => {
+        expect(isReadyToStart(makeSession({
+          soloMode: false, p0Connected: true, p1Connected: true,
+          animationsReady: [true, true],
+        }))).toBe(true);
+      });
+
+      it('PvP normal: false when both animations-ready but only one connected', () => {
+        // Defense: the connection gate is the outer check; if a slot is
+        // disconnected its animationsReady cannot have been set legitimately,
+        // but the predicate must reject either failure mode.
+        expect(isReadyToStart(makeSession({
+          soloMode: false, p0Connected: true, p1Connected: false,
+          animationsReady: [true, true],
+        }))).toBe(false);
+      });
     });
   });
 

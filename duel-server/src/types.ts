@@ -462,4 +462,20 @@ export interface ActiveDuelSession extends DuelSession {
    *  may omit it; the runtime tap in `worker-message-router.broadcastMessage`
    *  guards with `if (session.gameLog)` for that reason. */
   gameLog?: import('./session-game-log.js').SessionGameLog;
+  /** Per-player "I'm visually ready to animate" flag, set by the
+   *  `ANIMATIONS_READY` client→server message. Gates `isReadyToStart`
+   *  (worker spawn for SOLO, `startFirstPlayerPhase` for PvP) so the
+   *  worker never emits MSG_DRAW × 5 before the client has finished
+   *  its thumbnail prefetch + dice arena mount.
+   *
+   *  - PvP normal : both slots must flip true.
+   *  - SOLO / fork-solo : only slot 0 contributes (slot 1 is reserved
+   *    but never connects).
+   *
+   *  Reset to `[false, false]` by `resetSessionForRematch` so the
+   *  rematch flow waits for a fresh `ANIMATIONS_READY` before spawning
+   *  the new worker.
+   *
+   *  Cf. animations-ready-protocol-2026-06-05.md. */
+  animationsReady: [boolean, boolean];
 }

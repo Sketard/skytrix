@@ -20,11 +20,12 @@ interface SpyHooks {
   sent: SentMessage[];
   rematches: ActiveDuelSession[];
   stateSyncs: { session: ActiveDuelSession; playerIndex: 0 | 1 }[];
+  animationsReady: { session: ActiveDuelSession; playerIndex: 0 | 1 }[];
   workerPosts: unknown[];
 }
 
 function makeSpy(): SpyHooks {
-  return { sent: [], rematches: [], stateSyncs: [], workerPosts: [] };
+  return { sent: [], rematches: [], stateSyncs: [], animationsReady: [], workerPosts: [] };
 }
 
 function makeConfig(spy: SpyHooks, overrides: Partial<ClientMessageRouterConfig> = {}): ClientMessageRouterConfig {
@@ -32,6 +33,7 @@ function makeConfig(spy: SpyHooks, overrides: Partial<ClientMessageRouterConfig>
     sendToPlayer: (_s, p, message) => spy.sent.push({ player: p, message }),
     startRematch: (s) => spy.rematches.push(s),
     onStateSyncRequested: (session, playerIndex) => spy.stateSyncs.push({ session, playerIndex }),
+    onAnimationsReady: (session, playerIndex) => spy.animationsReady.push({ session, playerIndex }),
     maxInvalidResponses: 5,
     stateSyncRateLimitMs: 5000,
     cancelPromptRateLimitMs: 1000,
@@ -124,6 +126,7 @@ function makeSession(spy: SpyHooks, opts: { withWorker?: boolean; phase?: 'DUELI
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReady: [false, false],
   } as unknown as ActiveDuelSession & { worker: FakeWorker | null };
 }
 
@@ -571,6 +574,66 @@ describe('client-message-router', () => {
       handleClientMessage(s, 0, { type: 'ANIMATIONS_DONE' } as ClientMessage);
 
       expect(s.timerContext!.pendingPlayer).toBe(1);
+    });
+  });
+
+  // ==========================================================================
+  // ANIMATIONS_READY (animations-ready-protocol-2026-06-05)
+  // ==========================================================================
+
+  describe('ANIMATIONS_READY', () => {
+    it('flips animationsReady[player]=true and invokes the onAnimationsReady hook', () => {
+      const spy = makeSpy();
+      configureClientMessageRouter(makeConfig(spy));
+      const s = makeSession(spy);
+      s.phase = 'WAITING_PLAYERS';
+
+      handleClientMessage(s, 0, { type: 'ANIMATIONS_READY' } as ClientMessage);
+
+      expect(s.animationsReady).toEqual([true, false]);
+      expect(spy.animationsReady).toHaveLength(1);
+      expect(spy.animationsReady[0]).toEqual({ session: s, playerIndex: 0 });
+    });
+
+    it('flips animationsReady[1] when player 1 emits', () => {
+      const spy = makeSpy();
+      configureClientMessageRouter(makeConfig(spy));
+      const s = makeSession(spy);
+      s.phase = 'WAITING_PLAYERS';
+
+      handleClientMessage(s, 1, { type: 'ANIMATIONS_READY' } as ClientMessage);
+
+      expect(s.animationsReady).toEqual([false, true]);
+      expect(spy.animationsReady[0]).toEqual({ session: s, playerIndex: 1 });
+    });
+
+    it('is idempotent: a second emission from the same slot does NOT re-invoke the hook', () => {
+      const spy = makeSpy();
+      configureClientMessageRouter(makeConfig(spy));
+      const s = makeSession(spy);
+      s.phase = 'WAITING_PLAYERS';
+
+      handleClientMessage(s, 0, { type: 'ANIMATIONS_READY' } as ClientMessage);
+      handleClientMessage(s, 0, { type: 'ANIMATIONS_READY' } as ClientMessage);
+      handleClientMessage(s, 0, { type: 'ANIMATIONS_READY' } as ClientMessage);
+
+      expect(s.animationsReady).toEqual([true, false]);
+      expect(spy.animationsReady).toHaveLength(1);
+    });
+
+    it('per-slot idempotence: slot 1 re-emission does NOT block slot 0 first emission', () => {
+      const spy = makeSpy();
+      configureClientMessageRouter(makeConfig(spy));
+      const s = makeSession(spy);
+      s.phase = 'WAITING_PLAYERS';
+
+      handleClientMessage(s, 1, { type: 'ANIMATIONS_READY' } as ClientMessage);
+      handleClientMessage(s, 1, { type: 'ANIMATIONS_READY' } as ClientMessage); // dup
+      handleClientMessage(s, 0, { type: 'ANIMATIONS_READY' } as ClientMessage); // first for 0
+
+      expect(s.animationsReady).toEqual([true, true]);
+      expect(spy.animationsReady).toHaveLength(2);
+      expect(spy.animationsReady.map(h => h.playerIndex)).toEqual([1, 0]);
     });
   });
 

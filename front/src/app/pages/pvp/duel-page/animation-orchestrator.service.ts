@@ -207,6 +207,22 @@ export class AnimationOrchestratorService {
    * FIFO. Filled by the dispatch handler (single divert point — returns
    * `'divert'` to the runner). Drained by the `DuelLoadingEffectsService`
    * `duel-loading → active` effect.
+   *
+   * **Role post `ANIMATIONS_READY` (2026-06-05) — defense in depth, not
+   * load-bearing.** With the `ANIMATIONS_READY` protocol the server
+   * no longer spawns the worker until the client has finished its
+   * thumbnail prefetch. The worker → BOARD_STATE → first MSG_DRAW
+   * sequence therefore lands AFTER `thumbnailsReady=true`. The buffer
+   * only has work to do during the narrow window between the first
+   * BOARD_STATE handler firing (`_handleBoardState` → `updateLogical`
+   * propagates to `logicalState` → `boardReady` computed → effect
+   * `duel-loading → active` → `setBoardActive(true)`) and the next
+   * frame's effect tick. In SOLO this was historically the wide
+   * window that lost the initial draws — the protocol fixes the SOLO
+   * race at its root.
+   *
+   * Cf. animations-ready-protocol-2026-06-05.md §2 "Pre-activation
+   * buffer côté client : conservé en mode défensif minimal".
    */
   private readonly _preActivationBuffer: GameEvent[] = [];
   /** Set while drainPreActivationBuffer's setTimeout is pending. Prevents

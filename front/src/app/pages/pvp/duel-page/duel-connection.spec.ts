@@ -143,6 +143,66 @@ describe('DuelConnection — handleMessage: connection lifecycle', () => {
     // Cleanup
     localStorage.removeItem(storageKey);
   });
+
+  // animations-ready-protocol-2026-06-05 (Direction B) — SESSION_TOKEN no
+  // longer triggers ANIMATIONS_READY directly. The Direction A pivot was
+  // reverted ; emission now lives in DuelLoadingEffectsService, gated on
+  // thumbnailsReady. The server breaks the deadlock by emitting
+  // EARLY_DECK_PREFETCH right after SESSION_PHASE. This test pins the
+  // negative: SESSION_TOKEN handler MUST NOT emit ANIMATIONS_READY.
+  it('SESSION_TOKEN does NOT emit ANIMATIONS_READY (Direction B — emission in DuelLoadingEffectsService)', () => {
+    const ws = makeMockWs(true);
+    const { conn } = makeConn({ ws });
+    dispatch(conn, {
+      type: 'SESSION_TOKEN', token: 'tok-1',
+    } as unknown as ServerMessage);
+    const calls = ws.send.calls.allArgs() as unknown[][];
+    const animationsReadyCalls = calls.filter(args => {
+      try {
+        const payload = JSON.parse(args[0] as string) as { type?: string };
+        return payload?.type === 'ANIMATIONS_READY';
+      } catch { return false; }
+    });
+    expect(animationsReadyCalls.length).toBe(0);
+  });
+});
+
+// =============================================================================
+// EARLY_DECK_PREFETCH (Direction B) — populates `_cardCodes` early so the
+// loading service can start `preFetchCardImages` before the worker spawns.
+// =============================================================================
+
+describe('DuelConnection — handleMessage: EARLY_DECK_PREFETCH', () => {
+  it('populates `cardCodes` from an EARLY_DECK_PREFETCH payload', () => {
+    const { conn } = makeConn();
+    dispatch(conn, {
+      type: 'EARLY_DECK_PREFETCH',
+      cardCodes: [1001, 1002, 1003],
+    } as unknown as ServerMessage);
+    expect(Array.from(conn.cardCodes())).toEqual([1001, 1002, 1003]);
+  });
+
+  it('ignores an empty payload (defensive — server is expected to always populate)', () => {
+    const { conn } = makeConn();
+    dispatch(conn, {
+      type: 'EARLY_DECK_PREFETCH',
+      cardCodes: [],
+    } as unknown as ServerMessage);
+    expect(Array.from(conn.cardCodes())).toEqual([]);
+  });
+
+  it('idempotent against a subsequent DECK_PREFETCH carrying the same payload', () => {
+    const { conn } = makeConn();
+    dispatch(conn, {
+      type: 'EARLY_DECK_PREFETCH',
+      cardCodes: [1001, 1002],
+    } as unknown as ServerMessage);
+    dispatch(conn, {
+      type: 'DECK_PREFETCH',
+      cardCodes: [1001, 1002],
+    } as unknown as ServerMessage);
+    expect(Array.from(conn.cardCodes())).toEqual([1001, 1002]);
+  });
 });
 
 // =============================================================================

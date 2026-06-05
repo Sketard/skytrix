@@ -208,6 +208,7 @@ describe('worker-message-router — game-log ingestion tap', () => {
       pendingReplayResult: null,
       forkConnectionTimeout: null,
       gameLog: createSessionGameLog(),
+      animationsReady: [false, false],
     } as ActiveDuelSession;
   }
 

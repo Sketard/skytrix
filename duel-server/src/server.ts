@@ -61,6 +61,7 @@ import {
 import {
   configureFirstPlayerCoordinator,
   isFirstPlayerCoordinatorConfigured,
+  startFirstPlayerPhase,
 } from './first-player-coordinator.js';
 import {
   configureWorkerLifecycle,
@@ -96,7 +97,7 @@ import {
   configureClientMessageRouter,
   isClientMessageRouterConfigured,
 } from './client-message-router.js';
-import { isFullyDisconnected } from './lifecycle-helpers.js';
+import { isFullyDisconnected, isReadyToStart } from './lifecycle-helpers.js';
 import { sendToPlayer } from './ws-write.js';
 import type { AliveWebSocket } from './ws-types.js';
 import {
@@ -340,6 +341,29 @@ configureClientMessageRouter({
       resendPendingPrompt(session, 1);
     } else {
       resendPendingPrompt(session, playerIndex);
+    }
+  },
+  onAnimationsReady: (session) => {
+    // animations-ready-protocol-2026-06-05 — the client-message-router
+    // has already flipped `session.animationsReady[idx]` true. Re-
+    // evaluate the gate; if every required slot is now ready, kick off
+    // the next phase exactly the way `pvp-connection-handler` does on
+    // a fresh connection: SOLO + WAITING_PLAYERS → spawn worker
+    // direct, PvP + WAITING_PLAYERS → dice flow, fork + DUELING →
+    // FORK_RESUME.
+    if (!isReadyToStart(session)) return;
+    if (session.phase === 'WAITING_PLAYERS') {
+      if (session.soloMode) {
+        startDuelWithOrder(session, 0);
+      } else {
+        startFirstPlayerPhase(session);
+      }
+    } else if (session.phase === 'DUELING' && session.forkMode) {
+      if (session.forkConnectionTimeout) {
+        clearTimeout(session.forkConnectionTimeout);
+        session.forkConnectionTimeout = null;
+      }
+      session.worker?.postMessage({ type: 'FORK_RESUME' });
     }
   },
   maxInvalidResponses: MAX_INVALID_RESPONSES,

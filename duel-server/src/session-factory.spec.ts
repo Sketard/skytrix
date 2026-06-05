@@ -143,7 +143,7 @@ describe('createInitialSessionState (U15)', () => {
       'invalidResponseCount', 'promptSentAt', 'activeChainLinks',
       'chainPhase', 'negatedChainIndices', 'currentSolvingChainIndex',
       'playerUsernames', 'deckNames', 'pendingReplayResult',
-      'forkConnectionTimeout', 'gameLog',
+      'forkConnectionTimeout', 'gameLog', 'animationsReady',
     ];
     for (const key of EXPECTED_KEYS) {
       // `undefined` is the failure mode we want to catch. `null` is a
@@ -168,6 +168,11 @@ describe('createInitialSessionState (U15)', () => {
     expect(s.cancelTargetPrompt).toEqual([null, null]);
     expect(s.lastCancelAt).toEqual([0, 0]);
     expect(s.lastStateSyncAt).toEqual([0, 0]);
+    // animations-ready-protocol-2026-06-05 — both slots start NOT ready.
+    // The client emits ANIMATIONS_READY once its thumbnail prefetch
+    // completes; the server's `isReadyToStart` gate waits for both slots
+    // before triggering startFirstPlayerPhase / startDuelWithOrder.
+    expect(s.animationsReady).toEqual([false, false]);
   });
 });
 
@@ -231,6 +236,9 @@ describe('resetSessionForRematch (U15)', () => {
     s.activeChainLinks = [{ type: 'MSG_CHAINING' } as never];
     s.negatedChainIndices = new Set([0, 1]);
     s.currentSolvingChainIndex = 1;
+    // animations-ready-protocol-2026-06-05 — dirty the flag so we can
+    // assert the rematch reset wipes it back to [false, false].
+    s.animationsReady = [true, true];
 
     resetSessionForRematch(s);
 
@@ -254,6 +262,11 @@ describe('resetSessionForRematch (U15)', () => {
     expect(s.activeChainLinks).toEqual([]);
     expect(Array.from(s.negatedChainIndices)).toEqual([]);
     expect(s.currentSolvingChainIndex).toBeNull();
+    // animations-ready-protocol-2026-06-05 — the rematch must wait for a
+    // fresh ANIMATIONS_READY from each connected slot before spawning the
+    // new worker. Without this reset the next duel would start in the
+    // microsecond following REMATCH_REQUEST.
+    expect(s.animationsReady).toEqual([false, false]);
   });
 
   it('replaces gameLog with a fresh instance (prior duel entries do NOT bleed in)', () => {

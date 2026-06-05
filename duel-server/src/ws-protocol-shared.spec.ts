@@ -95,10 +95,15 @@ describe('checkProtocolVersionPure', () => {
   });
 
   it('preserves the raw value verbatim for log output (does not coerce)', () => {
-    const result = checkProtocolVersionPure('  2  ');
+    // Use a value certain NOT to match any future PROTOCOL_VERSION
+    // bump — the previous fixture (`'  2  '`) silently became a happy
+    // path at version 2.
+    const stale = String(PROTOCOL_VERSION - 1);
+    const padded = `  ${stale}  `;
+    const result = checkProtocolVersionPure(padded);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.rawClientVersion).toBe('  2  ');
+      expect(result.rawClientVersion).toBe(padded);
     }
   });
 

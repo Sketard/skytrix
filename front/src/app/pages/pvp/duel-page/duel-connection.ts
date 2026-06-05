@@ -5,7 +5,7 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { BoardStateMsg, BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DeckPrefetchMsg, DiceResultMsg, DiceRollPromptMsg, DrawMsg, DuelEndMsg, DuelStartingMsg, ErrorMsg, FirstPlayerResultMsg, HintMsg, InactivityWarningMsg, OpponentDisconnectedMsg, PROTOCOL_VERSION, RematchCancelledMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectFirstPlayerMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionPhaseMsg, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WaitingResponseMsg, WinMsg } from '../duel-ws.types';
+import { BoardStateMsg, BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DeckPrefetchMsg, DiceResultMsg, DiceRollPromptMsg, DrawMsg, DuelEndMsg, DuelStartingMsg, EarlyDeckPrefetchMsg, ErrorMsg, FirstPlayerResultMsg, HintMsg, InactivityWarningMsg, OpponentDisconnectedMsg, PROTOCOL_VERSION, RematchCancelledMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectFirstPlayerMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionPhaseMsg, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WaitingResponseMsg, WinMsg } from '../duel-ws.types';
 import { chainingMsgsToLinkStates } from './chain-state-restore.utils';
 import { swapBoardState } from '../board-state-swap';
 import type { WebSocketFactory } from './websocket-factory.service';
@@ -718,6 +718,20 @@ export class DuelConnection {
     this.safeSend(this._tagForPlayer({ type: 'ANIMATIONS_DONE' }, forPlayer));
   }
 
+  /**
+   * animations-ready-protocol-2026-06-05 — signal the server that the
+   * client has finished its visual setup (thumbnail prefetch done) and
+   * is ready to receive animatable duel events. Gates the worker spawn
+   * server-side. Idempotent: re-emits are logged-and-ignored by the
+   * server. The PvP-normal vs SOLO/fork-solo discrimination lives in
+   * `DuelLoadingEffectsService` (the only caller) — `forPlayer` is
+   * tagged when relevant. PvP normal MUST omit the tag (A2 strict
+   * server-side validation).
+   */
+  sendAnimationsReady(forPlayer?: 0 | 1): void {
+    this.safeSend(this._tagForPlayer({ type: 'ANIMATIONS_READY' }, forPlayer));
+  }
+
   clearDiceResult(): void {
     this._diceResult.set(null);
   }
@@ -1136,6 +1150,7 @@ export class DuelConnection {
       'SELECT_FIRST_PLAYER':   (m) => this._handleSelectFirstPlayer(m as SelectFirstPlayerMsg),
       'FIRST_PLAYER_RESULT':   (m) => this._handleFirstPlayerResult(m as FirstPlayerResultMsg),
       'DECK_PREFETCH':         (m) => this._handleDeckPrefetch(m as DeckPrefetchMsg),
+      'EARLY_DECK_PREFETCH':   (m) => this._handleEarlyDeckPrefetch(m as EarlyDeckPrefetchMsg),
       'DUEL_STARTING':         (m) => this._handleDuelStarting(m as DuelStartingMsg),
       'MSG_HINT':              (m) => this._handleMsgHint(m as HintMsg),
       'TIMER_STATE':           (m) => this._handleTimerState(m as TimerStateMsg),
@@ -1425,6 +1440,23 @@ export class DuelConnection {
     if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
   }
 
+  private _handleEarlyDeckPrefetch(message: EarlyDeckPrefetchMsg): void {
+    // animations-ready-protocol-2026-06-05 (Direction B) — emitted by the
+    // server immediately after SESSION_PHASE, BEFORE the worker spawns.
+    // Populates `_cardCodes` early so `preFetchCardImages` can start
+    // (driven by the loading service's mount-time effect on `cardCodes`)
+    // before the worker is allowed to spawn. The deadlock that would
+    // otherwise force ANIMATIONS_READY emission at SESSION_TOKEN time
+    // (Direction A pivot) is broken by this message: cardCodes arrive
+    // here regardless of worker state.
+    //
+    // Idempotent : DECK_PREFETCH (post-dice) and DUEL_STARTING (post-
+    // worker-spawn) re-set `_cardCodes` with the same payload later. In
+    // SOLO multiplex `bothCardCodes` mirrors `DuelStartingMsg`; PvP
+    // normal omits it (server-side info-leak prevention).
+    if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
+  }
+
   private _handleDuelStarting(message: DuelStartingMsg): void {
     this._firstPlayerResult.set(null);
     this._ocgPlayerIndex.set(message.playerIndex as 0 | 1);
@@ -1684,6 +1716,14 @@ export class DuelConnection {
     this.wsToken = null;
     this.reconnectToken = message.token;
     this._hasToken.set(true);
+    // animations-ready-protocol-2026-06-05 (Direction B) — ANIMATIONS_READY
+    // emission is owned by `DuelLoadingEffectsService`, NOT this handler.
+    // The service emits once both `thumbnailsReady=true` AND the WS is
+    // `connectionStatus === 'connected'`. The circular deadlock that
+    // would otherwise force emission here (Direction A pivot) is broken
+    // by the server emitting EARLY_DECK_PREFETCH right after SESSION_TOKEN,
+    // which lets the client run `preFetchCardImages` before the worker
+    // spawns.
     if (this._autoReconnect) {
       try { localStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
     }

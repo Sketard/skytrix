@@ -18,14 +18,25 @@ import { extractCardCodesForPlayer } from './types.js';
 import type { ServerMessage, DuelStartingMsg } from './ws-protocol.js';
 
 /**
- * True when the session has enough live sockets to start (or resume) the duel.
+ * True when the session has enough live sockets to start (or resume) the duel
+ * AND every required client has signalled visual readiness via
+ * `ANIMATIONS_READY`. The `animationsReady` gate gives the client control
+ * over the worker spawn timing so that initial MSG_DRAW × 5 do not race the
+ * dice arena dismiss / thumbnail prefetch / pre-activation buffer drain.
  *
- * - PvP normal : both players must be connected.
- * - SOLO       : only socket 0 must be connected (socket 1 is never expected).
+ * - PvP normal : both players must be connected AND animations-ready.
+ * - SOLO       : only socket 0 contributes (socket 1 is never expected).
+ *
+ * Cf. animations-ready-protocol-2026-06-05.md.
  */
 export function isReadyToStart(session: ActiveDuelSession): boolean {
-  if (session.soloMode) return session.players[0].connected;
-  return session.players[0].connected && session.players[1].connected;
+  if (session.soloMode) {
+    return session.players[0].connected && session.animationsReady[0];
+  }
+  return session.players[0].connected
+      && session.players[1].connected
+      && session.animationsReady[0]
+      && session.animationsReady[1];
 }
 
 /**

@@ -25,6 +25,7 @@ import { validateClientMessageForPlayer } from './client-message-validator.js';
 import { isReadyToStart, isFullyDisconnected } from './lifecycle-helpers.js';
 import { derivePhase } from './session-phase.js';
 import { sendToPlayer } from './ws-write.js';
+import { extractCardCodesForPlayer } from './types.js';
 import {
   cleanupDuelSession,
   sendStateSnapshot,
@@ -398,6 +399,31 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   // SESSION_TOKEN, so the discrimination is deterministic (no message-sniff
   // or timeout). Helper is pure — see session-phase.ts.
   sendToPlayer(session, playerIndex, { type: 'SESSION_PHASE', phase: derivePhase(session) });
+
+  // animations-ready-protocol-2026-06-05 (Direction B) — emit
+  // EARLY_DECK_PREFETCH immediately after SESSION_PHASE so the client
+  // can start its thumbnail prefetch BEFORE the worker spawns. The
+  // worker spawn is itself gated server-side on ANIMATIONS_READY,
+  // which the client emits once thumbnailsReady flips true. Breaks
+  // the circular dependency: cardCodes arrive here (always available
+  // from `session.decks` regardless of worker state) → prefetch runs
+  // → thumbnailsReady → ANIMATIONS_READY → worker spawn.
+  //
+  // SOLO multiplex : ship `bothCardCodes` so the front pre-fetches
+  // both perspectives' images upfront (parallels DuelStartingMsg).
+  // PvP normal : only own deck (no info leak).
+  const ownCardCodes = extractCardCodesForPlayer(session.decks, playerIndex);
+  const earlyPrefetchMsg = session.soloMode
+    ? {
+        type: 'EARLY_DECK_PREFETCH' as const,
+        cardCodes: ownCardCodes,
+        bothCardCodes: [
+          extractCardCodesForPlayer(session.decks, 0),
+          extractCardCodesForPlayer(session.decks, 1),
+        ] as [number[], number[]],
+      }
+    : { type: 'EARLY_DECK_PREFETCH' as const, cardCodes: ownCardCodes };
+  sendToPlayer(session, playerIndex, earlyPrefetchMsg);
 
   // Mark as alive for heartbeat
   (ws as AliveWebSocket).isAlive = true;

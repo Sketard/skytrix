@@ -20,7 +20,9 @@
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Axel\\\\Desktop\\\\code\\\\skytrix\\\\front\" -Recurse -Directory | Where-Object { $_.Name -match \"deck-builder|solver|shared\" } | Select-Object -First 30 | Format-List FullName)",
       "Bash(git add *)",
       "Bash(git commit -m '@ *)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(PW_AUTO_STACK=1 E2E_DUEL_SERVER_URL=http://localhost:13001 npx playwright test e2e/parity/event-stream-parity.spec.ts --timeout=300000 --workers=1 --reporter=list)",
+      "Bash(python3 c:/Users/Axel/Desktop/code/skytrix/_bmad/scripts/resolve_customization.py --skill c:/Users/Axel/Desktop/code/skytrix/.claude/skills/bmad-agent-ux-designer --key agent)"
     ]
   }
 }

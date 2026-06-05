@@ -36,6 +36,15 @@ class StubWs {
   // β.3 cas #13 — DuelLoadingEffects reads logicalState to build the
   // opening DRAW announce (turnPlayer / turnCount). Minimal stub.
   readonly boardStateView = { logicalState: signal(EMPTY_DUEL_STATE) };
+  // animations-ready-protocol-2026-06-05 (Direction B) — the service
+  // gates ANIMATIONS_READY emission on `thumbnailsReady=true` AND
+  // `connectionStatus === 'connected'`. Default 'connected' so the
+  // existing tests that don't care about the gate still pass.
+  readonly connectionStatus = signal<'connected' | 'reconnecting' | 'lost'>('connected');
+  // Rematch trigger — defaults false so existing duel-loading tests
+  // are unaffected. The rematch test below flips it.
+  readonly rematchStarting = signal(false);
+  sendAnimationsReady = jasmine.createSpy('sendAnimationsReady');
 }
 
 class StubRoomService {
@@ -60,7 +69,21 @@ class StubPhaseAnnouncement {
 }
 
 class StubHttp {
-  get = jasmine.createSpy('get').and.returnValue({ pipe: () => ({ subscribe: () => undefined }) });
+  // The service calls `firstValueFrom(http.get<DeckDTO>(...))` which subscribes
+  // and awaits the first emission. A bare `{ subscribe: noop }` would hang.
+  // Real Observable.of-like shape: subscribe immediately emits + completes.
+  // Tests that set decklistId to null bypass this path entirely (buildArtMap
+  // returns new Map() before the http call), but a usable stub keeps the
+  // assertion crisp if a future test enables decklistId.
+  get = jasmine.createSpy('get').and.returnValue({
+    subscribe: (observer: { next: (v: unknown) => void; complete?: () => void } | ((v: unknown) => void)) => {
+      const next = typeof observer === 'function' ? observer : observer.next;
+      const complete = typeof observer === 'function' ? undefined : observer.complete;
+      next({ mainDeck: [], extraDeck: [], sideDeck: [] });
+      complete?.();
+      return { unsubscribe: () => undefined };
+    },
+  });
 }
 
 class StubNotify {
@@ -162,5 +185,204 @@ describe('DuelLoadingEffectsService — duel-loading → active wiring', () => {
     });
     TestBed.flushEffects();
     expect(orch.drainPreActivationBuffer).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// animations-ready-protocol-2026-06-05 (Direction B) — ANIMATIONS_READY
+// emission ownership returned to this service after the Direction A pivot
+// was reversed. The service emits when (a) thumbnailsReady=true AND
+// (b) connectionStatus === 'connected'. EARLY_DECK_PREFETCH (server-side,
+// emitted post-SESSION_PHASE) populates cardCodes early enough to break
+// the original deadlock — see service file header comments.
+// =============================================================================
+
+describe('DuelLoadingEffectsService — ANIMATIONS_READY emission (Direction B)', () => {
+  it('does NOT emit while thumbnailsReady is false', () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+    expect(ws.sendAnimationsReady).not.toHaveBeenCalled();
+  });
+
+  it('does NOT emit while connectionStatus !== "connected" (race against WS handshake)', () => {
+    const { svc, ws } = setup();
+    ws.connectionStatus.set('reconnecting');
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(true);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+    expect(ws.sendAnimationsReady).not.toHaveBeenCalled();
+  });
+
+  it('emits ANIMATIONS_READY once thumbnailsReady AND connectionStatus="connected"', () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+    expect(ws.sendAnimationsReady).not.toHaveBeenCalled();
+
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+  });
+
+  it('is idempotent: a thumbnailsReady oscillation true→false→true does NOT re-emit', () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+    thumbnailsReady.set(false);
+    TestBed.flushEffects();
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+  });
+});
+
+// =============================================================================
+// animations-ready-protocol-2026-06-05 (Direction B) — prefetch trigger
+// moved from `roomState === 'duel-loading'` to `cardCodes.length > 0`. The
+// previous gate was the circular deadlock root — see service file header.
+// =============================================================================
+
+describe('DuelLoadingEffectsService — prefetch trigger (Direction B)', () => {
+  it('does NOT start prefetch while cardCodes is empty', () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    // thumbnailsReady has not been set — proof the prefetch never ran.
+    expect(thumbnailsReady()).toBeFalse();
+    expect(ws.sendAnimationsReady).not.toHaveBeenCalled();
+  });
+
+  it('triggers prefetch as soon as cardCodes is populated (NOT gated on roomState)', async () => {
+    const { svc, ws } = setup();
+    // Critical: roomState stays in 'waiting' the whole time. The pre-
+    // Direction-B gate would have blocked the prefetch indefinitely here.
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    // Server sends EARLY_DECK_PREFETCH → cardCodes populates. We pass a
+    // sentinel non-empty list (-1 means no real Image() load — keeps the
+    // preFetchCardImages promise lightweight in karma).
+    ws.cardCodes.set([-1]);
+    TestBed.flushEffects();
+
+    // preFetchCardImages is async — buildArtMap returns Map() (decklistId
+    // is null), preloadCardImages with cardCode=-1 immediately settles via
+    // onerror. Drain microtasks until `thumbnailsReady.set(true)`.
+    await new Promise(resolve => setTimeout(resolve, 50));
+    TestBed.flushEffects();
+
+    expect(thumbnailsReady()).toBeTrue();
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not double-trigger prefetch if cardCodes is re-set (idempotent via prefetchStarted)', async () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    ws.cardCodes.set([-1]);
+    TestBed.flushEffects();
+    ws.cardCodes.set([-1, -2]); // DECK_PREFETCH later in PvP flow
+    TestBed.flushEffects();
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+    TestBed.flushEffects();
+
+    // Only ONE ANIMATIONS_READY frame even after the re-set.
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+  });
+});
+
+// =============================================================================
+// animations-ready-protocol-2026-06-05 (Direction B) — rematch flow
+// =============================================================================
+
+describe('DuelLoadingEffectsService — rematch resets ANIMATIONS_READY (Direction B)', () => {
+  it('re-emits ANIMATIONS_READY after REMATCH_STARTING + next thumbnailsReady flip', () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    // First duel: thumbnails flip → ANIMATIONS_READY emitted once.
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+
+    // Rematch fires.
+    ws.rematchStarting.set(true);
+    TestBed.flushEffects();
+
+    // thumbnailsReady has been reset to false by the rematch effect.
+    expect(thumbnailsReady()).toBeFalse();
+
+    // Server re-flips animationsReady=[false,false] + the rematch worker
+    // is gated on a fresh ANIMATIONS_READY. The client re-emits as soon
+    // as thumbnails are ready again.
+    ws.rematchStarting.set(false);
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(2);
   });
 });
