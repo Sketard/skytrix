@@ -75,13 +75,32 @@ class StubLpTracker extends StubManager {
 // orchestrator can detect a connection swap (mirror of `DuelConnection` ctor
 // creating `new RenderedBoardStateService()` for every conn — PvP default
 // + SOLO multiplex bound via `bindSoloConnection`).
+//
+// Patch H (2026-06-05 code review) — `attachFloatRegistryCallOrder` +
+// `getSafetyTimeoutMsAssignOrder` capture the monotonic order in which
+// the orchestrator's effect body calls `attachFloatRegistry` then assigns
+// the override. The ordering contract is "registry first, override
+// second" : a future refactor that inverts them could land a
+// `getSafetyTimeoutMs` consumer reading `_floatRegistry` before it is
+// attached (NPE in some debug path). The H spec below pins this.
+type StubRbs = {
+  commitUnlocked: () => void;
+  lockZone: () => void;
+  attachFloatRegistry: () => void;
+  getSafetyTimeoutMs: () => number;
+  dropOrphanedLocks: (reason: string) => number;
+  setPostRequestStopWindow: (v: boolean) => void;
+  attachFloatRegistryCallOrder: number | null;
+  getSafetyTimeoutMsAssignOrder: number | null;
+};
+
 function makeStubRbs(dropOrphanedLocksCalls: { reason: string; order: number }[],
                     setPostRequestStopWindowCalls: { value: boolean; order: number }[],
-                    nextOrder: () => number) {
-  return {
+                    nextOrder: () => number): StubRbs {
+  const rbs: StubRbs = {
     commitUnlocked: (): void => undefined,
     lockZone: (): void => undefined,
-    attachFloatRegistry: (): void => undefined,
+    attachFloatRegistry: (): void => { rbs.attachFloatRegistryCallOrder = nextOrder(); },
     // Default value mirroring the real `RenderedBoardStateService` field
     // assignment (`= () => LOCK_SAFETY_TIMEOUT_MS`). The orchestrator's
     // ctor effect MUST override this to `ctx.safetyTimeout(...)`.
@@ -93,7 +112,25 @@ function makeStubRbs(dropOrphanedLocksCalls: { reason: string; order: number }[]
     setPostRequestStopWindow: (v: boolean): void => {
       setPostRequestStopWindowCalls.push({ value: v, order: nextOrder() });
     },
+    attachFloatRegistryCallOrder: null,
+    getSafetyTimeoutMsAssignOrder: null,
   };
+  // Intercept the `getSafetyTimeoutMs = ...` re-assignment by the
+  // orchestrator's effect so we can capture WHEN it lands relative to
+  // `attachFloatRegistry`. A property setter cannot be defined on a
+  // plain object property and re-assigned later via simple `=`, so we
+  // use a defineProperty descriptor with a custom setter.
+  let backing = rbs.getSafetyTimeoutMs;
+  Object.defineProperty(rbs, 'getSafetyTimeoutMs', {
+    configurable: true,
+    enumerable: true,
+    get: () => backing,
+    set: (v: () => number) => {
+      backing = v;
+      rbs.getSafetyTimeoutMsAssignOrder = nextOrder();
+    },
+  });
+  return rbs;
 }
 
 class StubDataSource {
@@ -504,5 +541,26 @@ describe('AnimationOrchestratorService — RBS config re-applied on swap (2026-0
     TestBed.flushEffects();
     expect(ds.renderedBoardState.getSafetyTimeoutMs()).toBe(2000);
     expect(fresh.getSafetyTimeoutMs()).toBe(2000); // verifies the SAME object is re-configured
+  });
+
+  it('configures the RBS in the order : attachFloatRegistry BEFORE getSafetyTimeoutMs override (patch H)', () => {
+    // Order contract pinned post-2026-06-05 code review : the orchestrator's
+    // ctor effect body MUST call `rbs.attachFloatRegistry(...)` BEFORE
+    // re-assigning `rbs.getSafetyTimeoutMs`. A future refactor that
+    // inverts the two could land a `getSafetyTimeoutMs` consumer reading
+    // `_floatRegistry` (e.g. a debug counter wrapped into the timeout
+    // computation) before it is attached — NPE in some boot path that
+    // is not currently exercised by other specs.
+    const orch = makeOrchestrator();
+    void orch;
+    TestBed.flushEffects();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
+    const rbs = ds.renderedBoardState as unknown as { attachFloatRegistryCallOrder: number | null; getSafetyTimeoutMsAssignOrder: number | null };
+
+    expect(rbs.attachFloatRegistryCallOrder).withContext('attachFloatRegistry must have fired').not.toBeNull();
+    expect(rbs.getSafetyTimeoutMsAssignOrder).withContext('getSafetyTimeoutMs must have been overridden').not.toBeNull();
+    expect(rbs.attachFloatRegistryCallOrder!)
+      .withContext('attachFloatRegistry must run BEFORE getSafetyTimeoutMs override')
+      .toBeLessThan(rbs.getSafetyTimeoutMsAssignOrder!);
   });
 });

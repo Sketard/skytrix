@@ -239,8 +239,32 @@ export class DrawSequenceManager {
         earlyLocksHandedOff = true;
         await this.runParallelInitialDraw(msg, otherMsg, earlyLocks);
       } else {
+        // Single-msg fallback (otherMsg never arrived within the poll
+        // window). Hand the HAND-${relPlayer} earlyLock to runDrawSequence
+        // via `externalHandLock` so its final commit() drops ref-count
+        // 1→0 in the SAME tick as `clearLandedByDstPrefix` +
+        // `handExpansionSlots` retraction inside runDrawSequence. Without
+        // this hand-off, the inner handLock posed by runDrawSequence
+        // would land at ref-count 2 (earlyLock + inner) and its commit
+        // would only decrement to 1 (no commitZone) — leaving a window
+        // where floats are already cleared + slots retracted but the
+        // real cards haven't rendered yet (fan momentarily empty). The
+        // remaining HAND-${otherRel} earlyLock is still released in the
+        // finally block via `earlyLocks[1].commit()` — flag below
+        // distinguishes from the parallel hand-off.
         this.ctx.announceEvent('Card drawn', msg.player);
-        await this.runDrawSequence(msg, { guardTimeout: false, keepFloats: true });
+        earlyLocksHandedOff = true;
+        await this.runDrawSequence(msg, {
+          guardTimeout: false,
+          keepFloats: true,
+          externalHandLock: earlyLocks[0],
+        });
+        // The HAND-${otherRel} earlyLock was NOT handed off — it has no
+        // matching MSG_DRAW. Commit it directly so its ref-count drops
+        // 1→0 and commitZone fires (HAND-${otherRel} stays empty in
+        // logical for the duration of the single-msg path ; commitZone
+        // is a no-op on an unchanged zone).
+        earlyLocks[1].commit();
       }
 
       clearTimeout(guardId);
@@ -269,20 +293,24 @@ export class DrawSequenceManager {
       // the final commit.
       if (!earlyLocksHandedOff) earlyLocks.forEach(l => l.commit());
       dumpHand('POST-COMMIT (sync)');
-      // Clear the kept proxy floats — once the inner handLock final commits
-      // have fired (inside runDrawSequence), the real cards render and the
-      // proxies become duplicates. Deferring this to the runner's `finalize`
-      // would let an intervening blocking directive (e.g. the `phase:MAIN1`
-      // announcement, ~1s) keep both visible — the user would see ghost
-      // floats stacked over the real hand. `resetHandAnimationState` drops
-      // the expansion slots in the same tick so Angular reuses the hand
-      // <div>s without firing a layout transition.
-      this.floatRegistry.clearLandedTravels();
+      // `runDrawSequence` already cleared its own HAND-${rel} floats
+      // via the filtered `clearLandedByDstPrefix(dstKey)` post-commit
+      // (fix #4) — the unfiltered `clearLandedTravels()` call previously
+      // here was redundant for the happy path AND risked wiping
+      // legitimate floats on OTHER zones (GY, BANISHED) if a future
+      // bootstrap (fork-solo with non-empty board) posed them inside
+      // this window. `resetHandAnimationState` is the only required
+      // cleanup : drops the expansion-slot reservation so Angular
+      // reuses the hand <div>s without firing a layout transition.
       this.resetHandAnimationState();
       dumpHand('POST-CLEAR-FLOATS');
-      setTimeout(() => dumpHand('POST-COMMIT +50ms'), 50);
-      setTimeout(() => dumpHand('POST-COMMIT +200ms'), 200);
-      setTimeout(() => dumpHand('POST-COMMIT +500ms'), 500);
+      // Track the deferred dumpHand timers via `_drawTimeouts` so
+      // `reset()` / rematch / teardown clears them — otherwise a rapid
+      // surrender + new duel within 500ms would cross-pollute the trace
+      // with stale state from the previous duel.
+      this._drawTimeouts.push(setTimeout(() => dumpHand('POST-COMMIT +50ms'), 50));
+      this._drawTimeouts.push(setTimeout(() => dumpHand('POST-COMMIT +200ms'), 200));
+      this._drawTimeouts.push(setTimeout(() => dumpHand('POST-COMMIT +500ms'), 500));
     }
 
     this._drawsInFlight.clear();
@@ -345,14 +373,21 @@ export class DrawSequenceManager {
    * Core draw loop: locks HAND + DECK, loops travelToHand() per card, commits.
    * @param opts.guardTimeout If true, sets a timeout guard that force-continues on hang.
    * @param opts.keepFloats If true, landed floats are kept as visual proxies (initial draw).
-   * @param opts.externalHandLock If provided, reused as the HAND zone lock instead
-   *   of acquiring a fresh one. Used by `runParallelInitialDraw` to pose both inner
-   *   hand locks SYNCHRONOUSLY upfront, so the `earlyLocks` of `launchInitialDraw`
-   *   can be `commit()`-ed immediately (ref-count 2→1 each, no commitZone yet) — they
-   *   no longer live across the full ~1500ms travel, so the safety timeout race
-   *   (commit decrement vs timer fire, both landing in the same 10ms window at
-   *   t≈1500ms) is structurally impossible. The final inner handLock.commit()
-   *   drops ref-count 1→0 and triggers commitZone normally.
+   * @param opts.externalHandLock If provided, reused as the HAND zone lock
+   *   instead of acquiring a fresh one. Two callers use this :
+   *   1. `runParallelInitialDraw` poses both inner hand locks SYNCHRONOUSLY
+   *      upfront, then `release()`s the `earlyLocks` of `launchInitialDraw`
+   *      immediately (ref-count 2→1 each, no commitZone yet) — the earlyLocks
+   *      no longer live across the full ~1500ms travel, so the safety timeout
+   *      race (commit decrement vs timer fire, both landing in the same 10ms
+   *      window at t≈1500ms) is structurally impossible. The final inner
+   *      handLock.commit() drops ref-count 1→0 and triggers commitZone normally.
+   *   2. `launchInitialDraw`'s single-msg fallback path hands the
+   *      HAND-${relPlayer} earlyLock directly here so `runDrawSequence`'s
+   *      final commit() fires commitZone in the same tick as
+   *      `clearLandedByDstPrefix` + `handExpansionSlots` retraction — no
+   *      visible "fan empty" flicker between cleanup and the deferred
+   *      `earlyLocks.commit()` of the finally block.
    *   Console-log repro 2026-06-05 (`console-export-2026-6-5_16-20-24`).
    */
   private async runDrawSequence(msg: DrawMsg, opts: { guardTimeout: boolean; keepFloats?: boolean; externalHandLock?: ZoneLock }): Promise<void> {

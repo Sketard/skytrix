@@ -661,7 +661,7 @@ describe('DrawSequenceManager', () => {
       expect(manager.handExpansionSlots()).toEqual([0, 0]);
     }));
 
-    it('parallel path : poses BOTH inner HAND locks sync upfront, releases earlyLocks early (fix #3)', fakeAsync(() => {
+    it('parallel path : poses BOTH inner HAND locks sync upfront BEFORE releasing earlyLocks (fix #3 — order pinned)', fakeAsync(() => {
       // Bug repro (console-export-2026-6-5_16-20-24.log) — earlyLocks
       // HAND-${rel} + HAND-${otherRel} lived for the FULL ~1500ms travel,
       // exactly the safety timeout window → race between
@@ -673,46 +673,66 @@ describe('DrawSequenceManager', () => {
       // the SOLE actors on the zone : final commit drops ref 1→0 →
       // commitZone fires normally, no race.
       //
+      // ORDER CONTRACT (post-code-review patch E) — the inner handLock
+      // pose MUST happen BEFORE the earlyLock release on each HAND zone.
+      // A regression that inverts the order would re-introduce a
+      // single-actor window with ref-count temporarily 0 — `commitUnlocked`
+      // would fire and reveal the still-empty HAND.
+      //
       // Spec setup : pre-inject msgB into the queue so
       // `peekAndDequeueOtherInitialDraw` finds it synchronously, then
-      // dispatch msgA. The inner-lock count we expect on each HAND zone :
-      // 1 from earlyLock (launchInitialDraw) + 1 from inner handLock
-      // (runParallelInitialDraw upfront) = 2 lockZone calls per HAND.
+      // dispatch msgA. Replace the default `lockZone` stub with one that
+      // tags every emitted ZoneLock with a sequence number ; assert that
+      // for each HAND zone the inner-lock pose seq < earlyLock release seq.
+      let nextSeq = 0;
+      const lockSeqs: { key: string; lockSeq: number; releaseSeq: number | null }[] = [];
+      mockRbs.lockZone.and.callFake((key: string) => {
+        const lockSeq = nextSeq++;
+        const entry = { key, lockSeq, releaseSeq: null as number | null };
+        lockSeqs.push(entry);
+        return {
+          commit: () => undefined,
+          release: () => { entry.releaseSeq = nextSeq++; },
+        };
+      });
+
       const msgB: DrawMsg = { type: 'MSG_DRAW', player: 1, cards: [201, 202] } as DrawMsg;
       queue.set([msgB]);
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101, 102] } as DrawMsg);
       flush();
 
-      // Both HAND zones receive at least 2 `lockZone` calls — the
-      // earlyLock (launchInitialDraw) + the inner handLock posed sync
-      // upfront in `runParallelInitialDraw`. A regression where
-      // `runDrawSequence` re-locks despite the `externalHandLock`
-      // option (or where the inner-lock pose is deferred past the
-      // earlyLock release) would change this count.
-      const handLockCalls = mockRbs.lockZone.calls.allArgs().filter(args => args[0] === 'HAND-0' || args[0] === 'HAND-1');
-      const hand0Calls = handLockCalls.filter(args => args[0] === 'HAND-0').length;
-      const hand1Calls = handLockCalls.filter(args => args[0] === 'HAND-1').length;
-      expect(hand0Calls).toBeGreaterThanOrEqual(2, 'HAND-0 should receive earlyLock + inner handLock');
-      expect(hand1Calls).toBeGreaterThanOrEqual(2, 'HAND-1 should receive earlyLock + inner handLock');
+      // Per zone, there should be at least 2 ZoneLocks posed (earlyLock +
+      // inner). The earlyLock (1st in time) must be released AFTER the
+      // inner handLock (2nd in time) is posed — otherwise the zone falls
+      // to ref-count 0 between the two operations.
+      for (const zone of ['HAND-0', 'HAND-1']) {
+        const zoneSeqs = lockSeqs.filter(s => s.key === zone);
+        expect(zoneSeqs.length).withContext(`${zone} should receive earlyLock + inner handLock`).toBeGreaterThanOrEqual(2);
+        const earlyLock = zoneSeqs[0]; // posed first
+        const innerLock = zoneSeqs[1]; // posed second (the inner handLock)
+        expect(earlyLock.releaseSeq).withContext(`${zone} earlyLock should be released by runParallelInitialDraw`).not.toBeNull();
+        expect(earlyLock.releaseSeq!).withContext(`${zone} earlyLock.release must happen AFTER innerHandLock.lockZone (fix #3 hand-off order)`).toBeGreaterThan(innerLock.lockSeq);
+      }
 
       // The parallel path also clears floats for BOTH zones (fix #4).
       expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-0');
       expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-1');
     }));
 
-    it('does NOT fire the unfiltered clearLandedTravels() during runDrawSequence — only the dst-prefixed clear', fakeAsync(() => {
-      // The unfiltered `clearLandedTravels()` was the legacy regression
-      // surface (wipes GY / BANISHED / opponent HAND floats too). The
-      // `launchInitialDraw.finally` still calls it as defense-in-depth
-      // for error paths (guardTimeout), but `runDrawSequence` itself
-      // MUST stay filtered to preserve the cross-zone safety contract.
+    it('does NOT fire the unfiltered clearLandedTravels() anywhere — only the dst-prefixed clear', fakeAsync(() => {
+      // Post-2026-06-05 code-review patch F : the redundant
+      // `clearLandedTravels()` in `launchInitialDraw.finally` was removed
+      // — `runDrawSequence` already clears its own HAND-${rel} floats via
+      // the filtered `clearLandedByDstPrefix`. The unfiltered call was a
+      // cross-zone hazard (would wipe GY / BANISHED floats if a future
+      // bootstrap posed them in this window). This test now asserts the
+      // ABSENCE of the unfiltered call AND the presence of the filtered
+      // one — both halves of the contract.
       mockFloatRegistry.clearLandedTravels.calls.reset();
+      mockFloatRegistry.clearLandedByDstPrefix.calls.reset();
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101] } as DrawMsg);
-      // We can't trivially assert the call ordering without draining the
-      // finally — but the contract on `clearLandedByDstPrefix` being
-      // called WITH the dstKey (above) is the load-bearing assertion.
-      // This test is a paired check : the filtered call must have run.
       flush();
+      expect(mockFloatRegistry.clearLandedTravels).not.toHaveBeenCalled();
       expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-0');
     }));
   });
