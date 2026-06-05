@@ -264,6 +264,90 @@ plus besoin de `tolerateLocks`.
   [console-export-2026-6-4_13-57-59.log](../../console-export-2026-6-4_13-57-59.log)
   et confirmer 0 throw.
 
+## Amendment — Phase 5-bis (2026-06-05)
+
+> **Statut** : amendment in-flight livré par commit `98fcfe13`. La spec
+> d'origine (lignes 247–253) prescrivait de RÉDUIRE `canSwitchPerspective`
+> à `promptBlocks` uniquement. Phase 5-bis va plus loin : le gate
+> `promptBlocks` est aussi droppé. `canSwitchPerspective` retourne
+> désormais `true` unconditionnellement. La whitelist
+> `IDLE_PHASE_PROMPT_TYPES` (introduite γ-c c10) est retirée.
+
+### Pourquoi le gate prompt devient redondant
+
+Le constat amont d'audit (live session 2026-06-05) : `wsService.pendingPrompt()`
+([duel-web-socket.service.ts:248](../../front/src/app/pages/pvp/duel-page/duel-web-socket.service.ts#L248))
+lit déjà `_slots[perspectiveSlot()].pendingPrompt` — c'est-à-dire que
+le filtrage par perspective est déjà câblé **par construction γ-c PR2
+c4.2**. En SOLO multiplex :
+
+- Sur P0 + worker a prompt `SELECT_CARD` pour P0 → `pendingPrompt()`
+  renvoie ce prompt → modale visible côté DOM.
+- Click P1 → `duelCtx.setPerspective(1)` flippe le signal →
+  `pendingPrompt()` réévalue → lit `_slots[1].pendingPrompt` → `null`
+  → `visiblePrompt` ([prompt-derivation.service.ts:77-92](../../front/src/app/pages/pvp/duel-page/prompt-derivation.service.ts#L77-L92))
+  → `null` → modale masquée automatiquement du DOM.
+- Worker reste avec `_slots[0].pendingPrompt` = SELECT_CARD pending.
+- Click "P1" (qui revient à P0) → `pendingPrompt()` re-lit
+  `_slots[0].pendingPrompt` → ré-renvoie la SAME ref → modale
+  ré-apparaît identique.
+
+Le gate spec-prescrit "bloquer sur modal prompt" prévenait une UX
+confusion ("la modale demande à P0 mais P1 la voit"). Le per-slot
+routing rend cette confusion impossible : la modale est intrinsèquement
+attachée au slot émetteur.
+
+### Audit des consommateurs prod (5 callers de `pendingPrompt()`)
+
+| Caller | Comportement post-Phase-5-bis | Risque |
+|---|---|---|
+| `prompt-derivation.service:visiblePrompt` | Naturellement filtré par slot — auto-masque la modale au switch | Aucun |
+| `duel-prompt-effects.service:auto-respond effect` | Re-fire sur le nouveau slot si optionnel pending y existe | Idempotent — ré-évalue le mode |
+| `duel-page.component:_animationsDoneEffect` | Envoie `ANIMATIONS_DONE(prompt.player)` au serveur | Server-side idempotent (guard `ctx.pendingPlayer === playerIndex` → `pendingPlayer = null`) |
+| `duel-page.component:onZoneSelected` | Click handler zone | Trivial — l'utilisateur sur ce slot par construction |
+| `pvp-dice-arena.component` | DICE_ROLL pre-duel | Hors scope (SOLO bootstrap sur P0) |
+
+Aucun caller ne nécessite que le gate amont soit maintenu.
+
+### Affordance UX de remplacement
+
+Le gate prompt servait aussi à empêcher l'utilisateur de "perdre" sa
+modale en switchant. L'affordance qui prend le relais existe **déjà** :
+
+- `waitingForOpponentOnOtherSlot()` ([duel-page.component.ts:381](../../front/src/app/pages/pvp/duel-page/duel-page.component.ts#L381))
+  → glow doré (`mini-toolbar__item--urgent`) sur le bouton P1/P2 dès
+  que l'autre slot a une action en attente. Câblé en γ-c c6f.
+- Au switch back, la modale ré-apparaît automatiquement via le per-slot
+  routing — pas de state perdu.
+
+### Doctrine cible révisée
+
+La doctrine "Replay-as-max-rate-PvP" (CLAUDE.md) prescrit que SOLO
+converge vers replay : le bouton replay `togglePerspective` est
+toujours cliquable, SOLO doit suivre. La parité descendante (spec
+§"Décisions ouvertes", ligne 314) est désormais entièrement
+appliquée — aucune gate UX amont en SOLO.
+
+### Tests Phase 6 Karma associés
+
+- `phase-gamma-victory.spec.ts` — describe block
+  "v3 Phase 5-bis — canSwitchPerspective always true (prompt no longer
+  blocks)" : 7 tests pinning la nouvelle doctrine. Les anciens tests F3
+  "BLOCKS while board unstable / draw / SELECT_CARD" sont inversés en
+  "ALLOWS while …".
+- `solo-duel-orchestrator.service.spec.ts` — test
+  "FIRES even with a modal prompt active" remplace le test
+  "no-op while a prompt is active".
+
+### Code de référence
+
+- Commit Phase 5-bis : `98fcfe13` (3 fichiers, +110 -180 LOC).
+- Suppression de `IDLE_PHASE_PROMPT_TYPES` (lignes 26-38 du fichier
+  d'origine) : [solo-duel-orchestrator.service.ts](../../front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts).
+- Nouveau getter `canSwitchPerspective` : retourne `true`
+  unconditionnellement, kept comme public surface pour le binding
+  `[disabled]` du template.
+
 ## Effort estimé
 
 | Phase | Durée |
