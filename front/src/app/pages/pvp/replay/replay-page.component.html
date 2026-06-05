@@ -105,7 +105,8 @@
                                            [cards]="zb.cards"
                                            [playerIndex]="zb.playerIndex"
                                            [openId]="zb.openId"
-                                           (inspectCard)="onCardInspectRequest({ cardCode: $event })"
+                                           (cardClick)="onCardInspectRequest({ cardCode: $event.cardCode })"
+                                           (inspectCard)="onCardInspectRequest({ cardCode: $event, forceExpanded: true })"
                                            (closed)="closeZoneBrowser($event)" />
           }
           <!-- Game Log — Surface 1: journal panel (mounted here so it shares

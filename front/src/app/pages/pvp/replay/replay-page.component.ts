@@ -1139,9 +1139,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onCardInspectRequest(event: { cardCode: number; liveCard?: CardOnField }): Promise<void> {
+  async onCardInspectRequest(event: { cardCode: number; liveCard?: CardOnField; forceExpanded?: boolean }): Promise<void> {
     if (!event.cardCode) return;
-    await this.cardInspection.inspectByCode(event.cardCode, false, event.liveCard);
+    // Direction B (Master Duel-style, 2026-06-05) — replay is fully
+    // read-only by construction, so B2 always falls through to inspect.
+    // `forceExpanded` is honored when set (long-press / right-click /
+    // SELECT_CHAIN dblclick) and stays off for B2 soft taps.
+    await this.cardInspection.inspectByCode(event.cardCode, event.forceExpanded ?? false, event.liveCard);
   }
 
   onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number }): void {

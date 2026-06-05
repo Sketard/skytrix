@@ -1034,11 +1034,17 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     await this.cardInspection.inspectByCode(cardCode, forceExpanded);
   }
 
-  async onCardInspectRequest(event: { cardCode: number; liveCard?: CardOnField }): Promise<void> {
-    await this.cardInspection.inspectByCode(event.cardCode, false, event.liveCard);
+  async onCardInspectRequest(event: { cardCode: number; liveCard?: CardOnField; forceExpanded?: boolean }): Promise<void> {
+    // Direction B (Master Duel-style, 2026-06-05) — children now signal
+    // intent via `forceExpanded`. Long-press / right-click / SELECT_CHAIN
+    // dblclick set it ; B2 tap fallback leaves it undefined (soft inspect).
+    await this.cardInspection.inspectByCode(event.cardCode, event.forceExpanded ?? false, event.liveCard);
   }
 
   async onLongPressInspect(event: { cardCode: number; liveCard?: CardOnField }): Promise<void> {
+    // Kept for F23 binding compatibility — `pvp-prompt-dialog` subscribes
+    // to a child output named `longPressInspect` via string lookup. Always
+    // opens the inspector full-screen.
     await this.cardInspection.inspectByCode(event.cardCode, true, event.liveCard);
   }
 
