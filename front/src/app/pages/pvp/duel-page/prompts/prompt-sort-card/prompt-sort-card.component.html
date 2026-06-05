@@ -4,6 +4,8 @@
             [class.card-slot--assigned]="getRank($index) !== null"
             [class.card-slot--last]="isLastAssigned($index)"
             (click)="toggleCard($index)"
+            (appLongPress)="onCardLongPress($index)"
+            (contextmenu)="onCardContextMenu($index, $event)"
             [disabled]="answered && !readOnly"
             type="button"
             [attr.aria-label]="card.name">

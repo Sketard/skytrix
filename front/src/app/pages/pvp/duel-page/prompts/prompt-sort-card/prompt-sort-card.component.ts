@@ -13,6 +13,7 @@ import { HintContext } from '../../../types';
 import { SortCardMsg, SortChainMsg, CardInfo } from '../../../duel-ws.types';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DuelCardArtService } from '../../duel-card-art.service';
+import { LongPressDirective } from '../../long-press.directive';
 
 type SortPrompt = SortCardMsg | SortChainMsg;
 
@@ -22,7 +23,7 @@ type SortPrompt = SortCardMsg | SortChainMsg;
   styleUrl: './prompt-sort-card.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, LongPressDirective],
 })
 export class PromptSortCardComponent implements PromptSubComponent<SortPrompt>, OnInit {
   private readonly artService = inject(DuelCardArtService);
@@ -69,12 +70,10 @@ export class PromptSortCardComponent implements PromptSubComponent<SortPrompt>, 
 
   toggleCard(index: number): void {
     if (this.answered) return;
-
-    const cardCode = this.cards[index]?.cardCode;
-    if (cardCode) {
-      this.longPressInspect.emit({ cardCode });
-    }
-
+    // Direction B (Master Duel-style, 2026-06-05) : tap = sort logic only,
+    // never inspect. The inspector now opens via long-press (touch) or
+    // right-click (desktop) — routed through `onCardLongPress` /
+    // `onCardContextMenu`.
     if (this.readOnly) return;
 
     if (this.isLastAssigned(index)) {
@@ -82,6 +81,17 @@ export class PromptSortCardComponent implements PromptSubComponent<SortPrompt>, 
     } else if (this.getRank(index) === null) {
       this.orderedIndices.update(arr => [...arr, index]);
     }
+  }
+
+  onCardLongPress(index: number): void {
+    const cardCode = this.cards[index]?.cardCode;
+    if (cardCode) this.longPressInspect.emit({ cardCode });
+  }
+
+  onCardContextMenu(index: number, event: MouseEvent): void {
+    event.preventDefault();
+    const cardCode = this.cards[index]?.cardCode;
+    if (cardCode) this.longPressInspect.emit({ cardCode });
   }
 
   reset(): void {
