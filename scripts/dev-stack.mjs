@@ -42,7 +42,7 @@
 //   - Windows-aware: uses mvnw.cmd, ng.cmd, taskkill /T /F on shutdown
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, openSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, openSync, readdirSync, copyFileSync, symlinkSync, lstatSync, statSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { request as httpRequest } from 'node:http';
@@ -103,6 +103,92 @@ function detectJavaHome() {
 
 const JAVA_HOME = detectJavaHome();
 
+// ── Isolated dataDir for duel-server ───────────────────────────────────────
+// The user's hand-driven duel-server on :3001 and this stack's duel-server
+// on :13001 used to share `duel-server/data/`. When the user clicks "update
+// data" on their stack, the rename `cards.cdb -> cards.cdb.backup` fails
+// with EBUSY on Windows because our worker thread keeps a sqlite handle
+// open. Each stack now points at its own dataDir via process.env.DATA_DIR
+// (read by duel-server/src/server.ts line 127).
+//
+// Strategy: a real copy of cards.cdb (small, ~30 MB, rename-safe — both
+// stacks can run their own update independently), plus symlinks for
+// scripts_full/ (~10k Lua files, read-only at runtime) and strings.conf
+// (one-shot read at boot). Symlinking the scripts dir keeps a `git pull`
+// in the canonical scripts_full propagating to both stacks — desired, the
+// upstream sync is the same. Don't symlink cards.cdb itself — Windows
+// treats the symlink target as the real file for rename purposes, which
+// is the exact pattern we're trying to escape.
+const DUEL_DATA_CANONICAL = join(ROOT, 'duel-server', 'data');
+const DUEL_DATA_ISOLATED = join(ROOT, 'duel-server', 'data-isolated');
+
+function ensureIsolatedDuelData() {
+  if (!existsSync(DUEL_DATA_CANONICAL)) {
+    throw new Error(`Canonical dataDir missing: ${DUEL_DATA_CANONICAL}. Run the user's duel-server stack at least once to bootstrap it.`);
+  }
+  if (!existsSync(DUEL_DATA_ISOLATED)) {
+    mkdirSync(DUEL_DATA_ISOLATED, { recursive: true });
+  }
+
+  // cards.cdb — independent copy (rename-target during update-data)
+  const cdbSrc = join(DUEL_DATA_CANONICAL, 'cards.cdb');
+  const cdbDst = join(DUEL_DATA_ISOLATED, 'cards.cdb');
+  if (existsSync(cdbSrc) && !existsSync(cdbDst)) {
+    copyFileSync(cdbSrc, cdbDst);
+    log(`→ duel: isolated cards.cdb copied (${(statSync(cdbDst).size / 1024 / 1024).toFixed(1)} MB)`);
+  }
+
+  // scripts_full + strings.conf — junctions/symlinks (read-only at runtime,
+  // safe to share with the canonical stack — `git pull` upstream propagates
+  // to both stacks).
+  //
+  // Windows: dir → junction via `mklink /J` (no admin/dev-mode required,
+  // unlike a true symlink). File → POSIX-style symlink (Windows allows file
+  // symlinks under most setups, AND strings.conf is small enough that the
+  // copy fallback is negligible if symlink fails).
+  // POSIX: standard symlinkSync for both.
+  for (const entry of ['scripts_full', 'strings.conf']) {
+    const src = join(DUEL_DATA_CANONICAL, entry);
+    const dst = join(DUEL_DATA_ISOLATED, entry);
+    if (!existsSync(src)) continue;
+    if (existsSync(dst)) continue; // already linked or copied from a prior run
+    const isDir = statSync(src).isDirectory();
+    if (linkIsolated(src, dst, isDir)) {
+      log(`→ duel: isolated ${entry} → canonical (${isDir && IS_WINDOWS ? 'junction' : 'symlink'})`);
+    } else {
+      log(`! duel: link ${entry} failed; fallback to copy. Re-run "up" after upstream pull to refresh.`);
+      if (isDir) copyDirSync(src, dst);
+      else copyFileSync(src, dst);
+    }
+  }
+}
+
+// Create a junction (Windows dir) or symlink (everything else) from src→dst.
+// Returns true on success, false on any failure (caller falls back to copy).
+function linkIsolated(src, dst, isDir) {
+  if (IS_WINDOWS && isDir) {
+    // mklink is a cmd.exe builtin, not an exe — needs shell:true.
+    const r = spawnSync('cmd.exe', ['/c', 'mklink', '/J', dst, src], { stdio: 'pipe' });
+    return r.status === 0;
+  }
+  try {
+    symlinkSync(src, dst, isDir ? 'dir' : 'file');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function copyDirSync(src, dst) {
+  mkdirSync(dst, { recursive: true });
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    const s = join(src, entry.name);
+    const d = join(dst, entry.name);
+    if (entry.isDirectory()) copyDirSync(s, d);
+    else copyFileSync(s, d);
+  }
+}
+
 // ── Service registry ───────────────────────────────────────────────────────
 // One entry per managed process. `start` returns the spawn() args. `probe`
 // is an async readiness check; `timeoutMs` is the budget before we give up.
@@ -160,6 +246,10 @@ const SERVICES = {
       PORT: '13001',
       SPRING_BOOT_API_URL: 'http://localhost:18080/api',
       INTERNAL_API_KEY: 'dev-internal-key',
+      // Read by duel-server/src/server.ts:127. Keeps this stack's cards.cdb
+      // isolated from the user's canonical :3001 so /api/update-data on
+      // either side can rename atomically without an EBUSY from the other.
+      DATA_DIR: DUEL_DATA_ISOLATED,
     },
     probe: () => httpProbe('http://localhost:13001/health', 1000),
     dependsOn: ['back'],
@@ -345,6 +435,8 @@ async function startService(name) {
     log(`✓ ${name} already responding on :${svc.port}`);
     return true;
   }
+
+  if (name === 'duel') ensureIsolatedDuelData();
 
   log(`→ ${name}: spawning (${svc.cmd} ${svc.args.join(' ')})`);
   const out = openSync(logPath(name), 'a');
