@@ -30,8 +30,10 @@ const IDLE_PHASE_PROMPT_TYPES: ReadonlySet<string> = new Set([
   // walks each player's response window in sequence and the viewer NEEDS to
   // switch perspective precisely to answer for the other side (e.g. activate
   // Ash Blossom on opponent's NS-trigger). Allowing the switch here is the
-  // SOLO multiplex raison d'être. Safe because `isBoardStableForSwitch`
-  // (chain phase + isAnimating) still gates the actual transport state.
+  // SOLO multiplex raison d'être. v3 Phase 5 (2026-06-05) — safety is now
+  // structural : `notifyPerspectiveSwitch` clears the runner + drops orphaned
+  // locks before the dispatch (Phase 3 wire). No upstream board-stability gate
+  // is needed.
   'SELECT_CHAIN',
 ]);
 
@@ -226,36 +228,30 @@ export class SoloDuelOrchestratorService {
    * and the safety guard can never disagree (clicking a glowing button that
    * silently no-ops was the "I click P1 and nothing happens" frustration).
    *
-   * Three families of conditions:
-   *  - No BLOCKING modal prompt. `IDLE_PHASE_PROMPT_TYPES` (SELECT_IDLECMD /
-   *    SELECT_BATTLECMD) are the stable per-phase wait state and are allowed —
-   *    blocking them would lock the switch for the whole turn (c10 bug).
-   *  - No draw in flight — a mid-draw flip re-derives card faces and flashes
-   *    card-backs on the travelling cards.
-   *  - Board stable (chain idle + runner stopped) — swapping mid-chain or
-   *    while locks are held desyncs the CONNECTION_LIFETIME chain/lock state
-   *    against the freshly-swapped board (lock leak + POLL-DROP).
+   * v3 Phase 5 (2026-06-05) — relaxed to `promptBlocks` only. The doctrine
+   * "Replay-as-max-rate-PvP" (CLAUDE.md) prescribes SOLO converging toward
+   * replay : replay's `togglePerspective` button is always cliquable, SOLO's
+   * must follow. The earlier gates (`hasDrawsInFlight`, `isBoardStableForSwitch`)
+   * are no longer load-bearing because :
+   *   · `notifyPerspectiveSwitch` now calls `clearTimersAndPolling()` in head
+   *     (v3 Phase 5 wire), which fires `runner.requestStop()` →
+   *     `dropOrphanedLocks('runner-requestStop')` (Phase 3). The locks held
+   *     by in-flight handlers are vacated by construction.
+   *   · `_abort.abort()` interrupts any suspended async handler at its next
+   *     `await` ; the post-cleanup `.then(commit, release)` hits the zombie-
+   *     safe path (Option G, af3195fa).
+   *   · `conn.onPerspectiveSwitched()` re-feeds the cached absolute BOARD_STATE
+   *     via `syncRendered()` so the board lands on the target state immediately
+   *     even if the worker is in WAITING_RESPONSE (no fresh BOARD_STATE coming).
    *
-   * Reads only reactive signals (pendingPrompt, chainPhase, isAnimating) plus
-   * the draw-in-flight Set; the reactive trio drives `[disabled]` refresh.
-   *
-   * U30 (audit, 2026-06-01) — `hasDrawsInFlight` is a non-reactive Set getter,
-   * BUT `isAnimating` subsumes it by runtime invariant: QueueRunner.decideNextStep
-   * bypasses finalize while `hasDrawsInFlight === true` (queue-runner.ts:175 and
-   * :468), so `_isRunning` (and therefore `isAnimating`) stays true for the
-   * entire draw lifecycle. The non-reactive `hasDrawsInFlight` check below is
-   * defense-in-depth, not load-bearing — removing it would still work today
-   * because `isBoardStableForSwitch` returns false during the draw. Kept for
-   * explicitness + as the early-return for the diagnostic log at switchPerspective().
-   * If the runner invariant changes (a future refactor removes the queue-runner.ts:468
-   * `hasDrawsInFlight` early-return), this becomes load-bearing again — promote it
-   * to a reactive signal at that point.
+   * Only blocking modal prompts remain. `IDLE_PHASE_PROMPT_TYPES` whitelist
+   * (SELECT_IDLECMD / SELECT_BATTLECMD / SELECT_CHAIN) is preserved : these
+   * are the legitimate per-phase wait states where switching is the raison
+   * d'être of SOLO multiplex (answer for the other side).
    */
   get canSwitchPerspective(): boolean {
     const prompt = this.wsService.pendingPrompt();
     if (prompt !== null && !IDLE_PHASE_PROMPT_TYPES.has(prompt.type)) return false;
-    if (this.animationService.drawManager.hasDrawsInFlight) return false;
-    if (!this.animationService.isBoardStableForSwitch) return false;
     return true;
   }
 
@@ -263,21 +259,14 @@ export class SoloDuelOrchestratorService {
     const conn = this._transport_connection();
     if (!conn) return;
     if (this._switching()) return;
-    // F3 — single guard via `canSwitchPerspective` (modal prompt + draw in
-    // flight + board-stable). Logs ONLY the real blocking reasons so a
-    // whitelisted prompt (SELECT_IDLECMD/BATTLECMD) coexisting with a draw or
-    // chain doesn't look like the cause of the block in diagnostic exports.
+    // v3 Phase 5 — single gate `canSwitchPerspective` reduced to modal-prompt
+    // block (whitelist excepts IDLE_PHASE_PROMPT_TYPES). Mid-anim + mid-draw
+    // switches are now safe by construction via `notifyPerspectiveSwitch` →
+    // `clearTimersAndPolling` → `dropOrphanedLocks`.
     if (!this.canSwitchPerspective) {
       const prompt = this.wsService.pendingPrompt();
-      const promptBlocks = prompt !== null && !IDLE_PHASE_PROMPT_TYPES.has(prompt.type);
-      const drawBlocks = this.animationService.drawManager.hasDrawsInFlight;
-      const boardUnstable = !this.animationService.isBoardStableForSwitch;
-      const reasons: string[] = [];
-      if (promptBlocks) reasons.push(`prompt=${prompt!.type}`);
-      if (drawBlocks) reasons.push('draw');
-      if (boardUnstable) reasons.push('board-unstable');
       this.logger.log(DuelLogCategory.PIPELINE,
-        'switchPerspective skipped: %s', reasons.join(','));
+        'switchPerspective skipped: %s', `prompt=${prompt?.type ?? 'null'}`);
       return;
     }
     const from = this.duelCtx.perspective()() as 0 | 1;

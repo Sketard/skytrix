@@ -72,11 +72,24 @@ class StubLpTracker extends StubManager {
 }
 
 class StubDataSource {
+  // v3 Phase 5 — `dropOrphanedLocks` is the Phase 3 transition-cleanup
+  // called by `QueueRunner.requestStop`. The orchestrator's new
+  // `notifyPerspectiveSwitch` head-call `clearTimersAndPolling()` reaches
+  // this method via the runner ; spec accounting tracks call count + arg.
+  dropOrphanedLocksCalls: string[] = [];
+  setPostRequestStopWindowCalls: boolean[] = [];
   renderedBoardState = {
     commitUnlocked: (): void => undefined,
     lockZone: (): void => undefined,
     attachFloatRegistry: (): void => undefined,
     getSafetyTimeoutMs: (): number => 0,
+    dropOrphanedLocks: (reason: string): number => {
+      this.dropOrphanedLocksCalls.push(reason);
+      return 0;
+    },
+    setPostRequestStopWindow: (v: boolean): void => {
+      this.setPostRequestStopWindowCalls.push(v);
+    },
   };
   chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   activeChainLinks = signal<readonly unknown[]>([]);
@@ -256,5 +269,96 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
         .withContext(`phase=${phase} isAnimating=true → must block`)
         .toBeFalse();
     }
+  });
+});
+
+// =============================================================================
+// v3 Phase 5 (2026-06-05) — notifyPerspectiveSwitch drops orphaned locks
+// -----------------------------------------------------------------------------
+// The Phase 5 wire adds `clearTimersAndPolling()` in the head of
+// `notifyPerspectiveSwitch`, which cascades through `runner.requestStop` →
+// `dropOrphanedLocks('runner-requestStop')` + `setPostRequestStopWindow(true)`.
+// Pins the orchestrator-side contract that a SOLO mid-anim switch is safe
+// by construction — the gate doctrine of v3 Phase 5.
+//
+// Sister contract on the SOLO orchestrator side (`canSwitchPerspective`
+// relaxed to the prompt-modal whitelist) is pinned in
+// `phase-gamma-victory.spec.ts:"v3 Phase 5 — canSwitchPerspective relaxed"`.
+// =============================================================================
+describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wire', () => {
+  function makeOrchestrator(): AnimationOrchestratorService {
+    TestBed.configureTestingModule({
+      providers: [
+        AnimationOrchestratorService,
+        ScopeResetDispatcher,
+        DuelGameLogService,
+        { provide: DuelLogger, useClass: StubLogger },
+        { provide: ANIMATION_DATA_SOURCE, useClass: StubDataSource },
+        { provide: DuelContext, useClass: StubCtx },
+        { provide: LpAnimationTracker, useClass: StubLpTracker },
+        { provide: ChainResolutionManager, useClass: StubManager },
+        { provide: DrawSequenceManager, useClass: StubManager },
+        { provide: MoveAnimationRouter, useClass: StubManager },
+        { provide: BattleAnimationTracker, useClass: StubManager },
+        { provide: TargetIndicatorManager, useClass: StubManager },
+        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        { provide: CardTravelEngine, useValue: {} },
+        { provide: BoardEffectsService, useValue: {} },
+        { provide: FloatRegistryService, useClass: StubFloatRegistry },
+        { provide: DuelToastService, useValue: { show: () => undefined } },
+        { provide: DuelCardArtService, useValue: { getArtUrl: () => '' } },
+        { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
+      ],
+    });
+    return TestBed.inject(AnimationOrchestratorService);
+  }
+
+  it('calls dropOrphanedLocks("runner-requestStop") on the RBS', () => {
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
+    expect(ds.dropOrphanedLocksCalls).toEqual([]);
+
+    orch.notifyPerspectiveSwitch(0, 1);
+
+    // The runner.requestStop path called from clearTimersAndPolling MUST
+    // fire dropOrphanedLocks with the canonical reason tag. A regression
+    // that splits or renames the call breaks this assert visibly.
+    expect(ds.dropOrphanedLocksCalls).toContain('runner-requestStop');
+  });
+
+  it('opens the postRequestStopWindow (Phase 1 instrumentation) on every switch', () => {
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
+    expect(ds.setPostRequestStopWindowCalls).toEqual([]);
+
+    orch.notifyPerspectiveSwitch(0, 1);
+
+    // setPostRequestStopWindow(true) is the v3 Phase 1 instrumentation that
+    // tracks any handler bailing past its await on the abort signal. It MUST
+    // be opened on every requestStop — perspective switch included.
+    expect(ds.setPostRequestStopWindowCalls).toContain(true);
+  });
+
+  it('emits PerspectiveSwitched on the EventStream after the clear', () => {
+    const orch = makeOrchestrator();
+    const before = orch.eventStream();
+    orch.notifyPerspectiveSwitch(0, 1);
+    const after = orch.eventStream();
+    const newEvents = after.slice(before.length);
+
+    // The stream is reset by clearTimersAndPolling? No — clearTimersAndPolling
+    // does not touch _eventStream (only resetAllState does, which we do NOT
+    // call here). So PerspectiveSwitched is appended to whatever was there.
+    // The runner-stopped transport event also lands on the stream (β.2a
+    // sink). Both must surface ; PerspectiveSwitched is the one tested here.
+    const perspectiveEvents = newEvents.filter(
+      (e): e is { kind: 'perspective'; type: 'PerspectiveSwitched'; from: 0 | 1; to: 0 | 1 } =>
+        (e as { kind?: string }).kind === 'perspective'
+        && (e as { type?: string }).type === 'PerspectiveSwitched',
+    );
+    expect(perspectiveEvents.length).toBe(1);
+    expect(perspectiveEvents[0]).toEqual(
+      jasmine.objectContaining({ kind: 'perspective', type: 'PerspectiveSwitched', from: 0, to: 1 }),
+    );
   });
 });

@@ -41,6 +41,17 @@ class MockDataSource {
   readonly animationQueue = this._queue.asReadonly();
   readonly chainPhase = this._chainPhase.asReadonly();
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
+  // v3 Phase 1 (instrumentation) + Phase 3 (dropOrphanedLocks) added
+  // `setPostRequestStopWindow` / `dropOrphanedLocks` calls in
+  // `QueueRunner.notifyEnqueue` / `QueueRunner.requestStop`. Stub them
+  // here so the runner can run against this mock data source without
+  // throwing on `renderedBoardState === undefined`. No-op tracking is
+  // sufficient — the announcement-directive specs don't assert on
+  // these surfaces.
+  readonly renderedBoardState = {
+    setPostRequestStopWindow: (_v: boolean): void => undefined,
+    dropOrphanedLocks: (_reason: string): number => 0,
+  };
   setQueue(entries: QueueEntry[]): void { this._queue.set(entries); }
   dequeueAnimation(): QueueEntry | null {
     const q = this._queue();

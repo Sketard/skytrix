@@ -143,38 +143,21 @@ export class AnimationOrchestratorService {
 
   /**
    * F3 (2026-05-30) — true iff the animation board is in a stable,
-   * perspective-swappable state. A SOLO perspective switch swaps + re-renders
-   * the board, but the chain state machine (`chainPhase`, buffer) and the RBS
-   * locks are CONNECTION_LIFETIME — NOT reset by the switch. Swapping while the
-   * chain is live or the runner still holds locks orphans the locked HAND/GY
-   * zones against the swapped logical state → LOCK_SAFETY_TIMEOUT + POLL-DROP
-   * REGRESSION (see memory pvp-solo-chain-state-hygiene).
+   * perspective-swappable state. Originally gated `canSwitchPerspective` in the
+   * SOLO orchestrator. v3 Phase 5 (2026-06-05) — no longer read by prod code :
+   * `notifyPerspectiveSwitch` now vacates the runner + drops orphaned locks
+   * before the dispatch, so SOLO mid-anim switches are safe by construction
+   * (parity with replay's always-cliquable seek). Kept as a public read
+   * surface for diagnostic / debug snapshots only — pinned by the 4 specs in
+   * `animation-orchestrator.projections.spec.ts` to prevent silent semantic
+   * drift. If a future refactor needs an upstream board-stability gate, this
+   * is still the right primitive to read.
    *
-   * Built from REACTIVE signals only (`chainPhase`, `isAnimating`) so a
-   * `[disabled]` binding reading this through `canSwitchPerspective` refreshes
-   * the instant the chain finalises. `isAnimating` subsumes the non-reactive
-   * `rbs.hasLockedZones`: the runner's `finalizeAndCommit()` commits every lock
-   * BEFORE `setRunning(false)` flips `isAnimating` off (CLAUDE.md invariant),
-   * so `!isAnimating` already implies "no held locks".
-   *
-   * (2026-06-02) `chainPhase === 'building'` is the wait-state between
-   * MSG_CHAINING and the next chain-link's SELECT_CHAIN response window — the
-   * engine is precisely waiting for the OTHER player to decide whether to
-   * chain in (e.g. Ash Blossom on the opponent's NS-trigger). The SOLO viewer
-   * MUST be allowed to switch here to answer for the other side.
-   *
-   * (2026-06-02b) `chainPhase === 'resolving'` is ALSO a valid switch window
-   * when the engine pauses mid-resolution for a `SELECT_CARD` / `SELECT_EFFECTYN`
-   * targeted at the OTHER slot (e.g. Faimena requires its controller to pick
-   * a target to add from deck — engine emits SELECT_CARD player=0 while the
-   * SOLO viewer is on perspective 1). Without allowing the switch, the user is
-   * deadlocked: prompt is on slot 0, viewer reads slot 1, button disabled,
-   * POLL-DROP REGRESSION fires after 10s. The `!isAnimating` floor is what
-   * actually keeps the swap safe: the runner's `finalizeAndCommit` commits
-   * every lock BEFORE flipping `_isRunning` off, so any phase + `!isAnimating`
-   * implies no held locks, regardless of `chainPhase`. The chain manager's
-   * buffered events + activeLinks survive `applyReset({PERSPECTIVE_LIFETIME})`
-   * (CONNECTION_LIFETIME scope).
+   * Built from REACTIVE signals (`isAnimating`) so a `[disabled]` binding reading
+   * this refreshes the instant the runner stops. `isAnimating` subsumes the
+   * non-reactive `rbs.hasLockedZones`: the runner's `finalizeAndCommit()`
+   * commits every lock BEFORE `setRunning(false)` flips `isAnimating` off
+   * (CLAUDE.md invariant), so `!isAnimating` already implies "no held locks".
    */
   get isBoardStableForSwitch(): boolean {
     return !this.isAnimating.value();
@@ -891,10 +874,10 @@ export class AnimationOrchestratorService {
     // `onIsRunningChange` callback — which keeps `_isAnimating` in sync.
     this.runner.requestStop();
     // Drop any parked initial-draw events — a hard reset (destroy /
-    // resetForReplaySeek / onStateSync) means the next duel starts fresh,
-    // replaying its own BOARD_STATE + MSG_DRAW sequence. Carrying stale
-    // buffered events would mean the rematch board flashes the previous
-    // duel's draws.
+    // resetForReplaySeek / onStateSync / notifyPerspectiveSwitch) means
+    // the next sequence starts fresh, replaying its own BOARD_STATE +
+    // MSG_DRAW sequence. Carrying stale buffered events would mean the
+    // rematch board flashes the previous duel's draws.
     this._preActivationBuffer.length = 0;
     this._preActivationDrainScheduled = false;
   }
@@ -1175,7 +1158,6 @@ export class AnimationOrchestratorService {
    *
    * Ne déclenche PAS (CONNECTION_LIFETIME ou plus haut, par construction) :
    *   · `DuelEventProcessor` (activeChainLinks, chainPhase, pendingChainEntry, buffer)
-   *   · `RenderedBoardStateService` (locks)
    *   · `DeferredEffectProcessor` (pas d'`EffectAbandoned` — cf. §3.7bis
    *     chantier ; le DEP est CONNECTION_LIFETIME, son scope `applyReset`
    *     ne s'active qu'à STATE_SYNC / Rematch)
@@ -1185,8 +1167,33 @@ export class AnimationOrchestratorService {
    *     reset du contenu)
    *   · `BoundaryProcessor` (CONNECTION_LIFETIME, pas de `forceClosure`
    *     parce qu'un switch n'est pas un checkpoint)
+   *
+   * v3 Phase 5 (2026-06-05) — `clearTimersAndPolling()` est désormais
+   * appelé EN TÊTE (avant le push + dispatch). Hérite de Phase 3 :
+   * `runner.requestStop()` → `dropOrphanedLocks('runner-requestStop')`
+   * vacate les locks tenus par un handler async en vol (mid-anim switch).
+   * Permet à `canSwitchPerspective` de relaxer la garde `isBoardStable`
+   * — un mid-anim switch est désormais safe par construction au lieu
+   * d'être bloqué amont. La doctrine "Replay-as-max-rate-PvP" (CLAUDE.md)
+   * dit que SOLO doit converger vers replay : replay autorise un seek
+   * mid-anim, SOLO doit autoriser un switch mid-anim. Garde-fou contre
+   * un futur 2ᵉ caller : le script CI `check-perspective-isolation.mjs`
+   * vérifie statiquement que `SoloDuelOrchestratorService` est seul
+   * caller — si un nouveau site devait notifier sans vouloir le clear,
+   * il faudrait extraire le reset transition dans une méthode séparée.
    */
   notifyPerspectiveSwitch(from: 0 | 1, to: 0 | 1): void {
+    // v3 Phase 5 — vacate runner + locks BEFORE the dispatch. The cascade
+    // `runner.requestStop → dropOrphanedLocks` (Phase 3) clears any lock
+    // held by an in-flight handler whose travel Promise was abandoned by
+    // `_abort.abort()`. The handler's `.then(commit, release)` still fires
+    // post-cleanup but hits the zombie-safe `commit()` path (Option G,
+    // af3195fa) which is idempotent. The subsequent `pushToStream` +
+    // `dispatch(PERSPECTIVE_LIFETIME)` see a clean lock map ; the caller
+    // (`SoloDuelOrchestratorService.switchPerspective`) then re-feeds the
+    // cached absolute board state via `conn.onPerspectiveSwitched()` →
+    // `syncRendered()` which lands the target state on the next tick.
+    this.clearTimersAndPolling();
     this.pushToStream({
       kind: 'perspective',
       type: 'PerspectiveSwitched',

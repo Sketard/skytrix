@@ -390,51 +390,67 @@ describe('γ — prompt-active guard logs a PIPELINE trace', () => {
 });
 
 // =============================================================================
-// F3 (2026-05-30) — board-stability guard on switchPerspective.
-// A switch performed while the animation board is unstable (chain resolving /
-// runner animating / draw in flight) orphans the CONNECTION_LIFETIME locks +
-// chain state against the swapped board → LOCK_SAFETY_TIMEOUT + POLL-DROP
-// (pvp-solo-chain-state-hygiene). `canSwitchPerspective` is the single gate
-// shared with the toolbar [disabled]+glow.
+// v3 Phase 5 (2026-06-05) — `canSwitchPerspective` reduced to prompt-modal
+// whitelist alone. The earlier F3 board-stability + draw-in-flight gates are
+// gone : mid-anim and mid-draw switches are safe by construction because
+// `notifyPerspectiveSwitch` now calls `clearTimersAndPolling()` in head →
+// `runner.requestStop()` → `dropOrphanedLocks('runner-requestStop')`
+// (v3 Phase 3) vacates any held lock before the dispatch + the cached
+// BOARD_STATE re-feed. Aligns SOLO with replay's "always cliquable" doctrine
+// ("Replay-as-max-rate-PvP", CLAUDE.md).
+//
+// Suite renamed from "F3 — board-stability guard" : F3 is historically
+// superseded. The `[disabled]` binding in the toolbar reads
+// `canSwitchPerspective` which now only fires on modal prompts.
 // =============================================================================
-describe('γ F3 — board-stability guard', () => {
-  it('blocks the switch while the board is NOT stable (chain/animation)', () => {
-    const { service, animService, setBoardStable } = setupStubHarness();
-    setBoardStable(false);
-    expect(service.canSwitchPerspective).toBeFalse();
-    service.switchPerspective();
-    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
-  });
-
-  it('blocks the switch while a draw is in flight', () => {
-    const { service, animService, setDrawsInFlight } = setupStubHarness();
-    setDrawsInFlight(true);
-    expect(service.canSwitchPerspective).toBeFalse();
-    service.switchPerspective();
-    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
-  });
-
-  it('allows the switch once the board is stable again', () => {
+describe('v3 Phase 5 — canSwitchPerspective relaxed to prompt-modal gate', () => {
+  it('ALLOWS the switch while the board is unstable (chain/animation in flight)', () => {
     const { service, animService, duelCtx, setBoardStable } = setupStubHarness();
     setBoardStable(false);
-    service.switchPerspective();
-    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
-
-    setBoardStable(true);
+    expect(service.canSwitchPerspective).toBeTrue();
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  it('canSwitchPerspective is false when a modal prompt is active even on a stable board', () => {
+  it('ALLOWS the switch while a draw is in flight', () => {
+    const { service, animService, duelCtx, setDrawsInFlight } = setupStubHarness();
+    setDrawsInFlight(true);
+    expect(service.canSwitchPerspective).toBeTrue();
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
+  });
+
+  it('ALLOWS the switch even with BOTH draw + board-unstable set (v3 Phase 5 doctrine)', () => {
+    const { service, animService, duelCtx, setBoardStable, setDrawsInFlight } = setupStubHarness();
+    setBoardStable(false);
+    setDrawsInFlight(true);
+    expect(service.canSwitchPerspective).toBeTrue();
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
+  });
+
+  it('canSwitchPerspective is false when a modal prompt is active', () => {
     const { service, setPrompt } = setupStubHarness();
     setPrompt({ type: 'SELECT_CARD' });
     expect(service.canSwitchPerspective).toBeFalse();
   });
 
-  it('canSwitchPerspective is true on a stable board with no blocking prompt', () => {
+  it('canSwitchPerspective is true with no blocking prompt', () => {
     const { service } = setupStubHarness();
     expect(service.canSwitchPerspective).toBeTrue();
+  });
+
+  it('SELECT_IDLECMD / SELECT_BATTLECMD / SELECT_CHAIN remain whitelisted (γ-c c10)', () => {
+    const { service, setPrompt } = setupStubHarness();
+    for (const type of ['SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_CHAIN']) {
+      setPrompt({ type });
+      expect(service.canSwitchPerspective)
+        .withContext(`whitelisted prompt type=${type}`)
+        .toBeTrue();
+    }
   });
 });
 

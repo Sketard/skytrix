@@ -29,13 +29,14 @@ import { ReducedMotionService } from '../../../services/reduced-motion.service';
  */
 describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
   let service: SoloDuelOrchestratorService;
-  // F3 (audit, abcc259f) added `canSwitchPerspective` which reads
-  // `drawManager.hasDrawsInFlight` + `isBoardStableForSwitch` on the
-  // injected AnimationOrchestratorService. The stub must expose both for
-  // any test that calls `switchPerspective` — without them, the guard
-  // throws TypeError (`Cannot read property 'hasDrawsInFlight' of
-  // undefined`) before the perspective flips and every assertion downstream
-  // misses. Defaults mirror `phase-gamma-victory.spec.ts:setupStubHarness`.
+  // F3 (audit, abcc259f) added `canSwitchPerspective` which historically
+  // read `drawManager.hasDrawsInFlight` + `isBoardStableForSwitch` on the
+  // injected AnimationOrchestratorService. v3 Phase 5 (2026-06-05) reduced
+  // the guard to the prompt-modal whitelist alone (mid-anim switches are
+  // safe by construction via `notifyPerspectiveSwitch` → `clearTimersAndPolling`
+  // → `dropOrphanedLocks`). The two fields are no longer read by prod code
+  // but kept on the stub as defense-in-depth in case a future refactor
+  // re-introduces a draw/anim gate. Defaults mirror `phase-gamma-victory.spec.ts:setupStubHarness`.
   let animService: {
     processor: DuelEventProcessor;
     notifyPerspectiveSwitch: jasmine.Spy;

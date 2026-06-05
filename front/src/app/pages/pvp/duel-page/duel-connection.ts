@@ -806,15 +806,19 @@ export class DuelConnection {
     // absolute payload through the swap helper with the now-flipped
     // perspective so the user sees their cards on their side.
     //
-    // Safe: this method is only called by `SoloDuelOrchestratorService`
-    // after `isBoardStableForSwitch` has been verified. Post-2026-06-02
-    // that predicate is just `!isAnimating` (chain phase clause dropped —
-    // see fix #3 in commit 8d3eee53). `!isAnimating` is sufficient
-    // because the QueueRunner's `finalizeAndCommit` commits every held
-    // lock BEFORE flipping `_isRunning=false` — so any phase + idle
-    // runner implies no held locks. `syncRendered` is the strongest
-    // sync tier and matches the equivalent replay path
-    // (`adapter.jumpToState(currentState)`).
+    // v3 Phase 5 (2026-06-05) — `isBoardStableForSwitch` gate retired
+    // upstream. Safety now comes from the new call ordering in
+    // `SoloDuelOrchestratorService.switchPerspective` :
+    //   1. The orchestrator's perspective-switch notification runs FIRST.
+    //      Its head call is `clearTimersAndPolling()` → `runner.requestStop()`
+    //      → `dropOrphanedLocks('runner-requestStop')` (v3 Phase 3). Any lock
+    //      held by an in-flight handler at switch-click time is vacated
+    //      synchronously inside that call.
+    //   2. `conn.onPerspectiveSwitched()` runs AFTER. The `_locks` Map is
+    //      provably empty at this point, so `syncRendered()` reads the
+    //      empty-locks fast path and lands `_logical` straight to `_rendered`
+    //      with no mergeUnlockedZones masking. Mirror of the equivalent replay
+    //      seek path (`adapter.jumpToState(currentState)` → `commitAll`).
     if (this._lastAbsoluteBoardState !== null) {
       const reprojected = this._maybeSwapBoardState(this._lastAbsoluteBoardState);
       this.rbs.updateLogical(reprojected);
