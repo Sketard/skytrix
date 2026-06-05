@@ -242,8 +242,20 @@ export class MoveAnimationRouter {
    *
    * This prevents commitUnlocked() from syncing zones that have pending
    * animations, regardless of whether the caller is PvP or replay.
+   *
+   * Skipped while `!isBoardActive()` : BOARD_CHANGING events are diverted
+   * into `_preActivationBuffer` by `_dispatchEvent` and not consumed
+   * through the normal queue path until `drainPreActivationBuffer` fires.
+   * A pre-lock posed now would stay orphan across the ~1000ms announcement
+   * directive + ~500ms BOARD_BREATHE_MS drain delay and trip the safety
+   * timeout (1500ms scaled). `setBoardActive(true)` is called BEFORE the
+   * drain re-injects the buffered events (see CLAUDE.md "Pre-activation
+   * Buffer"), so when the runner re-enters preLockQueuedSources after
+   * `notifyEnqueue`, `isBoardActive` is true and the locks are posed
+   * fresh for the actual dispatch.
    */
   preLockQueuedSources(events: readonly QueueEntry[] = this.dataSource.animationQueue()): void {
+    if (!this.ctx.isBoardActive()) return;
     for (const event of events) {
       if ('kind' in event) continue; // skip directives
       if (event.type === 'MSG_DRAW') {

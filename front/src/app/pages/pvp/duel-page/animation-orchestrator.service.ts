@@ -1,4 +1,4 @@
-import { inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
+import { effect, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
 import type { DuelState, GameEvent, StreamEvent } from '../types';
 import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION, POSITION } from '../duel-ws.types';
@@ -222,7 +222,7 @@ export class AnimationOrchestratorService {
    * race at its root.
    *
    * Cf. animations-ready-protocol-2026-06-05.md §2 "Pre-activation
-   * buffer côté client : conservé en mode défensif minimal".
+   * buffer côté client — conservé".
    */
   private readonly _preActivationBuffer: GameEvent[] = [];
   /** Set while drainPreActivationBuffer's setTimeout is pending. Prevents
@@ -538,12 +538,29 @@ export class AnimationOrchestratorService {
   }
 
   constructor() {
-    // Wire FloatRegistry for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
-    this.rbs.attachFloatRegistry(this.floatRegistry);
-    // Scale RBS lock safety timeouts with playback speed so slow replay
-    // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
-    // 50% safety margin from DuelContext.safetyTimeout().
-    this.rbs.getSafetyTimeoutMs = () => this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS);
+    // Configure the RBS attached to the currently-active `DuelConnection`.
+    // Re-applied on every conn swap (SOLO `bindSoloConnection` replaces the
+    // default PvP-normal conn — and its RBS — with a fresh SOLO multiplex
+    // conn). Reading `this.dataSource.renderedBoardState` inside the effect
+    // tracks the underlying `_transport_connection` signal, so a swap
+    // re-runs this body against the new RBS.
+    //
+    // Bug repro 2026-06-05 (console-export-2026-6-5_16-14-25) — SOLO PvP
+    // initial draw triggered `Lock safety timeout after 1001ms`. Without the
+    // re-application, the SOLO RBS kept the default 1000ms timeout (instead
+    // of the orchestrator's 1500ms `ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS)`),
+    // and the announcement directive (1000ms) + BOARD_BREATHE_MS (500ms)
+    // window exceeded it — same symptom class as the pre-activation pre-lock
+    // orphan fix in `MoveAnimationRouter`.
+    effect(() => {
+      const rbs = this.dataSource.renderedBoardState;
+      // Wire FloatRegistry for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
+      rbs.attachFloatRegistry(this.floatRegistry);
+      // Scale RBS lock safety timeouts with playback speed so slow replay
+      // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
+      // 50% safety margin from DuelContext.safetyTimeout().
+      rbs.getSafetyTimeoutMs = () => this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS);
+    }, { injector: this.injector });
     // H1 — chain phase observer wiring. ChainResolutionManager.isResolving
     // becomes a pure read of dataSource.chainPhase(); no parallel state to
     // keep in sync.

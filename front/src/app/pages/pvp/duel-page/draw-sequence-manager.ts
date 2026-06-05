@@ -198,17 +198,29 @@ export class DrawSequenceManager {
     // DECK is intentionally NOT locked — its count decreasing during draw
     // is visually natural, and locking it at EMPTY_DUEL_STATE (before the
     // first BOARD_STATE arrives) would freeze deckCount=0, hiding the pile.
+    //
+    // Hand-off contract (2026-06-05) — these earlyLocks bridge two windows :
+    //   1. Between the dispatcher's `releasePreLocksForKeys({HAND-${relPlayer}})`
+    //      and the inner handLock pose inside `runParallelInitialDraw`.
+    //   2. Between `peekAndDequeueOtherInitialDraw` releasing the
+    //      `HAND-${otherRel}` pre-lock and the 2nd inner handLock pose.
+    // `runParallelInitialDraw` poses the 2 inner handLocks SYNCHRONOUSLY
+    // upfront and releases these earlyLocks immediately — they never live
+    // across the ~1500ms travel, so they cannot race the safety timeout.
+    // The 1-msg fallback path below (only msg, no parallel) commits them
+    // in `finally` since no inner-lock hand-off happened.
     const earlyLocks = [
       this.rbs.lockZone(`HAND-${relPlayer}`),
       this.rbs.lockZone(`HAND-${otherRel}`),
     ];
+    let earlyLocksHandedOff = false;
 
     const travelDuration = this.ctx.scaledDuration(300, 150);
     const maxCards = 10; // 5 per player × 2
     const guardId = setTimeout(() => {
       this.logger.warn('Initial draw sequence timed out — forcing queue continue');
       this._drawsInFlight.clear();
-      earlyLocks.forEach(l => l.commit());
+      if (!earlyLocksHandedOff) earlyLocks.forEach(l => l.commit());
       this.resumeQueueIfSafe();
     }, maxCards * (travelDuration + this.ctx.scaledDuration(300, 150)) + 1000);
     this._drawTimeouts.push(guardId);
@@ -224,7 +236,8 @@ export class DrawSequenceManager {
       }
 
       if (otherMsg) {
-        await this.runParallelInitialDraw(msg, otherMsg);
+        earlyLocksHandedOff = true;
+        await this.runParallelInitialDraw(msg, otherMsg, earlyLocks);
       } else {
         this.ctx.announceEvent('Card drawn', msg.player);
         await this.runDrawSequence(msg, { guardTimeout: false, keepFloats: true });
@@ -232,20 +245,44 @@ export class DrawSequenceManager {
 
       clearTimeout(guardId);
     } finally {
-      // Commit the HAND locks (reveals the real 5-card hand in rendered state)
-      // AND clear the kept proxy floats in the SAME synchronous block. The
-      // floats were retained through the travel (keepFloats) as visual proxies
-      // while the locked hand stayed empty; once the locks commit, the real
-      // cards render and the proxies become duplicates. Deferring their removal
-      // to the runner's `finalize` lets an intervening blocking directive (e.g.
-      // the `phase:MAIN1` announcement, ~1s) keep both visible — the user sees
-      // ghost floats stacked over the real hand. Clearing here keeps reveal +
-      // proxy-removal atomic. `resetHandAnimationState` drops the expansion
-      // slots in the same tick so Angular reuses the hand <div>s without
-      // firing a layout transition.
-      earlyLocks.forEach(l => l.commit());
+      // TEMP TRACE — investigating "main vide" symptom 2026-06-05 (Axel)
+      // Capture HAND state of both players in logical AND rendered right
+      // before commit, right after commit, and 50ms post-commit. If
+      // rendered HAND is empty at any of those points, we have the cause.
+      const dumpHand = (label: string): void => {
+        const logical = this.rbs.logicalState();
+        const rendered = this.rbs.renderedState();
+        const handLogical0 = logical.players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
+        const handLogical1 = logical.players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
+        const handRendered0 = rendered.players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
+        const handRendered1 = rendered.players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
+        const locks = this.rbs.lockedZoneKeys();
+        // TEMP TRACE 2026-06-05 (B) — investigating "vraies cartes sous les floats" (Axel).
+        const floatsHand0 = this.floatRegistry.getLandedFloatsByDstPrefix('HAND-0').length;
+        const floatsHand1 = this.floatRegistry.getLandedFloatsByDstPrefix('HAND-1').length;
+        // eslint-disable-next-line no-console
+        console.warn(`[ANIM-HAND-DBG] ${label} | logical HAND-0=${handLogical0} HAND-1=${handLogical1} | rendered HAND-0=${handRendered0} HAND-1=${handRendered1} | floats HAND-0=${floatsHand0} HAND-1=${floatsHand1} | locks=[${locks.join(',')}]`);
+      };
+      dumpHand('PRE-COMMIT');
+      // earlyLocks already released by `runParallelInitialDraw` (hand-off
+      // to the inner handLocks). Only the single-msg fallback path needs
+      // the final commit.
+      if (!earlyLocksHandedOff) earlyLocks.forEach(l => l.commit());
+      dumpHand('POST-COMMIT (sync)');
+      // Clear the kept proxy floats — once the inner handLock final commits
+      // have fired (inside runDrawSequence), the real cards render and the
+      // proxies become duplicates. Deferring this to the runner's `finalize`
+      // would let an intervening blocking directive (e.g. the `phase:MAIN1`
+      // announcement, ~1s) keep both visible — the user would see ghost
+      // floats stacked over the real hand. `resetHandAnimationState` drops
+      // the expansion slots in the same tick so Angular reuses the hand
+      // <div>s without firing a layout transition.
       this.floatRegistry.clearLandedTravels();
       this.resetHandAnimationState();
+      dumpHand('POST-CLEAR-FLOATS');
+      setTimeout(() => dumpHand('POST-COMMIT +50ms'), 50);
+      setTimeout(() => dumpHand('POST-COMMIT +200ms'), 200);
+      setTimeout(() => dumpHand('POST-COMMIT +500ms'), 500);
     }
 
     this._drawsInFlight.clear();
@@ -266,16 +303,39 @@ export class DrawSequenceManager {
     return otherMsg;
   }
 
-  private async runParallelInitialDraw(msgA: DrawMsg, msgB: DrawMsg): Promise<void> {
+  /**
+   * @param earlyLocks The two HAND-${rel} locks acquired sync in
+   *   `launchInitialDraw`. Pose the 2 inner HAND locks upfront here so the
+   *   earlyLocks can be released right after — they no longer live across
+   *   the full ~1500ms travel and stop racing the safety timeout.
+   */
+  private async runParallelInitialDraw(msgA: DrawMsg, msgB: DrawMsg, earlyLocks: ZoneLock[]): Promise<void> {
     const msgs = [msgA, msgB];
     this.ctx.announceEvent('Card drawn', msgA.player);
+
+    // Pose both inner HAND locks SYNCHRONOUSLY upfront — they cover their
+    // zones for the entire travel window. The earlyLocks' role (bridge
+    // between pre-lock release and inner handLock acquisition) is now over
+    // — release them so they don't race the safety timeout at t≈1500ms.
+    // Release (not commit) : the inner handLock final commit (ref-count
+    // 1→0) is what triggers commitZone — committing the earlyLock here
+    // (ref-count 2→1) would just decrement, then the inner handLock commit
+    // would decrement 1→0 and commitZone fires normally. Both paths land
+    // correctly, but `release` keeps the intent clear : "this lock has
+    // been handed off, the next commit is the one that matters."
+    const innerHandLocks = msgs.map(m => {
+      const relPlayer = this.ctx.relativePlayer(m.player);
+      return this.rbs.lockZone(`HAND-${relPlayer}`);
+    });
+    earlyLocks.forEach(l => l.release());
 
     const stagger = this.ctx.scaledDuration(150, 75);
     await Promise.all(msgs.map((m, i) => {
       const delay = i * stagger;
+      const opts = { guardTimeout: false, keepFloats: true, externalHandLock: innerHandLocks[i] };
       return delay > 0
-        ? new Promise<void>(r => setTimeout(r, delay)).then(() => this.runDrawSequence(m, { guardTimeout: false, keepFloats: true }))
-        : this.runDrawSequence(m, { guardTimeout: false, keepFloats: true });
+        ? new Promise<void>(r => setTimeout(r, delay)).then(() => this.runDrawSequence(m, opts))
+        : this.runDrawSequence(m, opts);
     }));
   }
 
@@ -285,8 +345,17 @@ export class DrawSequenceManager {
    * Core draw loop: locks HAND + DECK, loops travelToHand() per card, commits.
    * @param opts.guardTimeout If true, sets a timeout guard that force-continues on hang.
    * @param opts.keepFloats If true, landed floats are kept as visual proxies (initial draw).
+   * @param opts.externalHandLock If provided, reused as the HAND zone lock instead
+   *   of acquiring a fresh one. Used by `runParallelInitialDraw` to pose both inner
+   *   hand locks SYNCHRONOUSLY upfront, so the `earlyLocks` of `launchInitialDraw`
+   *   can be `commit()`-ed immediately (ref-count 2→1 each, no commitZone yet) — they
+   *   no longer live across the full ~1500ms travel, so the safety timeout race
+   *   (commit decrement vs timer fire, both landing in the same 10ms window at
+   *   t≈1500ms) is structurally impossible. The final inner handLock.commit()
+   *   drops ref-count 1→0 and triggers commitZone normally.
+   *   Console-log repro 2026-06-05 (`console-export-2026-6-5_16-20-24`).
    */
-  private async runDrawSequence(msg: DrawMsg, opts: { guardTimeout: boolean; keepFloats?: boolean }): Promise<void> {
+  private async runDrawSequence(msg: DrawMsg, opts: { guardTimeout: boolean; keepFloats?: boolean; externalHandLock?: ZoneLock }): Promise<void> {
     const relPlayer = this.ctx.relativePlayer(msg.player);
     const isOwn = relPlayer === 0;
     const srcKey = `DECK-${relPlayer}`;
@@ -300,8 +369,9 @@ export class DrawSequenceManager {
     // count until all draws finish, then jump to the final value at once.
     // Leaving it unlocked lets commitUnlocked() decrement it progressively.
     const lockDeck = !opts.keepFloats;
-    this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — locking %s + %s lockDeck=%s (locks before: %d)', dstKey, srcKey, lockDeck, this.rbs.lockedZoneKeys().length);
-    const handLock = this.rbs.lockZone(dstKey);
+    this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — locking %s + %s lockDeck=%s external=%s (locks before: %d)',
+      dstKey, srcKey, lockDeck, !!opts.externalHandLock, this.rbs.lockedZoneKeys().length);
+    const handLock = opts.externalHandLock ?? this.rbs.lockZone(dstKey);
     const deckLock = lockDeck ? this.rbs.lockZone(srcKey) : null;
 
     let guardId: ReturnType<typeof setTimeout> | null = null;
@@ -369,29 +439,58 @@ export class DrawSequenceManager {
 
     this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — committing locks, renderedHand=%d',
       this.rbs.renderedState().players?.[0]?.zones?.find(z => z.zoneId === 'HAND')?.cards?.length ?? 0);
+    // TEMP TRACE 2026-06-05 (B) — investigating "vraies cartes sous les floats"
+    // (Axel). Snapshot floats BEFORE handLock.commit() to see what was
+    // landed during the travel. If keepFloats=true (initial draw), these
+    // floats survive the commit and stay layered on top until
+    // launchInitialDraw's finally block clears them — leaving a window where
+    // the real .hand-card elements render UNDER the still-visible floats.
+    const landedBefore = this.floatRegistry.getLandedFloatsByDstPrefix(dstKey).length;
+    // eslint-disable-next-line no-console
+    console.warn(`[ANIM-HAND-DBG] runDrawSequence(${dstKey}) PRE-COMMIT | keepFloats=${!!opts.keepFloats} landedHere=${landedBefore}`);
     handLock.commit();
     deckLock?.commit();
+    // Drop the landed floats for THIS zone immediately after the commit —
+    // the real `.hand-card` elements just rendered (commitZone fired
+    // inside handLock.commit when ref-count → 0). Letting the floats
+    // survive until `launchInitialDraw`'s finally block (Promise.all
+    // resolution, ~150ms stagger with the other half) leaves a window
+    // where the real cards render UNDERNEATH the still-visible proxy
+    // floats — Axel's "vraies cartes sous les cartes d'animation"
+    // symptom. Console-log repro `console-export-2026-6-5_16-37-34.log` :
+    // L150 commitZone(HAND-0) | rendered_before=-1 landedFloatsHere=5 →
+    // L155 commitZone(HAND-1) | landedFloatsHere=5 → L158 POST-COMMIT
+    // (sync) | floats HAND-0=5 HAND-1=5 → L159 POST-CLEAR-FLOATS finally
+    // wipes them globally. Filtered (`*ByDstPrefix(dstKey)`) so other
+    // zones' in-flight/landed floats (GY, BANISHED, …) stay intact.
+    this.floatRegistry.clearLandedByDstPrefix(dstKey);
+    const landedAfter = this.floatRegistry.getLandedFloatsByDstPrefix(dstKey).length;
+    // eslint-disable-next-line no-console
+    console.warn(`[ANIM-HAND-DBG] runDrawSequence(${dstKey}) POST-COMMIT | landedHere=${landedAfter}`);
     this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — committed, renderedHand=%d locks=%d',
       this.rbs.renderedState().players?.[0]?.zones?.find(z => z.zoneId === 'HAND')?.cards?.length ?? 0,
       this.rbs.lockedZoneKeys().length);
     if (guardId !== null) clearTimeout(guardId);
 
-    if (!opts.keepFloats) {
-      // Mid-game: retire the expansion slots reserved upfront + drop the
-      // landed floats targeting this player's HAND so the real `.hand-card`
-      // elements take over. `clearLandedByDstPrefix(dstKey)` is FILTERED
-      // — only floats whose dstKey === `HAND-${relPlayer}` are removed.
-      // Anything in flight or landed for OTHER zones (GY, BANISHED, the
-      // other player's HAND, …) is left intact, fixing the pre-existing
-      // global `clearLandedTravels()` regression that cancelled an
-      // in-flight discard MOVE→GY happening in the same chain replay.
-      this.floatRegistry.clearLandedByDstPrefix(dstKey);
-      this.handExpansionSlots.update(c => {
-        const next: [number, number] = [...c];
-        next[relPlayer] = Math.max(0, next[relPlayer] - drawCount);
-        return next;
-      });
-    }
+    // Retract the expansion slots reserved upfront — `commitZone(HAND-${rel})`
+    // just rendered the real cards (drawCount of them), so the fake slots
+    // are now redundant. Deferring this to the runner's finalize / to
+    // `launchInitialDraw.finally`'s `resetHandAnimationState` causes a
+    // visible layout snap : during the fenêtre between commitZone and
+    // the deferred clear, the fan width = `existingHandCount + drawCount
+    // (real) + drawCount (fake slots)` = `2 × drawCount`. When the fake
+    // slots finally drop, the fan contracts and the real cards visibly
+    // slide leftwards — Axel's "cartes poussées vers la gauche comme si
+    // des cartes à droite apparaissent et étaient masquées" symptom
+    // (2026-06-05 follow-up to the "vraies cartes sous les floats" fix).
+    // Doing it here, in the same tick as commitZone + clearLandedByDstPrefix,
+    // keeps the layout transition atomic : fake slots leave at the same
+    // time the real cards arrive, no visual contraction.
+    this.handExpansionSlots.update(c => {
+      const next: [number, number] = [...c];
+      next[relPlayer] = Math.max(0, next[relPlayer] - drawCount);
+      return next;
+    });
 
     // No post-commit highlight on draw — the user contract is:
     //   - Draw: travel deck→hand only, no reveal/highlight pulse.

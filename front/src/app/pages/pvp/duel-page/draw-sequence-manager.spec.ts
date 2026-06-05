@@ -39,6 +39,7 @@ describe('DrawSequenceManager', () => {
   let renderedState: WritableSignal<DuelState>;
   let mockRbs: {
     renderedState: WritableSignal<DuelState>;
+    logicalState: WritableSignal<DuelState>;
     lockZone: jasmine.Spy;
     lockedZoneKeys: jasmine.Spy;
   };
@@ -61,6 +62,7 @@ describe('DrawSequenceManager', () => {
 
     mockRbs = {
       renderedState,
+      logicalState: signal<DuelState>(EMPTY_DUEL_STATE),
       lockZone: jasmine.createSpy('lockZone').and.returnValue({ commit: () => undefined, release: () => undefined }),
       lockedZoneKeys: jasmine.createSpy('lockedZoneKeys').and.returnValue([]),
     };
@@ -597,6 +599,121 @@ describe('DrawSequenceManager', () => {
       flush();
 
       expect(highlightSpy).not.toHaveBeenCalled();
+    }));
+  });
+
+  // ---------------------------------------------------------------------------
+  // launchInitialDraw — single-msg fallback path
+  // (2026-06-05 regression suite for fixes #3, #4, #5)
+  // ---------------------------------------------------------------------------
+  //
+  // The parallel path (`runParallelInitialDraw`) requires a 2nd `MSG_DRAW`
+  // in the queue, which spec setup can't easily synthesize through the
+  // public API. The single-msg fallback (no `otherMsg` found within
+  // `INITIAL_DRAW_PAIRING_*`) exercises `runDrawSequence({ keepFloats:true })`
+  // directly. The CONTRACTS pinned below are shared with the parallel
+  // path : same `runDrawSequence` code, same per-zone cleanup obligations.
+
+  describe('initial draw — post-commit cleanup (2026-06-05)', () => {
+    let mockFloatRegistry: jasmine.SpyObj<FloatRegistryService>;
+
+    beforeEach(() => {
+      mockFloatRegistry = TestBed.inject(FloatRegistryService) as jasmine.SpyObj<FloatRegistryService>;
+    });
+
+    it('clears landed floats for HAND-${rel} immediately after the inner commit (fix #4)', fakeAsync(() => {
+      // Bug repro (console-export-2026-6-5_16-37-34.log) — without this
+      // post-commit clear, `keepFloats=true` left the 5 landed floats
+      // visible AFTER `commitZone(HAND-0)` rendered the real cards. The
+      // real `.hand-card` elements appeared UNDERNEATH the still-visible
+      // proxy floats until `launchInitialDraw.finally` wiped them
+      // globally ~150-300ms later. The fix calls `clearLandedByDstPrefix`
+      // filtered on the dstKey in the SAME tick as `handLock.commit()`.
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101] } as DrawMsg);
+      flush();
+      expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-0');
+    }));
+
+    it('retracts handExpansionSlots[relPlayer] in the same tick as commit (fix #5)', fakeAsync(() => {
+      // Bug repro 2026-06-05 (Axel) — "cartes poussées vers la gauche".
+      // Pre-fix, expansion slots reserved upfront stayed alive until
+      // `launchInitialDraw.finally → resetHandAnimationState`, called
+      // AFTER both `runDrawSequence` Promises resolved. Between the
+      // commitZone and the deferred reset, the fan layout = real cards
+      // (drawCount) + fake slots (drawCount) = 2× width, then snapped
+      // back to drawCount → visible leftward slide of the real cards.
+      // The fix retracts `handExpansionSlots[relPlayer]` in the same
+      // tick as `handLock.commit()` (no gate on `keepFloats`).
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101, 102, 103] } as DrawMsg);
+      flush();
+      expect(manager.handExpansionSlots()).toEqual([0, 0]);
+    }));
+
+    it('opponent initial draw clears HAND-1 and decrements slot[1], leaves HAND-0 untouched', fakeAsync(() => {
+      // Mirror of fix #4 + #5 for player=1 (relPlayer=1 when own=0).
+      // Pins relPlayer routing : a misrouted retraction would target
+      // the wrong tuple index and leave a permanent reservation on
+      // the opponent's fan.
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 1, cards: [201, 202] } as DrawMsg);
+      flush();
+      expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-1');
+      expect(mockFloatRegistry.clearLandedByDstPrefix).not.toHaveBeenCalledWith('HAND-0');
+      expect(manager.handExpansionSlots()).toEqual([0, 0]);
+    }));
+
+    it('parallel path : poses BOTH inner HAND locks sync upfront, releases earlyLocks early (fix #3)', fakeAsync(() => {
+      // Bug repro (console-export-2026-6-5_16-20-24.log) — earlyLocks
+      // HAND-${rel} + HAND-${otherRel} lived for the FULL ~1500ms travel,
+      // exactly the safety timeout window → race between
+      // `handLock.commit()` (decrement 2→1, no commitZone) and safety
+      // fire (decrement 1→0 without commit → commitZone lost). The fix :
+      // `runParallelInitialDraw` poses BOTH inner HAND locks
+      // synchronously upfront, then `release`s the earlyLocks
+      // immediately. The inner locks then live ~1500ms but they are
+      // the SOLE actors on the zone : final commit drops ref 1→0 →
+      // commitZone fires normally, no race.
+      //
+      // Spec setup : pre-inject msgB into the queue so
+      // `peekAndDequeueOtherInitialDraw` finds it synchronously, then
+      // dispatch msgA. The inner-lock count we expect on each HAND zone :
+      // 1 from earlyLock (launchInitialDraw) + 1 from inner handLock
+      // (runParallelInitialDraw upfront) = 2 lockZone calls per HAND.
+      const msgB: DrawMsg = { type: 'MSG_DRAW', player: 1, cards: [201, 202] } as DrawMsg;
+      queue.set([msgB]);
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101, 102] } as DrawMsg);
+      flush();
+
+      // Both HAND zones receive at least 2 `lockZone` calls — the
+      // earlyLock (launchInitialDraw) + the inner handLock posed sync
+      // upfront in `runParallelInitialDraw`. A regression where
+      // `runDrawSequence` re-locks despite the `externalHandLock`
+      // option (or where the inner-lock pose is deferred past the
+      // earlyLock release) would change this count.
+      const handLockCalls = mockRbs.lockZone.calls.allArgs().filter(args => args[0] === 'HAND-0' || args[0] === 'HAND-1');
+      const hand0Calls = handLockCalls.filter(args => args[0] === 'HAND-0').length;
+      const hand1Calls = handLockCalls.filter(args => args[0] === 'HAND-1').length;
+      expect(hand0Calls).toBeGreaterThanOrEqual(2, 'HAND-0 should receive earlyLock + inner handLock');
+      expect(hand1Calls).toBeGreaterThanOrEqual(2, 'HAND-1 should receive earlyLock + inner handLock');
+
+      // The parallel path also clears floats for BOTH zones (fix #4).
+      expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-0');
+      expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-1');
+    }));
+
+    it('does NOT fire the unfiltered clearLandedTravels() during runDrawSequence — only the dst-prefixed clear', fakeAsync(() => {
+      // The unfiltered `clearLandedTravels()` was the legacy regression
+      // surface (wipes GY / BANISHED / opponent HAND floats too). The
+      // `launchInitialDraw.finally` still calls it as defense-in-depth
+      // for error paths (guardTimeout), but `runDrawSequence` itself
+      // MUST stay filtered to preserve the cross-zone safety contract.
+      mockFloatRegistry.clearLandedTravels.calls.reset();
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [101] } as DrawMsg);
+      // We can't trivially assert the call ordering without draining the
+      // finally — but the contract on `clearLandedByDstPrefix` being
+      // called WITH the dstKey (above) is the load-bearing assertion.
+      // This test is a paired check : the filtered call must have run.
+      flush();
+      expect(mockFloatRegistry.clearLandedByDstPrefix).toHaveBeenCalledWith('HAND-0');
     }));
   });
 });

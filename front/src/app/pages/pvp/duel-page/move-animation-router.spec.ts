@@ -62,6 +62,7 @@ describe('MoveAnimationRouter', () => {
   let mockRbs: { lockZone: jasmine.Spy; lockedZoneKeys: jasmine.Spy; logicalState: () => typeof EMPTY_DUEL_STATE };
   let mockDataSource: AnimationDataSource;
   let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
+  let boardActiveSignal: ReturnType<typeof signal<boolean>>;
 
   /** Stub all private branch methods to no-op promises so we can assert dispatch. */
   function stubAllBranches() {
@@ -116,6 +117,7 @@ describe('MoveAnimationRouter', () => {
       'clearLandedByDstPrefix', 'cancelTravel',
     ]);
 
+    boardActiveSignal = signal(true);
     const mockCtx = {
       relativePlayer: (p: number) => (p === 0 ? 0 : 1) as 0 | 1,
       ownPlayerIndex: () => 0,
@@ -123,7 +125,7 @@ describe('MoveAnimationRouter', () => {
       cardBaseRotation: () => undefined,
       scaledDuration: (base: number) => base,
       announceEvent: () => undefined,
-      isBoardActive: () => true,
+      isBoardActive: () => boardActiveSignal(),
     };
 
     const mockLogger = jasmine.createSpyObj<DuelLogger>('DuelLogger', ['log', 'warn']);
@@ -477,6 +479,30 @@ describe('MoveAnimationRouter', () => {
       router.preLockQueuedSources([move1, move2]);
       const gyCalls = mockRbs.lockZone.calls.allArgs().filter(args => args[0] === 'GY-0');
       expect(gyCalls.length).toBe(1);
+    });
+
+    it('skips all locking while !isBoardActive — events will divert into _preActivationBuffer', () => {
+      // Regression 2026-06-05 — bug user-facing "initial draw : la main
+      // disparaît puis réapparaît". Console log
+      // `console-export-2026-6-5_16-3-34.log` :
+      //   1. MSG_DRAW arrives during !boardActive (pre-dice / pre-arena).
+      //   2. Runner's per-tick `preLockQueuedSources` posed HAND-1 + HAND-0
+      //      pre-locks BEFORE the dispatcher diverted the events.
+      //   3. Events parked in `_preActivationBuffer` — `'divert'` skips
+      //      `releasePreLocksForKeys` → pre-locks stay orphan.
+      //   4. ~1500ms later (announcement directive 1000ms + BOARD_BREATHE_MS
+      //      500ms drain delay), safety timeout fires → `duelAssert`
+      //      "Lock safety timeout for HAND-1 after 1501ms" — log L109/147/188.
+      // Fix : skip pre-locking entirely while !isBoardActive. The drain
+      // re-injects events AFTER setBoardActive(true), so the runner's next
+      // `preLockQueuedSources` pass will pose them fresh.
+      boardActiveSignal.set(false);
+      const draw: DrawMsg = { type: 'MSG_DRAW', player: 0 as Player, cards: [1] };
+      const move = buildMove({
+        fromLocation: LOCATION.MZONE, toLocation: LOCATION.GRAVE,
+      });
+      router.preLockQueuedSources([draw as unknown as QueueEntry, move]);
+      expect(mockRbs.lockZone).not.toHaveBeenCalled();
     });
   });
 

@@ -6,12 +6,26 @@
  * locks orphaned by a `runner.requestStop()` are cleared synchronously via
  * `RBS.dropOrphanedLocks` ; this safety timer becomes an early-warning net
  * for any orphan path the v3 chantier did NOT cover (handler taken outside
- * the runner's scope, async fork that survives `_abort.abort()`, …). At 1s
- * scaled (≈1.5s with `ctx.safetyTimeout`'s margin), a real travel never
- * triggers it under normal playback, but an oubliated lock surfaces fast
- * instead of polluting the next 5s of log noise. Defense-in-depth.
+ * the runner's scope, async fork that survives `_abort.abort()`, …).
+ *
+ * 2026-06-05 — bumped 1000ms → 2000ms. The 1000ms value (≈1500ms scaled
+ * with `ctx.safetyTimeout`'s 1.5× margin) was racing the initial-draw
+ * worst case : 5 cards × 300ms travel = 1500ms = exactly the safety
+ * window, so the inner handLock's commit() landed in the same 10ms
+ * window as the timeout fire, and a `release-without-commit` cost the
+ * zone its commitZone (`rendered` stayed at the pre-anim state until the
+ * runner's next `commitUnlocked` finalize syncs it ~30-50ms later — the
+ * "main reste vide briefly" symptom). Console-log repros
+ * `console-export-2026-6-5_16-3-34.log` (PvP) +
+ * `console-export-2026-6-5_16-14-25.log` (SOLO) +
+ * `console-export-2026-6-5_16-20-24.log` (SOLO post-hand-off fix).
+ *
+ * Bumping to 2000ms (≈3000ms scaled) gives a 2× safety margin over the
+ * worst-case travel window. An oubliated lock still surfaces fast (3s vs
+ * the legacy 5s) ; orphan paths covered by `dropOrphanedLocks` still fire
+ * instantly. Defense-in-depth preserved, race eliminated.
  */
-export const LOCK_SAFETY_TIMEOUT_MS = 1000;
+export const LOCK_SAFETY_TIMEOUT_MS = 2000;
 
 /**
  * POLL-DROP REGRESSION watchdog timeout (ms).

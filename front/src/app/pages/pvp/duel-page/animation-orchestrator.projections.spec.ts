@@ -71,6 +71,31 @@ class StubLpTracker extends StubManager {
   readonly animatingLpPlayerProjection = new AnimatingLpProjection();
 }
 
+// Builds a fresh RBS-shaped stub. Each call returns a NEW object so the
+// orchestrator can detect a connection swap (mirror of `DuelConnection` ctor
+// creating `new RenderedBoardStateService()` for every conn — PvP default
+// + SOLO multiplex bound via `bindSoloConnection`).
+function makeStubRbs(dropOrphanedLocksCalls: { reason: string; order: number }[],
+                    setPostRequestStopWindowCalls: { value: boolean; order: number }[],
+                    nextOrder: () => number) {
+  return {
+    commitUnlocked: (): void => undefined,
+    lockZone: (): void => undefined,
+    attachFloatRegistry: (): void => undefined,
+    // Default value mirroring the real `RenderedBoardStateService` field
+    // assignment (`= () => LOCK_SAFETY_TIMEOUT_MS`). The orchestrator's
+    // ctor effect MUST override this to `ctx.safetyTimeout(...)`.
+    getSafetyTimeoutMs: ((): number => 1000) as () => number,
+    dropOrphanedLocks: (reason: string): number => {
+      dropOrphanedLocksCalls.push({ reason, order: nextOrder() });
+      return 0;
+    },
+    setPostRequestStopWindow: (v: boolean): void => {
+      setPostRequestStopWindowCalls.push({ value: v, order: nextOrder() });
+    },
+  };
+}
+
 class StubDataSource {
   // v3 Phase 5 — `dropOrphanedLocks` is the Phase 3 transition-cleanup
   // called by `QueueRunner.requestStop`. The orchestrator's new
@@ -86,19 +111,21 @@ class StubDataSource {
   setPostRequestStopWindowCalls: { value: boolean; order: number }[] = [];
   private _nextOrder = 0;
   nextOrder(): number { return this._nextOrder++; }
-  renderedBoardState = {
-    commitUnlocked: (): void => undefined,
-    lockZone: (): void => undefined,
-    attachFloatRegistry: (): void => undefined,
-    getSafetyTimeoutMs: (): number => 0,
-    dropOrphanedLocks: (reason: string): number => {
-      this.dropOrphanedLocksCalls.push({ reason, order: this.nextOrder() });
-      return 0;
-    },
-    setPostRequestStopWindow: (v: boolean): void => {
-      this.setPostRequestStopWindowCalls.push({ value: v, order: this.nextOrder() });
-    },
-  };
+
+  // 2026-06-05 (fix #2) — RBS held in a signal so a swap (mirror of SOLO
+  // `bindSoloConnection` replacing the PvP-normal conn with a fresh
+  // multiplex conn — and its fresh `RenderedBoardStateService`) is
+  // observable via the `dataSource.renderedBoardState` getter. The
+  // orchestrator's ctor effect tracks this signal and re-applies its
+  // overrides on the new RBS.
+  readonly _rbsSignal = signal(makeStubRbs(this.dropOrphanedLocksCalls, this.setPostRequestStopWindowCalls, () => this.nextOrder()));
+  get renderedBoardState() { return this._rbsSignal(); }
+  swapRbs(): ReturnType<typeof makeStubRbs> {
+    const fresh = makeStubRbs(this.dropOrphanedLocksCalls, this.setPostRequestStopWindowCalls, () => this.nextOrder());
+    this._rbsSignal.set(fresh);
+    return fresh;
+  }
+
   chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   activeChainLinks = signal<readonly unknown[]>([]);
   animationQueue = signal<readonly unknown[]>([]);
@@ -399,5 +426,83 @@ describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wi
     expect(perspectiveEvents[0]).toEqual(
       jasmine.objectContaining({ kind: 'perspective', type: 'PerspectiveSwitched', from: 0, to: 1 }),
     );
+  });
+});
+
+// =============================================================================
+// 2026-06-05 (fix #2) — RBS config re-applied on connection swap (SOLO)
+// -----------------------------------------------------------------------------
+// Each `DuelConnection` creates its own `RenderedBoardStateService`. The
+// orchestrator overrides `getSafetyTimeoutMs` to `ctx.safetyTimeout(...)` and
+// attaches the float-registry for the [LOCK-ASSERT] dev assertion. Pre-fix
+// these overrides ran ONCE in the constructor body, against the PvP-normal
+// default conn's RBS. In SOLO, `SoloDuelOrchestratorService.bindSoloConnection`
+// swaps the conn (and its RBS) — the new RBS kept its default 1000ms safety
+// timeout, racing the inner handLock commit at the 1500ms initial-draw
+// worst case. Console-log repro `console-export-2026-6-5_16-14-25.log`.
+//
+// The fix wraps the override in an `effect()` that tracks
+// `this.dataSource.renderedBoardState` — a getter on the wsService's
+// `_transport_connection` signal. A swap re-runs the body against the
+// new RBS. This spec pins the behavior with a mutable RBS-signal stub.
+// =============================================================================
+describe('AnimationOrchestratorService — RBS config re-applied on swap (2026-06-05 fix #2)', () => {
+  function makeOrchestrator(): AnimationOrchestratorService {
+    TestBed.configureTestingModule({
+      providers: [
+        AnimationOrchestratorService,
+        ScopeResetDispatcher,
+        DuelGameLogService,
+        { provide: DuelLogger, useClass: StubLogger },
+        { provide: ANIMATION_DATA_SOURCE, useClass: StubDataSource },
+        { provide: DuelContext, useClass: StubCtx },
+        { provide: LpAnimationTracker, useClass: StubLpTracker },
+        { provide: ChainResolutionManager, useClass: StubManager },
+        { provide: DrawSequenceManager, useClass: StubManager },
+        { provide: MoveAnimationRouter, useClass: StubManager },
+        { provide: BattleAnimationTracker, useClass: StubManager },
+        { provide: TargetIndicatorManager, useClass: StubManager },
+        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        { provide: CardTravelEngine, useValue: {} },
+        { provide: BoardEffectsService, useValue: {} },
+        { provide: FloatRegistryService, useClass: StubFloatRegistry },
+        { provide: DuelToastService, useValue: { show: () => undefined } },
+        { provide: DuelCardArtService, useValue: { getArtUrl: () => '' } },
+        { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
+      ],
+    });
+    return TestBed.inject(AnimationOrchestratorService);
+  }
+
+  it('overrides getSafetyTimeoutMs on the initial RBS at orchestrator construction', () => {
+    const orch = makeOrchestrator();
+    void orch; // construction is the side-effect we test
+    TestBed.flushEffects();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
+    // Default stub value is 1000 ; the orchestrator overrides to
+    // `ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS)`. The StubCtx returns the
+    // input unchanged (`safetyTimeout = b => b`), so the override yields
+    // `LOCK_SAFETY_TIMEOUT_MS = 2000` (post-2026-06-05 bump).
+    expect(ds.renderedBoardState.getSafetyTimeoutMs()).toBe(2000);
+  });
+
+  it('re-applies getSafetyTimeoutMs on a fresh RBS after the conn is swapped (SOLO bindSoloConnection mirror)', () => {
+    const orch = makeOrchestrator();
+    void orch;
+    TestBed.flushEffects();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
+
+    // Mirror of `SoloDuelOrchestratorService.bindSoloConnection` : the
+    // wsService's `_transport_connection` signal flips to a new
+    // DuelConnection — which carries a NEW `RenderedBoardStateService`
+    // with the default `getSafetyTimeoutMs = () => 1000`.
+    const fresh = ds.swapRbs();
+    expect(fresh.getSafetyTimeoutMs()).toBe(1000); // baseline : default before effect re-runs
+
+    // The orchestrator's tracking effect MUST re-fire and override the
+    // fresh RBS. Without the fix, this returns 1000 — the SOLO bug.
+    TestBed.flushEffects();
+    expect(ds.renderedBoardState.getSafetyTimeoutMs()).toBe(2000);
+    expect(fresh.getSafetyTimeoutMs()).toBe(2000); // verifies the SAME object is re-configured
   });
 });
