@@ -422,6 +422,50 @@ describe('DuelLoadingEffectsService — rematch resets ANIMATIONS_READY (Directi
 
     expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(2);
   });
+
+  // F-rematch fix (harness 2026-06-05) — the prefetch effect tracks
+  // `earlyDeckPrefetchReceived` which STAYS true after the first duel.
+  // Resetting `prefetchStarted` (a plain field, not a signal) does NOT
+  // cause the Angular effect to re-fire. The rematch effect must
+  // directly invoke `preFetchCardImages` to flip `thumbnailsReady`
+  // back to true, OR the SOLO rematch will deadlock on the "Starting
+  // new duel..." overlay forever.
+  it('drives prefetch directly at rematch (does NOT rely on earlyDeckPrefetchReceived signal change)', async () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('active');
+    const boardReady = signal(true);
+    const duelLoadingReady = signal(true);
+    const thumbnailsReady = signal(true); // first duel completed — flag is true
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    // Simulate the first duel's prefetch trigger having already run :
+    // earlyDeckPrefetchReceived is true (sticky) and ANIMATIONS_READY
+    // was sent.
+    ws.earlyDeckPrefetchReceived.set(true);
+    TestBed.flushEffects();
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+    expect(thumbnailsReady()).toBeTrue();
+
+    // Rematch — earlyDeckPrefetchReceived STAYS true (server doesn't
+    // re-emit EARLY_DECK_PREFETCH on rematch since the WS isn't
+    // reconnected). The rematch effect must drive prefetch directly.
+    ws.rematchStarting.set(true);
+    TestBed.flushEffects();
+
+    // thumbnailsReady reset to false immediately
+    expect(thumbnailsReady()).toBeFalse();
+
+    // Drain the prefetch microtasks — preFetchCardImages was called
+    // directly by the rematch effect, so thumbnailsReady should flip
+    // back to true and ANIMATIONS_READY should re-emit.
+    await new Promise(resolve => setTimeout(resolve, 50));
+    TestBed.flushEffects();
+
+    expect(thumbnailsReady()).toBeTrue();
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(2);
+  });
 });
 
 // =============================================================================

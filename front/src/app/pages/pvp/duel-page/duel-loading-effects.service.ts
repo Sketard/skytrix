@@ -210,21 +210,39 @@ export class DuelLoadingEffectsService {
     // reset. The server-side `resetSessionForRematch` flips
     // `animationsReady = [false, false]` so the rematch worker spawn
     // re-gates on a fresh ANIMATIONS_READY. The client must therefore
-    // re-emit. Triggers:
-    //  - reset `_animationsReadySent` to false (so the emission effect
-    //    above can fire again)
-    //  - reset `prefetchStarted` to false + `thumbnailsReady=false`
-    //    (so the prefetch effect re-runs — though in practice cardCodes
-    //    are still cached, this guarantees the chain restarts cleanly)
-    // The chain then re-fires: cardCodes still set → prefetch re-runs
-    // → thumbnailsReady flips true → ANIMATIONS_READY emitted again →
-    // server flips animationsReady[i]=true → worker spawn proceeds.
+    // re-emit.
+    //
+    // Bug from harness diagnostic 2026-06-05 — the prefetch effect
+    // tracks `earlyDeckPrefetchReceived` which STAYS true after the
+    // first duel (no signal change at rematch). Resetting only
+    // `prefetchStarted = false` (a plain boolean field) does NOT
+    // re-fire the Angular effect — it doesn't track that field. So we
+    // must call `preFetchCardImages` directly here. Without this, SOLO
+    // rematch deadlocks on the "Starting new duel..." overlay forever
+    // because `thumbnailsReady` never flips back to true.
+    //
+    // Steps:
+    //  1. reset `_animationsReadySent` so the emission effect can re-fire
+    //  2. reset `prefetchStarted` so a stale signal-chain re-fire is
+    //     also safe (defensive)
+    //  3. reset `thumbnailsReady=false` immediately so the gate is held
+    //  4. directly invoke `preFetchCardImages` so it flips
+    //     `thumbnailsReady=true` once the (already-cached) images load
     effect(() => {
       if (this.wsService.rematchStarting()) {
         untracked(() => {
           this._animationsReadySent = false;
           this.prefetchStarted = false;
           config.thumbnailsReady.set(false);
+          // F-rematch fix — drive the prefetch directly. The Angular
+          // effect that normally drives this only fires on a signal
+          // change ; the rematch flow doesn't change `earlyDeckPrefetchReceived`
+          // (it stays true since the first duel), so the effect would
+          // never re-fire on its own. `prefetchStarted=true` guards
+          // against the (very unlikely) case where the effect ALSO
+          // re-fires from a sibling-signal touch in the same flush.
+          this.prefetchStarted = true;
+          this.preFetchCardImages(config.thumbnailsReady);
         });
       }
     });
