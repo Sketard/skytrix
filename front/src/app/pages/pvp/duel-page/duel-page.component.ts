@@ -1082,19 +1082,37 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     this._zoneBrowserOpeningClick = null;
   }
 
+  // Direction B (Master Duel-style, 2026-06-05) — primary tap from the
+  // zone-browser. Routing :
+  //   · idle (no prompt, or no live zone-browser state — defensive)
+  //     → tap = inspect.
+  //   · prompt active + card has at least one action → open the action
+  //     menu (close browser first).
+  //   · prompt active + card has no action → B2 fallback = inspect.
+  // The explicit inspect gesture (long-press / right-click) skips this
+  // dispatcher entirely and lands on `inspectCardByCode` via the
+  // overlay's `(inspectCard)` output.
   onZoneBrowserAction(event: { cardCode: number; sequence: number; element: HTMLElement }): void {
     const prompt = this.actionablePrompt();
     const zb = this.zoneBrowserState();
-    if (!prompt || !zb) return;
+    if (!prompt || !zb) {
+      void this.inspectCardByCode(event.cardCode);
+      return;
+    }
 
     const targetLocation = this.zoneIdToLocation(zb.zoneId);
-    if (targetLocation === null) return;
+    if (targetLocation === null) {
+      void this.inspectCardByCode(event.cardCode);
+      return;
+    }
 
     const actions = this.collectActionsForCardCode(event.cardCode, targetLocation, event.sequence, prompt);
 
     if (actions.length > 0) {
       this.closeZoneBrowser();
       this.openCardActionMenu(event.element, actions, prompt.type);
+    } else {
+      void this.inspectCardByCode(event.cardCode);
     }
   }
 

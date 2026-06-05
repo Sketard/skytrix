@@ -340,7 +340,8 @@
                                          [cards]="zb.cards"
                                          [playerIndex]="zb.playerIndex"
                                          [openId]="zb.openId"
-                                         (inspectCard)="inspectCardByCode($event)"
+                                         (cardClick)="onZoneBrowserAction($event)"
+                                         (inspectCard)="inspectCardByCode($event, true)"
                                          (closed)="closeZoneBrowser($event)" />
         }
 

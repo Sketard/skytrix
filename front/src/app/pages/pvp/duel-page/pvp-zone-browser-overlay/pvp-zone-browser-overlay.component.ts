@@ -3,6 +3,7 @@ import { CardOnField, ZoneId } from '../../duel-ws.types';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { setupClickOutsideListener } from '../click-outside.utils';
+import { LongPressDirective } from '../long-press.directive';
 
 const ZONE_SHORT_LABELS: Partial<Record<ZoneId, string>> = {
   GY: 'GY',
@@ -25,7 +26,7 @@ const ZONE_ICON_PATHS: Partial<Record<ZoneId, string>> = {
   styleUrl: './pvp-zone-browser-overlay.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, LongPressDirective],
 })
 export class PvpZoneBrowserOverlayComponent {
   private readonly el = inject(ElementRef);
@@ -40,6 +41,11 @@ export class PvpZoneBrowserOverlayComponent {
   readonly playerIndex = input<number>(0);
   readonly openId = input<number>(0);
 
+  // Direction B (Master Duel-style, 2026-06-05) — split into two outputs :
+  // `cardClick` = primary affordance (parent decides: action menu or B2 inspect) ;
+  // `inspectCard` = explicit inspect gesture (long-press / right-click).
+  // The parent (`duel-page.onZoneBrowserAction`) holds the B2 dispatch.
+  readonly cardClick = output<{ cardCode: number; sequence: number; element: HTMLElement }>();
   readonly inspectCard = output<number>();
   readonly closed = output<number>();
 
@@ -90,7 +96,31 @@ export class PvpZoneBrowserOverlayComponent {
     return ZONE_ICON_PATHS[this.zoneId()] ?? null;
   }
 
-  onCardClick(card: CardOnField): void {
+  onCardClick(card: CardOnField, index: number, event: MouseEvent): void {
+    if (!card.cardCode) return;
+    // `index` is the card's position inside the browsed zone's `cards[]`
+    // array — equivalent to its OCGCore sequence for piles (GY / Banished
+    // / Extra Deck) since `BoardZone.cards` is ordered by sequence.
+    this.cardClick.emit({
+      cardCode: card.cardCode,
+      sequence: index,
+      element: event.currentTarget as HTMLElement,
+    });
+  }
+
+  onCardContextMenu(card: CardOnField, event: MouseEvent): void {
+    // Don't preventDefault here — the host `<div>` already wires
+    // `(contextmenu)="close(); $event.preventDefault()"` to close the
+    // overlay on right-click. We stop propagation so the host's handler
+    // doesn't fire (we want inspect, not close), and we preventDefault
+    // ourselves to suppress the browser context menu.
+    event.preventDefault();
+    event.stopPropagation();
+    if (!card.cardCode) return;
+    this.inspectCard.emit(card.cardCode);
+  }
+
+  onCardLongPress(card: CardOnField): void {
     if (!card.cardCode) return;
     this.inspectCard.emit(card.cardCode);
   }

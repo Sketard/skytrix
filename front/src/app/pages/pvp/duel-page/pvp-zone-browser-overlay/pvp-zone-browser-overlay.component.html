@@ -25,7 +25,9 @@
       @for (card of cards(); track $index) {
         <button class="zone-browser__card"
                 type="button"
-                (click)="onCardClick(card)">
+                (click)="onCardClick(card, $index, $event)"
+                (contextmenu)="onCardContextMenu(card, $event)"
+                (appLongPress)="onCardLongPress(card)">
           @if (card.cardCode) {
             <img [src]="getCardImageUrlByCode(card.cardCode)"
                  [alt]="card.name ?? 'Card'"
