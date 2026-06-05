@@ -47,13 +47,14 @@ export class PvpCardInspectorWrapperComponent {
     });
   }
 
-  readonly shouldShowCompact = computed(() => {
-    if (this.forceExpanded()) return false;
-    // Only force compact when a prompt is active AND viewport is narrow —
-    // on desktop the full inspector (top-left) doesn't overlap the prompt (bottom-center).
-    if (this.promptActive() && this.isCompact()) return true;
-    return this.isCompact();
-  });
+  // Direction B (Master Duel-style, 2026-06-05) — the inspector now only
+  // opens via explicit gestures (right-click / long-press / SELECT_CHAIN
+  // double-tap), always full-screen. Compact mode kept in the template
+  // and the supporting signals (isCompact, forceExpanded, mql listener)
+  // are retained for a potential future "persistent inspector pane"
+  // (Direction A) — cheap to keep, no runtime cost while this computed
+  // is locked to false.
+  readonly shouldShowCompact = computed(() => false);
 
   onCompactTap(): void {
     if (this.shouldShowCompact()) {
