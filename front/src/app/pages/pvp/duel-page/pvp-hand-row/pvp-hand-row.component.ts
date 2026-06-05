@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, input, output, signal } from '@angular/core';
 import { CardOnField } from '../../duel-ws.types';
 import { DuelCardArtService } from '../duel-card-art.service';
+import { LongPressDirective } from '../long-press.directive';
 
 @Component({
   selector: 'app-pvp-hand-row',
@@ -8,6 +9,7 @@ import { DuelCardArtService } from '../duel-card-art.service';
   styleUrl: './pvp-hand-row.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [LongPressDirective],
 })
 export class PvpHandRowComponent {
   /**
@@ -42,7 +44,7 @@ export class PvpHandRowComponent {
   readonly expansionSlots = input(0);
 
   readonly handCardAction = output<{ index: number; element: HTMLElement }>();
-  readonly cardInspectRequest = output<{ cardCode: number }>();
+  readonly cardInspectRequest = output<{ cardCode: number; forceExpanded?: boolean }>();
 
   constructor() {
     const mql = window.matchMedia('(max-height: 500px)');
@@ -134,9 +136,27 @@ export class PvpHandRowComponent {
   onCardTap(index: number, event: MouseEvent): void {
     this.selectedIndex.set(index);
     const card = this.cards()[index];
-    this.cardInspectRequest.emit({ cardCode: card?.cardCode ?? 0 });
-    if (this.side() === 'player' && this.actionableCardIndices().has(index)) {
+    const cardCode = card?.cardCode ?? 0;
+    const isActionable = this.side() === 'player' && this.actionableCardIndices().has(index);
+    if (isActionable) {
       this.handCardAction.emit({ index, element: event.currentTarget as HTMLElement });
+      return;
     }
+    // B2 fallback (Direction B, Master Duel-style, 2026-06-05) — a tap on
+    // a non-actionable hand card has no other useful intent than inspecting
+    // it. Direction B doesn't say "tap = act ALWAYS", it says "tap = primary
+    // affordance for context". The primary affordance here is inspect.
+    if (cardCode) this.cardInspectRequest.emit({ cardCode });
+  }
+
+  onCardContextMenu(index: number, event: MouseEvent): void {
+    event.preventDefault();
+    const cardCode = this.cards()[index]?.cardCode ?? 0;
+    if (cardCode) this.cardInspectRequest.emit({ cardCode, forceExpanded: true });
+  }
+
+  onCardLongPress(index: number): void {
+    const cardCode = this.cards()[index]?.cardCode ?? 0;
+    if (cardCode) this.cardInspectRequest.emit({ cardCode, forceExpanded: true });
   }
 }

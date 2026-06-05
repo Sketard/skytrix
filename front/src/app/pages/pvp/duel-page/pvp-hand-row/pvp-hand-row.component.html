@@ -18,7 +18,9 @@
          [style.margin-left]="$index > 0 && needsOverlap() ? overlapMargin() : null"
          [style.z-index]="isExpansion ? $index : ((chainNum || revealedCode) ? (1000 + (chainNum ?? 0)) : (hoveredIndex() === $index || selectedIndex() === $index ? 100 : $index))"
          [style.transform]="fanTransform($index)"
-         (click)="isExpansion ? null : onCardTap($index, $event)">
+         (click)="isExpansion ? null : onCardTap($index, $event)"
+         (contextmenu)="isExpansion ? null : onCardContextMenu($index, $event)"
+         (appLongPress)="isExpansion ? null : onCardLongPress($index)">
       @if (!isExpansion) {
         @let effectiveCode = isPlayerSide() || replayMode() ? item.cardCode : revealedCode;
         @if (effectiveCode) {
