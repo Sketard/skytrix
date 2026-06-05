@@ -609,7 +609,15 @@ describe('session-orchestrator', () => {
   // ==========================================================================
 
   describe('startRematch', () => {
-    it('PvP : terminates worker, resets session state, calls startFirstPlayerPhase (NOT startDuelWithOrder)', () => {
+    // animations-ready-protocol-2026-06-05 (review F1) — `startRematch`
+    // no longer dispatches the worker spawn / dice flow directly. The
+    // dispatch is hoisted into `server.ts onAnimationsReady` hook, gated
+    // on `phase === 'WAITING_PLAYERS'` (which `resetSessionForRematch`
+    // now restores). Both PvP and SOLO paths now end after
+    // `clearAllDuelTimers` and wait for the client(s) to re-emit
+    // ANIMATIONS_READY — same gate that protects the fresh-connect path.
+
+    it('PvP : sends REMATCH_STARTING, terminates worker, resets to WAITING_PLAYERS, does NOT spawn worker', () => {
       const s = makeSession();
       manager.register(s, ['tok0', 'tok1']);
       const ws0 = makeWs();
@@ -621,6 +629,7 @@ describe('session-orchestrator', () => {
       s.worker = { postMessage: vi.fn(), terminate: vi.fn(), removeAllListeners: vi.fn() } as never;
       s.endedAt = Date.now();
       s.rematchTimeout = setTimeout(() => undefined, 1_000);
+      s.phase = 'DUELING';
 
       startRematch(s);
 
@@ -629,17 +638,23 @@ describe('session-orchestrator', () => {
       const sent1 = ws1.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
       expect(sent0).toContain('REMATCH_STARTING');
       expect(sent1).toContain('REMATCH_STARTING');
-      // Worker terminated : workerTerminated flag flipped (handle reference
-      // kept on session — safeTerminateWorker is idempotent on this flag).
       expect(s.workerTerminated).toBe(true);
-      // Rematch timeout cleared
       expect(s.rematchTimeout).toBeNull();
-      // PvP path : NO new worker spawned (startFirstPlayerPhase runs first,
-      // which sends DICE_ROLL prompts — worker spawns later after dice resolve)
+      // F1 — NO worker spawn (gate-driven via onAnimationsReady)
       expect(mockWorkerCtor).not.toHaveBeenCalled();
+      // F1 — phase flipped back to WAITING_PLAYERS so the hook fires
+      // when ANIMATIONS_READY arrives.
+      expect(s.phase).toBe('WAITING_PLAYERS');
+      // F1 — gate reset
+      expect(s.animationsReady).toEqual([false, false]);
+      // F1 — no DICE_ROLL fires from startRematch directly (the dice
+      // flow is now triggered by onAnimationsReady when both clients
+      // re-emit and isReadyToStart passes).
+      expect(sent0).not.toContain('DICE_ROLL');
+      expect(sent1).not.toContain('DICE_ROLL');
     });
 
-    it('SOLO : spawns worker directly via startDuelWithOrder(session, 0) — no dice flow', () => {
+    it('SOLO : sends REMATCH_STARTING, terminates worker, resets to WAITING_PLAYERS, does NOT spawn worker', () => {
       const s = makeSession({ soloMode: true } as never);
       manager.register(s, ['tok0']);
       const ws0 = makeWs();
@@ -647,15 +662,20 @@ describe('session-orchestrator', () => {
       s.players[0].connected = true;
       s.worker = { postMessage: vi.fn(), terminate: vi.fn(), removeAllListeners: vi.fn() } as never;
       s.endedAt = Date.now();
+      s.phase = 'DUELING';
 
       startRematch(s);
 
-      // Worker spawned immediately (SOLO bypasses dice)
-      expect(mockWorkerCtor).toHaveBeenCalledTimes(1);
-      // DUEL_STARTING sent on slot 0
+      // F1 — SOLO no longer spawns worker directly. The hook handles it
+      // once the client re-emits ANIMATIONS_READY.
+      expect(mockWorkerCtor).not.toHaveBeenCalled();
       const sent0 = ws0.send.mock.calls.map(c => JSON.parse(c[0] as string).type);
       expect(sent0).toContain('REMATCH_STARTING');
-      expect(sent0).toContain('DUEL_STARTING');
+      // DUEL_STARTING is no longer sent from startRematch path — it
+      // fires later, from startDuelWithOrder (via onAnimationsReady).
+      expect(sent0).not.toContain('DUEL_STARTING');
+      expect(s.phase).toBe('WAITING_PLAYERS');
+      expect(s.animationsReady).toEqual([false, false]);
     });
   });
 });

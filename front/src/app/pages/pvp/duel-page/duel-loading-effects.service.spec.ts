@@ -33,6 +33,9 @@ import { EMPTY_DUEL_STATE } from '../types';
 class StubWs {
   setBoardActive = jasmine.createSpy('setBoardActive');
   cardCodes = signal<readonly number[]>([]);
+  // F2 review — prefetch trigger uses `earlyDeckPrefetchReceived` so a
+  // degraded `cardCodes: []` payload still unblocks the protocol gate.
+  earlyDeckPrefetchReceived = signal(false);
   // β.3 cas #13 — DuelLoadingEffects reads logicalState to build the
   // opening DRAW announce (turnPlayer / turnCount). Minimal stub.
   readonly boardStateView = { logicalState: signal(EMPTY_DUEL_STATE) };
@@ -44,7 +47,10 @@ class StubWs {
   // Rematch trigger — defaults false so existing duel-loading tests
   // are unaffected. The rematch test below flips it.
   readonly rematchStarting = signal(false);
-  sendAnimationsReady = jasmine.createSpy('sendAnimationsReady');
+  // F4 review — returns true by default (simulates successful safeSend).
+  // Individual tests can override via `.and.returnValue(false)` to model
+  // a closed-WS race.
+  sendAnimationsReady = jasmine.createSpy('sendAnimationsReady').and.returnValue(true);
 }
 
 class StubRoomService {
@@ -292,7 +298,7 @@ describe('DuelLoadingEffectsService — prefetch trigger (Direction B)', () => {
     expect(ws.sendAnimationsReady).not.toHaveBeenCalled();
   });
 
-  it('triggers prefetch as soon as cardCodes is populated (NOT gated on roomState)', async () => {
+  it('triggers prefetch as soon as EARLY_DECK_PREFETCH is received (NOT gated on roomState)', async () => {
     const { svc, ws } = setup();
     // Critical: roomState stays in 'waiting' the whole time. The pre-
     // Direction-B gate would have blocked the prefetch indefinitely here.
@@ -306,10 +312,12 @@ describe('DuelLoadingEffectsService — prefetch trigger (Direction B)', () => {
     });
     TestBed.flushEffects();
 
-    // Server sends EARLY_DECK_PREFETCH → cardCodes populates. We pass a
-    // sentinel non-empty list (-1 means no real Image() load — keeps the
-    // preFetchCardImages promise lightweight in karma).
+    // Server sends EARLY_DECK_PREFETCH → cardCodes populates AND the
+    // receipt flag flips. We pass a sentinel non-empty list (-1 means no
+    // real Image() load — keeps the preFetchCardImages promise
+    // lightweight in karma).
     ws.cardCodes.set([-1]);
+    ws.earlyDeckPrefetchReceived.set(true);
     TestBed.flushEffects();
 
     // preFetchCardImages is async — buildArtMap returns Map() (decklistId
@@ -335,6 +343,7 @@ describe('DuelLoadingEffectsService — prefetch trigger (Direction B)', () => {
     TestBed.flushEffects();
 
     ws.cardCodes.set([-1]);
+    ws.earlyDeckPrefetchReceived.set(true);
     TestBed.flushEffects();
     ws.cardCodes.set([-1, -2]); // DECK_PREFETCH later in PvP flow
     TestBed.flushEffects();
@@ -343,6 +352,34 @@ describe('DuelLoadingEffectsService — prefetch trigger (Direction B)', () => {
     TestBed.flushEffects();
 
     // Only ONE ANIMATIONS_READY frame even after the re-set.
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+  });
+
+  // F2 review — degraded EARLY_DECK_PREFETCH with empty cardCodes must
+  // NOT wedge the gate. The prefetch effect fires on the receipt flag,
+  // preFetchCardImages skips Image preloads (length 0), and
+  // thumbnailsReady flips true → ANIMATIONS_READY emits.
+  it('still unblocks the gate when EARLY_DECK_PREFETCH ships an empty cardCodes payload', async () => {
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    // Degraded payload : cardCodes stays empty, but the receipt flag
+    // still flips.
+    ws.earlyDeckPrefetchReceived.set(true);
+    TestBed.flushEffects();
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+    TestBed.flushEffects();
+
+    expect(thumbnailsReady()).toBeTrue();
     expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
   });
 });
@@ -383,6 +420,86 @@ describe('DuelLoadingEffectsService — rematch resets ANIMATIONS_READY (Directi
     thumbnailsReady.set(true);
     TestBed.flushEffects();
 
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(2);
+  });
+});
+
+// =============================================================================
+// F4 review — race protection : safeSend drop + reconnect recovery
+// =============================================================================
+
+describe('DuelLoadingEffectsService — F4 race protection on emission', () => {
+  it('does NOT flag ANIMATIONS_READY as sent if `sendAnimationsReady` returned false (WS dropped between gate check and send)', () => {
+    const { svc, ws } = setup();
+    // Simulate a WS that closes between the effect's gate check and the
+    // actual safeSend call : `sendAnimationsReady` returns false.
+    ws.sendAnimationsReady.and.returnValue(false);
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+
+    // First attempt — drop.
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+
+    // Reconnect : the connectionStatus reset effect clears the
+    // idempotence flag.
+    ws.connectionStatus.set('reconnecting');
+    TestBed.flushEffects();
+    ws.connectionStatus.set('connected');
+    TestBed.flushEffects();
+
+    // Now succeeds.
+    ws.sendAnimationsReady.and.returnValue(true);
+    // Bump thumbnailsReady to retrigger the emission effect (the gate
+    // check doesn't fire unless one of its tracked signals changes —
+    // `connectionStatus` flipping is sufficient on its own, but a
+    // belt-and-braces nudge keeps the test independent of micro-timing).
+    thumbnailsReady.set(false);
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+
+    expect(ws.sendAnimationsReady.calls.count()).toBeGreaterThanOrEqual(2);
+  });
+
+  it('resets `_animationsReadySent` when connectionStatus drops to "reconnecting"', () => {
+    // Even on a successful first send, a subsequent ws drop should
+    // clear the flag so the recovery path can re-emit. Server
+    // idempotence absorbs the duplicate.
+    const { svc, ws } = setup();
+    const roomState = signal<RoomState>('waiting');
+    const boardReady = signal(false);
+    const duelLoadingReady = signal(false);
+    const thumbnailsReady = signal(false);
+    const injector = TestBed.inject(Injector);
+    runInInjectionContext(injector, () => {
+      svc.initEffects({ boardReady, duelLoadingReady, roomState, thumbnailsReady });
+    });
+    TestBed.flushEffects();
+
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+    expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(1);
+
+    // Drop → reconnect.
+    ws.connectionStatus.set('reconnecting');
+    TestBed.flushEffects();
+    ws.connectionStatus.set('connected');
+    TestBed.flushEffects();
+    // Re-trigger the effect's tracked signal.
+    thumbnailsReady.set(false);
+    thumbnailsReady.set(true);
+    TestBed.flushEffects();
+
+    // The reset+re-emit produces a second send.
     expect(ws.sendAnimationsReady).toHaveBeenCalledTimes(2);
   });
 });

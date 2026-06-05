@@ -85,17 +85,25 @@ export class DuelLoadingEffectsService {
     });
 
     // animations-ready-protocol-2026-06-05 (Direction B) — start
-    // thumbnail prefetch as soon as `cardCodes` is populated. The server
-    // emits EARLY_DECK_PREFETCH right after SESSION_PHASE (before the
-    // worker spawns), so cardCodes lands well ahead of any BOARD_STATE.
-    // The previous gate `state === 'duel-loading'` was the deadlock root
-    // cause: roomState→duel-loading requires boardReady requires
-    // BOARD_STATE requires worker spawn requires ANIMATIONS_READY
-    // requires thumbnailsReady requires prefetch. EARLY_DECK_PREFETCH
-    // delivers cardCodes ahead of the worker, breaking the cycle.
+    // thumbnail prefetch as soon as EARLY_DECK_PREFETCH lands. The
+    // server emits this message right after SESSION_PHASE (before the
+    // worker spawns), so the prefetch begins well ahead of any
+    // BOARD_STATE. The previous gate `state === 'duel-loading'` was the
+    // deadlock root cause: roomState→duel-loading requires boardReady
+    // requires BOARD_STATE requires worker spawn requires
+    // ANIMATIONS_READY requires thumbnailsReady requires prefetch.
+    //
+    // F2 review — the trigger is `earlyDeckPrefetchReceived`, NOT
+    // `cardCodes.length > 0`. A degraded EARLY_DECK_PREFETCH with
+    // `cardCodes: []` (server bug, empty deck) must still unblock the
+    // chain: `preFetchCardImages` reads `cardCodes` internally — if
+    // empty it skips the Image preloads and flips
+    // `thumbnailsReady=true` immediately, letting ANIMATIONS_READY emit
+    // and the worker spawn. Without this, an empty cardCodes payload
+    // would wedge the protocol gate forever.
     effect(() => {
-      const codes = this.wsService.cardCodes();
-      if (codes.length > 0 && !this.prefetchStarted) {
+      const received = this.wsService.earlyDeckPrefetchReceived();
+      if (received && !this.prefetchStarted) {
         untracked(() => {
           this.prefetchStarted = true;
           this.preFetchCardImages(config.thumbnailsReady);
@@ -170,8 +178,31 @@ export class DuelLoadingEffectsService {
       if (!ready || status !== 'connected') return;
       untracked(() => {
         if (this._animationsReadySent) return;
-        this._animationsReadySent = true;
-        this.wsService.sendAnimationsReady();
+        // F4 review — only flip the idempotence flag if the send
+        // actually went through. `safeSend` returns false when the WS
+        // is closed (race between our gate check and the send) ; if we
+        // marked the flag true here unconditionally, the deadlock
+        // would be permanent because the effect bails on the flag
+        // before re-evaluating connectionStatus.
+        if (this.wsService.sendAnimationsReady()) {
+          this._animationsReadySent = true;
+        }
+      });
+    });
+
+    // F4 review — reset the idempotence flag if the WS drops. On
+    // reconnect (`connectionStatus` flips back to 'connected'), the
+    // emission effect above re-fires because both gate conditions are
+    // met again — and `_animationsReadySent=false` lets it through.
+    // Server-side idempotence absorbs the duplicate (the
+    // `client-message-router.case 'ANIMATIONS_READY'` short-circuits
+    // when `animationsReady[i]` is already true) so the recovery is
+    // safe.
+    effect(() => {
+      const status = this.wsService.connectionStatus();
+      if (status === 'connected') return;
+      untracked(() => {
+        this._animationsReadySent = false;
       });
     });
 

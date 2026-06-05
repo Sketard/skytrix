@@ -133,7 +133,7 @@ export interface DeckPrefetchMsg {
 }
 
 /** animations-ready-protocol-2026-06-05 (Direction B revision) — server →
- *  client warmup hint emitted IMMEDIATELY after SESSION_TOKEN, BEFORE the
+ *  client warmup hint emitted IMMEDIATELY after SESSION_PHASE, BEFORE the
  *  worker spawn. Carries the receiving player's own deck card codes so
  *  the client can start `preFetchCardImages` early enough to flip
  *  `thumbnailsReady=true` BEFORE `ANIMATIONS_READY` gates the server-

@@ -48,13 +48,26 @@ export class SoloModeEffectsService {
       });
     });
 
-    // Handle rematch reset in solo mode — re-set roomState and thumbnailsReady
+    // Handle rematch reset in solo mode — re-set roomState only.
+    //
+    // F11 review (animations-ready-protocol-2026-06-05) — DO NOT set
+    // `thumbnailsReady=true` here. The previous code was a registration-
+    // order trap : `DuelLoadingEffectsService`'s rematch effect (which
+    // sets `thumbnailsReady=false` and clears `_animationsReadySent`)
+    // runs AFTER this one by current registration order, so the final
+    // value was correct. But a future refactor that swaps registration
+    // order would emit ANIMATIONS_READY before the prefetch completes —
+    // pop-in on the rematch's initial draws.
+    //
+    // The chain (`cardCodes` carried over) + (`prefetchStarted` reset by
+    // loading effects) already re-runs the prefetch on rematch and flips
+    // `thumbnailsReady=true` via the canonical path. The loading service
+    // is the single owner of that signal.
     effect(() => {
       const count = this.orchestrator.rematchReset();
       if (count > 0) {
         untracked(() => {
           config.roomService.forceState('active');
-          config.thumbnailsReady.set(true);
         });
       }
     });

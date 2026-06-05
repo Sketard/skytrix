@@ -6,7 +6,7 @@ import { createConfigurable } from './configurable.js';
 import type { DuelSessionManager } from './duel-session-manager.js';
 import { createSessionGameLog } from './session-game-log.js';
 import { resetSessionForRematch } from './session-factory.js';
-import { disposeFirstPlayer, startFirstPlayerPhase } from './first-player-coordinator.js';
+import { disposeFirstPlayer } from './first-player-coordinator.js';
 import { clearAllDuelTimers, sendTimerStateToPlayer } from './timer-management.js';
 import { filterMessage } from './message-filter.js';
 import { buildPreDuelSnapshot } from './pre-duel-snapshot.js';
@@ -236,10 +236,16 @@ export function startRematch(session: ActiveDuelSession): void {
   safeTerminateWorker(session);
 
   // Reset all per-duel session state. The worker is NOT spawned here —
-  // a rematch re-runs the full pre-duel dice flow (startFirstPlayerPhase)
-  // so the players re-roll for turn order, exactly like a fresh duel.
-  // The worker is spawned later by startDuelWithOrder once the dice
-  // coordinator resolves the first player.
+  // animations-ready-protocol-2026-06-05 (review F1) hoists the worker
+  // spawn into the `onAnimationsReady` hook, gated on
+  // `phase === 'WAITING_PLAYERS'`. `resetSessionForRematch` flips
+  // `session.phase = 'WAITING_PLAYERS'` + `animationsReady = [false,
+  // false]` so the rematch path waits for the client(s) to re-emit
+  // ANIMATIONS_READY (driven by `DuelLoadingEffectsService`'s rematch
+  // effect on REMATCH_STARTING). The dispatch (startDuelWithOrder for
+  // SOLO, startFirstPlayerPhase for PvP) lives in `server.ts`
+  // `onAnimationsReady` — same site as the fresh-connect path.
+  //
   // U15 (audit-4-modes-2026-06-01) — per-duel state wipe consolidated in
   // `resetSessionForRematch`. Long-lived fields (decks, soloMode, forkMode,
   // playerUsernames, deckNames, turnTimeSecs, players) are preserved.
@@ -247,20 +253,6 @@ export function startRematch(session: ActiveDuelSession): void {
   resetSessionForRematch(session);
 
   clearAllDuelTimers(session);
-
-  if (session.soloMode) {
-    // Solo mode has no dice flow — the first duel skips it too (see the
-    // WAITING_PLAYERS branch). A solo rematch keeps the same starting
-    // player: `players[]` is already ordered so index 0 leads, so spawn
-    // the worker directly via startDuelWithOrder(0).
-    startDuelWithOrder(session, 0);
-    return;
-  }
-
-  // Re-enter the pre-duel dice coordinator — sends DICE_ROLL to both
-  // players, resolves a winner, lets them pick who starts, then bridges
-  // into startDuelWithOrder (which spawns the worker with skipRps: true).
-  startFirstPlayerPhase(session);
 }
 
 /**

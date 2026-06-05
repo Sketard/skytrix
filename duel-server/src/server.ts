@@ -348,22 +348,44 @@ configureClientMessageRouter({
     // has already flipped `session.animationsReady[idx]` true. Re-
     // evaluate the gate; if every required slot is now ready, kick off
     // the next phase exactly the way `pvp-connection-handler` does on
-    // a fresh connection: SOLO + WAITING_PLAYERS → spawn worker
-    // direct, PvP + WAITING_PLAYERS → dice flow, fork + DUELING →
-    // FORK_RESUME.
+    // a fresh connection.
     if (!isReadyToStart(session)) return;
+
+    // F8 review — clear `forkConnectionTimeout` at the top of the hook
+    // unconditionally. The watchdog is no longer needed once the
+    // client has emitted ANIMATIONS_READY regardless of which dispatch
+    // branch fires below. Keeping it armed past this point could
+    // terminate a live duel later.
+    if (session.forkConnectionTimeout) {
+      clearTimeout(session.forkConnectionTimeout);
+      session.forkConnectionTimeout = null;
+    }
+
+    // F6 review — fork sessions short-circuit BEFORE the
+    // `phase === 'WAITING_PLAYERS'` check. Fork-solo sessions are
+    // bootstrapped in `phase === 'DUELING'` (see
+    // `fork-handlers.createForkSoloSession`), but a future refactor
+    // that lands a fork session in `WAITING_PLAYERS` must NOT fall
+    // through to `startDuelWithOrder` (which spawns a fresh
+    // `INIT_DUEL` worker — fork-solo needs `INIT_FORK` instead).
+    // Routing on `forkMode` first makes the predicate independent of
+    // phase.
+    if (session.forkMode) {
+      session.worker?.postMessage({ type: 'FORK_RESUME' });
+      return;
+    }
+
+    // PvP + WAITING_PLAYERS → dice flow ; SOLO + WAITING_PLAYERS →
+    // spawn worker direct. F1 review extends this branch to the
+    // rematch path : `resetSessionForRematch` flips
+    // `phase = 'WAITING_PLAYERS'` so both fresh-connect and rematch
+    // dispatches funnel through here.
     if (session.phase === 'WAITING_PLAYERS') {
       if (session.soloMode) {
         startDuelWithOrder(session, 0);
       } else {
         startFirstPlayerPhase(session);
       }
-    } else if (session.phase === 'DUELING' && session.forkMode) {
-      if (session.forkConnectionTimeout) {
-        clearTimeout(session.forkConnectionTimeout);
-        session.forkConnectionTimeout = null;
-      }
-      session.worker?.postMessage({ type: 'FORK_RESUME' });
     }
   },
   maxInvalidResponses: MAX_INVALID_RESPONSES,

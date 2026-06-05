@@ -195,6 +195,12 @@ export class DuelConnection {
   private _diceInProgress = signal(false);
   private _ocgPlayerIndex = signal<0 | 1 | null>(null);
   private _cardCodes = signal<number[]>([]);
+  /** animations-ready-protocol-2026-06-05 (review F2) — flips true on
+   *  the first EARLY_DECK_PREFETCH receipt, regardless of payload size.
+   *  Used by `DuelLoadingEffectsService` as the prefetch trigger so a
+   *  degraded `cardCodes: []` payload (server bug, empty deck) doesn't
+   *  wedge the protocol gate. */
+  private _earlyDeckPrefetchReceived = signal(false);
   private _rematchState = signal<'idle' | 'requested' | 'invited' | 'opponent-left' | 'expired'>('idle');
   private _rematchStarting = signal(false);
   // γ Option C (PR2 c4.2) — `_inactivityWarning` + `_waitingForOpponent`
@@ -320,6 +326,7 @@ export class DuelConnection {
   readonly diceInProgress = this._diceInProgress.asReadonly();
   readonly ocgPlayerIndex = this._ocgPlayerIndex.asReadonly();
   readonly cardCodes = this._cardCodes.asReadonly();
+  readonly earlyDeckPrefetchReceived = this._earlyDeckPrefetchReceived.asReadonly();
   readonly rematchState = this._rematchState.asReadonly();
   readonly rematchStarting = this._rematchStarting.asReadonly();
   // γ Option C (PR2 c4.2) — same projection pattern as pendingPrompt/hintContext.
@@ -727,9 +734,16 @@ export class DuelConnection {
    * `DuelLoadingEffectsService` (the only caller) — `forPlayer` is
    * tagged when relevant. PvP normal MUST omit the tag (A2 strict
    * server-side validation).
+   *
+   * F4 review — returns the `safeSend` result so the caller can guard
+   * its idempotence flag on a successful send. A `safeSend` drop on a
+   * closed WS (race between gate check and send) would otherwise leave
+   * the gate flag stuck true client-side while the server's
+   * `animationsReady[i]` is still false → permanent deadlock until ws
+   * reconnect.
    */
-  sendAnimationsReady(forPlayer?: 0 | 1): void {
-    this.safeSend(this._tagForPlayer({ type: 'ANIMATIONS_READY' }, forPlayer));
+  sendAnimationsReady(forPlayer?: 0 | 1): boolean {
+    return this.safeSend(this._tagForPlayer({ type: 'ANIMATIONS_READY' }, forPlayer));
   }
 
   clearDiceResult(): void {
@@ -1444,17 +1458,33 @@ export class DuelConnection {
     // animations-ready-protocol-2026-06-05 (Direction B) — emitted by the
     // server immediately after SESSION_PHASE, BEFORE the worker spawns.
     // Populates `_cardCodes` early so `preFetchCardImages` can start
-    // (driven by the loading service's mount-time effect on `cardCodes`)
-    // before the worker is allowed to spawn. The deadlock that would
-    // otherwise force ANIMATIONS_READY emission at SESSION_TOKEN time
-    // (Direction A pivot) is broken by this message: cardCodes arrive
-    // here regardless of worker state.
+    // (driven by the loading service's effect on `cardCodes`) before the
+    // worker is allowed to spawn.
+    //
+    // F2 review — also flip `_earlyDeckPrefetchReceived` to true
+    // unconditionally. The loading service uses this as the prefetch
+    // trigger so that a degraded `cardCodes: []` payload (server bug,
+    // empty deck) doesn't wedge the gate at `thumbnailsReady=false`
+    // forever. With the receipt flag, the service runs the prefetch
+    // effect, skips the actual Image preloads (length=0), and flips
+    // thumbnailsReady=true → ANIMATIONS_READY emits → worker spawns.
     //
     // Idempotent : DECK_PREFETCH (post-dice) and DUEL_STARTING (post-
-    // worker-spawn) re-set `_cardCodes` with the same payload later. In
-    // SOLO multiplex `bothCardCodes` mirrors `DuelStartingMsg`; PvP
-    // normal omits it (server-side info-leak prevention).
-    if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
+    // worker-spawn) re-set `_cardCodes` later with the same payload.
+    //
+    // F10 review — in SOLO multiplex `bothCardCodes` carries both
+    // perspectives' decklists; populate `_cardCodes` with the
+    // deduplicated union so the prefetch primes the opponent's images
+    // upfront (the user can `switchPerspective` to slot 1 at any
+    // moment). PvP normal omits `bothCardCodes` (server-side
+    // info-leak prevention) and we fall back to the own-only payload.
+    if (message.bothCardCodes?.length === 2) {
+      const union = Array.from(new Set([...message.bothCardCodes[0], ...message.bothCardCodes[1]]));
+      this._cardCodes.set(union);
+    } else if (message.cardCodes?.length) {
+      this._cardCodes.set(message.cardCodes);
+    }
+    this._earlyDeckPrefetchReceived.set(true);
   }
 
   private _handleDuelStarting(message: DuelStartingMsg): void {
@@ -1716,14 +1746,8 @@ export class DuelConnection {
     this.wsToken = null;
     this.reconnectToken = message.token;
     this._hasToken.set(true);
-    // animations-ready-protocol-2026-06-05 (Direction B) — ANIMATIONS_READY
-    // emission is owned by `DuelLoadingEffectsService`, NOT this handler.
-    // The service emits once both `thumbnailsReady=true` AND the WS is
-    // `connectionStatus === 'connected'`. The circular deadlock that
-    // would otherwise force emission here (Direction A pivot) is broken
-    // by the server emitting EARLY_DECK_PREFETCH right after SESSION_TOKEN,
-    // which lets the client run `preFetchCardImages` before the worker
-    // spawns.
+    // animations-ready-protocol-2026-06-05 — ANIMATIONS_READY emission
+    // lives in `DuelLoadingEffectsService`, not here.
     if (this._autoReconnect) {
       try { localStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
     }

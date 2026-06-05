@@ -379,8 +379,18 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   session.players[playerIndex].connected = true;
   session.players[playerIndex].disconnectedAt = null;
 
-  // H2 — Clear fork connection timeout on first connect
-  if (session.forkConnectionTimeout) {
+  // H2 — Clear fork connection timeout on first connect.
+  // F9 review (animations-ready-protocol-2026-06-05) — keep the
+  // watchdog armed for fork-solo until the client emits
+  // `ANIMATIONS_READY`. Pre-protocol the connect-then-FORK_RESUME was
+  // immediate, so clearing the timer here was safe. Post-protocol the
+  // FORK_RESUME dispatch waits for the client's gate signal — if the
+  // user closes the browser tab before emitting (page crash, force
+  // close), there's no other cleanup site (the `ws.on('close')` SOLO
+  // branch early-returns without arming any cleanup). The watchdog
+  // catches that case. The fork-solo branch in `server.ts
+  // onAnimationsReady` clears the timer once ANIMATIONS_READY arrives.
+  if (session.forkConnectionTimeout && !session.forkMode) {
     clearTimeout(session.forkConnectionTimeout);
     session.forkConnectionTimeout = null;
   }
@@ -413,6 +423,18 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   // both perspectives' images upfront (parallels DuelStartingMsg).
   // PvP normal : only own deck (no info leak).
   const ownCardCodes = extractCardCodesForPlayer(session.decks, playerIndex);
+  // F2 review — log if the deck yields no card codes. In production
+  // this should be unreachable (the duel was created from a validated
+  // decklist), but a regression that strips card codes (e.g. a server-
+  // side filter bug) would otherwise wedge the client at
+  // `thumbnailsReady=false` forever. We still emit the message
+  // (`cardCodes: []`) so the client can flip `thumbnailsReady=true`
+  // via its zero-codes fast-path and unblock the gate.
+  if (ownCardCodes.length === 0) {
+    logger.warn('EARLY_DECK_PREFETCH cardCodes empty — degraded prefetch path', {
+      duelId: session.duelId, player: playerIndex,
+    });
+  }
   const earlyPrefetchMsg = session.soloMode
     ? {
         type: 'EARLY_DECK_PREFETCH' as const,

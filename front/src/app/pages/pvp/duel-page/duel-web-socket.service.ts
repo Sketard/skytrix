@@ -275,6 +275,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   readonly diceInProgress = computed(() => this.active().diceInProgress());
   readonly ocgPlayerIndex = computed(() => this.active().ocgPlayerIndex());
   readonly cardCodes = computed(() => this.active().cardCodes());
+  readonly earlyDeckPrefetchReceived = computed(() => this.active().earlyDeckPrefetchReceived());
   readonly rematchState = computed(() => this.active().rematchState());
   readonly rematchStarting = computed(() => this.active().rematchStarting());
   readonly firstPlayerResult = computed(() => this.active().firstPlayerResult());
@@ -399,10 +400,14 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    * multiplex tags `forPlayer: 0` (the only live slot); PvP normal
    * omits the tag (A2 strict — server-side validation rejects PvP
    * payloads carrying `forPlayer`).
+   *
+   * F4 review — returns `safeSend`'s result so the caller can guard
+   * its idempotence flag on a successful send. See
+   * `DuelConnection.sendAnimationsReady` JSDoc for the race scenario.
    */
-  sendAnimationsReady(): void {
+  sendAnimationsReady(): boolean {
     const forPlayer = this.soloModeSource() ? 0 : undefined;
-    this.active().sendAnimationsReady(forPlayer);
+    return this.active().sendAnimationsReady(forPlayer);
   }
 
   dequeueAnimation(): QueueEntry | null {

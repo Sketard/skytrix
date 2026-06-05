@@ -173,22 +173,43 @@ describe('DuelConnection — handleMessage: connection lifecycle', () => {
 // =============================================================================
 
 describe('DuelConnection — handleMessage: EARLY_DECK_PREFETCH', () => {
-  it('populates `cardCodes` from an EARLY_DECK_PREFETCH payload', () => {
+  it('populates `cardCodes` and flips `earlyDeckPrefetchReceived` from a normal payload', () => {
     const { conn } = makeConn();
+    expect(conn.earlyDeckPrefetchReceived()).toBeFalse();
     dispatch(conn, {
       type: 'EARLY_DECK_PREFETCH',
       cardCodes: [1001, 1002, 1003],
     } as unknown as ServerMessage);
     expect(Array.from(conn.cardCodes())).toEqual([1001, 1002, 1003]);
+    expect(conn.earlyDeckPrefetchReceived()).toBeTrue();
   });
 
-  it('ignores an empty payload (defensive — server is expected to always populate)', () => {
+  // F2 review — a degraded empty payload (server bug, empty deck) must
+  // still flip `earlyDeckPrefetchReceived` so the loading service can
+  // unblock the protocol gate via its zero-codes fast-path.
+  it('still flips `earlyDeckPrefetchReceived` on an empty payload (does NOT wedge the gate)', () => {
     const { conn } = makeConn();
     dispatch(conn, {
       type: 'EARLY_DECK_PREFETCH',
       cardCodes: [],
     } as unknown as ServerMessage);
     expect(Array.from(conn.cardCodes())).toEqual([]);
+    expect(conn.earlyDeckPrefetchReceived()).toBeTrue();
+  });
+
+  // F10 review — SOLO multiplex ships `bothCardCodes`; populate
+  // `_cardCodes` with the deduplicated union so the prefetch primes
+  // images for the opponent perspective too (the user can
+  // `switchPerspective` to slot 1 at any moment).
+  it('F10 review — SOLO with `bothCardCodes` populates the deduplicated union of both decks', () => {
+    const { conn } = makeConn();
+    dispatch(conn, {
+      type: 'EARLY_DECK_PREFETCH',
+      cardCodes: [1001, 1002, 1003], // own deck (slot 0)
+      bothCardCodes: [[1001, 1002, 1003], [2001, 1002, 2002]], // shared 1002
+    } as unknown as ServerMessage);
+    const codes = Array.from(conn.cardCodes()).sort();
+    expect(codes).toEqual([1001, 1002, 1003, 2001, 2002]);
   });
 
   it('idempotent against a subsequent DECK_PREFETCH carrying the same payload', () => {

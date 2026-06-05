@@ -95,6 +95,30 @@ describe('client-message-validator — A2 `forPlayer` strict', () => {
       expect(result).toEqual({ kind: 'ok', live: 1 });
       expect(warnSpy).not.toHaveBeenCalled();
     });
+
+    // F7 review (animations-ready-protocol-2026-06-05) — A2 must reject
+    // a PvP-normal ANIMATIONS_READY carrying `forPlayer`. The validator
+    // is type-agnostic (rejects any non-undefined `forPlayer` in PvP),
+    // so this pins the contract for the new message type explicitly.
+    it('F7 review — rejects ANIMATIONS_READY with `forPlayer` in PvP normal (impersonation guard)', () => {
+      const parsed = { type: 'ANIMATIONS_READY', forPlayer: 0 };
+
+      const result = validateClientMessageForPlayer(parsed, false, 0, 'd-f7');
+
+      expect(result.kind).toBe('reject');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const [, ctx] = warnSpy.mock.calls[0]!;
+      expect(ctx).toMatchObject({ type: 'ANIMATIONS_READY' });
+    });
+
+    it('F7 review — accepts PvP-normal ANIMATIONS_READY WITHOUT `forPlayer`', () => {
+      const parsed = { type: 'ANIMATIONS_READY' };
+
+      const result = validateClientMessageForPlayer(parsed, false, 1, 'd-f7');
+
+      expect(result).toEqual({ kind: 'ok', live: 1 });
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
   });
 
   // ==========================================================================
@@ -147,6 +171,19 @@ describe('client-message-validator — A2 `forPlayer` strict', () => {
       const result = validateClientMessageForPlayer(parsed, true, 1, 'solo-d3b');
 
       expect(result).toEqual({ kind: 'ok', live: 1 });
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    // F7 review (animations-ready-protocol-2026-06-05) — SOLO multiplex
+    // tags `forPlayer: 0` on ANIMATIONS_READY via
+    // `DuelWebSocketService.sendAnimationsReady` (the single live slot).
+    // Pin the validator's acceptance of that exact shape.
+    it('F7 review — accepts SOLO ANIMATIONS_READY{forPlayer:0}', () => {
+      const parsed = { type: 'ANIMATIONS_READY', forPlayer: 0 };
+
+      const result = validateClientMessageForPlayer(parsed, true, 0, 'solo-f7');
+
+      expect(result).toEqual({ kind: 'ok', live: 0 });
       expect(warnSpy).not.toHaveBeenCalled();
     });
 

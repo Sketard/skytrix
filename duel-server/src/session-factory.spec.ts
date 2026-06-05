@@ -239,6 +239,9 @@ describe('resetSessionForRematch (U15)', () => {
     // animations-ready-protocol-2026-06-05 — dirty the flag so we can
     // assert the rematch reset wipes it back to [false, false].
     s.animationsReady = [true, true];
+    // Review F1 — dirty phase so we can assert the reset flips it back
+    // to WAITING_PLAYERS.
+    s.phase = 'DUELING';
 
     resetSessionForRematch(s);
 
@@ -267,6 +270,12 @@ describe('resetSessionForRematch (U15)', () => {
     // new worker. Without this reset the next duel would start in the
     // microsecond following REMATCH_REQUEST.
     expect(s.animationsReady).toEqual([false, false]);
+    // Review F1 — phase is flipped back to WAITING_PLAYERS so the
+    // `onAnimationsReady` hook's gate predicate (`phase === 'WAITING_PLAYERS'`)
+    // fires when the client(s) re-emit. Without this, the gate would miss
+    // (phase still 'DUELING' from the prior duel) and the rematch would
+    // wedge until the next ws reconnect.
+    expect(s.phase).toBe('WAITING_PLAYERS');
   });
 
   it('replaces gameLog with a fresh instance (prior duel entries do NOT bleed in)', () => {
@@ -314,12 +323,18 @@ describe('resetSessionForRematch (U15)', () => {
     clearSpy.mockRestore();
   });
 
-  it('does NOT reset firstPlayerState / chosenFirstPlayer / phase (caller responsibility)', () => {
-    // U15-review #2 — pin the explicit non-clear of these 3 fields. The
-    // caller (server.ts startRematch) is responsible for `disposeFirstPlayer`
-    // (which clears firstPlayerState + chosenFirstPlayer) and the subsequent
-    // `startFirstPlayerPhase` / `startDuelWithOrder` re-write `phase`.
-    // Breaking this carve-out in a future refactor must be explicit.
+  it('does NOT reset firstPlayerState / chosenFirstPlayer (caller responsibility) but DOES reset phase to WAITING_PLAYERS (F1)', () => {
+    // U15-review #2 + F1 (animations-ready-protocol-2026-06-05 code-review)
+    //
+    // - `firstPlayerState` / `chosenFirstPlayer` : NOT reset here — the caller
+    //   (`server.ts startRematch`) is responsible for `disposeFirstPlayer`
+    //   which clears both. Breaking this carve-out in a future refactor must
+    //   be explicit.
+    // - `phase` : IS reset to `WAITING_PLAYERS`. F1 hoisted the rematch
+    //   worker spawn into `server.ts onAnimationsReady`, gated on
+    //   `phase === 'WAITING_PLAYERS'`. Leaving phase 'DUELING' would let the
+    //   gate miss when the client(s) re-emit ANIMATIONS_READY, wedging the
+    //   session until the next ws reconnect.
     const s = createInitialSessionState({
       duelId: 'd1',
       players: [makePlayer(0), makePlayer(1)],
@@ -335,7 +350,9 @@ describe('resetSessionForRematch (U15)', () => {
 
     resetSessionForRematch(s);
 
-    expect(s.phase).toBe('DUELING');
+    // F1 — phase flipped to gate-friendly value.
+    expect(s.phase).toBe('WAITING_PLAYERS');
+    // Caller-owned fields untouched.
     expect(s.firstPlayerState).not.toBeNull();
     expect(s.chosenFirstPlayer).toBe(0);
   });

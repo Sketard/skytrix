@@ -145,16 +145,23 @@ export function createInitialSessionState(opts: CreateInitialSessionStateOpts): 
  * with its callback firing on the freshly-reset session. U15 audit-review
  * fix : clear `gracePeriodTimer` here too.
  *
- * `phase`, `firstPlayerState`, `chosenFirstPlayer` are NOT reset by this
- * helper :
- *   - `firstPlayerState` / `chosenFirstPlayer` are owned by
- *     `disposeFirstPlayer(session)`, which the rematch path MUST call
- *     BEFORE this helper (server.ts startRematch enforces the order).
- *   - `phase` is immediately re-written by `startFirstPlayerPhase` (PvP)
- *     or `startDuelWithOrder` (SOLO) the next tick — resetting it here
- *     would be cosmetic, and asymmetric with the pre-refactor behavior.
- *     The audit review accepted the asymmetry as parity-preserving
- *     (D1 acted 2026-06-02).
+ * `phase` IS reset to `'WAITING_PLAYERS'` (animations-ready-protocol-
+ * 2026-06-05 review F1) — the rematch worker spawn is gated on the
+ * `onAnimationsReady` hook, which checks `phase === 'WAITING_PLAYERS'`
+ * to dispatch `startDuelWithOrder` / `startFirstPlayerPhase`. The
+ * previous "phase is re-written immediately by startFirstPlayerPhase
+ * the next tick" doctrine (D1, 2026-06-02) no longer holds : `startRematch`
+ * no longer spawns the worker directly — it waits for the client(s) to
+ * re-emit `ANIMATIONS_READY`, which can take hundreds of milliseconds
+ * (thumbnail prefetch). Leaving `phase === 'DUELING'` during that
+ * window would let `derivePhase` mis-report mid-rematch reconnects and
+ * make the gate predicate (`phase === 'WAITING_PLAYERS'`) miss when
+ * `ANIMATIONS_READY` finally arrives — wedging the session.
+ *
+ * `firstPlayerState`, `chosenFirstPlayer` are NOT reset by this helper :
+ * they are owned by `disposeFirstPlayer(session)`, which the rematch
+ * path MUST call BEFORE this helper (server.ts startRematch enforces
+ * the order).
  *
  * MUST NOT be called on a `forkMode: true` session. Fork-solo is
  * exploratory one-shot and never reaches the rematch flow — see
@@ -164,8 +171,11 @@ export function createInitialSessionState(opts: CreateInitialSessionStateOpts): 
  * 2026-06-02). Calling it on a fork session would leave `forkMode: true`
  * intact but reset every per-duel field — a zombie state.
  *
- * Does NOT spawn a worker — `startDuelWithOrder` or the dice coordinator
- * handles that.
+ * Does NOT spawn a worker — the `onAnimationsReady` hook spawns the
+ * worker once both clients have re-emitted `ANIMATIONS_READY` (or the
+ * lone SOLO client). `startRematch` itself only sends `REMATCH_STARTING`,
+ * terminates the prior worker, and resets state. The dispatch is
+ * deferred to the gate, exactly like the fresh-connect path.
  */
 export function resetSessionForRematch(session: ActiveDuelSession): void {
   session.worker = null;
@@ -197,9 +207,12 @@ export function resetSessionForRematch(session: ActiveDuelSession): void {
   // Fresh builders for the rematch — the prior duel's entries must NOT bleed
   // into the new journal.
   session.gameLog = createSessionGameLog();
-  // animations-ready-protocol-2026-06-05 — both clients must re-emit
-  // `ANIMATIONS_READY` for the rematch worker to spawn. Without this the
-  // server would consider the new duel ready to start the instant a
-  // REMATCH_REQUEST landed.
+  // animations-ready-protocol-2026-06-05 (review F1) — reset the gate
+  // AND ramp phase back to WAITING_PLAYERS. The `onAnimationsReady`
+  // hook in `server.ts` dispatches `startDuelWithOrder` /
+  // `startFirstPlayerPhase` only when `phase === 'WAITING_PLAYERS'`,
+  // so the rematch worker spawn waits structurally for the client's
+  // re-emission — the same gate that protects the fresh-connect path.
   session.animationsReady = [false, false];
+  session.phase = 'WAITING_PLAYERS';
 }
