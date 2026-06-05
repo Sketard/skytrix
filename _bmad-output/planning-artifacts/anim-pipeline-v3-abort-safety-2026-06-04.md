@@ -322,11 +322,17 @@ modale en switchant. L'affordance qui prend le relais existe **déjà** :
 
 ### Doctrine cible révisée
 
-La doctrine "Replay-as-max-rate-PvP" (CLAUDE.md) prescrit que SOLO
-converge vers replay : le bouton replay `togglePerspective` est
-toujours cliquable, SOLO doit suivre. La parité descendante (spec
-§"Décisions ouvertes", ligne 314) est désormais entièrement
-appliquée — aucune gate UX amont en SOLO.
+La **parité descendante** prescrite par la spec §"Décisions ouvertes"
+(ligne 314 — *"Le replay n'a pas de gate amont — la doctrine v3
+préserve ça (parité descendante)"*) est désormais entièrement
+appliquée — aucune gate UX amont en SOLO. Le bouton replay
+`togglePerspective` est toujours cliquable, SOLO suit.
+
+Note : la doctrine CLAUDE.md "Replay-as-max-rate-PvP" est UN
+concept distinct — elle traite de l'animation gating (le replay
+doit observer les out-of-queue animation gates pour son auto-advance
+scheduler), pas de la clickabilité des boutons. Les deux doctrines
+co-existent mais ne sont pas la même.
 
 ### Tests Phase 6 Karma associés
 

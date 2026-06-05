@@ -1156,6 +1156,23 @@ export class AnimationOrchestratorService {
    *      animatingZone, counterPulse, isAnimating,
    *      chainResolutionAnnounce, overlayShowReady) reset au passage.
    *
+   * Déclenche désormais (v3 Phase 5, 2026-06-05) :
+   *   · `clearTimersAndPolling()` en tête → `runner.requestStop()` →
+   *     `dropOrphanedLocks('runner-requestStop')` (Phase 3 wire).
+   *   · `RenderedBoardStateService` (locks) — vacated par dropOrphanedLocks.
+   *     Pré-Phase-5 ce bullet était dans la liste "Ne déclenche PAS" ;
+   *     Phase 5 a CHANGÉ ça intentionnellement. Tout lock tenu par un
+   *     handler async en vol au moment du switch est droppé synchrone,
+   *     le `.then(commit, release)` post-abort hit le zombie-safe path
+   *     (Option G, af3195fa, idempotent).
+   *   · `_postRequestStopWindow` (Phase 1 instrumentation) ouvert par
+   *     `requestStop`, fermé eagerly à la fin de la méthode (P2 follow-up,
+   *     2026-06-05) pour éviter qu'il reste ouvert pendant WAITING_RESPONSE.
+   *   · `_preActivationBuffer` cleared par `clearTimersAndPolling`. Le
+   *     toolbar button est gaté sur `roomState() === 'active'` côté
+   *     composant (P1 follow-up, 2026-06-05) pour empêcher le wipe
+   *     accidentel pendant la fenêtre bootstrap.
+   *
    * Ne déclenche PAS (CONNECTION_LIFETIME ou plus haut, par construction) :
    *   · `DuelEventProcessor` (activeChainLinks, chainPhase, pendingChainEntry, buffer)
    *   · `DeferredEffectProcessor` (pas d'`EffectAbandoned` — cf. §3.7bis
@@ -1168,19 +1185,18 @@ export class AnimationOrchestratorService {
    *   · `BoundaryProcessor` (CONNECTION_LIFETIME, pas de `forceClosure`
    *     parce qu'un switch n'est pas un checkpoint)
    *
-   * v3 Phase 5 (2026-06-05) — `clearTimersAndPolling()` est désormais
-   * appelé EN TÊTE (avant le push + dispatch). Hérite de Phase 3 :
-   * `runner.requestStop()` → `dropOrphanedLocks('runner-requestStop')`
-   * vacate les locks tenus par un handler async en vol (mid-anim switch).
-   * Permet à `canSwitchPerspective` de relaxer la garde `isBoardStable`
-   * — un mid-anim switch est désormais safe par construction au lieu
-   * d'être bloqué amont. La doctrine "Replay-as-max-rate-PvP" (CLAUDE.md)
-   * dit que SOLO doit converger vers replay : replay autorise un seek
-   * mid-anim, SOLO doit autoriser un switch mid-anim. Garde-fou contre
-   * un futur 2ᵉ caller : le script CI `check-perspective-isolation.mjs`
-   * vérifie statiquement que `SoloDuelOrchestratorService` est seul
-   * caller — si un nouveau site devait notifier sans vouloir le clear,
-   * il faudrait extraire le reset transition dans une méthode séparée.
+   * Doctrine : la "parité descendante" (spec anim-pipeline-v3-abort-safety
+   * §"Décisions ouvertes", ligne 314) prescrit que SOLO converge vers
+   * replay. Replay's `togglePerspective` n'a pas de gate amont — SOLO
+   * suit, et la safety devient structurelle via cette méthode au lieu
+   * d'être un gate amont.
+   *
+   * Garde-fou contre un futur 2ᵉ caller : le script CI
+   * `scripts/check-perspective-isolation.mjs` (introduit γ-c post-review
+   * M10, 2026-05-28) vérifie statiquement que `SoloDuelOrchestratorService`
+   * est seul caller — si un nouveau site devait notifier sans vouloir
+   * le clear, il faudrait extraire le reset transition dans une méthode
+   * séparée et adapter la liste `ALLOWED_PROD` du script.
    */
   notifyPerspectiveSwitch(from: 0 | 1, to: 0 | 1): void {
     // v3 Phase 5 — vacate runner + locks BEFORE the dispatch. The cascade
@@ -1206,6 +1222,21 @@ export class AnimationOrchestratorService {
     // rematch SOLO compte désormais sur `onStateSync({DUEL_LIFETIME})`
     // qui suit immédiatement le REMATCH_STARTING (handler unique).
     this.scopeDispatcher.dispatch(new Set<ScopeCategory>(['PERSPECTIVE_LIFETIME']));
+    // v3 Phase 5-bis follow-up (2026-06-05, P2) — close the
+    // post-requestStop instrumentation window eagerly. The window was
+    // opened by `clearTimersAndPolling → runner.requestStop` above
+    // (Phase 1 instrumentation : track lockZone calls between requestStop
+    // and the next legitimate notifyEnqueue). Without this eager close,
+    // if the worker is in WAITING_RESPONSE post-switch, no fresh event
+    // arrives → `notifyEnqueue` never fires → the window stays open
+    // until the next message (minutes potentially). The dispatch above
+    // does NOT take locks (it touches scope-resettable projections only),
+    // and any subsequent legitimate lock arrives via a fresh
+    // `notifyEnqueue` which will re-close the window anyway. Closing
+    // here keeps the Phase 1 instrumentation's signal value intact :
+    // a `[v3-instr]` warn during the WAITING_RESPONSE window now means
+    // an actual out-of-band lock taker, not a stale window.
+    this.dataSource.renderedBoardState.setPostRequestStopWindow(false);
     this.logger.log(DuelLogCategory.PIPELINE,
       'notifyPerspectiveSwitch %d → %d → dispatch({PERSPECTIVE_LIFETIME})', from, to);
   }

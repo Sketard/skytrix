@@ -76,19 +76,27 @@ class StubDataSource {
   // called by `QueueRunner.requestStop`. The orchestrator's new
   // `notifyPerspectiveSwitch` head-call `clearTimersAndPolling()` reaches
   // this method via the runner ; spec accounting tracks call count + arg.
-  dropOrphanedLocksCalls: string[] = [];
-  setPostRequestStopWindowCalls: boolean[] = [];
+  //
+  // v3 Phase 5-bis P5 follow-up (2026-06-05) — `callOrder` is a shared
+  // monotonic counter incremented on every observable side-effect.
+  // Tests use it to assert ORDERING ("clear before push") instead of just
+  // "both happened" (which a regression that inverts the order would
+  // silently pass).
+  dropOrphanedLocksCalls: { reason: string; order: number }[] = [];
+  setPostRequestStopWindowCalls: { value: boolean; order: number }[] = [];
+  private _nextOrder = 0;
+  nextOrder(): number { return this._nextOrder++; }
   renderedBoardState = {
     commitUnlocked: (): void => undefined,
     lockZone: (): void => undefined,
     attachFloatRegistry: (): void => undefined,
     getSafetyTimeoutMs: (): number => 0,
     dropOrphanedLocks: (reason: string): number => {
-      this.dropOrphanedLocksCalls.push(reason);
+      this.dropOrphanedLocksCalls.push({ reason, order: this.nextOrder() });
       return 0;
     },
     setPostRequestStopWindow: (v: boolean): void => {
-      this.setPostRequestStopWindowCalls.push(v);
+      this.setPostRequestStopWindowCalls.push({ value: v, order: this.nextOrder() });
     },
   };
   chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
@@ -282,8 +290,9 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
 // by construction — the gate doctrine of v3 Phase 5.
 //
 // Sister contract on the SOLO orchestrator side (`canSwitchPerspective`
-// relaxed to the prompt-modal whitelist) is pinned in
-// `phase-gamma-victory.spec.ts:"v3 Phase 5 — canSwitchPerspective relaxed"`.
+// always true post-Phase-5-bis) is pinned in
+// `phase-gamma-victory.spec.ts:"v3 Phase 5-bis — canSwitchPerspective always
+// true (prompt no longer blocks)"`.
 // =============================================================================
 describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wire', () => {
   function makeOrchestrator(): AnimationOrchestratorService {
@@ -323,7 +332,7 @@ describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wi
     // The runner.requestStop path called from clearTimersAndPolling MUST
     // fire dropOrphanedLocks with the canonical reason tag. A regression
     // that splits or renames the call breaks this assert visibly.
-    expect(ds.dropOrphanedLocksCalls).toContain('runner-requestStop');
+    expect(ds.dropOrphanedLocksCalls.map(c => c.reason)).toContain('runner-requestStop');
   });
 
   it('opens the postRequestStopWindow (Phase 1 instrumentation) on every switch', () => {
@@ -336,21 +345,51 @@ describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wi
     // setPostRequestStopWindow(true) is the v3 Phase 1 instrumentation that
     // tracks any handler bailing past its await on the abort signal. It MUST
     // be opened on every requestStop — perspective switch included.
-    expect(ds.setPostRequestStopWindowCalls).toContain(true);
+    expect(ds.setPostRequestStopWindowCalls.map(c => c.value)).toContain(true);
   });
 
-  it('emits PerspectiveSwitched on the EventStream after the clear', () => {
+  it('emits PerspectiveSwitched on the EventStream AFTER the lock clear (ORDER pinned)', () => {
+    // v3 Phase 5-bis P5 follow-up (2026-06-05) — pin the call ORDER, not
+    // just the set of side-effects. A regression that pushes
+    // `PerspectiveSwitched` BEFORE `dropOrphanedLocks` (reverting the
+    // head-call to a tail-call) would silently corrupt the cardinal
+    // invariant "the dispatch sees a clean lock map". Spy on
+    // `pushToStream` to capture the `dropOrphanedLocksCalls.length` AT
+    // PUSH TIME — if the clear had fired by then, the length is >= 1.
     const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
+    let dropCountAtPush: number | null = null;
+    let postWindowOpenAtPush = false;
+    const originalPush = orch.pushToStream.bind(orch);
+    const pushSpy = spyOn(orch, 'pushToStream').and.callFake((event: Parameters<typeof originalPush>[0]) => {
+      // Capture state at FIRST push only (the PerspectiveSwitched event).
+      if (dropCountAtPush === null) {
+        dropCountAtPush = ds.dropOrphanedLocksCalls.length;
+        postWindowOpenAtPush = ds.setPostRequestStopWindowCalls.some(c => c.value === true);
+      }
+      return originalPush(event);
+    });
+
     const before = orch.eventStream();
     orch.notifyPerspectiveSwitch(0, 1);
     const after = orch.eventStream();
     const newEvents = after.slice(before.length);
 
-    // The stream is reset by clearTimersAndPolling? No — clearTimersAndPolling
-    // does not touch _eventStream (only resetAllState does, which we do NOT
-    // call here). So PerspectiveSwitched is appended to whatever was there.
-    // The runner-stopped transport event also lands on the stream (β.2a
-    // sink). Both must surface ; PerspectiveSwitched is the one tested here.
+    // Ordering invariant : clear ran BEFORE the push.
+    expect(dropCountAtPush).withContext('dropOrphanedLocks must have fired before pushToStream').toBeGreaterThanOrEqual(1);
+    expect(postWindowOpenAtPush).withContext('setPostRequestStopWindow(true) must have fired before pushToStream').toBeTrue();
+    expect(pushSpy).toHaveBeenCalled();
+
+    // P2 follow-up : the window is closed eagerly at the tail of
+    // notifyPerspectiveSwitch — last `setPostRequestStopWindow` call must
+    // be `false` so the Phase 1 instrumentation doesn't stay armed during
+    // WAITING_RESPONSE.
+    const windowCalls = ds.setPostRequestStopWindowCalls;
+    expect(windowCalls.length).withContext('window must be both opened AND closed').toBeGreaterThanOrEqual(2);
+    expect(windowCalls[windowCalls.length - 1].value)
+      .withContext('window must be closed (false) as the LAST call').toBeFalse();
+
+    // Existing assertion : the event WAS pushed.
     const perspectiveEvents = newEvents.filter(
       (e): e is { kind: 'perspective'; type: 'PerspectiveSwitched'; from: 0 | 1; to: 0 | 1 } =>
         (e as { kind?: string }).kind === 'perspective'

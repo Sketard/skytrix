@@ -384,6 +384,34 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     return this.wsService.waitingForOpponentForSlot(cur)();
   });
 
+  /**
+   * v3 Phase 5-bis follow-up (2026-06-05, P1) — toolbar P1/P2 button gate.
+   *
+   * `SoloDuelOrchestratorService.canSwitchPerspective` returns `true`
+   * unconditionally post-Phase-5-bis (the prompt + anim + draw gates were
+   * mooted by the per-slot routing + the structural locks cleanup in
+   * `notifyPerspectiveSwitch`). But the toolbar button still needs ONE
+   * upstream gate : the bootstrap window between BOARD_STATE arrival and
+   * the dice arena dismissing (`roomState() !== 'active'`). During that
+   * window, `_preActivationBuffer` holds MSG_DRAW × 5 parked by the
+   * orchestrator ; a `clearTimersAndPolling()` triggered by a switch
+   * wipes the buffer (see code review P1, 2026-06-05). Result : the
+   * initial draws are lost, the rendered HAND stays empty until the
+   * next BOARD_STATE arrives.
+   *
+   * Gating on `roomState() === 'active'` keeps Phase 5-bis's
+   * "always-cliquable mid-anim/mid-prompt" doctrine intact for the
+   * duel proper, and prevents the narrow bootstrap repro window.
+   *
+   * Replay's `togglePerspective` doesn't need this gate — replay has no
+   * `roomState` machine and no pre-activation buffer (it goes through
+   * `resetForReplaySeek` which clears the buffer regardless).
+   */
+  readonly canShowSwitchButton = computed(() => {
+    if (!this.orchestrator.canSwitchPerspective) return false;
+    return this.roomState() === 'active';
+  });
+
   // Story 3.1 — Own player index (0 = player1, 1 = player2)
   // In solo mode, tracks the active connection's player index so the board and badges
   // render from the correct perspective after switching players.
