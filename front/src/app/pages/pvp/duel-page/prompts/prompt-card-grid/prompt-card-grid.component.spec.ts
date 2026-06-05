@@ -144,43 +144,68 @@ describe('PromptCardGridComponent — effect discriminator', () => {
     expect(c.hoverIndex()).toBeNull();
   });
 
-  it('opens the panel on touch long-press and closes it on release', fakeAsync(() => {
+  // Direction B (Master Duel-style, 2026-06-05) — onCardPointer* handlers
+  // were replaced by the [appLongPress] directive (covered in
+  // long-press.directive.spec.ts). What this component owns is the
+  // `onCardLongPress` dispatcher that picks effect-panel vs inspect based on
+  // prompt type. Pinning the dispatcher contract is enough at this layer.
+  it('SELECT_CHAIN + effect text → onCardLongPress opens the effect panel', fakeAsync(() => {
     const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(100, 0, 0x102)]));
     c.ngOnInit();
     tick();
-    c.onCardPointerDown(0, { pointerType: 'touch', clientX: 50, clientY: 50 } as PointerEvent);
-    expect(c.hoverIndex()).toBeNull(); // not yet — timer pending
-    tick(500);
+    let emitted = false;
+    c.longPressInspect.subscribe(() => { emitted = true; });
+    c.onCardLongPress(0);
     expect(c.hoverIndex()).toBe(0);
-    c.onCardPointerUp();
-    expect(c.hoverIndex()).toBeNull();
+    expect(emitted).toBeFalse(); // effect panel branch, NOT inspect
   }));
 
-  it('a fired long-press suppresses the trailing toggleCard selection', fakeAsync(() => {
-    const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(100, 0, 0x102)]));
+  it('SELECT_CHAIN + no effect text → onCardLongPress emits inspect', fakeAsync(() => {
+    const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(200, 1, undefined)]));
     c.ngOnInit();
     tick();
-    c.onCardPointerDown(0, { pointerType: 'touch', clientX: 0, clientY: 0 } as PointerEvent);
-    tick(500);
-    c.onCardPointerUp();
+    const events: { cardCode: number }[] = [];
+    c.longPressInspect.subscribe(e => events.push(e));
+    c.onCardLongPress(1);
+    expect(c.hoverIndex()).toBeNull(); // no effect text, no panel
+    expect(events).toEqual([{ cardCode: 200 }]);
+  }));
+
+  it('a fired long-press suppresses the trailing toggleCard selection', () => {
+    const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(100, 0, 0x102)]));
+    c.onCardLongPress(0);
     c.toggleCard(0); // the synthetic click after the long press
     expect(c.selectedIndices().size).toBe(0); // selection suppressed
-  }));
+  });
 
-  it('a mouse pointerdown does not arm the long-press timer', fakeAsync(() => {
+  it('onCardContextMenu emits inspect and preventDefaults the event', () => {
     const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(100, 0, 0x102)]));
-    c.onCardPointerDown(0, { pointerType: 'mouse', clientX: 0, clientY: 0 } as PointerEvent);
-    tick(500);
-    expect(c.hoverIndex()).toBeNull();
-  }));
+    const events: { cardCode: number }[] = [];
+    c.longPressInspect.subscribe(e => events.push(e));
+    let prevented = false;
+    const ev = { preventDefault: () => { prevented = true; } } as unknown as MouseEvent;
+    c.onCardContextMenu(0, ev);
+    expect(prevented).toBeTrue();
+    expect(events).toEqual([{ cardCode: 100 }]);
+  });
 
-  it('movement beyond tolerance cancels the long-press', fakeAsync(() => {
+  it('dblclickCard on SELECT_CHAIN emits inspect (no selection / confirm)', () => {
     const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(100, 0, 0x102)]));
-    c.onCardPointerDown(0, { pointerType: 'touch', clientX: 0, clientY: 0 } as PointerEvent);
-    c.onCardPointerMove({ clientX: 40, clientY: 0 } as PointerEvent); // 40px > tolerance
-    tick(500);
-    expect(c.hoverIndex()).toBeNull();
-  }));
+    const events: { cardCode: number }[] = [];
+    c.longPressInspect.subscribe(e => events.push(e));
+    c.dblclickCard(0);
+    expect(events).toEqual([{ cardCode: 100 }]);
+    expect(c.selectedIndices().size).toBe(0);
+  });
+
+  it('tap (toggleCard) on SELECT_CHAIN no longer emits inspect', () => {
+    const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(100, 0, 0x102)]));
+    let emitted = false;
+    c.longPressInspect.subscribe(() => { emitted = true; });
+    c.toggleCard(0);
+    expect(emitted).toBeFalse();
+    expect(c.selectedIndices().size).toBe(1); // selection went through
+  });
 
   it('returns null for non-SELECT_CHAIN prompts', () => {
     const c = make(selectChain([chainCard(100, 0, 0x101), chainCard(100, 0, 0x102)]));

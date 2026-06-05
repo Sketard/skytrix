@@ -22,6 +22,7 @@ import { DuelLogger, DuelLogCategory } from '../../duel-logger';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 import { PillComponent } from '../../../../../components/pill/pill.component';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
+import { LongPressDirective } from '../../long-press.directive';
 
 type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
 
@@ -53,7 +54,7 @@ function cardKey(c: CardInfo): string {
   styleUrl: './prompt-card-grid.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe, CardNamePipe, PillComponent, CdkOverlayOrigin, CdkConnectedOverlay],
+  imports: [TranslatePipe, CardNamePipe, PillComponent, CdkOverlayOrigin, CdkConnectedOverlay, LongPressDirective],
 })
 export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt>, OnInit {
   private readonly artService = inject(DuelCardArtService);
@@ -421,38 +422,32 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     this.hoverIndex.set(null);
   }
 
-  // --- Touch long-press → effect panel ---------------------------------------
-  // Touch devices have no hover. A ~500ms press opens the same effect panel;
-  // releasing closes it. The press must not also select the card, so the
-  // synthetic click that follows pointerup is suppressed once a long press fired.
-  private static readonly LONG_PRESS_MS = 500;
-  private static readonly LONG_PRESS_MOVE_TOLERANCE = 12;
-  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  // --- Touch long-press + right-click → inspect or effect panel --------------
+  // Direction B (Master Duel-style, 2026-06-05). Touch long-press and
+  // right-click both target the inspector, except inside SELECT_CHAIN where
+  // long-press keeps its legacy "open effect panel" role (cards that carry
+  // effect text — pre-existing UX since chains can have multiple effects per
+  // card). When the long-press fires, `longPressFired` is set so the trailing
+  // synthetic click on `toggleCard` skips selection. The `LongPressDirective`
+  // suppresses the click at the DOM level too, but `consumeLongPress` is the
+  // safety net for keyboard / programmatic invocations.
   private longPressFired = false;
-  private longPressStartX = 0;
-  private longPressStartY = 0;
 
-  onCardPointerDown(originalIndex: number, event: PointerEvent): void {
-    if (event.pointerType === 'mouse') return; // mouse path uses mouseenter/leave
-    this.longPressFired = false;
-    this.longPressStartX = event.clientX;
-    this.longPressStartY = event.clientY;
-    this.clearLongPressTimer();
-    this.longPressTimer = setTimeout(() => {
-      this.longPressFired = true;
+  onCardLongPress(originalIndex: number): void {
+    this.longPressFired = true;
+    if (this.promptData?.type === 'SELECT_CHAIN' && this.effectTitle(this.cards[originalIndex])) {
+      // Legacy SELECT_CHAIN effect-panel path on touch — desktop uses mouseenter / mouseleave.
       this.onCardHover(originalIndex);
-    }, PromptCardGridComponent.LONG_PRESS_MS);
+      return;
+    }
+    const cardCode = this.cards[originalIndex]?.cardCode;
+    if (cardCode) this.longPressInspect.emit({ cardCode });
   }
 
-  onCardPointerMove(event: PointerEvent): void {
-    if (this.longPressTimer === null) return;
-    const moved = Math.hypot(event.clientX - this.longPressStartX, event.clientY - this.longPressStartY);
-    if (moved > PromptCardGridComponent.LONG_PRESS_MOVE_TOLERANCE) this.clearLongPressTimer();
-  }
-
-  onCardPointerUp(): void {
-    this.clearLongPressTimer();
-    if (this.longPressFired) this.onCardLeave();
+  onCardContextMenu(originalIndex: number, event: MouseEvent): void {
+    event.preventDefault();
+    const cardCode = this.cards[originalIndex]?.cardCode;
+    if (cardCode) this.longPressInspect.emit({ cardCode });
   }
 
   /** True right after a long press — `toggleCard` checks this to skip selection. */
@@ -460,13 +455,6 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     if (!this.longPressFired) return false;
     this.longPressFired = false;
     return true;
-  }
-
-  private clearLongPressTimer(): void {
-    if (this.longPressTimer !== null) {
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
-    }
   }
 
   isSelected(index: number): boolean {
@@ -483,9 +471,20 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   isDualAmount(card: CardInfo): boolean { return this.getAmountMin(card) !== this.getAmountMax(card); }
   getSelectedAmount(index: number): number { return this.selectedCardAmounts().get(index) ?? 1; }
 
-  /** Double-click on a single-choice card prompt = select + confirm in one gesture. */
+  /**
+   * Double-click handler. Two regimes co-exist :
+   * - SELECT_CHAIN : `dblclick` = inspect (Direction B, Master Duel-style).
+   *   Single-tap selects a chain link; long-press / right-click opens the
+   *   effect panel — there is no "select + confirm" shortcut for chains.
+   * - Other prompts : `dblclick` = select + confirm in one gesture (legacy).
+   */
   dblclickCard(index: number): void {
     if (this.answered || this.readOnly) return;
+    if (this.promptData?.type === 'SELECT_CHAIN') {
+      const cardCode = this.cards[index]?.cardCode;
+      if (cardCode) this.longPressInspect.emit({ cardCode });
+      return;
+    }
     if (this.isMultiSelect || this.isToggleMode) return;
     if (this.promptData?.type === 'SELECT_SUM' || this.promptData?.type === 'SELECT_TRIBUTE') return;
     if (!this.isSelected(index)) this.toggleCard(index);
@@ -494,14 +493,12 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   toggleCard(index: number): void {
     if (this.answered) return;
-    // A long press opened the effect panel — the trailing click must not select.
+    // A long press fired (effect panel or inspect) — the trailing click must not select.
     if (this.consumeLongPress()) return;
-
-    const cardCode = this.cards[index]?.cardCode;
-    if (cardCode) {
-      this.longPressInspect.emit({ cardCode });
-    }
-
+    // Direction B (Master Duel-style, 2026-06-05) : tap = select only, never
+    // inspect. The inspector now opens via long-press / right-click / dblclick
+    // (SELECT_CHAIN) only — routed through `onCardLongPress` /
+    // `onCardContextMenu` / `dblclickCard`.
     if (this.readOnly) return;
 
     if (this.promptData?.type === 'SELECT_SUM') {
