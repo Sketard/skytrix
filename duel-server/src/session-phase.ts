@@ -20,5 +20,14 @@ export function derivePhase(session: ActiveDuelSession): DerivedSessionPhase {
   // captured for replay/preservation) OR endedAt (set on cleanup paths).
   if (session.storedDuelResult || session.endedAt !== null) return 'ENDED';
   if (session.phase === 'DUELING') return 'DUELING';
+  // SOLO multiplex skips the dice arena entirely (no second player to roll
+  // against). The worker spawns synchronously the moment the lone WS
+  // connects (`isReadyToStart` in lifecycle-helpers.ts returns true on a
+  // single connection for SOLO), so `WAITING_PLAYERS` is a sub-millisecond
+  // window with no UI value. Reporting `DUELING` upfront lets the SOLO
+  // client skip `showDiceArena()` (the "flash dice" symptom) and mount the
+  // board skeleton directly while prefetch runs in the background.
+  // Cf. parity investigation 2026-06-05 + flash-dice-solo bug.
+  if (session.soloMode && session.phase === 'WAITING_PLAYERS') return 'DUELING';
   return 'PRE_DUEL';
 }

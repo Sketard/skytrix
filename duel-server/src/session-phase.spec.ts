@@ -56,8 +56,8 @@ describe('derivePhase', () => {
   ];
 
   for (const phase of preDuelPhases) {
-    it(`returns 'PRE_DUEL' for session.phase === '${phase}'`, () => {
-      expect(derivePhase(makeSession({ phase }))).toBe('PRE_DUEL');
+    it(`returns 'PRE_DUEL' for session.phase === '${phase}' (PvP normal)`, () => {
+      expect(derivePhase(makeSession({ phase, soloMode: false }))).toBe('PRE_DUEL');
     });
   }
 
@@ -81,5 +81,35 @@ describe('derivePhase', () => {
   it("'ENDED' overrides 'PRE_DUEL' (race: duel ended before first dice)", () => {
     const s = makeSession({ phase: 'WAITING_PLAYERS', endedAt: Date.now() });
     expect(derivePhase(s)).toBe('ENDED');
+  });
+
+  // -------- SOLO multiplex skips PRE_DUEL --------------------------------
+  // Parity investigation 2026-06-05 — SOLO has no dice roll to display, so
+  // emitting PRE_DUEL during the sub-millisecond `WAITING_PLAYERS` window
+  // makes the client mount the dice arena briefly (the "flash dice" UX bug).
+  // Reporting DUELING upfront eliminates the flash AND lets SOLO skip the
+  // pre-activation buffer race that costs initial draws + cost moves in the
+  // event stream (parity test failure on fixture 18a55f97).
+
+  it("SOLO + WAITING_PLAYERS returns 'DUELING' (skip dice arena flash)", () => {
+    expect(derivePhase(makeSession({ phase: 'WAITING_PLAYERS', soloMode: true }))).toBe('DUELING');
+  });
+
+  it("SOLO + DUELING still returns 'DUELING' (steady state)", () => {
+    expect(derivePhase(makeSession({ phase: 'DUELING', soloMode: true }))).toBe('DUELING');
+  });
+
+  it("SOLO + ENDED still returns 'ENDED' (preservation override holds)", () => {
+    const s = makeSession({ phase: 'WAITING_PLAYERS', soloMode: true, endedAt: Date.now() });
+    expect(derivePhase(s)).toBe('ENDED');
+  });
+
+  // Only the WAITING_PLAYERS shortcut is documented for SOLO — pre-duel phases
+  // beyond WAITING_PLAYERS (ROLLING_DICE, …) can't legitimately apply because
+  // SOLO bypasses the dice flow server-side via `startDuelWithOrder(0)`
+  // directly from the connection handler. If a SOLO session is ever observed
+  // in one of those phases, returning PRE_DUEL is the safe fallback.
+  it("SOLO + ROLLING_DICE returns 'PRE_DUEL' (unreachable in prod, safe fallback)", () => {
+    expect(derivePhase(makeSession({ phase: 'ROLLING_DICE', soloMode: true }))).toBe('PRE_DUEL');
   });
 });

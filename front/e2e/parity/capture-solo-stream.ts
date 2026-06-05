@@ -121,6 +121,29 @@ export async function captureSoloStream(
     return snap?.logicalState?.winner ?? null;
   });
 
+  // v4 Phase 0 diagnostic — capture the preActivationBuffer + roomState
+  // to verify the SOLO bootstrap reached `setBoardActive(true)` + drained
+  // the parked initial-draw events. If the buffer is non-empty here, the
+  // initial MSG_DRAW × 5 + cost MSG_MOVE were silently absorbed and never
+  // pushed to _eventStream — root cause of the parity divergence.
+  const diag = await page.evaluate(() => {
+    const w = window as unknown as {
+      __skytrixDebug?: {
+        snapshot?: () => {
+          preActivationBuffer?: ReadonlyArray<{ type: string }>;
+          logicalState: { phase?: string };
+        };
+      };
+    };
+    const snap = w.__skytrixDebug?.snapshot?.();
+    return {
+      preActivationBuffer: snap?.preActivationBuffer ?? [],
+      logicalPhase: snap?.logicalState?.phase ?? null,
+    };
+  });
+  // eslint-disable-next-line no-console
+  console.log(`[parity:solo] diagnostic preActivationBuffer=${JSON.stringify(diag.preActivationBuffer)} phase=${diag.logicalPhase}`);
+
   await page.close();
 
   return {

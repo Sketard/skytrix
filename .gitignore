@@ -86,6 +86,8 @@ duel-server/data/*
 !duel-server/data/bridge-validation-verdicts.json
 duel-server/node_modules/
 duel-server/dist/
+# Isolated dev-stack dataDir (cards.cdb + strings.conf copied/symlinked by scripts/dev-stack.mjs)
+duel-server/data-isolated/
 
 # Logs (generated at runtime)
 logs/

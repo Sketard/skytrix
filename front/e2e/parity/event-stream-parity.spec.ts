@@ -23,10 +23,16 @@
  * either (a) a bug fix or (b) an addition to the normalize filter list.
  */
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { captureSoloStream, checkFromReplayEndpointAvailable } from './capture-solo-stream';
 import { captureReplayStream } from './capture-replay-stream';
 import { normalizeStream, findFirstDivergence } from './normalize-stream';
+
+// Playwright loads spec files via pirates in CJS mode (see playwright.config.ts
+// comment) so `__dirname` is defined globally. `import.meta.url` throws here.
+const PARITY_DUMP_DIR = resolve(__dirname, '../../../_bmad-output/debug-replay/parity-dump');
 
 interface ParityFixture {
   id: string;
@@ -98,6 +104,22 @@ test.describe('SOLO↔Replay event stream parity', () => {
 
         const soloNormalized = normalizeStream(soloResult.stream);
         const replayNormalized = normalizeStream(replayResult.stream);
+
+        // Dump the normalized streams + raw streams to disk so divergence
+        // analysis doesn't depend on re-running the test. Useful when the
+        // divergence is several events deep and the console diff isn't
+        // enough to reason about it.
+        try {
+          mkdirSync(PARITY_DUMP_DIR, { recursive: true });
+          const base = `${PARITY_DUMP_DIR}/${fixture.id}`;
+          writeFileSync(`${base}-solo-normalized.json`, JSON.stringify(soloNormalized, null, 2));
+          writeFileSync(`${base}-replay-normalized.json`, JSON.stringify(replayNormalized, null, 2));
+          writeFileSync(`${base}-solo-raw.json`, JSON.stringify(soloResult.stream, null, 2));
+          writeFileSync(`${base}-replay-raw.json`, JSON.stringify(replayResult.stream, null, 2));
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn(`[parity:${fixture.id}] dump failed: ${(e as Error).message}`);
+        }
 
         // Find the first structural divergence — gives a precise,
         // actionable error message before Playwright dumps the full diff.

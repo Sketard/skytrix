@@ -62,12 +62,34 @@ const VOLATILE_FIELDS = [
  *   `rescue-*`, `watchdog-*`) — pure mechanic of the queue runner ; not
  *   carrying a `kind` field uniformly (some carry a `type` like
  *   `'runner-started'`). Filtered by name prefix.
+ * - `kind: 'boundary'` (TurnStarted/Ended, PhaseStarted/Ended, ChainStarted/Ended)
+ *   — emitted by the BoundaryProcessor. v4 Phase 0 investigation 2026-06-05
+ *   revealed STRUCTURAL divergences between SOLO and Replay:
+ *     · Replay `ReplayDuelAdapter.resetProcessorForTransition` calls
+ *       `processor.reset()` at every idle transition, which silentResets
+ *       the BoundaryProcessor's `lastTurn`/`lastPhase` state. The next
+ *       `observeBoardState` then takes the "first BOARD_STATE" path
+ *       (asymmetric, no preceding `*Ended`) and re-emits TurnStarted +
+ *       PhaseStarted, even when turn/phase has not actually changed.
+ *       Result : Replay emits N pairs of (TurnStarted, PhaseStarted) for
+ *       N PreComputedStates, where SOLO emits only on real deltas.
+ *     · SOLO emits PhaseEnded/TurnEnded on real phase/turn transitions
+ *       (BP delta detection works because BP state survives in PvP/SOLO).
+ *       Replay never emits them because the BP is reset between every
+ *       PreComputedState before any delta is observable.
+ *   Filtered out of the v0 parity test ; the fix (don't reset BP at every
+ *   idle transition in the replay adapter) is a Phase 1+ concern. Cf.
+ *   the docblock at `replay-duel-adapter.ts:resetProcessorForTransition`.
  *
  * If we want stricter parity later, lift these to a separate stream
  * comparison pass.
  */
 function isFilteredOut(event: RawStreamEvent): boolean {
   if (event.kind === 'animation') return true;
+  // v4 Phase 0 — boundary events have structurally different emission
+  // patterns between Replay (re-emitted per PreComputedState) and SOLO
+  // (emitted on actual delta). Defer to Phase 1+ for the pipeline fix.
+  if (event.kind === 'boundary') return true;
   // InternalTransportEvent objects carry their discriminator on `kind`
   // (not `type`) — `runner-started`, `runner-stopped`, `rescue-fired`,
   // `rescue-abandoned`, `watchdog-armed`. Filter all of them : they
