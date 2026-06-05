@@ -18,6 +18,7 @@ import { DuelDevHubComponent } from '../duel-dev-hub/duel-dev-hub.component';
 import { DuelDevStateService } from '../duel-dev-hub/duel-dev-state.service';
 import { DuelThemeService } from '../duel-theme.service';
 import { DuelContext } from '../duel-context';
+import { LongPressDirective } from '../long-press.directive';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -115,7 +116,7 @@ function applyMockAlterations(card: CardOnField, withXyz: boolean): CardOnField 
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     PvpPlayerCardComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe,
-    DuelDevHubComponent,
+    DuelDevHubComponent, LongPressDirective,
   ],
 })
 export class PvpBoardContainerComponent implements AfterViewInit {
@@ -271,7 +272,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number; sourceEvent: MouseEvent }>();
-  readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField }>();
+  readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField; forceExpanded?: boolean }>();
   readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly revealedZoneKeys = input<ReadonlySet<string>>(new Set());
@@ -489,16 +490,44 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   }
 
   onZoneCardClick(event: MouseEvent, zone: ZoneRenderData): void {
-    if (zone.card?.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: zone.card.cardCode, liveCard: zone.card });
+    if (this.effectiveReadOnly()) {
+      // Read-only path (replay / spectator) — tap = inspect direct, no action ever possible.
+      if (zone.card?.cardCode) {
+        this.cardInspectRequest.emit({ cardCode: zone.card.cardCode, liveCard: zone.card });
+      }
+      return;
     }
-    if (this.effectiveReadOnly()) return;
     const actions = this.getActionsForZone(zone.zoneId);
     if (actions.length > 0) {
       this.menuRequest.emit({
         zoneId: zone.zoneId,
         element: event.currentTarget as HTMLElement,
         actions,
+      });
+    } else if (zone.card?.cardCode) {
+      // B2 fallback (Direction B, Master Duel-style, 2026-06-05) — no action
+      // available for this card right now ; primary affordance defaults to inspect.
+      this.cardInspectRequest.emit({ cardCode: zone.card.cardCode, liveCard: zone.card });
+    }
+  }
+
+  onZoneCardContextMenu(event: MouseEvent, zone: ZoneRenderData): void {
+    event.preventDefault();
+    if (zone.card?.cardCode) {
+      this.cardInspectRequest.emit({
+        cardCode: zone.card.cardCode,
+        liveCard: zone.card,
+        forceExpanded: true,
+      });
+    }
+  }
+
+  onZoneCardLongPress(zone: ZoneRenderData): void {
+    if (zone.card?.cardCode) {
+      this.cardInspectRequest.emit({
+        cardCode: zone.card.cardCode,
+        liveCard: zone.card,
+        forceExpanded: true,
       });
     }
   }
@@ -652,19 +681,49 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
 
   onEmzCardClick(event: MouseEvent, zoneId: ZoneId, card: CardOnField): void {
-    if (card.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
+    if (this.effectiveReadOnly()) {
+      if (card.cardCode) this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
+      return;
     }
-    if (this.effectiveReadOnly()) return;
     const actions = this.getActionsForZone(zoneId);
     if (actions.length > 0) {
       this.menuRequest.emit({ zoneId, element: event.currentTarget as HTMLElement, actions });
+    } else if (card.cardCode) {
+      // B2 fallback (Direction B, 2026-06-05).
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
     }
   }
 
-  onCardInspect(card: CardOnField): void {
+  onEmzCardContextMenu(event: MouseEvent, card: CardOnField): void {
+    event.preventDefault();
     if (card.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true });
+    }
+  }
+
+  onEmzCardLongPress(card: CardOnField): void {
+    if (card.cardCode) {
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true });
+    }
+  }
+
+  // Opponent-side terrain (read-only by construction — the player has no
+  // actionable affordance on cards they don't own). Tap = inspect direct ;
+  // long-press / right-click = inspect forceExpanded (full inspector).
+  onOpponentCardTap(card: CardOnField): void {
+    if (card.cardCode) this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
+  }
+
+  onOpponentCardContextMenu(event: MouseEvent, card: CardOnField): void {
+    event.preventDefault();
+    if (card.cardCode) {
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true });
+    }
+  }
+
+  onOpponentCardLongPress(card: CardOnField): void {
+    if (card.cardCode) {
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true });
     }
   }
 

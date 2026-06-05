@@ -153,7 +153,9 @@
                [attr.aria-label]="isFaceUp(zone.card.position) ? buildAriaLabel(zone.card) : 'Face-down card'"
                (mouseenter)="onLinkedHover(zone.zoneId + '-1')"
                (mouseleave)="onLinkedLeave()"
-               (click)="onCardInspect(zone.card)">
+               (click)="onOpponentCardTap(zone.card)"
+               (contextmenu)="onOpponentCardContextMenu($event, zone.card)"
+               (appLongPress)="onOpponentCardLongPress(zone.card)">
             @if (zone.card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
                 @if (zone.card.overlayMaterials.length >= 3) {
@@ -249,7 +251,9 @@
                [attr.aria-label]="isFaceUp(card.position) ? buildAriaLabel(card) : 'Face-down card'"
                (mouseenter)="onLinkedHover(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
                (mouseleave)="onLinkedLeave()"
-               (click)="onEmzCardClick($event, emz.zoneId, card)">
+               (click)="onEmzCardClick($event, emz.zoneId, card)"
+               (contextmenu)="onEmzCardContextMenu($event, card)"
+               (appLongPress)="onEmzCardLongPress(card)">
             @if (card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="card.overlayMaterials.length >= 3 ? 3 : card.overlayMaterials.length">
                 @if (card.overlayMaterials.length >= 3) {
@@ -412,7 +416,9 @@
                [attr.aria-label]="isFaceUp(zone.card.position) ? buildAriaLabel(zone.card) : 'Face-down card'"
                (mouseenter)="onLinkedHover(zone.zoneId + '-0')"
                (mouseleave)="onLinkedLeave()"
-               (click)="onZoneCardClick($event, zone)">
+               (click)="onZoneCardClick($event, zone)"
+               (contextmenu)="onZoneCardContextMenu($event, zone)"
+               (appLongPress)="onZoneCardLongPress(zone)">
             @if (zone.card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
                 @if (zone.card.overlayMaterials.length >= 3) {

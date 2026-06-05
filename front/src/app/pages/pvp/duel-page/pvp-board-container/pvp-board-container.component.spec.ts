@@ -471,6 +471,85 @@ describe('PvpBoardContainerComponent — action dispatch + clicks (C4.2)', () =>
 
     expect(events).toEqual([{ zoneId: 'GY', playerIndex: 1, sourceEvent }]);
   });
+
+  // ---------------------------------------------------------------------
+  // Direction B gesture handlers (2026-06-05) — pin the inspect-with-
+  // `forceExpanded` contract for the new right-click / long-press paths.
+  // ---------------------------------------------------------------------
+
+  it('onZoneCardContextMenu preventDefaults + emits inspect forceExpanded', () => {
+    fixture.detectChanges();
+    const events: Array<{ cardCode: number; forceExpanded?: boolean }> = [];
+    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode, forceExpanded: e.forceExpanded }));
+
+    let prevented = false;
+    const card = makeCard({ cardCode: 11111 });
+    const zone = { zoneId: 'M2' as ZoneId, card, cardCount: 1, renderMode: 'terrain' as const, gridArea: 'mz2' };
+    component.onZoneCardContextMenu({ preventDefault: () => { prevented = true; } } as unknown as MouseEvent, zone);
+
+    expect(prevented).toBeTrue();
+    expect(events).toEqual([{ cardCode: 11111, forceExpanded: true }]);
+  });
+
+  it('onZoneCardLongPress emits inspect forceExpanded (no preventDefault — directive owns it)', () => {
+    fixture.detectChanges();
+    const events: Array<{ cardCode: number; forceExpanded?: boolean }> = [];
+    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode, forceExpanded: e.forceExpanded }));
+
+    const card = makeCard({ cardCode: 22222 });
+    const zone = { zoneId: 'S1' as ZoneId, card, cardCount: 1, renderMode: 'terrain' as const, gridArea: 'sz1' };
+    component.onZoneCardLongPress(zone);
+
+    expect(events).toEqual([{ cardCode: 22222, forceExpanded: true }]);
+  });
+
+  it('onOpponentCardTap emits inspect (no forceExpanded)', () => {
+    fixture.detectChanges();
+    const events: Array<{ cardCode: number; forceExpanded?: boolean }> = [];
+    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode, forceExpanded: e.forceExpanded }));
+
+    component.onOpponentCardTap(makeCard({ cardCode: 33333 }));
+
+    expect(events).toEqual([{ cardCode: 33333, forceExpanded: undefined }]);
+  });
+
+  it('onOpponentCardLongPress emits inspect forceExpanded', () => {
+    fixture.detectChanges();
+    const events: Array<{ cardCode: number; forceExpanded?: boolean }> = [];
+    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode, forceExpanded: e.forceExpanded }));
+
+    component.onOpponentCardLongPress(makeCard({ cardCode: 44444 }));
+
+    expect(events).toEqual([{ cardCode: 44444, forceExpanded: true }]);
+  });
+
+  it('onZoneCardClick B2 fallback emits inspect (no actions, not readOnly)', () => {
+    // No actionablePrompt set → no actions for any zone → B2 should kick in.
+    fixture.detectChanges();
+    const events: number[] = [];
+    component.cardInspectRequest.subscribe(e => events.push(e.cardCode));
+
+    const card = makeCard({ cardCode: 77777 });
+    const zone = { zoneId: 'M3' as ZoneId, card, cardCount: 1, renderMode: 'terrain' as const, gridArea: 'mz3' };
+    component.onZoneCardClick({ currentTarget: document.createElement('div') } as unknown as MouseEvent, zone);
+
+    expect(events).toEqual([77777]);
+  });
+
+  it('onEmzCardContextMenu preventDefaults + emits inspect forceExpanded', () => {
+    fixture.detectChanges();
+    const events: Array<{ cardCode: number; forceExpanded?: boolean }> = [];
+    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode, forceExpanded: e.forceExpanded }));
+
+    let prevented = false;
+    component.onEmzCardContextMenu(
+      { preventDefault: () => { prevented = true; } } as unknown as MouseEvent,
+      makeCard({ cardCode: 55555 }),
+    );
+
+    expect(prevented).toBeTrue();
+    expect(events).toEqual([{ cardCode: 55555, forceExpanded: true }]);
+  });
 });
 
 // =============================================================================
