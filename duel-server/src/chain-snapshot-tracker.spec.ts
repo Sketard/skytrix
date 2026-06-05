@@ -188,10 +188,10 @@ describe('ChainSnapshotTracker', () => {
       // sync). A regression that reverts either to `commitAll()` will
       // re-introduce the zombification.
       const optionHRefs = source.match(/Option H/g);
-      expect(optionHRefs).withContext('Option H markers in draw-sequence-manager.ts').not.toBeNull();
+      expect(optionHRefs, 'Option H markers in draw-sequence-manager.ts').not.toBeNull();
       expect(optionHRefs!.length).toBeGreaterThanOrEqual(2);
       const commitZoneHandRefs = source.match(/this\.rbs\.commitZone\(handZoneKey\)/g);
-      expect(commitZoneHandRefs).withContext('commitZone(handZoneKey) calls').not.toBeNull();
+      expect(commitZoneHandRefs, 'commitZone(handZoneKey) calls').not.toBeNull();
       expect(commitZoneHandRefs!.length).toBeGreaterThanOrEqual(2);
     });
   });
