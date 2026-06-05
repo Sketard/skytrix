@@ -110,6 +110,12 @@ export interface InitDuelMessage {
   skipShuffle?: boolean;
   scriptsHash: string;
   ocgcoreVersion: string;
+  /** v4 Phase 0 — optional seed override for PvP↔Replay parity testing.
+   *  When set, the worker uses this seed instead of `generateSeed()` so
+   *  the resulting OCGCore run produces the same card pile as the replay
+   *  it was derived from. Stored as strings (bigint serialization). Only
+   *  the `/api/duels/from-replay` dev endpoint sets this. */
+  seed?: string[];
 }
 
 export interface EmitReplayDataMessage {
@@ -121,6 +127,13 @@ export interface PlayerResponseMessage {
   playerIndex: 0 | 1;
   promptType: SelectPromptType;
   data: PlayerResponseMsg['data'];
+  /** v4 Phase 0 — when set by the server-side tape player, the worker
+   *  must NOT run `transformResponse` on `data`. The tape captured
+   *  responses already in the post-transform OCGCore format (typo
+   *  `indicies` etc.) ; re-running transform would re-rename
+   *  `indices → indicies` on a payload that already has `indicies`,
+   *  yielding `{ indicies: null }` and a worker RETRY. */
+  preTransformed?: boolean;
 }
 
 export interface InitReplayMessage {

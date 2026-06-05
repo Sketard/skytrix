@@ -983,7 +983,13 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
   // cleanup() was skipped (re-init without prior duel-end signal).
   setLastIdleSnapshot(null);
 
-  const seed = generateSeed();
+  // v4 Phase 0 — accept an optional seed override for PvP↔Replay parity
+  // testing. The `/api/duels/from-replay` endpoint injects the replay's
+  // seed so OCGCore produces the same card pile as the original duel,
+  // making the resulting `_eventStream` directly comparable.
+  const seed = msg.seed
+    ? (msg.seed.map(BigInt) as [bigint, bigint, bigint, bigint])
+    : generateSeed();
   duelSeed = [...seed];
 
   const result = await initOcgEngine(seed);
@@ -1201,7 +1207,14 @@ port.on('message', (msg: MainToWorkerMessage) => {
       return;
     }
     lastResponsePlayerIndex = msg.playerIndex;
-    const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
+    // v4 Phase 0 — tape player path passes already-transformed responses
+    // (in raw OCGCore wire format, e.g. `{type:5, indicies:[4]}` for
+    // SELECT_CARD). Skip `transformResponse` which would re-rename
+    // `indices → indicies` on a payload that has neither, yielding
+    // `{type:5, indicies: null}` and an immediate WORKER_RETRY.
+    const response = msg.preTransformed
+      ? (msg.data as unknown)
+      : transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
     if (response) {
       // P0-3bis.3 — take a rollback snapshot BEFORE applying an
       // IDLECMD/BATTLECMD response. The cancel path will restore this if

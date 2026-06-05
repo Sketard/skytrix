@@ -90,6 +90,8 @@ import {
   isForkHandlersConfigured,
   createForkSoloSession,
 } from './fork-handlers.js';
+import { createTapePlayer, type SessionWithTapePlayer } from './tape-player.js';
+import type { WorkerReplayPayload } from './types.js';
 import {
   configureClientMessageRouter,
   isClientMessageRouterConfigured,
@@ -505,6 +507,164 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }, CONNECTION_TIMEOUT_MS);
 
     json(res, 201, { duelId, wsTokens: tokens });
+    return;
+  }
+
+  // POST /api/duels/from-replay — v4 Phase 0 (chantier
+  // `anim-pipeline-v4-replay-unification`). Bootstrap a SOLO MULTIPLEX
+  // session seeded from a stored replay, with a tape player that
+  // auto-responds to every SELECT_* from `playerResponses[]`. Used ONLY
+  // by `event-stream-parity.spec.ts` to compare the SOLO `_eventStream`
+  // against the replay-mode stream of the same duel.
+  //
+  // SOLO multiplex (1 token, 1 ws, omniscient filter) was chosen over
+  // PvP normal (2 tokens, 2 ws, per-player filter) because :
+  //   - SOLO bootstraps with a single socket (PvP normal would need 2
+  //     Playwright clients connecting synchronously — fragile).
+  //   - SOLO omniscient filter aligns with replay precompute (also
+  //     omniscient) → smaller initial divergence surface.
+  //   - PvP normal would require front-side bypass of `roomService.fetchRoom`
+  //     (token injection via history.state for 2 tokens instead of 1).
+  // A FUTURE "from-replay-pvp" mode could exercise PvP normal as a
+  // separate test ; not in Phase 0 scope. See parity spec doc.
+  //
+  // NEVER exposed in production — gated on `!IS_PRODUCTION`. See
+  // `_bmad-output/planning-artifacts/pvp-replay-event-stream-parity-spec-2026-06-05.md`.
+  if (method === 'POST' && pathname === '/api/duels/from-replay') {
+    if (IS_PRODUCTION) {
+      json(res, 404, { code: 'NOT_FOUND', error: 'Not Found' });
+      return;
+    }
+    if (!validateInternalAuth(req, res)) return;
+    if (!dataReady) {
+      json(res, 503, { code: 'SERVER_NOT_READY', error: 'Server not ready' });
+      return;
+    }
+
+    let body: string;
+    try {
+      body = await readBody(req);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'PAYLOAD_TOO_LARGE') {
+        json(res, 413, { code: 'PAYLOAD_TOO_LARGE', error: 'Payload too large' });
+        return;
+      }
+      throw err;
+    }
+
+    let parsed: { replayId: string };
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      json(res, 400, { code: 'INVALID_JSON', error: 'Invalid JSON' });
+      return;
+    }
+
+    if (!parsed.replayId || typeof parsed.replayId !== 'string') {
+      json(res, 400, { code: 'MISSING_REPLAY_ID', error: 'replayId required' });
+      return;
+    }
+
+    // Fetch the replay payload from Spring Boot. Same path as
+    // `replay-handlers.ts` does for the regular replay viewer.
+    let replay: WorkerReplayPayload;
+    let player1Id: string;
+    let player2Id: string;
+    try {
+      const response = await fetch(`${SPRING_BOOT_API_URL}/internal/replays/${parsed.replayId}`, {
+        headers: { 'X-Internal-Key': INTERNAL_API_KEY },
+      });
+      if (response.status === 404) {
+        json(res, 404, { code: 'REPLAY_NOT_FOUND', error: 'Replay not found' });
+        return;
+      }
+      if (!response.ok) {
+        logger.error('Replay fetch failed', { replayId: parsed.replayId, status: response.status });
+        json(res, 502, { code: 'REPLAY_FETCH_FAILED', error: 'Upstream replay fetch failed' });
+        return;
+      }
+      const fetched = await response.json() as { replayData: Omit<WorkerReplayPayload, 'metadata'>; metadata: import('./types.js').ReplayMetadata; player1Id: number; player2Id: number };
+      replay = { ...fetched.replayData, metadata: fetched.metadata };
+      player1Id = String(fetched.player1Id);
+      player2Id = String(fetched.player2Id);
+    } catch (err) {
+      logger.error('Replay fetch error', { replayId: parsed.replayId, error: err instanceof Error ? err.message : String(err) });
+      json(res, 502, { code: 'REPLAY_FETCH_ERROR', error: 'Upstream replay fetch error' });
+      return;
+    }
+
+    const duelId = randomUUID();
+    const token0 = randomUUID();
+
+    const session = createInitialSessionState({
+      duelId,
+      players: [
+        { playerId: player1Id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
+        { playerId: player2Id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
+      ],
+      decks: replay.decks,
+      soloMode: true,
+      playerUsernames: replay.metadata.playerUsernames,
+      deckNames: replay.metadata.deckNames,
+      skipShuffle: true,
+      turnTimeSecs: 99999, // disable turn timer
+    }) as SessionWithTapePlayer;
+
+    // Attach tape player BEFORE register/connect so the worker hook
+    // sees it on the first SELECT_* broadcast.
+    // firstPlayer=0: the precompute pipeline always uses P0 as OCGCore
+    // first, which matches our SOLO bootstrap below (firstPlayer=0).
+    session.tapePlayer = createTapePlayer(replay.playerResponses, replay.seed, 0);
+
+    // SOLO multiplex : 1 token only. The single WS multiplexes both
+    // perspectives via slot routing (see CLAUDE.md "Modes — vue
+    // d'ensemble" table).
+    sessionManager.register(session, [token0]);
+
+    // The duel does NOT start here — it starts when the client connects
+    // its single WS and `isReadyToStart` (lifecycle-helpers.ts) sees
+    // `players[0].connected === true`. The connection handler then calls
+    // `startDuelWithOrder(session, 0)` (SOLO branch). The tape player
+    // covers all SELECT_* once DUELING starts.
+
+    logger.log('Tape-player SOLO duel created', {
+      duelId, replayId: parsed.replayId,
+      responses: replay.playerResponses.length,
+    });
+
+    json(res, 201, { duelId, wsTokens: [token0] });
+    return;
+  }
+
+  // GET /api/duels/:duelId/tape-status — v4 Phase 0 dev-only.
+  // Returns the tape player progress for a duel created via
+  // `/api/duels/from-replay`. Used by the parity test as the canonical
+  // "replay has been fully replayed" signal — NOT MSG_WIN, because the
+  // original replay may have ended by surrender / inactivity / engine WIN,
+  // and we want a consistent end criterion regardless.
+  //
+  // Returns 404 if the duel doesn't exist or has no tape player attached.
+  // Returns { cursor, total, done, sessionEnded } when the duel is found.
+  const tapeStatusMatch = pathname.match(/^\/api\/duels\/([^/]+)\/tape-status$/);
+  if (method === 'GET' && tapeStatusMatch) {
+    if (IS_PRODUCTION) {
+      json(res, 404, { code: 'NOT_FOUND', error: 'Not Found' });
+      return;
+    }
+    if (!validateInternalAuth(req, res)) return;
+    const queryDuelId = tapeStatusMatch[1];
+    const queriedSession = sessionManager.get(queryDuelId) as SessionWithTapePlayer | undefined;
+    if (!queriedSession?.tapePlayer) {
+      json(res, 404, { code: 'NO_TAPE_PLAYER', error: 'Duel has no tape player or does not exist' });
+      return;
+    }
+    const tape = queriedSession.tapePlayer;
+    json(res, 200, {
+      cursor: tape.cursor,
+      total: tape.playerResponses.length,
+      done: tape.cursor >= tape.playerResponses.length,
+      sessionEnded: queriedSession.endedAt !== null,
+    });
     return;
   }
 

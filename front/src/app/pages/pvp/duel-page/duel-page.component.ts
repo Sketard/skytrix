@@ -832,6 +832,9 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       const p = this.wsService.pendingPrompt();
       return p ? (p as { type?: string }).type ?? null : null;
     };
+    // v4 Phase 0 — eventStream accessor for PvP↔Replay parity test.
+    this.debugService.eventStreamAccessor =
+      () => this.animationService.eventStream();
     this.debugService.bindToWindow();
   }
 

@@ -349,6 +349,11 @@ export function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 
 
   attachWorkerHandlers(session);
 
+  // v4 Phase 0 — when a tape player is attached, forward its captured
+  // seed so OCGCore produces the same card pile as the replay this
+  // session was bootstrapped from. Production sessions leave this
+  // undefined → worker calls `generateSeed()` as usual.
+  const tapeSeed = (session as { tapePlayer?: { seed: readonly string[] } }).tapePlayer?.seed;
   worker.postMessage({
     type: 'INIT_DUEL',
     duelId: session.duelId,
@@ -359,5 +364,6 @@ export function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 
     skipShuffle: session.skipShuffle,
     scriptsHash: getScriptsHash(),
     ocgcoreVersion: getOcgcoreVersion(),
+    ...(tapeSeed && { seed: [...tapeSeed] }),
   });
 }

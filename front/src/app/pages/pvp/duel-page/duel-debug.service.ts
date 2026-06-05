@@ -99,6 +99,15 @@ export class DuelDebugService {
    *  convention §5.2 POC guard input for live diagnostic. */
   pendingPromptTypeAccessor: (() => string | null) | null = null;
 
+  /** v4 Phase 0 (2026-06-05) — EventStream accessor. Set by
+   *  `duel-page.component.ts` + `replay-page.component.ts`. Returns the
+   *  current `AnimationOrchestratorService.eventStream()` snapshot.
+   *  Used by the PvP↔Replay parity test to capture the stream from
+   *  both modes and compare structurally. Not part of {@link snapshot}
+   *  because the stream can grow to thousands of entries — exposed via
+   *  a dedicated `captureEventStream()` method on the window surface. */
+  eventStreamAccessor: (() => readonly unknown[]) | null = null;
+
   /** Build a snapshot of the current state. Cheap (signal reads); call as
    *  often as needed. The `domZones` field is a getter — calling it forces
    *  ~50 layout reads, so don't invoke it on every animation tick. */
@@ -136,6 +145,21 @@ export class DuelDebugService {
     };
   }
 
+  /** v4 Phase 0 (2026-06-05) — return the current EventStream snapshot
+   *  as a plain array. Returns `[]` if the accessor wasn't wired (e.g.
+   *  the page hasn't initialised yet or production bundle without
+   *  isDevMode). Cheap signal read.
+   *
+   *  Consumers (Playwright parity test) typically call this once at the
+   *  end of a duel run :
+   *  ```ts
+   *  const events = await page.evaluate(() => __skytrixDebug.captureEventStream());
+   *  ```
+   *  Then normalize + compare against the same call on the other mode. */
+  captureEventStream(): readonly unknown[] {
+    return this.eventStreamAccessor?.() ?? [];
+  }
+
   /** Convenience: snapshot + log to console as a single grouped block. */
   dump(): DebugSnapshot {
     const snap = this.snapshot();
@@ -164,6 +188,8 @@ export class DuelDebugService {
     w.__skytrixDebug = {
       snapshot: () => this.snapshot(),
       dump: () => this.dump(),
+      // v4 Phase 0 (2026-06-05) — see captureEventStream() docstring.
+      captureEventStream: () => this.captureEventStream(),
       setLogCategories: (cats: DuelLogCategory[]) => this.logger?.setCategories(cats),
       enableAll: () => this.logger?.setCategories([
         DuelLogCategory.QUEUE, DuelLogCategory.MOVE, DuelLogCategory.DRAW,
@@ -178,6 +204,7 @@ export class DuelDebugService {
           'skytrix debug surface:',
           '  __skytrixDebug.snapshot()     — JSON-serialisable state dump',
           '  __skytrixDebug.dump()         — same + grouped console output',
+          '  __skytrixDebug.captureEventStream() — current AnimationOrchestrator.eventStream (v4 parity test)',
           '  __skytrixDebug.enableAll()    — turn on every log category (incl. RESOLVE + PIPELINE)',
           '  __skytrixDebug.setLogCategories([...]) — fine-grained category set',
         ].join('\n'));

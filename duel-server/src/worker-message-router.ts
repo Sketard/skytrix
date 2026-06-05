@@ -6,6 +6,7 @@ import * as duelInstr from './duel-instrumentation.js';
 import { applyChainTransition } from './chain-state-tracker.js';
 import { ingestMessage as ingestIntoSessionGameLog } from './session-game-log.js';
 import { applyCancelRollbackBroadcast } from './cancel-rollback-main.js';
+import { scheduleAutoResponse, hasTapePlayer } from './tape-player.js';
 import {
   handleTurnChange,
   scheduleTimerStart,
@@ -322,6 +323,19 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
     });
     session.awaitingResponse[targetPlayer] = true;
     session.promptSentAt[targetPlayer] = Date.now();
+    // v4 Phase 0 — tape player hook for PvP↔Replay parity test
+    // (chantier `anim-pipeline-v4-replay-unification`). When the session
+    // was bootstrapped via `POST /api/duels/from-replay`, auto-respond
+    // from the captured `playerResponses[]` instead of waiting for a
+    // (would-be) human click. NEVER fires in production sessions — the
+    // marker `session.tapePlayer` is only set by the dev-only endpoint.
+    if (hasTapePlayer(session)) {
+      scheduleAutoResponse(session, targetPlayer, message, (resp) => {
+        if (!session.endedAt && session.worker) {
+          session.worker.postMessage(resp);
+        }
+      }, logger);
+    }
     const opponentOfTarget: 0 | 1 = targetPlayer === 0 ? 1 : 0;
     // γ Option C A19 — `targetPlayer` lets the SOLO multiplex front route
     // WAITING_RESPONSE to the right perspective slot. Populated in both modes
@@ -334,7 +348,11 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
     // machinery starts seeing it. The send is kept here unconditionally so
     // PvP parity is structural and the routing decision lives in ONE place
     // (`decideSoloRouting`), not in scattered per-callsite branches.
-    send(session, opponentOfTarget, { type: 'WAITING_RESPONSE', targetPlayer: opponentOfTarget });
+    // v4 Phase 0 — skip WAITING_RESPONSE when tape player is attached
+    // (no opponent UI to update, server consumes both perspectives).
+    if (!hasTapePlayer(session)) {
+      send(session, opponentOfTarget, { type: 'WAITING_RESPONSE', targetPlayer: opponentOfTarget });
+    }
     scheduleTimerStart(session, targetPlayer);
     startInactivityTimer(session, targetPlayer);
     // P0-3bis.3 — a fresh IDLECMD/BATTLECMD = new rollback boundary.
@@ -367,6 +385,16 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
       // hint cache by it so a SOLO reconnect resends the right slot's hint.
       const hintPlayer = (message as { player: Player }).player;
       session.lastSentHint[hintPlayer] = filtered;
+    }
+    // v4 Phase 0 — when a tape player is attached, do NOT forward SELECT_*
+    // (or WAITING_RESPONSE for the opponent slot) to the front client.
+    // The server consumes the prompts internally via `scheduleAutoResponse`
+    // (above). Forwarding them would open a prompt dialog on the front UI
+    // that needs a human click — blocking the test indefinitely.
+    // Non-prompt messages (BOARD_STATE, MSG_*, BoundaryEvent) are still
+    // forwarded so the client pipeline anim can consume them normally.
+    if (hasTapePlayer(session) && isSelectMessage(message)) {
+      return;
     }
     send(session, 0, filtered);
     return;

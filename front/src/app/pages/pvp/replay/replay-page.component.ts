@@ -774,6 +774,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     // parked during the dice→board transition (mirrors duel-page).
     this.debugService.preActivationBufferAccessor =
       () => this.orchestrator.preActivationBufferSnapshot();
+    // v4 Phase 0 — eventStream accessor for PvP↔Replay parity test.
+    this.debugService.eventStreamAccessor =
+      () => this.orchestrator.eventStream();
     this.debugService.bindToWindow();
     // Replay-specific debug surface — extends `window.__skytrixDebug` with
     // `replay.*` actions so the Playwright debug harness (see
