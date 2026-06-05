@@ -379,6 +379,149 @@ describe('PerspectiveEvent type guard (γ commit 5)', () => {
   });
 });
 
+// =============================================================================
+// v3 Phase 5-bis (2026-06-05) — pin per-slot pendingPrompt reactivity
+// -----------------------------------------------------------------------------
+// The architectural cornerstone of Phase 5-bis : `wsService.pendingPrompt()`
+// reads `_slots[perspectiveSlot()]` (computed at `duel-web-socket.service.ts:248`),
+// so a perspective switch in SOLO automatically re-routes the consumed prompt
+// to the new slot. The doctrine "drop the prompt gate because per-slot routing
+// already masks the modal" depends ENTIRELY on this reactivity.
+//
+// The main `solo-duel-orchestrator.service.spec.ts` suite uses a flat
+// `pendingPromptSignal` mock, so it cannot exercise the per-slot routing. The
+// `duel-connection.spec.ts` F-bugB3 suite pins the per-slot STORAGE but not
+// the consumer-side reactivity at the `DuelWebSocketService` boundary. This
+// suite closes that gap with a mini per-slot mock — a regression that breaks
+// the reactivity of `pendingPrompt` post-`setPerspective()` flips THIS test
+// before the user sees the modal stuck on the wrong slot.
+// =============================================================================
+describe('v3 Phase 5-bis — per-slot pendingPrompt reactivity', () => {
+  let perSlotService: SoloDuelOrchestratorService;
+  let perSlotDuelCtx: DuelContext;
+  // Per-slot prompt storage : index by absolute player slot, mirror of
+  // `_slots[N].pendingPrompt` on the real `DuelConnection`. The wsService
+  // mock's `pendingPrompt()` reads `slots[perspective()]`, replicating
+  // `duel-web-socket.service.ts:248`'s `getPendingPromptFor(perspectiveSlot())`.
+  // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+  const slotPrompts: [ReturnType<typeof signal<unknown>>, ReturnType<typeof signal<unknown>>] = [
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    signal<unknown>(null),
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    signal<unknown>(null),
+  ];
+
+  beforeEach(() => {
+    slotPrompts[0].set(null);
+    slotPrompts[1].set(null);
+    // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+    const soloModeSourceMock = signal<boolean>(true);
+    const animMock = {
+      processor: new DuelEventProcessor(),
+      notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
+      drawManager: { hasDrawsInFlight: false },
+      isBoardStableForSwitch: true,
+    };
+    // The DuelContext is provided BEFORE the wsService mock is built, so the
+    // mock's `pendingPrompt()` closure captures the TestBed-injected ctx.
+    TestBed.configureTestingModule({
+      providers: [
+        SoloDuelOrchestratorService,
+        DuelContext,
+        DebugLogService,
+        DuelLogger,
+        DuelCardArtService,
+        { provide: LiveAnnouncer, useValue: { announce: jasmine.createSpy('announce') } },
+        // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+        { provide: ReducedMotionService, useValue: { enabled: signal(false) } },
+        { provide: AnimationOrchestratorService, useValue: animMock },
+        {
+          provide: DuelWebSocketService,
+          useFactory: () => {
+            const ctx = TestBed.inject(DuelContext);
+            return {
+              bindSoloConnection: jasmine.createSpy('bindSoloConnection'),
+              setSoloMode: jasmine.createSpy('setSoloMode').and.callFake((v: boolean) => soloModeSourceMock.set(v)),
+              soloModeSource: soloModeSourceMock,
+              // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+              duelResult: signal<unknown>(null),
+              // The cardinal invariant under test : `pendingPrompt` reads
+              // `slots[perspective()]` synchronously on each call. A regression
+              // that decouples the read from `perspective()` (e.g. caches the
+              // slot) breaks this reactivity and the modal sticks to the old
+              // slot post-switch.
+              pendingPrompt: () => slotPrompts[ctx.perspective()()](),
+            };
+          },
+        },
+      ],
+    });
+
+    perSlotService = TestBed.inject(SoloDuelOrchestratorService);
+    perSlotDuelCtx = TestBed.inject(DuelContext);
+    (perSlotService as unknown as { _transport_connection: { set: (v: unknown) => void } })
+      ._transport_connection.set(makeStubConnection());
+  });
+
+  it('reads slot 0 prompt when perspective is 0 (baseline)', () => {
+    const prompt = { type: 'SELECT_CARD' };
+    slotPrompts[0].set(prompt);
+    expect(perSlotDuelCtx.perspective()()).toBe(0);
+    expect(TestBed.inject(DuelWebSocketService).pendingPrompt() as unknown).toBe(prompt);
+  });
+
+  it('switch P0→P1 with prompt on slot 0 auto-masks the modal (returns null)', () => {
+    // Worker pending on slot 0 — modal visible to a P0 viewer.
+    slotPrompts[0].set({ type: 'SELECT_CARD' });
+    expect(TestBed.inject(DuelWebSocketService).pendingPrompt()).not.toBeNull();
+
+    // Switch perspective to slot 1. The cardinal invariant : `pendingPrompt()`
+    // re-evaluates against `_slots[1]` (still null) → modal masked from DOM
+    // via `prompt-derivation.service.visiblePrompt`. NO prompt-modal gate
+    // is needed amont — the per-slot routing handles the affordance by
+    // construction.
+    perSlotService.switchPerspective();
+    expect(perSlotDuelCtx.perspective()()).toBe(1);
+    expect(TestBed.inject(DuelWebSocketService).pendingPrompt()).toBeNull();
+  });
+
+  it('switch back P1→P0 re-surfaces the slot 0 prompt (same ref preserved)', () => {
+    const slot0Prompt = { type: 'SELECT_CARD' };
+    slotPrompts[0].set(slot0Prompt);
+    perSlotService.switchPerspective(); // P0 → P1
+    expect(TestBed.inject(DuelWebSocketService).pendingPrompt()).toBeNull();
+
+    // Drain the debounce window so a second switch is not no-op'd.
+    // The debounce lives behind `_switching` ; reset via private field flip
+    // mirroring how the SOLO orchestrator's setTimeout would clear it.
+    (perSlotService as unknown as { _switching: { set: (v: boolean) => void } })
+      ._switching.set(false);
+
+    perSlotService.switchPerspective(); // P1 → P0
+    expect(perSlotDuelCtx.perspective()()).toBe(0);
+    // Same ref — the worker's pending state on slot 0 was never disturbed
+    // by the switch. The modal re-appears identical (Angular Object.is
+    // means the underlying signal re-emits the original reference).
+    expect(TestBed.inject(DuelWebSocketService).pendingPrompt() as unknown).toBe(slot0Prompt);
+  });
+
+  it('both slots populated — switch surfaces the NEW slot prompt, not null', () => {
+    const slot0Prompt = { type: 'SELECT_CARD' };
+    const slot1Prompt = { type: 'SELECT_CHAIN' };
+    slotPrompts[0].set(slot0Prompt);
+    slotPrompts[1].set(slot1Prompt);
+    expect(TestBed.inject(DuelWebSocketService).pendingPrompt() as unknown).toBe(slot0Prompt);
+
+    perSlotService.switchPerspective();
+    expect(perSlotDuelCtx.perspective()()).toBe(1);
+    // Cardinal : the new perspective's prompt is what surfaces, NOT a stale
+    // slot 0 read. A regression that caches the slot index would surface
+    // slot 0's prompt here and the user would see the wrong modal on the
+    // wrong perspective.
+    expect(TestBed.inject(DuelWebSocketService).pendingPrompt() as unknown).toBe(slot1Prompt);
+  });
+});
+
 /** Minimal connection stub for switchPerspective + cleanup wiring (c6a). */
 function makeStubConnection(): {
   connectionStatus: () => 'connected' | 'lost';
