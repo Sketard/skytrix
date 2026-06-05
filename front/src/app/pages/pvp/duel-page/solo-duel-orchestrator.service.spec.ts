@@ -32,11 +32,12 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
   // F3 (audit, abcc259f) added `canSwitchPerspective` which historically
   // read `drawManager.hasDrawsInFlight` + `isBoardStableForSwitch` on the
   // injected AnimationOrchestratorService. v3 Phase 5 (2026-06-05) reduced
-  // the guard to the prompt-modal whitelist alone (mid-anim switches are
-  // safe by construction via `notifyPerspectiveSwitch` → `clearTimersAndPolling`
-  // → `dropOrphanedLocks`). The two fields are no longer read by prod code
-  // but kept on the stub as defense-in-depth in case a future refactor
-  // re-introduces a draw/anim gate. Defaults mirror `phase-gamma-victory.spec.ts:setupStubHarness`.
+  // the guard to the prompt-modal whitelist alone, then v3 Phase 5-bis
+  // (2026-06-05) made it always-true (the per-slot routing of `pendingPrompt`
+  // already filters the modal by perspective). The fields below are no
+  // longer read by prod code but kept on the stub as defense-in-depth in
+  // case a future refactor re-introduces a gate. Defaults mirror
+  // `phase-gamma-victory.spec.ts:setupStubHarness`.
   let animService: {
     processor: DuelEventProcessor;
     notifyPerspectiveSwitch: jasmine.Spy;
@@ -129,13 +130,19 @@ describe('SoloDuelOrchestratorService (γ Option C c6a)', () => {
     expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
   });
 
-  it('switchPerspective is no-op while a prompt is active (convention §5.2 POC)', () => {
+  it('switchPerspective FIRES even with a modal prompt active (v3 Phase 5-bis)', () => {
+    // v3 Phase 5-bis (2026-06-05) — the prompt-modal gate is retired. The
+    // per-slot routing of `wsService.pendingPrompt` already filters the
+    // modal by the current perspective ; switching does not corrupt the
+    // worker's pending state on the old slot, and switching back re-surfaces
+    // the same modal. Used to be a no-op (convention §5.2 POC c10), now
+    // mirrors replay's always-cliquable doctrine.
     pendingPromptSignal.set({ type: 'SELECT_CARD' });
     duelCtx.setPerspective(0);
     seedConnection(service);
     service.switchPerspective();
-    expect(duelCtx.perspective()()).toBe(0);
-    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
+    expect(duelCtx.perspective()()).toBe(1);
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
   });
 
   it('switchPerspective flips perspective 0 → 1 and notifies orchestrator', () => {

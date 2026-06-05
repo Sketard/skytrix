@@ -3,39 +3,24 @@ import { environment } from '../../../../environments/environment';
 import { DuelConnection } from './duel-connection';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
-import { DuelLogger, DuelLogCategory } from './duel-logger';
+import { DuelLogger } from './duel-logger';
 import { DuelContext } from './duel-context';
 import { WebSocketFactoryService } from './websocket-factory.service';
 import { SOLO_SWITCH_PLAYER_MS } from './ui-timing-constants';
 
-/**
- * γ Option C c10 (2026-05-29) — whitelist des `Prompt.type` qui n'empêchent
- * PAS un `switchPerspective` SOLO. Ces deux prompts sont l'état stable
- * d'attente du joueur actif pendant respectivement sa Main Phase 1/2 et
- * sa Battle Phase — ils sont émis par le serveur dès l'entrée en phase et
- * restent pending jusqu'à end-phase. Les bloquer revient à interdire le
- * switch tout au long du tour (bug user-facing remonté 2026-05-29 :
- * "je clique P1 et rien ne se passe alors que je n'ai aucun prompt
- * modal ouvert").
- *
- * Les autres prompts (SELECT_CARD, SELECT_CHAIN, SELECT_PLACE, …) restent
- * bloquants car ils représentent une action multi-step en cours dont
- * l'UX de basculement mid-action serait déroutante (le viewer arrive
- * sur P1 alors que P0 attend une réponse pour finir son SELECT_CARD).
- */
-const IDLE_PHASE_PROMPT_TYPES: ReadonlySet<string> = new Set([
-  'SELECT_IDLECMD',
-  'SELECT_BATTLECMD',
-  // SELECT_CHAIN is the stable wait-state during chain building — the engine
-  // walks each player's response window in sequence and the viewer NEEDS to
-  // switch perspective precisely to answer for the other side (e.g. activate
-  // Ash Blossom on opponent's NS-trigger). Allowing the switch here is the
-  // SOLO multiplex raison d'être. v3 Phase 5 (2026-06-05) — safety is now
-  // structural : `notifyPerspectiveSwitch` clears the runner + drops orphaned
-  // locks before the dispatch (Phase 3 wire). No upstream board-stability gate
-  // is needed.
-  'SELECT_CHAIN',
-]);
+// v3 Phase 5-bis (2026-06-05) — `IDLE_PHASE_PROMPT_TYPES` whitelist retired.
+// The previous c10 design distinguished "idle-phase wait-state prompts"
+// (always allowed) from "modal action prompts" (blocked the switch). v3
+// Phase 5-bis drops the distinction entirely : `wsService.pendingPrompt()`
+// is ALREADY filtered by `perspectiveSlot()` (the γ-c per-slot routing —
+// see duel-web-socket.service.ts:248), so a switch from P0 to P1 with a
+// SELECT_CARD pending on P0 naturally re-routes `pendingPrompt()` to
+// `_slots[1].pendingPrompt` (typically null) → the modal disappears from
+// the DOM without affecting the worker's pending state on slot 0. Switching
+// back to P0 re-surfaces the same modal from the cached `_slots[0]`. The
+// affordance "the OTHER slot has an action pending, click to switch" is
+// already wired via `duel-page.component.ts:waitingForOpponentOnOtherSlot`
+// → glow doré on the P1/P2 button (c6f).
 
 /**
  * γ Option C — PR2 c6a (2026-05-29) — SOLO multiplex mono-connection.
@@ -210,65 +195,49 @@ export class SoloDuelOrchestratorService {
   /**
    * Bascule la perspective visuelle (P0 ↔ P1). Le processor n'est
    * PAS muté — ni `activeChainLinks`, ni `chainPhase`, ni les locks,
-   * ni la queue d'animation. C'est la sémantique cible du chantier
-   * (§1.2 spec). La projection visuelle complète arrive au commit 6
-   * (PerspectiveProjector, rotate(180deg) sur `.board-host`).
-   *
-   * Convention §5.2 POC — révisée γ-c c10 (2026-05-29) : pas de switch
-   * pendant prompt MODAL actif. La whitelist `IDLE_PHASE_PROMPT_TYPES`
-   * autorise explicitement `SELECT_IDLECMD` et `SELECT_BATTLECMD` — ces
-   * deux prompts sont l'état stable d'attente du joueur actif pendant
-   * toute sa Main Phase / Battle Phase, donc bloquer le switch sur eux
-   * équivaut à bloquer le switch tout au long du tour.
+   * ni la queue d'animation (γ Option C invariant). Le runner est
+   * vacated par `notifyPerspectiveSwitch` → `clearTimersAndPolling`
+   * (Phase 5 wire) et les locks orphelins sont droppés (Phase 3) ;
+   * le worker garde son état pending intact.
    */
   /**
-   * F3 (2026-05-30) — single source of truth for "can the viewer switch
-   * perspective right now?". Drives BOTH `switchPerspective`'s early-return
-   * guard AND the toolbar button's `[disabled]` + urgent-glow gate, so the UX
-   * and the safety guard can never disagree (clicking a glowing button that
-   * silently no-ops was the "I click P1 and nothing happens" frustration).
+   * v3 Phase 5-bis (2026-06-05) — the switch is now ALWAYS allowed.
    *
-   * v3 Phase 5 (2026-06-05) — relaxed to `promptBlocks` only. The doctrine
-   * "Replay-as-max-rate-PvP" (CLAUDE.md) prescribes SOLO converging toward
-   * replay : replay's `togglePerspective` button is always cliquable, SOLO's
-   * must follow. The earlier gates (`hasDrawsInFlight`, `isBoardStableForSwitch`)
-   * are no longer load-bearing because :
-   *   · `notifyPerspectiveSwitch` now calls `clearTimersAndPolling()` in head
-   *     (v3 Phase 5 wire), which fires `runner.requestStop()` →
-   *     `dropOrphanedLocks('runner-requestStop')` (Phase 3). The locks held
-   *     by in-flight handlers are vacated by construction.
-   *   · `_abort.abort()` interrupts any suspended async handler at its next
-   *     `await` ; the post-cleanup `.then(commit, release)` hits the zombie-
-   *     safe path (Option G, af3195fa).
-   *   · `conn.onPerspectiveSwitched()` re-feeds the cached absolute BOARD_STATE
-   *     via `syncRendered()` so the board lands on the target state immediately
-   *     even if the worker is in WAITING_RESPONSE (no fresh BOARD_STATE coming).
+   * Historical journey :
+   *   · F3 (2026-05-30) gated on `(hasDrawsInFlight, isBoardStableForSwitch,
+   *     promptBlocks)` to prevent locks orphaning + UX confusion mid-action.
+   *   · v3 Phase 5 dropped the anim/draw gates : safety became structural
+   *     via `notifyPerspectiveSwitch` → `clearTimersAndPolling` →
+   *     `dropOrphanedLocks` (Phase 3 wire). Only the prompt-modal block
+   *     remained.
+   *   · v3 Phase 5-bis drops the prompt block too. Rationale : the prompt
+   *     UX concern (the viewer arrives on P1 while P0 has a pending modal)
+   *     is mooted by the per-slot routing : `wsService.pendingPrompt()`
+   *     reads `_slots[perspectiveSlot()]`, so post-switch it naturally
+   *     returns the new slot's prompt (typically null) and the modal is
+   *     masked from the DOM. The worker's pending state on the old slot is
+   *     preserved ; switching back surfaces the modal again. The "OTHER
+   *     slot has action pending, click to switch" affordance is already
+   *     wired via `waitingForOpponentOnOtherSlot` (glow doré on the P1/P2
+   *     button, c6f).
    *
-   * Only blocking modal prompts remain. `IDLE_PHASE_PROMPT_TYPES` whitelist
-   * (SELECT_IDLECMD / SELECT_BATTLECMD / SELECT_CHAIN) is preserved : these
-   * are the legitimate per-phase wait states where switching is the raison
-   * d'être of SOLO multiplex (answer for the other side).
+   * Kept as a public read surface for the toolbar `[disabled]` binding —
+   * always returns true. If a future need re-introduces a gate (e.g. an
+   * accessibility mode that wants modal focus to stay with the prompt),
+   * this is the single point to wire it.
    */
   get canSwitchPerspective(): boolean {
-    const prompt = this.wsService.pendingPrompt();
-    if (prompt !== null && !IDLE_PHASE_PROMPT_TYPES.has(prompt.type)) return false;
     return true;
   }
 
   switchPerspective(): void {
     const conn = this._transport_connection();
     if (!conn) return;
+    // v3 Phase 5-bis — only the in-flight debounce can short-circuit the
+    // switch. No gate on prompt / anim / draw : safety is structural via
+    // `notifyPerspectiveSwitch` (head call `clearTimersAndPolling` →
+    // `dropOrphanedLocks`) and the per-slot routing of `pendingPrompt`.
     if (this._switching()) return;
-    // v3 Phase 5 — single gate `canSwitchPerspective` reduced to modal-prompt
-    // block (whitelist excepts IDLE_PHASE_PROMPT_TYPES). Mid-anim + mid-draw
-    // switches are now safe by construction via `notifyPerspectiveSwitch` →
-    // `clearTimersAndPolling` → `dropOrphanedLocks`.
-    if (!this.canSwitchPerspective) {
-      const prompt = this.wsService.pendingPrompt();
-      this.logger.log(DuelLogCategory.PIPELINE,
-        'switchPerspective skipped: %s', `prompt=${prompt?.type ?? 'null'}`);
-      return;
-    }
     const from = this.duelCtx.perspective()() as 0 | 1;
     const to: 0 | 1 = from === 0 ? 1 : 0;
     this._switching.set(true);

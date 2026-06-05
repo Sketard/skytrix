@@ -31,7 +31,7 @@ import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DebugLogService } from './debug-log.service';
-import { DuelLogger, DuelLogCategory } from './duel-logger';
+import { DuelLogger } from './duel-logger';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
 import { DuelGameLogService } from './duel-game-log.service';
@@ -319,110 +319,86 @@ describe('γ R10 — DuelGameLogService re-relativises journal on perspective fl
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Logging hygiene — switchPerspective skipped + active prompt emits a PIPELINE
-// trace, useful to flag in the manual T10 checklist. Asserted here to keep the
-// log surface stable.
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('γ — prompt-active guard logs a PIPELINE trace', () => {
-  it('switchPerspective with a modal pendingPrompt logs PIPELINE "skipped: prompt active"', () => {
-    const { service, animService, setPrompt } = setupStubHarness();
-    const logger = TestBed.inject(DuelLogger);
-    const logSpy = spyOn(logger, 'log').and.callThrough();
-
-    // SELECT_CARD is a multi-step modal prompt — must block the switch.
+// =============================================================================
+// v3 Phase 5-bis (2026-06-05) — canSwitchPerspective ALWAYS true
+// -----------------------------------------------------------------------------
+// All gates dropped : anim/draw (Phase 5 — safety became structural via
+// `notifyPerspectiveSwitch` → `clearTimersAndPolling` → `dropOrphanedLocks`)
+// AND prompt (Phase 5-bis — the per-slot routing of `wsService.pendingPrompt`
+// already filters the modal by current perspective, see
+// `duel-web-socket.service.ts:248`). The `IDLE_PHASE_PROMPT_TYPES` whitelist
+// is retired. Full parity with replay's `togglePerspective` (always cliquable).
+//
+// The previous "block on SELECT_CARD / SELECT_PLACE / SELECT_TRIBUTE" tests are
+// replaced by their inverse : the switch fires regardless of prompt type, and
+// the modal naturally re-evaluates against the new slot. Visual affordance to
+// switch back is carried by `waitingForOpponentOnOtherSlot()` (glow doré on
+// the P1/P2 toolbar button — see duel-page.component.ts:381).
+// =============================================================================
+describe('v3 Phase 5-bis — canSwitchPerspective always true (prompt no longer blocks)', () => {
+  it('ALLOWS the switch with ANY modal prompt type pending (SELECT_CARD)', () => {
+    const { service, animService, duelCtx, setPrompt } = setupStubHarness();
     setPrompt({ type: 'SELECT_CARD' });
+    expect(service.canSwitchPerspective).toBeTrue();
     service.switchPerspective();
-
-    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
-    // The exact format string isn't load-bearing; what matters is a
-    // PIPELINE-category log line surfaces. T10 checklist refers to this
-    // trace to confirm the no-op was deliberate. A5 (2026-05-31) collapsed
-    // the diagnostic into a single reason string carrying ONLY the real
-    // blocking causes — here only the modal prompt is the cause.
-    expect(logSpy).toHaveBeenCalledWith(
-      DuelLogCategory.PIPELINE,
-      jasmine.stringContaining('switchPerspective skipped:'),
-      'prompt=SELECT_CARD',
-    );
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
   });
 
-  // γ-c c10 (2026-05-29) — whitelist révisée §5.2 POC. SELECT_IDLECMD et
-  // SELECT_BATTLECMD sont l'état stable d'attente du joueur actif et ne
-  // doivent PAS bloquer le switch, sinon il est interdit tout au long du
-  // tour. Pin par test pour éviter une régression silencieuse.
-  it('switchPerspective with SELECT_IDLECMD pending IS allowed (whitelist c10)', () => {
+  it('ALLOWS the switch with SELECT_PLACE pending (was blocking pre-5-bis)', () => {
+    const { service, animService, duelCtx, setPrompt } = setupStubHarness();
+    setPrompt({ type: 'SELECT_PLACE' });
+    expect(service.canSwitchPerspective).toBeTrue();
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
+  });
+
+  it('ALLOWS the switch with SELECT_TRIBUTE pending (was blocking pre-5-bis)', () => {
+    const { service, animService, duelCtx, setPrompt } = setupStubHarness();
+    setPrompt({ type: 'SELECT_TRIBUTE' });
+    expect(service.canSwitchPerspective).toBeTrue();
+    service.switchPerspective();
+    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
+    expect(duelCtx.perspective()()).toBe(1);
+  });
+
+  it('ALLOWS the switch with SELECT_IDLECMD pending (formerly whitelisted γ-c c10)', () => {
     const { service, animService, duelCtx, setPrompt } = setupStubHarness();
     setPrompt({ type: 'SELECT_IDLECMD' });
+    expect(service.canSwitchPerspective).toBeTrue();
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  it('switchPerspective with SELECT_BATTLECMD pending IS allowed (whitelist c10)', () => {
+  it('ALLOWS the switch with SELECT_BATTLECMD pending (formerly whitelisted γ-c c10)', () => {
     const { service, animService, duelCtx, setPrompt } = setupStubHarness();
     setPrompt({ type: 'SELECT_BATTLECMD' });
+    expect(service.canSwitchPerspective).toBeTrue();
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  // (2026-06-02) — SELECT_CHAIN added to whitelist. The chain-building wait
-  // state IS the moment a SOLO viewer must be able to switch to answer for
-  // the other side (e.g. activate Ash Blossom on opponent's NS-trigger).
-  // Bug reproduced: NS Lukias → SELECT_CHAIN(P1) with Ash → button disabled.
-  it('switchPerspective with SELECT_CHAIN pending IS allowed (2026-06-02 SOLO chain answer fix)', () => {
+  it('ALLOWS the switch with SELECT_CHAIN pending (formerly whitelisted 2026-06-02)', () => {
     const { service, animService, duelCtx, setPrompt } = setupStubHarness();
     setPrompt({ type: 'SELECT_CHAIN' });
-    service.switchPerspective();
-    expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
-    expect(duelCtx.perspective()()).toBe(1);
-  });
-
-  // Defence in depth — other prompts NOT in the whitelist still block.
-  it('switchPerspective with SELECT_PLACE pending is still blocked', () => {
-    const { service, animService, setPrompt } = setupStubHarness();
-    setPrompt({ type: 'SELECT_PLACE' });
-    service.switchPerspective();
-    expect(animService.notifyPerspectiveSwitch).not.toHaveBeenCalled();
-  });
-});
-
-// =============================================================================
-// v3 Phase 5 (2026-06-05) — `canSwitchPerspective` reduced to prompt-modal
-// whitelist alone. The earlier F3 board-stability + draw-in-flight gates are
-// gone : mid-anim and mid-draw switches are safe by construction because
-// `notifyPerspectiveSwitch` now calls `clearTimersAndPolling()` in head →
-// `runner.requestStop()` → `dropOrphanedLocks('runner-requestStop')`
-// (v3 Phase 3) vacates any held lock before the dispatch + the cached
-// BOARD_STATE re-feed. Aligns SOLO with replay's "always cliquable" doctrine
-// ("Replay-as-max-rate-PvP", CLAUDE.md).
-//
-// Suite renamed from "F3 — board-stability guard" : F3 is historically
-// superseded. The `[disabled]` binding in the toolbar reads
-// `canSwitchPerspective` which now only fires on modal prompts.
-// =============================================================================
-describe('v3 Phase 5 — canSwitchPerspective relaxed to prompt-modal gate', () => {
-  it('ALLOWS the switch while the board is unstable (chain/animation in flight)', () => {
-    const { service, animService, duelCtx, setBoardStable } = setupStubHarness();
-    setBoardStable(false);
     expect(service.canSwitchPerspective).toBeTrue();
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  it('ALLOWS the switch while a draw is in flight', () => {
-    const { service, animService, duelCtx, setDrawsInFlight } = setupStubHarness();
-    setDrawsInFlight(true);
+  it('ALLOWS the switch with no prompt at all', () => {
+    const { service, animService, duelCtx } = setupStubHarness();
     expect(service.canSwitchPerspective).toBeTrue();
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
     expect(duelCtx.perspective()()).toBe(1);
   });
 
-  it('ALLOWS the switch even with BOTH draw + board-unstable set (v3 Phase 5 doctrine)', () => {
+  it('ALLOWS the switch while board unstable + draw in flight (Phase 5 carry-over)', () => {
     const { service, animService, duelCtx, setBoardStable, setDrawsInFlight } = setupStubHarness();
     setBoardStable(false);
     setDrawsInFlight(true);
@@ -430,27 +406,6 @@ describe('v3 Phase 5 — canSwitchPerspective relaxed to prompt-modal gate', () 
     service.switchPerspective();
     expect(animService.notifyPerspectiveSwitch).toHaveBeenCalledOnceWith(0, 1);
     expect(duelCtx.perspective()()).toBe(1);
-  });
-
-  it('canSwitchPerspective is false when a modal prompt is active', () => {
-    const { service, setPrompt } = setupStubHarness();
-    setPrompt({ type: 'SELECT_CARD' });
-    expect(service.canSwitchPerspective).toBeFalse();
-  });
-
-  it('canSwitchPerspective is true with no blocking prompt', () => {
-    const { service } = setupStubHarness();
-    expect(service.canSwitchPerspective).toBeTrue();
-  });
-
-  it('SELECT_IDLECMD / SELECT_BATTLECMD / SELECT_CHAIN remain whitelisted (γ-c c10)', () => {
-    const { service, setPrompt } = setupStubHarness();
-    for (const type of ['SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_CHAIN']) {
-      setPrompt({ type });
-      expect(service.canSwitchPerspective)
-        .withContext(`whitelisted prompt type=${type}`)
-        .toBeTrue();
-    }
   });
 });
 
@@ -505,14 +460,13 @@ describe('γ T-F6 — chain SOLO multiplex (real pipeline)', () => {
     const factory = createMockWebSocketFactory();
     const animMock = {
       notifyPerspectiveSwitch: jasmine.createSpy('notifyPerspectiveSwitch'),
-      // F3 — T-F6 deliberately drives a switch MID-CHAIN to prove the cardinal
-      // γ invariant (one processor survives the switch — transport robustness).
-      // The F3 user-facing guard (`canSwitchPerspective`) would normally block
-      // a mid-chain switch, but T-F6 tests the lower transport layer, so we
-      // stub the board as stable + no draw to let the switch through. The two
-      // are complementary: the guard stops the USER triggering this, the
-      // invariant guarantees nothing desyncs if a switch reaches the processor
-      // anyway (reconnect / future edge case).
+      // T-F6 drives a mid-chain switch to prove the cardinal γ invariant
+      // (one processor survives the switch — transport robustness). v3
+      // Phase 5-bis (2026-06-05) made the user-facing guard
+      // `canSwitchPerspective` always-true, so the stub fields below
+      // (`drawManager.hasDrawsInFlight`, `isBoardStableForSwitch`) are no
+      // longer read by prod code — kept as defense-in-depth in case a
+      // future refactor re-introduces a gate.
       drawManager: { hasDrawsInFlight: false },
       isBoardStableForSwitch: true,
     };
