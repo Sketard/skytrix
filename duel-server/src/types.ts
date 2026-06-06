@@ -1,4 +1,4 @@
-import type { ServerMessage, PlayerResponseMsg, SelectPromptType, Player, PreComputedState, ForkSanityFields } from './ws-protocol.js';
+import type { ServerMessage, PlayerResponseMsg, SelectPromptType, Player, PreComputedState, ForkSanityFields, ReplayStreamAutoResponse, ReplayStreamNavEntry } from './ws-protocol.js';
 import type Database from 'better-sqlite3';
 
 // =============================================================================
@@ -263,6 +263,33 @@ export interface WorkerReplayError {
   message: string;
 }
 
+/**
+ * Anim-pipeline v4 — replay-as-PvP-readonly stream chunk (Phase 2).
+ *
+ * Emitted by `runReplayPreComputation` alongside the legacy
+ * `WORKER_REPLAY_BOARD_STATES`. The replay handler relays these as
+ * `REPLAY_STREAM_CHUNK` WS messages to the client. See CLAUDE.md →
+ * "Replay = PvP readonly" doctrine.
+ */
+export interface WorkerReplayStreamChunk {
+  type: 'WORKER_REPLAY_STREAM_CHUNK';
+  duelId: string;
+  turnNumber: number;
+  baseOffset: number;
+  messages: ServerMessage[];
+  autoResponses: ReplayStreamAutoResponse[];
+  navEntries: ReplayStreamNavEntry[];
+}
+
+/** Anim-pipeline v4 — replay-as-PvP-readonly stream finalisation (Phase 2).
+ *  Emitted ONCE, AFTER the last chunk, with the complete `navIndex`. */
+export interface WorkerReplayStreamInit {
+  type: 'WORKER_REPLAY_STREAM_INIT';
+  duelId: string;
+  totalMessages: number;
+  navIndex: ReplayStreamNavEntry[];
+}
+
 export interface WorkerForkReady {
   type: 'WORKER_FORK_READY';
   duelId: string;
@@ -295,6 +322,8 @@ export type WorkerToMainMessage =
   | WorkerReplayBoardStates
   | WorkerReplayComplete
   | WorkerReplayError
+  | WorkerReplayStreamChunk
+  | WorkerReplayStreamInit
   | WorkerForkReady
   | WorkerForkError;
 

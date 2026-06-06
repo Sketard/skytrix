@@ -311,6 +311,31 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
         turnNumber: wmsg.turnNumber,
         states: wmsg.states,
       });
+    } else if (wmsg.type === 'WORKER_REPLAY_STREAM_CHUNK') {
+      // Anim-pipeline v4 (Phase 2) — relay the new replay-as-PvP-readonly
+      // stream chunk to the client. Coexists with REPLAY_BOARD_STATES above
+      // until Phase 5 retires the legacy format. The client may ignore
+      // these messages safely (the existing `ReplayDuelAdapter` does — it
+      // only consumes REPLAY_BOARD_STATES).
+      resetWatchdog();
+      safeSend(conn.ws, {
+        type: 'REPLAY_STREAM_CHUNK',
+        turnNumber: wmsg.turnNumber,
+        baseOffset: wmsg.baseOffset,
+        messages: wmsg.messages,
+        autoResponses: wmsg.autoResponses,
+        navEntries: wmsg.navEntries,
+      });
+    } else if (wmsg.type === 'WORKER_REPLAY_STREAM_INIT') {
+      // Anim-pipeline v4 (Phase 2) — final-arrived nav index + totalMessages.
+      // Emitted AFTER the last STREAM_CHUNK (and after the legacy
+      // WORKER_REPLAY_COMPLETE — see precompute end paths). The watchdog
+      // is cleared by the COMPLETE branch below ; do NOT reset it here.
+      safeSend(conn.ws, {
+        type: 'REPLAY_STREAM_INIT',
+        totalMessages: wmsg.totalMessages,
+        navIndex: wmsg.navIndex,
+      });
     } else if (wmsg.type === 'WORKER_REPLAY_COMPLETE') {
       logger.log('Replay pre-computation complete', { replayId: conn.replayId });
       conn.state = 'ready';

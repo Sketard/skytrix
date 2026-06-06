@@ -52,10 +52,11 @@ worker in **precompute batch mode** : it replays the recorded
 (boardState + events + decisions per turn-step) to the replay viewer,
 which consumes them like an enriched video with play/pause/seek. There
 is no `ActiveDuelSession`, no `broadcastMessage`, no per-message
-routing — the client drives playback via `ReplayDuelAdapter` +
-`ReplayTransportService`. See "Replay Board State Parity Rule" and
-"Pre-computation Timeline Rules" for the parity contracts that keep
-replay's rendered behavior identical to PvP's.
+routing — the client drives playback via `MockDuelConnection` +
+`ReplayTransportService` (v4 Phase 5, 2026-06-05 — the legacy
+`ReplayDuelAdapter` retired). See "Replay = PvP readonly via
+MockDuelConnection" and "Pre-computation Timeline Rules" for the parity
+contracts that keep replay's rendered behavior identical to PvP's.
 
 **The fifth consumer — R&D solver (paused).** `duel-server/src/solver/`
 hosts a paused combo-path solver (R&D since 2026-04, last work
@@ -659,14 +660,17 @@ expanded set. Idempotent register ; silent unregister.
   hard teardown ; use `forceClosure` when a §3.6 checkpoint is the
   actual cause and the journal should see the closures.
 
-**Replay-side asymmetry (F29 doctrine, 2026-05-31)** — `ReplayDuelAdapter`
-intentionally does NOT call `forceClosure` at seek. A replay seek runs
-`abortAndClean` → `resetForReplaySeek` → dispatch `{DUEL_LIFETIME}` →
-`processor.reset()` → `boundary.silentReset()`. The journal would only
-see those closures briefly because `gameLog` is fully wiped + rebuilt
-the same tick via `gameLogRebuildTick` → `rebuildUpTo([0..currentIndex])`
-(new `GameLogBuilder` instance). Emitting closures juste avant the
-wipe would be pure noise. PvP/SOLO have NO such full rebuild — their
+**Replay-side asymmetry (F29 doctrine, 2026-05-31 — v4 Phase 5)** —
+the v4 `MockDuelConnection.seekToOffset` intentionally does NOT call
+`forceClosure` at seek. A replay seek runs `abortAndClean` →
+`resetForReplaySeek` → dispatch `{DUEL_LIFETIME}` → `processor.reset()`
+→ `boundary.silentReset()` (the processor is the one owned by the mock,
+which the orchestrator's `ResetTarget` registry sees via the
+`ANIMATION_DATA_SOURCE` token). The journal would only see those
+closures briefly because `gameLog` is fully wiped + rebuilt the same
+tick via `gameLogRebuildTick` → `rebuildUpTo([0..currentIndex])` (new
+`GameLogBuilder` instance). Emitting closures juste avant the wipe
+would be pure noise. PvP/SOLO have NO such full rebuild — their
 journal stays live across STATE_SYNC/Rematch, so `forceClosure` is
 load-bearing there. Don't add `forceClosure` to the replay seek path
 without first introducing a consumer that would survive the journal
@@ -860,13 +864,48 @@ directly (not `handleEntryAndAwait`) ; a `pendingCompletions` array
 captures each event's ref + `AnimationCompleted` is emitted for every
 event after the group's `Promise.all` resolves.
 
-## Replay-as-max-rate-PvP doctrine (2026-06-04)
+## Replay = PvP readonly via MockDuelConnection (v4, 2026-06-05)
 
-Conceptually, a replay is a PvP duel played at **maximum rate without
-latency or human reflection**. The server (replay precompute) emits
-states as fast as it can ; the client paces playback to whatever its
-own animation pipeline can sustain. **The client is the source of
-truth for the minimum tempo** — server events queue, animations gate.
+**Doctrine** : the replay viewer runs the EXACT same animation pipeline
+as a live PvP duel. A `MockDuelConnection` (`front/src/app/pages/pvp/replay/
+mock-duel-connection.ts`) implements `AnimationDataSource` (same contract
+as `DuelConnection`) and consumes a `ServerMessage[]` stream pre-computed
+server-side instead of a live WS feed. Strict consequence : every code
+path after `dispatchNext(msg)` in replay is identical to
+`_handleMessage(msg)` in PvP — bugs reproduce by construction.
+
+**Architecture (Phases 1-5 livrées 2026-06-05)** :
+
+- **Server precompute** (`duel-server/src/replay-precompute.ts`) emits
+  `REPLAY_STREAM_CHUNK + REPLAY_STREAM_INIT` alongside the legacy
+  `REPLAY_BOARD_STATES`. Each chunk carries `messages: ServerMessage[]`,
+  `autoResponses: {offset, promptType, data}[]`, and `navEntries:
+  {messageOffset, label, turnNumber, chainIndex?, boardStateSnapshot,
+  chainSnapshot?}[]`. The mapping `PreComputedState[i] ↔ navIndex[i]`
+  is preserved by construction via `recordStreamFlush` at every
+  `flushState` site.
+- **Client transport** (`ReplayTransportService`) reads `messages[]` via
+  `mockConn.dispatchNext()` in `dispatchMockUntilIndex(targetIdx)`.
+  Seek/scrub/skip call `mockConn.seekToOffset(index)` which restores
+  rendered state + chain state in O(1) from `navIndex[index].boardStateSnapshot
+  + chainSnapshot` (Phase 4). Auto-respond uses a fixed
+  `REPLAY_PROMPT_DELAY_MS = 1200ms` (no more human timestamp math).
+- **UI surfaces** (`busy`, `pendingPrompt`, `activeHint`,
+  `activeConfirmedCards`, `activePlayer`, `activeResponse`,
+  `perspectiveIndex`) all live on `MockDuelConnection`. The legacy
+  `ReplayDuelAdapter` retired Phase 5 ; the doctrine sections F19
+  (skip sites) + F29 (forceClosure asymmetry) become trivial because
+  `mockConn.seekToOffset` runs the same reset path as the PvP
+  `CHAIN_STATE` reconnect handshake (via the SHARED
+  `chainingMsgsToLinkStates` + `processor.restoreChainState` helper).
+
+**Tempo rule below is unchanged** — the v4 mock pipeline pumps
+`dispatchNext` at the same cadence the v3 adapter did. Conceptually, a
+replay is a PvP duel played at **maximum rate without latency or human
+reflection**. The server emits states as fast as it can ; the client
+paces playback to whatever its own animation pipeline can sustain.
+**The client is the source of truth for the minimum tempo** — server
+events queue, animations gate.
 
 This has one structural consequence : any visual animation OUTSIDE the
 main `QueueRunner` (overlays, prompt fade transitions, deck shuffles)
@@ -941,19 +980,17 @@ reset points via `duelAssert()`. Throws in dev, `console.error`s in prod.
     rbs.dropOrphanedLocks('runner-requestStop')` (Phase 3) so the strict
     assert can re-take its role of canary for genuinely orphan locks
     (i.e. locks taken outside the runner's loop scope).
-- **Replay (`replay-duel-adapter.ts`)** :
-  · `feedTransition()` — every new state transition starts clean.
-  · `feedTransitionPhased()` — same.
-  · `advanceStep` end branch — every step exhaustion finishes clean.
+- **Replay (`mock-duel-connection.ts`, v4 Phase 5)** :
+  · `seekToOffset(index)` — `processor.reset()` runs before the
+    `rbs.commitAll('mock:seekToOffset')`. Locks from a seek mid-animation
+    are cleared upstream by `orchestrator.resetForReplaySeek()` →
+    `runner.requestStop()` → `dropOrphanedLocks` (called by the page's
+    `abortAndClean()` BEFORE the transport's `seekToOffset`).
 
-**Intentionally NOT asserted** (volontary skip/abort paths in replay) :
-
-- `replay-duel-adapter.ts:collapseRemainingSteps` — user-triggered
-  "skip to end" interruption. Intermediate locks from cut-short steps
-  are expected and `commitAll` is the right cleanup.
-- `replay-duel-adapter.ts:abort` — replay tear-down ; locks from the
-  interrupted dispatch are expected.
-- `replay-duel-adapter.ts:jumpToState` — user-triggered seek ; same.
+The v3 `ReplayDuelAdapter` step-queue API (`feedTransition`, `advanceStep`,
+`collapseRemainingSteps`, `abort`, `jumpToState`) is retired ; the F19
+skip sites it carried (3 call paths) collapsed into the single
+`seekToOffset` site above.
 
 Other `commitAll()` call-sites (draw-sequence-manager fallback paths,
 buffer-replay-builder shuffle merge) are mid-pipeline flow recoveries,

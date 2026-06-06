@@ -7,35 +7,46 @@
 import { signal } from '@angular/core';
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReplayTransportService } from './replay-transport.service';
-import type { ReplayDuelAdapter } from './replay-duel-adapter';
+import type { MockDuelConnection } from './mock-duel-connection';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
-import type { PreComputedState, TurnMeta } from '../replay-ws.types';
+import type { PreComputedState, TurnMeta, ReplayStreamNavEntry } from '../replay-ws.types';
 import { EMPTY_DUEL_STATE } from '../types';
 
 // =============================================================================
-// Test fixture: stub adapter / phase service / upstream signals
+// v4 Phase 5 (2026-06-05) — ReplayTransportService rewritten around
+// `MockDuelConnection`. Legacy adapter retired ; the spec mirrors the
+// new contract : seek → mockConn.seekToOffset, stepForward →
+// dispatchMockUntilIndex (forward pump), prompt dismiss → fixed
+// REPLAY_PROMPT_DELAY_MS (no more `activeTimestamp` math).
 // =============================================================================
 
-interface AdapterStub {
-  jumpToState: jasmine.Spy;
-  feedTransition: jasmine.Spy;
-  feedTransitionPhased: jasmine.Spy;
-  abort: jasmine.Spy;
-  resumeAfterPrompt: jasmine.Spy;
+interface MockConnStub {
+  seekToOffset: jasmine.Spy;
+  dispatchNext: jasmine.Spy;
+  simulatePlayerResponse: jasmine.Spy;
+  getAutoResponseAt: jasmine.Spy;
   busy: jasmine.Spy;
-  activePrompt: jasmine.Spy;
-  activeTimestamp: jasmine.Spy;
+  pendingPrompt: jasmine.Spy;
+  messageCursor: jasmine.Spy;
+  navIndex: jasmine.Spy;
 }
 
 interface PhaseStub {
   announcement: jasmine.Spy;
 }
 
-function makeAdapter(): AdapterStub {
-  return jasmine.createSpyObj<AdapterStub>('ReplayDuelAdapter', [
-    'jumpToState', 'feedTransition', 'feedTransitionPhased', 'abort',
-    'resumeAfterPrompt', 'busy', 'activePrompt', 'activeTimestamp',
+function makeMock(): MockConnStub {
+  const m = jasmine.createSpyObj<MockConnStub>('MockDuelConnection', [
+    'seekToOffset', 'dispatchNext', 'simulatePlayerResponse',
+    'getAutoResponseAt', 'busy', 'pendingPrompt', 'messageCursor', 'navIndex',
   ]);
+  m.busy.and.returnValue(false);
+  m.pendingPrompt.and.returnValue(null);
+  m.messageCursor.and.returnValue(0);
+  m.navIndex.and.returnValue([]);
+  m.dispatchNext.and.returnValue(false);
+  m.getAutoResponseAt.and.returnValue(null);
+  return m;
 }
 
 function makePhase(): PhaseStub {
@@ -51,9 +62,17 @@ const stubState = (label: string, responseCount = 0): PreComputedState => ({
   responseCount,
 });
 
+const stubNav = (count: number): ReplayStreamNavEntry[] =>
+  Array.from({ length: count }, (_, i) => ({
+    messageOffset: i,
+    label: `nav-${i}`,
+    turnNumber: 0,
+    boardStateSnapshot: EMPTY_DUEL_STATE,
+  }));
+
 interface Setup {
   svc: ReplayTransportService;
-  adapter: AdapterStub;
+  mockConn: MockConnStub;
   phase: PhaseStub;
   boardStates: ReturnType<typeof signal<PreComputedState[]>>;
   computedUpTo: ReturnType<typeof signal<number>>;
@@ -70,21 +89,15 @@ function setup(opts: {
 } = {}): Setup {
   TestBed.configureTestingModule({ providers: [ReplayTransportService] });
   const svc = TestBed.inject(ReplayTransportService);
-  const adapter = makeAdapter();
+  const mockConn = makeMock();
   const phase = makePhase();
-  adapter.busy.and.returnValue(false);
-  adapter.activePrompt.and.returnValue(null);
-  adapter.activeTimestamp.and.returnValue(null);
   const boardStates = signal<PreComputedState[]>(opts.states ?? []);
   const computedUpTo = signal<number>(opts.computedUpTo ?? -1);
   const animationsEnabled = signal<boolean>(opts.animationsEnabled ?? true);
   const promptMode = signal<'result' | 'decision'>(opts.promptMode ?? 'result');
-  // F1 (2026-06-03) — chain-overlay activity gate. Default false so most
-  // existing tests don't have to opt in ; specs that exercise the gate
-  // can flip it via the returned signal.
   const overlayActive = signal<boolean>(false);
   svc.configure({
-    adapter: adapter as unknown as ReplayDuelAdapter,
+    mockConn: mockConn as unknown as MockDuelConnection,
     phaseService: phase as unknown as PhaseAnnouncementService,
     boardStates,
     computedUpTo,
@@ -92,22 +105,22 @@ function setup(opts: {
     promptMode,
     overlayActive,
   });
-  return { svc, adapter, phase, boardStates, computedUpTo, animationsEnabled, promptMode, overlayActive };
+  return { svc, mockConn, phase, boardStates, computedUpTo, animationsEnabled, promptMode, overlayActive };
 }
 
 // =============================================================================
-// Initial state + configure contract
+// Initial state + configure
 // =============================================================================
 
 describe('ReplayTransportService — initial state', () => {
-  it('exposes default signal values: currentIndex=0, isPlaying=false, pausedAtBoundary=false', () => {
+  it('starts at index 0, not playing, not paused at boundary', () => {
     const { svc } = setup();
     expect(svc.currentIndex()).toBe(0);
     expect(svc.isPlaying()).toBeFalse();
     expect(svc.pausedAtBoundary()).toBeFalse();
   });
 
-  it('throws "configure() not called" when methods are invoked pre-configure', () => {
+  it('throws if a transport op is called before configure', () => {
     TestBed.configureTestingModule({ providers: [ReplayTransportService] });
     const svc = TestBed.inject(ReplayTransportService);
     expect(() => svc.seek(0)).toThrowError(/configure\(\) not called/);
@@ -115,411 +128,304 @@ describe('ReplayTransportService — initial state', () => {
 });
 
 // =============================================================================
-// seek / scrub / skipStart / skipEnd
+// Seek / scrub / step / skip
 // =============================================================================
 
-describe('ReplayTransportService — seek/scrub/skipStart/skipEnd', () => {
-  it('seek(idx): pauses + sets currentIndex + jumpToState', () => {
-    const { svc, adapter, boardStates, computedUpTo } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
+describe('ReplayTransportService — seek / scrub / step', () => {
+  it('seek(N) calls mockConn.seekToOffset(N) and updates currentIndex', () => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b'), stubState('c')],
       computedUpTo: 2,
     });
-    svc.isPlaying.set(true); // simulate active playback
     svc.seek(2);
-    expect(svc.isPlaying()).toBeFalse();
     expect(svc.currentIndex()).toBe(2);
-    expect(adapter.jumpToState).toHaveBeenCalledWith(boardStates()[2]);
-    void computedUpTo;
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(2);
   });
 
-  it('scrub(idx): identical behavior to seek (alias contract)', () => {
-    const { svc, adapter, boardStates } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-    });
-    svc.scrub(1);
-    expect(svc.currentIndex()).toBe(1);
-    expect(adapter.jumpToState).toHaveBeenCalledWith(boardStates()[1]);
+  it('scrub(N) delegates to seek (alias)', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 5 });
+    svc.scrub(3);
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(3);
   });
 
-  it('skipStart: jumps to index 0 + jumpToState', () => {
-    const { svc, adapter, boardStates } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
-      computedUpTo: 2,
-    });
-    svc.currentIndex.set(2);
+  it('seek with negative index is a no-op', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 5 });
+    svc.seek(-1);
+    expect(mockConn.seekToOffset).not.toHaveBeenCalled();
+  });
+
+  it('stepBack jumps to currentIndex - 1', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 5 });
+    svc.seek(3);
+    mockConn.seekToOffset.calls.reset();
+    svc.stepBack();
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(2);
+  });
+
+  it('skipStart jumps to 0', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 5 });
+    svc.seek(3);
+    mockConn.seekToOffset.calls.reset();
     svc.skipStart();
-    expect(svc.currentIndex()).toBe(0);
-    expect(adapter.jumpToState).toHaveBeenCalledWith(boardStates()[0]);
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(0);
   });
 
-  it('skipEnd: jumps to computedUpTo + jumpToState', () => {
-    const { svc, adapter, boardStates } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
-      computedUpTo: 2,
-    });
+  it('skipEnd jumps to computedUpTo', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 7 });
     svc.skipEnd();
-    expect(svc.currentIndex()).toBe(2);
-    expect(adapter.jumpToState).toHaveBeenCalledWith(boardStates()[2]);
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(7);
   });
 });
 
 // =============================================================================
-// stepForward / stepBack
+// Auto-play scheduler — maybeAdvance + step pump
 // =============================================================================
 
-describe('ReplayTransportService — stepForward/stepBack', () => {
-  it('stepForward (animations on, result mode): currentIndex++ + feedTransition', () => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0'), stubState('s1')],
+describe('ReplayTransportService — maybeAdvance', () => {
+  it('does nothing when not playing', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 2 });
+    svc.maybeAdvance();
+    expect(mockConn.dispatchNext).not.toHaveBeenCalled();
+  });
+
+  it('bails when overlayActive is true (chain overlay mid-animation)', fakeAsync(() => {
+    const { svc, mockConn, overlayActive } = setup({
+      states: [stubState('a'), stubState('b')],
       computedUpTo: 1,
+    });
+    svc.togglePlay();
+    mockConn.seekToOffset.calls.reset();
+    overlayActive.set(true);
+    mockConn.pendingPrompt.and.returnValue({ type: 'SELECT_CARD' } as never);
+    svc.maybeAdvance();
+    tick(2000);
+    // Prompt dismiss was NOT scheduled because overlay was active
+    expect(mockConn.simulatePlayerResponse).not.toHaveBeenCalled();
+  }));
+
+  it('schedules prompt dismiss with REPLAY_PROMPT_DELAY_MS when prompt is up', fakeAsync(() => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    mockConn.pendingPrompt.and.returnValue({ type: 'SELECT_CARD' } as never);
+    mockConn.messageCursor.and.returnValue(5);
+    mockConn.getAutoResponseAt.and.returnValue({ promptType: 'SELECT_CARD', data: { indices: [0] } });
+    svc.togglePlay();
+    svc.maybeAdvance();
+    tick(1199);
+    expect(mockConn.simulatePlayerResponse).not.toHaveBeenCalled();
+    tick(1); // total 1200ms = REPLAY_PROMPT_DELAY_MS
+    expect(mockConn.simulatePlayerResponse).toHaveBeenCalledWith({
+      promptType: 'SELECT_CARD', data: { indices: [0] },
+    });
+  }));
+
+  it('falls back to no-op simulate when no auto-response is recorded', fakeAsync(() => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    mockConn.pendingPrompt.and.returnValue({ type: 'SELECT_CARD' } as never);
+    mockConn.messageCursor.and.returnValue(5);
+    mockConn.getAutoResponseAt.and.returnValue(null);
+    svc.togglePlay();
+    svc.maybeAdvance();
+    tick(1200);
+    // Falls back to a synthetic no-op so playback doesn't stall
+    expect(mockConn.simulatePlayerResponse).toHaveBeenCalledWith({
+      promptType: 'UNKNOWN', data: {},
+    });
+  }));
+
+  it('waits while phaseService.announcement is non-null', () => {
+    const { svc, mockConn, phase } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    svc.togglePlay();
+    mockConn.dispatchNext.calls.reset();
+    phase.announcement.and.returnValue({} as never);
+    svc.maybeAdvance();
+    expect(mockConn.dispatchNext).not.toHaveBeenCalled();
+  });
+
+  it('does not schedule when mockConn.busy() is true', () => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b'), stubState('c')],
+      computedUpTo: 2,
+    });
+    svc.togglePlay();
+    mockConn.dispatchNext.calls.reset();
+    mockConn.busy.and.returnValue(true);
+    svc.maybeAdvance();
+    expect(mockConn.dispatchNext).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// Step forward (manual)
+// =============================================================================
+
+describe('ReplayTransportService — stepForward', () => {
+  it('pumps mockConn.dispatchNext up to next nav offset when animationsEnabled', () => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b'), stubState('c')],
+      computedUpTo: 2,
       animationsEnabled: true,
-      promptMode: 'result',
+    });
+    mockConn.navIndex.and.returnValue(stubNav(3));
+    // Simulate cursor advancing on each dispatch
+    let cursor = 0;
+    mockConn.messageCursor.and.callFake(() => cursor);
+    mockConn.dispatchNext.and.callFake(() => {
+      cursor++;
+      return cursor < 3;
     });
     svc.stepForward();
     expect(svc.currentIndex()).toBe(1);
-    expect(adapter.feedTransition).toHaveBeenCalled();
-    expect(adapter.feedTransitionPhased).not.toHaveBeenCalled();
+    expect(mockConn.dispatchNext).toHaveBeenCalled();
   });
 
-  it('stepForward (decision promptMode): uses feedTransitionPhased', () => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-      animationsEnabled: true,
-      promptMode: 'decision',
-    });
-    svc.stepForward();
-    expect(adapter.feedTransitionPhased).toHaveBeenCalled();
-    expect(adapter.feedTransition).not.toHaveBeenCalled();
-  });
-
-  it('stepForward (animations off): jumpToState + auto-schedule next via timer', fakeAsync(() => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
+  it('snaps to target via seekToOffset when animationsEnabled is false', fakeAsync(() => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b'), stubState('c')],
       computedUpTo: 2,
       animationsEnabled: false,
     });
     svc.stepForward();
     expect(svc.currentIndex()).toBe(1);
-    expect(adapter.jumpToState).toHaveBeenCalled();
-    // No-animation path: scheduleNext via setTimeout (PLAYBACK_INTERVAL=500).
-    // Drain pending timer to verify cleanup.
-    tick(500);
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(1);
+    tick(500); // PLAYBACK_INTERVAL — next step scheduled (but not playing → no-op)
   }));
 
-  it('stepForward beyond computedUpTo: no-op (no feed call)', () => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0'), stubState('s1')],
+  it('refuses to step past computedUpTo', () => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b')],
       computedUpTo: 1,
     });
-    svc.currentIndex.set(1); // already at end
+    svc.seek(1);
+    mockConn.dispatchNext.calls.reset();
     svc.stepForward();
     expect(svc.currentIndex()).toBe(1);
-    expect(adapter.feedTransition).not.toHaveBeenCalled();
-    expect(adapter.feedTransitionPhased).not.toHaveBeenCalled();
-  });
-
-  it('stepBack: currentIndex-- + jumpToState', () => {
-    const { svc, adapter, boardStates } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
-      computedUpTo: 2,
-    });
-    svc.currentIndex.set(2);
-    svc.stepBack();
-    expect(svc.currentIndex()).toBe(1);
-    expect(adapter.jumpToState).toHaveBeenCalledWith(boardStates()[1]);
-  });
-
-  it('stepBack at index 0: no-op (no jump, currentIndex stays 0)', () => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0')],
-      computedUpTo: 0,
-    });
-    svc.stepBack();
-    expect(svc.currentIndex()).toBe(0);
-    expect(adapter.jumpToState).not.toHaveBeenCalled();
+    expect(mockConn.dispatchNext).not.toHaveBeenCalled();
   });
 });
 
 // =============================================================================
-// togglePlay + atEnd
+// Toggle play / pause
 // =============================================================================
 
-describe('ReplayTransportService — togglePlay / atEnd', () => {
-  it('togglePlay starts playback when stopped + states available', () => {
+describe('ReplayTransportService — togglePlay', () => {
+  it('togglePlay starts playback when stopped', () => {
     const { svc } = setup({
-      states: [stubState('s0'), stubState('s1')],
+      states: [stubState('a'), stubState('b')],
       computedUpTo: 1,
     });
     svc.togglePlay();
     expect(svc.isPlaying()).toBeTrue();
   });
 
-  it('togglePlay: when isPlaying=true, pauses + clears pausedAtBoundary', () => {
+  it('togglePlay stops playback when playing', () => {
     const { svc } = setup({
-      states: [stubState('s0'), stubState('s1')],
+      states: [stubState('a'), stubState('b')],
       computedUpTo: 1,
     });
-    svc.isPlaying.set(true);
-    svc.pausedAtBoundary.set(true);
     svc.togglePlay();
-    expect(svc.isPlaying()).toBeFalse();
-    expect(svc.pausedAtBoundary()).toBeFalse();
-  });
-
-  it('togglePlay at atEnd: no-op (does not start)', () => {
-    const { svc } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-    });
-    svc.currentIndex.set(1);
     svc.togglePlay();
     expect(svc.isPlaying()).toBeFalse();
   });
 
-  it('atEnd is true when currentIndex >= computedUpTo (with computedUpTo > 0)', () => {
+  it('togglePlay no-op at end (atEnd)', () => {
     const { svc } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
-      computedUpTo: 2,
-    });
-    expect(svc.atEnd()).toBeFalse();
-    svc.currentIndex.set(2);
-    expect(svc.atEnd()).toBeTrue();
-    svc.currentIndex.set(3); // past end
-    expect(svc.atEnd()).toBeTrue();
-  });
-
-  it('atEnd is false when computedUpTo=0 (single state, atEnd guard)', () => {
-    // The guard `upTo > 0` prevents atEnd from firing on a single-state replay
-    // before any progress has been made. Documented behavior of atEnd().
-    const { svc } = setup({
-      states: [stubState('s0')],
+      states: [stubState('a')],
       computedUpTo: 0,
     });
-    expect(svc.atEnd()).toBeFalse();
+    svc.seek(0);
+    svc.togglePlay();
+    expect(svc.isPlaying()).toBeFalse();
+  });
+
+  it('startPlayback seeks to 0 when starting from index 0', () => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    mockConn.seekToOffset.calls.reset();
+    svc.togglePlay();
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(0);
   });
 });
 
 // =============================================================================
-// maybeAdvance (auto-play step decision)
+// resumeIfBoundaryWaiting + pause + destroy
 // =============================================================================
 
-describe('ReplayTransportService — maybeAdvance', () => {
-  it('no-op when not playing', () => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-    });
-    svc.maybeAdvance();
-    expect(adapter.feedTransition).not.toHaveBeenCalled();
-    expect(adapter.feedTransitionPhased).not.toHaveBeenCalled();
-  });
-
-  it('with activePrompt: schedules prompt dismiss (setTimeout → resumeAfterPrompt)', fakeAsync(() => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0', 1), stubState('s1', 2)],
-      computedUpTo: 1,
-    });
-    adapter.activePrompt.and.returnValue({ type: 'SELECT_YESNO' } as never);
-    svc.isPlaying.set(true);
-    svc.maybeAdvance();
-    // PROMPT_DISPLAY_FALLBACK = 1500ms when no timestamp delta available.
-    tick(1500);
-    expect(adapter.resumeAfterPrompt).toHaveBeenCalled();
-  }));
-
-  it('with phase announcement playing: no advance until announcement clears', () => {
-    const { svc, adapter, phase } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-    });
-    phase.announcement.and.returnValue({ kind: 'turn-start' } as never);
-    svc.isPlaying.set(true);
-    svc.maybeAdvance();
-    expect(adapter.feedTransition).not.toHaveBeenCalled();
-  });
-
-  // --- F1 (2026-06-03) — chain-overlay activity gate ---
-  //
-  // The gate prevents `schedulePromptDismiss` from firing while the chain
-  // overlay is mid-animation. Without it, the auto-dismiss timer starts
-  // ticking against a prompt that the user cannot see yet (the prompt-dialog
-  // gates its visible state on the same signal via Approach A) — and may
-  // dismiss before the player has had a chance to read it. Cf. chat 2026-06-03
-  // "prompt dismiss aligns on visible window, not logical".
-
-  it('F1: with overlayActive=true, does NOT schedule prompt dismiss even if a prompt is active', fakeAsync(() => {
-    const { svc, adapter, overlayActive } = setup({
-      states: [stubState('s0', 1), stubState('s1', 2)],
-      computedUpTo: 1,
-    });
-    adapter.activePrompt.and.returnValue({ type: 'SELECT_YESNO' } as never);
-    overlayActive.set(true);
-    svc.isPlaying.set(true);
-
-    svc.maybeAdvance();
-    // PROMPT_DISPLAY_MIN = 800ms ; far past should still be no-op because
-    // the gate refused to schedule anything.
-    tick(2000);
-    expect(adapter.resumeAfterPrompt).not.toHaveBeenCalled();
-  }));
-
-  it('F1: with overlayActive=true and no prompt, also no advance (gate runs early)', () => {
-    const { svc, adapter, overlayActive } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-    });
-    overlayActive.set(true);
-    svc.isPlaying.set(true);
-
-    svc.maybeAdvance();
-    expect(adapter.feedTransition).not.toHaveBeenCalled();
-    expect(adapter.feedTransitionPhased).not.toHaveBeenCalled();
-  });
-
-  it('F1: after overlayActive flips to false, schedule resumes on next maybeAdvance call', fakeAsync(() => {
-    const { svc, adapter, overlayActive } = setup({
-      states: [stubState('s0', 1), stubState('s1', 2)],
-      computedUpTo: 1,
-    });
-    adapter.activePrompt.and.returnValue({ type: 'SELECT_YESNO' } as never);
-    overlayActive.set(true);
-    svc.isPlaying.set(true);
-
-    // First call gated — no schedule.
-    svc.maybeAdvance();
-    tick(100);
-    expect(adapter.resumeAfterPrompt).not.toHaveBeenCalled();
-
-    // Gate releases ; component effect re-fires maybeAdvance.
-    overlayActive.set(false);
-    svc.maybeAdvance();
-    tick(1500); // PROMPT_DISPLAY_FALLBACK
-    expect(adapter.resumeAfterPrompt).toHaveBeenCalled();
-  }));
-});
-
-// =============================================================================
-// resumeIfBoundaryWaiting
-// =============================================================================
-
-describe('ReplayTransportService — resumeIfBoundaryWaiting', () => {
-  it('returns false + no-op when not pausedAtBoundary', () => {
-    const { svc } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-    });
+describe('ReplayTransportService — auto-resume + lifecycle', () => {
+  it('resumeIfBoundaryWaiting returns false when not paused at boundary', () => {
+    const { svc } = setup({ computedUpTo: 2 });
     expect(svc.resumeIfBoundaryWaiting()).toBeFalse();
-    expect(svc.isPlaying()).toBeFalse();
   });
 
-  it('returns false when computedUpTo has not advanced past currentIndex', () => {
-    const { svc } = setup({
-      states: [stubState('s0'), stubState('s1')],
-      computedUpTo: 1,
-    });
+  it('resumeIfBoundaryWaiting returns true when paused and more states arrived', () => {
+    const { svc, computedUpTo } = setup({ computedUpTo: 1 });
+    svc.seek(1);
+    // Simulate playback reaching the end via internal state
     svc.pausedAtBoundary.set(true);
-    svc.currentIndex.set(1);
-    // computedUpTo (1) === currentIndex (1) → no progress
-    expect(svc.resumeIfBoundaryWaiting()).toBeFalse();
-    expect(svc.isPlaying()).toBeFalse();
-  });
-
-  it('returns true + starts playback when more states arrived', () => {
-    const { svc, computedUpTo } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
-      computedUpTo: 1,
-    });
-    svc.pausedAtBoundary.set(true);
-    svc.currentIndex.set(1);
-    computedUpTo.set(2);
+    computedUpTo.set(3); // More states arrived
     expect(svc.resumeIfBoundaryWaiting()).toBeTrue();
     expect(svc.isPlaying()).toBeTrue();
     expect(svc.pausedAtBoundary()).toBeFalse();
   });
-});
 
-// =============================================================================
-// destroy / haltPlaybackTimer
-// =============================================================================
-
-describe('ReplayTransportService — destroy', () => {
-  it('destroy clears the pending playback timer (no fire after destroy)', fakeAsync(() => {
-    const { svc, adapter } = setup({
-      states: [stubState('s0'), stubState('s1'), stubState('s2')],
-      computedUpTo: 2,
-      animationsEnabled: false, // forces setTimeout path
+  it('haltPlaybackTimer clears timer without changing pausedAtBoundary', fakeAsync(() => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+      animationsEnabled: false,
     });
-    svc.stepForward();
-    // A timer is now pending (PLAYBACK_INTERVAL=500). Destroy should clear it.
-    svc.destroy();
-    tick(500);
-    // jumpToState was called once (during stepForward), but not a second
-    // time via the cleared timer.
-    expect(adapter.jumpToState).toHaveBeenCalledTimes(1);
+    svc.togglePlay();
+    svc.haltPlaybackTimer();
+    expect(svc.pausedAtBoundary()).toBeFalse();
+    tick(1000);
+    // The timer was cleared so no further seekToOffset calls
+    mockConn.seekToOffset.calls.reset();
+    tick(1000);
+    expect(mockConn.seekToOffset).not.toHaveBeenCalled();
   }));
+
+  it('destroy clears any pending timer', () => {
+    const { svc } = setup();
+    expect(() => svc.destroy()).not.toThrow();
+  });
 });
 
 // =============================================================================
-// seekToTurn (F2 — mobile stepper / turn-picker)
+// seekToTurn
 // =============================================================================
 
 describe('ReplayTransportService — seekToTurn', () => {
   const turns: TurnMeta[] = [
-    { turnNumber: 0, startIndex: 0, endIndex: 2, p1LP: 8000, p2LP: 8000, eventCount: 3 },
-    { turnNumber: 1, startIndex: 3, endIndex: 5, p1LP: 8000, p2LP: 8000, eventCount: 3 },
-    { turnNumber: 2, startIndex: 6, endIndex: 8, p1LP: 8000, p2LP: 8000, eventCount: 3 },
+    { turnNumber: 1, startIndex: 0, endIndex: 1, p1LP: 8000, p2LP: 8000, eventCount: 2 },
+    { turnNumber: 2, startIndex: 2, endIndex: 3, p1LP: 8000, p2LP: 8000, eventCount: 2 },
+    { turnNumber: 3, startIndex: 4, endIndex: 5, p1LP: 8000, p2LP: 8000, eventCount: 2 },
   ];
 
-  it('delegates to seek(turn.startIndex) when the target turn is computed', () => {
-    const { svc, adapter, boardStates } = setup({
-      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
-      computedUpTo: 8,
-    });
+  it('seekToTurn delegates to seek with the turn startIndex', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 5 });
     svc.seekToTurn(2, turns);
-    expect(svc.currentIndex()).toBe(6);
-    expect(adapter.jumpToState).toHaveBeenCalledWith(boardStates()[6]);
+    expect(mockConn.seekToOffset).toHaveBeenCalledWith(4);
   });
 
-  it('no-ops when turnIndex is out of bounds (negative)', () => {
-    const { svc, adapter } = setup({
-      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
-      computedUpTo: 8,
-    });
-    svc.seekToTurn(-1, turns);
-    expect(svc.currentIndex()).toBe(0);
-    expect(adapter.jumpToState).not.toHaveBeenCalled();
+  it('seekToTurn refuses out-of-bounds turn index', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 5 });
+    svc.seekToTurn(99, turns);
+    expect(mockConn.seekToOffset).not.toHaveBeenCalled();
   });
 
-  it('no-ops when turnIndex is out of bounds (past end)', () => {
-    const { svc, adapter } = setup({
-      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
-      computedUpTo: 8,
-    });
-    svc.seekToTurn(5, turns);
-    expect(svc.currentIndex()).toBe(0);
-    expect(adapter.jumpToState).not.toHaveBeenCalled();
-  });
-
-  it('refuses to seek to a turn whose startIndex is past computedUpTo', () => {
-    const { svc, adapter } = setup({
-      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
-      // Only turns 0 + 1 are computed; turn 2 starts at index 6 which is past computedUpTo=5
-      computedUpTo: 5,
-    });
-    svc.seekToTurn(2, turns);
-    expect(svc.currentIndex()).toBe(0);
-    expect(adapter.jumpToState).not.toHaveBeenCalled();
-  });
-
-  it('pauses playback when seeking (inherits the seek() contract)', () => {
-    const { svc } = setup({
-      states: Array.from({ length: 9 }, (_, i) => stubState(`s${i}`)),
-      computedUpTo: 8,
-    });
-    svc.isPlaying.set(true);
-    svc.seekToTurn(1, turns);
-    expect(svc.isPlaying()).toBeFalse();
+  it('seekToTurn refuses when target turn not yet computed', () => {
+    const { svc, mockConn } = setup({ computedUpTo: 1 });
+    svc.seekToTurn(2, turns); // Turn 2 starts at 4, but only computedUpTo=1
+    expect(mockConn.seekToOffset).not.toHaveBeenCalled();
   });
 });

@@ -9,7 +9,6 @@ import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 
 import { ReplayConnectionService } from './replay-connection.service';
 import { ReplayForkService } from './replay-fork.service';
-import { ReplayDuelAdapter } from './replay-duel-adapter';
 import { ReplayTransportService } from './replay-transport.service';
 import { TimelineBarComponent, HIDDEN_SUB_EVENT_LABELS, type ZoomLevel } from './timeline-bar/timeline-bar.component';
 import { TransportBarComponent } from './transport-bar/transport-bar.component';
@@ -73,6 +72,7 @@ import { EffectBubbleComponent } from '../duel-page/effect-bubble/effect-bubble.
 import { GameLogPanelComponent } from '../duel-page/game-log-panel/game-log-panel.component';
 import { PvpDuelOverlaysComponent } from '../duel-page/pvp-duel-overlays/pvp-duel-overlays.component';
 import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog/pvp-prompt-dialog.component';
+import { MockDuelConnection } from './mock-duel-connection';
 
 @Component({
   selector: 'app-replay-page',
@@ -94,10 +94,28 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     CardDataCacheService, CardInspectionService, CardTravelEngine, BoardEffectsService, FloatRegistryService, DuelCardArtService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
-    ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
+    AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DebugLogService, DuelDebugService, DuelGameLogService,
     DuelWebSocketService, // Required by PvpPromptDialogComponent
-    { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
+    // v4 Phase 5 (2026-06-05) — `MockDuelConnection` is the SOLE data
+    // source for the animation pipeline ; `ReplayDuelAdapter` retired.
+    // The mock takes the `ANIMATION_DATA_SOURCE` token + exposes the
+    // UI-facing surfaces (`busy`, `pendingPrompt`, `activeHint`,
+    // `activeConfirmedCards`, `activePlayer`, `activeResponse`,
+    // `perspectiveIndex`) that the template + computed locals consume.
+    // Strict "Replay = PvP readonly" doctrine — same DuelEventProcessor
+    // semantics as a live PvP connection, no replay-specific step queue.
+    //
+    // Factory: instantiates the mock with the page-level `DuelContext`
+    // for perspective swap (so a viewer-perspective flip reaches the
+    // mock's `_maybeSwapBoardState` path, mirroring PvP SOLO multiplex).
+    {
+      provide: MockDuelConnection,
+      useFactory: (logger: DuelLogger, ctx: DuelContext) =>
+        new MockDuelConnection({ logger, duelCtx: { perspective: () => ctx.perspective() } }),
+      deps: [DuelLogger, DuelContext],
+    },
+    { provide: ANIMATION_DATA_SOURCE, useExisting: MockDuelConnection },
   ],
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent,
@@ -144,7 +162,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   // the replay's very first event — a component-level service is instantiated
   // on its first injection. Mirrors `DuelDebugService`.
   readonly gameLog = inject(DuelGameLogService);
-  readonly adapter = inject(ReplayDuelAdapter);
+  /** Anim-pipeline v4 — the sole data source for the animation pipeline
+   *  (bound to the `ANIMATION_DATA_SOURCE` token). Replaces the legacy
+   *  `ReplayDuelAdapter` (retired Phase 5). Strict "Replay = PvP readonly"
+   *  doctrine — runs the same processor / orchestrator / managers as a
+   *  live PvP `DuelConnection`. */
+  readonly mockConn = inject(MockDuelConnection);
   readonly orchestrator = inject(AnimationOrchestratorService);
   readonly chainManager = inject(ChainResolutionManager);
   readonly drawManager = inject(DrawSequenceManager);
@@ -260,15 +283,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   });
   readonly currentState = computed<PreComputedState | null>(() => this.boardStates()[this.currentIndex()] ?? null);
 
-  /** Duel state for display — the adapter's RBS is already perspective-relative
+  /** Duel state for display — the mock's RBS is already perspective-relative
    *  (swapBoardState applied on every updateLogical), so no swap needed here. */
   readonly activeDuelState = computed<DuelState>(() =>
-    this.adapter.boardStateView.renderedState(),
+    this.mockConn.boardStateView.renderedState(),
   );
 
   /** Eligible zones for the active SELECT_PLACE/SELECT_DISFIELD decision (zone keys with player suffix). */
   readonly replayHighlightedZones = computed<ReadonlySet<string>>(() => {
-    const prompt = this.adapter.activePrompt();
+    const prompt = this.mockConn.pendingPrompt();
     if (prompt?.type !== 'SELECT_PLACE' && prompt?.type !== 'SELECT_DISFIELD') return EMPTY_ZONE_SET;
     const places = (prompt as SelectPlaceMsg | SelectDisfieldMsg).places;
     // F6 (2026-05-31) — pl.player is absolute. Replay configures
@@ -287,9 +310,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   /** The zone key that was actually chosen in the active decision. */
   readonly replayChosenZone = computed<string | null>(() => {
-    const prompt = this.adapter.activePrompt();
+    const prompt = this.mockConn.pendingPrompt();
     if (prompt?.type !== 'SELECT_PLACE' && prompt?.type !== 'SELECT_DISFIELD') return null;
-    const resp = this.adapter.activeResponse() as { places?: PlaceOption[] } | null;
+    const resp = this.mockConn.activeResponse() as { places?: PlaceOption[] } | null;
     const place = resp?.places?.[0];
     if (!place) return null;
     const zoneId = locationToZoneId(place.location, place.sequence);
@@ -330,7 +353,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly loading = computed(() => {
     if (this.replayConnection.error()) return false;
     if (this.boardStates().length === 0) return true;
-    return this.adapter.boardStateView.renderedState().players[0].zones.length === 0;
+    return this.mockConn.boardStateView.renderedState().players[0].zones.length === 0;
   });
 
   /** Index of the current turn inside `turns()` — used by stepper + picker. */
@@ -477,13 +500,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
    * registered (z-index + badge) before the deferred commit lands.
    */
   private readonly chainLinksWithPending = computed(() => {
-    const links = this.adapter.activeChainLinks();
-    const pending = this.adapter.pendingChainEntry();
+    const links = this.mockConn.activeChainLinks();
+    const pending = this.mockConn.pendingChainEntry();
     return pending ? [...links, pending] : links;
   });
 
   readonly playerHandChainBadges = computed(() =>
-    buildHandChainBadges(this.chainLinksWithPending(), this.perspectiveIndex(), this.adapter.chainPhase(), this.playerHand()),
+    buildHandChainBadges(this.chainLinksWithPending(), this.perspectiveIndex(), this.mockConn.chainPhase(), this.playerHand()),
   );
 
   /**
@@ -495,7 +518,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     buildHandRevealedCards(this.chainLinksWithPending(), this.perspectiveIndex(), this.playerHand()),
   );
   private readonly opponentHandChainData = computed(() =>
-    buildOpponentHandChainData(this.chainLinksWithPending(), this.perspectiveIndex(), this.adapter.chainPhase(), this.opponentHand()),
+    buildOpponentHandChainData(this.chainLinksWithPending(), this.perspectiveIndex(), this.mockConn.chainPhase(), this.opponentHand()),
   );
   readonly opponentHandChainBadges = computed(() => this.opponentHandChainData().badges);
 
@@ -570,9 +593,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     // "Nié" badge appears during step-by-step play (replay seek uses the
     // separate `rebuildUpTo` path below).
     this.gameLog.setPerspective(this.perspectiveIndex());
-    this.gameLog.attachBoardSource(() => this.adapter.boardStateView.logicalState());
+    this.gameLog.attachBoardSource(() => this.mockConn.boardStateView.logicalState());
     this.gameLog.attachEventStream(this.orchestrator.eventStream);
-    this.adapter.attachOutOfBandSink(ev => { this.orchestrator.pushToStream(ev); });
+    this.mockConn.attachOutOfBandSink(ev => { this.orchestrator.pushToStream(ev); });
     // The user can flip perspective mid-session (`onTogglePerspective`).
     // Re-feeding `setPerspective` rebuilds the journal from the retained raw
     // events for the new viewer (R7 — handled inside the service).
@@ -618,7 +641,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     });
 
     this.transport.configure({
-      adapter: this.adapter,
+      mockConn: this.mockConn,
       phaseService: this.phaseService,
       boardStates: this.boardStates,
       computedUpTo: this.computedUpTo,
@@ -626,6 +649,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       promptMode: this.promptMode,
       overlayActive: this.chainOverlayActive,
     });
+
+    // v4 Phase 3 (2026-06-05) — pipe the stream chunks straight into the
+    // mock. Callback pattern (not signal) so multiple chunks arriving in
+    // the same tick are all processed, not coalesced. See
+    // ReplayConnectionService.onStreamChunk docblock for rationale.
+    this.replayConnection.onStreamChunk = (chunk) => this.mockConn.appendChunk(chunk);
+    this.replayConnection.onStreamInit = (init) => this.mockConn.loadStreamInit(init);
 
     // Hide the global full-screen spinner while our own skeleton owns the
     // loading state — universal-hydration-strategy memory note (Axel 2026-05-16):
@@ -693,7 +723,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
     // Queue watcher — mirrors duel-page.component.ts: triggers orchestrator when events arrive
     effect(() => {
-      const queue = this.adapter.animationQueue();
+      const queue = this.mockConn.animationQueue();
       untracked(() => {
         if (queue.length > 0) {
           this.orchestrator.startProcessingIfIdle();
@@ -701,15 +731,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       });
     });
 
-    // Playback continuation — reactively drives auto-play when adapter.busy()
+    // Playback continuation — reactively drives auto-play when mockConn.busy()
     // changes, a decision prompt appears, or a phase announcement finishes.
     // F1 (2026-06-03) — also subscribed to `chainOverlayActive` so a flip
     // from true → false re-fires `maybeAdvance` and lets the scheduler
     // schedule the prompt dismiss against a now-visible prompt.
     effect(() => {
       // Subscribe to all signals so the effect re-fires when any of them flips.
-      this.adapter.busy();
-      this.adapter.activePrompt();
+      this.mockConn.busy();
+      this.mockConn.pendingPrompt();
       this.phaseService.announcement();
       this.chainOverlayActive();
       untracked(() => this.transport.maybeAdvance());
@@ -747,9 +777,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       untracked(() => {
         // Same uninitialised guard as above (L16) — structural check rather
         // than referential equality with EMPTY_DUEL_STATE.
-        const rendered = this.adapter.boardStateView.renderedState();
+        const rendered = this.mockConn.boardStateView.renderedState();
         if (states.length > 0 && rendered.players[0].zones.length === 0) {
-          this.adapter.jumpToState(states[0]);
+          // v4 Phase 5 — index 0 of `boardStates` (legacy timeline) maps
+          // 1-to-1 with `navIndex[0]` thanks to the precompute's
+          // `recordStreamFlush` invariant.
+          this.mockConn.seekToOffset(0);
         }
       });
     });
@@ -818,8 +851,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
           // showing N links right now?" without scraping the DOM. Reads
           // the same signal the chain overlay component subscribes to.
           chainState: () => ({
-            phase: this.adapter.chainPhase(),
-            activeChainLinks: this.adapter.activeChainLinks().map(l => ({
+            phase: this.mockConn.chainPhase(),
+            activeChainLinks: this.mockConn.activeChainLinks().map(l => ({
               chainIndex: l.chainIndex,
               cardCode: l.cardCode,
               cardName: l.cardName,
@@ -871,7 +904,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       speedMultiplier: () => 1,
       isBoardActive: () => true,
     });
-    this.adapter.perspectiveIndex.set(this.perspectiveIndex());
+    this.mockConn.perspectiveIndex.set(this.perspectiveIndex());
 
     // F4 — width-driven `.is-narrow` host class (D1). matchMedia change events
     // fire only on the breakpoint crossing, so the initial value is read at
@@ -919,9 +952,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     // since `requestStop` aborts before `onFinalize` would re-prime the
     // tracker via `syncFromBoardState`). The journal is wiped explicitly
     // below — the rebuild tick re-feeds [0..currentIndex] right after.
+    //
+    // v4 Phase 5 (2026-06-05) — `adapter.abort()` retired. The mock's
+    // own state reset happens inside `mockConn.seekToOffset()` which is
+    // called right after by `transport.seek/scrub/...` ; no separate
+    // mock-side abort needed here.
     this.orchestrator.resetForReplaySeek();
     this.phaseService.clear();
-    this.adapter.abort();
     this.gameLog.reset();
     // Bump the rebuild tick so the seek-rebuild effect re-feeds the journal
     // with the history [0..currentIndex] once the seek has committed its
@@ -944,8 +981,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.abortAndClean();
     // Session-only override of the Preferences default — not persisted.
     this.animationsEnabled.set(!this.animationsEnabled());
-    const state = this.boardStates()[this.currentIndex()];
-    if (state) this.adapter.jumpToState(state);
+    // v4 Phase 5 — re-seat the mock at the current index so the rendered
+    // board reflects the just-toggled state. Replaces `adapter.jumpToState(state)`.
+    this.mockConn.seekToOffset(this.currentIndex());
     if (this.isPlaying()) this.transport.restart();
   }
 
@@ -953,19 +991,22 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     const next = this.promptMode() === 'decision' ? 'result' : 'decision';
     this.promptMode.set(next);
     localStorage.setItem(ReplayPageComponent.PREF_PROMPT_MODE, next);
-    if (next === 'result' && this.adapter.activePrompt()) {
-      this.adapter.collapseRemainingSteps();
-    }
+    // v4 Phase 5 — `collapseRemainingSteps` retired. In the v4 model
+    // there is no step-queue to collapse ; switching to 'result' just
+    // updates `promptMode` and the next `maybeAdvance` tick proceeds
+    // through prompts via the auto-respond timer (which the transport
+    // arms when `promptMode === 'result'` and a prompt is up).
   }
 
   onTogglePerspective(): void {
     this.transport.haltPlaybackTimer();
     this.abortAndClean();
     this.perspectiveIndex.update(i => i === 0 ? 1 : 0);
-    this.adapter.perspectiveIndex.set(this.perspectiveIndex());
+    this.mockConn.perspectiveIndex.set(this.perspectiveIndex());
     localStorage.setItem(ReplayPageComponent.PREF_PERSPECTIVE, String(this.perspectiveIndex()));
-    const state = this.boardStates()[this.currentIndex()];
-    if (state) this.adapter.jumpToState(state);
+    // v4 Phase 5 — re-seat the mock at the current index so the rendered
+    // board is swapped to the new perspective. Replaces `adapter.jumpToState(state)`.
+    this.mockConn.seekToOffset(this.currentIndex());
   }
 
   onFork(): void {

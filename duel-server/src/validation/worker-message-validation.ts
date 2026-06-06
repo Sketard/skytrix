@@ -68,6 +68,21 @@ export function validateWorkerMessage(raw: unknown): WorkerToMainMessage | null 
       return isStr(m['duelId']) && isStr(m['code']) && isStr(m['message'])
         ? (raw as WorkerToMainMessage) : null;
 
+    case 'WORKER_REPLAY_STREAM_CHUNK':
+      if (!isStr(m['duelId'])) return null;
+      if (typeof m['turnNumber'] !== 'number') return null;
+      if (typeof m['baseOffset'] !== 'number') return null;
+      if (!Array.isArray(m['messages'])) return null;
+      if (!Array.isArray(m['autoResponses'])) return null;
+      if (!Array.isArray(m['navEntries'])) return null;
+      return raw as WorkerToMainMessage;
+
+    case 'WORKER_REPLAY_STREAM_INIT':
+      if (!isStr(m['duelId'])) return null;
+      if (typeof m['totalMessages'] !== 'number') return null;
+      if (!Array.isArray(m['navIndex'])) return null;
+      return raw as WorkerToMainMessage;
+
     case 'WORKER_FORK_READY':
       if (!isStr(m['duelId'])) return null;
       if (typeof m['sanityResult'] !== 'object' || m['sanityResult'] === null) return null;

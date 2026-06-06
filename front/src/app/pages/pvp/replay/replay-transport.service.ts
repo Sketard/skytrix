@@ -1,8 +1,7 @@
 import { Injectable, signal, type Signal } from '@angular/core';
-import type { ReplayDuelAdapter } from './replay-duel-adapter';
+import type { MockDuelConnection } from './mock-duel-connection';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
 import type { PreComputedState, TurnMeta } from '../replay-ws.types';
-import { EMPTY_DUEL_STATE } from '../types';
 
 /**
  * Replay playback transport — owns the player-controlled state machine
@@ -17,21 +16,28 @@ import { EMPTY_DUEL_STATE } from '../types';
  *
  * The service is component-scoped (provided in `replay-page.component`).
  * It is configured at the component constructor via {@link configure}
- * with the dependencies it needs (adapter handle, phase service for the
+ * with the dependencies it needs (mock handle, phase service for the
  * auto-advance guard, and the upstream signals `boardStates` /
  * `computedUpTo` / `animationsEnabled` / `promptMode` read at fire time
  * so changes flow through naturally).
  *
- * Cross-cutting cleanup of orchestrator/phase/adapter on user-driven
+ * Cross-cutting cleanup of orchestrator/phase on user-driven
  * interruptions stays in the component as `abortAndClean()` — the
  * transport service does NOT touch the orchestrator or phase service
  * itself, except to read `phaseService.announcement()` for the
  * auto-play guard. The component is expected to call `abortAndClean()`
  * BEFORE invoking `seek/scrub/stepBack/skipStart/skipEnd/togglePerspective`.
+ *
+ * v4 Phase 5 (2026-06-05) — the legacy `ReplayDuelAdapter` was retired
+ * and its surfaces (`busy`, `activePrompt`, `feedTransition`, `jumpToState`,
+ * `abort`, `resumeAfterPrompt`) all migrated to `MockDuelConnection`.
+ * The transport now pilots ONLY the mock ; the auto-play loop pumps
+ * `mockConn.dispatchNext()` until reaching the next nav offset, and
+ * seek/scrub/skip use `mockConn.seekToOffset(index)` directly.
  */
 
 interface ReplayTransportConfig {
-  adapter: ReplayDuelAdapter;
+  mockConn: MockDuelConnection;
   phaseService: PhaseAnnouncementService;
   boardStates: Signal<PreComputedState[]>;
   computedUpTo: Signal<number>;
@@ -52,16 +58,16 @@ interface ReplayTransportConfig {
 }
 
 const PLAYBACK_INTERVAL = 500;
-const PROMPT_DISPLAY_MIN = 800;
-const PROMPT_DISPLAY_MAX = 3000;
-const PROMPT_DISPLAY_FALLBACK = 1500;
-
-const EMPTY_PRE_COMPUTED: PreComputedState = {
-  boardState: EMPTY_DUEL_STATE,
-  events: [],
-  label: '',
-  responseCount: 0,
-};
+/**
+ * v4 Phase 5 (2026-06-05) — fixed prompt auto-dismiss delay. Replaces
+ * the legacy `lastResponseTimestamp`-based `min(max(delta * 0.6, MIN), MAX)`
+ * calculation that read `adapter.activeTimestamp`. The doctrine acted
+ * for Phase 4 (spec maître Décision 1) : human timing is replaced by a
+ * fixed delay scaled by `playbackSpeed`. 1200ms is the "average human
+ * read time for a modal prompt" baseline ; tunable via Preferences in
+ * a later phase.
+ */
+const REPLAY_PROMPT_DELAY_MS = 1200;
 
 @Injectable()
 export class ReplayTransportService {
@@ -73,8 +79,6 @@ export class ReplayTransportService {
   readonly pausedAtBoundary = signal(false);
 
   private playbackTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Last decision-prompt timestamp (ms epoch) used to derive `schedulePromptDismiss` duration. */
-  private lastResponseTimestamp: number | null = null;
 
   private cfg: ReplayTransportConfig | null = null;
 
@@ -99,8 +103,14 @@ export class ReplayTransportService {
     this.pausePlayback();
     if (index < 0) return;
     this.currentIndex.set(index);
-    const state = this.getCfg().boardStates()[index];
-    if (state) this.getCfg().adapter.jumpToState(state);
+    // v4 Phase 5 (2026-06-05) — `seekToOffset` reads the nav entry's
+    // embedded `boardStateSnapshot` + `chainSnapshot` and restores via
+    // the SHARED `chainingMsgsToLinkStates` / `processor.restoreChainState`
+    // helpers — same restore path as the PvP `CHAIN_STATE` reconnect
+    // handshake. No-op when no nav entry exists for `index` (stream not
+    // loaded yet, or `index` out of the precomputed navIndex range — the
+    // mock logs and returns).
+    this.getCfg().mockConn.seekToOffset(index);
   }
 
   seek(index: number): void  { this.jumpTo(index); }
@@ -169,7 +179,7 @@ export class ReplayTransportService {
 
   /**
    * Auto-play step requested by the component effect that watches
-   * `adapter.busy() / adapter.activePrompt() / phaseService.announcement()`.
+   * `mockConn.busy() / mockConn.pendingPrompt() / phaseService.announcement()`.
    * Decides between scheduling a prompt-dismiss timeout or stepping forward.
    * No-op if not currently playing.
    */
@@ -186,8 +196,8 @@ export class ReplayTransportService {
     // the gate clear.
     if (c.overlayActive()) return;
 
-    // Decision prompt appeared → auto-dismiss after proportional duration
-    if (c.adapter.activePrompt()) {
+    // Decision prompt appeared → auto-dismiss after fixed delay
+    if (c.mockConn.pendingPrompt()) {
       this.schedulePromptDismiss();
       return;
     }
@@ -196,7 +206,7 @@ export class ReplayTransportService {
     if (c.phaseService.announcement()) return;
 
     // Transition complete (busy went false) → schedule next step
-    if (!c.adapter.busy()) {
+    if (!c.mockConn.busy()) {
       this.scheduleNext();
     }
   }
@@ -235,17 +245,19 @@ export class ReplayTransportService {
     if (this.currentIndex() >= c.computedUpTo()) return;
     this.isPlaying.set(true);
 
-    if (c.adapter.activePrompt()) {
+    // A prompt may already be visible at the current index — let the
+    // dismiss timer handle it before stepping forward.
+    if (c.mockConn.pendingPrompt()) {
       this.schedulePromptDismiss();
       return;
     }
 
+    // v4 Phase 5 — initial seek-to-0 + first step. The seek is idempotent
+    // if we're already at index 0, but it commits the boardStateSnapshot
+    // to the rendered surface (skeleton replacement). The actual playback
+    // is then driven by `scheduleNext → doStepForward → dispatchMockUntilIndex`.
     if (this.currentIndex() === 0) {
-      const first = c.boardStates()[0];
-      if (first) {
-        this.feedAnimatedTransition(EMPTY_PRE_COMPUTED, first);
-        return;
-      }
+      c.mockConn.seekToOffset(0);
     }
     this.scheduleNext();
   }
@@ -255,8 +267,10 @@ export class ReplayTransportService {
     this.clearPlaybackTimer();
     const c = this.getCfg();
 
-    if (c.adapter.activePrompt()) {
-      c.adapter.resumeAfterPrompt();
+    // If a prompt is up, the auto-dismiss handler takes care of advancing.
+    // doStepForward shouldn't be called in that case — guard defensively.
+    if (c.mockConn.pendingPrompt()) {
+      this.schedulePromptDismiss();
       return;
     }
 
@@ -264,35 +278,53 @@ export class ReplayTransportService {
     const nextIdx = curr + 1;
     if (nextIdx > c.computedUpTo()) return;
 
-    if (c.adapter.busy()) {
-      c.adapter.abort();
-    }
-
     this.currentIndex.set(nextIdx);
-    this.feedTransition(curr, nextIdx);
-  }
-
-  private feedTransition(fromIdx: number, toIdx: number): void {
-    const states = this.getCfg().boardStates();
-    const prev = states[fromIdx];
-    const next = states[toIdx];
-    if (!prev || !next) return;
-    this.feedAnimatedTransition(prev, next);
-  }
-
-  private feedAnimatedTransition(prev: PreComputedState, next: PreComputedState): void {
-    const c = this.getCfg();
+    // v4 Phase 5 — dispatch mock messages forward up to the next nav
+    // boundary. The pipeline anim runs as messages flow through
+    // `mockConn.dispatchNext()` → `processor.processMessage` →
+    // `orchestrator`. When animations are disabled, snap to the target
+    // via `seekToOffset` and schedule the next step via a fixed
+    // interval to avoid synchronous recursion.
     if (c.animationsEnabled()) {
-      if (c.promptMode() === 'decision') {
-        c.adapter.feedTransitionPhased(prev, next);
-      } else {
-        c.adapter.feedTransition(prev, next);
-      }
+      this.dispatchMockUntilIndex(nextIdx);
     } else {
-      c.adapter.jumpToState(next);
-      // Schedule next via timer to avoid synchronous recursion
-      // (scheduleNext → doStepForward → feedAnimatedTransition → scheduleNext ...)
-      this.playbackTimer = setTimeout(() => { this.playbackTimer = null; this.scheduleNext(); }, PLAYBACK_INTERVAL);
+      c.mockConn.seekToOffset(nextIdx);
+      this.playbackTimer = setTimeout(() => {
+        this.playbackTimer = null;
+        this.scheduleNext();
+      }, PLAYBACK_INTERVAL);
+    }
+  }
+
+  /**
+   * Anim-pipeline v4 — pump the mock connection cursor up to the
+   * message offset corresponding to `boardStates[targetIdx]`. By
+   * construction the v4 precompute (replay-precompute.ts:recordStreamFlush)
+   * keeps a 1-to-1 mapping between `PreComputedState[]` entries and nav
+   * index entries, so `navIndex[targetIdx]` gives the target offset
+   * directly.
+   *
+   * Defensive : if `navIndex` is shorter than `targetIdx` (the nav data
+   * hasn't streamed yet for this position), we dispatch up to the
+   * buffered cursor. The next chunk receipt will catch up via the
+   * effect that watches `navIndex` changes (wired in the component).
+   */
+  private dispatchMockUntilIndex(targetIdx: number): void {
+    const mock = this.getCfg().mockConn;
+    const nav = mock.navIndex();
+    if (targetIdx >= nav.length) {
+      // Not yet streamed — dispatch as much as we have buffered.
+      while (mock.dispatchNext()) { /* drain */ }
+      return;
+    }
+    const targetOffset = nav[targetIdx].messageOffset;
+    while (mock.messageCursor() < targetOffset && mock.dispatchNext()) {
+      // Loop intentionally empty — dispatchNext advances the cursor.
+      // A SELECT_* dispatched inside this loop will set `pendingPrompt`
+      // which the `maybeAdvance` effect picks up via its subscription
+      // to `mockConn.pendingPrompt()`. The loop exits naturally when
+      // `dispatchNext` returns false (cursor at end or buffer drained).
+      if (mock.pendingPrompt()) return; // a prompt landed — yield to auto-dismiss
     }
   }
 
@@ -300,7 +332,7 @@ export class ReplayTransportService {
     if (!this.isPlaying()) return;
     if (this.playbackTimer !== null) return; // Already scheduled — prevent double-fire
     const c = this.getCfg();
-    if (c.adapter.busy()) return;
+    if (c.mockConn.busy()) return;
 
     if (this.currentIndex() >= c.computedUpTo()) {
       this.isPlaying.set(false);
@@ -309,26 +341,38 @@ export class ReplayTransportService {
     }
 
     this.doStepForward();
-    // No timer here — feedAnimatedTransition already schedules the next
-    // step via its own setTimeout when animations are disabled.
   }
 
+  /**
+   * v4 Phase 5 — fixed-delay prompt auto-dismiss. Replaces the
+   * `lastResponseTimestamp`-based legacy calculation (which read
+   * `adapter.activeTimestamp`). Doctrine acted (spec maître Décision 1) :
+   * human timing is replaced by a fixed delay scaled by `playbackSpeed`.
+   *
+   * On fire, the auto-response payload is read from
+   * `mockConn.getAutoResponseAt(cursor - 1)` (the cursor already
+   * advanced past the SELECT_* inside `dispatchNext`) and fed via
+   * `mockConn.simulatePlayerResponse(...)`. The prompt-dialog
+   * `pendingPrompt` flips to null, which re-fires the `maybeAdvance`
+   * effect → `scheduleNext` → `doStepForward` resumes.
+   */
   private schedulePromptDismiss(): void {
     this.clearPlaybackTimer();
     const c = this.getCfg();
-    const tsStr = c.adapter.activeTimestamp();
-    const ts = tsStr ? new Date(tsStr).getTime() : null;
-    const prevTs = this.lastResponseTimestamp;
-    this.lastResponseTimestamp = ts;
-    const delta = (ts && prevTs) ? ts - prevTs : null;
-    const duration = delta !== null
-      ? Math.min(Math.max(delta * 0.6, PROMPT_DISPLAY_MIN), PROMPT_DISPLAY_MAX)
-      : PROMPT_DISPLAY_FALLBACK;
-
     this.playbackTimer = setTimeout(() => {
       this.playbackTimer = null;
-      c.adapter.resumeAfterPrompt();
-    }, duration);
+      const cursor = c.mockConn.messageCursor();
+      // The SELECT_* lives at cursor - 1 (dispatchNext advanced past it).
+      const response = c.mockConn.getAutoResponseAt(cursor - 1);
+      if (response) {
+        c.mockConn.simulatePlayerResponse(response);
+      } else {
+        // No recorded response (replay truncated mid-prompt?). Clear the
+        // prompt manually so playback doesn't stall — `simulatePlayerResponse`
+        // with a no-op payload does the right thing.
+        c.mockConn.simulatePlayerResponse({ promptType: 'UNKNOWN', data: {} });
+      }
+    }, REPLAY_PROMPT_DELAY_MS);
   }
 
   private pausePlayback(): void {

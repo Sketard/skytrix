@@ -85,8 +85,8 @@
                                [opponentDisconnected]="false"
                                [animatingZone]="orchestrator.animatingZone.value()"
                                [animatingLp]="lpTracker.animatingLpPlayer()"
-                               [activeChainLinks]="adapter.activeChainLinks()"
-                               [chainPhase]="adapter.chainPhase()"
+                               [activeChainLinks]="mockConn.activeChainLinks()"
+                               [chainPhase]="mockConn.chainPhase()"
                                [targetedZoneKeys]="orchestrator.targetedZoneKeys.value()"
                                [counterPulseKey]="orchestrator.counterPulse.value()"
                                [swapGraveDeckKeys]="orchestrator.swapGraveDeckKeys.value()"
@@ -126,7 +126,7 @@
                          (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Chain Overlay -->
-      <app-pvp-chain-overlay #chainOverlay [promptActive]="adapter.activePrompt() !== null" />
+      <app-pvp-chain-overlay #chainOverlay [promptActive]="mockConn.pendingPrompt() !== null" />
 
       <!-- Game Log — Surface 2: opponent effect bubble (zero DOM here; drives
            its own CDK overlay anchored on the opponent duelist card). -->
@@ -138,13 +138,13 @@
            (no mini-toolbar in replay; the transport stack lives below). -->
 
       <!-- Prompt Dialog for Replay Decision Mode -->
-      <app-pvp-prompt-dialog [prompt]="promptMode() === 'decision' ? adapter.activePrompt() : null"
+      <app-pvp-prompt-dialog [prompt]="promptMode() === 'decision' ? mockConn.pendingPrompt() : null"
                               [passiveMessage]="null"
                               [readOnly]="true"
-                              [preSelectedResponse]="adapter.activeResponse()"
-                              [ownPlayerIndex]="adapter.activePlayer()"
-                              [hintContext]="adapter.activeHint()"
-                              [confirmedCards]="adapter.activeConfirmedCards()"
+                              [preSelectedResponse]="mockConn.activeResponse()"
+                              [ownPlayerIndex]="mockConn.activePlayer()"
+                              [hintContext]="mockConn.activeHint()"
+                              [confirmedCards]="mockConn.activeConfirmedCards()"
                               [overlayActive]="chainOverlay.overlayActive()"
                               (longPressInspect)="onCardInspectRequest($event)" />
 

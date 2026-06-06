@@ -1,7 +1,10 @@
 import { computed, Injectable, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { PROTOCOL_VERSION } from '../duel-ws.types';
-import type { PreComputedState, ReplayMetadataMsg, ReplayServerMessage, ForkSanityFields } from '../replay-ws.types';
+import type {
+  PreComputedState, ReplayMetadataMsg, ReplayServerMessage, ForkSanityFields,
+  ReplayStreamChunkMsg, ReplayStreamInitMsg,
+} from '../replay-ws.types';
 
 @Injectable()
 export class ReplayConnectionService implements OnDestroy {
@@ -15,6 +18,25 @@ export class ReplayConnectionService implements OnDestroy {
   readonly totalResponses = signal<number>(0);
   readonly error = signal<string | null>(null);
   readonly lastReceivedTurn = signal<number>(-1);
+
+  // ─── Anim-pipeline v4 stream surface (Phase 3) ───────────────────────────
+  //
+  // Callback-style forward-feed for `MockDuelConnection`. The component
+  // sets these handlers (typically pointing at `mockConn.appendChunk` /
+  // `mockConn.loadStreamInit`) once at mount, then this service invokes
+  // them synchronously on every chunk receipt. Callback pattern (rather
+  // than a signal) prevents same-tick chunk loss — a signal `.set(...)`
+  // would coalesce rapid arrivals into one effect firing.
+  //
+  // Mirrors the `DuelConnection.onMessage` callback pattern used in PvP
+  // for the same reason.
+
+  /** Called on every `REPLAY_STREAM_CHUNK` receipt. The component wires
+   *  this to `mockConn.appendChunk(...)` ; tests can install their own. */
+  onStreamChunk?: (chunk: ReplayStreamChunkMsg) => void;
+  /** Called on the single `REPLAY_STREAM_INIT` receipt. Wired to
+   *  `mockConn.loadStreamInit(...)`. */
+  onStreamInit?: (init: ReplayStreamInitMsg) => void;
   readonly forkStatus = signal<'idle' | 'forking' | 'ready' | 'warning' | 'error'>('idle');
   // F5-bis (2026-05-31) — fork-solo is now a SOLO multiplex (1-socket)
   // session ; only `token1` is issued by the server.
@@ -65,6 +87,14 @@ export class ReplayConnectionService implements OnDestroy {
           case 'REPLAY_BOARD_STATES':
             this.boardStates.update(prev => prev.concat(msg.states));
             this.lastReceivedTurn.set(msg.turnNumber);
+            break;
+
+          case 'REPLAY_STREAM_CHUNK':
+            this.onStreamChunk?.(msg);
+            break;
+
+          case 'REPLAY_STREAM_INIT':
+            this.onStreamInit?.(msg);
             break;
 
           case 'REPLAY_ERROR': {

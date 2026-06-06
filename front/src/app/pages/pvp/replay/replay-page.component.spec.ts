@@ -34,7 +34,7 @@ import { of } from 'rxjs';
 import { ReplayPageComponent } from './replay-page.component';
 import { ReplayConnectionService } from './replay-connection.service';
 import { ReplayForkService } from './replay-fork.service';
-import { ReplayDuelAdapter } from './replay-duel-adapter';
+import { MockDuelConnection } from './mock-duel-connection';
 import { ReplayTransportService } from './replay-transport.service';
 import { CardDataCacheService } from '../duel-page/card-data-cache.service';
 import { CardInspectionService } from '../duel-page/card-inspection.service';
@@ -109,11 +109,34 @@ class StubReplayTransport {
   resumeIfBoundaryWaiting = jasmine.createSpy('resumeIfBoundaryWaiting');
 }
 
-class StubReplayDuelAdapter {
+/** v4 Phase 5 (2026-06-05) — unified stub for `MockDuelConnection` which
+ *  now owns BOTH the animation data source contract (perspective swap,
+ *  processor surfaces) AND the legacy UI-facing surfaces formerly on
+ *  `ReplayDuelAdapter` (busy, pendingPrompt, activeHint, etc). The
+ *  `ANIMATION_DATA_SOURCE` token is bound to this in the test providers.
+ *  Stream-pipeline callbacks (`appendChunk`, `loadStreamInit`) stay no-op
+ *  spies since these specs don't exercise the stream path. */
+class StubMockDuelConnection {
+  // Stream pipeline (Phase 3)
+  appendChunk = jasmine.createSpy('appendChunk');
+  loadStreamInit = jasmine.createSpy('loadStreamInit');
+  loadStream = jasmine.createSpy('loadStream');
+  dispatchNext = jasmine.createSpy('dispatchNext').and.returnValue(false);
+  simulatePlayerResponse = jasmine.createSpy('simulatePlayerResponse');
+  getAutoResponseAt = jasmine.createSpy('getAutoResponseAt').and.returnValue(null);
+  seekToOffset = jasmine.createSpy('seekToOffset');
+  readonly messageCursor = signal(0);
+  readonly navIndex = signal<readonly unknown[]>([]);
+  cleanup = jasmine.createSpy('cleanup');
+
+  // Animation pipeline surfaces (AnimationDataSource contract)
   readonly perspectiveIndex = signal<0 | 1>(0);
   readonly busy = signal(false);
-  readonly activePrompt = signal<unknown>(null);
+  readonly pendingPrompt = signal<unknown>(null);
   readonly activeResponse = signal<unknown>(null);
+  readonly activePlayer = signal<0 | 1>(0);
+  readonly activeHint = signal<unknown>(null);
+  readonly activeConfirmedCards = signal<unknown>(null);
   readonly animationQueue = signal<readonly unknown[]>([]);
   readonly activeChainLinks = signal<readonly unknown[]>([]);
   readonly pendingChainEntry = signal<unknown>(null);
@@ -125,9 +148,6 @@ class StubReplayDuelAdapter {
     logicalState: this._rendered.asReadonly(),
     hasLockedZones: false,
   };
-  jumpToState = jasmine.createSpy('jumpToState');
-  abort = jasmine.createSpy('abort');
-  collapseRemainingSteps = jasmine.createSpy('collapseRemainingSteps');
   attachOutOfBandSink = jasmine.createSpy('attachOutOfBandSink');
 }
 
@@ -283,7 +303,7 @@ function setupTestBed(): void {
         { provide: ReplayConnectionService, useClass: StubReplayConnection },
         { provide: ReplayForkService, useClass: StubReplayFork },
         { provide: ReplayTransportService, useClass: StubReplayTransport },
-        { provide: ReplayDuelAdapter, useClass: StubReplayDuelAdapter },
+        { provide: MockDuelConnection, useClass: StubMockDuelConnection },
         { provide: CardDataCacheService, useValue: { clearCache: () => undefined } },
         { provide: CardInspectionService, useClass: StubCardInspection },
         { provide: CardTravelEngine, useClass: StubCardTravelEngine },
@@ -316,7 +336,7 @@ function setupTestBed(): void {
         // until the orchestrator taps it. The page wires it in its constructor.
         DuelGameLogService,
         ScopeResetDispatcher,
-        { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
+        { provide: ANIMATION_DATA_SOURCE, useExisting: MockDuelConnection },
       ],
     },
   });
@@ -325,8 +345,8 @@ function setupTestBed(): void {
 function connOf(fixture: ComponentFixture<ReplayPageComponent>): StubReplayConnection {
   return fixture.componentRef.injector.get(ReplayConnectionService) as unknown as StubReplayConnection;
 }
-function adapterOf(fixture: ComponentFixture<ReplayPageComponent>): StubReplayDuelAdapter {
-  return fixture.componentRef.injector.get(ReplayDuelAdapter) as unknown as StubReplayDuelAdapter;
+function adapterOf(fixture: ComponentFixture<ReplayPageComponent>): StubMockDuelConnection {
+  return fixture.componentRef.injector.get(MockDuelConnection) as unknown as StubMockDuelConnection;
 }
 function transportOf(fixture: ComponentFixture<ReplayPageComponent>): StubReplayTransport {
   return fixture.componentRef.injector.get(ReplayTransportService) as unknown as StubReplayTransport;
@@ -563,7 +583,7 @@ describe('ReplayPageComponent — toggle handlers', () => {
   let fixture: ComponentFixture<ReplayPageComponent>;
   let component: ReplayPageComponent;
   let conn: StubReplayConnection;
-  let adapter: StubReplayDuelAdapter;
+  let adapter: StubMockDuelConnection;
   let transport: StubReplayTransport;
 
   beforeEach(() => {
@@ -586,31 +606,32 @@ describe('ReplayPageComponent — toggle handlers', () => {
     expect(component.perspectiveIndex()).toBe(1);
     expect(localStorage.getItem('replay.perspectiveIndex')).toBe('1');
     expect(adapter.perspectiveIndex()).toBe(1);
-    expect(adapter.jumpToState).toHaveBeenCalledWith(state);
+    // v4 Phase 5 — onTogglePerspective re-seats the mock at the current
+    // index via seekToOffset (replaces adapter.jumpToState(state)).
+    expect(adapter.seekToOffset).toHaveBeenCalledWith(0);
     expect(transport.haltPlaybackTimer).toHaveBeenCalled();
   });
 
-  it('onTogglePromptMode flips and persists; collapses remaining steps when result+activePrompt', () => {
+  it('onTogglePromptMode flips and persists', () => {
     expect(component.promptMode()).toBe('decision');
-    adapter.activePrompt.set({ type: 'SELECT_PLACE' });
+    // v4 Phase 5 — `collapseRemainingSteps` retired. The mock has no
+    // step queue to collapse ; switching to 'result' just flips the
+    // signal + persists. The next `maybeAdvance` tick proceeds through
+    // prompts via the fixed-delay auto-respond.
+    adapter.pendingPrompt.set({ type: 'SELECT_PLACE' });
 
     component.onTogglePromptMode();
     expect(component.promptMode()).toBe('result');
     expect(localStorage.getItem('replay.promptMode')).toBe('result');
-    expect(adapter.collapseRemainingSteps).toHaveBeenCalled();
 
-    // Toggle back: no collapse (mode is decision again, no prompt anyway).
-    adapter.collapseRemainingSteps.calls.reset();
     component.onTogglePromptMode();
     expect(component.promptMode()).toBe('decision');
-    expect(adapter.collapseRemainingSteps).not.toHaveBeenCalled();
   });
 
-  it('onTogglePromptMode does NOT collapse when toggling to result with no active prompt', () => {
-    adapter.activePrompt.set(null);
+  it('onTogglePromptMode flips to result with no active prompt', () => {
+    adapter.pendingPrompt.set(null);
     component.onTogglePromptMode();
     expect(component.promptMode()).toBe('result');
-    expect(adapter.collapseRemainingSteps).not.toHaveBeenCalled();
   });
 
   it('onToggleAnimations flips (session-only), jumpToState, and restarts only when isPlaying', () => {
@@ -627,12 +648,14 @@ describe('ReplayPageComponent — toggle handlers', () => {
     expect(component.animationsEnabled()).toBe(!initial);
     // Not persisted — the replay toggle is a session-only override.
     expect(localStorage.getItem('replay.animationsEnabled')).toBeNull();
-    expect(adapter.jumpToState).toHaveBeenCalledWith(state);
+    // v4 Phase 5 — onToggleAnimations re-seats the mock at current index
+    // via seekToOffset (replaces adapter.jumpToState(state)).
+    expect(adapter.seekToOffset).toHaveBeenCalledWith(0);
     expect(transport.restart).not.toHaveBeenCalled();
 
     // Playing: restart fires.
     transport.isPlaying.set(true);
-    adapter.jumpToState.calls.reset();
+    adapter.seekToOffset.calls.reset();
     component.onToggleAnimations();
     expect(component.animationsEnabled()).toBe(initial);
     expect(transport.restart).toHaveBeenCalled();
@@ -652,7 +675,7 @@ describe('ReplayPageComponent — toggle handlers', () => {
 describe('ReplayPageComponent — zone browser', () => {
   let fixture: ComponentFixture<ReplayPageComponent>;
   let component: ReplayPageComponent;
-  let adapter: StubReplayDuelAdapter;
+  let adapter: StubMockDuelConnection;
 
   beforeEach(() => {
     clearReplayPrefs();
@@ -726,7 +749,7 @@ describe('ReplayPageComponent — zone browser', () => {
 describe('ReplayPageComponent — hand getters', () => {
   let fixture: ComponentFixture<ReplayPageComponent>;
   let component: ReplayPageComponent;
-  let adapter: StubReplayDuelAdapter;
+  let adapter: StubMockDuelConnection;
 
   beforeEach(() => {
     clearReplayPrefs();

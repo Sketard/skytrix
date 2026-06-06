@@ -168,6 +168,8 @@ export const SEGMENTATION: Readonly<Record<ServerMessage['type'], SegmentationAc
   REPLAY_METADATA: 'not-an-event',
   REPLAY_ERROR: 'not-an-event',
   REPLAY_FORK_READY: 'not-an-event',
+  REPLAY_STREAM_CHUNK: 'not-an-event',
+  REPLAY_STREAM_INIT: 'not-an-event',
   SOLVER_PROGRESS: 'not-an-event',
   SOLVER_RESULT: 'not-an-event',
   SOLVER_CANCELLED: 'not-an-event',

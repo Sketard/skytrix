@@ -16,6 +16,10 @@ export type {
   ReplayMetadataMsg,
   ReplayErrorMsg,
   ReplayForkReadyMsg,
+  ReplayStreamChunkMsg,
+  ReplayStreamInitMsg,
+  ReplayStreamAutoResponse,
+  ReplayStreamNavEntry,
 } from './duel-ws.types';
 
 import type {
@@ -23,9 +27,13 @@ import type {
   ReplayMetadataMsg,
   ReplayErrorMsg,
   ReplayForkReadyMsg,
+  ReplayStreamChunkMsg,
+  ReplayStreamInitMsg,
 } from './duel-ws.types';
 
-export type ReplayServerMessage = ReplayBoardStatesMsg | ReplayMetadataMsg | ReplayErrorMsg | ReplayForkReadyMsg;
+export type ReplayServerMessage =
+  | ReplayBoardStatesMsg | ReplayMetadataMsg | ReplayErrorMsg | ReplayForkReadyMsg
+  | ReplayStreamChunkMsg | ReplayStreamInitMsg;
 
 export interface TurnMeta {
   turnNumber: number;
