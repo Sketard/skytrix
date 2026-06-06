@@ -274,6 +274,8 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
         label: 'Draw Phase',
         turnNumber: 1,
         boardStateSnapshot: boardState(),
+        events: [],
+        responseCount: 0,
       }],
     });
     expect(conn.bufferedMessageCount()).toBe(2);
@@ -288,6 +290,8 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
         label: 'Main Phase 2',
         turnNumber: 1,
         boardStateSnapshot: boardState({ phase: 'MAIN2' }),
+        events: [],
+        responseCount: 0,
       }],
     });
     expect(conn.bufferedMessageCount()).toBe(4);
@@ -299,8 +303,8 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
       messages: [msgDraw(), boardStateMsg(), msgDamage(), boardStateMsg({ phase: 'MAIN2' })],
       autoResponses: [],
       navEntries: [
-        { messageOffset: 1, label: 'Draw Phase', turnNumber: 1, boardStateSnapshot: boardState() },
-        { messageOffset: 3, label: 'Main Phase 2', turnNumber: 1, boardStateSnapshot: boardState({ phase: 'MAIN2' }) },
+        { messageOffset: 1, label: 'Draw Phase', turnNumber: 1, boardStateSnapshot: boardState(), events: [], responseCount: 0 },
+        { messageOffset: 3, label: 'Main Phase 2', turnNumber: 1, boardStateSnapshot: boardState({ phase: 'MAIN2' }), events: [], responseCount: 0 },
       ],
     });
 
@@ -314,7 +318,7 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
       messages: [boardStateMsg()],
       autoResponses: [],
       navEntries: [
-        { messageOffset: 1, label: 'Battle Phase', turnNumber: 5, boardStateSnapshot: targetBs },
+        { messageOffset: 1, label: 'Battle Phase', turnNumber: 5, boardStateSnapshot: targetBs, events: [], responseCount: 0 },
       ],
     });
 
@@ -338,7 +342,7 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
       navEntries: [
         {
           messageOffset: 1, label: 'CL1: Trap', turnNumber: 1,
-          boardStateSnapshot: boardState(), chainSnapshot,
+          boardStateSnapshot: boardState(), events: [], responseCount: 0, chainSnapshot,
         },
       ],
     });
@@ -361,7 +365,7 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
       navEntries: [
         {
           messageOffset: 1, label: 'CL1: Trap', turnNumber: 1,
-          boardStateSnapshot: boardState(), chainSnapshot,
+          boardStateSnapshot: boardState(), events: [], responseCount: 0, chainSnapshot,
         },
       ],
     });
@@ -377,7 +381,7 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
       messages: [selectCard(), boardStateMsg()],
       autoResponses: [],
       navEntries: [
-        { messageOffset: 2, label: 'Prompt', turnNumber: 1, boardStateSnapshot: boardState() },
+        { messageOffset: 2, label: 'Prompt', turnNumber: 1, boardStateSnapshot: boardState(), events: [], responseCount: 0 },
       ],
     });
     // Dispatch the SELECT_CARD to set pendingPrompt
@@ -418,7 +422,7 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
         messages: [],
         autoResponses: [],
         navEntries: [
-          { messageOffset: 0, label: 'Seek target', turnNumber: 1, boardStateSnapshot: absBs },
+          { messageOffset: 0, label: 'Seek target', turnNumber: 1, boardStateSnapshot: absBs, events: [], responseCount: 0 },
         ],
       });
       swapConn.seekToOffset(0);
@@ -437,7 +441,7 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
       messages: [msgDraw()],
       autoResponses: [],
       navEntries: [
-        { messageOffset: 1, label: 'A', turnNumber: 0, boardStateSnapshot: boardState() },
+        { messageOffset: 1, label: 'A', turnNumber: 0, boardStateSnapshot: boardState(), events: [], responseCount: 0 },
       ],
     });
     expect(conn.navIndex().length).toBe(1);
@@ -446,7 +450,7 @@ describe('MockDuelConnection — Phase 4 seekToOffset', () => {
     conn.loadStreamInit({
       totalMessages: 1,
       navIndex: [
-        { messageOffset: 1, label: 'A-final', turnNumber: 0, boardStateSnapshot: boardState() },
+        { messageOffset: 1, label: 'A-final', turnNumber: 0, boardStateSnapshot: boardState(), events: [], responseCount: 0 },
       ],
     });
     expect(conn.totalMessages()).toBe(1);

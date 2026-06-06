@@ -67,7 +67,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { EMPTY_DUEL_STATE } from '../types';
 import type { DuelState } from '../types';
 import type { BoardStatePayload, PlayerBoardState, BoardZone, CardOnField, ZoneId } from '../duel-ws.types';
-import type { PreComputedState } from '../duel-ws-replay.types';
+import type { ReplayStreamNavEntry } from '../duel-ws-replay.types';
 
 // =============================================================================
 // Stubs
@@ -76,8 +76,6 @@ import type { PreComputedState } from '../duel-ws-replay.types';
 class StubReplayConnection {
   readonly connectionStatus = signal<'connecting' | 'connected' | 'disconnected'>('disconnected');
   readonly metadata = signal<unknown>(null);
-  readonly boardStates = signal<PreComputedState[]>([]);
-  readonly computedUpTo = signal<number>(-1);
   readonly totalResponses = signal(0);
   readonly error = signal<string | null>(null);
   readonly lastReceivedTurn = signal<number>(-1);
@@ -126,7 +124,7 @@ class StubMockDuelConnection {
   getAutoResponseAt = jasmine.createSpy('getAutoResponseAt').and.returnValue(null);
   seekToOffset = jasmine.createSpy('seekToOffset');
   readonly messageCursor = signal(0);
-  readonly navIndex = signal<readonly unknown[]>([]);
+  readonly navIndex = signal<ReadonlyArray<ReplayStreamNavEntry>>([]);
   cleanup = jasmine.createSpy('cleanup');
 
   // Animation pipeline surfaces (AnimationDataSource contract)
@@ -153,7 +151,7 @@ class StubMockDuelConnection {
 
 class StubReplayFork {
   readonly forkEventIndex = signal<number | null>(null);
-  readonly cachedBoardStates = signal<PreComputedState[]>([]);
+  readonly cachedNavIndex = signal<ReadonlyArray<ReplayStreamNavEntry>>([]);
   readonly forking = signal(false);
   fork = jasmine.createSpy('fork');
   cleanup = jasmine.createSpy('cleanup');
@@ -265,12 +263,14 @@ function makeDuelState(turnCount: number, turnPlayer: 0 | 1 = 0, p0Zones: BoardZ
   };
 }
 
-function makePrecomputed(turnCount: number, label = 'evt', overrides: Partial<PreComputedState> = {}): PreComputedState {
+function makePrecomputed(turnCount: number, label = 'evt', overrides: Partial<ReplayStreamNavEntry> = {}): ReplayStreamNavEntry {
   return {
-    boardState: makeBoardState(turnCount),
+    messageOffset: 0,
+    boardStateSnapshot: makeBoardState(turnCount),
     events: [],
     label,
     responseCount: 0,
+    turnNumber: turnCount,
     ...overrides,
   };
 }
@@ -369,11 +369,12 @@ function clearReplayPrefs(): void {
 // turns + atEnd + boardStates fallback
 // =============================================================================
 
-describe('ReplayPageComponent — turns + boardStates fallback', () => {
+describe('ReplayPageComponent — turns + navIndex fallback', () => {
   let fixture: ComponentFixture<ReplayPageComponent>;
   let component: ReplayPageComponent;
   let conn: StubReplayConnection;
   let fork: StubReplayFork;
+  let mockConn: StubMockDuelConnection;
 
   beforeEach(() => {
     clearReplayPrefs();
@@ -382,27 +383,29 @@ describe('ReplayPageComponent — turns + boardStates fallback', () => {
     component = fixture.componentInstance;
     conn = connOf(fixture);
     fork = forkOf(fixture);
+    mockConn = adapterOf(fixture);
   });
 
-  it('boardStates() falls back to fork.cachedBoardStates when live is empty', () => {
-    // Live empty, fork cached has 2 states — the component must read
+  it('navIndex() falls back to fork.cachedNavIndex when live is empty', () => {
+    // Live empty, fork cached has 2 entries — the component must read
     // through the cached pool so the post-fork viewer keeps rendering.
-    fork.cachedBoardStates.set([makePrecomputed(1), makePrecomputed(2)]);
-    expect(component.boardStates().length).toBe(2);
+    fork.cachedNavIndex.set([makePrecomputed(1), makePrecomputed(2)]);
+    expect(component.navIndex().length).toBe(2);
 
-    // Then live arrives — it takes priority.
-    conn.boardStates.set([makePrecomputed(1)]);
-    expect(component.boardStates().length).toBe(1);
+    // Then live arrives — it takes priority. The mock's navIndex signal
+    // is the live source.
+    (mockConn.navIndex as unknown as { set(v: ReadonlyArray<ReplayStreamNavEntry>): void }).set([makePrecomputed(1)]);
+    expect(component.navIndex().length).toBe(1);
   });
 
-  it('turns() returns [] for empty boardStates', () => {
+  it('turns() returns [] for empty navIndex', () => {
     expect(component.turns()).toEqual([]);
   });
 
   it('turns() segments by turnCount and emits one TurnMeta per turn', () => {
     // 5 events: 2 in turn 1, 3 in turn 2 — expect 2 TurnMeta entries with
     // correct startIndex/endIndex/eventCount.
-    conn.boardStates.set([
+    mockConn.navIndex.set([
       makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
       makePrecomputed(2, 'c'), makePrecomputed(2, 'd'), makePrecomputed(2, 'e'),
     ]);
@@ -416,12 +419,12 @@ describe('ReplayPageComponent — turns + boardStates fallback', () => {
     // The "Setup" turn (turnCount 0) shows starting LP. Then turn 1 starts
     // after one player paid — first state of turn 1 carries the new LP.
     const setup = makePrecomputed(0);
-    setup.boardState.players = [makePlayer(8000), makePlayer(8000)];
+    setup.boardStateSnapshot.players = [makePlayer(8000), makePlayer(8000)];
     const turn1Start = makePrecomputed(1);
-    turn1Start.boardState.players = [makePlayer(7000), makePlayer(8000)];
+    turn1Start.boardStateSnapshot.players = [makePlayer(7000), makePlayer(8000)];
     const turn1End = makePrecomputed(1);
-    turn1End.boardState.players = [makePlayer(6000), makePlayer(8000)];
-    conn.boardStates.set([setup, turn1Start, turn1End]);
+    turn1End.boardStateSnapshot.players = [makePlayer(6000), makePlayer(8000)];
+    mockConn.navIndex.set([setup, turn1Start, turn1End]);
     const turns = component.turns();
     expect(turns[0]).toEqual(jasmine.objectContaining({ turnNumber: 0, p1LP: 8000, p2LP: 8000 }));
     // p1LP must be 7000 (first state of turn 1), NOT 6000 (last) — a
@@ -432,10 +435,11 @@ describe('ReplayPageComponent — turns + boardStates fallback', () => {
   it('atEnd() is false until computedUpTo > 0 even when currentIndex >= upTo', () => {
     // Pre-data state: upTo=-1, currentIndex=0. The guard `upTo > 0`
     // prevents flagging "end of replay" before any state arrives.
-    conn.computedUpTo.set(-1);
     expect(component.atEnd()).toBe(false);
 
-    conn.computedUpTo.set(5);
+    // Phase 6 : feed 6 nav entries → navIndex.length = 6 → computedUpTo = 5.
+    mockConn.navIndex.set(Array.from({ length: 6 }, (_, i) => makePrecomputed(1, `s${i}`)));
+
     transportOf(fixture).currentIndex.set(5);
     expect(component.atEnd()).toBe(true);
 
@@ -445,7 +449,7 @@ describe('ReplayPageComponent — turns + boardStates fallback', () => {
 
   it('totalEvents() returns boardStates length', () => {
     expect(component.totalEvents()).toBe(0);
-    conn.boardStates.set([makePrecomputed(1), makePrecomputed(1)]);
+    mockConn.navIndex.set([makePrecomputed(1), makePrecomputed(1)]);
     expect(component.totalEvents()).toBe(2);
   });
 });
@@ -458,6 +462,7 @@ describe('ReplayPageComponent — perspective swaps', () => {
   let fixture: ComponentFixture<ReplayPageComponent>;
   let component: ReplayPageComponent;
   let conn: StubReplayConnection;
+  let mockConn: StubMockDuelConnection;
   let transport: StubReplayTransport;
 
   beforeEach(() => {
@@ -466,6 +471,7 @@ describe('ReplayPageComponent — perspective swaps', () => {
     fixture = TestBed.createComponent(ReplayPageComponent);
     component = fixture.componentInstance;
     conn = connOf(fixture);
+    mockConn = adapterOf(fixture);
     transport = transportOf(fixture);
   });
 
@@ -473,7 +479,7 @@ describe('ReplayPageComponent — perspective swaps', () => {
     // currentState's turnPlayer=0 means "the actual ocgcore player 0 is
     // taking their turn". From perspective=1's viewpoint (we're player 1),
     // that translates to "opponent's turn" → 1.
-    conn.boardStates.set([makePrecomputed(1, 'evt', { boardState: makeBoardState(1, /*turnPlayer*/ 0) })]);
+    mockConn.navIndex.set([makePrecomputed(1, 'evt', { boardStateSnapshot: makeBoardState(1, /*turnPlayer*/ 0) })]);
     transport.currentIndex.set(0);
 
     component.perspectiveIndex.set(0);
@@ -584,6 +590,7 @@ describe('ReplayPageComponent — toggle handlers', () => {
   let component: ReplayPageComponent;
   let conn: StubReplayConnection;
   let adapter: StubMockDuelConnection;
+  let mockConn: StubMockDuelConnection;
   let transport: StubReplayTransport;
 
   beforeEach(() => {
@@ -593,12 +600,13 @@ describe('ReplayPageComponent — toggle handlers', () => {
     component = fixture.componentInstance;
     conn = connOf(fixture);
     adapter = adapterOf(fixture);
+    mockConn = adapter;
     transport = transportOf(fixture);
   });
 
   it('onTogglePerspective flips the index, persists to localStorage, and jumps to current state', () => {
     const state = makePrecomputed(1);
-    conn.boardStates.set([state]);
+    mockConn.navIndex.set([state]);
     transport.currentIndex.set(0);
 
     expect(component.perspectiveIndex()).toBe(0);
@@ -636,7 +644,7 @@ describe('ReplayPageComponent — toggle handlers', () => {
 
   it('onToggleAnimations flips (session-only), jumpToState, and restarts only when isPlaying', () => {
     const state = makePrecomputed(1);
-    conn.boardStates.set([state]);
+    mockConn.navIndex.set([state]);
     transport.currentIndex.set(0);
 
     // Default is the inverse of the centralised reduced-motion state — capture
@@ -797,6 +805,7 @@ describe('ReplayPageComponent — F4 wiring', () => {
   let fixture: ComponentFixture<ReplayPageComponent>;
   let component: ReplayPageComponent;
   let conn: StubReplayConnection;
+  let mockConn: StubMockDuelConnection;
   let transport: StubReplayTransport;
 
   beforeEach(() => {
@@ -806,6 +815,7 @@ describe('ReplayPageComponent — F4 wiring', () => {
     fixture = TestBed.createComponent(ReplayPageComponent);
     component = fixture.componentInstance;
     conn = connOf(fixture);
+    mockConn = adapterOf(fixture);
     transport = transportOf(fixture);
   });
 
@@ -873,43 +883,47 @@ describe('ReplayPageComponent — F4 wiring', () => {
 
   // ── onSeekToTurn delegates to transport with abortAndClean ────────────────
   it('onSeekToTurn calls transport.seekToTurn with the current turns()', () => {
-    conn.boardStates.set([
+    mockConn.navIndex.set([
       makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
     ]);
-    conn.computedUpTo.set(2);
+    // Phase 6 : computedUpTo derived from navIndex length — no-op (length=2+1 set above)
+
     component.onSeekToTurn(1);
     expect(transport.seekToTurn).toHaveBeenCalledWith(1, jasmine.any(Array));
   });
 
   it('onSeekToTurn no-ops when target turn is not yet computed', () => {
-    conn.boardStates.set([
-      makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
-    ]);
-    conn.computedUpTo.set(0); // setup computed only — turn 1 starts at index 1, not yet reached
+    // Phase 6 — computedUpTo = navIndex.length - 1. Setup-only state means
+    // navIndex has 1 entry (turn 0), so computedUpTo=0. Turn 1's startIndex=1
+    // > computedUpTo=0 → seekToTurn must no-op.
+    mockConn.navIndex.set([makePrecomputed(0, 'setup')]);
     component.onSeekToTurn(1);
     expect(transport.seekToTurn).not.toHaveBeenCalled();
   });
 
   it('onSeekToTurn no-ops on out-of-range index', () => {
-    conn.boardStates.set([makePrecomputed(0, 'setup'), makePrecomputed(1, 'a')]);
-    conn.computedUpTo.set(1);
+    mockConn.navIndex.set([makePrecomputed(0, 'setup'), makePrecomputed(1, 'a')]);
+    // Phase 6 : computedUpTo derived from navIndex length — no-op (length=1+1 set above)
+
     component.onSeekToTurn(42);
     expect(transport.seekToTurn).not.toHaveBeenCalled();
   });
 
   it('onSwipeLeft delegates to onSeekToTurn(currentTurnIndex + 1)', () => {
-    conn.boardStates.set([
+    mockConn.navIndex.set([
       makePrecomputed(0, 'setup'), makePrecomputed(1, 'a'),
     ]);
-    conn.computedUpTo.set(1);
+    // Phase 6 : computedUpTo derived from navIndex length — no-op (length=1+1 set above)
+
     transport.currentIndex.set(0);
     component.onSwipeLeft();
     expect(transport.seekToTurn).toHaveBeenCalledWith(1, jasmine.any(Array));
   });
 
   it('onSwipeLeft at last turn does NOT call transport.seekToTurn (bounds guard)', () => {
-    conn.boardStates.set([makePrecomputed(0, 'setup'), makePrecomputed(1, 'a')]);
-    conn.computedUpTo.set(1);
+    mockConn.navIndex.set([makePrecomputed(0, 'setup'), makePrecomputed(1, 'a')]);
+    // Phase 6 : computedUpTo derived from navIndex length — no-op (length=1+1 set above)
+
     transport.currentIndex.set(1); // already on the last computed turn
     component.onSwipeLeft();
     expect(transport.seekToTurn).not.toHaveBeenCalled();
@@ -917,8 +931,9 @@ describe('ReplayPageComponent — F4 wiring', () => {
 
   // ── endOverlayState ───────────────────────────────────────────────────────
   it('endOverlayState is null until atEnd() is true', () => {
-    conn.boardStates.set([makePrecomputed(1)]);
-    conn.computedUpTo.set(0);
+    mockConn.navIndex.set([makePrecomputed(1)]);
+    // Phase 6 : computedUpTo derived from navIndex length — no-op (length=0+1 set above)
+
     transport.currentIndex.set(0);
     conn.metadata.set({ playerUsernames: ['AxelTest', 'Opp'], result: 'victory' });
     // Not at end yet (atEnd needs upTo > 0 + currentIndex >= upTo, but upTo=0 → atEnd=false)
@@ -926,8 +941,9 @@ describe('ReplayPageComponent — F4 wiring', () => {
   });
 
   it('endOverlayState maps result via deriveOutcome from local perspective', () => {
-    conn.boardStates.set([makePrecomputed(1), makePrecomputed(2)]);
-    conn.computedUpTo.set(1);
+    mockConn.navIndex.set([makePrecomputed(1), makePrecomputed(2)]);
+    // Phase 6 : computedUpTo derived from navIndex length — no-op (length=1+1 set above)
+
     transport.currentIndex.set(1);
     conn.metadata.set({
       playerUsernames: ['AxelTest', 'OppName'],
@@ -943,8 +959,9 @@ describe('ReplayPageComponent — F4 wiring', () => {
   });
 
   it('endOverlayState returns null when metadata is missing even at end', () => {
-    conn.boardStates.set([makePrecomputed(1), makePrecomputed(2)]);
-    conn.computedUpTo.set(1);
+    mockConn.navIndex.set([makePrecomputed(1), makePrecomputed(2)]);
+    // Phase 6 : computedUpTo derived from navIndex length — no-op (length=1+1 set above)
+
     transport.currentIndex.set(1);
     conn.metadata.set(null);
     expect(component.endOverlayState()).toBeNull();
@@ -1006,7 +1023,7 @@ describe('ReplayPageComponent — F4 wiring', () => {
 
   // ── currentTurnIndex ──────────────────────────────────────────────────────
   it('currentTurnIndex resolves to the turn containing currentIndex', () => {
-    conn.boardStates.set([
+    mockConn.navIndex.set([
       makePrecomputed(0, 'setup'),
       makePrecomputed(1, 'a'), makePrecomputed(1, 'b'),
       makePrecomputed(2, 'c'),

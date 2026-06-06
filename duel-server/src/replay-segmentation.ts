@@ -164,7 +164,6 @@ export const SEGMENTATION: Readonly<Record<ServerMessage['type'], SegmentationAc
   ERROR: 'not-an-event',
 
   // --- Replay control + solver — out of scope for live precompute ---
-  REPLAY_BOARD_STATES: 'not-an-event',
   REPLAY_METADATA: 'not-an-event',
   REPLAY_ERROR: 'not-an-event',
   REPLAY_FORK_READY: 'not-an-event',

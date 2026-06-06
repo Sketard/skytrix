@@ -96,7 +96,7 @@ export function isSelectMessage(message: ServerMessage): boolean {
  */
 type LiveDuelWorkerMessage = Exclude<
   WorkerToMainMessage,
-  { type: 'WORKER_REPLAY_BOARD_STATES' | 'WORKER_REPLAY_COMPLETE' | 'WORKER_REPLAY_ERROR' | 'WORKER_REPLAY_STREAM_CHUNK' | 'WORKER_REPLAY_STREAM_INIT' | 'WORKER_FORK_READY' | 'WORKER_FORK_ERROR' }
+  { type: 'WORKER_REPLAY_COMPLETE' | 'WORKER_REPLAY_ERROR' | 'WORKER_REPLAY_STREAM_CHUNK' | 'WORKER_REPLAY_STREAM_INIT' | 'WORKER_FORK_READY' | 'WORKER_FORK_ERROR' }
 >;
 
 export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessage): void {
@@ -105,7 +105,6 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
 
   // Replay-specific messages are routed by replay-handlers.ts ; not reachable here.
   if (
-    wmsg.type === 'WORKER_REPLAY_BOARD_STATES' ||
     wmsg.type === 'WORKER_REPLAY_COMPLETE' ||
     wmsg.type === 'WORKER_REPLAY_ERROR' ||
     wmsg.type === 'WORKER_REPLAY_STREAM_CHUNK' ||

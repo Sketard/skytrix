@@ -6,13 +6,11 @@
 export type {
   BoardStatePayload,
   ServerMessage,
-  PreComputedState,
   ForkSanityFields,
   ReplayLoadMsg,
   ReplayForkMsg,
   ReplayForkContinueMsg,
   ReplayForkCancelMsg,
-  ReplayBoardStatesMsg,
   ReplayMetadataMsg,
   ReplayErrorMsg,
   ReplayForkReadyMsg,
@@ -23,7 +21,6 @@ export type {
 } from './duel-ws.types';
 
 import type {
-  ReplayBoardStatesMsg,
   ReplayMetadataMsg,
   ReplayErrorMsg,
   ReplayForkReadyMsg,
@@ -32,7 +29,7 @@ import type {
 } from './duel-ws.types';
 
 export type ReplayServerMessage =
-  | ReplayBoardStatesMsg | ReplayMetadataMsg | ReplayErrorMsg | ReplayForkReadyMsg
+  | ReplayMetadataMsg | ReplayErrorMsg | ReplayForkReadyMsg
   | ReplayStreamChunkMsg | ReplayStreamInitMsg;
 
 export interface TurnMeta {

@@ -5,14 +5,14 @@ import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET } from '../../types';
 import type { Player } from '../../duel-ws.types';
 import type { ChainLinkState } from '../../types';
-import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
+import type { ReplayStreamNavEntry, TurnMeta } from '../../replay-ws.types';
 
 interface SubEventEntry {
   /** Absolute event index inside `boardStates` — passed back via (jumpToEvent). */
   eventIndex: number;
   /** Position within the turn (0-based) — used for the card num "E1", "E2", … */
   eventOrdinal: number;
-  state: PreComputedState;
+  state: ReplayStreamNavEntry;
   isCurrent: boolean;
   isComputed: boolean;
 }
@@ -43,8 +43,8 @@ interface SubEventEntry {
 export class SubEventPickerSheetComponent {
   /** The turn whose sub-events we're drilling into. */
   readonly turn = input.required<TurnMeta>();
-  /** Full pre-computed state list (page owns this; we slice locally). */
-  readonly boardStates = input.required<readonly PreComputedState[]>();
+  /** Full nav-index list (page owns this; we slice locally). */
+  readonly boardStates = input.required<readonly ReplayStreamNavEntry[]>();
   /** Last index that has been pre-computed (states[idx] is available). */
   readonly computedUpToIndex = input.required<number>();
   /** Current scrubber position — used to highlight the matching card. */

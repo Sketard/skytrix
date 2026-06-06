@@ -5,8 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/pvp-board-container.component';
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET } from '../../types';
-import type { TurnMeta } from '../../replay-ws.types';
-import type { PreComputedState } from '../../replay-ws.types';
+import type { TurnMeta, ReplayStreamNavEntry } from '../../replay-ws.types';
 import type { Player } from '../../duel-ws.types';
 import type { DuelState, ChainLinkState } from '../../types';
 import { EMPTY_DUEL_STATE } from '../../types';
@@ -24,23 +23,23 @@ export type TimelineSegment =
  *  stepper AND the context-pill in sync. */
 export const HIDDEN_SUB_EVENT_LABELS = new Set(['MSG_CHAIN_END']);
 
-/** Walks a turn's pre-computed states and groups them into single-event or
+/** Walks a turn's nav entries and groups them into single-event or
  *  chain segments, skipping hidden separator labels. Pure function — safe to
  *  call from both the timeline-bar (memoized per turn) and the page-level
  *  computed that feeds the mobile stepper. */
-export function buildSubEventSegments(turn: TurnMeta, states: readonly PreComputedState[]): TimelineSegment[] {
+export function buildSubEventSegments(turn: TurnMeta, entries: readonly ReplayStreamNavEntry[]): TimelineSegment[] {
   const segments: TimelineSegment[] = [];
   let i = turn.startIndex;
   const end = turn.startIndex + turn.eventCount;
   while (i < end) {
-    if (states[i]?.chainIndex != null) {
+    if (entries[i]?.chainIndex != null) {
       const chainIndices: number[] = [];
-      while (i < end && states[i]?.chainIndex != null) {
+      while (i < end && entries[i]?.chainIndex != null) {
         chainIndices.push(i);
         i++;
       }
       segments.push({ type: 'chain', indices: chainIndices });
-    } else if (HIDDEN_SUB_EVENT_LABELS.has(states[i]?.label)) {
+    } else if (HIDDEN_SUB_EVENT_LABELS.has(entries[i]?.label)) {
       i++; // separator only — drop
     } else {
       segments.push({ type: 'single', idx: i });
@@ -64,7 +63,7 @@ export class TimelineBarComponent implements OnDestroy {
   readonly currentIndex = input.required<number>();
   readonly computedUpTo = input.required<number>();
   readonly totalEvents = input.required<number>();
-  readonly boardStates = input.required<PreComputedState[]>();
+  readonly boardStates = input.required<ReadonlyArray<ReplayStreamNavEntry>>();
   readonly ownPlayerIndex = input<Player>(0);
   /** Zoom state lifted to the page (D21) — 1× / 2× / 3×.
    *  Source of truth: `ReplayPageComponent.zoomLevel` signal, wired to both
@@ -158,9 +157,9 @@ export class TimelineBarComponent implements OnDestroy {
     const state = states[idx];
     if (!state) return null;
     return {
-      turnNumber: state.boardState.turnCount,
-      phase: state.boardState.phase,
-      turnPlayer: state.boardState.turnPlayer,
+      turnNumber: state.boardStateSnapshot.turnCount,
+      phase: state.boardStateSnapshot.phase,
+      turnPlayer: state.boardStateSnapshot.turnPlayer,
       label: state.label,
     };
   });
@@ -170,7 +169,7 @@ export class TimelineBarComponent implements OnDestroy {
     const idx = this.hoveredIndex();
     if (idx === null) return EMPTY_DUEL_STATE;
     const states = this.boardStates();
-    return states[idx]?.boardState ?? EMPTY_DUEL_STATE;
+    return states[idx]?.boardStateSnapshot ?? EMPTY_DUEL_STATE;
   });
 
   readonly hoveredBeyondComputed = computed(() => {
@@ -367,12 +366,12 @@ export class TimelineBarComponent implements OnDestroy {
    * the turn player; opp counter-chains land on subsequent links of the same
    * segment but the visual stays grouped under the initiator. If proper
    * per-link ownership becomes needed, plumb `chainPlayer` through
-   * `PreComputedState` (server-side change).
+   * `ReplayStreamNavEntry` (server-side change).
    */
   chainSegmentIsSelf(firstIndex: number): boolean {
     const state = this.boardStates()[firstIndex];
     if (!state) return true;
-    return state.boardState.turnPlayer === this.ownPlayerIndex();
+    return state.boardStateSnapshot.turnPlayer === this.ownPlayerIndex();
   }
 
   // Memoization for segments (avoids new array per CD cycle)

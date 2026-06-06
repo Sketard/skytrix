@@ -16,8 +16,9 @@ import type { AliveWebSocket } from './ws-types.js';
  *
  * Two distinct workers cycle through here:
  *  1. **Replay pre-computation worker** (createReplayWorker) — replays the
- *     stored playerResponses against ocgcore, streams BOARD_STATES to the
- *     client, then terminates. Slot is bounded by MAX_REPLAY_WORKERS.
+ *     stored playerResponses against ocgcore, streams the v4
+ *     `REPLAY_STREAM_*` messages to the client, then terminates. Slot is
+ *     bounded by MAX_REPLAY_WORKERS.
  *  2. **Fork worker** (createForkWorker) — re-runs the replay up to
  *     `targetResponseCount`, then either signals divergence (warning) or
  *     transitions into a real solo `ActiveDuelSession` via the host-supplied
@@ -304,19 +305,10 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
       logger.error('Dropping malformed replay worker message', { replayId: conn.replayId, raw });
       return;
     }
-    if (wmsg.type === 'WORKER_REPLAY_BOARD_STATES') {
-      resetWatchdog();
-      safeSend(conn.ws, {
-        type: 'REPLAY_BOARD_STATES',
-        turnNumber: wmsg.turnNumber,
-        states: wmsg.states,
-      });
-    } else if (wmsg.type === 'WORKER_REPLAY_STREAM_CHUNK') {
-      // Anim-pipeline v4 (Phase 2) — relay the new replay-as-PvP-readonly
-      // stream chunk to the client. Coexists with REPLAY_BOARD_STATES above
-      // until Phase 5 retires the legacy format. The client may ignore
-      // these messages safely (the existing `ReplayDuelAdapter` does — it
-      // only consumes REPLAY_BOARD_STATES).
+    if (wmsg.type === 'WORKER_REPLAY_STREAM_CHUNK') {
+      // Anim-pipeline v4 — relay the replay-as-PvP-readonly stream chunk
+      // to the client. Phase 6 (2026-06-06) retired the legacy
+      // `REPLAY_BOARD_STATES` ; this is now the sole output path.
       resetWatchdog();
       safeSend(conn.ws, {
         type: 'REPLAY_STREAM_CHUNK',
@@ -327,10 +319,9 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
         navEntries: wmsg.navEntries,
       });
     } else if (wmsg.type === 'WORKER_REPLAY_STREAM_INIT') {
-      // Anim-pipeline v4 (Phase 2) — final-arrived nav index + totalMessages.
-      // Emitted AFTER the last STREAM_CHUNK (and after the legacy
-      // WORKER_REPLAY_COMPLETE — see precompute end paths). The watchdog
-      // is cleared by the COMPLETE branch below ; do NOT reset it here.
+      // Final-arrived nav index + totalMessages, emitted AFTER the last
+      // STREAM_CHUNK. The watchdog is cleared by the COMPLETE branch
+      // below ; do NOT reset it here.
       safeSend(conn.ws, {
         type: 'REPLAY_STREAM_INIT',
         totalMessages: wmsg.totalMessages,

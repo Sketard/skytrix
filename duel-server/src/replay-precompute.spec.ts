@@ -210,8 +210,8 @@ describe('runReplayPreComputation', () => {
 
   // ─── Turn batching ────────────────────────────────────────────────────────
 
-  it('emits WORKER_REPLAY_BOARD_STATES with turnNumber=0 for Setup before first NEW_TURN', () => {
-    // Push one DTO so the Turn 0 state has a non-empty label
+  it('emits WORKER_REPLAY_STREAM_CHUNK with turnNumber=0 for Setup before first NEW_TURN', () => {
+    // Push one DTO so the Turn 0 nav entry has a non-empty label
     const { msg, deps, port } = makeDeps([
       {
         status: OcgProcessResult.CONTINUE,
@@ -228,15 +228,15 @@ describe('runReplayPreComputation', () => {
     });
     runReplayPreComputation(msg, deps);
     const turn0 = port.messages.find(
-      (m) => (m as { type: string }).type === 'WORKER_REPLAY_BOARD_STATES'
+      (m) => (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK'
         && (m as { turnNumber: number }).turnNumber === 0,
-    ) as { states: { label: string }[] } | undefined;
+    ) as { navEntries: { label: string }[] } | undefined;
     expect(turn0).toBeDefined();
-    expect(turn0!.states.length).toBeGreaterThan(0);
-    expect(turn0!.states[0].label).toContain('Draw');
+    expect(turn0!.navEntries.length).toBeGreaterThan(0);
+    expect(turn0!.navEntries[0].label).toContain('Draw');
   });
 
-  it('increments currentTurn after each NEW_TURN; emits separate batches', () => {
+  it('increments currentTurn after each NEW_TURN; emits separate chunks', () => {
     const { msg, deps, port } = makeDeps([
       {
         status: OcgProcessResult.CONTINUE,
@@ -254,8 +254,8 @@ describe('runReplayPreComputation', () => {
       return null;
     });
     runReplayPreComputation(msg, deps);
-    const batches = port.messages.filter((m) => (m as { type: string }).type === 'WORKER_REPLAY_BOARD_STATES') as { turnNumber: number }[];
-    const turnNumbers = batches.map((b) => b.turnNumber);
+    const chunks = port.messages.filter((m) => (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK') as { turnNumber: number }[];
+    const turnNumbers = chunks.map((c) => c.turnNumber);
     expect(turnNumbers).toContain(0);
     expect(turnNumbers).toContain(1);
   });
@@ -317,12 +317,12 @@ describe('runReplayPreComputation', () => {
     });
     runReplayPreComputation(msg, deps);
     const turn0 = port.messages.find(
-      (m) => (m as { type: string }).type === 'WORKER_REPLAY_BOARD_STATES'
+      (m) => (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK'
         && (m as { turnNumber: number }).turnNumber === 0,
-    ) as { states: { label: string; chainIndex?: number }[] } | undefined;
+    ) as { navEntries: { label: string; chainIndex?: number }[] } | undefined;
     expect(turn0).toBeDefined();
-    // CHAIN_END always becomes its own state with label 'MSG_CHAIN_END' and no chainIndex
-    expect(turn0!.states.some((s) => s.label === 'MSG_CHAIN_END' && s.chainIndex == null)).toBe(true);
+    // CHAIN_END always becomes its own nav entry with label 'MSG_CHAIN_END' and no chainIndex
+    expect(turn0!.navEntries.some((s) => s.label === 'MSG_CHAIN_END' && s.chainIndex == null)).toBe(true);
   });
 
   // F9-bis (2026-06-04) — chainSnapshot embedding. Drives the replay viewer's
@@ -337,8 +337,8 @@ describe('runReplayPreComputation', () => {
     interface FlushedState { label: string; chainIndex?: number; chainSnapshot?: { links: unknown[]; phase: string; negatedIndices: number[]; currentSolvingChainIndex: number | null } }
 
     function collectStates(port: ReturnType<typeof makeDeps>['port']): FlushedState[] {
-      const batches = port.messages.filter(m => (m as { type: string }).type === 'WORKER_REPLAY_BOARD_STATES');
-      return batches.flatMap(b => (b as { states: FlushedState[] }).states);
+      const chunks = port.messages.filter(m => (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK');
+      return chunks.flatMap(c => (c as { navEntries: FlushedState[] }).navEntries);
     }
 
     it('embeds chainSnapshot on mid-chain states + omits it on the MSG_CHAIN_END separator', () => {
@@ -662,45 +662,25 @@ describe('replay-precompute helpers', () => {
     expect(label).toBe('');
   });
 
-  it('finalizeChainGroups strips chainIndex on single-link chains', () => {
-    const states = [
-      { label: 'A', chainIndex: 0, boardState: FAKE_BOARD_STATE, events: [], responseCount: 0 },
-      { label: 'B', boardState: FAKE_BOARD_STATE, events: [], responseCount: 0 },
+  it('finalizeChainGroupsForNav strips chainIndex on single-link chains', () => {
+    const entries = [
+      { messageOffset: 0, label: 'A', turnNumber: 0, responseCount: 0, boardStateSnapshot: FAKE_BOARD_STATE, events: [], chainIndex: 0 },
+      { messageOffset: 1, label: 'B', turnNumber: 0, responseCount: 0, boardStateSnapshot: FAKE_BOARD_STATE, events: [] },
     ];
-    __test__.finalizeChainGroups(states);
-    expect(states[0].chainIndex).toBeUndefined();
-    expect(states[0].label).toBe('A');
+    __test__.finalizeChainGroupsForNav(entries);
+    expect(entries[0].chainIndex).toBeUndefined();
+    expect(entries[0].label).toBe('A');
   });
 
-  it('finalizeChainGroups prefixes CL{n+1} on multi-link chains', () => {
-    const states = [
-      { label: 'A', chainIndex: 0, boardState: FAKE_BOARD_STATE, events: [], responseCount: 0 },
-      { label: 'B', chainIndex: 1, boardState: FAKE_BOARD_STATE, events: [], responseCount: 0 },
+  it('finalizeChainGroupsForNav prefixes CL{n+1} on multi-link chains', () => {
+    const entries = [
+      { messageOffset: 0, label: 'A', turnNumber: 0, responseCount: 0, boardStateSnapshot: FAKE_BOARD_STATE, events: [], chainIndex: 0 },
+      { messageOffset: 1, label: 'B', turnNumber: 0, responseCount: 0, boardStateSnapshot: FAKE_BOARD_STATE, events: [], chainIndex: 1 },
     ];
-    __test__.finalizeChainGroups(states);
-    expect(states[0].label).toBe('CL1: A');
-    expect(states[1].label).toBe('CL2: B');
+    __test__.finalizeChainGroupsForNav(entries);
+    expect(entries[0].label).toBe('CL1: A');
+    expect(entries[1].label).toBe('CL2: B');
     // chainIndex is preserved on multi-link (not stripped)
-    expect(states[0].chainIndex).toBe(0);
-  });
-
-  it('emitTurnBatch single-batch path posts one message when under MAX_BATCH_BYTES', () => {
-    const port = makeMockPort();
-    const states = [
-      { label: 'A', boardState: FAKE_BOARD_STATE, events: [], responseCount: 0 },
-    ];
-    __test__.emitTurnBatch(port, 'd1', 0, states);
-    expect(port.messages).toHaveLength(1);
-    expect(port.messages[0]).toMatchObject({
-      type: 'WORKER_REPLAY_BOARD_STATES',
-      duelId: 'd1',
-      turnNumber: 0,
-    });
-  });
-
-  it('emitTurnBatch noops on empty states', () => {
-    const port = makeMockPort();
-    __test__.emitTurnBatch(port, 'd1', 0, []);
-    expect(port.messages).toHaveLength(0);
+    expect(entries[0].chainIndex).toBe(0);
   });
 });

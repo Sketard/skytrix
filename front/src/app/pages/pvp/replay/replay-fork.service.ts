@@ -6,8 +6,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { ReplayConnectionService } from './replay-connection.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { duelAssert } from '../../../core/utilities/duel-assert';
-import type { PreComputedState } from '../replay-ws.types';
-import { PHASE_TO_NUM } from '../duel-ws.types';
+import type { ReplayStreamNavEntry } from '../replay-ws.types';
+import { PHASE_TO_NUM, type Phase } from '../duel-ws.types';
 
 @Injectable()
 export class ReplayForkService {
@@ -18,7 +18,11 @@ export class ReplayForkService {
   private readonly notify = inject(NotificationService);
 
   readonly forkEventIndex = signal<number | null>(null);
-  readonly cachedBoardStates = signal<PreComputedState[]>([]);
+  /** Phase 6 (2026-06-06) — was `cachedBoardStates: PreComputedState[]`.
+   *  Stores a snapshot of `navIndex` during the fork-warning interstitial
+   *  so the replay-page timeline stays rendered while the user decides
+   *  whether to accept the divergence. */
+  readonly cachedNavIndex = signal<ReadonlyArray<ReplayStreamNavEntry>>([]);
   readonly forking = computed(() => this.replayConnection.forkStatus() === 'forking');
 
   private replayId: string | null = null;
@@ -42,7 +46,7 @@ export class ReplayForkService {
             if (!info.dismissedByAction) {
               this.replayConnection.sendForkCancel();
               this.forkEventIndex.set(null);
-              this.cachedBoardStates.set([]);
+              this.cachedNavIndex.set([]);
             }
           });
           break;
@@ -55,20 +59,20 @@ export class ReplayForkService {
     });
   }
 
-  fork(currentIndex: number, boardStates: PreComputedState[], replayId: string): void {
+  fork(currentIndex: number, navIndex: ReadonlyArray<ReplayStreamNavEntry>, replayId: string): void {
     if (this.replayConnection.forkStatus() !== 'idle') return;
 
-    const state = boardStates[currentIndex];
-    if (!state) return;
+    const entry = navIndex[currentIndex];
+    if (!entry) return;
 
     this.replayId = replayId;
     this.forkEventIndex.set(currentIndex);
-    this.cachedBoardStates.set([...boardStates]);
+    this.cachedNavIndex.set([...navIndex]);
 
-    const bs = state.boardState;
-    const phaseNum = PHASE_TO_NUM[bs.phase];
+    const bs = entry.boardStateSnapshot;
+    const phaseNum = PHASE_TO_NUM[bs.phase as Phase];
     duelAssert(phaseNum !== undefined, 'replay-fork', `Unknown phase: ${bs.phase}`);
-    this.replayConnection.sendFork(state.responseCount, {
+    this.replayConnection.sendFork(entry.responseCount, {
       lp: [bs.players[0].lp, bs.players[1].lp] as [number, number],
       turnNumber: bs.turnCount,
       phase: phaseNum,

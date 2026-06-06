@@ -28,7 +28,7 @@
               <app-pvp-board-container
                 [preview]="true"
                 [readOnly]="true"
-                [duelState]="entry.state.boardState"
+                [duelState]="entry.state.boardStateSnapshot"
                 [ownPlayerIndex]="perspectiveIndex()"
                 [highlightedZones]="emptyZoneSet"
                 [revealedZoneKeys]="emptyStringSet"
@@ -95,7 +95,7 @@
               <app-pvp-board-container
                 [preview]="true"
                 [readOnly]="true"
-                [duelState]="entry.state.boardState"
+                [duelState]="entry.state.boardStateSnapshot"
                 [ownPlayerIndex]="perspectiveIndex()"
                 [highlightedZones]="emptyZoneSet"
                 [revealedZoneKeys]="emptyStringSet"

@@ -12,8 +12,7 @@
 // =============================================================================
 
 import { computed, type EffectRef, inject, Injectable, Injector, isDevMode, signal, type Signal } from '@angular/core';
-import type { Player, BoardStatePayload, ChainingMsg } from '../duel-ws.types';
-import type { PreComputedState } from '../duel-ws-replay.types';
+import type { Player, BoardStatePayload, ChainingMsg, ServerMessage } from '../duel-ws.types';
 import {
   drainStream,
   ScopeResetDispatcher,
@@ -32,6 +31,26 @@ import {
 import type { InternalTransportEvent } from './queue-runner-events';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
+
+/**
+ * Minimal input shape consumed by {@link DuelGameLogService.rebuildUpTo}.
+ * Phase 6 (2026-06-06) replaces the retired `PreComputedState` ; the only
+ * fields the rebuild needs are `events[]` + `boardState`. Implemented by
+ * the v4 `ReplayStreamNavEntry` (whose `boardStateSnapshot` field is mapped
+ * via {@link navEntryToRebuildState}). */
+export interface RebuildState {
+  events: ServerMessage[];
+  boardState: BoardStatePayload;
+}
+
+/** Adapter — turns a `ReplayStreamNavEntry` (carries `boardStateSnapshot`
+ *  + `events`) into the structural `RebuildState` shape (carries
+ *  `boardState` + `events`). The mapping is one-to-one and stateless. */
+export function navEntryToRebuildState(
+  entry: { events: ServerMessage[]; boardStateSnapshot: BoardStatePayload },
+): RebuildState {
+  return { events: entry.events, boardState: entry.boardStateSnapshot };
+}
 import { EMPTY_DUEL_STATE } from '../types';
 import { isVirtual } from './virtual-event-registry';
 import { isAbsorbed } from './absorbed-event-registry';
@@ -275,10 +294,10 @@ export class DuelGameLogService implements ResetTarget {
    * states (which `rebuildUpTo` is re-called with) — not from a stale
    * partial `tappedEvents` slice.
    */
-  rebuildUpTo(states: readonly PreComputedState[]): void {
+  rebuildUpTo(entries: readonly { events: ServerMessage[]; boardStateSnapshot: BoardStatePayload }[]): void {
     this.builder = new GameLogBuilder(this.perspective);
     this.tappedEvents.length = 0;
-    for (const state of states) this.builder.ingestState(state);
+    for (const entry of entries) this.builder.ingestState(navEntryToRebuildState(entry));
     this._entries.set([...this.builder.entries]);
     // Signal a wholesale rebuild (vs an incremental append) so the panel
     // jumps the viewport to the bottom — a seek lands the user on step N,

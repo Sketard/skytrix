@@ -221,17 +221,62 @@ partagé avec PvP.
 **Sortie** : ~500-700 lignes retirées, complexité conceptuelle réduite.
 **Effort** : 3-4h.
 
-### Phase 6 — Nettoyage précompute server-side
+### Phase 6 — Nettoyage précompute server-side ✅ LIVRÉ 2026-06-06
 
-- 6.1 — Retirer la segmentation `PreComputedState` dans `replay-precompute.ts`.
-- 6.2 — Retirer `chainSnapshot` embed (intégré dans `navIndex[]` maintenant).
-- 6.3 — Adapter `replay-handlers.ts` pour streamer le nouveau format
-  exclusivement.
-- 6.4 — Retirer les specs `replay-precompute.spec.ts` spécifiques au
-  format `PreComputedState[]`.
+Décisions actées avant code (via AskUserQuestion) :
+- **Enrichir `ReplayStreamNavEntry`** avec `events: ServerMessage[]` +
+  `responseCount: number` (3 options évaluées ; enrichir était le plus
+  propre — doctrine pure, 1 seul format de données transporté).
+- **Supprimer `PreComputedState` + `DecisionMoment` + `ReplayBoardStatesMsg`**
+  du protocole WS et du back. `DecisionMoment` n'avait plus de consommateur
+  (l'adapter qui le lisait est mort Phase 5 ; le timing humain a été
+  remplacé par `REPLAY_PROMPT_DELAY_MS = 1200ms` fixe).
+- **Garder `chainSnapshot` sur `navIndex`** (load-bearing pour F9-bis
+  mid-chain seek restore — Phase 4 livrée).
 
-**Sortie** : précompute simplifiée.
-**Effort** : 3-5h.
+Livraison :
+- 6.1 — Unifié les paths legacy / v4 dans `replay-precompute.ts` :
+  suppression de `flushState`, `emitTurnBatch`, `finalizeChainGroups`,
+  `turnStates`, `currentDecisions`, `lastHint`, `lastConfirmedCards`.
+  Introduit `flushNavEntry()` (helper unique appelé à chaque
+  segmentation boundary), `finalizeChainGroupsForNav` (sur
+  `ReplayStreamNavEntry[]`). `ReplayStreamBuilder.recordNavEntry`
+  signature étendue : `(label, turn, bs, events, responseCount,
+  chainSnapshot?, chainIndex?)`. `finalizeCurrentTurnChainGroups`
+  appelé avant `flushTurn`.
+- 6.2 — `chainSnapshot` conservé sur `ReplayStreamNavEntry` ;
+  `PreComputedState.chainSnapshot` retiré avec le type lui-même.
+- 6.3 — `replay-handlers.ts` ne stream plus que `REPLAY_STREAM_*` ;
+  branche `WORKER_REPLAY_BOARD_STATES` retirée.
+- 6.4 — Specs adaptées : `replay-precompute.spec.ts` (3 tests
+  finalizeChainGroups/emitTurnBatch portés vers `finalizeChainGroupsForNav`,
+  emitTurnBatch supprimé), `replay-precompute-v4-stream.spec.ts`
+  (signature `recordNavEntry`), `worker-message-validation.spec.ts`
+  (retire WORKER_REPLAY_BOARD_STATES tests), `duel-worker-emit.spec.ts`
+  + `duel-worker-fork.spec.ts` (retirent `replayBoardStates` method),
+  `game-log-builder.spec.ts` (introduit `BuilderState` structural).
+- 6.5 — Front : `boardStates` → `navIndex` partout. `replay-page`,
+  `replay-connection.service` (supprime signal `boardStates`), `replay-transport.service`
+  (config `navIndex`), `replay-fork.service` (`cachedNavIndex` +
+  `fork(idx, navIndex, replayId)`), `timeline-bar` + html, `turn-picker-sheet`
+  + html, `sub-event-picker-sheet` + html. `duel-game-log.service.rebuildUpTo`
+  signature `{events, boardStateSnapshot}[]` structurel (helper `navEntryToRebuildState`).
+  `GameLogBuilder.ingestState` accepte `BuilderState = {events, boardState}`
+  (découplé de `PreComputedState`).
+
+Tests finaux :
+- Karma front pvp : **1586/1586 verts**
+- Vitest duel-server : **1907/1908 verts** (1 pré-existant `dist/`)
+- tsc front + back : OK
+- check-ws-protocol-sync : OK
+
+**Sortie** : précompute simplifiée. `ReplayStreamNavEntry` est
+maintenant le successeur 1:1 du retired `PreComputedState`. La doctrine
+"Replay = PvP readonly via MockDuelConnection" est atteinte —
+`mockConn.navIndex()` est la seule structure de données timeline,
+exposée comme `ReadonlyArray<ReplayStreamNavEntry>` directement aux
+consommateurs UI.
+**Effort réel** : ~5-6h (incl. front fan-out 8 fichiers + specs).
 
 ### Phase 7 — Validation et finition
 

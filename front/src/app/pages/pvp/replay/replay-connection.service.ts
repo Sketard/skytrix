@@ -1,8 +1,8 @@
-import { computed, Injectable, OnDestroy, signal } from '@angular/core';
+import { Injectable, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { PROTOCOL_VERSION } from '../duel-ws.types';
 import type {
-  PreComputedState, ReplayMetadataMsg, ReplayServerMessage, ForkSanityFields,
+  ReplayMetadataMsg, ReplayServerMessage, ForkSanityFields,
   ReplayStreamChunkMsg, ReplayStreamInitMsg,
 } from '../replay-ws.types';
 
@@ -13,8 +13,6 @@ export class ReplayConnectionService implements OnDestroy {
 
   readonly connectionStatus = signal<'connecting' | 'connected' | 'disconnected'>('disconnected');
   readonly metadata = signal<ReplayMetadataMsg | null>(null);
-  readonly boardStates = signal<PreComputedState[]>([]);
-  readonly computedUpTo = computed(() => this.boardStates().length - 1);
   readonly totalResponses = signal<number>(0);
   readonly error = signal<string | null>(null);
   readonly lastReceivedTurn = signal<number>(-1);
@@ -49,7 +47,6 @@ export class ReplayConnectionService implements OnDestroy {
 
   connect(replayId: string, token: string): void {
     this.disconnect();
-    this.boardStates.set([]);
     this.lastReceivedTurn.set(-1);
     this.metadata.set(null);
     this.error.set(null);
@@ -84,12 +81,8 @@ export class ReplayConnectionService implements OnDestroy {
             this.totalResponses.set(msg.totalResponses);
             break;
 
-          case 'REPLAY_BOARD_STATES':
-            this.boardStates.update(prev => prev.concat(msg.states));
-            this.lastReceivedTurn.set(msg.turnNumber);
-            break;
-
           case 'REPLAY_STREAM_CHUNK':
+            this.lastReceivedTurn.set(msg.turnNumber);
             this.onStreamChunk?.(msg);
             break;
 
@@ -160,10 +153,6 @@ export class ReplayConnectionService implements OnDestroy {
       this.forkWarning.set(null);
       this.ws.send(JSON.stringify({ type: 'REPLAY_FORK_CANCEL' }));
     }
-  }
-
-  clearBoardStates(): void {
-    this.boardStates.set([]);
   }
 
   resetForkState(): void {

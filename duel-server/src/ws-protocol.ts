@@ -50,7 +50,7 @@ import type {
 } from './ws-protocol-system.js';
 
 import type {
-  ReplayBoardStatesMsg, ReplayMetadataMsg, ReplayErrorMsg, ReplayForkReadyMsg,
+  ReplayMetadataMsg, ReplayErrorMsg, ReplayForkReadyMsg,
   ReplayStreamChunkMsg, ReplayStreamInitMsg,
   ReplayLoadMsg, ReplayForkMsg, ReplayForkContinueMsg, ReplayForkCancelMsg,
 } from './ws-protocol-replay.js';
@@ -141,8 +141,7 @@ export type ServerMessage =
   | InactivityWarningMsg
   | WaitingResponseMsg
   | ErrorMsg
-  // Replay messages (6)
-  | ReplayBoardStatesMsg
+  // Replay messages (5)
   | ReplayMetadataMsg
   | ReplayErrorMsg
   | ReplayForkReadyMsg

@@ -14,7 +14,7 @@ import type {
   CombatEntry,
   ActionEntry,
 } from './game-log-types.js';
-import type { PreComputedState } from '../ws-protocol-replay.js';
+import type { BuilderState } from './game-log-builder.js';
 import type { ServerMessage } from '../ws-protocol.js';
 import { LOCATION } from '../ws-protocol-shared.js';
 import type { BoardStatePayload } from '../ws-protocol-shared.js';
@@ -48,8 +48,8 @@ function board(
 function state(
   bs: BoardStatePayload,
   events: ServerMessage[],
-): PreComputedState {
-  return { boardState: bs, events, label: '', responseCount: 0 };
+): BuilderState {
+  return { boardState: bs, events };
 }
 
 // -----------------------------------------------------------------------------

@@ -145,17 +145,14 @@ describe('validateWorkerMessage', () => {
     expect(validateWorkerMessage({ type: 'WORKER_REPLAY_DATA', duelId: 'd1', payload: 'bad' })).toBeNull();
   });
 
-  it('accepts WORKER_REPLAY_BOARD_STATES with turnNumber+states array', () => {
-    const m = { type: 'WORKER_REPLAY_BOARD_STATES', duelId: 'd1', turnNumber: 3, states: [] };
-    expect(validateWorkerMessage(m)).toBe(m);
-  });
+  // Phase 6 (2026-06-06) — `WORKER_REPLAY_BOARD_STATES` retired. The
+  // validator's default branch rejects the legacy type just like any
+  // unknown type. Coverage for the v4 stream messages
+  // (`WORKER_REPLAY_STREAM_CHUNK` / `WORKER_REPLAY_STREAM_INIT`) lives
+  // below.
 
-  it('rejects WORKER_REPLAY_BOARD_STATES with non-numeric turnNumber', () => {
-    expect(validateWorkerMessage({ type: 'WORKER_REPLAY_BOARD_STATES', duelId: 'd1', turnNumber: '3', states: [] })).toBeNull();
-  });
-
-  it('rejects WORKER_REPLAY_BOARD_STATES with non-array states', () => {
-    expect(validateWorkerMessage({ type: 'WORKER_REPLAY_BOARD_STATES', duelId: 'd1', turnNumber: 3, states: 'bad' })).toBeNull();
+  it('rejects retired WORKER_REPLAY_BOARD_STATES (Phase 6 cleanup)', () => {
+    expect(validateWorkerMessage({ type: 'WORKER_REPLAY_BOARD_STATES', duelId: 'd1', turnNumber: 3, states: [] })).toBeNull();
   });
 
   it('accepts WORKER_REPLAY_COMPLETE with duelId', () => {

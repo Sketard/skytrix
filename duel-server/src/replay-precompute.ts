@@ -14,10 +14,7 @@ import type {
   ServerMessage,
   BoardStateMsg,
   BoardStatePayload,
-  CardInfo,
   Player,
-  PreComputedState,
-  DecisionMoment,
   ChainingMsg,
   ReplayStreamAutoResponse,
   ReplayStreamNavEntry,
@@ -31,6 +28,14 @@ import { LOCATION, POSITION } from './ws-protocol.js';
  * — the OCG runtime, dlog, port, and the 4 stateful helpers
  * (`transformMessage`, `updateState`, `buildBoardState`, `cleanup`) stay in
  * `duel-worker.ts` since they touch its module-level OCG state.
+ *
+ * Phase 6 (2026-06-06) — unified output: the loop emits the v4 stream
+ * exclusively (`WORKER_REPLAY_STREAM_CHUNK` + `WORKER_REPLAY_STREAM_INIT`).
+ * The legacy `PreComputedState[]` / `WORKER_REPLAY_BOARD_STATES` path is
+ * retired ; the segmentation logic that produced timeline entries now
+ * feeds `ReplayStreamBuilder.recordNavEntry` directly (each nav entry
+ * carries `events[]` + `responseCount` + `boardStateSnapshot` +
+ * `chainSnapshot?` — the 1:1 successor of the retired `PreComputedState`).
  */
 
 // =============================================================================
@@ -176,21 +181,23 @@ function generateLabel(events: ServerMessage[]): string {
   return '';
 }
 
-/** Strip chainIndex from single-link chains; prefix label with CL{n} for multi-link chains. */
-function finalizeChainGroups(states: PreComputedState[]): void {
+/** Strip chainIndex from single-link chains; prefix label with CL{n} for multi-link chains.
+ *
+ *  Operates on the nav entries of a single turn (Phase 6 — replaces the legacy
+ *  `finalizeChainGroups(PreComputedState[])`). Same semantics : runs of
+ *  contiguous entries with `chainIndex != null` are either stripped (single-
+ *  link chain — cosmetic, no badge) or prefixed (multi-link chain — `CL{n}: ...`). */
+function finalizeChainGroupsForNav(entries: ReplayStreamNavEntry[]): void {
   let i = 0;
-  while (i < states.length) {
-    if (states[i].chainIndex == null) { i++; continue; }
-    // Find the contiguous run of chain-linked states
+  while (i < entries.length) {
+    if (entries[i].chainIndex == null) { i++; continue; }
     const start = i;
-    while (i < states.length && states[i].chainIndex != null) i++;
+    while (i < entries.length && entries[i].chainIndex != null) i++;
     if (i - start <= 1) {
-      // Single-link chain — remove chainIndex, keep plain label
-      delete states[start].chainIndex;
+      delete entries[start].chainIndex;
     } else {
-      // Multi-link chain — prefix labels with CL{n}
       for (let j = start; j < i; j++) {
-        states[j].label = `CL${states[j].chainIndex! + 1}: ${states[j].label}`;
+        entries[j].label = `CL${entries[j].chainIndex! + 1}: ${entries[j].label}`;
       }
     }
   }
@@ -227,27 +234,24 @@ export interface ReplayPrecomputeDeps {
 }
 
 // =============================================================================
-// Anim-pipeline v4 — replay-as-PvP-readonly stream builder (Phase 2)
+// Anim-pipeline v4 — replay-as-PvP-readonly stream builder
 // =============================================================================
 
 /**
- * Accumulator for the new `REPLAY_STREAM_*` messages emitted alongside the
- * legacy `WORKER_REPLAY_BOARD_STATES`. The precompute loop pushes one
- * `ServerMessage` per `ingest` call ; on every turn boundary it `flushTurn`s
- * the accumulated chunk over the worker port. At the end of the duel
- * `emitInit` ships the final `navIndex` + `totalMessages` count.
+ * Accumulator for the `REPLAY_STREAM_*` messages emitted by the precompute
+ * loop. The loop pushes one `ServerMessage` per `ingest` call ; on every
+ * turn boundary it `flushTurn`s the accumulated chunk over the worker
+ * port. At the end of the duel `emitInit` ships the final `navIndex` +
+ * `totalMessages` count.
  *
- * **Why per-turn chunks** : matches the existing `emitTurnBatch` cadence
- * (Phase 2 doctrine — minimal disruption to the worker thread's emission
- * pattern). The size threshold (`MAX_CHUNK_BYTES`, same 512 KB as legacy)
- * splits long turns to keep WS frames bounded.
+ * **Why per-turn chunks** : matches the historical `WORKER_REPLAY_BOARD_STATES`
+ * cadence. The size threshold (`MAX_CHUNK_BYTES`, 512 KB) splits long
+ * turns to keep WS frames bounded.
  *
- * **Why a separate accumulator** (vs. piggybacking on the legacy `events`
- * array) : the legacy `events[]` is mutated/cleared at every `flushState`
- * call to scope events to a `PreComputedState`. The stream needs a LINEAR
- * append-only buffer keyed by global cursor offset — clearing it per
- * flush would lose the offset semantic. Separate buffer = no impact on
- * the legacy code path's correctness.
+ * Phase 6 (2026-06-06) — the builder is now the single output path. Each
+ * `recordNavEntry` carries `events[]` + `responseCount` so the client's
+ * `MockDuelConnection` + `DuelGameLogService.rebuildUpTo` can read the
+ * same information the legacy `PreComputedState[]` exposed.
  */
 class ReplayStreamBuilder {
   private static readonly MAX_CHUNK_BYTES = 512 * 1024;
@@ -289,30 +293,33 @@ class ReplayStreamBuilder {
     this._turnAutoResponses.push({ offset, promptType, data });
   }
 
-  /** Add a nav entry pointing to the current cursor. Called at the same
-   *  sites where `flushState` is called — keeps the nav index aligned with
-   *  the legacy `PreComputedState[]` boundaries. v4 Phase 3 — also pushed
-   *  on `_turnNavEntries` so the next `flushTurn` carries it on the chunk
-   *  (instead of waiting for the final `emitInit`).
+  /** Add a nav entry pointing to the current cursor. Called at every
+   *  segmentation boundary — chain link start (MSG_CHAINING), chain end
+   *  (MSG_CHAIN_END), phase transition (NEW_PHASE), turn transition
+   *  (NEW_TURN), boundary prompt (SELECT_IDLECMD/BATTLECMD), end of
+   *  responses, end of duel.
    *
-   *  v4 Phase 4 (2026-06-05) — `boardStateSnapshot` + `chainSnapshot`
-   *  required so the client's `mockConn.seekToOffset(N)` restores in
-   *  O(1) instead of replaying messages forward. The boardState is the
-   *  same value the legacy `flushState` captures via
-   *  `(buildBoardState() as BoardStateMsg).data`, kept in ABSOLUTE
-   *  perspective (the mock swaps at consume time). */
+   *  `events` is the accumulated batch since the last flush — same content
+   *  as the retired `PreComputedState.events`. `responseCount` matches the
+   *  retired `PreComputedState.responseCount` (number of player responses
+   *  consumed so far). `boardStateSnapshot` is the same ABSOLUTE board
+   *  state the legacy `flushState` captured via `buildBoardState`. */
   recordNavEntry(
     label: string, turnNumber: number,
     boardStateSnapshot: BoardStatePayload,
+    events: ServerMessage[],
+    responseCount: number,
     chainSnapshot: ReplayStreamNavEntry['chainSnapshot'],
     chainIndex?: number,
   ): void {
-    if (!label) return; // mirror flushState skip — empty-label states are not navigable
+    if (!label) return; // skip empty-label batches — they would produce phantom scrubber entries
     const entry: ReplayStreamNavEntry = {
       messageOffset: this._cursor,
       label,
       turnNumber,
+      responseCount,
       boardStateSnapshot,
+      events: [...events],
       ...(chainIndex != null ? { chainIndex } : {}),
       ...(chainSnapshot ? { chainSnapshot } : {}),
     };
@@ -320,9 +327,16 @@ class ReplayStreamBuilder {
     this._turnNavEntries.push(entry);
   }
 
+  /** Apply CL{n} chain-grouping finalisation on the nav entries of the
+   *  current turn (Phase 6 — moved here from the global `finalizeChainGroups`
+   *  call site). MUST be called BEFORE `flushTurn` so the chunk ships the
+   *  finalised labels. */
+  finalizeCurrentTurnChainGroups(): void {
+    finalizeChainGroupsForNav(this._turnNavEntries);
+  }
+
   /** Flush the current turn's chunk(s). Splits into multiple chunks if
-   *  `MAX_CHUNK_BYTES` is exceeded — same defense-in-depth as
-   *  `emitTurnBatch` for the legacy format. */
+   *  `MAX_CHUNK_BYTES` is exceeded — defense-in-depth for long turns. */
   flushTurn(turnNumber: number): void {
     if (this._turnMessages.length === 0) {
       // Reset side-buffers just in case a flush is called without messages
@@ -354,10 +368,10 @@ class ReplayStreamBuilder {
       this._turnBaseOffset = this._cursor;
       return;
     }
-    // Split: same arithmetic chunk-size strategy as `emitTurnBatch`. Both
-    // `autoResponses` and `navEntries` are partitioned by their
-    // `messageOffset` / `offset` field so each chunk carries only what
-    // belongs to its message range.
+    // Split: same arithmetic chunk-size strategy as the historical
+    // `emitTurnBatch`. Both `autoResponses` and `navEntries` are partitioned
+    // by their `messageOffset` / `offset` field so each chunk carries only
+    // what belongs to its message range.
     const avgPerMsg = totalBytes / total.length;
     const targetChunkSize = Math.max(1, Math.floor((ReplayStreamBuilder.MAX_CHUNK_BYTES * 0.8) / avgPerMsg));
     for (let i = 0; i < total.length;) {
@@ -406,102 +420,21 @@ class ReplayStreamBuilder {
   }
 }
 
-/**
- * Emit a turn's pre-computed states in chunks bounded by `MAX_BATCH_BYTES`.
- *
- * Audit finding M5 — previous implementation re-serialized chunks while
- * halving them until they fit, worst-case O(n × log(start_chunk_size))
- * stringifies on a long turn. Now: one byteLength measurement up-front
- * derives an arithmetic chunk size from the observed avg-bytes-per-state,
- * with a 20% safety margin to absorb per-state variance. The chunk-fits
- * guard is kept (defense in depth — a chain with one giant boardStateAfter
- * after dozens of trivial events could still drift), but in practice it
- * almost never fires because the margin already covers typical variance.
- */
-function emitTurnBatch(
-  port: PortLike,
-  replayDuelId: string,
-  turnNum: number,
-  states: PreComputedState[],
-): void {
-  if (states.length === 0) return;
-  const MAX_BATCH_BYTES = 512 * 1024;
-  const serialized = JSON.stringify(states);
-  const totalBytes = Buffer.byteLength(serialized, 'utf-8');
-  if (totalBytes <= MAX_BATCH_BYTES) {
-    port.postMessage({
-      type: 'WORKER_REPLAY_BOARD_STATES',
-      duelId: replayDuelId,
-      turnNumber: turnNum,
-      states,
-    });
-    return;
-  }
-  // Derive chunk size arithmetically: target 80% of MAX to absorb per-state
-  // size variance. Floor at 1 so the loop always advances.
-  const avgPerState = totalBytes / states.length;
-  const targetChunkSize = Math.max(1, Math.floor((MAX_BATCH_BYTES * 0.8) / avgPerState));
-  for (let i = 0; i < states.length;) {
-    let chunk = states.slice(i, Math.min(i + targetChunkSize, states.length));
-    // Defense in depth: if variance pushed this chunk over MAX, halve it
-    // until it fits. Borderline cases only — typical chunks pass first try.
-    while (chunk.length > 1 && Buffer.byteLength(JSON.stringify(chunk), 'utf-8') > MAX_BATCH_BYTES) {
-      chunk = chunk.slice(0, Math.ceil(chunk.length / 2));
-    }
-    port.postMessage({
-      type: 'WORKER_REPLAY_BOARD_STATES',
-      duelId: replayDuelId,
-      turnNumber: turnNum,
-      states: chunk,
-    });
-    i += chunk.length;
-  }
-}
-
-function flushState(
-  buildBoardState: () => ServerMessage,
-  turnStates: PreComputedState[],
-  events: ServerMessage[],
-  decisions: DecisionMoment[],
-  label: string,
-  responseIndex: number,
-  chainIndex?: number,
-  chainSnapshot?: PreComputedState['chainSnapshot'],
-): void {
-  // Skip empty states (only SELECT_*/WAITING_RESPONSE, no visual events)
-  if (!label) return;
-  const boardState = (buildBoardState() as BoardStateMsg).data;
-  turnStates.push({
-    boardState,
-    events: [...events],
-    label,
-    responseCount: responseIndex,
-    ...(decisions.length > 0 ? { decisions: [...decisions] } : {}),
-    ...(chainIndex != null ? { chainIndex } : {}),
-    ...(chainSnapshot ? { chainSnapshot } : {}),
-  });
-}
-
 /** Build a `chainSnapshot` payload from the current chain state container,
- *  or `undefined` when no chain is open (so flushState skips the field).
- *
- *  Called from every flushState site so a state captured mid-chain carries
- *  the snapshot the replay viewer needs to restore `activeChainLinks` +
- *  `chainPhase` on a seek that lands inside the chain. Mirrors the PvP
- *  `CHAIN_STATE` reconnect handshake — same shape, same restore code path
- *  (`processor.restoreChainState`). F9 (cross-side `chainPhase` parity)
- *  gains a 3rd consumer with this function: replay-precompute now also
- *  runs `applyChainTransition` to drive `chainStateContainer`. */
-function buildChainSnapshot(container: ChainStateContainer): PreComputedState['chainSnapshot'] {
+ *  or `undefined` when no chain is open. Called at every `recordNavEntry`
+ *  site so a nav entry captured mid-chain carries the snapshot the replay
+ *  viewer needs to restore `activeChainLinks` + `chainPhase` on a seek that
+ *  lands inside the chain. Mirrors the PvP `CHAIN_STATE` reconnect
+ *  handshake — same shape, same restore code path
+ *  (`processor.restoreChainState`). */
+function buildChainSnapshot(container: ChainStateContainer): ReplayStreamNavEntry['chainSnapshot'] {
   if (container.chainPhase === 'idle') return undefined;
   // F9-bis bug fix (2026-06-04) — defensive shallow copy of `activeChainLinks`.
   // `applyChainTransition` MUTATES the underlying array (push on MSG_CHAINING),
   // so embedding a direct reference made every snapshot point to the SAME
   // array — by the time the precompute finishes pushing all N links, all N
   // states' snapshots displayed `[link0, …, linkN]` instead of growing
-  // [link0], [link0, link1], ... See diagnostic spec
-  // `f9-bis-diagnostic.spec.ts` for the symptom (state 5 carrying 4 links
-  // even though only 1 MSG_CHAINING was in its events[]).
+  // [link0], [link0, link1], ...
   return {
     links: [...container.activeChainLinks] as ChainingMsg[],
     phase: container.chainPhase,
@@ -523,11 +456,7 @@ export function runReplayPreComputation(
 
   let responseIndex = 0;
   let currentTurn = 0; // Turn 0 = "Setup"
-  let turnStates: PreComputedState[] = [];
   let events: ServerMessage[] = [];
-  let currentDecisions: DecisionMoment[] = [];
-  let lastHint: { hintType: number; value: number; cardName: string } | null = null;
-  let lastConfirmedCards: CardInfo[] | null = null;
   let hasWinOrDraw = false;
   let activeChainIndex: number | null = null; // Track current chain link depth
   // Local chain tracker — replay precompute doesn't share state with cancel,
@@ -535,66 +464,67 @@ export function runReplayPreComputation(
   const chainTracker = new ChainSnapshotTracker();
   // F9-bis (2026-06-04) — local chain state container driven by the same
   // `applyChainTransition` the live worker uses (`worker-message-router.ts`).
-  // Embedded into every `PreComputedState` captured while a chain is open
+  // Embedded into every nav entry captured while a chain is open
   // (`chainPhase !== 'idle'`) so the replay viewer can restore
   // `activeChainLinks` + `chainPhase` on a mid-chain seek via
   // `processor.restoreChainState` — the same code path as the PvP
-  // `CHAIN_STATE` reconnect handshake. Without this, seeking into a chain
-  // leaves the overlay + chain badges empty (the processor is wiped by
-  // `adapter.abort()` and no `MSG_CHAINING(1..N-1)` is re-fed).
+  // `CHAIN_STATE` reconnect handshake.
   const chainStateContainer: ChainStateContainer = emptyChainState();
   let iterations = 0;
 
-  // Anim-pipeline v4 (Phase 2) — accumulate the replay-as-PvP-readonly
-  // stream alongside the legacy `PreComputedState[]` emission. Ingested
-  // at the SAME sites where `events.push(filtered)` fires + at the
-  // SELECT_IDLECMD/BATTLECMD/MSG_HINT sites (which the legacy events[]
-  // skips but the mock needs for strict PvP-doctrine equivalence). Nav
-  // entries are recorded alongside every non-empty flushState call. The
-  // final `emitInit` ships at the END / responses-exhausted exits.
+  // Anim-pipeline v4 — single output path : the stream builder. Each
+  // flushNavEntry site corresponds to one of the historical `flushState`
+  // sites (chain link start, chain end, phase change, turn change, boundary
+  // prompt, end of responses, end of duel).
   const streamBuilder = new ReplayStreamBuilder(port, duelId);
-  /** Helper — emit a synthetic BOARD_STATE into the stream + record a nav
-   *  entry. Called at each `flushState` boundary so the client mock has
-   *  an authoritative state to `updateLogical` against (matches what a
-   *  live PvP worker emits between user-visible moments) AND a scrubber
-   *  target. The boardState is identical to what the legacy `flushState`
-   *  captures via `(buildBoardState() as BoardStateMsg).data`. The order
-   *  on the stream is: events.push x N (already done in the loop), THEN
-   *  BOARD_STATE, mirroring the live PvP ordering (events FIRST, then
-   *  BOARD_STATE confirms). Gated on `label` non-empty just like
-   *  `flushState` itself, so empty-label states (SELECT_/WAITING-only
-   *  batches) do not produce a phantom scrubber entry. */
-  function recordStreamFlush(label: string, chainIndex?: number): void {
-    if (!label) return;
+
+  /** Helper — flush the accumulated events as a nav entry + matching
+   *  synthetic BOARD_STATE on the stream. Mirrors the legacy `flushState`
+   *  call sites 1:1 :
+   *  - generates the label from `events`,
+   *  - captures `boardStateSnapshot` + `chainSnapshot` from current state,
+   *  - records the nav entry (skipped if label is empty — mirror of the
+   *    legacy guard),
+   *  - emits a synthetic BOARD_STATE so the client mock has an authoritative
+   *    state to `updateLogical` against (matches what a live PvP worker
+   *    emits between user-visible moments),
+   *  - resets the local `events[]` accumulator.
+   *
+   *  The order on the stream is : events.push x N (already done in the loop)
+   *  THEN BOARD_STATE, mirroring the live PvP ordering (events FIRST, then
+   *  BOARD_STATE confirms). Empty-label batches (SELECT_/WAITING-only)
+   *  reset the accumulator without emitting anything — same as the legacy
+   *  guard in `flushState`. */
+  function flushNavEntry(chainIndex?: number, labelOverride?: string): void {
+    const label = labelOverride ?? generateLabel(events);
+    if (!label) {
+      events = [];
+      return;
+    }
     const bs = buildBoardState() as BoardStateMsg;
     streamBuilder.ingest({ type: 'BOARD_STATE', data: bs.data });
-    // v4 Phase 4 — same boardState payload feeds the nav entry's
-    // snapshot, so `mockConn.seekToOffset(N)` can restore the rendered
-    // state in O(1). `buildChainSnapshot` is the SHARED helper already
-    // used by the legacy `PreComputedState.chainSnapshot` ; reusing it
-    // guarantees the two paths can't drift.
-    streamBuilder.recordNavEntry(label, currentTurn, bs.data, buildChainSnapshot(chainStateContainer), chainIndex);
+    streamBuilder.recordNavEntry(
+      label, currentTurn, bs.data, events, responseIndex,
+      buildChainSnapshot(chainStateContainer), chainIndex,
+    );
+    events = [];
   }
+
   /** Tracks the global cursor offset of the most recent SELECT_* / SORT_* /
    *  ANNOUNCE_* ingested into the stream. The `responseIndex` consumer uses
    *  this to pair `playerResponses[i]` with the SELECT_* it answers via
    *  `streamBuilder.recordAutoResponse(lastSelectOffset, …)`. -1 sentinel
    *  catches the impossible case "auto-respond fired but no prompt was
-   *  streamed" (would indicate the precompute ingested a SELECT_* without
-   *  updating this tracker — assertion-style guard in the recordAutoResponse
-   *  helper below). */
+   *  streamed". */
   let lastSelectOffset = -1;
   /** Wrapper around `streamBuilder.ingest` that detects prompt-type
-   *  messages and updates `lastSelectOffset`. Keeps the call sites in the
-   *  main loop short — they just call `ingestStream(filtered)` instead of
-   *  remembering to update the tracker. */
+   *  messages and updates `lastSelectOffset`. */
   function ingestStream(msg: ServerMessage): void {
     const offset = streamBuilder.ingest(msg);
     if (PROMPT_TYPES_STREAM.has(msg.type)) lastSelectOffset = offset;
   }
   /** Auto-respond helper — pairs `lastSelectOffset` with the response data
-   *  being fed to OCGCore. Guards against the "no prior SELECT_*" case
-   *  (logged once, drops the auto-respond for that index). */
+   *  being fed to OCGCore. Guards against the "no prior SELECT_*" case. */
   function recordAutoResponse(promptType: string, data: Record<string, unknown>): void {
     if (lastSelectOffset === -1) {
       dlog.warn('Replay v4 stream — recordAutoResponse called without a prior SELECT_* ingest', { promptType, responseIndex });
@@ -653,13 +583,7 @@ export function runReplayPreComputation(
 
       // Flush accumulated events BEFORE phase update so boardState captures the old phase
       if (rawMsg.type === OcgMessageType.NEW_PHASE) {
-        if (events.length > 0 || currentDecisions.length > 0) {
-          const label = generateLabel(events);
-          flushState(buildBoardState, turnStates, events, currentDecisions, label, responseIndex, undefined, buildChainSnapshot(chainStateContainer));
-          recordStreamFlush(label);
-          events = [];
-          currentDecisions = [];
-        }
+        if (events.length > 0) flushNavEntry();
       }
 
       // Track state for buildBoardState()
@@ -670,21 +594,13 @@ export function runReplayPreComputation(
         hasWinOrDraw = true;
       }
 
-      // Track turn changes — flush accumulated decisions before emitting turn batch
+      // Track turn changes — flush accumulated events before emitting turn batch
       if (rawMsg.type === OcgMessageType.NEW_TURN) {
-        if (events.length > 0 || currentDecisions.length > 0) {
-          const label = generateLabel(events);
-          flushState(buildBoardState, turnStates, events, currentDecisions, label, responseIndex, undefined, buildChainSnapshot(chainStateContainer));
-          recordStreamFlush(label);
-          events = [];
-          currentDecisions = [];
-        }
+        if (events.length > 0) flushNavEntry();
         // Emit completed turn batch BEFORE incrementing
-        finalizeChainGroups(turnStates);
-        emitTurnBatch(port, duelId, currentTurn, turnStates);
+        streamBuilder.finalizeCurrentTurnChainGroups();
         streamBuilder.flushTurn(currentTurn);
         currentTurn++;
-        turnStates = [];
         dlog.debug('Replay turn started', { turn: currentTurn });
       }
 
@@ -699,66 +615,46 @@ export function runReplayPreComputation(
         if (filtered) {
           // Track chain-resolving window + attach `boardStateAfter` snapshot.
           // Client's `replayBuffer` uses it to progress logical state across
-          // events instead of jumping to the final chain state at commit. The
-          // snapshot reflects ocgcore state at capture time (post-batch if
-          // multiple events fire in one `duelProcess` call); still strictly
-          // better than no snapshot at all.
+          // events instead of jumping to the final chain state at commit.
           chainTracker.process(filtered, () => (buildBoardState() as BoardStateMsg).data);
 
           // F9-bis (2026-06-04) — chain state container transition timing.
-          // The container drives `chainSnapshot` on every flushed state. The
-          // rule is: a flushed state's snapshot must reflect the chain state
-          // AFTER the last event in the state's `events[]`. So
+          // The container drives `chainSnapshot` on every flushed nav entry.
+          // Rule: a flushed nav entry's snapshot must reflect the chain state
+          // AFTER the last event in the entry's `events[]`. So
           // `applyChainTransition` happens AFTER any flush triggered by
           // `filtered` itself (CHAINING / CHAIN_END branches below — those
           // flush events that PRECEDE `filtered`) and BEFORE `filtered` is
           // pushed into `events[]` for any other branch (so the next flush
           // triggered by a later message sees the post-transition state on
-          // `filtered`). Concretely: CHAINING/CHAIN_END handle their own
-          // transition timing inline; every other branch falls through to
-          // the `applyChainTransition` call at the end.
+          // `filtered`).
 
-          // Track hint/confirmedCards accumulators (metadata, not pushed to events)
           if (filtered.type === 'MSG_HINT') {
-            lastHint = { hintType: filtered.hintType, value: filtered.value, cardName: filtered.cardName };
+            // Hint flows through the stream so the per-slot hintContext
+            // flips identically to PvP. Not accumulated into the events
+            // batch (legacy hint was metadata-only on DecisionMoment, now
+            // retired).
             applyChainTransition(chainStateContainer, filtered);
-            // v4 Phase 2 — MSG_HINT lives on the live PvP wire (DuelConnection
-            // routes it via _handleMsgHint) ; mock-side parity requires it in
-            // the stream so the per-slot hintContext flips identically.
             ingestStream(filtered);
           } else if (filtered.type === 'MSG_CONFIRM_CARDS') {
-            lastConfirmedCards = filtered.cards;
             applyChainTransition(chainStateContainer, filtered);
-            events.push(filtered); // Also push to events so the front-end can animate the reveal
+            events.push(filtered); // Push to events so the front-end can animate the reveal
             ingestStream(filtered);
           } else if (filtered.type !== 'SELECT_IDLECMD' && filtered.type !== 'SELECT_BATTLECMD') {
             // Flush before each chain activation so each effect gets its own timeline entry.
             //
             // F10 (2026-05-31) — cross-side parity. This flush is the replay
             // counterpart to the PvP intermediate BOARD_STATE emitted in
-            // duel-worker.ts:1376-1379 (after the "if (dto.type === 'MSG_CHAIN_SOLVING'
-            // && hasCostMoves)" guard). Both mechanisms surface a board sync
-            // between chain cost moves (the events flushed here) and the
-            // chain entering resolving. The ORDER vs MSG_CHAINING differs
-            // between modes (PvP after, replay before) but the practical
-            // effect (DECK/EXTRA pile counts + metadata up to date before
-            // resolving) is equivalent. See CLAUDE.md → "Intermediate
-            // post-cost board sync (F10)". If you change this flush
-            // condition (e.g. only flush when cost moves are present), make
-            // sure the PvP counterpart still matches the new contract.
+            // duel-worker.ts after the cost MSG_MOVE. Both mechanisms surface
+            // a board sync between chain cost moves (the events flushed here)
+            // and the chain entering resolving. See CLAUDE.md → "Intermediate
+            // post-cost board sync (F10)".
             if (filtered.type === 'MSG_CHAINING') {
               if (events.length > 0) {
                 // F9-bis — flush BEFORE applyChainTransition so the snapshot
                 // reflects the chain state as of the events being flushed
-                // (which precede this `MSG_CHAINING`). For link 1 (idle →
-                // building transition), the pre-transition state is `idle`
-                // → snapshot is undefined. For link N≥2, the pre-transition
-                // state already has links 1..N-1, matching the events.
-                const label = generateLabel(events);
-                flushState(buildBoardState, turnStates, events, currentDecisions, label, responseIndex, activeChainIndex ?? undefined, buildChainSnapshot(chainStateContainer));
-                recordStreamFlush(label, activeChainIndex ?? undefined);
-                events = [];
-                currentDecisions = [];
+                // (which precede this `MSG_CHAINING`).
+                flushNavEntry(activeChainIndex ?? undefined);
               }
               activeChainIndex = filtered.chainIndex;
               applyChainTransition(chainStateContainer, filtered);
@@ -770,36 +666,18 @@ export function runReplayPreComputation(
                 // still reflects `phase='resolving'` or `'building'` with the
                 // full link list. After applyChainTransition the container is
                 // back to `idle` and `buildChainSnapshot` returns undefined.
-                const label = generateLabel(events);
-                flushState(buildBoardState, turnStates, events, currentDecisions, label, responseIndex, activeChainIndex ?? undefined, buildChainSnapshot(chainStateContainer));
-                recordStreamFlush(label, activeChainIndex ?? undefined);
-                events = [];
-                currentDecisions = [];
+                flushNavEntry(activeChainIndex ?? undefined);
               }
               activeChainIndex = null;
               applyChainTransition(chainStateContainer, filtered);
               // Flush MSG_CHAIN_END as its own state WITHOUT chainIndex.
               // This acts as a separator between consecutive chains in the timeline.
-              // The front-end hides it (HIDDEN_LABELS in subEventSegments).
+              // The front-end hides it (HIDDEN_SUB_EVENT_LABELS).
               // No `chainSnapshot` either: `applyChainTransition` flipped phase
               // to `idle` above, so `buildChainSnapshot` returns undefined.
               events.push(filtered);
               ingestStream(filtered);
-              flushState(buildBoardState, turnStates, events, currentDecisions, 'MSG_CHAIN_END', responseIndex, undefined, buildChainSnapshot(chainStateContainer));
-              // v4 Phase 3 (2026-06-05) — record the nav entry + synthetic
-              // BOARD_STATE for MSG_CHAIN_END too, so the 1-to-1 mapping
-              // between `PreComputedState[]` (legacy) and the nav entries
-              // (v4) is preserved by construction. The client hides the
-              // 'MSG_CHAIN_END' label via HIDDEN_SUB_EVENT_LABELS in the
-              // timeline (timeline-bar.component.ts), so the nav entry is
-              // present but never rendered. The synthetic BOARD_STATE is
-              // load-bearing : the v4 transport's `dispatchUntil(navIndex[N
-              // +1].messageOffset)` must land at the same cursor position
-              // as the legacy `currentIndex` increment, and any skipped
-              // flushState would skew the mapping by one entry.
-              recordStreamFlush('MSG_CHAIN_END');
-              events = [];
-              currentDecisions = [];
+              flushNavEntry(undefined, 'MSG_CHAIN_END');
               continue; // already pushed+flushed — skip the push below
             } else {
               applyChainTransition(chainStateContainer, filtered);
@@ -807,29 +685,24 @@ export function runReplayPreComputation(
             events.push(filtered);
             ingestStream(filtered);
           } else {
-            // SELECT_IDLECMD / SELECT_BATTLECMD — not pushed to legacy events
-            // (the ReplayDuelAdapter step queue handles them via a separate
-            // path), but still drive the chain state container (no-op for
-            // these types, kept for branch symmetry).
+            // SELECT_IDLECMD / SELECT_BATTLECMD — not pushed to events
+            // (they're handled as boundary prompts below).
             //
             // v4 Phase 2 doctrine (a) — the live PvP wire DOES send these to
             // the client (DuelConnection._handleSelectSimple routes them via
             // SELECT_SIMPLE_TYPES). Strict "Replay = PvP readonly" requires
             // them in the stream so MockDuelConnection lands `pendingPrompt`
-            // identically to PvP. Cf. CLAUDE.md "Replay = PvP readonly".
+            // identically to PvP.
             applyChainTransition(chainStateContainer, filtered);
             ingestStream(filtered);
           }
         }
       }
 
-      // Always create a state entry for the new phase (ensures every phase appears in timeline)
+      // Always create a nav entry for the new phase (ensures every phase appears in timeline)
       if (rawMsg.type === OcgMessageType.NEW_PHASE) {
         const phaseLabel = PHASE_LABELS[rawMsg.phase as number] ?? 'Phase Change';
-        flushState(buildBoardState, turnStates, events, currentDecisions, phaseLabel, responseIndex, undefined, buildChainSnapshot(chainStateContainer));
-        recordStreamFlush(phaseLabel);
-        events = [];
-        currentDecisions = [];
+        flushNavEntry(undefined, phaseLabel);
       }
 
       // Feed responses at select prompts
@@ -845,13 +718,8 @@ export function runReplayPreComputation(
             dlog.warn('Unexpected end of responses — possible divergence', { responseIndex, result: msg.metadata.result });
           }
           dlog.log('End of recorded responses — treating as replay end', { responseIndex, result: msg.metadata.result });
-          if (events.length > 0 || currentDecisions.length > 0) {
-            const label = generateLabel(events);
-            flushState(buildBoardState, turnStates, events, currentDecisions, label, responseIndex, undefined, buildChainSnapshot(chainStateContainer));
-            recordStreamFlush(label);
-          }
-          finalizeChainGroups(turnStates);
-          emitTurnBatch(port, duelId, currentTurn, turnStates);
+          if (events.length > 0) flushNavEntry();
+          streamBuilder.finalizeCurrentTurnChainGroups();
           streamBuilder.flushTurn(currentTurn);
           streamBuilder.emitInit();
           port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
@@ -863,39 +731,19 @@ export function runReplayPreComputation(
         const isBoundary = TRANSITION_BOUNDARY_PROMPTS.has(rawMsg.type);
 
         if (isBoundary) {
-          // Boundary prompt: flush accumulated events + decisions, then feed response
-          if (events.length > 0 || currentDecisions.length > 0) {
-            const label = generateLabel(events);
-            flushState(buildBoardState, turnStates, events, currentDecisions, label, responseIndex, undefined, buildChainSnapshot(chainStateContainer));
-            recordStreamFlush(label);
-            events = [];
-            currentDecisions = [];
-          }
-        } else {
-          // Intermediate prompt: accumulate decision with hint/confirmedCards context.
-          // Capture a board state snapshot BEFORE feeding the response — this matches
-          // the BOARD_STATE the live PvP client receives when status === WAITING.
-          const prompt = events[events.length - 1]; // The SELECT_* translated message
-          const snapshotData = (buildBoardState() as BoardStateMsg).data;
-          const snapshot = filterMessage({ type: 'BOARD_STATE', data: snapshotData } as ServerMessage, 0 as Player, true);
-          const decision: DecisionMoment = {
-            prompt,
-            response: { data: response.data, ...(response.timestamp ? { timestamp: response.timestamp } : {}) },
-            player: (rawMsg as { player: Player }).player,
-            ...(lastHint ? { hint: lastHint } : {}),
-            ...(lastConfirmedCards ? { confirmedCards: lastConfirmedCards } : {}),
-            boardState: (snapshot as BoardStateMsg).data,
-          };
-          currentDecisions.push(decision);
-          // Consume hint/confirmedCards after use
-          lastHint = null;
-          lastConfirmedCards = null;
+          // Boundary prompt: flush accumulated events as their own nav entry
+          if (events.length > 0) flushNavEntry();
         }
+        // Non-boundary prompts (intermediate SELECT_*) — pre-v4 legacy
+        // captured a `DecisionMoment` here (prompt + response + hint +
+        // confirmedCards + boardState snapshot). The mock-conn pipeline
+        // consumes the SELECT_* via the stream + auto-respond directly,
+        // so this capture is no longer needed.
 
         dlog.debug('Replay feeding response', { index: responseIndex });
-        // v4 Phase 2 — record the auto-respond payload for the SELECT_*
-        // just consumed. The mock's transport scheduler reads this map
-        // and arms a `setTimeout(REPLAY_PROMPT_DELAY_MS)` to call
+        // Record the auto-respond payload for the SELECT_* just consumed.
+        // The mock's transport scheduler reads this map and arms a
+        // `setTimeout(REPLAY_PROMPT_DELAY_MS)` to call
         // `simulatePlayerResponse(autoResponse)` after dispatch.
         const promptTypeStr = OcgMessageType[rawMsg.type] ?? '';
         recordAutoResponse(promptTypeStr, response.data as Record<string, unknown>);
@@ -905,15 +753,10 @@ export function runReplayPreComputation(
     }
 
     if (status === OcgProcessResult.END) {
-      // Capture any remaining events (MSG_WIN, final damage, etc.) into a final state
-      if (events.length > 0 || currentDecisions.length > 0) {
-        const label = generateLabel(events);
-        flushState(buildBoardState, turnStates, events, currentDecisions, label, responseIndex, undefined, buildChainSnapshot(chainStateContainer));
-        recordStreamFlush(label);
-      }
+      // Capture any remaining events (MSG_WIN, final damage, etc.) into a final nav entry
+      if (events.length > 0) flushNavEntry();
       // Emit final turn batch
-      finalizeChainGroups(turnStates);
-      emitTurnBatch(port, duelId, currentTurn, turnStates);
+      streamBuilder.finalizeCurrentTurnChainGroups();
       streamBuilder.flushTurn(currentTurn);
       streamBuilder.emitInit();
 
@@ -958,9 +801,7 @@ export function runReplayPreComputation(
 export const __test__ = {
   describeMoveLabel,
   generateLabel,
-  finalizeChainGroups,
-  emitTurnBatch,
-  flushState,
+  finalizeChainGroupsForNav,
   buildChainSnapshot,
   PHASE_LABELS,
   TRANSITION_BOUNDARY_PROMPTS,

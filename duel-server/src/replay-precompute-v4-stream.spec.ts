@@ -174,10 +174,12 @@ describe('ReplayStreamBuilder — unit', () => {
 
   it('recordNavEntry accumulates ; emitInit ships the full navIndex + totalMessages', () => {
     const bs = FAKE_BOARD_STATE;
-    builder.ingest({ type: 'MSG_DRAW', player: 0, cards: [1] } as ServerMessage);
-    builder.recordNavEntry('Turn 1', 1, bs, undefined);
-    builder.ingest({ type: 'MSG_DRAW', player: 0, cards: [2] } as ServerMessage);
-    builder.recordNavEntry('CL1: Effect', 1, bs, undefined, 0);
+    const ev1 = { type: 'MSG_DRAW', player: 0, cards: [1] } as ServerMessage;
+    const ev2 = { type: 'MSG_DRAW', player: 0, cards: [2] } as ServerMessage;
+    builder.ingest(ev1);
+    builder.recordNavEntry('Turn 1', 1, bs, [ev1], 0, undefined);
+    builder.ingest(ev2);
+    builder.recordNavEntry('CL1: Effect', 1, bs, [ev2], 1, undefined, 0);
     builder.flushTurn(1);
     builder.emitInit();
 
@@ -186,13 +188,14 @@ describe('ReplayStreamBuilder — unit', () => {
     expect(init.duelId).toBe('d1');
     expect(init.totalMessages).toBe(2);
     expect(init.navIndex).toHaveLength(2);
-    expect(init.navIndex[0]).toEqual({ messageOffset: 1, label: 'Turn 1', turnNumber: 1, boardStateSnapshot: bs });
-    expect(init.navIndex[1]).toEqual({ messageOffset: 2, label: 'CL1: Effect', turnNumber: 1, boardStateSnapshot: bs, chainIndex: 0 });
+    expect(init.navIndex[0]).toEqual({ messageOffset: 1, label: 'Turn 1', turnNumber: 1, responseCount: 0, boardStateSnapshot: bs, events: [ev1] });
+    expect(init.navIndex[1]).toEqual({ messageOffset: 2, label: 'CL1: Effect', turnNumber: 1, responseCount: 1, boardStateSnapshot: bs, events: [ev2], chainIndex: 0 });
   });
 
   it('recordNavEntry skips empty labels (mirrors flushState skip)', () => {
-    builder.ingest({ type: 'MSG_DRAW', player: 0, cards: [1] } as ServerMessage);
-    builder.recordNavEntry('', 1, FAKE_BOARD_STATE, undefined);
+    const ev = { type: 'MSG_DRAW', player: 0, cards: [1] } as ServerMessage;
+    builder.ingest(ev);
+    builder.recordNavEntry('', 1, FAKE_BOARD_STATE, [ev], 0, undefined);
     builder.flushTurn(1);
     builder.emitInit();
     const init = port.messages[port.messages.length - 1] as WorkerReplayStreamInit;

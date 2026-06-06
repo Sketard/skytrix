@@ -1,65 +1,20 @@
 // =============================================================================
 // ws-protocol-replay.ts — Skytrix WS protocol — replay messages
-// 5 types (2 client→server load/fork, 3 server→client metadata/states/error)
-// + shared sub-types (DecisionMoment, PreComputedState, ForkSanityFields).
+// 4 types (2 client→server load/fork, 2 server→client metadata/error)
+// + 2 stream messages (REPLAY_STREAM_CHUNK / REPLAY_STREAM_INIT)
+// + shared sub-types (ForkSanityFields, ReplayStreamAutoResponse,
+// ReplayStreamNavEntry).
 // Sync rule: same content as duel-server/src/ws-protocol-replay.ts
 // (modulo `.js` import suffix).
 // =============================================================================
 
-import type { Player, BoardStatePayload, CardInfo } from './duel-ws-shared.types';
+import type { BoardStatePayload } from './duel-ws-shared.types';
 import type { ChainingMsg } from './duel-ws-game.types';
-// Cross-file import: DecisionMoment.prompt is the union of all server
-// messages. Pulled lazily via the index re-export to avoid duplicating
-// the union here.
 import type { ServerMessage } from './duel-ws.types';
 
 // =============================================================================
 // Shared Replay Sub-Types
 // =============================================================================
-
-export interface DecisionMoment {
-  prompt: ServerMessage;
-  response: { data: unknown; timestamp?: string };
-  player: Player;
-  hint?: { hintType: number; value: number; cardName: string };
-  confirmedCards?: CardInfo[];
-  /** Board state snapshot taken before the player's response was fed.
-   *  Matches the BOARD_STATE the live PvP client would have received. */
-  boardState?: BoardStatePayload;
-}
-
-export interface PreComputedState {
-  boardState: BoardStatePayload;
-  events: ServerMessage[];
-  label: string;
-  responseCount: number;
-  decisions?: DecisionMoment[];
-  /** Chain link index (0-based) when this state is part of a chain resolution. */
-  chainIndex?: number;
-  /** Server-side chain state snapshot, embedded when this state was captured
-   *  while a chain is open (`chainPhase !== 'idle'`). Mirrors the PvP
-   *  `ChainStateMsg` shape so the replay viewer restores via the same
-   *  `processor.restoreChainState` path as the PvP reconnect handshake.
-   *  Without this, a seek that lands mid-chain leaves the overlay empty and
-   *  chain badges invisible because the processor was wiped by `abort()`
-   *  and no `MSG_CHAINING(1..N-1)` is re-fed.
-   *
-   *  F9 (cross-side `chainPhase` parity) gains a 3rd consumer with this
-   *  field: `replay-precompute.ts` now also runs `applyChainTransition` to
-   *  build the snapshot. See CLAUDE.md → "Cross-side `chainPhase` parity (F9)".
-   *
-   *  Optional: states outside chain windows + legacy replays precomputed
-   *  before this field landed carry `undefined` → seek behavior degrades
-   *  to today's empty-overlay. Replay precompute runs on every viewer open
-   *  (`replay-handlers.ts` caches the source `WorkerReplayPayload`, not the
-   *  precomputed states), so existing replays inherit the fix immediately. */
-  chainSnapshot?: {
-    links: ChainingMsg[];
-    phase: 'building' | 'resolving';
-    negatedIndices: number[];
-    currentSolvingChainIndex: number | null;
-  };
-}
 
 export interface ForkSanityFields {
   lp: [number, number];
@@ -104,12 +59,6 @@ export interface ReplayForkReadyMsg {
   // perspectives via slot routing).
 }
 
-export interface ReplayBoardStatesMsg {
-  type: 'REPLAY_BOARD_STATES';
-  turnNumber: number;
-  states: PreComputedState[];
-}
-
 export interface ReplayMetadataMsg {
   type: 'REPLAY_METADATA';
   playerUsernames: [string, string];
@@ -135,21 +84,16 @@ export interface ReplayErrorMsg {
 }
 
 // =============================================================================
-// Anim-pipeline v4 — replay-as-PvP-readonly stream (Phase 2)
+// Anim-pipeline v4 — replay-as-PvP-readonly stream (Phase 2-6)
 // =============================================================================
 //
-// New stream format that replaces `REPLAY_BOARD_STATES` step-by-step. The
-// client-side `MockDuelConnection` consumes the linear `ServerMessage[]`
-// exactly the way `DuelConnection` consumes a live WS feed — strict
-// "Replay = PvP readonly" doctrine. See
-// `_bmad-output/planning-artifacts/anim-pipeline-v4-replay-unification-2026-06-05.md`
-// for the full Phase plan.
-//
-// Phase 2 coexistence — both formats are emitted in parallel : the legacy
-// `REPLAY_BOARD_STATES` keeps powering the current `ReplayDuelAdapter`,
-// the new `REPLAY_STREAM_CHUNK` + `REPLAY_STREAM_INIT` feed the
-// (unbranched) mock. Phase 3 branches the mock ; Phase 5 retires
-// `REPLAY_BOARD_STATES`.
+// `MockDuelConnection` consumes the linear `ServerMessage[]` exactly the way
+// `DuelConnection` consumes a live WS feed — strict "Replay = PvP readonly"
+// doctrine. See CLAUDE.md → "Replay = PvP readonly via MockDuelConnection".
+// Phase 6 (2026-06-06) retired the legacy `REPLAY_BOARD_STATES` + the
+// `PreComputedState[]` / `DecisionMoment` types — `ReplayStreamNavEntry`
+// now carries everything the client used to read from `PreComputedState`
+// (events, label, boardState, chainIndex, chainSnapshot, responseCount).
 
 /** Per-prompt auto-respond payload. Matches the `PLAYER_RESPONSE` shape
  *  the live PvP client would have sent (`sendResponse(promptType, data)`).
@@ -164,42 +108,48 @@ export interface ReplayStreamAutoResponse {
   data: Record<string, unknown>;
 }
 
-/** A single point of interest in the navigation index — equivalent to a
- *  PreComputedState's user-facing label.
- *
- *  Phase 4 (2026-06-05) enriched the shape with `boardStateSnapshot` +
- *  `chainSnapshot` so the client's `MockDuelConnection.seekToOffset(N)`
- *  can restore the rendered state in one shot — same pattern as
- *  `ReplayDuelAdapter.jumpToState` (replay-duel-adapter.ts:373). The
- *  snapshot is captured ABSOLUTE (perspective P0, omniscient) just like
- *  every BOARD_STATE in the stream ; the mock applies `_maybeSwapBoardState`
- *  on consumption when the viewer perspective is 1. */
+/** A single point of interest in the navigation index. Phase 6 (2026-06-06)
+ *  absorbs the residual surface of the retired `PreComputedState` :
+ *  `events[]` (consumed by `DuelGameLogService.rebuildUpTo` after a seek)
+ *  and `responseCount` (consumed by `ReplayForkService` for fork sanity).
+ *  Each `ReplayStreamNavEntry` is now the 1:1 successor of one legacy
+ *  `PreComputedState`, with no information lost. */
 export interface ReplayStreamNavEntry {
   /** Cursor offset of the FIRST message that belongs to this nav entry.
    *  The scrubber seeks to this offset. */
   messageOffset: number;
-  /** Human-readable label — same content as `PreComputedState.label`. */
+  /** Human-readable label — same content as the retired `PreComputedState.label`. */
   label: string;
-  /** Turn number this entry belongs to. Matches the existing
+  /** Turn number this entry belongs to. Matches the retired
    *  `REPLAY_BOARD_STATES.turnNumber` semantics so the UI can group
    *  entries by turn without re-deriving. */
   turnNumber: number;
   /** Chain link index when this entry is part of a multi-link chain
-   *  resolution. Mirrors `PreComputedState.chainIndex`. */
+   *  resolution. Mirrors the retired `PreComputedState.chainIndex`. */
   chainIndex?: number;
-  /** ABSOLUTE board state at this nav point — equivalent of
+  /** Number of `playerResponses[]` consumed by the precompute when this
+   *  nav entry was flushed. Mirrors the retired `PreComputedState.responseCount`.
+   *  Consumed by the front-side fork service to pin the `REPLAY_FORK`
+   *  payload's `responseCount` — the server-side fork worker re-runs the
+   *  duel up to that response and runs the sanity check. */
+  responseCount: number;
+  /** ABSOLUTE board state at this nav point — equivalent of the retired
    *  `PreComputedState.boardState`. Restored on `mockConn.seekToOffset`
-   *  via `rbs.updateLogical + commitAll`. Required (always present),
-   *  even though the legacy `boardState` field is technically derivable
-   *  from a forward dispatch of `messages[0..messageOffset]` ; embedding
-   *  the snapshot turns seek into an O(1) operation instead of O(N). */
+   *  via `rbs.updateLogical + commitAll`. */
   boardStateSnapshot: BoardStatePayload;
+  /** Filtered server messages that belong to this nav entry — equivalent
+   *  of the retired `PreComputedState.events`. Consumed by
+   *  `DuelGameLogService.rebuildUpTo(navIndex.slice(0, idx+1))` to re-feed
+   *  the `GameLogBuilder` after a seek (the live `notifyGameLog` tap only
+   *  sees events dispatched after the seek). Same ABSOLUTE perspective as
+   *  the rest of the stream ; the mock applies `_maybeSwapBoardState` on
+   *  consumption. */
+  events: ServerMessage[];
   /** Optional chain state snapshot, embedded when this nav entry was
-   *  captured while a chain is open (`chainPhase !== 'idle'`). Same
-   *  shape and semantics as `PreComputedState.chainSnapshot` —
-   *  restored via the SHARED `chainingMsgsToLinkStates` +
-   *  `processor.restoreChainState` helper (front-side). Absent for
-   *  nav entries captured outside chain windows. */
+   *  captured while a chain is open (`chainPhase !== 'idle'`). Restored
+   *  via the SHARED `chainingMsgsToLinkStates` +
+   *  `processor.restoreChainState` helper (front-side). Absent for nav
+   *  entries captured outside chain windows. */
   chainSnapshot?: {
     links: ChainingMsg[];
     phase: 'building' | 'resolving';
@@ -208,9 +158,9 @@ export interface ReplayStreamNavEntry {
   };
 }
 
-/** A chunk of replay stream messages — Phase 2 emits one chunk per turn,
- *  same boundary as the legacy `REPLAY_BOARD_STATES`. Multiple chunks may
- *  share a `turnNumber` if the size threshold splits a long turn. */
+/** A chunk of replay stream messages — one chunk per turn, same boundary
+ *  the legacy `REPLAY_BOARD_STATES` had. Multiple chunks may share a
+ *  `turnNumber` if the size threshold splits a long turn. */
 export interface ReplayStreamChunkMsg {
   type: 'REPLAY_STREAM_CHUNK';
   turnNumber: number;
@@ -223,13 +173,12 @@ export interface ReplayStreamChunkMsg {
    *  field on each entry is a GLOBAL offset (already adjusted for
    *  `baseOffset`) so the client doesn't have to re-add. */
   autoResponses: ReplayStreamAutoResponse[];
-  /** Nav entries accumulated during this chunk's range. v4 Phase 3
-   *  (2026-06-05) — emitted INCREMENTALLY per chunk (in addition to
-   *  the final `navIndex` in `REPLAY_STREAM_INIT`) so the client's
-   *  transport scheduler can pilot `mockConn.dispatchNext` against
-   *  the boardState boundaries without waiting for the precompute to
-   *  finish. Each `messageOffset` is GLOBAL (already in the stream's
-   *  cursor space). */
+  /** Nav entries accumulated during this chunk's range. Emitted INCREMENTALLY
+   *  per chunk (in addition to the final `navIndex` in `REPLAY_STREAM_INIT`)
+   *  so the client's transport scheduler can pilot `mockConn.dispatchNext`
+   *  against the boardState boundaries without waiting for the precompute to
+   *  finish. Each `messageOffset` is GLOBAL (already in the stream's cursor
+   *  space). */
   navEntries: ReplayStreamNavEntry[];
 }
 

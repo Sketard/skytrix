@@ -39,7 +39,6 @@ describe('createWorkerEmitter (U33)', () => {
     emit.error('boom');
     emit.retry(1);
     emit.cancelDone(0);
-    emit.replayBoardStates(3, []);
     emit.replayComplete();
     emit.replayError('REPLAY_INIT_FAILED', 'msg');
     emit.forkReady({ match: true });
@@ -52,7 +51,6 @@ describe('createWorkerEmitter (U33)', () => {
       'WORKER_ERROR',
       'WORKER_RETRY',
       'WORKER_CANCEL_DONE',
-      'WORKER_REPLAY_BOARD_STATES',
       'WORKER_REPLAY_COMPLETE',
       'WORKER_REPLAY_ERROR',
       'WORKER_FORK_READY',

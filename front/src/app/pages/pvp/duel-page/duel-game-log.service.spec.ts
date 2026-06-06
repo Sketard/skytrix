@@ -3,7 +3,7 @@ import { DuelGameLogService } from './duel-game-log.service';
 import { ScopeResetDispatcher } from '../projections';
 import type { DuelState, GameEvent } from '../types';
 import type { ChainingMsg, DrawMsg } from '../duel-ws.types';
-import type { PreComputedState } from '../duel-ws-replay.types';
+import type { ReplayStreamNavEntry } from '../duel-ws-replay.types';
 
 // -----------------------------------------------------------------------------
 // Board fixture — a viewer-relative `BoardStatePayload` (`players[0]` = "you").
@@ -44,17 +44,21 @@ function chaining(
 }
 
 /** A precomputed replay state carrying a board snapshot + its events — the
- *  unit `rebuildUpTo` consumes after a seek. */
+ *  unit `rebuildUpTo` consumes after a seek. Phase 6 (2026-06-06) — the
+ *  shape became `ReplayStreamNavEntry` (boardStateSnapshot instead of
+ *  boardState, plus 2 extra fields). */
 function state(
   events: GameEvent[],
   turnCount = 1,
   phase = 'MAIN1',
-): PreComputedState {
+): ReplayStreamNavEntry {
   return {
-    boardState: board(turnCount, phase),
+    messageOffset: 0,
+    boardStateSnapshot: board(turnCount, phase),
     events,
     label: '',
     responseCount: 0,
+    turnNumber: turnCount,
   };
 }
 
@@ -161,7 +165,7 @@ describe('DuelGameLogService', () => {
     it('rebuilds the journal from the precomputed states [0..N]', () => {
       // Simulate a seek to step 2: abortAndClean empties the journal, then
       // rebuildUpTo re-feeds the history of states 0, 1, 2.
-      const states: PreComputedState[] = [
+      const states: ReplayStreamNavEntry[] = [
         state([draw(0, [1001, 1002, 1003, 1004, 1005])], 1),
         state([chaining(0, 5001, 'Effet 1', 'A')], 1),
         state([chaining(1, 5002, 'Effet 2', 'B')], 2),
@@ -182,7 +186,7 @@ describe('DuelGameLogService', () => {
     });
 
     it('a seek BACKWARD reflects only the events up to the target', () => {
-      const states: PreComputedState[] = [
+      const states: ReplayStreamNavEntry[] = [
         state([draw(0, [1001])], 1),
         state([draw(0, [1002])], 1),
         state([draw(0, [1003])], 1),
@@ -215,7 +219,7 @@ describe('DuelGameLogService', () => {
       // A seek-rebuild replays MSG_CHAINING events through the batch
       // ingestState path — it must NOT feed `lastOpponentActivation` (the
       // bubble is driven exclusively by the live `notifyGameLog` path).
-      const states: PreComputedState[] = [
+      const states: ReplayStreamNavEntry[] = [
         state([chaining(1, 5002, 'Effet adverse', 'B')], 1),
       ];
 
@@ -232,7 +236,7 @@ describe('DuelGameLogService', () => {
       // page re-calling `rebuildUpTo` with the states — never from a stale
       // partial `tappedEvents` slice. The internal `setPerspective` rebuild
       // (which re-feeds `tappedEvents`) therefore finds it empty.
-      const states: PreComputedState[] = [
+      const states: ReplayStreamNavEntry[] = [
         state([draw(0, [1001])], 1),
         state([draw(0, [1002])], 1),
       ];

@@ -4,7 +4,7 @@ import { TranslateFakeLoader, TranslateLoader, TranslateModule, TranslateService
 import { TimelineBarComponent, type ZoomLevel } from './timeline-bar.component';
 import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/pvp-board-container.component';
 import { EMPTY_DUEL_STATE } from '../../types';
-import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
+import type { ReplayStreamNavEntry, TurnMeta } from '../../replay-ws.types';
 
 // Stub the real board-container — it pulls a full PvP DI cascade
 // (CardTravelEngine, DuelContext, …) we don't need for timeline-bar specs.
@@ -48,11 +48,13 @@ const stubMeta = (n: number, startIndex: number, eventCount: number): TurnMeta =
   eventCount,
 });
 
-const stubState = (label: string): PreComputedState => ({
-  boardState: EMPTY_DUEL_STATE,
+const stubState = (label: string): ReplayStreamNavEntry => ({
+  messageOffset: 0,
+  boardStateSnapshot: EMPTY_DUEL_STATE,
   events: [],
   label,
   responseCount: 0,
+  turnNumber: 0,
 });
 
 describe('TimelineBarComponent — D21 zoomLevel input + emits', () => {
@@ -78,7 +80,7 @@ describe('TimelineBarComponent — D21 zoomLevel input + emits', () => {
 
   function bind(turns: TurnMeta[], currentIndex: number, upTo: number, zoom: ZoomLevel = 1) {
     const lastIdx = Math.max(0, ...turns.map(t => t.startIndex + t.eventCount - 1));
-    const states: PreComputedState[] = Array.from({ length: lastIdx + 1 }, (_, i) => stubState(`s${i}`));
+    const states: ReplayStreamNavEntry[] = Array.from({ length: lastIdx + 1 }, (_, i) => stubState(`s${i}`));
     fixture.componentRef.setInput('turns', turns);
     fixture.componentRef.setInput('currentIndex', currentIndex);
     fixture.componentRef.setInput('computedUpTo', upTo);
@@ -150,11 +152,11 @@ describe('TimelineBarComponent — D21 zoomLevel input + emits', () => {
   it('subEventSegments groups chain indices together', () => {
     const turns = [stubMeta(0, 0, 4)];
     const lastIdx = 3;
-    const states: PreComputedState[] = [
-      { boardState: EMPTY_DUEL_STATE, events: [], label: 'a', responseCount: 0 },
-      { boardState: EMPTY_DUEL_STATE, events: [], label: 'b', responseCount: 0, chainIndex: 0 },
-      { boardState: EMPTY_DUEL_STATE, events: [], label: 'c', responseCount: 0, chainIndex: 1 },
-      { boardState: EMPTY_DUEL_STATE, events: [], label: 'd', responseCount: 0 },
+    const states: ReplayStreamNavEntry[] = [
+      { messageOffset: 0, boardStateSnapshot: EMPTY_DUEL_STATE, events: [], label: 'a', responseCount: 0, turnNumber: 0 },
+      { messageOffset: 1, boardStateSnapshot: EMPTY_DUEL_STATE, events: [], label: 'b', responseCount: 0, turnNumber: 0, chainIndex: 0 },
+      { messageOffset: 2, boardStateSnapshot: EMPTY_DUEL_STATE, events: [], label: 'c', responseCount: 0, turnNumber: 0, chainIndex: 1 },
+      { messageOffset: 3, boardStateSnapshot: EMPTY_DUEL_STATE, events: [], label: 'd', responseCount: 0, turnNumber: 0 },
     ];
     fixture.componentRef.setInput('turns', turns);
     fixture.componentRef.setInput('currentIndex', 0);

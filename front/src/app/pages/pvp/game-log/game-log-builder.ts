@@ -21,10 +21,24 @@ import type {
   CardInfo,
 } from '../duel-ws-shared.types';
 import { LOCATION, POSITION } from '../duel-ws-shared.types';
-import type { PreComputedState } from '../duel-ws-replay.types';
 import type {
   ServerMessage,
 } from '../duel-ws.types';
+
+/**
+ * Minimal "batch input" shape consumed by {@link GameLogBuilder.ingestState}.
+ * Phase 6 (2026-06-06) replaces the retired `PreComputedState` import — the
+ * builder only needs `events[]` + a board snapshot, not the full
+ * `PreComputedState` shape (which carried `label`, `responseCount`,
+ * `chainIndex?`, `chainSnapshot?` that this module never read). Both the
+ * CLI and the front-side `DuelGameLogService.rebuildUpTo` produce values
+ * compatible with this structural shape — `ReplayStreamNavEntry` satisfies
+ * it via `{events, boardState: boardStateSnapshot}` (the front maps the
+ * field name when calling `rebuildUpTo`). */
+export interface BuilderState {
+  events: ServerMessage[];
+  boardState: BoardStatePayload;
+}
 import type {
   GameLogEntry,
   LogCardRef,
@@ -123,7 +137,7 @@ export type CardNameResolver = (cardCode: number) => string | null;
 
 /** Input to the builder. */
 export interface BuildInput {
-  states: PreComputedState[];
+  states: BuilderState[];
   /** The absolute player index the log is rendered FROM (the viewer). */
   perspective: Player;
   /** Resolves a chaining `description` code to its effect text. Optional. */
@@ -333,7 +347,7 @@ export class GameLogBuilder {
    * + `ingestEvent`) — the CLI and the spec drive the builder through this;
    * the live `DuelGameLogService` drives the two finer methods directly.
    */
-  ingestState(state: PreComputedState): void {
+  ingestState(state: BuilderState): void {
     this.syncTurnAndPhase(state.boardState);
     for (const event of state.events) {
       this.ingestEvent(event, state.boardState);

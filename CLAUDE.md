@@ -48,15 +48,18 @@ construction. See "Fork-solo unification (F5-bis)" below.
 
 **Mental pivot — replay is NOT a live duel.** The replay path runs the
 worker in **precompute batch mode** : it replays the recorded
-`playerResponses` against OCGCore and emits `PreComputedState[]`
-(boardState + events + decisions per turn-step) to the replay viewer,
-which consumes them like an enriched video with play/pause/seek. There
-is no `ActiveDuelSession`, no `broadcastMessage`, no per-message
-routing — the client drives playback via `MockDuelConnection` +
-`ReplayTransportService` (v4 Phase 5, 2026-06-05 — the legacy
-`ReplayDuelAdapter` retired). See "Replay = PvP readonly via
-MockDuelConnection" and "Pre-computation Timeline Rules" for the parity
-contracts that keep replay's rendered behavior identical to PvP's.
+`playerResponses` against OCGCore and streams `REPLAY_STREAM_CHUNK +
+REPLAY_STREAM_INIT` (messages: `ServerMessage[]` + navIndex:
+`ReplayStreamNavEntry[]`) to the replay viewer, which consumes the stream
+like an enriched video with play/pause/seek. There is no `ActiveDuelSession`,
+no `broadcastMessage`, no per-message routing — the client drives playback
+via `MockDuelConnection` + `ReplayTransportService` (v4 Phase 5, 2026-06-05
+— the legacy `ReplayDuelAdapter` retired ; v4 Phase 6, 2026-06-06 — the
+legacy `PreComputedState[]` / `REPLAY_BOARD_STATES` retired, the nav
+index absorbs `events[]` + `responseCount` 1:1). See "Replay = PvP
+readonly via MockDuelConnection" and "Pre-computation Timeline Rules"
+for the parity contracts that keep replay's rendered behavior identical
+to PvP's.
 
 **The fifth consumer — R&D solver (paused).** `duel-server/src/solver/`
 hosts a paused combo-path solver (R&D since 2026-04, last work
@@ -192,14 +195,16 @@ that achieve the same effect by construction :
   (chainPhase=`building`, queue non-empty) → `syncPileCounts()` so
   DECK/EXTRA counts + metadata are up to date before the chain enters
   `resolving`.
-- **Replay** — implicit `PreComputedState` segmentation. The flush on
-  `MSG_CHAINING` in [replay-precompute.ts:407-413](duel-server/src/replay-precompute.ts#L407-L413)
-  cuts the timeline so the state containing `events=[..., MSG_MOVE]`
-  (the cost) has its own `pendingState` captured via `buildBoardState()`
-  on flush. The next `PreComputedState` then carries `MSG_CHAINING` and
-  the chain resolution events. Client consumes via the adapter's
-  `feedTransition` → same `syncAfterBoardState`. Tier decision lands on
-  tier 2 (`syncRendered`) because `chainPhase=idle` at that moment
+- **Replay** — implicit `ReplayStreamNavEntry` segmentation (Phase 6,
+  2026-06-06). The flush on `MSG_CHAINING` in
+  [replay-precompute.ts](duel-server/src/replay-precompute.ts) `flushNavEntry`
+  cuts the stream so the nav entry containing `events=[..., MSG_MOVE]`
+  (the cost) has its own `boardStateSnapshot` captured via `buildBoardState()`
+  on flush, AND emits a synthetic `BOARD_STATE` message right before
+  recording the entry. The next nav entry then carries `MSG_CHAINING` and
+  the chain resolution events. Client consumes the synthetic BOARD_STATE
+  via `mockConn.dispatchNext → syncAfterBoardState`. Tier decision lands
+  on tier 2 (`syncRendered`) because `chainPhase=idle` at that moment
   (MSG_CHAINING hasn't yet been processed for this state).
 
 **Difference in ordering vs `MSG_CHAINING`** :
@@ -323,7 +328,7 @@ precompute timeline :
 | Site | Driven by | Stored on | Restored by |
 |---|---|---|---|
 | `worker-message-router.ts` | live PvP/SOLO session | `session.activeChainLinks` + `chainPhase` | client `_handleChainState` on `CHAIN_STATE` |
-| `replay-precompute.ts` (F9-bis) | per-replay-run container | `PreComputedState.chainSnapshot` on every state captured while `chainPhase !== 'idle'` | client `ReplayDuelAdapter.jumpToState` |
+| `replay-precompute.ts` (F9-bis) | per-replay-run container | `ReplayStreamNavEntry.chainSnapshot` on every nav entry captured while `chainPhase !== 'idle'` | client `MockDuelConnection.seekToOffset` |
 | `chain-state-tracker.spec.ts` | transition pin | — | — |
 
 The replay snapshot shape (`{ links: ChainingMsg[]; phase; negatedIndices;
@@ -874,30 +879,46 @@ server-side instead of a live WS feed. Strict consequence : every code
 path after `dispatchNext(msg)` in replay is identical to
 `_handleMessage(msg)` in PvP — bugs reproduce by construction.
 
-**Architecture (Phases 1-5 livrées 2026-06-05)** :
+**Architecture (Phases 1-6 livrées 2026-06-05/06)** :
 
 - **Server precompute** (`duel-server/src/replay-precompute.ts`) emits
-  `REPLAY_STREAM_CHUNK + REPLAY_STREAM_INIT` alongside the legacy
-  `REPLAY_BOARD_STATES`. Each chunk carries `messages: ServerMessage[]`,
-  `autoResponses: {offset, promptType, data}[]`, and `navEntries:
-  {messageOffset, label, turnNumber, chainIndex?, boardStateSnapshot,
-  chainSnapshot?}[]`. The mapping `PreComputedState[i] ↔ navIndex[i]`
-  is preserved by construction via `recordStreamFlush` at every
-  `flushState` site.
+  `REPLAY_STREAM_CHUNK + REPLAY_STREAM_INIT` as the SOLE output path
+  (Phase 6 retired the legacy `REPLAY_BOARD_STATES` / `PreComputedState[]`).
+  Each chunk carries `messages: ServerMessage[]`, `autoResponses:
+  {offset, promptType, data}[]`, and `navEntries: ReplayStreamNavEntry[]`
+  where each nav entry carries `{messageOffset, label, turnNumber,
+  chainIndex?, responseCount, boardStateSnapshot, events: ServerMessage[],
+  chainSnapshot?}`. The single `flushNavEntry` helper at every segmentation
+  boundary (chain link start/end, phase, turn, boundary prompt, end of
+  duel) builds the nav entry from the accumulated `events[]` + current
+  `responseIndex` + board snapshot. The 1:1 mapping legacy-state ↔ nav
+  entry is preserved by construction.
 - **Client transport** (`ReplayTransportService`) reads `messages[]` via
   `mockConn.dispatchNext()` in `dispatchMockUntilIndex(targetIdx)`.
   Seek/scrub/skip call `mockConn.seekToOffset(index)` which restores
   rendered state + chain state in O(1) from `navIndex[index].boardStateSnapshot
   + chainSnapshot` (Phase 4). Auto-respond uses a fixed
   `REPLAY_PROMPT_DELAY_MS = 1200ms` (no more human timestamp math).
+  `gameLog.rebuildUpTo(navIndex.slice(0, idx + 1))` re-feeds the
+  `GameLogBuilder` after a seek using the per-entry `events[]` (Phase 6
+  — `rebuildUpTo` signature accepts `{events, boardStateSnapshot}[]`
+  structurally so `ReplayStreamNavEntry` satisfies it).
 - **UI surfaces** (`busy`, `pendingPrompt`, `activeHint`,
   `activeConfirmedCards`, `activePlayer`, `activeResponse`,
-  `perspectiveIndex`) all live on `MockDuelConnection`. The legacy
-  `ReplayDuelAdapter` retired Phase 5 ; the doctrine sections F19
-  (skip sites) + F29 (forceClosure asymmetry) become trivial because
-  `mockConn.seekToOffset` runs the same reset path as the PvP
-  `CHAIN_STATE` reconnect handshake (via the SHARED
+  `perspectiveIndex`, `navIndex`) all live on `MockDuelConnection`. The
+  legacy `ReplayDuelAdapter` retired Phase 5 ; `replayConnection.boardStates`
+  + `clearBoardStates` retired Phase 6 (the connection service only
+  forwards chunks via `onStreamChunk` / `onStreamInit` callbacks). The
+  doctrine sections F19 (skip sites) + F29 (forceClosure asymmetry)
+  become trivial because `mockConn.seekToOffset` runs the same reset
+  path as the PvP `CHAIN_STATE` reconnect handshake (via the SHARED
   `chainingMsgsToLinkStates` + `processor.restoreChainState` helper).
+- **Fork integration** : `ReplayForkService.fork(currentIndex, navIndex,
+  replayId)` reads `entry.responseCount` (input to the server-side
+  REPLAY_FORK payload's `responseCount`) and `entry.boardStateSnapshot`
+  (input to the `expectedState` sanity check). `cachedNavIndex` (formerly
+  `cachedBoardStates`) holds a snapshot during the fork-warning
+  interstitial so the timeline keeps rendering.
 
 **Tempo rule below is unchanged** — the v4 mock pipeline pumps
 `dispatchNext` at the same cadence the v3 adapter did. Conceptually, a
@@ -1084,39 +1105,36 @@ Key rules:
    **Replay perspective swap** — `boardStateAfter` arrives in absolute
    server P0 order (replay precompute is perspective-agnostic). The
    orchestrator is shared with PvP and assumes already-relative data, so
-   `ReplayDuelAdapter` MUST relativize the per-event snapshot for
-   `perspectiveIndex === 1` — `swapEventBoardStates()` rewrites
-   `event.boardStateAfter` via `swapBoardState()` at the `feedTransition`
-   / `feedTransitionPhased` entry points (before `buildSteps` / processor
-   feeding). `swapBoardState()` alone is NOT enough — it only covers the
-   step/transition-level `boardState`, not the snapshot buried on each
-   event. Skip the swap and perspective-1 replays render the board
-   flipped for one frame when the orchestrator calls
-   `updateLogical(event.boardStateAfter)`.
+   `MockDuelConnection` MUST relativize the per-event snapshot for
+   `perspectiveIndex === 1` — the mock's `_maybeSwapBoardState` at
+   `dispatchNext` time rewrites the event's `boardStateAfter` via
+   `swapBoardState()` before forwarding to the processor. Skip the swap
+   and perspective-1 replays render the board flipped for one frame
+   when the orchestrator calls `updateLogical(event.boardStateAfter)`.
 
-5. **`PreComputedState.chainSnapshot` mid-chain seek restore** (F9-bis,
-   2026-06-04). When a `PreComputedState` is captured while a chain is
-   open (`chainPhase !== 'idle'`), `replay-precompute.ts` embeds a
-   snapshot of the server-side `ChainStateContainer` :
-   `{ links: ChainingMsg[], phase, negatedIndices, currentSolvingChainIndex }`.
-   `ReplayDuelAdapter.jumpToState` applies it via the SAME restore code
-   path as the PvP `CHAIN_STATE` reconnect handshake — shared helper
+5. **`ReplayStreamNavEntry.chainSnapshot` mid-chain seek restore**
+   (F9-bis, 2026-06-04 ; Phase 6 absorb 2026-06-06). When a nav entry
+   is captured while a chain is open (`chainPhase !== 'idle'`),
+   `replay-precompute.ts` embeds a snapshot of the server-side
+   `ChainStateContainer` : `{ links: ChainingMsg[], phase, negatedIndices,
+   currentSolvingChainIndex }`. `MockDuelConnection.seekToOffset` applies
+   it via the SAME restore code path as the PvP `CHAIN_STATE` reconnect
+   handshake — shared helper
    [chain-state-restore.utils.ts](front/src/app/pages/pvp/duel-page/chain-state-restore.utils.ts)
    `chainingMsgsToLinkStates` + `processor.restoreChainState` +
    conditional `processor.applyChainSolving(currentSolvingChainIndex)`.
    Without this, seeking into the middle of a chain wipes
-   `activeChainLinks` (via `adapter.abort()` → `processor.reset()`) and
-   leaves the chain overlay + chain badges empty even though the target
-   state is semantically inside a chain. The PvP reconnect handshake
-   doesn't carry `currentSolvingChainIndex` because the live worker fires
+   `activeChainLinks` (via `processor.reset()`) and leaves the chain
+   overlay + chain badges empty even though the target state is
+   semantically inside a chain. The PvP reconnect handshake doesn't
+   carry `currentSolvingChainIndex` because the live worker fires
    `MSG_CHAIN_SOLVING` as a real message immediately after — replay
    can't, so the field is necessary for the in-resolution link to be
-   visually distinguished (`resolving: true`) on seek. Legacy replays
-   precomputed before this field landed carry `undefined` → seek degrades
-   to today's empty-overlay behavior. `replay-handlers.ts` caches the
-   source `WorkerReplayPayload` (not the precomputed states), so existing
-   replays inherit the fix on next open. See F9-bis section above for
-   the 3-consumer table + precompute timing rule.
+   visually distinguished (`resolving: true`) on seek. `replay-handlers.ts`
+   caches the source `WorkerReplayPayload` (not the precomputed nav
+   index), so existing replays re-precompute on next open and inherit
+   any precompute changes immediately. See F9-bis section above for the
+   3-consumer table + precompute timing rule.
 
 ### Chain State Machine Rules
 
@@ -1173,13 +1191,15 @@ Key rules:
    - **Post-MSG_CHAIN_SOLVED straggler** — a BOARD_CHANGING event was buffered
      AFTER the overlay-driven `replayBuffer` already drained this link's queue
      but BEFORE `chainPhase` flipped to `'idle'` (which only happens at
-     MSG_CHAIN_END dispatch). In replay, `MSG_CHAIN_END` is segmented into a
-     distinct `PreComputedState` by `replay-precompute.ts` (chain separator
-     in the timeline) and won't be requested until `chainPhase=idle` — without
-     an autonomous drain, the deadlock is circular (buffer holds the event →
-     `chainPhase` stuck `resolving` → adapter refuses to feed the CHAIN_END
-     state). PvP bonus side-effect : 2 batches separated instead of one with
-     lock GY-0 ref-count=2 shared on stacked MSG_MOVE.
+     MSG_CHAIN_END dispatch). In replay, `MSG_CHAIN_END` lands as a distinct
+     `ReplayStreamNavEntry` produced by `replay-precompute.ts` (chain
+     separator in the timeline, label `'MSG_CHAIN_END'` hidden by
+     `HIDDEN_SUB_EVENT_LABELS`) and won't be reached by `dispatchMockUntilIndex`
+     until `chainPhase=idle` — without an autonomous drain, the deadlock is
+     circular (buffer holds the event → `chainPhase` stuck `resolving` →
+     transport refuses to advance to the CHAIN_END entry). PvP bonus
+     side-effect : 2 batches separated instead of one with lock GY-0
+     ref-count=2 shared on stacked MSG_MOVE.
 
    `pause-external` (priority 1 — `isWaitingForOverlay || hasDrawsInFlight`)
    preempts this rescue ; the overlay-driven `replayBuffer` from
@@ -1745,18 +1765,18 @@ dispatches `{DUEL_LIFETIME}` which cascades and fully clears LP state.
 ## Pre-computation Timeline Rules
 
 1. **Turn 0 ("Setup")** contains all events before the first `MSG_NEW_TURN`.
-   When `MSG_NEW_TURN` arrives, accumulated events are flushed as Turn 0,
-   then `currentTurn` increments. Transition boundary prompts
-   (`SELECT_IDLECMD`, `SELECT_BATTLECMD`) trigger automatic state flushes;
-   other SELECT_* prompts are accumulated within the same turn state.
+   When `MSG_NEW_TURN` arrives, accumulated events are flushed as the Turn 0
+   nav entry, then `currentTurn` increments. Transition boundary prompts
+   (`SELECT_IDLECMD`, `SELECT_BATTLECMD`) trigger automatic nav-entry flushes;
+   other SELECT_* prompts are accumulated within the same turn's accumulator.
 
-2. **MSG_CHAIN_END** is flushed as its own state WITHOUT `chainIndex` — it
-   acts as a separator between consecutive chains in the timeline. The
-   front-end hides it via `HIDDEN_LABELS` in `subEventSegments`.
+2. **MSG_CHAIN_END** is flushed as its own nav entry WITHOUT `chainIndex` —
+   it acts as a separator between consecutive chains in the timeline. The
+   front-end hides it via `HIDDEN_SUB_EVENT_LABELS` in `buildSubEventSegments`.
 
 3. **`generateLabel`** returns `''` for batches with only non-visual events
    (SELECT_*, WAITING_RESPONSE, MSG_CHAIN_END, MSG_CHAIN_SOLVING, etc.).
-   `flushState` skips these empty states to avoid phantom bullets.
+   `flushNavEntry` skips these empty-label states to avoid phantom bullets.
 
 4. **Per-event `boardStateAfter` snapshot** — both `runReplayPreComputation`
    (in `replay-precompute.ts`) and `runDuelLoop` (in `duel-worker.ts`)
@@ -1919,7 +1939,7 @@ component handlers the transport-bar invokes on click — fires
   `isPlaying()`, `chainState()` (live read of
   `processor.activeChainLinks` + `chainPhase`),
   `currentStateChainSnapshot()` (the precompute's embedded
-  `PreComputedState.chainSnapshot` for the current index — F9-bis
+  `ReplayStreamNavEntry.chainSnapshot` for the current index — F9-bis
   verification surface), `fullSnapshot()` (whole `__skytrixDebug.snapshot()`).
 - **Wait helpers** : `waitForIndex(target)`, `waitForBoardStates(target)`,
   `waitForEndOverlay(timeout)`.
@@ -2211,8 +2231,12 @@ the barrel:
 - **`ws-protocol-system.ts`** — duel lifecycle (DUEL_END, RPS, REMATCH,
   STATE_SYNC, CHAIN_STATE, timer, surrender, cancel). Non-game-event
   protocol messages.
-- **`ws-protocol-replay.ts`** — replay-specific (REPLAY_BOARD_STATES,
-  REPLAY_METADATA, fork lifecycle).
+- **`ws-protocol-replay.ts`** — replay-specific (REPLAY_METADATA,
+  REPLAY_STREAM_CHUNK, REPLAY_STREAM_INIT, fork lifecycle).
+  Phase 6 (2026-06-06) retired the legacy `REPLAY_BOARD_STATES` +
+  `PreComputedState` / `DecisionMoment` ; `ReplayStreamNavEntry` now
+  carries `events[]` + `responseCount` (the 1:1 successor of the
+  retired `PreComputedState`).
 - **`ws-protocol-solver.ts`** — solver-specific (SOLVER_INIT, START,
   PROGRESS, RESULT, etc.).
 

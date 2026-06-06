@@ -1,4 +1,4 @@
-import type { ServerMessage, PlayerResponseMsg, SelectPromptType, Player, PreComputedState, ForkSanityFields, ReplayStreamAutoResponse, ReplayStreamNavEntry } from './ws-protocol.js';
+import type { ServerMessage, PlayerResponseMsg, SelectPromptType, Player, ForkSanityFields, ReplayStreamAutoResponse, ReplayStreamNavEntry } from './ws-protocol.js';
 import type Database from 'better-sqlite3';
 
 // =============================================================================
@@ -244,13 +244,6 @@ export interface WorkerReplayData {
   payload: WorkerReplayPayload;
 }
 
-export interface WorkerReplayBoardStates {
-  type: 'WORKER_REPLAY_BOARD_STATES';
-  duelId: string;
-  turnNumber: number;
-  states: PreComputedState[];
-}
-
 export interface WorkerReplayComplete {
   type: 'WORKER_REPLAY_COMPLETE';
   duelId: string;
@@ -319,7 +312,6 @@ export type WorkerToMainMessage =
   | WorkerRetry
   | WorkerCancelDoneMessage
   | WorkerReplayData
-  | WorkerReplayBoardStates
   | WorkerReplayComplete
   | WorkerReplayError
   | WorkerReplayStreamChunk

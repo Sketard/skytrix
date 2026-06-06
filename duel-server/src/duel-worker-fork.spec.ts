@@ -83,7 +83,6 @@ function makeMockEmitter(): MockEmitter {
     retry: make('retry') as never,
     cancelDone: make('cancelDone') as never,
     replayData: make('replayData') as never,
-    replayBoardStates: make('replayBoardStates') as never,
     replayComplete: make('replayComplete') as never,
     replayError: make('replayError') as never,
     forkReady: make('forkReady') as never,

@@ -36,10 +36,12 @@ import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import Database from 'better-sqlite3';
 
-import type { PreComputedState } from '../ws-protocol-replay.js';
+import type { ReplayStreamNavEntry } from '../ws-protocol-replay.js';
 import type { ServerMessage } from '../ws-protocol.js';
 import type { BoardStatePayload } from '../ws-protocol-shared.js';
 import type { CardDB } from '../types.js';
+import { PROTOCOL_VERSION } from '../ws-protocol-shared.js';
+import type { BuilderState } from '../game-log/game-log-builder.js';
 import { loadSystemStrings } from '../ocg-scripts.js';
 import { resolveDescription } from '../game-log/effect-desc-resolver.js';
 import { buildGameLogWithStats } from '../game-log/game-log-builder.js';
@@ -113,12 +115,16 @@ function buildReplayJwt(userId: string): string {
 }
 
 // -----------------------------------------------------------------------------
-// Collect PreComputedState[] from the duel-server replay WebSocket.
-// Protocol: connect ?mode=replay → server streams REPLAY_BOARD_STATES batches
-// then REPLAY_METADATA. REPLAY_ERROR aborts.
+// Collect ReplayStreamNavEntry[] from the duel-server replay WebSocket.
+// Protocol (Phase 6, 2026-06-06): connect ?mode=replay → server streams
+// REPLAY_METADATA + REPLAY_STREAM_CHUNK batches + REPLAY_STREAM_INIT
+// terminal. REPLAY_ERROR aborts.
+//
+// The CLI's `GameLogBuilder` only needs `{events, boardState}` per entry,
+// which `ReplayStreamNavEntry` provides directly (events + boardStateSnapshot).
 // -----------------------------------------------------------------------------
 interface ReplayResult {
-  states: PreComputedState[];
+  states: ReplayStreamNavEntry[];
   title: string;
   /** Player pseudos in ABSOLUTE server order [P0, P1] — from REPLAY_METADATA.
    *  Undefined when the server sent no metadata (legacy / metadata-less). */
@@ -130,11 +136,11 @@ function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
   const url =
     `${args.duelServerUrl}/?mode=replay` +
     `&replayId=${encodeURIComponent(args.replayId)}` +
-    `&token=${encodeURIComponent(jwt)}&pv=1`;
+    `&token=${encodeURIComponent(jwt)}&pv=${PROTOCOL_VERSION}`;
 
   return new Promise<ReplayResult>((resolvePromise, rejectPromise) => {
     const ws = new WebSocket(url);
-    const states: PreComputedState[] = [];
+    const states: ReplayStreamNavEntry[] = [];
     let title = args.replayId;
     let settled = false;
     let playerUsernames: [string, string] | undefined;
@@ -143,23 +149,9 @@ function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
       if (settled) return;
       settled = true;
       clearTimeout(hardTimeout);
-      if (quietTimer) clearTimeout(quietTimer);
       try { ws.close(); } catch { /* already closing */ }
       if (ok) resolvePromise({ states, title, playerUsernames });
       else rejectPromise(new Error(err ?? 'replay WS failed'));
-    };
-
-    // The server streams REPLAY_METADATA first, then REPLAY_BOARD_STATES
-    // batches, with no terminal "complete" message — the stream simply goes
-    // quiet. Finish after a short idle gap once ≥1 batch arrived. Metadata is
-    // only used to enrich the title — its absence must NOT hang the tool
-    // (otherwise a metadata-less server stalls the full 60 s hard timeout).
-    let quietTimer: ReturnType<typeof setTimeout> | null = null;
-    const armQuietFinish = (): void => {
-      if (quietTimer) clearTimeout(quietTimer);
-      quietTimer = setTimeout(() => {
-        if (states.length > 0) finish(true);
-      }, 1_500);
     };
 
     const hardTimeout = setTimeout(
@@ -178,14 +170,18 @@ function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
       } catch {
         return; // ignore non-JSON frames
       }
-      if (msg.type === 'REPLAY_BOARD_STATES') {
-        states.push(...msg.states);
-        armQuietFinish();
+      if (msg.type === 'REPLAY_STREAM_CHUNK') {
+        states.push(...msg.navEntries);
+      } else if (msg.type === 'REPLAY_STREAM_INIT') {
+        // Terminal — the server has finished streaming. `navIndex` here is
+        // the full finalized index (incremental nav entries already arrived
+        // via STREAM_CHUNK), so we can rely on the accumulated `states`
+        // and close.
+        finish(true);
       } else if (msg.type === 'REPLAY_METADATA') {
         playerUsernames = msg.playerUsernames;
         const [p1, p2] = msg.playerUsernames;
         title = `${args.replayId} — ${p1} vs ${p2} (${msg.turnCount} tours)`;
-        armQuietFinish();
       } else if (msg.type === 'REPLAY_ERROR') {
         finish(false, `REPLAY_ERROR ${msg.code}: ${msg.message}`);
       }
@@ -255,13 +251,11 @@ function openCardDb(): CardDB {
 // Board relativisation — O5 / C2 contract
 // -----------------------------------------------------------------------------
 /**
- * Swap a `PreComputedState.boardState` from relative-to-P0 to relative-to-the-
- * viewer. `replay-precompute.ts` produces `boardState` via
- * `sanitizeBoardState(forPlayer=0)` — so it is relative-to-P0. The
- * GameLogBuilder (O5 / C2) now treats its board as already relative-to-viewer
- * and NEVER swaps it, so the CLI owns the P0→viewer swap for `--perspective 1`.
- * Mirror of `ReplayDuelAdapter.swapBoardState`.
- */
+ * Swap a `ReplayStreamNavEntry.boardStateSnapshot` from relative-to-P0 to
+ * relative-to-the-viewer. `replay-precompute.ts` produces snapshots via
+ * `sanitizeBoardState(forPlayer=0)` — so they are relative-to-P0. The
+ * GameLogBuilder (O5 / C2) treats its board as already relative-to-viewer
+ * and NEVER swaps it, so the CLI owns the P0→viewer swap for `--perspective 1`. */
 function toViewerRelative(
   bs: BoardStatePayload,
   perspective: 0 | 1,
@@ -286,10 +280,13 @@ function writeOutputs(args: CliArgs, result: ReplayResult): void {
   const nameResolver = buildNameResolver(cardDb);
 
   // O5 / C2: hand the builder a viewer-relative board for every state. The
-  // builder no longer swaps — this is now the CLI's responsibility.
-  const viewerStates: PreComputedState[] = states.map(s => ({
-    ...s,
-    boardState: toViewerRelative(s.boardState, args.perspective),
+  // builder no longer swaps — this is now the CLI's responsibility. Phase 6
+  // (2026-06-06) consumes `ReplayStreamNavEntry`, which exposes `events`
+  // directly + `boardStateSnapshot` (renamed from `boardState` on the
+  // retired `PreComputedState`).
+  const viewerStates: BuilderState[] = states.map(s => ({
+    events: s.events,
+    boardState: toViewerRelative(s.boardStateSnapshot, args.perspective),
   }));
 
   const { entries, targetStats } = buildGameLogWithStats({
@@ -392,13 +389,13 @@ async function main(): Promise<void> {
     console.log(`Loading captured states from ${args.fromFile}`);
     const parsed: unknown = JSON.parse(readFileSync(args.fromFile, 'utf-8'));
     if (!Array.isArray(parsed)) {
-      fail(`${args.fromFile} is not a JSON array of PreComputedState`);
+      fail(`${args.fromFile} is not a JSON array of ReplayStreamNavEntry`);
     }
     // Sidecar `.meta.json` (written by a prior `--capture`) restores the
     // pseudos + title — the states array alone carries neither.
     const meta = loadCapturedMeta(args.fromFile);
     result = {
-      states: parsed as PreComputedState[],
+      states: parsed as ReplayStreamNavEntry[],
       title: meta?.title ?? args.replayId ?? args.fromFile,
       playerUsernames: meta?.playerUsernames,
     };

@@ -1,7 +1,7 @@
 import { Injectable, signal, type Signal } from '@angular/core';
 import type { MockDuelConnection } from './mock-duel-connection';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
-import type { PreComputedState, TurnMeta } from '../replay-ws.types';
+import type { ReplayStreamNavEntry, TurnMeta } from '../replay-ws.types';
 
 /**
  * Replay playback transport — owns the player-controlled state machine
@@ -17,7 +17,7 @@ import type { PreComputedState, TurnMeta } from '../replay-ws.types';
  * The service is component-scoped (provided in `replay-page.component`).
  * It is configured at the component constructor via {@link configure}
  * with the dependencies it needs (mock handle, phase service for the
- * auto-advance guard, and the upstream signals `boardStates` /
+ * auto-advance guard, and the upstream signals `navIndex` /
  * `computedUpTo` / `animationsEnabled` / `promptMode` read at fire time
  * so changes flow through naturally).
  *
@@ -39,7 +39,7 @@ import type { PreComputedState, TurnMeta } from '../replay-ws.types';
 interface ReplayTransportConfig {
   mockConn: MockDuelConnection;
   phaseService: PhaseAnnouncementService;
-  boardStates: Signal<PreComputedState[]>;
+  navIndex: Signal<ReadonlyArray<ReplayStreamNavEntry>>;
   computedUpTo: Signal<number>;
   animationsEnabled: Signal<boolean>;
   promptMode: Signal<'result' | 'decision'>;
@@ -298,11 +298,9 @@ export class ReplayTransportService {
 
   /**
    * Anim-pipeline v4 — pump the mock connection cursor up to the
-   * message offset corresponding to `boardStates[targetIdx]`. By
-   * construction the v4 precompute (replay-precompute.ts:recordStreamFlush)
-   * keeps a 1-to-1 mapping between `PreComputedState[]` entries and nav
-   * index entries, so `navIndex[targetIdx]` gives the target offset
-   * directly.
+   * message offset corresponding to `navIndex[targetIdx]`. Phase 6
+   * (2026-06-06) made `navIndex` the sole timeline data structure —
+   * each nav entry IS the unit of seek granularity.
    *
    * Defensive : if `navIndex` is shorter than `targetIdx` (the nav data
    * hasn't streamed yet for this position), we dispatch up to the

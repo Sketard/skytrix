@@ -9,7 +9,7 @@ import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReplayTransportService } from './replay-transport.service';
 import type { MockDuelConnection } from './mock-duel-connection';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
-import type { PreComputedState, TurnMeta, ReplayStreamNavEntry } from '../replay-ws.types';
+import type { TurnMeta, ReplayStreamNavEntry } from '../replay-ws.types';
 import { EMPTY_DUEL_STATE } from '../types';
 
 // =============================================================================
@@ -55,11 +55,13 @@ function makePhase(): PhaseStub {
   return stub;
 }
 
-const stubState = (label: string, responseCount = 0): PreComputedState => ({
-  boardState: EMPTY_DUEL_STATE,
+const stubState = (label: string, responseCount = 0): ReplayStreamNavEntry => ({
+  messageOffset: 0,
+  boardStateSnapshot: EMPTY_DUEL_STATE,
   events: [],
   label,
   responseCount,
+  turnNumber: 0,
 });
 
 const stubNav = (count: number): ReplayStreamNavEntry[] =>
@@ -68,13 +70,15 @@ const stubNav = (count: number): ReplayStreamNavEntry[] =>
     label: `nav-${i}`,
     turnNumber: 0,
     boardStateSnapshot: EMPTY_DUEL_STATE,
+    events: [],
+    responseCount: 0,
   }));
 
 interface Setup {
   svc: ReplayTransportService;
   mockConn: MockConnStub;
   phase: PhaseStub;
-  boardStates: ReturnType<typeof signal<PreComputedState[]>>;
+  navIndex: ReturnType<typeof signal<ReplayStreamNavEntry[]>>;
   computedUpTo: ReturnType<typeof signal<number>>;
   animationsEnabled: ReturnType<typeof signal<boolean>>;
   promptMode: ReturnType<typeof signal<'result' | 'decision'>>;
@@ -82,7 +86,7 @@ interface Setup {
 }
 
 function setup(opts: {
-  states?: PreComputedState[];
+  states?: ReplayStreamNavEntry[];
   computedUpTo?: number;
   animationsEnabled?: boolean;
   promptMode?: 'result' | 'decision';
@@ -91,7 +95,7 @@ function setup(opts: {
   const svc = TestBed.inject(ReplayTransportService);
   const mockConn = makeMock();
   const phase = makePhase();
-  const boardStates = signal<PreComputedState[]>(opts.states ?? []);
+  const navIndex = signal<ReplayStreamNavEntry[]>(opts.states ?? []);
   const computedUpTo = signal<number>(opts.computedUpTo ?? -1);
   const animationsEnabled = signal<boolean>(opts.animationsEnabled ?? true);
   const promptMode = signal<'result' | 'decision'>(opts.promptMode ?? 'result');
@@ -99,13 +103,13 @@ function setup(opts: {
   svc.configure({
     mockConn: mockConn as unknown as MockDuelConnection,
     phaseService: phase as unknown as PhaseAnnouncementService,
-    boardStates,
+    navIndex,
     computedUpTo,
     animationsEnabled,
     promptMode,
     overlayActive,
   });
-  return { svc, mockConn, phase, boardStates, computedUpTo, animationsEnabled, promptMode, overlayActive };
+  return { svc, mockConn, phase, navIndex, computedUpTo, animationsEnabled, promptMode, overlayActive };
 }
 
 // =============================================================================

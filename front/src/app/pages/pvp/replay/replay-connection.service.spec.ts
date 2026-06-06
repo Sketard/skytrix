@@ -1,13 +1,10 @@
 import { ReplayConnectionService } from './replay-connection.service';
 import type {
   ReplayMetadataMsg,
-  ReplayBoardStatesMsg,
   ReplayErrorMsg,
   ReplayForkReadyMsg,
-  PreComputedState,
   ForkSanityFields,
 } from '../replay-ws.types';
-import { EMPTY_DUEL_STATE } from '../types';
 
 // =============================================================================
 // Test helpers
@@ -71,18 +68,11 @@ function connectWith(svc: ReplayConnectionService, ws: MockWs): void {
 /** Synthesize a server → client message dispatch via the wired onmessage. */
 function dispatchServerMessage(
   ws: MockWs,
-  msg: ReplayMetadataMsg | ReplayBoardStatesMsg | ReplayErrorMsg | ReplayForkReadyMsg,
+  msg: ReplayMetadataMsg | ReplayErrorMsg | ReplayForkReadyMsg,
 ): void {
   if (!ws.onmessage) throw new Error('onmessage not wired (was connect() called?)');
   ws.onmessage({ data: JSON.stringify(msg) } as MessageEvent);
 }
-
-const stubPreComputed = (label: string): PreComputedState => ({
-  boardState: EMPTY_DUEL_STATE,
-  events: [],
-  label,
-  responseCount: 0,
-});
 
 // =============================================================================
 // Initial state
@@ -93,8 +83,6 @@ describe('ReplayConnectionService — initial state', () => {
     const svc = new ReplayConnectionService();
     expect(svc.connectionStatus()).toBe('disconnected');
     expect(svc.metadata()).toBeNull();
-    expect(svc.boardStates()).toEqual([]);
-    expect(svc.computedUpTo()).toBe(-1);
     expect(svc.totalResponses()).toBe(0);
     expect(svc.error()).toBeNull();
     expect(svc.lastReceivedTurn()).toBe(-1);
@@ -157,22 +145,10 @@ describe('ReplayConnectionService — server message dispatch', () => {
     expect(svc.totalResponses()).toBe(42);
   });
 
-  it('REPLAY_BOARD_STATES: appends states + updates lastReceivedTurn (multi-batch)', () => {
-    dispatchServerMessage(ws, {
-      type: 'REPLAY_BOARD_STATES', turnNumber: 1,
-      states: [stubPreComputed('s0'), stubPreComputed('s1')],
-    });
-    expect(svc.boardStates().map(s => s.label)).toEqual(['s0', 's1']);
-    expect(svc.lastReceivedTurn()).toBe(1);
-    expect(svc.computedUpTo()).toBe(1);
-    dispatchServerMessage(ws, {
-      type: 'REPLAY_BOARD_STATES', turnNumber: 2,
-      states: [stubPreComputed('s2')],
-    });
-    expect(svc.boardStates().map(s => s.label)).toEqual(['s0', 's1', 's2']);
-    expect(svc.lastReceivedTurn()).toBe(2);
-    expect(svc.computedUpTo()).toBe(2);
-  });
+  // Phase 6 (2026-06-06) — `REPLAY_BOARD_STATES` retired. Stream chunks
+  // are now forwarded to `onStreamChunk` callback, not stored on the
+  // service. Coverage for `REPLAY_STREAM_*` lives in the `mock-duel-connection`
+  // tests (the mock owns the navIndex now).
 
   it('REPLAY_ERROR (FORK_DIVERGENCE_WARNING): forkStatus=warning + forkWarning, error untouched', () => {
     dispatchServerMessage(ws, {
@@ -295,14 +271,6 @@ describe('ReplayConnectionService — client send methods', () => {
 // =============================================================================
 
 describe('ReplayConnectionService — state helpers', () => {
-  it('clearBoardStates empties the boardStates signal', () => {
-    const svc = new ReplayConnectionService();
-    svc.boardStates.set([stubPreComputed('s')]);
-    svc.clearBoardStates();
-    expect(svc.boardStates()).toEqual([]);
-    expect(svc.computedUpTo()).toBe(-1);
-  });
-
   it('resetForkState clears all 3 fork signals', () => {
     const svc = new ReplayConnectionService();
     svc.forkStatus.set('warning');

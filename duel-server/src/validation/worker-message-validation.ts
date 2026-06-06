@@ -55,12 +55,6 @@ export function validateWorkerMessage(raw: unknown): WorkerToMainMessage | null 
       if (typeof m['payload'] !== 'object' || m['payload'] === null) return null;
       return raw as WorkerToMainMessage;
 
-    case 'WORKER_REPLAY_BOARD_STATES':
-      if (!isStr(m['duelId'])) return null;
-      if (typeof m['turnNumber'] !== 'number') return null;
-      if (!Array.isArray(m['states'])) return null;
-      return raw as WorkerToMainMessage;
-
     case 'WORKER_REPLAY_COMPLETE':
       return isStr(m['duelId']) ? (raw as WorkerToMainMessage) : null;
 

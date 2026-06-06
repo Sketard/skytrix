@@ -4,14 +4,14 @@ import { TranslateFakeLoader, TranslateLoader, TranslateModule, TranslateService
 import { TurnPickerSheetComponent } from './turn-picker-sheet.component';
 import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/pvp-board-container.component';
 import { EMPTY_DUEL_STATE } from '../../types';
-import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
+import type { ReplayStreamNavEntry, TurnMeta } from '../../replay-ws.types';
 
 const stubMeta = (n: number, startIndex: number, endIndex: number): TurnMeta => ({
   turnNumber: n, startIndex, endIndex, p1LP: 8000, p2LP: 8000, eventCount: endIndex - startIndex + 1,
 });
 
-const stubState = (label: string): PreComputedState => ({
-  boardState: EMPTY_DUEL_STATE, events: [], label, responseCount: 0,
+const stubState = (label: string): ReplayStreamNavEntry => ({
+  messageOffset: 0, boardStateSnapshot: EMPTY_DUEL_STATE, events: [], label, responseCount: 0, turnNumber: 0,
 });
 
 // Stub for `<app-pvp-board-container>` — the real component pulls in the
@@ -77,7 +77,7 @@ describe('TurnPickerSheetComponent', () => {
     // boardStates is indexed by global event index, not by turn — must be
     // sized to cover every `turn.startIndex` referenced by the input set.
     const lastIdx = Math.max(0, ...turns.map(t => t.startIndex));
-    const states: PreComputedState[] = Array.from({ length: lastIdx + 1 }, (_, i) => stubState(`s${i}`));
+    const states: ReplayStreamNavEntry[] = Array.from({ length: lastIdx + 1 }, (_, i) => stubState(`s${i}`));
     fixture.componentRef.setInput('turns', turns);
     fixture.componentRef.setInput('currentTurnIndex', current);
     fixture.componentRef.setInput('computedUpToIndex', upTo);

@@ -33,7 +33,7 @@ import { ReducedMotionService } from '../../../services/reduced-motion.service';
 import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import type { DuelState } from '../types';
-import type { PreComputedState, TurnMeta } from '../replay-ws.types';
+import type { ReplayStreamNavEntry, TurnMeta } from '../replay-ws.types';
 import type { CardOnField, SelectPlaceMsg, SelectDisfieldMsg, PlaceOption, ZoneId } from '../duel-ws.types';
 import { buildFaceDownZoneKeys, preloadCardImages } from '../pvp-card.utils';
 import { buildHandChainBadges, buildHandRevealedCards, buildOpponentHandChainData } from '../duel-page/chain-badge.utils';
@@ -242,20 +242,25 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private narrowMql: MediaQueryList | null = null;
   private narrowMqlHandler: ((e: MediaQueryListEvent) => void) | null = null;
 
-  readonly boardStates = computed(() => {
-    const live = this.replayConnection.boardStates();
-    return live.length > 0 ? live : this.fork.cachedBoardStates();
+  /** Phase 6 (2026-06-06) — `navIndex` is the 1:1 successor of the retired
+   *  `boardStates: PreComputedState[]`. Sourced from `mockConn.navIndex()`
+   *  during normal playback ; falls back to the fork's cached navIndex
+   *  during a fork-warning interstitial (so the timeline stays rendered
+   *  while the user decides). */
+  readonly navIndex = computed<ReadonlyArray<ReplayStreamNavEntry>>(() => {
+    const live = this.mockConn.navIndex();
+    return live.length > 0 ? live : this.fork.cachedNavIndex();
   });
-  readonly computedUpTo = computed(() => this.replayConnection.computedUpTo());
+  readonly computedUpTo = computed(() => this.navIndex().length - 1);
 
   readonly turns = computed<TurnMeta[]>(() => {
-    const states = this.boardStates();
-    if (states.length === 0) return [];
+    const entries = this.navIndex();
+    if (entries.length === 0) return [];
     const result: TurnMeta[] = [];
-    let currentTurn = states[0].boardState.turnCount;
+    let currentTurn = entries[0].boardStateSnapshot.turnCount;
     let startIdx = 0;
     const pushTurn = (endIdx: number) => {
-      const first = states[startIdx].boardState;
+      const first = entries[startIdx].boardStateSnapshot;
       result.push({
         turnNumber: currentTurn,
         startIndex: startIdx,
@@ -265,23 +270,23 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
         eventCount: endIdx - startIdx + 1,
       });
     };
-    for (let i = 1; i < states.length; i++) {
-      if (states[i].boardState.turnCount !== currentTurn) {
+    for (let i = 1; i < entries.length; i++) {
+      if (entries[i].boardStateSnapshot.turnCount !== currentTurn) {
         pushTurn(i - 1);
-        currentTurn = states[i].boardState.turnCount;
+        currentTurn = entries[i].boardStateSnapshot.turnCount;
         startIdx = i;
       }
     }
-    pushTurn(states.length - 1);
+    pushTurn(entries.length - 1);
     return result;
   });
 
-  readonly totalEvents = computed(() => this.boardStates().length);
+  readonly totalEvents = computed(() => this.navIndex().length);
   readonly atEnd = computed(() => {
     const upTo = this.computedUpTo();
     return upTo > 0 && this.currentIndex() >= upTo;
   });
-  readonly currentState = computed<PreComputedState | null>(() => this.boardStates()[this.currentIndex()] ?? null);
+  readonly currentState = computed<ReplayStreamNavEntry | null>(() => this.navIndex()[this.currentIndex()] ?? null);
 
   /** Duel state for display — the mock's RBS is already perspective-relative
    *  (swapBoardState applied on every updateLogical), so no swap needed here. */
@@ -325,7 +330,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
   /** Perspective-adjusted turnPlayer for displayedTurnPlayer (0=me, 1=opponent). */
   readonly replayDisplayedTurnPlayer = computed<Player | null>(() => {
-    const tp = this.currentState()?.boardState?.turnPlayer;
+    const tp = this.currentState()?.boardStateSnapshot?.turnPlayer;
     if (tp == null) return null;
     if (this.perspectiveIndex() === 0) return tp as Player;
     return (tp === 0 ? 1 : 0) as Player;
@@ -352,7 +357,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
    */
   readonly loading = computed(() => {
     if (this.replayConnection.error()) return false;
-    if (this.boardStates().length === 0) return true;
+    if (this.navIndex().length === 0) return true;
     return this.mockConn.boardStateView.renderedState().players[0].zones.length === 0;
   });
 
@@ -380,14 +385,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly turnLabelText = computed<string>(() => {
     const state = this.currentState();
     if (!state) return '';
-    const bs = state.boardState;
+    const bs = state.boardStateSnapshot;
     if (bs.turnCount === 0) return this.translate.instant('replay.timeline.setup');
     const total = this.turns().length;
     return this.translate.instant('replay.timeline.turn', { n: bs.turnCount }) + (total > 0 ? ` / ${total}` : '');
   });
 
   readonly phaseLabel = computed<string | null>(() => {
-    const phase = this.currentState()?.boardState?.phase;
+    const phase = this.currentState()?.boardStateSnapshot?.phase;
     if (!phase) return null;
     return this.phaseService.phaseDisplayName(phase);
   });
@@ -464,14 +469,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     if (!this.atEnd()) return null;
     const meta = this.replayConnection.metadata() as ReplayMetadataMsg | null;
     if (!meta) return null;
-    const lastState = this.boardStates()[this.computedUpTo()];
+    const lastState = this.navIndex()[this.computedUpTo()];
     if (!lastState) return null;
     const side = this.mySide();
     const outcome = deriveOutcome(meta.result, side);
     return {
       outcome,
-      selfLp: lastState.boardState.players[side]?.lp ?? 0,
-      oppLp:  lastState.boardState.players[side === 0 ? 1 : 0]?.lp ?? 0,
+      selfLp: lastState.boardStateSnapshot.players[side]?.lp ?? 0,
+      oppLp:  lastState.boardStateSnapshot.players[side === 0 ? 1 : 0]?.lp ?? 0,
       selfName: meta.playerUsernames[side] ?? '',
       oppName:  meta.playerUsernames[side === 0 ? 1 : 0] ?? '',
       turnCount: meta.turnCount,
@@ -636,14 +641,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       this.gameLogRebuildTick();
       untracked(() => {
         const idx = this.currentIndex();
-        this.gameLog.rebuildUpTo(this.boardStates().slice(0, idx + 1));
+        this.gameLog.rebuildUpTo(this.navIndex().slice(0, idx + 1));
       });
     });
 
     this.transport.configure({
       mockConn: this.mockConn,
       phaseService: this.phaseService,
-      boardStates: this.boardStates,
+      navIndex: this.navIndex,
       computedUpTo: this.computedUpTo,
       animationsEnabled: this.animationsEnabled,
       promptMode: this.promptMode,
@@ -773,15 +778,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
     // Initialize first board state when data arrives
     effect(() => {
-      const states = this.boardStates();
+      const entries = this.navIndex();
       untracked(() => {
         // Same uninitialised guard as above (L16) — structural check rather
         // than referential equality with EMPTY_DUEL_STATE.
         const rendered = this.mockConn.boardStateView.renderedState();
-        if (states.length > 0 && rendered.players[0].zones.length === 0) {
-          // v4 Phase 5 — index 0 of `boardStates` (legacy timeline) maps
-          // 1-to-1 with `navIndex[0]` thanks to the precompute's
-          // `recordStreamFlush` invariant.
+        if (entries.length > 0 && rendered.players[0].zones.length === 0) {
           this.mockConn.seekToOffset(0);
         }
       });
@@ -841,8 +843,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
           togglePromptMode: () => this.onTogglePromptMode(),
           // Read-only helpers for the harness to assert state.
           currentIndex: () => this.currentIndex(),
-          computedUpTo: () => this.boardStates().length - 1,
-          totalBoardStates: () => this.boardStates().length,
+          computedUpTo: () => this.navIndex().length - 1,
+          totalBoardStates: () => this.navIndex().length,
           isPlaying: () => this.isPlaying(),
           perspectiveIndex: () => this.perspectiveIndex(),
           animationsEnabled: () => this.animationsEnabled(),
@@ -869,14 +871,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
           // the F9-bis verification spec to compare the rendered state vs
           // the embedded snapshot.
           currentStateChainSnapshot: () => {
-            const state = this.boardStates()[this.currentIndex()];
+            const state = this.navIndex()[this.currentIndex()];
             return state?.chainSnapshot ?? null;
           },
-          // Full event types in the current state — handy for diagnosing
-          // precompute timing issues (e.g. a state that flushed multiple
+          // Full event types in the current nav entry — handy for diagnosing
+          // precompute timing issues (e.g. a nav entry that flushed multiple
           // `MSG_CHAINING` together).
           currentStateEventTypes: () => {
-            const state = this.boardStates()[this.currentIndex()];
+            const state = this.navIndex()[this.currentIndex()];
             return state?.events.map(e => e.type) ?? [];
           },
         };
@@ -1013,7 +1015,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.abortAndClean();
     const replayId = this.route.snapshot.paramMap.get('replayId');
     if (replayId) {
-      this.fork.fork(this.currentIndex(), this.boardStates(), replayId);
+      this.fork.fork(this.currentIndex(), this.navIndex(), replayId);
     }
   }
 
@@ -1217,9 +1219,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private setupSeekTo(seekTo: number): void {
     let done = false;
     effect(() => {
-      const states = this.boardStates();
+      const entries = this.navIndex();
       untracked(() => {
-        if (done || states.length <= seekTo) return;
+        if (done || entries.length <= seekTo) return;
         done = true;
         this.onSeek(seekTo);
       });

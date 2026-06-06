@@ -5,13 +5,13 @@ import { PvpBoardContainerComponent } from '../../duel-page/pvp-board-container/
 import { EMPTY_ZONE_SET, EMPTY_STRING_SET } from '../../types';
 import type { Player } from '../../duel-ws.types';
 import type { ChainLinkState } from '../../types';
-import type { PreComputedState, TurnMeta } from '../../replay-ws.types';
+import type { ReplayStreamNavEntry, TurnMeta } from '../../replay-ws.types';
 
 interface PickerEntry {
   /** Index inside the parent `turns` array — passed back via (jumpToTurn). */
   turnIndex: number;
   meta: TurnMeta;
-  state: PreComputedState | null;
+  state: ReplayStreamNavEntry | null;
   isCurrent: boolean;
   isComputed: boolean;
   /** Turn player (0 / 1) for the chip color + initial; null for Setup (turn 0). */
@@ -46,7 +46,7 @@ export class TurnPickerSheetComponent {
   readonly currentTurnIndex = input.required<number>();
   /** Last index that has been pre-computed (states[idx] is available). */
   readonly computedUpToIndex = input.required<number>();
-  readonly boardStates = input.required<readonly PreComputedState[]>();
+  readonly boardStates = input.required<readonly ReplayStreamNavEntry[]>();
   readonly perspectiveIndex = input<Player>(0);
   /** Player usernames (absolute order, not perspective-relative). The header
    *  chip on each card derives its initial from these. */
@@ -77,7 +77,7 @@ export class TurnPickerSheetComponent {
       // Setup turn (turnNumber 0) has no real turn player — show a dash.
       const tp: Player | null = meta.turnNumber === 0
         ? null
-        : (state?.boardState?.turnPlayer ?? null);
+        : (state?.boardStateSnapshot?.turnPlayer ?? null);
       const initial = tp == null
         ? '—'
         : (names[tp]?.trim()[0]?.toUpperCase() ?? '?');

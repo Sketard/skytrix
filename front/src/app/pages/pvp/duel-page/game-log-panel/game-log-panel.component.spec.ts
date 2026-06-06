@@ -27,7 +27,7 @@ import { DuelCardArtService } from '../duel-card-art.service';
 import { ScopeResetDispatcher } from '../../projections';
 import type { DuelState, GameEvent } from '../../types';
 import type { AttackMsg, ChainingMsg, DrawMsg } from '../../duel-ws.types';
-import type { PreComputedState } from '../../duel-ws-replay.types';
+import type { ReplayStreamNavEntry } from '../../duel-ws-replay.types';
 
 // -----------------------------------------------------------------------------
 // Fixtures — mirror duel-game-log.service.spec.ts (a viewer-relative board).
@@ -418,8 +418,8 @@ describe('GameLogPanelComponent', () => {
     mockScrollMetrics(box, 1000, 300, 100);
     fireScroll(box); // user scrolled up — wasAtBottom is false
 
-    const states: PreComputedState[] = [
-      { boardState: board(), events: [draw(0, [1001])], label: '', responseCount: 0 },
+    const states: ReplayStreamNavEntry[] = [
+      { messageOffset: 0, boardStateSnapshot: board(), events: [draw(0, [1001])], label: '', responseCount: 0, turnNumber: 1 },
     ];
     gameLog.rebuildUpTo(states);
     fixture.detectChanges();
