@@ -324,56 +324,55 @@ du 18a55f97.
 
 ## Finding F22 — découvert en session diagnostic 2026-06-07
 
-### F22 — Initial hand "5+5 puis -5" : draw rajoute 5 visuellement par-dessus les 5 initiales
+### F22 — SOLO multiplex from-replay : initial hand "5+5 puis -5"
 
-**Sévérité** : MEDIUM. Bug visuel, observé par Axel au démarrage du
-harness Phase 0 sur replay 18a55f97.
+**Sévérité** : MEDIUM. Bug visuel SOLO, observé par Axel via harness
+Phase 0 lorsque le SOLO live démarre depuis `/api/duels/from-replay`.
 
-**Symptôme observé** : au démarrage du replay, la HAND du joueur 0
-affiche déjà 5 cartes (logical state initial post-`seekToOffset(0)`).
-Puis l'animation `MSG_DRAW` joue → **rajoute** 5 cartes visuellement
-(la hand a 10 cartes pendant l'animation). À la fin de l'animation,
-les 5 cartes ajoutées **disparaissent** pour ne laisser que 5 cartes.
+**Scope précisé (2026-06-07 Axel)** : bug **SOLO multiplex live**
+(`/pvp/duel/{id}?solo=true` post-from-replay endpoint), PAS le replay
+viewer. Le replay viewer n'a pas d'initial draw animation, donc pas
+de bug visuel équivalent.
+
+**Symptôme observé** : au démarrage du SOLO, la HAND du joueur 0
+affiche déjà 5 cartes (board pré-rendu). Puis l'animation `MSG_DRAW`
+joue → **rajoute** 5 cartes visuellement (la hand a 10 cartes pendant
+l'animation). À la fin de l'animation, les 5 cartes ajoutées
+**disparaissent** pour ne laisser que 5 cartes (état correct final).
 
 **Comportement attendu** : la hand devrait commencer **vide** (0
 cartes), puis la draw animation ajoute les 5 cartes une par une jusqu'à
 arriver à 5.
 
-**Cause technique probable** :
-1. `mock.seekToOffset(0)` au mount commit le `boardStateSnapshot` du
-   nav[0] qui est l'état POST-draw (HAND-0 = 5).
-2. Le MSG_DRAW dispatché ensuite est animé comme "ajout de 5 cartes"
-   mais le starting state est déjà 5 → final state serait 10.
-3. À la fin de l'animation, `commitUnlocked` re-sync au logical state
-   réel (5) → suppression des 5 cartes ajoutées en trop.
+**Cause technique probable (à investiguer)** :
 
-C'est le symétrique exact du problème PvP `boardActive=false` tier 1
-(documenté dans CLAUDE.md "syncAfterBoardState"). Le tier 1 dit :
-*"A full `commitAll()` here would copy the server's post-draw zones
-(HAND already populated) straight into the rendered state, so when the
-buffer drains the animation plays ON TOP of cards already visible in
-hand."*
+C'est le symétrique du tier 1 PvP `boardActive=false` documenté dans
+CLAUDE.md "syncAfterBoardState" :
 
-**En replay** : pas de pre-activation buffer, mais le même phénomène
-arrive parce que le `boardStateSnapshot` du nav[0] = post-draw, ET le
-MSG_DRAW est dans `events[]` du même nav entry. Quand le mock dispatch
-les events, le HAND est déjà committed → l'animation ajoute par-dessus.
+> "A full `commitAll()` here would copy the server's post-draw zones
+> (HAND already populated) straight into the rendered state, so when
+> the buffer drains the animation plays ON TOP of cards already visible
+> in hand."
 
-**Hypothèses fix** :
-1. **Précompute** : changer la captures de `boardStateSnapshot` pour
-   un nav entry contenant MSG_DRAW → utiliser l'état **pré-draw** au
-   lieu de post-draw. Ou skip le commit `boardStateSnapshot` quand le
-   nav entry ouvre par un MSG_DRAW.
-2. **Mock seekToOffset** : ne pas commit le boardStateSnapshot
-   automatiquement pour le nav[0] de bootstrap — laisser les
-   animations construire l'état progressivement.
-3. **Replay-page bootstrap** : skip le `mockConn.seekToOffset(0)` du
-   bootstrap effect (line 787) — l'animation pipeline construira
-   l'état from-scratch via dispatch.
+Le SOLO multiplex live a un bootstrap particulier post-`ANIMATIONS_READY` :
+1. Worker spawn et émet `MSG_DRAW × 5 + BOARD_STATE` rapidement.
+2. Le client reçoit ces messages dans le même batch WS.
+3. Le pre-activation buffer (`_preActivationBuffer`) est censé absorber
+   les MSG_DRAW jusqu'à `setBoardActive(true)`.
+4. `BOARD_STATE` déclenche `syncAfterBoardState` tier 1 → `syncPileCounts()`
+   (cf. CLAUDE.md doctrine — PAS un commitAll, justement pour éviter ce bug).
 
-**Statut** : finding OUVERT, à investiguer après F21. Logs ajoutés
-côté `appendChunk` + `REPLAY_STREAM_*` reception pour comprendre
-l'ordre des events.
+**Hypothèse à valider** : peut-être que le from-replay bootstrap diffère
+du SOLO normal — l'ordre des messages ou le timing de `setBoardActive`
+est différent et le tier 1 est skip. OU le `decklistId: null` du
+sessionStorage injecté par le harness change le comportement.
+
+**Action diagnostic** : ajouter logs `[F22]` côté SOLO bootstrap
+(`syncAfterBoardState` tier 1 fire ?, `setBoardActive(true)` timing,
+`_preActivationBuffer` content). Reproduire avec le harness, capturer
+console export.
+
+**Statut** : finding OUVERT, à investiguer après F21 validé.
 
 ---
 
