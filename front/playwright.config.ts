@@ -25,6 +25,11 @@ if (USE_AUTO_STACK) {
   // Tell helpers.ts + Playwright baseURL where to find the isolated stack.
   process.env['E2E_BASE_URL'] ??= 'http://localhost:14200';
   process.env['E2E_BACK_URL'] ??= 'http://localhost:18080';
+  // 2026-06-07 — parity harness reads E2E_DUEL_SERVER_URL via
+  // capture-solo-stream.ts to talk to /api/duels/from-replay. Without
+  // this, PW_AUTO_STACK runs hit :3001 (canonical) instead of :13001
+  // (isolated) and ECONNREFUSED.
+  process.env['E2E_DUEL_SERVER_URL'] ??= 'http://localhost:13001';
 }
 
 export default defineConfig({
