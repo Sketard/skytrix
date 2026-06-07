@@ -322,6 +322,58 @@ du 18a55f97.
 
 ---
 
+## Finding F21 — découvert en session diagnostic 2026-06-07
+
+### F21 — Replay auto-play stalle silencieusement sur pausedAtBoundary (pré-existant)
+
+**Sévérité** : MEDIUM. Bug runtime pré-existant à mes fixes adversarial,
+révélé par tentative de relance harness Phase 0 sur stack user.
+
+**Symptôme observé** : ouverture replay 18a55f97 → auto-play démarre →
+**la fenêtre se bloque silencieusement au milieu**. Pause manuelle puis
+play relance le playback. Le harness Phase 0 voit ça comme un timeout
+30s sur `waitForNaturalEnd` ou `waitForQueueDrain` (le scrubber est
+arrêté mais `currentIndex < total - 1`).
+
+**Cause technique (analyse)** : `ReplayTransportService.scheduleNext`
+([replay-transport.service.ts:329-342](front/src/app/pages/pvp/replay/replay-transport.service.ts#L329-L342))
+flip `isPlaying.set(false) + pausedAtBoundary.set(true)` quand
+`currentIndex >= computedUpTo()`. `computedUpTo` = `navIndex().length - 1`
+qui croît au fur et à mesure des `appendChunk()`. Si la playback rattrape
+le streaming, on entre en pausedAtBoundary. Le `resumeIfBoundaryWaiting`
+effect ([replay-page.component.ts:707-712](front/src/app/pages/pvp/replay/replay-page.component.ts#L707-L712))
+doit auto-resume quand `computedUpTo` augmente, MAIS l'utilisateur
+observe que ça ne se produit PAS → soit l'effect ne fire pas, soit la
+condition `computedUpTo > currentIndex` n'est jamais vérifiée parce que
+le scheduler n'arrive jamais à `pausedAtBoundary=true` au bon moment.
+
+**Hypothèses à valider en session dédiée** :
+1. Race condition entre `appendChunk` (qui update navIndex) et l'effect
+   `resumeIfBoundaryWaiting` (qui doit le détecter).
+2. `pausedAtBoundary` flip n'est pas observé par l'effect parce qu'il
+   subscribe à `computedUpTo` mais celui-ci n'a pas changé entre la
+   pause et la reprise potentielle.
+3. Bug pré-existant à Phase 0/1-6 mais latent — devient visible quand
+   la playback est rapide vs la précompute (env e2e ou stack lente).
+
+**Investigation menée pendant la session** :
+- Revert temporaire F3 (`syncAfterBoardState`) → stall reproduit. F3
+  N'EST PAS la cause.
+- Mes 6 fixes adversarial touchent uniquement replay-side ; aucun
+  fichier SOLO/duel-page/duel-connection.
+- Phase 0 livré (`a1db49d5`) post-`659a5974` qui stabilisait le
+  harness, donc la stabilisation a fonctionné à un moment.
+
+**Statut** : finding ouvert, à investiguer en session dédiée avec
+accès console duel-server user + browser inspector. Workaround manuel
+documenté par Axel : pause/play pour relancer.
+
+**Action** : NE PAS bloquer le push des 6 fixes adversarial à cause
+de ce finding. Le bug est pré-existant et n'affecte pas la correction
+des P0/P1 livrés.
+
+---
+
 ## Findings vérifiés runtime (mise à jour 2026-06-06)
 
 ### F7 — MSG_HINT cleared at seek + reconstruction absente → **CONFIRMÉ**
