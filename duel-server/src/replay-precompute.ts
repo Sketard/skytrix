@@ -311,6 +311,7 @@ class ReplayStreamBuilder {
     responseCount: number,
     chainSnapshot: ReplayStreamNavEntry['chainSnapshot'],
     chainIndex?: number,
+    hint?: ReplayStreamNavEntry['hint'],
   ): void {
     if (!label) return; // skip empty-label batches — they would produce phantom scrubber entries
     const entry: ReplayStreamNavEntry = {
@@ -322,6 +323,7 @@ class ReplayStreamBuilder {
       events: [...events],
       ...(chainIndex != null ? { chainIndex } : {}),
       ...(chainSnapshot ? { chainSnapshot } : {}),
+      ...(hint ? { hint } : {}),
     };
     this._navIndex.push(entry);
     this._turnNavEntries.push(entry);
@@ -459,6 +461,14 @@ export function runReplayPreComputation(
   let events: ServerMessage[] = [];
   let hasWinOrDraw = false;
   let activeChainIndex: number | null = null; // Track current chain link depth
+  // F7 (2026-06-06) — last MSG_HINT seen since the previous SELECT_*
+  // consumption. Embedded into every nav entry captured while a hint is
+  // armed, so a seek that lands on a SELECT_* nav entry sees the same
+  // `activeHint` it would see during sequential playback (the mock would
+  // otherwise wipe `_lastHint` at `seekToOffset` and the prompt-dialog
+  // header would render empty). Cleared when `playerResponses[i]` is
+  // consumed (matches the front mock's `simulatePlayerResponse` clear).
+  let lastHintForNav: { hintType: number; player: number; value: number; cardName: string } | null = null;
   // Local chain tracker — replay precompute doesn't share state with cancel,
   // so a per-run instance is enough (vs `liveChainTracker` for live PvP).
   const chainTracker = new ChainSnapshotTracker();
@@ -506,6 +516,7 @@ export function runReplayPreComputation(
     streamBuilder.recordNavEntry(
       label, currentTurn, bs.data, events, responseIndex,
       buildChainSnapshot(chainStateContainer), chainIndex,
+      lastHintForNav ?? undefined,
     );
     events = [];
   }
@@ -634,6 +645,15 @@ export function runReplayPreComputation(
             // flips identically to PvP. Not accumulated into the events
             // batch (legacy hint was metadata-only on DecisionMoment, now
             // retired).
+            // F7 (2026-06-06) — also pin on the nav-entry hint accumulator
+            // so a mid-prompt seek restores the same `activeHint` the live
+            // dispatch would have set.
+            lastHintForNav = {
+              hintType: filtered.hintType,
+              player: filtered.player,
+              value: filtered.value,
+              cardName: filtered.cardName,
+            };
             applyChainTransition(chainStateContainer, filtered);
             ingestStream(filtered);
           } else if (filtered.type === 'MSG_CONFIRM_CARDS') {
@@ -747,6 +767,12 @@ export function runReplayPreComputation(
         // `simulatePlayerResponse(autoResponse)` after dispatch.
         const promptTypeStr = OcgMessageType[rawMsg.type] ?? '';
         recordAutoResponse(promptTypeStr, response.data as Record<string, unknown>);
+        // F7 (2026-06-06) — clear the hint accumulator now that the prompt
+        // has consumed its response (mirror of the front mock's
+        // `simulatePlayerResponse` clear of `_transport_lastHint`). The next
+        // nav entry will only carry a hint if a new MSG_HINT fires after
+        // this point.
+        lastHintForNav = null;
         core.duelSetResponse(duel, response.data as never);
         responseIndex++;
       }

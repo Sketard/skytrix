@@ -906,7 +906,14 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       speedMultiplier: () => 1,
       isBoardActive: () => true,
     });
-    this.mockConn.perspectiveIndex.set(this.perspectiveIndex());
+    // F1/F6 (2026-06-06) — single source of truth for perspective. The mock
+    // reads `_duelCtx.perspective()()` for its board-state swap path, so the
+    // duelCtx signal MUST be primed with the localStorage-restored value
+    // BEFORE the first board state lands (otherwise `_currentPerspective`
+    // returns the default 0 and the swap never fires). Replaces the legacy
+    // `this.mockConn.perspectiveIndex.set(...)` dead-write — that signal
+    // was retired alongside this change.
+    this.duelCtx.setPerspective(this.perspectiveIndex());
 
     // F4 — width-driven `.is-narrow` host class (D1). matchMedia change events
     // fire only on the breakpoint crossing, so the initial value is read at
@@ -1004,7 +1011,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.transport.haltPlaybackTimer();
     this.abortAndClean();
     this.perspectiveIndex.update(i => i === 0 ? 1 : 0);
-    this.mockConn.perspectiveIndex.set(this.perspectiveIndex());
+    // F1/F6 (2026-06-06) — propagate the flip to the duelCtx so the mock's
+    // `_currentPerspective()` reads the new value on the next board-state
+    // swap. Without this, the mock board never rotates — the bug F1
+    // catalogued in `anim-pipeline-v4-adversarial-findings-2026-06-06.md`.
+    this.duelCtx.setPerspective(this.perspectiveIndex());
     localStorage.setItem(ReplayPageComponent.PREF_PERSPECTIVE, String(this.perspectiveIndex()));
     // v4 Phase 5 — re-seat the mock at the current index so the rendered
     // board is swapped to the new perspective. Replaces `adapter.jumpToState(state)`.

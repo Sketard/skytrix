@@ -95,21 +95,41 @@ export class ReplayTransportService {
   // Public transport controls
   // =============================================================================
 
-  /** Pause playback + jump to `index` (clamped to 0 on the low end). Shared
-   *  by every imperative seek; bounds-check on the *high* end is enforced by
-   *  the caller (out-of-range index simply leaves the rendered state at the
-   *  last known step). */
+  /** Pause playback + jump to `index`. Shared by every imperative seek.
+   *
+   *  F9 (2026-06-06) — bounds-check the HIGH end BEFORE mutating
+   *  `currentIndex`. The legacy implementation set `currentIndex` first
+   *  and then called `seekToOffset`, which silently no-ops on out-of-range
+   *  (mock returns when `index >= navIndex.length`). Result : the UI
+   *  displayed an index that didn't correspond to any rendered board state
+   *  (board frozen on the previous step). Caller-side bound-check was
+   *  documented as "enforced by the caller" but no caller actually did it.
+   *  Centralising here is the canonical fix.
+   *
+   *  Gate uses `cfg.computedUpTo()` (the public scrubber bound surfaced by
+   *  the page) rather than `mockConn.navIndex().length` directly — the two
+   *  are equivalent in production (computedUpTo = navIndex.length - 1) but
+   *  `computedUpTo` is the API the rest of the transport already uses
+   *  (`atEnd`, `scheduleNext`). A `computedUpTo === -1` (stream not yet
+   *  streamed) is treated as "no upper bound enforced yet" — the seek
+   *  falls through to `seekToOffset` which silently no-ops, matching the
+   *  pre-F9 behavior for the not-yet-streamed case. */
   private jumpTo(index: number): void {
     this.pausePlayback();
     if (index < 0) return;
+    const upTo = this.getCfg().computedUpTo();
+    if (upTo >= 0 && index > upTo) {
+      // Out-of-range past the precomputed end. Don't touch `currentIndex`
+      // — letting it land at an index without a matching render would
+      // desync the UI from the board.
+      return;
+    }
     this.currentIndex.set(index);
     // v4 Phase 5 (2026-06-05) — `seekToOffset` reads the nav entry's
     // embedded `boardStateSnapshot` + `chainSnapshot` and restores via
     // the SHARED `chainingMsgsToLinkStates` / `processor.restoreChainState`
     // helpers — same restore path as the PvP `CHAIN_STATE` reconnect
-    // handshake. No-op when no nav entry exists for `index` (stream not
-    // loaded yet, or `index` out of the precomputed navIndex range — the
-    // mock logs and returns).
+    // handshake.
     this.getCfg().mockConn.seekToOffset(index);
   }
 

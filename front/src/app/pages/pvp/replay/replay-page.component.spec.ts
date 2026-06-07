@@ -128,7 +128,6 @@ class StubMockDuelConnection {
   cleanup = jasmine.createSpy('cleanup');
 
   // Animation pipeline surfaces (AnimationDataSource contract)
-  readonly perspectiveIndex = signal<0 | 1>(0);
   readonly busy = signal(false);
   readonly pendingPrompt = signal<unknown>(null);
   readonly activeResponse = signal<unknown>(null);
@@ -225,6 +224,12 @@ class StubDuelContext {
   scaledDuration = (b: number): number => b;
   safetyTimeout = (b: number): number => b;
   announceEvent = jasmine.createSpy('announceEvent');
+  // F1/F6 (2026-06-06) — perspective is now sourced from DuelContext
+  // (single source of truth, mirror of SOLO PvP). Replaces the dead-write
+  // `mockConn.perspectiveIndex`.
+  readonly perspectiveSource = signal<0 | 1>(0);
+  perspective(): ReturnType<typeof signal<0 | 1>> { return this.perspectiveSource; }
+  setPerspective = jasmine.createSpy('setPerspective').and.callFake((v: 0 | 1) => this.perspectiveSource.set(v));
 }
 
 class StubTranslate {
@@ -613,7 +618,14 @@ describe('ReplayPageComponent — toggle handlers', () => {
     component.onTogglePerspective();
     expect(component.perspectiveIndex()).toBe(1);
     expect(localStorage.getItem('replay.perspectiveIndex')).toBe('1');
-    expect(adapter.perspectiveIndex()).toBe(1);
+    // F1/F6 (2026-06-06) — single source of truth = DuelContext. The
+    // toggle now writes through `duelCtx.setPerspective(...)` ; the
+    // mock reads it via `_duelCtx.perspective()()` for board-state swap.
+    // The legacy `adapter.perspectiveIndex` signal was retired. DuelContext
+    // is provided at the component level (TestBed.overrideComponent), so
+    // we resolve the stub via the fixture's debugElement injector.
+    const duelCtxStub = fixture.debugElement.injector.get(DuelContext) as unknown as StubDuelContext;
+    expect(duelCtxStub.setPerspective).toHaveBeenCalledWith(1);
     // v4 Phase 5 — onTogglePerspective re-seats the mock at the current
     // index via seekToOffset (replaces adapter.jumpToState(state)).
     expect(adapter.seekToOffset).toHaveBeenCalledWith(0);

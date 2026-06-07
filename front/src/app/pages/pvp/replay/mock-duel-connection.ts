@@ -1,6 +1,7 @@
 import { computed, signal, type Signal } from '@angular/core';
 
 import {
+  syncAfterBoardState,
   type AnimationDataSource,
   type QueueDirective,
   type QueueEntry,
@@ -15,7 +16,8 @@ import type {
   BoardStateMsg, BoardStatePayload, CardInfo, ConfirmCardsMsg, HintMsg, Player,
   SelectCardMsg, SelectChainMsg,
   SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg,
-  ServerMessage, ReplayStreamAutoResponse, ReplayStreamNavEntry,
+  ServerMessage, WinMsg,
+  ReplayStreamAutoResponse, ReplayStreamNavEntry,
 } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
@@ -107,18 +109,6 @@ export class MockDuelConnection implements AnimationDataSource {
    */
   readonly busy: Signal<boolean> = computed(() =>
     this.animationQueue().length > 0 || this.pendingPrompt() !== null);
-
-  /** Replay viewer's player index (0/1). Writable for the
-   *  `togglePerspective` UX path. PvP equivalent : the SOLO orchestrator's
-   *  `perspectiveSource` signal. Default 0 ; the replay-page component
-   *  binds its localStorage-restored value to this signal at mount. */
-  // why: data-layer config writable from the page (analogous to
-  // `DuelContext.perspectiveSource` in SOLO PvP). Public surface, not
-  // a pipeline projection. Cannot use `*Source` suffix because the
-  // component WRITES it (the convention reserves `*Source` for
-  // module-scope read-only @Environment inputs).
-  // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
-  readonly perspectiveIndex = signal<0 | 1>(0);
 
   /** The player index of the currently-shown prompt (mirror of
    *  `adapter.activePlayer`). Derived from `pendingPrompt.player`. */
@@ -415,7 +405,13 @@ export class MockDuelConnection implements AnimationDataSource {
     //    accumulators (mirror of `simulatePlayerResponse` clearing,
     //    appropriate since a seek through a prompt is "abandon answer").
     this.pendingPrompt.set(null);
-    this._transport_lastHint.set(null);
+    // F7 (2026-06-06) — restore the hint accumulator from the nav entry's
+    // embedded snapshot. The precompute pins `entry.hint` whenever a hint
+    // was armed at flush time (cleared on `playerResponses[]` consumption).
+    // Without this restore, a seek that lands on a SELECT_* nav entry
+    // would render the prompt-dialog with `activeHint = null` even though
+    // sequential playback would have set it via the prior MSG_HINT dispatch.
+    this._transport_lastHint.set(entry.hint ?? null);
     this._transport_lastConfirmedCards.set(null);
   }
 
@@ -480,6 +476,21 @@ export class MockDuelConnection implements AnimationDataSource {
       return;
     }
 
+    // F2/F4 (2026-06-06) — MSG_WIN parity with PvP `_handleDuelEnd`. The
+    // OCG-emitted MSG_WIN landed in the replay stream (precompute ingests
+    // it as the duel ends). PvP live: server converts MSG_WIN → DUEL_END
+    // at the WS boundary, then the client synthesizes a MSG_WIN onto the
+    // EventStream via `_outOfBandSink` + closes Chain/Phase/Turn via
+    // `forceBoundaryClosure('DuelEnded')`. Replay path now mirrors that:
+    // push MSG_WIN onto the EventStream so DuelGameLogService renders the
+    // 🏆 line, then force-close boundaries in causality order so the
+    // journal sees `…events… → MSG_WIN → ChainEnded → PhaseEnded → TurnEnded`.
+    if (message.type === 'MSG_WIN') {
+      this._outOfBandSink?.(message as WinMsg);
+      this.processor.forceBoundaryClosure('DuelEnded');
+      return;
+    }
+
     // Skip-list : message types that exist in the protocol but have no
     // replay-side semantic. They never appear in a properly-precomputed
     // replay stream — if one shows up, the precompute filter has a hole.
@@ -494,13 +505,23 @@ export class MockDuelConnection implements AnimationDataSource {
 
   private _handleBoardState(message: BoardStateMsg): void {
     const data = this._maybeSwapBoardState(message.data);
-    // Note (Phase 1): we intentionally skip `syncAfterBoardState` here.
-    // The PvP path calls it to drive sync-tier decisions while a live WS
-    // streams events ; in replay v4 the BOARD_STATE is just the source of
-    // truth for `updateLogical` and `observeBoardState`. Phase 3 will
-    // re-introduce `syncAfterBoardState` once the auto-advance scheduler
-    // is in place so the tier semantics match PvP exactly.
-    this.rbs.updateLogical(data);
+    // F3 (2026-06-06) — wire `syncAfterBoardState` to mirror the PvP
+    // tier semantics. Without this, BOARD_STATE arrivals in replay only
+    // updated logical state (no syncRendered / syncPileCounts), leaving
+    // DECK/EXTRA pile counts + global metadata stale between events
+    // (regression doctrinale documented in
+    // `_bmad-output/planning-artifacts/anim-pipeline-v4-adversarial-findings-2026-06-06.md`
+    // — F3). `boardActive=true` in replay (the pre-activation buffer flow
+    // is PvP-only — the replay page configures `isBoardActive: () => true`
+    // at mount), so tier 1 (`!boardActive` bootstrap branch) is dead code
+    // here ; tier 2 / 3 / 4 fire identically to PvP.
+    //
+    // Note : `syncAfterBoardState` calls `rbs.updateLogical(data)` itself
+    // internally (modulo the Option N skip during resolving + queue !=0).
+    // The legacy explicit `rbs.updateLogical(data)` call is gone — it
+    // would have double-updated, bypassing Option N.
+    syncAfterBoardState(this.rbs, this.processor.chainPhase(),
+      this.animationQueue().length, data, /*boardActive*/ true);
     this.processor.observeBoardState(data);
   }
 
@@ -607,6 +628,8 @@ const REPLAY_IGNORED_TYPES: ReadonlySet<string> = new Set([
   'OPPONENT_DISCONNECTED', 'OPPONENT_RECONNECTED',
   'REMATCH_INVITATION', 'REMATCH_CANCELLED', 'REMATCH_STARTING',
   'STATE_SYNC', 'CHAIN_STATE',
-  'MSG_WIN',
+  // MSG_WIN is NOT here — F2/F4 (2026-06-06) routes it via the explicit
+  // branch in `_dispatch` so it reaches the EventStream + closes boundaries
+  // identically to PvP `_handleDuelEnd`.
   'ERROR',
 ]);

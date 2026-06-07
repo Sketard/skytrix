@@ -156,6 +156,18 @@ export interface ReplayStreamNavEntry {
     negatedIndices: number[];
     currentSolvingChainIndex: number | null;
   };
+  /** F7 (2026-06-06) — last MSG_HINT seen since the previous SELECT_*
+   *  consumption, captured at flush time. Restored by the mock at
+   *  `seekToOffset` so a seek that lands on a SELECT_* nav entry sees
+   *  the same `activeHint` it would see during sequential playback.
+   *  Struct mirrors the front `HintContext` interface ; null/absent when
+   *  no hint is currently armed. */
+  hint?: {
+    hintType: number;
+    player: number;
+    value: number;
+    cardName: string;
+  };
 }
 
 /** A chunk of replay stream messages — one chunk per turn, same boundary
