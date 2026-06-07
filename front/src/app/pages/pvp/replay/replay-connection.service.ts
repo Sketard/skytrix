@@ -82,15 +82,24 @@ export class ReplayConnectionService implements OnDestroy {
             break;
 
           case 'REPLAY_STREAM_CHUNK':
+            // F21/F22 diag (2026-06-07) — trace WS-arrival of chunks.
+            console.warn('[F21] WS REPLAY_STREAM_CHUNK turn=%d msgs=%d nav=%d',
+              msg.turnNumber, msg.messages.length, msg.navEntries.length);
             this.lastReceivedTurn.set(msg.turnNumber);
             this.onStreamChunk?.(msg);
             break;
 
           case 'REPLAY_STREAM_INIT':
+            // F21/F22 diag (2026-06-07) — trace stream finalisation.
+            console.warn('[F21] WS REPLAY_STREAM_INIT totalMsgs=%d navIdx=%d',
+              msg.totalMessages, msg.navIndex.length);
             this.onStreamInit?.(msg);
             break;
 
           case 'REPLAY_ERROR': {
+            // F21/F22 diag (2026-06-07) — replay error reception.
+            console.warn('[F21] WS REPLAY_ERROR code=%s message=%s',
+              msg.code, msg.message);
             if (msg.code === 'FORK_DIVERGENCE_WARNING') {
               this.forkStatus.set('warning');
               this.forkWarning.set(msg.message);

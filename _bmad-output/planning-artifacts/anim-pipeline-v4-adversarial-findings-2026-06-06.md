@@ -322,6 +322,61 @@ du 18a55f97.
 
 ---
 
+## Finding F22 — découvert en session diagnostic 2026-06-07
+
+### F22 — Initial hand "5+5 puis -5" : draw rajoute 5 visuellement par-dessus les 5 initiales
+
+**Sévérité** : MEDIUM. Bug visuel, observé par Axel au démarrage du
+harness Phase 0 sur replay 18a55f97.
+
+**Symptôme observé** : au démarrage du replay, la HAND du joueur 0
+affiche déjà 5 cartes (logical state initial post-`seekToOffset(0)`).
+Puis l'animation `MSG_DRAW` joue → **rajoute** 5 cartes visuellement
+(la hand a 10 cartes pendant l'animation). À la fin de l'animation,
+les 5 cartes ajoutées **disparaissent** pour ne laisser que 5 cartes.
+
+**Comportement attendu** : la hand devrait commencer **vide** (0
+cartes), puis la draw animation ajoute les 5 cartes une par une jusqu'à
+arriver à 5.
+
+**Cause technique probable** :
+1. `mock.seekToOffset(0)` au mount commit le `boardStateSnapshot` du
+   nav[0] qui est l'état POST-draw (HAND-0 = 5).
+2. Le MSG_DRAW dispatché ensuite est animé comme "ajout de 5 cartes"
+   mais le starting state est déjà 5 → final state serait 10.
+3. À la fin de l'animation, `commitUnlocked` re-sync au logical state
+   réel (5) → suppression des 5 cartes ajoutées en trop.
+
+C'est le symétrique exact du problème PvP `boardActive=false` tier 1
+(documenté dans CLAUDE.md "syncAfterBoardState"). Le tier 1 dit :
+*"A full `commitAll()` here would copy the server's post-draw zones
+(HAND already populated) straight into the rendered state, so when the
+buffer drains the animation plays ON TOP of cards already visible in
+hand."*
+
+**En replay** : pas de pre-activation buffer, mais le même phénomène
+arrive parce que le `boardStateSnapshot` du nav[0] = post-draw, ET le
+MSG_DRAW est dans `events[]` du même nav entry. Quand le mock dispatch
+les events, le HAND est déjà committed → l'animation ajoute par-dessus.
+
+**Hypothèses fix** :
+1. **Précompute** : changer la captures de `boardStateSnapshot` pour
+   un nav entry contenant MSG_DRAW → utiliser l'état **pré-draw** au
+   lieu de post-draw. Ou skip le commit `boardStateSnapshot` quand le
+   nav entry ouvre par un MSG_DRAW.
+2. **Mock seekToOffset** : ne pas commit le boardStateSnapshot
+   automatiquement pour le nav[0] de bootstrap — laisser les
+   animations construire l'état progressivement.
+3. **Replay-page bootstrap** : skip le `mockConn.seekToOffset(0)` du
+   bootstrap effect (line 787) — l'animation pipeline construira
+   l'état from-scratch via dispatch.
+
+**Statut** : finding OUVERT, à investiguer après F21. Logs ajoutés
+côté `appendChunk` + `REPLAY_STREAM_*` reception pour comprendre
+l'ordre des events.
+
+---
+
 ## Finding F21 — découvert en session diagnostic 2026-06-07
 
 ### F21 — Replay auto-play stalle silencieusement sur pausedAtBoundary (pré-existant)
