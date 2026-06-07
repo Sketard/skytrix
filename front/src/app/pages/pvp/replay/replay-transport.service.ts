@@ -323,6 +323,23 @@ export class ReplayTransportService {
     // interval to avoid synchronous recursion.
     if (c.animationsEnabled()) {
       this.dispatchMockUntilIndex(nextIdx);
+      // F21 fix bis (2026-06-07) — if the dispatch loop didn't push any
+      // animation onto the queue (e.g. BOARD_STATE-only step) and there's
+      // no pending prompt, the `maybeAdvance` effect won't fire (none of
+      // busy/pendingPrompt/phaseAnnouncement/chainOverlayActive flips) and
+      // playback stalls silently. Re-schedule explicitly via setTimeout so
+      // the auto-play loop continues — but ONLY if there are still steps
+      // ahead, otherwise we'd loop on the boundary path. The timeout
+      // falls through to `scheduleNext` which re-checks the state and
+      // routes to either `doStepForward` (more to play), the boundary
+      // pause, or the pending-prompt branch.
+      const moreToPlay = nextIdx < c.computedUpTo();
+      if (moreToPlay && !c.mockConn.busy() && !c.mockConn.pendingPrompt()) {
+        this.playbackTimer = setTimeout(() => {
+          this.playbackTimer = null;
+          this.scheduleNext();
+        }, PLAYBACK_INTERVAL);
+      }
     } else {
       c.mockConn.seekToOffset(nextIdx);
       this.playbackTimer = setTimeout(() => {
