@@ -295,9 +295,18 @@ export class MockDuelConnection implements AnimationDataSource {
     this._transport_navIndex.set([...init.navIndex]);
   }
 
-  /** Phase 1 back-compat — load a complete stream in one shot. Resets the
-   *  cursor and replaces all buffered data. Kept for tests that don't go
-   *  through the chunked path. */
+  /**
+   * @internal — test-only convenience. Production code uses the chunked
+   * path (`appendChunk` + `loadStreamInit`) wired via
+   * `ReplayConnectionService.onStreamChunk` / `onStreamInit`. Kept on the
+   * class (rather than extracted into `__test__`) because Karma stubs
+   * already type against `MockDuelConnection` ; moving it would refactor
+   * ~5 spec sites for marginal benefit. F13 (2026-06-06 adversarial review)
+   * accepted as documentation debt.
+   *
+   * Loads a complete stream in one shot. Resets the cursor and replaces
+   * all buffered data.
+   */
   loadStream(stream: ReplayStream): void {
     this._messages.length = 0;
     this._autoResponses.clear();
@@ -417,9 +426,24 @@ export class MockDuelConnection implements AnimationDataSource {
 
   /** Idempotent cleanup. Mirrors `DuelConnection.cleanup` (rbs.destroy is
    *  null-safe) and `ReplayDuelAdapter.ngOnDestroy`. Safe to call multiple
-   *  times — Phase 3 component teardown may invoke it from two sites. */
+   *  times. F12 (2026-06-06) — now wired in `replay-page.ngOnDestroy` ; the
+   *  legacy "0 caller in production" was a leak documented in the
+   *  adversarial review.
+   *
+   *  Clears every piece of state so a future fork-solo round-trip (Phase
+   *  7.5) that swaps `mockConn ↔ realConn` doesn't carry the previous
+   *  stream into the next instance. The reactive signals are reset to
+   *  their initial values rather than left dangling. */
   cleanup(): void {
     this.rbs.destroy();
+    this._messages.length = 0;
+    this._autoResponses.clear();
+    this._transport_navIndex.set([]);
+    this._transport_messageCursor.set(0);
+    this._totalMessages = null;
+    this.pendingPrompt.set(null);
+    this._transport_lastHint.set(null);
+    this._transport_lastConfirmedCards.set(null);
   }
 
   // ══════════════════════════════════════════════════

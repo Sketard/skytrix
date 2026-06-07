@@ -31,10 +31,44 @@ fragilise le replay comme outil debug principal.
 
 ## La doctrine cible
 
-**Replay = PvP readonly** — le replay réutilise STRICTEMENT le même
-pipeline anim que le PvP, le seul point d'injection différent est une
-`MockDuelConnection` qui consomme une séquence `ServerMessage[]`
-pré-calculée par le serveur au lieu de recevoir des messages via WS.
+**Replay = PvP readonly** — le replay réutilise le même pipeline anim
+que le PvP (`DuelEventProcessor`, `AnimationOrchestratorService`,
+`BoundaryProcessor`, `DeferredEffectProcessor`, projections, runner),
+modulo les surfaces hors-mode-replay. Le seul point d'injection
+différent est une `MockDuelConnection` qui consomme une séquence
+`ServerMessage[]` pré-calculée par le serveur au lieu de recevoir des
+messages via WS.
+
+**Surfaces volontairement absentes côté mock** (F19 — adversarial review
+2026-06-06) — listées explicitement pour qu'un dev qui ajoute un
+comportement au `DuelConnection` PvP sache s'il doit le miror ou le
+classer hors-scope replay :
+
+- **Lifecycle WS** : `SESSION_TOKEN`, `SESSION_PHASE`, `DUEL_STARTING`,
+  `DUEL_END`, `DICE_ROLL`, `DICE_RESULT`, `SELECT_FIRST_PLAYER`,
+  `FIRST_PLAYER_RESULT`, `DECK_PREFETCH`, `EARLY_DECK_PREFETCH` — tous
+  matchmaking / bootstrap PvP, pas de replay-équivalent. Skip via
+  `REPLAY_IGNORED_TYPES`.
+- **Timer + presence** : `TIMER_STATE`, `INACTIVITY_WARNING`,
+  `WAITING_RESPONSE`, `OPPONENT_DISCONNECTED`, `OPPONENT_RECONNECTED`
+  — état runtime live, pas de replay-équivalent.
+- **Rematch** : `REMATCH_INVITATION`, `REMATCH_CANCELLED`,
+  `REMATCH_STARTING` — séquence post-duel PvP, pas de replay-équivalent
+  (le user revient sur le hub).
+- **Reconnect handshake** : `STATE_SYNC`, `CHAIN_STATE` — pas nécessaire
+  parce que le replay reload tout le stream à la reconnexion WS (vs
+  PvP qui resume from snapshot).
+- **Error** : `ERROR` — surface PvP-only (le replay a son propre canal
+  `REPLAY_ERROR` géré par `ReplayConnectionService`).
+
+**Routées via le mock** (mirror exact du PvP) : `BOARD_STATE`,
+`MSG_HINT` (avec accumulator pour le hint header), `MSG_CONFIRM_CARDS`
+(avec accumulator pour les confirmed cards), tous les `SELECT_*` /
+`SORT_*` / `ANNOUNCE_*` (via `_handleSelectModal` / `_handleSelectSimple`),
+toute la chain pipeline (`MSG_CHAINING` / `MSG_CHAIN_*`), les game events
+(`MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, …), `MSG_WIN` (F2/F4 fix
+`753e2d70` — synthèse + `forceBoundaryClosure('DuelEnded')` identique
+au PvP `_handleDuelEnd`).
 
 Conséquences architecturales :
 
@@ -99,7 +133,7 @@ travail de migration.
 
 ## Plan d'attaque — 7 phases
 
-### Phase 0 — Filets de sécurité
+### Phase 0 — Filets de sécurité ✅ LIVRÉ 2026-06-05 (`a1db49d5`)
 
 Cf. Pré-requis A + B ci-dessus.
 
@@ -110,18 +144,59 @@ Cf. Pré-requis A + B ci-dessus.
 
 **Sortie** : 1 spec qui sert de gate à chaque phase suivante.
 **Effort** : 4-6h.
-**Bloqueur** : si la parité PvP↔Replay actuelle n'est pas déjà
-identique, ce test fail dès l'écriture. Documenter chaque différence
-comme finding (chantier v4 préliminaire). Fix opportunistes.
 
-### Phase 1 — Concevoir `MockDuelConnection` (sans la brancher)
+#### Findings Phase 0 ouverts (F5 — adversarial review 2026-06-06)
 
-- 1.1 — Extraire l'interface formelle `IDataConnection` que consomme le
-  pipeline anim (orchestrator, page, prompt-dialog, chain-overlay).
-  Probablement un sous-ensemble strict de l'API publique de
-  `DuelConnection`.
+Bug racine fixé au merge Phase 0 : double-`transformResponse` (`indices→indicies` 2x).
+
+2 divergences réelles observées sur fixture `18a55f97` post-Phase 0 :
+
+1. **TurnStarted/PhaseStarted dupliqués replay** — sur seek mid-phase,
+   le replay émet `TurnStarted` + `PhaseStarted` (asymmetric "First
+   BOARD_STATE" branche de `BoundaryProcessor.observeBoardState`) pour
+   un turn déjà visité par les BOARD_STATE pre-seek. Cause : `seekToOffset`
+   appelle `processor.reset()` → `boundary.silentReset()` qui wipe
+   `lastTurn`/`lastPhase`. Le prochain BOARD_STATE retraverse la branche
+   "First BOARD_STATE" line 164-174.
+   - **Statut** : à trancher en session dédiée — soit (a) asymmetry
+     doctrinale acceptable (le test parité doit ignorer les boundaries
+     post-silentReset), soit (b) précompute émet plus de BOARD_STATE
+     intermédiaires que PvP et un seek mid-phase amplifie l'asymétrie.
+   - **Adversarial review** :
+     [anim-pipeline-v4-adversarial-findings-2026-06-06.md](anim-pipeline-v4-adversarial-findings-2026-06-06.md)
+     section F5.
+
+2. **MSG_DRAW asymétriques perspective=1** — symptôme du bug F1
+   (toggle perspective replay ne propageait pas au mock parce que le
+   mock lisait `duelCtx.perspectiveSource` toujours à 0).
+   - **Statut** : ✅ FIXÉ commit `753e2d70` (2026-06-06). Le toggle
+     replay écrit désormais `duelCtx.setPerspective(...)`, le mock
+     swap board state correctement.
+
+**Mitigation initiale** : tolérer initialement des différences mineures
+(ordre dans même tick, timestamps absents en replay), documenter chaque
+différence comme finding. Fix opportunistes ou audit pre-chantier.
+
+### Phase 1 — Concevoir `MockDuelConnection` (sans la brancher) ✅ LIVRÉ (`9cb713a6`)
+
+- 1.1 — ~~Extraire l'interface formelle `IDataConnection` que consomme le
+  pipeline anim~~. **DÉCISION ACTÉE 2026-06-06 (F20 adversarial review)** :
+  partiellement extrait — `AnimationDataSource` couvre les 8 méthodes
+  consommées par l'orchestrator. Le reste (`pendingPrompt`,
+  `activeHint`, `activeResponse`, `activePlayer`, `activeConfirmedCards`,
+  `busy`) reste consommé par-name sur le concrete type
+  (`MockDuelConnection` / `DuelConnection`). Bénéfice d'une interface
+  formelle étendue : marginal (1 site de chaque côté, refactor de
+  ~20 propriétés). Coût : non négligeable (template + spec stubs touchent
+  ces propriétés via le type concret). **Accepté comme dette
+  architecturale documentée** ; promoteur naturel = un 3ème consommateur
+  hypothétique (fork-solo intermediate state, deck preview replay, etc.)
+  qui justifierait l'abstraction.
 - 1.2 — Créer `front/src/app/pages/pvp/replay/mock-duel-connection.ts`
-  qui implémente `IDataConnection`.
+  qui implémente `AnimationDataSource` (couvre l'usage orchestrator) ;
+  les surfaces UI-facing (`pendingPrompt`, `activeHint`, …) sont des
+  propriétés directes du `MockDuelConnection` mirror du concrete
+  `DuelConnection`.
 - 1.3 — API spécifique mockConn :
   ```ts
   loadStream(stream: ReplayStream): void;

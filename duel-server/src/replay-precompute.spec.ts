@@ -493,6 +493,65 @@ describe('runReplayPreComputation', () => {
       }
     });
   });
+
+  // ─── F14 (2026-06-06) — stream MUST NOT contain REPLAY_IGNORED_TYPES ─────
+  //
+  // The mock-side `REPLAY_IGNORED_TYPES` set (`front/src/app/pages/pvp/replay/
+  // mock-duel-connection.ts`) silently drops these message types — they
+  // belong to PvP-only lifecycle (matchmaking, timers, reconnect handshake,
+  // rematch). The doctrine "Replay = PvP readonly" promises the precompute
+  // never emits them ; without this gate, a future precompute regression
+  // that adds e.g. `INACTIVITY_WARNING` would be skipped by the mock
+  // without any warning, masking a real divergence.
+  //
+  // Duplicates the front-side set verbatim with a cross-reference comment ;
+  // a CI step could in theory parse both files to assert identity, but the
+  // 2 sites + this test are tractable enough that manual sync at PR review
+  // is the path of least resistance.
+  describe('F14 — REPLAY_IGNORED_TYPES disjointness', () => {
+    /** Verbatim mirror of `mock-duel-connection.ts:REPLAY_IGNORED_TYPES`
+     *  (front side). Update both sites together if the protocol grows. */
+    const FRONT_REPLAY_IGNORED_TYPES = new Set<string>([
+      'SESSION_TOKEN', 'SESSION_PHASE',
+      'DUEL_STARTING', 'DUEL_END',
+      'DICE_ROLL', 'DICE_RESULT',
+      'SELECT_FIRST_PLAYER', 'FIRST_PLAYER_RESULT',
+      'DECK_PREFETCH', 'EARLY_DECK_PREFETCH',
+      'TIMER_STATE', 'INACTIVITY_WARNING', 'WAITING_RESPONSE',
+      'OPPONENT_DISCONNECTED', 'OPPONENT_RECONNECTED',
+      'REMATCH_INVITATION', 'REMATCH_CANCELLED', 'REMATCH_STARTING',
+      'STATE_SYNC', 'CHAIN_STATE',
+      // MSG_WIN deliberately ABSENT — routed via the explicit branch in
+      // the mock's `_dispatch` post-F2/F4 fix (2026-06-06 commit 753e2d70).
+      'ERROR',
+    ]);
+
+    it('a complete WIN run emits zero messages whose type is in REPLAY_IGNORED_TYPES', () => {
+      // Drive the precompute through a minimal complete duel : one CONTINUE
+      // tick with a no-op message, one END tick with WIN. This is enough to
+      // exercise every code path that pushes onto the stream
+      // (`ingestStream`, the synthetic `BOARD_STATE` inside `flushNavEntry`,
+      // the `recordAutoResponse` map). A precompute regression that started
+      // emitting e.g. `INACTIVITY_WARNING` here would fail this assert.
+      const { msg, deps, port } = makeDeps([
+        {
+          status: OcgProcessResult.CONTINUE,
+          messages: [ocg(OcgMessageType.NEW_TURN, { player: 0 })],
+        },
+        {
+          status: OcgProcessResult.END,
+          messages: [ocg(OcgMessageType.WIN, { player: 0, reason: 0x01 })],
+        },
+      ]);
+      runReplayPreComputation(msg, deps);
+      const chunks = port.messages.filter(
+        m => (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK',
+      ) as { messages: ServerMessage[] }[];
+      const emitted = chunks.flatMap(c => c.messages.map(m => m.type));
+      const violations = emitted.filter(t => FRONT_REPLAY_IGNORED_TYPES.has(t));
+      expect(violations).toEqual([]);
+    });
+  });
 });
 
 // ─── Pure helpers (label generation + chain finalization) ───────────────────

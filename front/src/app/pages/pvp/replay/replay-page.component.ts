@@ -950,6 +950,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.orchestrator.destroy();
     this.fork.cleanup();
     this.replayConnection.disconnect();
+    // F12 (2026-06-06) — explicit mock cleanup. Pre-fix the mock leaked
+    // its buffer + signals to GC instead of being released eagerly. The
+    // `RenderedBoardStateService.destroy` it cascades to is null-safe ;
+    // the signals are reset to initial values (idempotent on a
+    // component-scoped instance).
+    this.mockConn.cleanup();
   }
 
   // --- DRY cleanup helper (used by all interruption points) ---
