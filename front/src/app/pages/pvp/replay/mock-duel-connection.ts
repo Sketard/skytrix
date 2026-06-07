@@ -276,13 +276,6 @@ export class MockDuelConnection implements AnimationDataSource {
     autoResponses: ReplayStreamAutoResponse[];
     navEntries: ReplayStreamNavEntry[];
   }): void {
-    // F21/F22 diag (2026-06-07) — trace chunk arrivals to debug precompute
-    // streaming. Stall is reproduced with only 1 chunk received → either
-    // worker precompute crashes after turn 0, or the routing drops chunks.
-    console.warn('[F21] appendChunk turn? +%dmsg +%dnav now: %dmsg %dnav',
-      chunk.messages.length, chunk.navEntries.length,
-      this._messages.length + chunk.messages.length,
-      this._transport_navIndex().length + chunk.navEntries.length);
     for (const m of chunk.messages) this._messages.push(m);
     for (const ar of chunk.autoResponses) {
       this._autoResponses.set(ar.offset, { promptType: ar.promptType, data: ar.data });
