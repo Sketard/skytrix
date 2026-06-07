@@ -296,7 +296,23 @@ export class ReplayTransportService {
 
     const curr = this.currentIndex();
     const nextIdx = curr + 1;
-    if (nextIdx > c.computedUpTo()) return;
+    if (nextIdx > c.computedUpTo()) {
+      // F21 (2026-06-07) — auto-play stall fix. The legacy silent exit here
+      // left the transport in a dead state : `isPlaying=true` + no timer
+      // armed + no `pausedAtBoundary` flip → the only re-wake hook is the
+      // `maybeAdvance` effect, which subscribes to `busy/pendingPrompt/
+      // phaseAnnouncement/chainOverlayActive` — none of which flip when
+      // playback stalls at the boundary. Result : the replay window froze
+      // and required a manual pause/play to resume. Axel observed this
+      // 2026-06-07 during harness Phase 0 debug.
+      //
+      // Mirror `scheduleNext`'s boundary path : flip pausedAtBoundary so
+      // the `resumeIfBoundaryWaiting` effect picks up the next chunk
+      // arrival via its `computedUpTo` subscription.
+      this.isPlaying.set(false);
+      this.pausedAtBoundary.set(true);
+      return;
+    }
 
     this.currentIndex.set(nextIdx);
     // v4 Phase 5 — dispatch mock messages forward up to the next nav
@@ -333,6 +349,13 @@ export class ReplayTransportService {
     if (targetIdx >= nav.length) {
       // Not yet streamed — dispatch as much as we have buffered.
       while (mock.dispatchNext()) { /* drain */ }
+      // Note (F21, 2026-06-07) — no pausedAtBoundary flip here. The drain
+      // loop pushes events into the animation queue → `busy()` flips true
+      // → `maybeAdvance` effect re-fires when queue eventually drains →
+      // `scheduleNext` runs and (if cursor really is past computedUpTo)
+      // pauses via its own boundary path. The corresponding fix in
+      // `doStepForward` covers the edge case where the dispatch loop
+      // pushes nothing (cursor was already at end).
       return;
     }
     const targetOffset = nav[targetIdx].messageOffset;

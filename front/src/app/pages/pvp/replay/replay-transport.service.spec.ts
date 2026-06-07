@@ -322,9 +322,16 @@ describe('ReplayTransportService — stepForward', () => {
 
 describe('ReplayTransportService — togglePlay', () => {
   it('togglePlay starts playback when stopped', () => {
+    // computedUpTo=2 so the first step (currentIndex 0→1) lands BEFORE
+    // the boundary. With computedUpTo=1 (pre-F21 test setup), the
+    // immediate `doStepForward` after togglePlay landed AT the boundary
+    // and silently exited without flipping isPlaying — the test passed
+    // because of that silent exit. Post-F21 fix the boundary path
+    // correctly flips `isPlaying=false + pausedAtBoundary=true`, so we
+    // need a timeline long enough for the first step to actually run.
     const { svc } = setup({
-      states: [stubState('a'), stubState('b')],
-      computedUpTo: 1,
+      states: [stubState('a'), stubState('b'), stubState('c')],
+      computedUpTo: 2,
     });
     svc.togglePlay();
     expect(svc.isPlaying()).toBeTrue();
@@ -401,6 +408,61 @@ describe('ReplayTransportService — auto-resume + lifecycle', () => {
   it('destroy clears any pending timer', () => {
     const { svc } = setup();
     expect(() => svc.destroy()).not.toThrow();
+  });
+
+  // F21 (2026-06-07) — auto-play stall regression guard. The pre-fix
+  // `doStepForward` silent-exited when `nextIdx > computedUpTo` without
+  // flipping `pausedAtBoundary` — the transport ended up in a dead
+  // state (isPlaying=true + no timer + no re-wake hook). Manual
+  // pause/play was the only way out. The fix mirrors scheduleNext's
+  // boundary branch : flip isPlaying=false + pausedAtBoundary=true so
+  // the resume effect picks up the next chunk arrival via its
+  // computedUpTo subscription.
+  it('F21 — togglePlay at penultimate index flips pausedAtBoundary after the single step', () => {
+    // currentIndex=0, computedUpTo=1 → first step lands at 1 = boundary.
+    // The subsequent doStepForward attempt (driven by maybeAdvance after
+    // the busy flip) sees nextIdx=2 > upTo=1 → must pause.
+    const { svc } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    svc.togglePlay();
+    // After togglePlay, the synchronous scheduleNext → doStepForward
+    // path moves the cursor to 1 + dispatches. isPlaying stays true.
+    expect(svc.currentIndex()).toBe(1);
+    expect(svc.isPlaying()).toBeTrue();
+    // Now simulate the re-entry that production drives via the
+    // maybeAdvance effect after the busy/queue settles. The scheduler
+    // sees currentIndex=upTo → flips pausedAtBoundary via scheduleNext's
+    // own boundary branch.
+    svc.maybeAdvance();
+    expect(svc.isPlaying()).toBeFalse();
+    expect(svc.pausedAtBoundary()).toBeTrue();
+  });
+
+  it('F21 — doStepForward direct boundary hit flips pausedAtBoundary', () => {
+    // Direct repro of the silent-exit path : seed at the last index, then
+    // call scheduleNext via maybeAdvance with isPlaying already true.
+    // Pre-fix : doStepForward saw nextIdx > upTo and exited silently,
+    // leaving isPlaying=true. Post-fix : flips pausedAtBoundary.
+    const { svc } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    svc.togglePlay();          // playback engages, lands at index 1
+    svc.maybeAdvance();        // first re-entry pauses via scheduleNext
+    expect(svc.pausedAtBoundary()).toBeTrue();
+
+    // Now manually re-arm isPlaying without going through resumeIfBoundaryWaiting,
+    // to exercise the doStepForward boundary branch directly. This mirrors
+    // a race where a chunk arrival triggered startPlayback but the next
+    // doStepForward still lands past computedUpTo.
+    svc.pausedAtBoundary.set(false);
+    svc.isPlaying.set(true);
+    svc.maybeAdvance();
+    // scheduleNext re-checks currentIndex >= upTo → still true → pauses.
+    expect(svc.isPlaying()).toBeFalse();
+    expect(svc.pausedAtBoundary()).toBeTrue();
   });
 });
 
