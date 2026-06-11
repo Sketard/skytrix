@@ -124,6 +124,7 @@ function wireDuelEndCoordinatorNoOp(): void {
     clearAllDuelTimers: () => undefined,
     rematchExpiryMs: 300_000,
     onRematchExpired: () => undefined,
+    onForkSessionExpired: () => undefined,
   });
 }
 

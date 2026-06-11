@@ -505,12 +505,21 @@
           <app-button variant="ghost" size="lg" autofocus (click)="backToLobby()">
             {{ 'duel.leaveRoom' | translate }}
           </app-button>
-          <app-button variant="primary" size="lg"
-                  [class.is-invited]="effectiveRematchState() === 'invited'"
-                  [disabled]="rematchDisabled()"
-                  (click)="onRematchClick()">
-            {{ rematchButtonLabel() }}
-          </app-button>
+          <!-- Audit 2026-06-11 #9 — fork-solo has no rematch flow (the
+               server silently drops REMATCH_REQUEST) ; offer the fork's
+               canonical exit instead of a dead button. -->
+          @if (forkReplayId) {
+            <app-button variant="primary" size="lg" (click)="returnToReplay()">
+              {{ 'duel.returnToReplay' | translate }}
+            </app-button>
+          } @else {
+            <app-button variant="primary" size="lg"
+                    [class.is-invited]="effectiveRematchState() === 'invited'"
+                    [disabled]="rematchDisabled()"
+                    (click)="onRematchClick()">
+              {{ rematchButtonLabel() }}
+            </app-button>
+          }
         </div>
       </div>
     }

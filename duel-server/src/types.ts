@@ -22,6 +22,11 @@ import type Database from 'better-sqlite3';
 export const MAX_HTTP_BODY_SIZE = 16384;
 export const MAX_WS_FRAME_SIZE = 4096;
 export const RECONNECT_GRACE_MS = 60_000;
+/** Audit 2026-06-11 #4 — deadline armed when a SOLO/fork lone socket closes
+ *  mid-duel. Generous (vs RECONNECT_GRACE_MS) because an F5 refresh must
+ *  comfortably fit inside it ; aligned on the inactivity-forfeit horizon
+ *  (warning + timeout) so abandonment converges on the same teardown. */
+export const SOLO_ORPHAN_TIMEOUT_MS = 5 * 60_000;
 export const WATCHDOG_TIMEOUT_MS = 30_000;
 // 30s player-side cap for "click to roll". The auto-resolve still rolls a
 // random 2D6 for that player (so a stalled opponent doesn't block the duel).
@@ -423,6 +428,12 @@ export interface ActiveDuelSession extends DuelSession {
   decks: [Deck, Deck];
   rematchRequested: [boolean, boolean];
   rematchTimeout: ReturnType<typeof setTimeout> | null;
+  /** Audit 2026-06-11 #4 — bounded deadline armed when a SOLO/fork session's
+   *  lone socket closes mid-duel. SOLO has no grace period and the closing
+   *  player's inactivity timer is cleared on close — without this, a
+   *  tab-close with a slot-0 prompt pending leaked the WAITING worker +
+   *  session forever. Cleared on (re)connect and by `clearAllDuelTimers`. */
+  soloOrphanTimeout: ReturnType<typeof setTimeout> | null;
   // Story 5.2 — Both-disconnect handling
   preservationTimer: ReturnType<typeof setTimeout> | null;
   bothDisconnected: boolean;

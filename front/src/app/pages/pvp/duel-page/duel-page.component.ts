@@ -1132,6 +1132,10 @@ export class DuelPageComponent implements OnInit, OnDestroy {
 
   returnToReplay(): void {
     if (!this.forkReplayId) return;
+    // Audit 2026-06-11 #16 — leaving a LIVE fork is abandoning it. Surrender
+    // first so the server ends the duel + reaps worker/session immediately,
+    // instead of leaning on the 5-min SOLO orphan deadline.
+    if (!this.wsService.duelResult()) this.wsService.sendSurrender();
     this.router.navigate(['/pvp/replay', this.forkReplayId], {
       queryParams: { seekTo: this.forkSeekTo },
     });

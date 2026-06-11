@@ -39,12 +39,15 @@ duel-server / OCGCore stack for headless analysis.
 **Mental pivot — fork-solo IS a SOLO multiplex.** Post-F5-bis (2026-05-31)
 the fork-solo runtime is structurally identical to a SOLO multiplex
 session ; only the bootstrap differs (sourced from a replay seek point
-instead of a fresh POST). The `forkMode` flag gates exactly 3 skips :
-no replay persist, no rematch arm, log tag `'fork_solo'`. Everything
+instead of a fresh POST). The `forkMode` flag gates exactly 3 server-side
+divergences (audit 2026-06-11 recount) : no replay persist, fork-expiry
+cleanup instead of the rematch flow (same `rematchTimeout` slot, fires
+`cleanupDuelSession` directly — plus a defense-in-depth REMATCH_REQUEST
+reject in `client-message-router`), log tag `'fork_solo'`. Everything
 else (omniscient filter, 1-socket slot routing, chain tracking,
 MSG_CONFIRM_CARDS tagging, winReasonCode, game-log ingestion,
-cancel-rollback, no turn timer) is inherited from SOLO multiplex by
-construction. See "Fork-solo unification (F5-bis)" below.
+cancel-rollback, no turn timer, SOLO orphan deadline) is inherited from
+SOLO multiplex by construction. See "Fork-solo unification (F5-bis)" below.
 
 **Mental pivot — replay is NOT a live duel.** The replay path runs the
 worker in **precompute batch mode** : it replays the recorded
@@ -378,10 +381,18 @@ forkMode: false` = SOLO multiplex, `soloMode: true / forkMode: true`
    `case 'WORKER_REPLAY_DATA'` skips `persistReplay` when
    `session.forkMode`. Fork-solo derives from an existing replay,
    recording the variant doesn't make sense.
-2. **No rematch** — `duel-end-coordinator.ts handleDuelEnd`
+2. **Fork-expiry instead of rematch** — `duel-end-coordinator.ts
+   handleDuelEnd`
    ([duel-end-coordinator.ts:126](duel-server/src/duel-end-coordinator.ts#L126))
-   skips the `rematchTimeout = setTimeout(...)` arm when
-   `session.forkMode`. Fork-solo is exploratory one-shot. (Pre-U34
+   arms the shared `rematchTimeout` slot with `onForkSessionExpired`
+   (→ `cleanupDuelSession`, no REMATCH_CANCELLED) instead of
+   `onRematchExpired`. Fork-solo is exploratory one-shot — no rematch
+   flow — but the session still needs a terminal deadline : fork
+   sessions have no Spring Room (DELETE /api/duels can't reach them)
+   and the soloMode close path has no grace period (audit 2026-06-11
+   #2/#3 — the historical "skip the arm entirely" leaked every ended
+   fork session forever). `client-message-router` additionally rejects
+   REMATCH_REQUEST for fork as defense in depth. (Pre-U34
    audit-4-modes-2026-06-01 this lived in `worker-lifecycle.ts`.)
 3. **Log tag** — `broadcastMessage` `case 'MSG_WIN'` writes
    `mode: 'fork_solo'` on the DUEL_END log line, alongside `'solo'`
@@ -411,9 +422,12 @@ multiplex session, no per-fork branches :
   IDLECMD/BATTLECMD boundary
   ([duel-worker.ts:1182](duel-server/src/duel-worker.ts#L1182))
   regardless of `forkMode`. Fork-solo inherits the anti-fat-finger
-  discipline. (The worker's own `forkMode` flag is scoped to other
-  bootstrap concerns : bypassing `capturedSetResponse`, gating
-  `emitReplayData` — see "Worker `forkMode` variable" below.)
+  discipline — FULLY since audit 2026-06-11 #5 : two pre-F5-bis
+  leftover gates (a hard CANCEL_PROMPT_SEQUENCE reject + a `!forkMode`
+  gate on the stale-snapshot drop) were removed ; the worker's cancel
+  path is now mode-agnostic. (The worker's own `forkMode` flag is
+  scoped to other bootstrap concerns : bypassing `capturedSetResponse`,
+  the `FORK_RESUME` handler — see "Worker `forkMode` variable" below.)
 
 ### Turn timer disabled in SOLO + fork (F5-bis behavior change)
 
@@ -438,6 +452,21 @@ client keeps the socket open without activity (5min timeout → forfeit
 exchange for the resource-leak protection. SOLO players who walk away
 from an active prompt for >5min will see "duel ended by inactivity" ;
 closing the tab cleanly is the recommended flow.
+
+**SOLO orphan deadline (audit 2026-06-11 #4)** : closing the tab
+mid-duel clears the closing player's inactivity timer — when the
+pending prompt targeted slot 0 (the common case) nothing else bounded
+the session, and the WAITING worker + session leaked forever. The
+`ws.on('close')` SOLO branch now arms `session.soloOrphanTimeout`
+(`SOLO_ORPHAN_TIMEOUT_MS` = 5min) before returning ; it fires the same
+teardown as an inactivity forfeit (`requestReplayFromWorker('TIMEOUT')`
++ `handleDuelEnd`), double-checks `isFullyDisconnected` at fire time,
+and is disarmed on (re)connect and by `clearAllDuelTimers`. Pinned by
+source-level specs in `pvp-connection-handler.spec.ts`. Related belts :
+`cleanupDuelSession` now calls `safeTerminateWorker` itself (audit #11
+— last line of defense against hung workers), and the H17 60s
+connection-timeout only fires when `startedAt === null` (audit #12 —
+it used to kill a live SOLO duel whose F5 refresh straddled T+60s).
 
 ### Fork-specific construction (the only path that touches `forkMode`)
 
@@ -473,11 +502,16 @@ is the only constructor that sets `forkMode: true`. It :
 [duel-worker.ts](duel-server/src/duel-worker.ts) has an internal
 `forkMode: boolean` variable ([duel-worker.ts:1063](duel-server/src/duel-worker.ts#L1063)) set on `INIT_FORK`
 that gates worker-side behavior : bypassing `capturedSetResponse` (for
-deterministic replay reconstruction), skipping `emitReplayData` (the
-worker doesn't auto-emit on END/WIN), the `FORK_RESUME` handler.
+deterministic replay reconstruction), skipping the `duelResult`
+tracking (no replay capture), the `FORK_RESUME` handler.
 These are LEGITIMATELY worker-internal concerns that do not collapse
 into the SOLO multiplex path — they relate to how the worker bootstraps
 on a replay's seek point, not how the server routes messages.
+Audit 2026-06-11 #2 — `emitReplayData` is NO LONGER gated on
+`!forkMode` at natural END : `WORKER_REPLAY_DATA` is what drives
+`safeTerminateWorker` on the main side (the router's fork branch skips
+the persist but terminates), so the gate leaked the fork worker thread
+forever after a played-to-the-end fork.
 
 The `session.forkMode` flag is the SERVER-side concern (which routing
 skips to apply) ; the worker's `forkMode` variable is the WORKER-side

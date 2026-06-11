@@ -61,6 +61,12 @@ export interface DuelEndCoordinatorConfig {
    * server.ts (sends REMATCH_CANCELLED, calls cleanupDuelSession).
    */
   onRematchExpired: (session: ActiveDuelSession) => void;
+  /**
+   * Audit 2026-06-11 #2/#3 — called when a fork-solo session's post-end
+   * grace window expires. Wired to `cleanupDuelSession` in server.ts
+   * (no REMATCH_CANCELLED — fork has no rematch flow to cancel).
+   */
+  onForkSessionExpired: (session: ActiveDuelSession) => void;
 }
 
 const configurable = createConfigurable<DuelEndCoordinatorConfig>('duel-end-coordinator');
@@ -140,10 +146,16 @@ export function handleDuelEnd(session: ActiveDuelSession): void {
   // session was cleaned the instant the worker reported MSG_WIN.
   //
   // F5-bis (2026-05-31) — fork-solo is exploratory one-shot: no rematch
-  // invitation flow. Skip the arm ; the session cleans up naturally via
-  // the player's socket close path (grace timer in handleClose).
+  // invitation flow. Audit 2026-06-11 #2/#3 — the previous "skip the arm"
+  // relied on a socket-close grace path that does NOT exist for soloMode
+  // sessions (the close handler early-returns) : every ended fork session
+  // leaked forever. Arm the same expiry window on the shared
+  // `rematchTimeout` slot (so every existing clear site covers it) but
+  // fire straight into session cleanup instead of the rematch flow.
   if (!session.forkMode) {
     session.rematchTimeout = setTimeout(() => cfg.onRematchExpired(session), cfg.rematchExpiryMs);
+  } else {
+    session.rematchTimeout = setTimeout(() => cfg.onForkSessionExpired(session), cfg.rematchExpiryMs);
   }
 }
 

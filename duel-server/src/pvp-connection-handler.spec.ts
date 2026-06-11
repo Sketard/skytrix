@@ -137,3 +137,42 @@ describe('pvp-connection-handler — EARLY_DECK_PREFETCH wire order', () => {
     expect(SOURCE).toMatch(/bothCardCodes:\s*\[/);
   });
 });
+
+// =============================================================================
+// Audit 2026-06-11 #4 — SOLO orphan deadline (slot-0 tab-close hole)
+// =============================================================================
+//
+// The pre-end `ws.on('close')` SOLO branch used to bare-return : when the
+// pending prompt targeted slot 0 (the common case), the only deadline was
+// the inactivity timer the handler had JUST cleared — the WAITING worker +
+// session leaked with no bound. The branch must now arm
+// `session.soloOrphanTimeout` BEFORE returning, and the connect path must
+// disarm it. Source-level pins (the handler body is not unit-instantiable
+// without a full WS harness).
+
+describe('pvp-connection-handler — SOLO orphan deadline (audit #4)', () => {
+  const SOURCE = readFileSync(join(HERE, 'pvp-connection-handler.ts'), 'utf-8');
+
+  it('the pre-end soloMode close branch arms soloOrphanTimeout (no bare return)', () => {
+    // The arm site must sit between the soloMode guard and its return.
+    expect(SOURCE).toMatch(/soloOrphanTimeout\s*=\s*setTimeout/);
+    // The fire-time double-check protects a reconnected session.
+    expect(SOURCE).toMatch(/endedAt !== null \|\| !isFullyDisconnected/);
+  });
+
+  it('the orphan callback mirrors the inactivity-forfeit teardown (replay request + duel end)', () => {
+    const armIdx = SOURCE.indexOf('soloOrphanTimeout = setTimeout');
+    const replayIdx = SOURCE.indexOf("requestReplayFromWorker(s, 'TIMEOUT')");
+    const endIdx = SOURCE.indexOf('handleDuelEnd(s)');
+    expect(armIdx).toBeGreaterThan(-1);
+    expect(replayIdx).toBeGreaterThan(armIdx);
+    expect(endIdx).toBeGreaterThan(replayIdx);
+  });
+
+  it('the (re)connect path disarms the orphan deadline', () => {
+    const connectIdx = SOURCE.indexOf('players[playerIndex].connected = true');
+    const disarmIdx = SOURCE.indexOf('clearTimeout(session.soloOrphanTimeout)');
+    expect(connectIdx).toBeGreaterThan(-1);
+    expect(disarmIdx).toBeGreaterThan(connectIdx);
+  });
+});

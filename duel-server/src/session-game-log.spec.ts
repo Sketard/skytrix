@@ -188,6 +188,7 @@ describe('worker-message-router — game-log ingestion tap', () => {
       decks: [{ main: [], extra: [] }, { main: [], extra: [] }],
       rematchRequested: [false, false],
       rematchTimeout: null,
+      soloOrphanTimeout: null,
       preservationTimer: null,
       bothDisconnected: false,
       combinedGraceTimer: null,

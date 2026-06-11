@@ -369,6 +369,14 @@ export function clearAllDuelTimers(session: ActiveDuelSession): void {
   for (const p of [0, 1] as const) {
     clearInactivityTimer(session, p);
   }
+
+  // Audit 2026-06-11 #4 — the SOLO orphan deadline is a duel timer too:
+  // any duel-end path (forfeit, MSG_WIN, cleanup) must disarm it so it
+  // can't fire into an already-ended session.
+  if (session.soloOrphanTimeout) {
+    clearTimeout(session.soloOrphanTimeout);
+    session.soloOrphanTimeout = null;
+  }
 }
 
 // =============================================================================

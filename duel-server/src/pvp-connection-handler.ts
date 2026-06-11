@@ -2,7 +2,7 @@ import type { IncomingMessage } from 'node:http';
 import { WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
 import type { ActiveDuelSession } from './types.js';
-import { RECONNECT_GRACE_MS } from './types.js';
+import { RECONNECT_GRACE_MS, SOLO_ORPHAN_TIMEOUT_MS } from './types.js';
 import type { ClientMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import type { DuelSessionManager } from './duel-session-manager.js';
@@ -20,6 +20,7 @@ import {
   startInactivityTimer, clearInactivityTimer,
   startGracePeriod,
 } from './timer-management.js';
+import { handleDuelEnd, requestReplayFromWorker } from './duel-end-coordinator.js';
 import { handleClientMessage } from './client-message-router.js';
 import { validateClientMessageForPlayer } from './client-message-validator.js';
 import { isReadyToStart, isFullyDisconnected } from './lifecycle-helpers.js';
@@ -379,6 +380,13 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
   session.players[playerIndex].connected = true;
   session.players[playerIndex].disconnectedAt = null;
 
+  // Audit 2026-06-11 #4 — a (re)connect disarms the SOLO orphan deadline
+  // armed by the close handler (F5 refresh is the common path here).
+  if (session.soloOrphanTimeout) {
+    clearTimeout(session.soloOrphanTimeout);
+    session.soloOrphanTimeout = null;
+  }
+
   // H2 — Clear fork connection timeout on first connect.
   // F9 review (animations-ready-protocol-2026-06-05) — keep the
   // watchdog armed for fork-solo until the client emits
@@ -609,7 +617,30 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
       // whole duel — the canonical SOLO invariant). Reconnect still works:
       // the user's next `wsToken` consumption lands at socket 0 via the
       // normal handshake path and resendPendingPrompt re-arms the prompt.
-      if (session!.soloMode) return;
+      //
+      // Audit 2026-06-11 #4 — but the bare early-return left a hole: when
+      // the pending prompt targets slot 0 (the common case), the only
+      // deadline was the inactivity timer this very handler just cleared —
+      // the WAITING worker + session leaked with no bound. Arm an orphan
+      // deadline before returning ; cleared on (re)connect, on duel end
+      // (`clearAllDuelTimers`), and double-checked at fire time.
+      if (session!.soloMode) {
+        const s = session!;
+        if (s.soloOrphanTimeout) clearTimeout(s.soloOrphanTimeout);
+        s.soloOrphanTimeout = setTimeout(() => {
+          s.soloOrphanTimeout = null;
+          if (s.endedAt !== null || !isFullyDisconnected(s)) return;
+          logger.log('SOLO orphan timeout — duel abandoned, ending', { duelId: s.duelId });
+          // Mirror the inactivity-forfeit teardown: persist the partial
+          // replay (no-op for fork — the router skips the POST and just
+          // terminates the worker), then end the duel. The post-end
+          // deadline (rematch expiry / fork expiry) owns the final
+          // cleanupDuelSession.
+          requestReplayFromWorker(s, 'TIMEOUT');
+          handleDuelEnd(s);
+        }, SOLO_ORPHAN_TIMEOUT_MS);
+        return;
+      }
 
       // Story 3.3 — Notify opponent of disconnection
       const opponentIndex: Player = live === 0 ? 1 : 0;

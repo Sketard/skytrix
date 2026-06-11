@@ -137,6 +137,13 @@ export function cleanupDuelSession(session: ActiveDuelSession): void {
   // Clear all timer state (turn timer, inactivity, race windows)
   clearAllDuelTimers(session);
 
+  // Audit 2026-06-11 #11 — terminate the worker as part of the terminal
+  // teardown. Idempotent (no-op when a caller already terminated it).
+  // Without this, any cleanup path whose worker never answered
+  // EMIT_REPLAY_DATA (hung duelProcess, crashed script) leaked the thread
+  // until process restart — cleanupDuelSession is the last line of defense.
+  safeTerminateWorker(session);
+
   // Release the per-perspective GameLogBuilders. Pending closures (replay
   // persist Promise, fork timeout callbacks) capture `session` by reference,
   // so the builders would otherwise live as long as the longest-running

@@ -196,6 +196,7 @@
   },
   "duel": {
     "leaveRoom": "Quitter la room",
+    "returnToReplay": "Retour au replay",
     "waiting": {
       "title": "En attente d'un adversaire",
       "subtitle": "En attente de l'adversaire...",

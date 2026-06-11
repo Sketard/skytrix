@@ -115,6 +115,7 @@ function wireUpstreamStubs(): void {
     clearAllDuelTimers: () => undefined,
     rematchExpiryMs: 1000,
     onRematchExpired: () => undefined,
+    onForkSessionExpired: () => undefined,
   });
   configureTimerManagement({
     sendToPlayer: () => undefined,

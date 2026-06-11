@@ -487,6 +487,13 @@ function createForkWorker(
         conn.state = 'fork_warning';
         logger.log('Fork sanity mismatch', { replayId: conn.replayId, details: wmsg.sanityResult.details });
         pendingForkWorkers.set(conn, { worker, replayData, forkDuelId });
+        // Audit 2026-06-11 #10 — ownership transfers to `pendingForkWorkers`:
+        // null the conn pointer NOW, or `cleanupReplayConnection` decrements
+        // `replayWorkerCount` twice for the same worker (conn.worker branch
+        // + pending branch) and the pool cap erodes permanently. Same fix
+        // covers the re-fork-after-CANCEL slot accounting (`hadWorker` no
+        // longer reads a stale pointer).
+        conn.worker = null;
         safeSend(conn.ws, { type: 'REPLAY_ERROR', code: 'FORK_DIVERGENCE_WARNING', message: wmsg.sanityResult.details ?? '' });
       } else {
         // Sanity OK — hand off to host-supplied session manager
@@ -514,6 +521,17 @@ function createForkWorker(
     logger.log('Fork worker exited', { replayId: conn.replayId, exitCode: code });
     if (conn.worker === worker) {
       conn.worker = null;
+      onReplayWorkerDone();
+      return;
+    }
+    // Audit 2026-06-11 #10 — the worker may be PARKED in `pendingForkWorkers`
+    // (fork_warning interstitial) when it dies on its own. Release its slot
+    // here ; the deliberate teardown paths (CANCEL, cleanup) removeAllListeners
+    // before terminate, so this branch only fires for spontaneous crashes.
+    const pending = pendingForkWorkers.get(conn);
+    if (pending?.worker === worker) {
+      pendingForkWorkers.delete(conn);
+      conn.state = 'ready';
       onReplayWorkerDone();
     }
   });

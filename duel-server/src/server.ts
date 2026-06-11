@@ -297,6 +297,9 @@ configureDuelEndCoordinator({
   clearAllDuelTimers,
   rematchExpiryMs: REMATCH_EXPIRY_MS,
   onRematchExpired: rematchExpired,
+  // Audit 2026-06-11 #2/#3 — fork-solo post-end deadline goes straight to
+  // cleanup (no rematch flow, no REMATCH_CANCELLED to send).
+  onForkSessionExpired: cleanupDuelSession,
 });
 
 configureReplayPersist({
@@ -541,11 +544,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       soloMode ? [token0] : [token0, token1];
     sessionManager.register(session, tokens);
 
-    // H17 — Connection timeout: if no players connect within 60s, clean up
+    // H17 — Connection timeout: if no players connect within 60s, clean up.
+    // Audit 2026-06-11 #12 — guard on `startedAt === null`: the one-shot
+    // timer fires at T+60s unconditionally, and a transient full-disconnect
+    // straddling that instant (SOLO F5 refresh) used to kill a LIVE duel
+    // mid-game. H17's only job is the never-connected session ; abandoned
+    // started duels are owned by the SOLO orphan deadline (close handler)
+    // and the PvP grace timers.
     const CONNECTION_TIMEOUT_MS = 60_000;
     setTimeout(() => {
       const s = sessionManager.get(duelId);
-      if (s && isFullyDisconnected(s)) {
+      if (s && isFullyDisconnected(s) && s.startedAt === null) {
         logger.log('Connection timeout — no players connected, cleaning up', { duelId });
         safeTerminateWorker(s);
         cleanupDuelSession(s);

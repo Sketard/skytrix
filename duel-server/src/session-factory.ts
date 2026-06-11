@@ -106,6 +106,7 @@ export function createInitialSessionState(opts: CreateInitialSessionStateOpts): 
     decks: opts.decks,
     rematchRequested: [false, false],
     rematchTimeout: null,
+    soloOrphanTimeout: null,
     preservationTimer: null,
     bothDisconnected: false,
     combinedGraceTimer: null,

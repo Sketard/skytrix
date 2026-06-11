@@ -816,7 +816,11 @@ function runDuelLoop(): void {
         // transitions, the right pattern is a client-side "Are you
         // sure?" confirm step (Master Duel-style), NOT a server-side
         // snapshot rollback.
-        if (!forkMode && (dto.type === 'SELECT_IDLECMD' || dto.type === 'SELECT_BATTLECMD')) {
+        // Audit 2026-06-11 #5 — no `!forkMode` gate: fork-solo inherits the
+        // full cancel-rollback lifecycle (F5-bis doctrine). The gate here was
+        // a pre-F5-bis leftover ; keeping it let fork carry a STALE boundary
+        // snapshot past a completed action (cancel could roll back too far).
+        if (dto.type === 'SELECT_IDLECMD' || dto.type === 'SELECT_BATTLECMD') {
           setLastIdleSnapshot(null);
         }
       } else {
@@ -830,7 +834,13 @@ function runDuelLoop(): void {
     }
 
     if (status === OcgProcessResult.END) {
-      if (!forkMode) emitReplayData();
+      // Audit 2026-06-11 #2 — emit in fork mode too. WORKER_REPLAY_DATA is
+      // what drives `safeTerminateWorker` on the main side (the fork branch
+      // of worker-message-router skips the persist but DOES terminate) ;
+      // gating the emit on `!forkMode` left the fork worker thread alive
+      // forever after a natural END (cleanup() frees the engine but does
+      // not process.exit — the port listener pins the event loop).
+      emitReplayData();
       cleanup();
       return;
     }
@@ -1253,10 +1263,10 @@ port.on('message', (msg: MainToWorkerMessage) => {
       dlog.error('Received CANCEL_PROMPT_SEQUENCE but no active duel');
       return;
     }
-    if (forkMode) {
-      dlog.warn('[duel-worker] cancel ignored (fork mode)');
-      return;
-    }
+    // Audit 2026-06-11 #5 — no forkMode reject here. The F5-bis doctrine is
+    // full cancel-rollback inheritance (snapshots were already taken ungated
+    // at every IDLECMD/BATTLECMD boundary — the cost was paid for nothing) ;
+    // the historical reject pre-dated F5-bis and was missed by its sweep.
     // P0-3bis.4 — pure decision helper: gate on snapshot existence,
     // player match, and chain-resolving interlock. Side-effect-free.
     const decision = tryCancelRollback(lastIdleSnapshot, msg.playerIndex, liveChainTracker.isResolving);

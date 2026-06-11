@@ -74,6 +74,7 @@ function wireUpstreams(): void {
     clearAllDuelTimers: () => undefined,
     rematchExpiryMs: 30_000,
     onRematchExpired: () => undefined,
+    onForkSessionExpired: () => undefined,
   });
   _resetTotalDuelsServedForTest();
 }

@@ -81,10 +81,11 @@ function makeSession(worker: FakeWorker | null = makeWorker()): ActiveDuelSessio
 interface SpyHooks {
   timerClears: { session: ActiveDuelSession }[];
   rematchExpirations: { session: ActiveDuelSession }[];
+  forkExpirations: { session: ActiveDuelSession }[];
 }
 
 function makeSpy(): SpyHooks {
-  return { timerClears: [], rematchExpirations: [] };
+  return { timerClears: [], rematchExpirations: [], forkExpirations: [] };
 }
 
 function makeConfig(spy: SpyHooks, overrides: Partial<DuelEndCoordinatorConfig> = {}): DuelEndCoordinatorConfig {
@@ -92,6 +93,7 @@ function makeConfig(spy: SpyHooks, overrides: Partial<DuelEndCoordinatorConfig> 
     clearAllDuelTimers: (session) => spy.timerClears.push({ session }),
     rematchExpiryMs: 300_000,
     onRematchExpired: (session) => spy.rematchExpirations.push({ session }),
+    onForkSessionExpired: (session) => spy.forkExpirations.push({ session }),
     ...overrides,
   };
 }
@@ -229,12 +231,13 @@ describe('duel-end-coordinator', () => {
       expect(spy.rematchExpirations).toEqual([{ session: s }]);
     });
 
-    // F5-bis (2026-05-31) — fork-solo is an exploratory one-shot; the rematch
-    // arm is intentionally skipped. The endedAt + timer-clear path still runs.
-    // Regression guard for U1 (audit-4-modes-2026-06-01): a refactor that
-    // re-orders this skip past the `setTimeout(...)` call would silently start
-    // offering rematch invitations for fork-solo sessions.
-    it('does NOT arm rematch timer when session.forkMode (U1)', () => {
+    // F5-bis (2026-05-31) — fork-solo is an exploratory one-shot; the REMATCH
+    // arm is intentionally skipped. Audit 2026-06-11 #2/#3 — but the session
+    // still needs a terminal deadline (no Spring Room, no grace path for
+    // soloMode, the close handler early-returns) : the fork branch now arms
+    // the shared `rematchTimeout` slot with `onForkSessionExpired` (straight
+    // cleanup, no REMATCH_CANCELLED) instead of arming nothing.
+    it('arms the fork-expiry (NOT the rematch flow) when session.forkMode', () => {
       const spy = makeSpy();
       configureDuelEndCoordinator(makeConfig(spy, { rematchExpiryMs: 100 }));
       const s = makeSession();
@@ -245,15 +248,14 @@ describe('duel-end-coordinator', () => {
 
       expect(s.endedAt).not.toBeNull();
       expect(spy.timerClears).toHaveLength(1);
-      expect(s.rematchTimeout).toBeNull();
+      // The shared slot IS armed — every existing clear site covers it.
+      expect(s.rematchTimeout).not.toBeNull();
 
-      // #17 (audit review) — verify the rematch CALLBACK is never invoked
-      // even after the timer would have fired. Asserting `=== null`
-      // passes trivially if the default state is `null` ; advancing the
-      // clock past `rematchExpiryMs` then checking `rematchExpirations`
-      // proves the timer was never armed in the first place.
+      // After expiry: the fork hook fires, the rematch flow never does —
+      // a fork session must never emit REMATCH_CANCELLED.
       vi.advanceTimersByTime(200);
       expect(spy.rematchExpirations).toEqual([]);
+      expect(spy.forkExpirations).toEqual([{ session: s }]);
     });
   });
 
