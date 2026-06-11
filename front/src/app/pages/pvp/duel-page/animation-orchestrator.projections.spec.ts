@@ -564,3 +564,96 @@ describe('AnimationOrchestratorService — RBS config re-applied on swap (2026-0
       .toBeLessThan(rbs.getSafetyTimeoutMsAssignOrder!);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit 2026-06-11 finding #1 — the inline `replayBuffer(true)` latch.
+// `_isReplayingBuffer` MUST be cleared when the inline batch settles
+// (batch-end resolve) AND by the `clearTimersAndPolling` safety net when a
+// hard reset drops the batch-end directive before it can run. A stuck-true
+// latch silently disables chain buffering (`bufferIfResolving` short-circuit)
+// and the pre-activation divert for the rest of the session.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('AnimationOrchestratorService — inline replayBuffer latch reset (audit #1)', () => {
+  type BatchEntry = { kind?: string; resolve?: () => void };
+
+  function makeOrchestratorWithBuffer(): { orch: AnimationOrchestratorService; prepended: BatchEntry[][] } {
+    TestBed.configureTestingModule({
+      providers: [
+        AnimationOrchestratorService,
+        ScopeResetDispatcher,
+        DuelGameLogService,
+        { provide: DuelLogger, useClass: StubLogger },
+        { provide: ANIMATION_DATA_SOURCE, useClass: StubDataSource },
+        { provide: DuelContext, useClass: StubCtx },
+        { provide: LpAnimationTracker, useClass: StubLpTracker },
+        { provide: ChainResolutionManager, useClass: StubManager },
+        { provide: DrawSequenceManager, useClass: StubManager },
+        { provide: MoveAnimationRouter, useClass: StubManager },
+        { provide: BattleAnimationTracker, useClass: StubManager },
+        { provide: TargetIndicatorManager, useClass: StubManager },
+        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        { provide: CardTravelEngine, useValue: {} },
+        { provide: BoardEffectsService, useValue: {} },
+        { provide: FloatRegistryService, useClass: StubFloatRegistry },
+        { provide: DuelToastService, useValue: { show: () => undefined } },
+        { provide: DuelCardArtService, useValue: { getArtUrl: () => '' } },
+        { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
+      ],
+    });
+    const orch = TestBed.inject(AnimationOrchestratorService);
+
+    // The shared StubManager has no buffer/drain surface — patch the chain
+    // manager instance so `replayBuffer` runs its real inline path.
+    const chain = TestBed.inject(ChainResolutionManager) as unknown as {
+      drainBuffer: () => unknown[]; beginDrain: () => void; endDrain: () => void; clearWaiting: () => void;
+    };
+    chain.drainBuffer = () => [{ type: 'MSG_MOVE' }];
+    chain.beginDrain = () => undefined;
+    chain.endDrain = () => undefined;
+    chain.clearWaiting = () => undefined;
+
+    // Capture what the inline path prepends so the test can invoke the
+    // batch-end resolve exactly like the runner would.
+    const prepended: BatchEntry[][] = [];
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as {
+      prependToQueue: (e: BatchEntry[]) => void;
+      renderedBoardState: Record<string, unknown>;
+    };
+    ds.prependToQueue = e => prepended.push(e);
+    // `trace()` reads `rbs.lockedZoneKeys()` — absent from the shared StubRbs.
+    ds.renderedBoardState['lockedZoneKeys'] = () => [];
+
+    return { orch, prepended };
+  }
+
+  function latch(orch: AnimationOrchestratorService): boolean {
+    return (orch as unknown as { _isReplayingBuffer: boolean })._isReplayingBuffer;
+  }
+
+  it('resets the latch when the inline batch-end resolves', () => {
+    const { orch, prepended } = makeOrchestratorWithBuffer();
+
+    void orch.replayBuffer(true);
+    expect(latch(orch)).withContext('latch set while the inline batch is in flight').toBe(true);
+
+    const batchEnd = prepended[0]?.find(e => e.kind === 'batch-end');
+    expect(batchEnd).withContext('inline batch must carry a batch-end directive').toBeDefined();
+    batchEnd!.resolve!();
+
+    expect(latch(orch)).withContext('batch-end cleanup must clear the latch').toBe(false);
+  });
+
+  it('clears the latch on a hard reset that drops the batch-end before it runs', () => {
+    const { orch } = makeOrchestratorWithBuffer();
+
+    void orch.replayBuffer(true);
+    expect(latch(orch)).toBe(true);
+
+    // A requestStop mid-batch (seek / switch / rematch) wipes the queue —
+    // the batch-end directive never dispatches, so the safety net in
+    // `clearTimersAndPolling` must clear the latch.
+    (orch as unknown as { clearTimersAndPolling: () => void }).clearTimersAndPolling();
+
+    expect(latch(orch)).withContext('clearTimersAndPolling is the latch safety net').toBe(false);
+  });
+});

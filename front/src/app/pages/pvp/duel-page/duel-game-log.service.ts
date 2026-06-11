@@ -31,6 +31,7 @@ import {
 import type { InternalTransportEvent } from './queue-runner-events';
 import { GameLogBuilder } from '../game-log/game-log-builder';
 import type { GameLogEntry } from '../game-log/game-log-types';
+import { swapBoardState } from '../board-state-swap';
 
 /**
  * Minimal input shape consumed by {@link DuelGameLogService.rebuildUpTo}.
@@ -45,11 +46,18 @@ export interface RebuildState {
 
 /** Adapter — turns a `ReplayStreamNavEntry` (carries `boardStateSnapshot`
  *  + `events`) into the structural `RebuildState` shape (carries
- *  `boardState` + `events`). The mapping is one-to-one and stateless. */
+ *  `boardState` + `events`). The precompute snapshot arrives in ABSOLUTE
+ *  server-P0 order (replay-precompute is perspective-agnostic) while the
+ *  builder's O5/C2 contract requires a viewer-relative board (`players[0]`
+ *  = "you") — swap it here for perspective 1. Without the swap, every
+ *  rebuild at perspective 1 (seek / scrub / flip) rendered turn-separator
+ *  LP and MSG_BECOME_TARGET resolution on the wrong side (audit 2026-06-11
+ *  finding #7). */
 export function navEntryToRebuildState(
   entry: { events: ServerMessage[]; boardStateSnapshot: BoardStatePayload },
+  perspective: Player,
 ): RebuildState {
-  return { events: entry.events, boardState: entry.boardStateSnapshot };
+  return { events: entry.events, boardState: swapBoardState(entry.boardStateSnapshot, perspective) };
 }
 import { EMPTY_DUEL_STATE } from '../types';
 import { isVirtual } from './virtual-event-registry';
@@ -297,7 +305,7 @@ export class DuelGameLogService implements ResetTarget {
   rebuildUpTo(entries: readonly { events: ServerMessage[]; boardStateSnapshot: BoardStatePayload }[]): void {
     this.builder = new GameLogBuilder(this.perspective);
     this.tappedEvents.length = 0;
-    for (const entry of entries) this.builder.ingestState(navEntryToRebuildState(entry));
+    for (const entry of entries) this.builder.ingestState(navEntryToRebuildState(entry, this.perspective));
     this._entries.set([...this.builder.entries]);
     // Signal a wholesale rebuild (vs an incremental append) so the panel
     // jumps the viewport to the bottom — a seek lands the user on step N,

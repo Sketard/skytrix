@@ -250,6 +250,45 @@ describe('DuelGameLogService', () => {
       service.rebuildUpTo(states);
       expect(service.gameLogEntries().length).toBeGreaterThan(0);
     });
+
+    it('relativizes the ABSOLUTE precompute snapshot by perspective (audit 2026-06-11 #7)', () => {
+      service.setPerspective(1);
+      const entry = state([draw(0, [1001])], 1);
+      // Precompute snapshots arrive in ABSOLUTE server-P0 order: P0 = 8000,
+      // P1 = 7000. The builder's O5/C2 contract reads players[] verbatim as
+      // viewer-relative, so the rebuild must swap for perspective 1.
+      entry.boardStateSnapshot = {
+        ...entry.boardStateSnapshot,
+        players: [
+          { lp: 8000, deckCount: 30, extraCount: 5, zones: [] },
+          { lp: 7000, deckCount: 30, extraCount: 5, zones: [] },
+        ],
+      };
+      service.rebuildUpTo([entry]);
+
+      const sep = service.gameLogEntries().find(
+        e => e.block === 'separator' && (e as { kind?: string }).kind === 'turn',
+      ) as { lp?: [number, number] } | undefined;
+      // Viewer is P1 → their 7000 LP renders first ("you").
+      expect(sep?.lp).toEqual([7000, 8000]);
+    });
+
+    it('leaves the snapshot untouched at perspective 0 (identity fast-path)', () => {
+      const entry = state([draw(0, [1001])], 1);
+      entry.boardStateSnapshot = {
+        ...entry.boardStateSnapshot,
+        players: [
+          { lp: 8000, deckCount: 30, extraCount: 5, zones: [] },
+          { lp: 7000, deckCount: 30, extraCount: 5, zones: [] },
+        ],
+      };
+      service.rebuildUpTo([entry]);
+
+      const sep = service.gameLogEntries().find(
+        e => e.block === 'separator' && (e as { kind?: string }).kind === 'turn',
+      ) as { lp?: [number, number] } | undefined;
+      expect(sep?.lp).toEqual([8000, 7000]);
+    });
   });
 
   // ── injectDevChaining (Lot 3d — dev-hub effect-bubble trigger) ──────────────

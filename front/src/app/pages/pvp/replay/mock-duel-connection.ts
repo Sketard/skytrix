@@ -222,12 +222,22 @@ export class MockDuelConnection implements AnimationDataSource {
     return swapBoardState(bs, this._currentPerspective());
   }
 
-  private _maybeSwapBoardStateAfter(message: ServerMessage): void {
+  /**
+   * Relativize the per-event `boardStateAfter` snapshot for perspective 1.
+   * Swaps on a SHALLOW CLONE — never mutates the stored `_messages[]`
+   * entry. Unlike PvP (`duel-connection.ts`, where a WS frame is freshly
+   * parsed and never re-dispatched), the mock's stream buffer is persistent
+   * and messages are re-dispatched after a backward seek ; `swapBoardState`
+   * is involutive, so an in-place swap would double-swap back to absolute
+   * on the second pass (audit 2026-06-11 finding #6). Mirror of
+   * `swapEventBoardStates` (board-state-swap.ts).
+   */
+  private _maybeSwapBoardStateAfter(message: ServerMessage): ServerMessage {
     const perspective = this._currentPerspective();
-    if (perspective === 0) return;
-    const m = message as { boardStateAfter?: BoardStatePayload };
-    if (!m.boardStateAfter) return;
-    m.boardStateAfter = swapBoardState(m.boardStateAfter, perspective);
+    if (perspective === 0) return message;
+    const m = message as ServerMessage & { boardStateAfter?: BoardStatePayload };
+    if (!m.boardStateAfter) return message;
+    return { ...m, boardStateAfter: swapBoardState(m.boardStateAfter, perspective) } as ServerMessage;
   }
 
   // ══════════════════════════════════════════════════
@@ -450,9 +460,9 @@ export class MockDuelConnection implements AnimationDataSource {
   //  Internal — handleMessage subset for replay
   // ══════════════════════════════════════════════════
 
-  private _dispatch(message: ServerMessage): void {
-    this._logger?.log(DuelLogCategory.PIPELINE, 'mock.dispatch type=%s', message.type);
-    this._maybeSwapBoardStateAfter(message);
+  private _dispatch(rawMessage: ServerMessage): void {
+    this._logger?.log(DuelLogCategory.PIPELINE, 'mock.dispatch type=%s', rawMessage.type);
+    const message = this._maybeSwapBoardStateAfter(rawMessage);
 
     if (message.type === 'BOARD_STATE') {
       this._handleBoardState(message as BoardStateMsg);

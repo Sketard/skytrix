@@ -209,7 +209,7 @@ describe('MockDuelConnection — Phase 1', () => {
       expect(damage.boardStateAfter?.turnPlayer).toBe(0);
     });
 
-    it('perspective=1 swaps per-event boardStateAfter in place before dispatch', () => {
+    it('perspective=1 swaps per-event boardStateAfter on a clone — stored message stays absolute (re-dispatch safe)', () => {
       const perspective = signal<0 | 1>(1);
       const swapConn = new MockDuelConnection({
         duelCtx: { perspective: () => perspective },
@@ -223,10 +223,18 @@ describe('MockDuelConnection — Phase 1', () => {
             { lp: 8000, deckCount: 40, extraCount: 15, zones: [] },
           ],
         });
+        const spy = spyOn(swapConn.processor, 'processMessage').and.callThrough();
         swapConn.loadStream(streamOf([damage]));
         swapConn.dispatchNext();
-        expect(damage.boardStateAfter?.turnPlayer).toBe(1);
-        expect(damage.boardStateAfter?.players[0].lp).toBe(8000);
+        // The processor receives the swapped clone…
+        const dispatched = spy.calls.mostRecent().args[0] as DamageMsg & { boardStateAfter?: BoardStatePayload };
+        expect(dispatched.boardStateAfter?.turnPlayer).toBe(1);
+        expect(dispatched.boardStateAfter?.players[0].lp).toBe(8000);
+        // …while the stored stream message stays absolute, so a re-dispatch
+        // after a backward seek swaps from the original again instead of
+        // double-swapping back to absolute (audit 2026-06-11 finding #6).
+        expect(damage.boardStateAfter?.turnPlayer).toBe(0);
+        expect(damage.boardStateAfter?.players[0].lp).toBe(7000);
       } finally {
         swapConn.cleanup();
       }

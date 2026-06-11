@@ -193,7 +193,15 @@ export class AnimationOrchestratorService {
     }),
     () => this.firePollDropRegression(),
   );
-  /** Set while inline replayBuffer is dispatching buffered events, so processEvent skips re-buffering. */
+  /**
+   * Set while inline replayBuffer is dispatching buffered events, so
+   * processEvent skips re-buffering. MUST be cleared when the inline batch
+   * settles: the batch-end `cleanup` closure resets it, and
+   * `clearTimersAndPolling` is the hard-reset safety net (a `requestStop`
+   * mid-batch drops the batch-end directive without dispatching it). A
+   * stuck-true latch disables chain buffering AND the pre-activation
+   * divert for the rest of the session (audit 2026-06-11 finding #1).
+   */
   private _isReplayingBuffer = false;
 
   /**
@@ -772,7 +780,11 @@ export class AnimationOrchestratorService {
     }
 
     const { batch, releaseSessionLocks } = this.bufferReplayBuilder.build(buffer);
-    const cleanup = () => { releaseSessionLocks(); this.chainManager.endDrain(); };
+    const cleanup = () => {
+      releaseSessionLocks();
+      this.chainManager.endDrain();
+      this._isReplayingBuffer = false;
+    };
 
     // Inline path: called from mid-chain pre-replay inside the runner's loop.
     // Prepend batch directly — the while loop continues and processes directives.
@@ -792,7 +804,11 @@ export class AnimationOrchestratorService {
     return new Promise<void>(resolve => {
       const safety = setTimeout(() => {
         this.logger.warn('replayBuffer safety timeout — forcing resolve');
-        this.chainManager.endDrain();
+        // Same teardown as the batch-end resolve: the session HAND locks +
+        // hand-batch slots from `build()` must be released here too —
+        // `endDrain()` alone leaves them held exactly when the batch
+        // stalled (audit 2026-06-11 finding #8).
+        cleanup();
         resolve();
       }, this.ctx.safetyTimeout(REPLAY_BUFFER_SAFETY_TIMEOUT_MS));
       batch.push({
@@ -913,6 +929,9 @@ export class AnimationOrchestratorService {
     // rematch board flashes the previous duel's draws.
     this._preActivationBuffer.length = 0;
     this._preActivationDrainScheduled = false;
+    // A hard reset mid-inline-batch drops the batch-end directive before it
+    // can run its cleanup — clear the latch so the next chain buffers again.
+    this._isReplayingBuffer = false;
   }
 
   /**
