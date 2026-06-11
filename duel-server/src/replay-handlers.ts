@@ -135,6 +135,52 @@ function onReplayWorkerDone(): void {
 }
 
 // =============================================================================
+// Worker teardown / hand-off
+// =============================================================================
+//
+// Audit 2026-06-11 #10 — structural fix for the replayWorkerCount
+// double-decrement: the teardown idiom (removeAllListeners + terminate +
+// slot release) used to be hand-rolled ~6× with variations, and two paths
+// could each release the same worker's slot. `releaseWorker` / `detachWorker`
+// are now the ONLY callers of `onReplayWorkerDone()` — callers only manage
+// their own pointer (`conn.worker` / `pendingForkWorkers` entry), so a
+// pointer left dangling can no longer be re-released by a later cleanup
+// path. Pinned by the source-level spec in `replay-handlers.spec.ts`.
+
+/**
+ * Terminal teardown of a replay/fork worker: detach its listeners, terminate
+ * the thread, release its pool slot. Safe on an already-exited worker (the
+ * `exit`-handler branches reuse it — `removeAllListeners`/`terminate` are
+ * no-ops on a dead thread).
+ *
+ * `removeAllListeners` runs BEFORE `terminate` so the worker's own `exit`
+ * handler never observes a deliberate teardown — that handler only fires for
+ * spontaneous crashes, where IT calls releaseWorker.
+ *
+ * @param releaseSlot pass `false` ONLY when the slot is deliberately reused
+ *   in place (the double-fork guard hands the freed slot straight to the new
+ *   fork worker without a queue round-trip).
+ */
+function releaseWorker(worker: Worker, { releaseSlot = true }: { releaseSlot?: boolean } = {}): void {
+  worker.removeAllListeners();
+  void worker.terminate();
+  if (releaseSlot) onReplayWorkerDone();
+}
+
+/**
+ * Ownership TRANSFER, not a teardown — the fork worker survives inside the
+ * new `ActiveDuelSession`; only the replay pool slot is released. Listeners
+ * deliberately stay attached: the host (`createForkSoloSession`) removes and
+ * re-wires them to the canonical `attachWorkerHandlers` (see the
+ * `ReplayHandlersConfig.createForkSoloSession` contract). Kept separate from
+ * `releaseWorker` so a hand-off can never be turned into a terminate by a
+ * refactor collapsing the two.
+ */
+function detachWorker(_worker: Worker): void {
+  onReplayWorkerDone();
+}
+
+// =============================================================================
 // Replay connection entry point
 // =============================================================================
 
@@ -333,28 +379,26 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
       logger.log('Replay pre-computation complete', { replayId: conn.replayId });
       conn.state = 'ready';
       if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
-      worker.removeAllListeners();
-      worker.terminate();
+      releaseWorker(worker);
       conn.worker = null;
-      onReplayWorkerDone();
     } else if (wmsg.type === 'WORKER_REPLAY_ERROR') {
       logger.error('Replay worker error', { replayId: conn.replayId, error: wmsg.message });
       safeSend(conn.ws, { type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message });
       if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
-      worker.removeAllListeners();
-      worker.terminate();
+      releaseWorker(worker);
       conn.worker = null;
       // Evict stale cache entry to prevent reuse of failed replay data
       c.replayCache.delete(conn.replayId);
-      onReplayWorkerDone();
     }
   });
 
   worker.on('exit', (code) => {
     logger.log('Replay worker exited', { replayId: conn.replayId, exitCode: code });
+    // Spontaneous-crash branch only — deliberate teardowns removeAllListeners
+    // before terminate, so this handler never sees them.
     if (conn.worker === worker) {
       conn.worker = null;
-      onReplayWorkerDone();
+      releaseWorker(worker);
     }
   });
 
@@ -427,18 +471,15 @@ function handleReplayFork(
   const hadWorker = !!conn.worker;
   if (conn.worker) {
     logger.log('Terminating previous worker before starting fork', { replayId: conn.replayId });
-    conn.worker.removeAllListeners();
-    conn.worker.terminate();
+    // Slot deliberately reused for the fork worker — no queue round-trip.
+    releaseWorker(conn.worker, { releaseSlot: false });
     conn.worker = null;
-    // Don't call onReplayWorkerDone() — we're reusing this slot for the fork worker
   }
 
   const pending = pendingForkWorkers.get(conn);
   if (pending) {
-    pending.worker.removeAllListeners();
-    pending.worker.terminate();
+    releaseWorker(pending.worker);
     pendingForkWorkers.delete(conn);
-    onReplayWorkerDone();
   }
 
   conn.state = 'fork_pending';
@@ -467,12 +508,10 @@ function createForkWorker(
   conn.watchdogTimer = setTimeout(() => {
     logger.error('Fork watchdog timeout — terminating worker', { replayId: conn.replayId });
     safeSend(conn.ws, { type: 'REPLAY_ERROR', message: 'Fork reconstruction timed out (30s)' });
-    worker.removeAllListeners();
-    worker.terminate();
+    releaseWorker(worker);
     conn.worker = null;
     conn.watchdogTimer = null;
     conn.state = 'ready';
-    onReplayWorkerDone();
   }, c.replayWorkerWatchdogMs);
 
   worker.on('message', (raw: unknown) => {
@@ -511,11 +550,9 @@ function createForkWorker(
       logger.error('Fork worker error', { replayId: conn.replayId, error: wmsg.message });
       safeSend(conn.ws, { type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message });
       if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
-      worker.removeAllListeners();
-      worker.terminate();
+      releaseWorker(worker);
       conn.worker = null;
       conn.state = 'ready';
-      onReplayWorkerDone();
     }
   });
 
@@ -523,7 +560,7 @@ function createForkWorker(
     logger.log('Fork worker exited', { replayId: conn.replayId, exitCode: code });
     if (conn.worker === worker) {
       conn.worker = null;
-      onReplayWorkerDone();
+      releaseWorker(worker);
       return;
     }
     // Audit 2026-06-11 #10 — the worker may be PARKED in `pendingForkWorkers`
@@ -534,7 +571,7 @@ function createForkWorker(
     if (pending?.worker === worker) {
       pendingForkWorkers.delete(conn);
       conn.state = 'ready';
-      onReplayWorkerDone();
+      releaseWorker(worker);
     }
   });
 
@@ -581,11 +618,11 @@ function transitionForkToSolo(
   });
 
   // Detach worker from replay connection (it's now owned by ActiveDuelSession)
-  conn.worker = null;
-  // Release the replay worker slot — the worker lives on in the solo session
+  // and release the replay pool slot — the worker lives on in the solo session
   // but is no longer a replay worker. Without this, replayWorkerCount leaks +1
   // per fork, eventually blocking all future replay pre-computations.
-  onReplayWorkerDone();
+  conn.worker = null;
+  detachWorker(worker);
 
   // Remove WS event listeners BEFORE close to prevent double cleanup
   // (close handler would call cleanupReplayConnection without preserveCache,
@@ -640,10 +677,8 @@ function handleReplayForkCancel(conn: ReplayConnection): void {
   }
   const pending = pendingForkWorkers.get(conn);
   if (!pending) return;
-  pending.worker.removeAllListeners();
-  pending.worker.terminate();
+  releaseWorker(pending.worker);
   pendingForkWorkers.delete(conn);
-  onReplayWorkerDone();
   conn.state = 'ready';
 }
 
@@ -661,22 +696,22 @@ export function cleanupReplayConnection(conn: ReplayConnection, preserveCache = 
   }
 
   if (conn.worker) {
-    conn.worker.removeAllListeners();
-    conn.worker.terminate();
+    releaseWorker(conn.worker);
     conn.worker = null;
-    onReplayWorkerDone();
   }
 
   if (!preserveCache) {
     c.replayCache.delete(conn.replayId);
   }
 
+  // Audit 2026-06-11 #10 — `conn.worker` and the `pendingForkWorkers` entry
+  // are mutually exclusive by construction (the conn pointer is nulled when
+  // a worker is parked), so the two branches can never double-release the
+  // same worker's slot.
   const pending = pendingForkWorkers.get(conn);
   if (pending) {
-    pending.worker.removeAllListeners();
-    pending.worker.terminate();
+    releaseWorker(pending.worker);
     pendingForkWorkers.delete(conn);
-    onReplayWorkerDone();
   }
 
   activeReplayConnections.delete(conn.ws);
@@ -698,9 +733,7 @@ export function cleanupAllReplayState(): void {
     cleanupReplayConnection(conn);
   }
   for (const [conn, pending] of pendingForkWorkers) {
-    pending.worker.removeAllListeners();
-    pending.worker.terminate();
+    releaseWorker(pending.worker);
     pendingForkWorkers.delete(conn);
-    onReplayWorkerDone();
   }
 }
