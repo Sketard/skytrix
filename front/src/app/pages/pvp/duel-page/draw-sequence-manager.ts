@@ -33,9 +33,6 @@ import {
  * Provided at component level (NOT root).
  *
  * Cross-manager couplings (audit L23):
- * - Reads `chainManager.hasActiveReplayTimeouts` to gate
- *   `resumeQueueIfSafe` — draw resume must not race with a buffer-replay
- *   stagger. Single read site (no write).
  * - Calls `moveRouter.processMoveEvent` from `processShuffleEvent` for
  *   shuffle-induced MOVEs.
  * - Calls `moveRouter.releasePreLocksForKeys` from
@@ -269,30 +266,10 @@ export class DrawSequenceManager {
 
       clearTimeout(guardId);
     } finally {
-      // TEMP TRACE — investigating "main vide" symptom 2026-06-05 (Axel)
-      // Capture HAND state of both players in logical AND rendered right
-      // before commit, right after commit, and 50ms post-commit. If
-      // rendered HAND is empty at any of those points, we have the cause.
-      const dumpHand = (label: string): void => {
-        const logical = this.rbs.logicalState();
-        const rendered = this.rbs.renderedState();
-        const handLogical0 = logical.players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-        const handLogical1 = logical.players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-        const handRendered0 = rendered.players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-        const handRendered1 = rendered.players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-        const locks = this.rbs.lockedZoneKeys();
-        // TEMP TRACE 2026-06-05 (B) — investigating "vraies cartes sous les floats" (Axel).
-        const floatsHand0 = this.floatRegistry.getLandedFloatsByDstPrefix('HAND-0').length;
-        const floatsHand1 = this.floatRegistry.getLandedFloatsByDstPrefix('HAND-1').length;
-        // eslint-disable-next-line no-console
-        console.warn(`[ANIM-HAND-DBG] ${label} | logical HAND-0=${handLogical0} HAND-1=${handLogical1} | rendered HAND-0=${handRendered0} HAND-1=${handRendered1} | floats HAND-0=${floatsHand0} HAND-1=${floatsHand1} | locks=[${locks.join(',')}]`);
-      };
-      dumpHand('PRE-COMMIT');
       // earlyLocks already released by `runParallelInitialDraw` (hand-off
       // to the inner handLocks). Only the single-msg fallback path needs
       // the final commit.
       if (!earlyLocksHandedOff) earlyLocks.forEach(l => l.commit());
-      dumpHand('POST-COMMIT (sync)');
       // `runDrawSequence` already cleared its own HAND-${rel} floats
       // via the filtered `clearLandedByDstPrefix(dstKey)` post-commit
       // (fix #4) — the unfiltered `clearLandedTravels()` call previously
@@ -303,14 +280,6 @@ export class DrawSequenceManager {
       // cleanup : drops the expansion-slot reservation so Angular
       // reuses the hand <div>s without firing a layout transition.
       this.resetHandAnimationState();
-      dumpHand('POST-CLEAR-FLOATS');
-      // Track the deferred dumpHand timers via `_drawTimeouts` so
-      // `reset()` / rematch / teardown clears them — otherwise a rapid
-      // surrender + new duel within 500ms would cross-pollute the trace
-      // with stale state from the previous duel.
-      this._drawTimeouts.push(setTimeout(() => dumpHand('POST-COMMIT +50ms'), 50));
-      this._drawTimeouts.push(setTimeout(() => dumpHand('POST-COMMIT +200ms'), 200));
-      this._drawTimeouts.push(setTimeout(() => dumpHand('POST-COMMIT +500ms'), 500));
     }
 
     this._drawsInFlight.clear();
@@ -474,15 +443,6 @@ export class DrawSequenceManager {
 
     this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — committing locks, renderedHand=%d',
       this.rbs.renderedState().players?.[0]?.zones?.find(z => z.zoneId === 'HAND')?.cards?.length ?? 0);
-    // TEMP TRACE 2026-06-05 (B) — investigating "vraies cartes sous les floats"
-    // (Axel). Snapshot floats BEFORE handLock.commit() to see what was
-    // landed during the travel. If keepFloats=true (initial draw), these
-    // floats survive the commit and stay layered on top until
-    // launchInitialDraw's finally block clears them — leaving a window where
-    // the real .hand-card elements render UNDER the still-visible floats.
-    const landedBefore = this.floatRegistry.getLandedFloatsByDstPrefix(dstKey).length;
-    // eslint-disable-next-line no-console
-    console.warn(`[ANIM-HAND-DBG] runDrawSequence(${dstKey}) PRE-COMMIT | keepFloats=${!!opts.keepFloats} landedHere=${landedBefore}`);
     handLock.commit();
     deckLock?.commit();
     // Drop the landed floats for THIS zone immediately after the commit —
@@ -499,9 +459,6 @@ export class DrawSequenceManager {
     // wipes them globally. Filtered (`*ByDstPrefix(dstKey)`) so other
     // zones' in-flight/landed floats (GY, BANISHED, …) stay intact.
     this.floatRegistry.clearLandedByDstPrefix(dstKey);
-    const landedAfter = this.floatRegistry.getLandedFloatsByDstPrefix(dstKey).length;
-    // eslint-disable-next-line no-console
-    console.warn(`[ANIM-HAND-DBG] runDrawSequence(${dstKey}) POST-COMMIT | landedHere=${landedAfter}`);
     this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — committed, renderedHand=%d locks=%d',
       this.rbs.renderedState().players?.[0]?.zones?.find(z => z.zoneId === 'HAND')?.cards?.length ?? 0,
       this.rbs.lockedZoneKeys().length);
@@ -679,7 +636,7 @@ export class DrawSequenceManager {
   }
 
   private resumeQueueIfSafe(): void {
-    if (!this.chainManager.hasActiveReplayTimeouts && this._onQueueResume) {
+    if (this._onQueueResume) {
       // Defer to next microtask. When this is called from a synchronously-
       // resolving .finally() inside an 'async'-returning event handler (e.g.
       // MSG_CONFIRM_CARDS for a non-HAND card where confirmCardsInHand's loop

@@ -7,7 +7,6 @@ export type {
   BoardStatePayload,
   ServerMessage,
   ForkSanityFields,
-  ReplayLoadMsg,
   ReplayForkMsg,
   ReplayForkContinueMsg,
   ReplayForkCancelMsg,

@@ -45,7 +45,7 @@ describe('DrawSequenceManager', () => {
   };
   let mockDataSource: AnimationDataSource;
   let mockMoveRouter: jasmine.SpyObj<MoveAnimationRouter>;
-  let mockChainManager: { hasActiveReplayTimeouts: boolean };
+  let mockChainManager: object;
   let mockBoardEffects: jasmine.SpyObj<BoardEffectsService>;
 
   // Per-test toggles for DuelContext
@@ -92,7 +92,7 @@ describe('DrawSequenceManager', () => {
       'releaseAllPreLocks', 'clearTimeouts',
     ]);
 
-    mockChainManager = { hasActiveReplayTimeouts: false };
+    mockChainManager = {};
 
     const mockCtx = {
       relativePlayer: (p: number) => (p === ownPlayer ? 0 : 1) as 0 | 1,

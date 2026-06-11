@@ -8,7 +8,8 @@ import type { WorkerToMainMessage } from '../types.js';
  * dispatches into a hot path".
  *
  * Three current consumers:
- *   - `server.ts:setupForkWorkerHandlers` (fork-solo session worker)
+ *   - `worker-lifecycle.ts::attachWorkerHandlers` (live PvP/SOLO/fork-solo
+ *     sessions — dispatches to `worker-message-router.handleWorkerMessage`)
  *   - `replay-handlers.ts::createReplayWorker` (replay precompute)
  *   - `replay-handlers.ts::createForkWorker` (fork sanity check)
  *

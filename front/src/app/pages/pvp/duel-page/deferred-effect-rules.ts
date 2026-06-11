@@ -8,7 +8,8 @@
 // predicate after the first match (typically: MSG_MOVE → AnimationCompleted
 // of THAT MSG_MOVE).
 //
-// β.2b ships 5 working rules + 5 documented stubs. Pragmatic scope:
+// 6 working rules ship (5 `DeferredRule` + the `xyz-leave-with-materials`
+// rewriter) + 6 documented stubs. Pragmatic scope:
 // rules whose predicates can be expressed cleanly without heuristics
 // that risk false positives in production. The stubs are intentional
 // β.2b-bis / β.3 work, with the catalogue case + the reason for

@@ -8,7 +8,7 @@
 // Plain class — instantiated privately by `DuelEventProcessor`, which calls
 // `observeMessage()` for every WS message in the order they arrive and
 // `observeBoardState()` for each BOARD_STATE payload received by the
-// adapter layer (DuelConnection / ReplayDuelAdapter). The processor
+// adapter layer (DuelConnection / MockDuelConnection). The processor
 // itself owns the emit callback, so boundaries land on the same stream
 // as `MSG_CHAIN_NEGATED`, `MSG_WIN`, etc. — `onEvent` in the processor.
 //
@@ -150,7 +150,7 @@ export class BoundaryProcessor {
 
   /**
    * Observe a BOARD_STATE payload. Detects Turn and Phase deltas.
-   * Called by the WS adapter (DuelConnection / ReplayDuelAdapter)
+   * Called by the WS adapter (DuelConnection / MockDuelConnection)
    * AFTER `observeMessage` has fired for any preceding MSG_*, so
    * the sync-mandatory ordering is "MSG_* boundaries first, then
    * BOARD_STATE boundaries" within a single WS message — which

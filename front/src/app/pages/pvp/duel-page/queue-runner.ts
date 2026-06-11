@@ -50,8 +50,9 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  * (Phase 2 of pvp-replay-2026-05-08 audit closure). Investigation found
  * the poll branch UNREACHABLE since 2026-04-06 because the wait gate
  * (priority 1) returned first whenever the poll predicate matched. All
- * legitimate wait paths are now event-driven (WS message, advanceStep,
- * resume effect on chainOverlayReady). A POLL-DROP REGRESSION watchdog
+ * legitimate wait paths are now event-driven (WS message / mock dispatch
+ * via notifyEnqueue, resume effect on chainOverlayReady). A POLL-DROP
+ * REGRESSION watchdog
  * fires if a finalize-during-resolving stalls — see CLAUDE.md.
  */
 export type QueueStep =
@@ -282,14 +283,18 @@ export class QueueRunner {
    *     and bails (single-loop, time-ordered).
    *
    *   - `_innerLoopDepth` covers INTRA-TICK re-entry — the finalize
-   *     branch (line ~581) flips `_isProcessing=false` for a sync window
-   *     between `onFinalize()` and `setRunning(false)`. If
-   *     `setRunning(false)` triggers `advanceStep → feedTransition →
-   *     enqueue → notifyEnqueue → processAnimationQueue` in the same
-   *     microtask, the new call passes the `_isProcessing=false` gate
-   *     and a SECOND inner loop starts BEFORE the first returns. No
-   *     abort involved, but two loops coexist — the depth assertion is
-   *     the only structural surface for catching this.
+   *     branch flips `_isProcessing=false` for a sync window between
+   *     `onFinalize()` and `setRunning(false)`. `setRunning(false)` →
+   *     `onIsRunningChange` → `dataSource.setAnimating`, which is a
+   *     NO-OP on both impls today, so no current production path
+   *     synchronously re-enters from there. The counter is kept as a
+   *     CANARY: if a future sync consumer lands on the
+   *     `onIsRunningChange` / `pushToStream` paths (a real
+   *     `setAnimating` impl, a sync stream subscriber) and re-enters
+   *     `processAnimationQueue` in the same microtask, the new call
+   *     passes the `_isProcessing=false` gate and a SECOND inner loop
+   *     starts BEFORE the first returns. No abort involved — the depth
+   *     assertion is the only structural surface for catching this.
    *
    * Three sites participate (each load-bearing for a distinct reason):
    *  1. `requestStop()` zeroes the counter to clear a stale ++ that a
@@ -442,9 +447,10 @@ export class QueueRunner {
     // the entry assert they form the C4 re-entry detection.
     this._innerLoopDepth = 0;
     // v3 Phase 3 (2026-06-04) — drop orphaned locks BEFORE setRunning(false).
-    // The cascade `setRunning(false) → onIsRunningChange(false) →
-    // setAnimating(false) → advanceStep → assertNoLocks` would otherwise
-    // throw on the locks an in-flight handler took legitimately before
+    // `setRunning(false) → onIsRunningChange(false) → dataSource.setAnimating`
+    // is a NO-OP on both impls today ; the drop is what lets the later
+    // strict `assertNoLocks('resetAllState')` (v3 Phase 4) stay clean of
+    // the locks an in-flight handler took legitimately before
     // its travel Promise was abandoned by `_abort.abort()` above. The
     // handler's `.then(commit, release)` still fires post-cleanup but
     // hits the zombie-safe `commit()` path (Option G, af3195fa) which is
@@ -524,8 +530,9 @@ export class QueueRunner {
         return;
       }
       // Rescue cases for a stalled queue:
-      //  (a) onIsRunningChange(false) in the inner loop synchronously triggered
-      //      advanceStep → feedTransition → enqueue. The effect that calls
+      //  (a) a sync consumer on the onIsRunningChange(false) path enqueued
+      //      during the inner loop (none today — `dataSource.setAnimating`
+      //      is a NO-OP on both impls). The effect that calls
       //      notifyEnqueue can fire before this finally block, sees
       //      _isProcessing=true and bails — so we re-enter here.
       //  (b) An 'async'-returning event handler whose awaited work resolved
@@ -632,9 +639,11 @@ export class QueueRunner {
 
           case 'finalize': {
             // INVARIANT (CLAUDE.md): finalizeAndCommit() MUST run BEFORE
-            // setAnimating(false). In replay, setAnimating(false) triggers
-            // advanceStep() → updateLogical() with the next state. Committing
-            // first ensures we use the current state.
+            // setRunning(false). Historical rationale: the v3 replay adapter's
+            // setAnimating(false) synchronously advanced to the next state ;
+            // today setAnimating is a no-op on both impls, but the ordering
+            // stays load-bearing (commit against the CURRENT logical state
+            // before any onIsRunningChange consumer observes the stop).
             this.trace('queueEmpty', { action: 'finalize' });
             // POLL-DROP REGRESSION watchdog — arm BEFORE finalize so a
             // reset-during-finalize chain (rare but possible if LP sync
@@ -646,9 +655,10 @@ export class QueueRunner {
               this.emitInternal({ kind: 'watchdog-armed', at: Date.now() });
             }
             this.deps.onFinalize();
-            // Clear _isProcessing BEFORE setRunning(false) — the call may
-            // synchronously trigger advanceStep → feedTransition → enqueue,
-            // and the queue watcher effect may fire in the same microtask batch.
+            // Clear _isProcessing BEFORE setRunning(false) — no current
+            // production path re-enters synchronously from there
+            // (`dataSource.setAnimating` is a NO-OP on both impls), but
+            // the queue watcher effect may fire in the same microtask batch.
             // If _isProcessing is still true, notifyEnqueue is a no-op
             // and the queue stalls.
             this._isProcessing = false;

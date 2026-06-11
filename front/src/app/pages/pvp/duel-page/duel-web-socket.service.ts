@@ -37,7 +37,7 @@ export { ResponseData } from './duel-connection';
  *  `_slots[perspectiveSlot()]` on the same connection.
  *
  * **Replay**: this service is NOT used by `ReplayPageComponent` (the
- * replay-page uses `ReplayDuelAdapter` directly). c8 leaves replay
+ * replay-page uses `MockDuelConnection` directly). c8 leaves replay
  * untouched.
  */
 @Injectable()

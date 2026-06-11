@@ -26,11 +26,6 @@ export interface ForkSanityFields {
 // Client → Server
 // =============================================================================
 
-export interface ReplayLoadMsg {
-  type: 'REPLAY_LOAD';
-  replayId: string;
-}
-
 export interface ReplayForkMsg {
   type: 'REPLAY_FORK';
   responseCount: number;

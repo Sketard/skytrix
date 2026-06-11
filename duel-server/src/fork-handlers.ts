@@ -25,8 +25,10 @@ import * as logger from './logger.js';
  * as PvP and SOLO multiplex; the only behavioral differences are :
  *   1. **No replay persist** — `worker-message-router.ts` skips the
  *      `WORKER_REPLAY_DATA` persist branch when `session.forkMode`.
- *   2. **No rematch** — `worker-lifecycle.ts handleDuelEnd` skips the
- *      `rematchTimeout` arm when `session.forkMode`.
+ *   2. **No rematch** — `duel-end-coordinator.ts handleDuelEnd` arms a
+ *      fork-expiry cleanup on the `rematchTimeout` slot when
+ *      `session.forkMode` (straight to session cleanup, no rematch flow
+ *      — audit 2026-06-11 #2/#3).
  *   3. **Log tag** — `broadcastMessage` writes `mode: 'fork_solo'` on
  *      the `DUEL_END` log line.
  *   4. **No turn timer** — fork-solo bypasses `WORKER_DUEL_CREATED` entirely.

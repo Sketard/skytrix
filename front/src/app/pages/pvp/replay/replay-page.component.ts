@@ -648,10 +648,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.transport.configure({
       mockConn: this.mockConn,
       phaseService: this.phaseService,
-      navIndex: this.navIndex,
       computedUpTo: this.computedUpTo,
       animationsEnabled: this.animationsEnabled,
-      promptMode: this.promptMode,
       overlayActive: this.chainOverlayActive,
     });
 
@@ -1007,10 +1005,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.promptMode.set(next);
     localStorage.setItem(ReplayPageComponent.PREF_PROMPT_MODE, next);
     // v4 Phase 5 — `collapseRemainingSteps` retired. In the v4 model
-    // there is no step-queue to collapse ; switching to 'result' just
-    // updates `promptMode` and the next `maybeAdvance` tick proceeds
-    // through prompts via the auto-respond timer (which the transport
-    // arms when `promptMode === 'result'` and a prompt is up).
+    // there is no step-queue to collapse ; `promptMode` only drives which
+    // UI the prompt renders with (decision modal vs result toast) — the
+    // transport arms the auto-respond timer in BOTH modes (audit
+    // 2026-06-11 doc fix ; the transport never reads promptMode).
   }
 
   onTogglePerspective(): void {

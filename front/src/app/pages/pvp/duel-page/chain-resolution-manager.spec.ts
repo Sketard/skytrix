@@ -45,8 +45,8 @@ describe('ChainResolutionManager', () => {
   /** Mirrors handleChainSolved: orchestrator calls dataSource.applyChainSolved
    *  (which keeps phase at 'resolving' until applyChainEnd) then handleSolved.
    *  Phase doesn't change here; we just delegate. */
-  function exitLink(chainIndex = 0): 'async' {
-    return mgr.handleSolved(solved(chainIndex));
+  function exitLink(_chainIndex = 0): 'async' {
+    return mgr.handleSolved();
   }
 
   /** Mirrors handleChainEnd: phase back to 'idle' then handleEnd. */
@@ -74,7 +74,6 @@ describe('ChainResolutionManager', () => {
       expect(mgr.isResolving).toBeFalse();
       expect(mgr.isWaitingForOverlay).toBeFalse();
       expect(mgr.chainSolvedCount).toBe(0);
-      expect(mgr.hasActiveReplayTimeouts).toBeFalse();
       expect(mgr.hasBufferedEvents).toBeFalse();
       expect(mgr.deferredSolvingEvent).toBeNull();
     });
@@ -303,33 +302,6 @@ describe('ChainResolutionManager', () => {
       expect(drained.length).toBe(2);
       expect(mgr.hasBufferedEvents).toBeFalse();
     });
-
-    it('should call clearTimeout on each replay timeout', () => {
-      spyOn(globalThis, 'clearTimeout').and.callThrough();
-      const t1 = setTimeout(() => {}, 9999);
-      const t2 = setTimeout(() => {}, 9999);
-      mgr.addReplayTimeout(t1);
-      mgr.addReplayTimeout(t2);
-      mgr.drainBuffer();
-      expect(globalThis.clearTimeout).toHaveBeenCalledWith(t1);
-      expect(globalThis.clearTimeout).toHaveBeenCalledWith(t2);
-      expect(mgr.hasActiveReplayTimeouts).toBeFalse();
-    });
-  });
-
-  describe('replay timeouts', () => {
-    it('should track and clear replay timeouts', () => {
-      spyOn(globalThis, 'clearTimeout').and.callThrough();
-      const t1 = setTimeout(() => {}, 9999);
-      const t2 = setTimeout(() => {}, 9999);
-      mgr.addReplayTimeout(t1);
-      mgr.addReplayTimeout(t2);
-      expect(mgr.hasActiveReplayTimeouts).toBeTrue();
-      mgr.clearReplayTimeouts();
-      expect(mgr.hasActiveReplayTimeouts).toBeFalse();
-      expect(globalThis.clearTimeout).toHaveBeenCalledWith(t1);
-      expect(globalThis.clearTimeout).toHaveBeenCalledWith(t2);
-    });
   });
 
   describe('consumeDeferredSolving', () => {
@@ -364,10 +336,10 @@ describe('ChainResolutionManager', () => {
     // (`chainResolutionAnnounce`, a projection) flips on the parallel
     // `AnimationPhaseCompleted` stream push; the projection's behavior
     // is covered in its own spec.
-    it('should set isAnnouncePending synchronously', () => {
-      expect(mgr.isAnnouncePending).toBeFalse();
+    it('should set chainResolutionAnnounce synchronously', () => {
+      expect(mgr.chainResolutionAnnounce()).toBeFalse();
       mgr.markAnnouncePending();
-      expect(mgr.isAnnouncePending).toBeTrue();
+      expect(mgr.chainResolutionAnnounce()).toBeTrue();
     });
   });
 
@@ -376,7 +348,6 @@ describe('ChainResolutionManager', () => {
       enterResolving(0);
       mgr.bufferIfResolving(move());
       exitLink(0);
-      mgr.addReplayTimeout(setTimeout(() => {}, 9999));
       mgr.chainEntryAnimating.set(true);
       mgr.chainPromptGateActive.set(true);
 
@@ -386,11 +357,8 @@ describe('ChainResolutionManager', () => {
       expect(mgr.isWaitingForOverlay).toBeFalse();
       expect(mgr.chainSolvedCount).toBe(0);
       expect(mgr.hasBufferedEvents).toBeFalse();
-      expect(mgr.hasActiveReplayTimeouts).toBeFalse();
       expect(mgr.deferredSolvingEvent).toBeNull();
-      // β.3 Lot 3.2-REDO — assert the sync mirror; the projection's
-      // `applyReset` is exercised in its own spec.
-      expect(mgr.isAnnouncePending).toBeFalse();
+      expect(mgr.chainResolutionAnnounce()).toBeFalse();
       expect(mgr.chainEntryAnimating()).toBeFalse();
       expect(mgr.chainPromptGateActive()).toBeFalse();
       expect(mgr.chainOverlayReady()).toBeTrue();
@@ -399,14 +367,6 @@ describe('ChainResolutionManager', () => {
       expect(mgr.isResolving).toBeTrue(); // still 'resolving' until phase flips
       phaseSignal.set('idle');
       expect(mgr.isResolving).toBeFalse();
-    });
-  });
-
-  describe('clearTimeouts', () => {
-    it('should clear replay timeouts (banner timers now owned by orchestrator directive)', () => {
-      mgr.addReplayTimeout(setTimeout(() => {}, 9999));
-      mgr.clearTimeouts();
-      expect(mgr.hasActiveReplayTimeouts).toBeFalse();
     });
   });
 

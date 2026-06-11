@@ -68,7 +68,7 @@ export function isDirective(entry: QueueEntry): entry is QueueDirective {
  * Data source interface for the animation pipeline.
  *
  * Implemented by `DuelWebSocketService` (live PvP + SOLO multiplex) and
- * `ReplayDuelAdapter` (replay). Injected by `AnimationOrchestratorService`
+ * `MockDuelConnection` (replay). Injected by `AnimationOrchestratorService`
  * and `PvpChainOverlayComponent` via the `ANIMATION_DATA_SOURCE` token —
  * they never reference the concrete class.
  *
@@ -86,9 +86,9 @@ export function isDirective(entry: QueueEntry): entry is QueueDirective {
  *    reconnect/cancel-rollback mechanism that has no replay analogue.
  *  - `setBoardActive(active)` — PvP/SOLO only ; the replay adapter has no
  *    "board active" gate (precompute drives `busy`).
- *  - The `ReplayDuelAdapter` step-queue API (`feedTransition`,
- *    `feedTransitionPhased`, `advanceStep`, `collapseRemainingSteps`,
- *    `jumpToState`, `abort`, `busy`, `activePrompt`, …) — replay only.
+ *  - The `MockDuelConnection` stream-consumption API (`dispatchNext`,
+ *    `appendChunk`, `seekToOffset`, `busy`, `pendingPrompt` extras, …)
+ *    — replay only.
  *
  * Adding a member here forces BOTH impls to implement it. If a new
  * concept is genuinely shared (e.g. a future demo / sub-replay mode that
@@ -141,7 +141,7 @@ export const ANIMATION_DATA_SOURCE = new InjectionToken<AnimationDataSource>('An
 
 /**
  * Shared BOARD_STATE sync decision — used by both DuelConnection and
- * ReplayDuelAdapter. Preserves current PvP semantics exactly.
+ * MockDuelConnection. Preserves current PvP semantics exactly.
  */
 export function syncAfterBoardState(
   rbs: RenderedBoardStateService,

@@ -8,6 +8,10 @@ import { RenderedBoardStateService, type BoardStateView } from './rendered-board
 import { BoardStateMsg, BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DeckPrefetchMsg, DiceResultMsg, DiceRollPromptMsg, DrawMsg, DuelEndMsg, DuelStartingMsg, EarlyDeckPrefetchMsg, ErrorMsg, FirstPlayerResultMsg, HintMsg, InactivityWarningMsg, OpponentDisconnectedMsg, PROTOCOL_VERSION, RematchCancelledMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectFirstPlayerMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionPhaseMsg, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WaitingResponseMsg, WinMsg } from '../duel-ws.types';
 import { chainingMsgsToLinkStates } from './chain-state-restore.utils';
 import { swapBoardState } from '../board-state-swap';
+import {
+  SELECT_MODAL_MESSAGE_TYPES, SELECT_SIMPLE_MESSAGE_TYPES,
+  CHAIN_PIPELINE_CORE_TYPES, GAME_EVENT_FORWARD_TYPES,
+} from '../message-type-sets';
 import type { WebSocketFactory } from './websocket-factory.service';
 
 export type ResponseData = Record<string, unknown>;
@@ -168,9 +172,9 @@ export class DuelConnection {
    */
   // γ commit 4 — exposed (readonly) so `DuelWebSocketService` can resolve
   // chain-state reads (`activeChainLinks`, `chainPhase`, `pendingChainEntry`,
-  // `animationQueue`) directly from the processor. PvP-normal default
-  // connection: this is its locally-owned processor. SOLO connections:
-  // points at the shared `AnimationOrchestratorService.processor`.
+  // `animationQueue`) directly from the processor. Post-c8 ownership: EVERY
+  // connection owns its processor outright — SOLO swaps the whole conn into
+  // the wsService via `bindSoloConnection`; no processor is ever shared.
   readonly processor: DuelEventProcessor;
   private readonly rbs = new RenderedBoardStateService();
   /** Full RBS — write/control surface used by AnimationDataSource (orchestrator + managers). */
@@ -612,7 +616,7 @@ export class DuelConnection {
    * (cf. CLAUDE.md "Perspective Convention" §2 + "Replay Board State Parity").
    *
    * PvP normal and replay both yield false (PvP: `soloMode=false`; replay:
-   * uses `ReplayDuelAdapter` directly and never reaches this class). The
+   * uses `MockDuelConnection` directly and never reaches this class). The
    * `_duelCtx` field is injected at construction by the SOLO orchestrator
    * (c6) and absent otherwise.
    */
@@ -846,7 +850,7 @@ export class DuelConnection {
     //      provably empty at this point, so `syncRendered()` reads the
     //      empty-locks fast path and lands `_logical` straight to `_rendered`
     //      with no mergeUnlockedZones masking. Mirror of the equivalent replay
-    //      seek path (`adapter.jumpToState(currentState)` → `commitAll`).
+    //      seek path (`MockDuelConnection.seekToOffset` → `commitAll`).
     if (this._lastAbsoluteBoardState !== null) {
       const reprojected = this._maybeSwapBoardState(this._lastAbsoluteBoardState);
       this.rbs.updateLogical(reprojected);
@@ -1085,54 +1089,14 @@ export class DuelConnection {
   // sémantique correspondant.
   // ===========================================================================
 
-  /** SELECT prompt types that share the modal-prompt branch (processor +
-   *  per-slot pendingPrompt + auto-respond empty-cards + lastSelectedPromptType
-   *  reset). */
-  private static readonly _SELECT_MODAL_TYPES = [
-    'SELECT_CARD', 'SELECT_CHAIN', 'SELECT_TRIBUTE', 'SELECT_SUM',
-    'SELECT_UNSELECT_CARD', 'SELECT_COUNTER',
-  ] as const;
-
-  /** SELECT / ANNOUNCE / SORT prompt types that share the simple branch
-   *  (processor + per-slot pendingPrompt, no auto-respond, no accumulator
-   *  reset). These are the "idle phase" prompts (IDLECMD/BATTLECMD) and the
-   *  one-shot announces/sorts. */
-  private static readonly _SELECT_SIMPLE_TYPES = [
-    'SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_EFFECTYN', 'SELECT_YESNO',
-    'SELECT_PLACE', 'SELECT_DISFIELD', 'SELECT_POSITION', 'SELECT_OPTION',
-    'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_NUMBER',
-    'SORT_CARD', 'SORT_CHAIN', 'ANNOUNCE_CARD',
-  ] as const;
-
-  /** Chain-pipeline MSG_* types that are silently forwarded to the processor
-   *  with no extra side-effect (chain state machine drives them). MSG_CHAINING
-   *  and MSG_CHAIN_END have their own methods (extra logic). */
-  private static readonly _CHAIN_PIPELINE_TYPES = [
-    'MSG_CHAIN_SOLVING', 'MSG_CHAIN_SOLVED', 'MSG_CHAIN_NEGATED',
-  ] as const;
-
-  /** Game-event MSG_* types forwarded to the processor with no extra
-   *  side-effect on the connection. MSG_DRAW, MSG_CONFIRM_CARDS, MSG_CHAINING
-   *  have their own methods.
-   *
-   *  U20 E2 review-fix : MSG_SET added. It was missing from the prior switch
-   *  (pre-U20 bug), so face-down Sets were silently dropped — the processor
-   *  never saw them and chain-resolution buffering missed them. The animation
-   *  orchestrator returns 0 for MSG_SET (no anim — position change handled by
-   *  the next BOARD_STATE), but the processor still needs to see it for
-   *  buffer-replay semantics during chain resolution. Pre-existing latent
-   *  bug, fixed in passing since the routing-table refacto surfaced it via
-   *  the new `unhandled-type` warn (the warn would have flooded on every
-   *  Set otherwise). */
-  private static readonly _GAME_EVENT_TYPES = [
-    'MSG_MOVE', 'MSG_SET', 'MSG_SHUFFLE_HAND', 'MSG_SHUFFLE_DECK',
-    'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
-    'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_BECOME_TARGET',
-    'MSG_SWAP', 'MSG_ATTACK', 'MSG_BATTLE',
-    'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
-    'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER',
-    'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
-  ] as const;
+  // Audit 2026-06-11 #19 — the four lists moved to the shared
+  // `message-type-sets.ts` module, consumed by BOTH this class and
+  // `MockDuelConnection` so the core can't drift "by inspection".
+  // These aliases keep the routing-table code below readable.
+  private static readonly _SELECT_MODAL_TYPES = SELECT_MODAL_MESSAGE_TYPES;
+  private static readonly _SELECT_SIMPLE_TYPES = SELECT_SIMPLE_MESSAGE_TYPES;
+  private static readonly _CHAIN_PIPELINE_TYPES = CHAIN_PIPELINE_CORE_TYPES;
+  private static readonly _GAME_EVENT_TYPES = GAME_EVENT_FORWARD_TYPES;
 
   /** Routing table built once during construction. Lookup is O(1) by message type.
    *  Unknown types log a `warn` (see `handleMessage` default branch).
@@ -1207,7 +1171,7 @@ export class DuelConnection {
     // downstream consumer reads them (BH-1 from c4.4 code review: also before
     // `onMessage` debug-log sink, to keep the wire-shape consistent across
     // the whole consumer chain). PvP normal / replay: `soloMode=false` →
-    // no-op fast path inside helper. Mirrors `ReplayDuelAdapter.swapEvents`
+    // no-op fast path inside helper. Mirrors `MockDuelConnection._maybeSwapBoardState`
     // for parity with the replay path.
     this._maybeSwapBoardStateAfter(message);
     this.onMessage?.(message);

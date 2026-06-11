@@ -9,7 +9,7 @@ import { Injectable } from '@angular/core';
  * unchanged ; only `DuelConnection.openConnection()` reads from this factory
  * (via the `options.wsFactory` ctor field).
  *
- * **Not consumed by replay**. Two distinct surfaces : `ReplayDuelAdapter`
+ * **Not consumed by replay**. Two distinct surfaces : `MockDuelConnection`
  * (the animation-pipeline data source for replays, cf. CLAUDE.md "Animation
  * Parity Rule") does NOT instantiate `DuelConnection` ; and the replay
  * WebSocket itself lives in a separate service `replay-connection.service.ts`

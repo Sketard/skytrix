@@ -10,6 +10,10 @@ import { DuelEventProcessor } from '../duel-page/duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from '../duel-page/duel-logger';
 import { RenderedBoardStateService, type BoardStateView } from '../duel-page/rendered-board-state.service';
 import { swapBoardState } from '../board-state-swap';
+import {
+  SELECT_MODAL_MESSAGE_TYPES, SELECT_SIMPLE_MESSAGE_TYPES,
+  CHAIN_PIPELINE_CORE_TYPES, GAME_EVENT_FORWARD_TYPES,
+} from '../message-type-sets';
 import { chainingMsgsToLinkStates } from '../duel-page/chain-state-restore.utils';
 import type { HintContext, Prompt, StreamEvent } from '../types';
 import type {
@@ -31,14 +35,13 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  * The only difference is the source of messages : a pre-computed
  * `ReplayStream` instead of a live WS frame.
  *
- * **Phase 1 scope** : design + standalone test. NOT branched into
- * `replay-page` yet. Wiring happens in Phase 3 ; `seekToOffset` is a
- * stub here and lands in Phase 4 ; the full removal of `ReplayDuelAdapter`
- * lands in Phase 5.
+ * **Current role** (Phases 1-6 shipped) : THE replay `AnimationDataSource`,
+ * wired into `replay-page` via `ReplayTransportService` ; `seekToOffset`
+ * is fully implemented (O(1) restore from `navIndex` snapshots).
  *
  * **Doctrine** : keep this class pure data layer. No DOM access, no
  * `setTimeout`, no UI scheduling. The auto-respond / auto-advance loop
- * lives in a dedicated `ReplayTransportService`-equivalent (Phase 3).
+ * lives in `ReplayTransportService`.
  *
  * **Dispatch contract** : `dispatchNext()` reproduces the subset of
  * `DuelConnection.handleMessage` that matters in replay :
@@ -185,10 +188,10 @@ export class MockDuelConnection implements AnimationDataSource {
   }
 
   setAnimating(_animating: boolean): void {
-    // Phase 1 — no-op. The `ReplayDuelAdapter` used this hook to drive its
-    // `advanceStep` step queue ; in v4 the auto-advance loop lives in the
-    // (future) transport scheduler which polls `mockConn.messageCursor` +
-    // `orchestrator.isAnimating()` directly. Phase 3 wires that scheduler.
+    // Permanent no-op, mirroring PvP's log-only `setAnimating`. The retired
+    // `ReplayDuelAdapter` used this hook to drive its step queue ; in v4 the
+    // auto-advance loop lives in `ReplayTransportService`, which polls
+    // `mockConn.messageCursor` + `orchestrator.isAnimating()` directly.
   }
 
   applyChainSolving(chainIndex: number): void {
@@ -366,10 +369,8 @@ export class MockDuelConnection implements AnimationDataSource {
 
   /**
    * Phase 4 (2026-06-05) — restore the rendered + chain state to the nav
-   * entry at the given INDEX into `navIndex` (NOT a raw byte offset —
-   * matches the `boardStates: PreComputedState[]` index in legacy land).
-   *
-   * Mirror of `ReplayDuelAdapter.jumpToState` (replay-duel-adapter.ts:373) :
+   * entry at the given INDEX into `navIndex()` (`ReplayStreamNavEntry[]`,
+   * NOT a raw byte offset) :
    *   1. `processor.reset()` — wipe queue + activeChainLinks + chainPhase
    *   2. `rbs.updateLogical(swapBs(navEntry.boardStateSnapshot))`
    *   3. `rbs.commitAll('mock:seekToOffset')` — committed state matches
@@ -384,7 +385,7 @@ export class MockDuelConnection implements AnimationDataSource {
    * invoked `orchestrator.resetForReplaySeek()` (dispatches
    * `{PERSPECTIVE_LIFETIME}` to every `ResetTarget` manager) BEFORE
    * calling this method, just like `abortAndClean → transport.seek`
-   * does today with the legacy adapter. The mock does NOT touch the
+   * does today. The mock does NOT touch the
    * orchestrator — single responsibility.
    *
    * No-op if `navIndex` is empty (stream hasn't started) or `index` is
@@ -481,9 +482,11 @@ export class MockDuelConnection implements AnimationDataSource {
         value: hint.value,
         cardName: hint.cardName,
       });
-      // MSG_HINT is also a chain-pipeline message — let the processor see it
-      // for downstream consumers (chain-state-tracker, etc).
-      this.processor.processMessage(message);
+      // Do NOT forward to the processor — MSG_HINT is not a GameEvent and
+      // not a chain-pipeline message ; `enqueue` would drop it with a
+      // "dropped non-GameEvent" warn on every hint (audit 2026-06-11 D3),
+      // polluting console + debug-harness captures. PvP's `_handleMsgHint`
+      // never touches the processor either — parity preserved.
       return;
     }
 
@@ -611,39 +614,28 @@ export interface ReplayStream {
 }
 
 // ══════════════════════════════════════════════════
-//  Message-type sets (mirror of DuelConnection's _XXX_TYPES static lists)
+//  Message-type sets — composed from the shared `message-type-sets.ts`
+//  canon (audit 2026-06-11 #19). Only the mock's intentional deviations
+//  from the PvP routing appear inline below.
 // ══════════════════════════════════════════════════
-//
-// Kept in sync with `duel-connection.ts` by inspection. Drift is detectable
-// by `unhandled message type` warns in the mock + the existing
-// `duel-connection.spec.ts` coverage on the PvP side. If the PvP list
-// grows, mirror the addition here.
 
-const SELECT_MODAL_TYPES: ReadonlySet<string> = new Set([
-  'SELECT_CARD', 'SELECT_CHAIN', 'SELECT_TRIBUTE', 'SELECT_SUM',
-  'SELECT_UNSELECT_CARD', 'SELECT_COUNTER',
-]);
+const SELECT_MODAL_TYPES: ReadonlySet<string> = new Set(SELECT_MODAL_MESSAGE_TYPES);
 
-const SELECT_SIMPLE_TYPES: ReadonlySet<string> = new Set([
-  'SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_EFFECTYN', 'SELECT_YESNO',
-  'SELECT_PLACE', 'SELECT_DISFIELD', 'SELECT_POSITION', 'SELECT_OPTION',
-  'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_NUMBER',
-  'SORT_CARD', 'SORT_CHAIN', 'ANNOUNCE_CARD',
-]);
+const SELECT_SIMPLE_TYPES: ReadonlySet<string> = new Set(SELECT_SIMPLE_MESSAGE_TYPES);
 
+// PvP gives MSG_CHAINING / MSG_CHAIN_END dedicated handler methods (extra
+// connection-side logic) ; the mock has no such side-effects and routes
+// them through the plain forward-to-processor branch.
 const CHAIN_PIPELINE_TYPES: ReadonlySet<string> = new Set([
+  ...CHAIN_PIPELINE_CORE_TYPES,
   'MSG_CHAINING', 'MSG_CHAIN_END',
-  'MSG_CHAIN_SOLVING', 'MSG_CHAIN_SOLVED', 'MSG_CHAIN_NEGATED',
 ]);
 
+// Same deviation for MSG_DRAW / MSG_CONFIRM_CARDS (PvP-side dedicated
+// methods ; mock-side plain forward + the `_lastConfirmedCards` tap in
+// `_dispatch`).
 const GAME_EVENT_TYPES: ReadonlySet<string> = new Set([
-  'MSG_MOVE', 'MSG_SET', 'MSG_SHUFFLE_HAND', 'MSG_SHUFFLE_DECK',
-  'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
-  'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_BECOME_TARGET',
-  'MSG_SWAP', 'MSG_ATTACK', 'MSG_BATTLE',
-  'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
-  'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER',
-  'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
+  ...GAME_EVENT_FORWARD_TYPES,
   'MSG_DRAW', 'MSG_CONFIRM_CARDS',
 ]);
 

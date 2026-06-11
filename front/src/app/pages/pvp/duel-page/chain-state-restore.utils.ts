@@ -12,8 +12,9 @@ import { locationToZoneId } from '../pvp-zone.utils';
  *
  *   1. PvP `_handleChainState` (reconnect handshake) — `ChainStateMsg.links`
  *      from the server's session-level `ChainStateContainer`.
- *   2. Replay `jumpToState` (mid-chain seek) — `PreComputedState.chainSnapshot.links`
- *      from the precompute's per-state `ChainStateContainer` (F9-bis,
+ *   2. Replay `MockDuelConnection.seekToOffset` (mid-chain seek) —
+ *      `ReplayStreamNavEntry.chainSnapshot.links`
+ *      from the precompute's per-entry `ChainStateContainer` (F9-bis,
  *      2026-06-04). Without this restore, the overlay + chain badges stay
  *      empty after seeking into a chain because `processor.reset()` wipes
  *      `activeChainLinks` and no `MSG_CHAINING(1..N-1)` is re-fed.
@@ -21,7 +22,7 @@ import { locationToZoneId } from '../pvp-zone.utils';
  * `resolving: false` on every link by convention: a reconnect / seek lands
  * the user on a snapshot. The per-link `resolving` flag is set by the
  * caller via `processor.applyChainSolving(currentSolvingChainIndex)` when
- * the snapshot also carries that field (`PreComputedState.chainSnapshot`
+ * the snapshot also carries that field (`ReplayStreamNavEntry.chainSnapshot`
  * does; the PvP `ChainStateMsg` does not — the live worker fires
  * `MSG_CHAIN_SOLVING` as a real message after the handshake instead).
  */

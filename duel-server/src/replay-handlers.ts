@@ -25,8 +25,9 @@ import type { AliveWebSocket } from './ws-types.js';
  *     `createForkSoloSession` callback.
  *
  * `createForkSoloSession` is the boundary towards the host's
- * `DuelSessionManager`. It registers the new session and wires
- * `setupForkWorkerHandlers` — replay-handlers stays unaware of
+ * `DuelSessionManager`. It registers the new session and wires the
+ * canonical `attachWorkerHandlers` (F5-bis removed the parallel
+ * `setupForkWorkerHandlers`) — replay-handlers stays unaware of
  * `ActiveDuelSession` shape and the manager's internal Maps.
  */
 
@@ -77,14 +78,15 @@ export interface ReplayHandlersConfig {
   dataDir: string;
   /**
    * Bridge to the DuelSessionManager. Called when a fork worker reports
-   * `WORKER_FORK_READY` with a matching sanity check. The host owns the
-   * full session lifecycle: it must
-   *  1. Allocate two pending wsTokens.
-   *  2. Construct an `ActiveDuelSession` (solo mode) wrapping `worker`.
-   *  3. Register both in the host's `DuelSessionManager`.
+   * `WORKER_FORK_READY` with a matching sanity check. The host
+   * (`fork-handlers.createForkSoloSession`) owns the full session
+   * lifecycle: it must
+   *  1. Allocate ONE pending wsToken (F5-bis — 1-socket SOLO multiplex).
+   *  2. Construct an `ActiveDuelSession` (soloMode + forkMode) wrapping `worker`.
+   *  3. Register it in the host's `DuelSessionManager`.
    *  4. Schedule a connection timeout (cleans up if no client connects).
    *  5. Re-wire the worker's message/exit/error handlers from the
-   *     replay-handlers ones to the host's `setupForkWorkerHandlers`
+   *     replay-handlers ones to the canonical `attachWorkerHandlers`
    *     (replay-handlers does NOT call `worker.removeAllListeners` first
    *     — the host must do it before attaching new handlers).
    *

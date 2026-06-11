@@ -3,8 +3,8 @@
 // -----------------------------------------------------------------------------
 // Discriminated union describing the **notable lifecycle transitions** of
 // the `QueueRunner`. The runner emits these through the optional
-// `QueueRunnerDeps.onInternalEvent` callback so an upper layer (today: no
-// consumer; α.5: the orchestrator's `eventStream`; β+: projections) can
+// `QueueRunnerDeps.onInternalEvent` callback so an upper layer (since β.2a:
+// the orchestrator's `pushToStream` ; consumed by `IsAnimatingProjection`) can
 // observe the runner without reaching into its private flags.
 //
 // Cf. duel-session-chantier.md §3.3 (transport events on the flux) +

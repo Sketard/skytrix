@@ -41,7 +41,7 @@ function isGameEvent(msg: ServerMessage): msg is GameEvent {
 
 /**
  * Shared chain state machine and animation queue routing.
- * Plain class (NOT injectable) — instantiated privately by DuelConnection and ReplayDuelAdapter.
+ * Plain class (NOT injectable) — instantiated privately by DuelConnection and MockDuelConnection.
  *
  * F9 (2026-05-31) — cross-side parity invariant. The server mirrors a
  * minimal version of this machine in
@@ -88,7 +88,7 @@ export class DuelEventProcessor {
    * `TurnStarted/Ended`, `PhaseStarted/Ended` on the same `onEvent`
    * sink as `MSG_CHAIN_NEGATED` etc. The processor delegates two
    * public methods (`observeBoardState`, `forceBoundaryClosure`) so
-   * the adapters (DuelConnection / ReplayDuelAdapter) only know about
+   * the adapters (DuelConnection / MockDuelConnection) only know about
    * the processor, not about the BP itself.
    * Sync mandatory: chain boundaries fire inside `_processMessageInner`
    * BEFORE any state mutation, so a stream consumer never sees
@@ -96,7 +96,7 @@ export class DuelEventProcessor {
    *
    * `getLogger` is a closure so the BP reads the processor's `logger`
    * field lazily — the field is assigned after construction by the
-   * site that wires the BP (DuelConnection / ReplayDuelAdapter), and
+   * site that wires the BP (DuelConnection / MockDuelConnection), and
    * capturing it at field-init time would bind `undefined`.
    */
   private readonly boundary = new BoundaryProcessor(
@@ -272,7 +272,7 @@ export class DuelEventProcessor {
 
   /**
    * β.1 — feed a BOARD_STATE payload to the boundary detector. Called
-   * by the WS adapter (DuelConnection / ReplayDuelAdapter) from its
+   * by the WS adapter (DuelConnection / MockDuelConnection) from its
    * BOARD_STATE handler. The BP emits `TurnStarted/Ended` and
    * `PhaseStarted/Ended` on `onEvent` based on `turnCount/turnPlayer/phase`
    * deltas.
@@ -290,11 +290,6 @@ export class DuelEventProcessor {
    */
   forceBoundaryClosure(reason: BoundaryClosureReason): void {
     this.boundary.forceClosure(reason);
-  }
-
-  /** Clear only the animation queue — preserves chain state for cross-transition chains. */
-  resetQueue(): void {
-    this._animationQueue.set([]);
   }
 
   reset(): void {

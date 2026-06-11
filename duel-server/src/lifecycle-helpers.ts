@@ -99,8 +99,8 @@ export function isFullyDisconnected(session: ActiveDuelSession): boolean {
  *      branch. **Forget → server omniscient filter logs "Dropped unknown
  *      message type" on every emission.**
  *
- *   3. **Broadcast SOLO branch** (`worker-message-router.ts:391-406`, the
- *      `if (session.soloMode)` block). If the new message is emitted via
+ *   3. **Broadcast SOLO branch** (the `if (session.soloMode)` block in
+ *      `worker-message-router.ts broadcastMessage`). If the new message is emitted via
  *      `broadcastMessage` rather than direct `sendToPlayer`, ensure the SOLO
  *      omniscient path handles it. **Forget → SOLO omniscient pass misses it.**
  *

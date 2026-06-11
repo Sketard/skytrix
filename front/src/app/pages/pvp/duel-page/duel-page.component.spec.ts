@@ -289,7 +289,6 @@ class StubChainResolutionManager {
   readonly chainPromptGateActive = signal(false);
   readonly chainSolvedCount = signal(0);
   readonly isResolving = signal(false);
-  readonly hasActiveReplayTimeouts = signal(false);
 }
 
 class StubCardTravelEngine {

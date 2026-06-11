@@ -34,7 +34,7 @@ duel-server / OCGCore stack for headless analysis.
 | **PvP normal** | POST `/api/duels` (2 distinct players) | `INIT_DUEL` | 2 (slots 0 + 1, both connected) | `soloMode: false, forkMode: false` |
 | **PvP solo multiplex** | POST quick-duel (1 player plays both sides) | `INIT_DUEL` | 1 (slot 0 ; slot 1 reserved-but-never-connected) | `soloMode: true, forkMode: false` |
 | **Fork-solo** | Replay viewer → REPLAY_FORK | `INIT_FORK` (precompute + sanity ; same worker process stays live with `forkMode=true`, no second init) | 1 (same as SOLO multiplex) | `soloMode: true, forkMode: true` |
-| **Replay** | Replay viewer → REPLAY_LOAD | `INIT_REPLAY` (precompute batch only ; no live session) | 1 (WS replay endpoint, NOT WS duel) | n/a — no `ActiveDuelSession` |
+| **Replay** | Replay viewer → WS replay handshake (replayId in the URL query param ; precompute auto-starts on connect) | `INIT_REPLAY` (precompute batch only ; no live session) | 1 (WS replay endpoint, NOT WS duel) | n/a — no `ActiveDuelSession` |
 
 **Mental pivot — fork-solo IS a SOLO multiplex.** Post-F5-bis (2026-05-31)
 the fork-solo runtime is structurally identical to a SOLO multiplex
@@ -1014,7 +1014,9 @@ it uses `syncRendered()` to respect the lock contract.
 `assertNoLocks()` surfaces lock leaks at transition boundaries and PvP
 reset points via `duelAssert()`. Throws in dev, `console.error`s in prod.
 
-**Asserted sites (7 total — F19, 2026-05-31)**, ordered by call path :
+**Asserted sites (4 total — F19, 2026-05-31 ; recounted by audit
+2026-06-11 : the "7" header dated from the v3 adapter era)**, ordered by
+call path, plus the one non-asserted seek path :
 
 - **PvP (`duel-connection.ts`)** :
   · `STATE_SYNC` handler — before `updateLogical + commitAll` (reconnect /
@@ -1201,11 +1203,11 @@ Key rules:
    `commitUnlocked()`. Chain events + directives are naturally excluded
    (not LP-class).
 
-4. **Replay stagger guard** — draw sequence resume and `confirmCardsInHand`
-   check `hasActiveReplayTimeouts` before calling `processAnimationQueue()`.
-   This prevents premature queue advancement while `replayBuffer()` is
-   actively staggering events. Replay timeouts are bulk-cleared at chain
-   reset.
+4. *(retired — audit 2026-06-11 #20)* The legacy "Replay stagger guard"
+   (`hasActiveReplayTimeouts` gating draw resume) was dead code — zero
+   production writers since buffer replay moved to queue directives with
+   `staggerMs`. The mechanism (`addReplayTimeout` / `_replayTimeouts`)
+   was removed; staggering is owned by the `group` directive.
 
 5. **Chain poll** — when the queue empties during `deferred` commitMode
    (`chainPhase === 'resolving'`), the orchestrator only polls if
@@ -1351,15 +1353,15 @@ that owns the WS / precompute feed, NOT on the orchestrator — see the
 "Chain Event Processing & State Machine" section above for ownership
 rules post-c8.
 
-- **`ChainResolutionManager`** — chain state (signals, buffer, replay
-  timeouts, solved count). Pure state + `drainBuffer()`. Orchestrator
+- **`ChainResolutionManager`** — chain state (signals, buffer, solved
+  count). Pure state + `drainBuffer()`. Orchestrator
   owns `replayBuffer()` (cross-cutting dispatch via queue directives).
   α.4b: `ResetTarget` with declared scope **`PERSPECTIVE_LIFETIME`**
-  (the most volatile slice — banner + replay timers); `applyReset`
-  branches on `scopes.has('CONNECTION_LIFETIME')` for the full chain
-  state reset (signals + buffer + counters + deferred peek). The
-  cascade guarantees a CONNECTION/DUEL/SESSION reset also carries
-  PERSPECTIVE, so the timers are cleared as part of the full reset.
+  (historical — the PERSPECTIVE-scoped replay-stagger timers were
+  removed as dead code, audit 2026-06-11 #20); `applyReset` runs the
+  full chain state reset on `scopes.has('CONNECTION_LIFETIME')` and is
+  a no-op for a PERSPECTIVE-only reset (chain state intentionally
+  survives a switch).
 - **`DrawSequenceManager`** — draw sequences, hand expansion, shuffle
   processing, card confirmation.
 - **`MoveAnimationRouter`** — MSG_MOVE routing via `MoveContext`, overlay
@@ -1447,10 +1449,11 @@ above + these 2) so no `ResetTarget` is missed.
   → 0|-90` for Web Animation interpolation (atan2 reads CSS 270° as
   -90°, so we use -90° to force the 90° CCW shortest path).
 
-**DI graph:** Chain ← Draw ↔ Move (Move injected lazily in Draw).
+**DI graph:** Draw ↔ Move (Move injected lazily in Draw).
 Move depends on Draw for `travelToHand()`. Draw depends on Move
 (lazy `injector.get()`) for `processShuffleEvent` → `processMoveEvent`.
-Draw depends on Chain for `hasActiveReplayTimeouts`. Chain has zero
+The former Draw → Chain dep (`hasActiveReplayTimeouts`) was removed
+with the dead stagger mechanism (audit 2026-06-11 #20). Chain has zero
 cross-manager deps.
 
 ## Card Travel Stack

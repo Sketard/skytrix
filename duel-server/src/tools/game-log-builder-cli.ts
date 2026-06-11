@@ -159,9 +159,10 @@ function fetchReplayStates(args: CliArgs): Promise<ReplayResult> {
       60_000,
     );
 
-    ws.on('open', () => {
-      ws.send(JSON.stringify({ type: 'REPLAY_LOAD', replayId: args.replayId }));
-    });
+    // Replay load is driven by the connection handshake (replayId travels in
+    // the WS URL query param) — the precompute auto-starts on connect. The
+    // legacy REPLAY_LOAD message was dead protocol (no server dispatch) and
+    // was removed by audit 2026-06-11.
 
     ws.on('message', (raw: Buffer) => {
       let msg: ServerMessage;

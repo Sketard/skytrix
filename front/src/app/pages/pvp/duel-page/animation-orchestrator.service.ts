@@ -48,10 +48,6 @@ import { tagAsAbsorbed, isAbsorbed } from './absorbed-event-registry';
 import { AnimatingZoneProjection, BaseProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, TargetedZoneKeysProjection, type ScopeCategory } from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
-// `QueueStep` / `QueueDecisionInputs` live in `queue-runner.ts` (Palier A,
-// 2026-05-23). Re-exported here for back-compat of external callers.
-export type { QueueStep, QueueDecisionInputs } from './queue-runner';
-
 /**
  * Central animation queue processor for the duel page.
  * Provided at component level (NOT root).
@@ -254,7 +250,7 @@ export class AnimationOrchestratorService {
   private get commitMode(): 'per-event' | 'deferred' {
     // Only defer during resolving (server sends batches with gaps between links).
     // During building (MSG_CHAINING / prompt answers), queue-empty is normal —
-    // finalize so setAnimating(false) triggers advanceStep → prompt display.
+    // finalize so the runner stops cleanly and the pending prompt displays.
     if (this.dataSource.chainPhase() === 'resolving') return 'deferred';
     return 'per-event';
   }
@@ -740,11 +736,6 @@ export class AnimationOrchestratorService {
   /** Sync tracked LP to authoritative board state. */
   syncTrackedLp(playerLp: number, opponentLp: number): void {
     this.lpTracker.syncFromBoardState(playerLp, opponentLp);
-  }
-
-  /** Returns [playerLp, opponentLp] for the current tracked values. */
-  getTrackedLp(): [number, number] {
-    return this.lpTracker.getTrackedLp();
   }
 
   // ---------------------------------------------------------------------------
@@ -1854,7 +1845,7 @@ export class AnimationOrchestratorService {
 
   private handleChainSolved(msg: ChainSolvedMsg): 'async' {
     this.dataSource.applyChainSolved(msg.chainIndex);
-    return this.chainManager.handleSolved(msg);
+    return this.chainManager.handleSolved();
   }
 
   private handleChainEnd(): number {

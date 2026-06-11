@@ -11,10 +11,10 @@ import type { StreamEvent } from '../types';
  *   · β.1 (shipped) — Boundary family (`ChainStarted/Ended`,
  *     `TurnStarted/Ended`, `PhaseStarted/Ended`) added via `StreamEvent`
  *     itself; consumers discriminate via `kind: 'boundary'`.
- *   · α.3 (sink-only, not in union) — {@link InternalTransportEvent}
- *     family (`runner-started/stopped/etc.`). Reaches an optional
- *     `onInternalEvent` callback on the runner but is not (yet) merged
- *     into `FluxEvent`. β.x will decide whether to absorb it.
+ *   · α.3 → β.2a (shipped) — {@link InternalTransportEvent} family
+ *     (`runner-started/stopped/etc.`). Emitted via the runner's
+ *     `onInternalEvent` callback AND part of the `StreamEvent` union
+ *     (types/game-event.types.ts), pushed to the stream since β.2a.
  *   · β.2 — Deferred family (`DeferredEffect`, `EffectReady`,
  *     `EffectAbandoned`)
  *

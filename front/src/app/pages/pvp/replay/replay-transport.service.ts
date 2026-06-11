@@ -17,9 +17,10 @@ import type { ReplayStreamNavEntry, TurnMeta } from '../replay-ws.types';
  * The service is component-scoped (provided in `replay-page.component`).
  * It is configured at the component constructor via {@link configure}
  * with the dependencies it needs (mock handle, phase service for the
- * auto-advance guard, and the upstream signals `navIndex` /
- * `computedUpTo` / `animationsEnabled` / `promptMode` read at fire time
- * so changes flow through naturally).
+ * auto-advance guard, and the upstream signals `computedUpTo` /
+ * `animationsEnabled` / `overlayActive` read at fire time so changes
+ * flow through naturally). Nav data is read from `mockConn.navIndex()`
+ * directly.
  *
  * Cross-cutting cleanup of orchestrator/phase on user-driven
  * interruptions stays in the component as `abortAndClean()` — the
@@ -39,10 +40,8 @@ import type { ReplayStreamNavEntry, TurnMeta } from '../replay-ws.types';
 interface ReplayTransportConfig {
   mockConn: MockDuelConnection;
   phaseService: PhaseAnnouncementService;
-  navIndex: Signal<ReadonlyArray<ReplayStreamNavEntry>>;
   computedUpTo: Signal<number>;
   animationsEnabled: Signal<boolean>;
-  promptMode: Signal<'result' | 'decision'>;
   /**
    * Chain-overlay activity gate (F1, 2026-06-03). When `true`, the chain
    * overlay is mid-animation (entry swoop / pulse / exit) and the replay
@@ -63,9 +62,10 @@ const PLAYBACK_INTERVAL = 500;
  * the legacy `lastResponseTimestamp`-based `min(max(delta * 0.6, MIN), MAX)`
  * calculation that read `adapter.activeTimestamp`. The doctrine acted
  * for Phase 4 (spec maître Décision 1) : human timing is replaced by a
- * fixed delay scaled by `playbackSpeed`. 1200ms is the "average human
- * read time for a modal prompt" baseline ; tunable via Preferences in
- * a later phase.
+ * fixed delay. NOT speed-scaled today (audit 2026-06-11 doc fix — the
+ * setTimeout applies the constant verbatim). 1200ms is the "average
+ * human read time for a modal prompt" baseline ; tunable via
+ * Preferences in a later phase.
  */
 const REPLAY_PROMPT_DELAY_MS = 1200;
 

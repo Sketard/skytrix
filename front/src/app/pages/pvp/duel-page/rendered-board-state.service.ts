@@ -148,16 +148,6 @@ export class RenderedBoardStateService implements BoardStateView {
   // retain their rendered state until explicitly committed.
 
   updateLogical(state: DuelState): void {
-    // TEMP TRACE — investigating "main vide" symptom 2026-06-05 (Axel)
-    const prev = this._logical();
-    const prevHand0 = prev.players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    const prevHand1 = prev.players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    const newHand0 = state.players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    const newHand1 = state.players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    if (prevHand0 !== newHand0 || prevHand1 !== newHand1) {
-      // eslint-disable-next-line no-console
-      console.warn(`[ANIM-HAND-DBG] updateLogical — HAND-0 ${prevHand0}→${newHand0} HAND-1 ${prevHand1}→${newHand1}`);
-    }
     this._logical.set(state);
   }
 
@@ -343,22 +333,22 @@ export class RenderedBoardStateService implements BoardStateView {
    *
    * **F19 anchor (audit C6, 2026-06-01) — Lock-assert sites manifest** :
    *
-   * Asserted (7 prod sites) — transition boundaries that MUST be clean :
-   *   1. duel-connection.ts:825 — cleanup
-   *   2. duel-connection.ts:1393 — REMATCH_STARTING
-   *   3. duel-connection.ts:1649 — STATE_SYNC (onStateSync)
-   *   4. animation-orchestrator.service.ts:996 — resetAllState
-   *   5. replay-duel-adapter.ts:154 — feedTransition
-   *   6. replay-duel-adapter.ts:191 — feedTransitionPhased
-   *   7. replay-duel-adapter.ts:246 — advanceStep:done
+   * Asserted (4 prod sites) — transition boundaries that MUST be clean :
+   *   1. duel-connection.ts — cleanup
+   *   2. duel-connection.ts — REMATCH_STARTING
+   *   3. duel-connection.ts — STATE_SYNC (onStateSync)
+   *   4. animation-orchestrator.service.ts — resetAllState (strict for ALL
+   *      callers incl. resetForReplaySeek since v3 Phase 4)
    *
-   * Intentionally NOT asserted (3 skip sites, voluntary skip/abort paths) :
-   *   - replay-duel-adapter.ts:collapseRemainingSteps — user skip-to-end
-   *   - replay-duel-adapter.ts:abort — replay tear-down
-   *   - replay-duel-adapter.ts:jumpToState — user-triggered seek
+   * Intentionally NOT asserted (voluntary seek path — v4 successor of the
+   * retired replay-duel-adapter skip sites) :
+   *   - mock-duel-connection.ts:seekToOffset — user-triggered seek ;
+   *     mid-animation locks are cleared upstream by
+   *     `orchestrator.resetForReplaySeek()` → `runner.requestStop()` →
+   *     `dropOrphanedLocks` before `commitAll('mock:seekToOffset')`.
    *
    * Full doctrine : CLAUDE.md "Replay Board State Parity Rule".
-   * Adding an 8th asserted site → update this list + CLAUDE.md.
+   * Adding a 5th asserted site → update this list + CLAUDE.md.
    */
   assertNoLocks(site: string): void {
     duelAssert(this._locks.size === 0, site,
@@ -370,21 +360,6 @@ export class RenderedBoardStateService implements BoardStateView {
   commitZone(zoneKey: string): void {
     const { zoneId, playerIndex: pi } = this.parseZoneKey(zoneKey);
     const logical = this._logical();
-    // TEMP TRACE — investigating "main vide" symptom 2026-06-05 (Axel)
-    if (zoneKey === 'HAND-0' || zoneKey === 'HAND-1') {
-      const logicalHand = logical.players[pi]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-      const renderedHand = this._rendered().players[pi]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-      // TEMP TRACE 2026-06-05 (B) — investigating "vraies cartes sous les
-      // floats" symptom (Axel). Count landed floats targeting this zone at
-      // the moment commitZone fires. If > 0, the real .hand-card elements
-      // are about to render UNDER the still-visible proxy floats — the
-      // animation pipeline must clear those floats BEFORE the commit, or
-      // simultaneously with it.
-      const landedHere = this._floatRegistry?.getLandedFloatsByDstPrefix(zoneKey).length ?? -1;
-      const inFlightHere = this._floatRegistry?.inFlightByZone().get(zoneKey)?.length ?? 0;
-      // eslint-disable-next-line no-console
-      console.warn(`[ANIM-HAND-DBG] commitZone(${zoneKey}) | logical=${logicalHand} rendered_before=${renderedHand} landedFloatsHere=${landedHere} inFlightHere=${inFlightHere}`);
-    }
 
     if (zoneId === 'DECK') {
       this._rendered.set(this.cloneStateWithPlayer(pi, { deckCount: logical.players[pi].deckCount }));
@@ -422,13 +397,6 @@ export class RenderedBoardStateService implements BoardStateView {
         }
       }
     }
-    // TEMP TRACE — investigating "main vide" symptom 2026-06-05 (Axel)
-    const handLog0 = this._logical().players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    const handLog1 = this._logical().players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    const handRen0 = this._rendered().players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    const handRen1 = this._rendered().players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-    // eslint-disable-next-line no-console
-    console.warn(`[ANIM-HAND-DBG] commitUnlocked — locks=${this._locks.size} | logical HAND-0=${handLog0} HAND-1=${handLog1} | rendered HAND-0=${handRen0} HAND-1=${handRen1}`);
     if (this._locks.size === 0) {
       this._rendered.set(this._logical());
       return;
@@ -446,8 +414,9 @@ export class RenderedBoardStateService implements BoardStateView {
    *     Call `rbs.assertNoLocks(site)` BEFORE this — if locks survive, the
    *     pipeline upstream forgot to release them (real bug). F19 sites enforce
    *     the cleanliness invariant.
-   *   - **Voluntary-skip paths** (replay `collapseRemainingSteps`, `abort`,
-   *     `jumpToState`). Locks from the interrupted mid-step are expected ;
+   *   - **Voluntary-skip paths** (replay `MockDuelConnection.seekToOffset`,
+   *     mid-pipeline flow recoveries). Locks from the interrupted mid-step
+   *     are expected ;
    *     dropping them silently is the intended cleanup. Pass `site` so the
    *     U13 warn surfaces regressions where the dropped count creeps up
    *     (e.g. a new handler that fails to release on every step, masked
@@ -476,13 +445,6 @@ export class RenderedBoardStateService implements BoardStateView {
    * Spec : `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
    */
   commitAll(site?: string): void {
-    // TEMP TRACE — investigating "main vide" symptom 2026-06-05 (Axel)
-    {
-      const handLog0 = this._logical().players[0]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-      const handLog1 = this._logical().players[1]?.zones.find(z => z.zoneId === 'HAND')?.cards.length ?? -1;
-      // eslint-disable-next-line no-console
-      console.warn(`[ANIM-HAND-DBG] commitAll(site=${site ?? 'none'}) — drops=${this._locks.size} | logical HAND-0=${handLog0} HAND-1=${handLog1}`);
-    }
     if (site && this._locks.size > 0) {
       this.logger?.warn(
         'commitAll dropped %d active lock(s) at %s: %s',

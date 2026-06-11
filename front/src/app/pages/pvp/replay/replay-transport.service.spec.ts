@@ -78,10 +78,8 @@ interface Setup {
   svc: ReplayTransportService;
   mockConn: MockConnStub;
   phase: PhaseStub;
-  navIndex: ReturnType<typeof signal<ReplayStreamNavEntry[]>>;
   computedUpTo: ReturnType<typeof signal<number>>;
   animationsEnabled: ReturnType<typeof signal<boolean>>;
-  promptMode: ReturnType<typeof signal<'result' | 'decision'>>;
   overlayActive: ReturnType<typeof signal<boolean>>;
 }
 
@@ -89,27 +87,25 @@ function setup(opts: {
   states?: ReplayStreamNavEntry[];
   computedUpTo?: number;
   animationsEnabled?: boolean;
-  promptMode?: 'result' | 'decision';
 } = {}): Setup {
   TestBed.configureTestingModule({ providers: [ReplayTransportService] });
   const svc = TestBed.inject(ReplayTransportService);
   const mockConn = makeMock();
   const phase = makePhase();
-  const navIndex = signal<ReplayStreamNavEntry[]>(opts.states ?? []);
+  // Audit 2026-06-11 — `navIndex` + `promptMode` removed from the config
+  // (the transport never read them ; nav data comes from `mockConn.navIndex()`).
+  if (opts.states) mockConn.navIndex.and.returnValue(opts.states);
   const computedUpTo = signal<number>(opts.computedUpTo ?? -1);
   const animationsEnabled = signal<boolean>(opts.animationsEnabled ?? true);
-  const promptMode = signal<'result' | 'decision'>(opts.promptMode ?? 'result');
   const overlayActive = signal<boolean>(false);
   svc.configure({
     mockConn: mockConn as unknown as MockDuelConnection,
     phaseService: phase as unknown as PhaseAnnouncementService,
-    navIndex,
     computedUpTo,
     animationsEnabled,
-    promptMode,
     overlayActive,
   });
-  return { svc, mockConn, phase, navIndex, computedUpTo, animationsEnabled, promptMode, overlayActive };
+  return { svc, mockConn, phase, computedUpTo, animationsEnabled, overlayActive };
 }
 
 // =============================================================================

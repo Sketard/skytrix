@@ -372,19 +372,6 @@ describe('DuelEventProcessor', () => {
     });
   });
 
-  describe('resetQueue', () => {
-    it('should clear queue but preserve chain state', () => {
-      proc.processMessage(chaining(0));
-      proc.processMessage(waitingResponse());
-      proc.applyChainSolving(0);
-      proc.processMessage(msgDamage());
-      proc.resetQueue();
-      expect(proc.animationQueue()).toEqual([]);
-      expect(proc.chainPhase()).toBe('resolving');
-      expect(proc.activeChainLinks().length).toBe(1);
-    });
-  });
-
   // F8 (2026-05-31) — pin `BOARD_CHANGING_EVENT_TYPES ⊆ GAME_EVENT_TYPES`.
   // Without this invariant, a future addition to `BOARD_CHANGING_EVENT_TYPES`
   // (byte-synced front↔back via `check-ws-protocol-sync.mjs`) that forgot

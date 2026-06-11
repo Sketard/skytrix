@@ -1,6 +1,6 @@
 import { effect, inject, Injectable, Injector, signal, type Signal, untracked } from '@angular/core';
 import type { GameEvent } from '../types';
-import type { ChainSolvingMsg, ChainSolvedMsg, ConfirmCardsMsg } from '../duel-ws.types';
+import type { ChainSolvingMsg, ConfirmCardsMsg } from '../duel-ws.types';
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import {
@@ -23,25 +23,21 @@ import { DuelLogCategory, DuelLogger } from './duel-logger';
  * `handleSolving/Solved/End` on this manager only handles overlay state,
  * buffer, and counters.
  *
- * α.4b — implements `ResetTarget`. The manager carries state across
- * **two scopes** (cf. duel-session-chantier.md §3.5):
- *   - Chain state (signals + `_chainSolvedCount` + `_bufferedBoardEvents` +
- *     `_deferredSolvingEvent`) is `CONNECTION_LIFETIME` (survives a
- *     `PerspectiveSwitched`, cleared at STATE_SYNC / reconnect).
- *   - Banner + replay timers (`_bannerTimeouts`, `_replayTimeouts`)
- *     are transport state at `PERSPECTIVE_LIFETIME` (must be cleared on
- *     every switch).
+ * α.4b — implements `ResetTarget`. Chain state (signals +
+ * `_chainSolvedCount` + `_bufferedBoardEvents` + `_deferredSolvingEvent`)
+ * is `CONNECTION_LIFETIME` (survives a `PerspectiveSwitched`, cleared at
+ * STATE_SYNC / reconnect).
  *
- * The declared `scope` is the **most volatile** one (PERSPECTIVE_LIFETIME)
- * so a switch reaches `applyReset` to clear the timers. The cascade
- * means any wider reset (CONNECTION_LIFETIME / DUEL_LIFETIME / …) also
- * carries PERSPECTIVE in the expanded set, so the same `applyReset`
- * branches into the full state reset. This is the **mirror** of
+ * The declared `scope` stays the most volatile one (PERSPECTIVE_LIFETIME)
+ * for historical cascade reasons : the manager used to own
+ * PERSPECTIVE-scoped transport timers (the replay-stagger `_replayTimeouts`,
+ * removed as dead code by audit 2026-06-11 #20 — zero production writers
+ * since the buffer replay moved to queue directives). A PERSPECTIVE-only
+ * reset is now a no-op here ; any wider reset (CONNECTION_LIFETIME /
+ * DUEL_LIFETIME / …) carries PERSPECTIVE in the expanded set and branches
+ * into the full state reset. This is the **mirror** of
  * `LpAnimationTracker` — LP declares the most durable (DUEL_LIFETIME) to
  * *avoid* being reset on a switch (except for its animation slice).
- *
- * The legacy `reset()` and `clearTimeouts()` stay in place. α.5 will
- * replace their callsites with `dispatcher.dispatch(...)`.
  */
 @Injectable()
 export class ChainResolutionManager implements ResetTarget {
@@ -86,7 +82,6 @@ export class ChainResolutionManager implements ResetTarget {
   private _waitingForOverlay = false;
   private _drainingBuffer = false;
   private _bufferedBoardEvents: GameEvent[] = [];
-  private _replayTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _deferredSolvingEvent: GameEvent | null = null;
   // F15 (2026-05-31) — `_announcePending` retired ; `_announcing` signal
   // (above) is the single source of truth read both sync (via
@@ -101,7 +96,6 @@ export class ChainResolutionManager implements ResetTarget {
   get isWaitingForOverlay(): boolean { return this._waitingForOverlay; }
   get chainSolvedCount(): number { return this._chainSolvedCount; }
   get deferredSolvingEvent(): GameEvent | null { return this._deferredSolvingEvent; }
-  get hasActiveReplayTimeouts(): boolean { return this._replayTimeouts.length > 0; }
   get hasBufferedEvents(): boolean { return this._bufferedBoardEvents.length > 0; }
   get isDraining(): boolean { return this._drainingBuffer; }
   /**
@@ -169,27 +163,17 @@ export class ChainResolutionManager implements ResetTarget {
     this._announcing.set(true);
   }
 
-  /**
-   * F15 (2026-05-31) — kept as a sync read accessor for callers that
-   * want to assert the predicate state without going through the
-   * Signal read API. Production code can equally well call
-   * `chainResolutionAnnounce()` (the readonly Signal) — both return
-   * the same boolean.
-   */
-  get isAnnouncePending(): boolean { return this._announcing(); }
-
   /** Handle MSG_CHAIN_SOLVED. Sets overlay state, returns 'async'.
    *
    *  H1 — phase stays at `'resolving'` after this returns; only `applyChainEnd`
    *  flips it back to `'idle'`. The transition assertion reads
    *  `processor.chainPhase()` via `isResolving`, so callers MUST have
    *  applied `dataSource.applyChainSolving` before calling this. */
-  handleSolved(event: GameEvent): 'async' {
+  handleSolved(): 'async' {
     this.assertTransition('SOLVED', this.isResolving,
       'CHAIN_SOLVED without prior CHAIN_SOLVING — events arrived out of order?');
     this.assertTransition('SOLVED', !this._waitingForOverlay,
       'CHAIN_SOLVED while still waiting for overlay from previous link');
-    const _msg = event as ChainSolvedMsg;
     this._chainSolvedCount++;
     this._waitingForOverlay = true;
     return 'async';
@@ -238,12 +222,10 @@ export class ChainResolutionManager implements ResetTarget {
 
   // --- Replay ---
 
-  /** Drain the buffer and return its contents. Clears replay timeouts. */
+  /** Drain the buffer and return its contents. */
   drainBuffer(): GameEvent[] {
     const buffer = this._bufferedBoardEvents;
     this._bufferedBoardEvents = [];
-    this._replayTimeouts.forEach(t => clearTimeout(t));
-    this._replayTimeouts = [];
     return buffer;
   }
 
@@ -256,17 +238,6 @@ export class ChainResolutionManager implements ResetTarget {
   beginDrain(): void { this._drainingBuffer = true; }
   /** Mark the end of a buffer drain. Must be paired with `beginDrain`. */
   endDrain(): void { this._drainingBuffer = false; }
-
-  /** Track a replay stagger timeout. */
-  addReplayTimeout(t: ReturnType<typeof setTimeout>): void {
-    this._replayTimeouts.push(t);
-  }
-
-  /** Clear all replay timeouts (without draining buffer). */
-  clearReplayTimeouts(): void {
-    this._replayTimeouts.forEach(t => clearTimeout(t));
-    this._replayTimeouts = [];
-  }
 
   // --- Lifecycle ---
 
@@ -287,27 +258,19 @@ export class ChainResolutionManager implements ResetTarget {
 
   /**
    * α.4b — `ResetTarget` entry point. The declared `scope` is
-   * `PERSPECTIVE_LIFETIME` (the most volatile slice we carry) so this is
+   * `PERSPECTIVE_LIFETIME` (historical — see class docblock) so this is
    * reached by every reset event from PerspectiveSwitched upward.
    *
-   * Two intensities, ordered by widest scope first:
-   *   - CONNECTION_LIFETIME present (carried by STATE_SYNC, RematchStarted,
-   *     ServerKicked, NavigationAway) → full chain state reset via
-   *     `reset()` which itself clears banner + replay timers, so we stop
-   *     here.
-   *   - PERSPECTIVE_LIFETIME only (carried by PerspectiveSwitched) →
-   *     transport timers only via `clearTimeouts()`. Chain state is
-   *     intentionally preserved across the switch.
-   *
-   * The §3.5 cascade guarantees CONNECTION expansion contains PERSPECTIVE,
-   * so the legacy `reset()` is functionally equivalent to
-   * `applyReset(new Set(['CONNECTION_LIFETIME', 'PERSPECTIVE_LIFETIME']))`.
+   * CONNECTION_LIFETIME present (carried by STATE_SYNC, RematchStarted,
+   * ServerKicked, NavigationAway) → full chain state reset via `reset()`.
+   * PERSPECTIVE_LIFETIME only (PerspectiveSwitched) → no-op : chain state
+   * is intentionally preserved across the switch, and the manager no
+   * longer owns transport timers (the dead replay-stagger mechanism was
+   * removed by audit 2026-06-11 #20).
    */
   applyReset(scopes: ReadonlySet<ScopeCategory>): void {
     if (scopes.has('CONNECTION_LIFETIME')) {
       this.reset();
-    } else if (scopes.has('PERSPECTIVE_LIFETIME')) {
-      this.clearTimeouts();
     }
   }
 
@@ -318,8 +281,6 @@ export class ChainResolutionManager implements ResetTarget {
     this._waitingForOverlay = false;
     this._drainingBuffer = false;
     this._bufferedBoardEvents = [];
-    this._replayTimeouts.forEach(t => clearTimeout(t));
-    this._replayTimeouts = [];
     this._chainSolvedCount = 0;
     this.chainPromptGateActive.set(false);
     // F15 (2026-05-31) — single source of truth, no separate mirror to keep.
@@ -327,16 +288,6 @@ export class ChainResolutionManager implements ResetTarget {
     this.chainEntryAnimating.set(false);
     this.chainOverlayReady.set(true);
     this._deferredSolvingEvent = null;
-  }
-
-  /** Clear replay timeouts (called by orchestrator's resetForReplaySeek,
-   *  onStateSync, destroy — via the scope dispatcher's applyReset cascade).
-   *  β.3 cas #13 — banner timeouts are no longer owned here ; the
-   *  `announcement` directive registers its setTimeouts via
-   *  `orchestrator.scheduleTimeout` which `clearTimersAndPolling` aborts. */
-  clearTimeouts(): void {
-    this._replayTimeouts.forEach(t => clearTimeout(t));
-    this._replayTimeouts = [];
   }
 
   // --- Dev-mode transition assertions ---

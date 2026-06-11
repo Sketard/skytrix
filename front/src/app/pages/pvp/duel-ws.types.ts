@@ -52,7 +52,7 @@ import type {
 import type {
   ReplayMetadataMsg, ReplayErrorMsg, ReplayForkReadyMsg,
   ReplayStreamChunkMsg, ReplayStreamInitMsg,
-  ReplayLoadMsg, ReplayForkMsg, ReplayForkContinueMsg, ReplayForkCancelMsg,
+  ReplayForkMsg, ReplayForkContinueMsg, ReplayForkCancelMsg,
 } from './duel-ws-replay.types';
 
 import type {
@@ -163,8 +163,7 @@ export type ClientMessage =
   | AnimationsDoneMsg
   | AnimationsReadyMsg
   | CancelPromptSequenceMsg
-  // Replay messages (4)
-  | ReplayLoadMsg
+  // Replay messages (3)
   | ReplayForkMsg
   | ReplayForkContinueMsg
   | ReplayForkCancelMsg

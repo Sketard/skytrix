@@ -180,8 +180,11 @@ const SNAPSHOT_TTL_MS = 30_000;
 
 /** P0-3bis.4 — chain-resolution tracker, hoisted out of `runDuelLoop` so the
  *  CANCEL_PROMPT_SEQUENCE handler can refuse mid-chain rollbacks via
- *  `liveChainTracker.isResolving`. Reset at the top of each `runDuelLoop`
- *  call to preserve the original per-call semantics. The
+ *  `liveChainTracker.isResolving`. Option O (2026-06-04) — NOT reset at
+ *  `runDuelLoop` entry (re-adding that reset reintroduces the bug where a
+ *  chain spanning a mid-resolution prompt loses its window across
+ *  PLAYER_RESPONSE re-entries). The tracker self-resets at MSG_CHAIN_END ;
+ *  terminal resets only happen at worker start/rematch (fresh process). The
  *  `runReplayPreComputation` path uses its own local instance since cancel
  *  never applies in replay. Audit finding H2 — same code path on both sides
  *  guarantees PvP↔Replay parity by construction.
@@ -780,9 +783,9 @@ function runDuelLoop(): void {
         // blocks applyPendingBoardState().
         //
         // F10 (2026-05-31) — cross-side parity. Replay precompute achieves
-        // the equivalent intermediate sync via PreComputedState segmentation
-        // on MSG_CHAINING (replay-precompute.ts:394-399), NOT via an
-        // intermediate BOARD_STATE. The two mechanisms differ in ORDER vs
+        // the equivalent intermediate sync via nav-entry segmentation
+        // (`flushNavEntry` on MSG_CHAINING in replay-precompute.ts emits a
+        // synthetic BOARD_STATE). The two mechanisms differ in ORDER vs
         // MSG_CHAINING (PvP sync arrives after MSG_CHAINING, replay before)
         // but converge on "DECK/EXTRA pile counts + metadata up to date
         // before chain resolution". See CLAUDE.md → "Intermediate post-cost
