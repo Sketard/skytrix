@@ -119,8 +119,15 @@ export interface QueueRunnerDeps {
    * helper treats as "skip emit").
    */
   getLastDispatchedRef?: () => number | null;
-  /** Directive dispatch (`group`, `barrier`, `lp`, `batch-end`, `await-signal`). */
-  processDirective: (entry: QueueDirective) => Promise<'continue' | 'pause'>;
+  /**
+   * Directive dispatch (`group`, `barrier`, `lp`, `batch-end`, `await-signal`,
+   * `announcement`). Receives the inner loop's `AbortSignal` (audit
+   * 2026-06-11 #15 — the v3 "Phase 2 AbortSignal propagation"): directives
+   * with internal awaits (group stagger, blocking announcement) check it
+   * after each await and bail instead of dispatching/locking a board that
+   * `dropOrphanedLocks` just vacated on `requestStop`.
+   */
+  processDirective: (entry: QueueDirective, abortSignal: AbortSignal) => Promise<'continue' | 'pause'>;
   /** Collapse-mode side effect — applied per dropped event without animating. */
   applyInstantAnimation: (event: GameEvent) => void;
   /** Acknowledge the deferred-solving peek held by `ChainResolutionManager`. */
@@ -620,7 +627,7 @@ export class QueueRunner {
           case 'dequeue': {
             const entry = this.deps.dataSource.dequeueAnimation()!;
             if ('kind' in entry) {
-              const directiveResult = await this.deps.processDirective(entry);
+              const directiveResult = await this.deps.processDirective(entry, abortSignal);
               if (directiveResult === 'pause') return;
               continue;
             }

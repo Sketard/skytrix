@@ -657,3 +657,96 @@ describe('AnimationOrchestratorService — inline replayBuffer latch reset (audi
     expect(latch(orch)).withContext('clearTimersAndPolling is the latch safety net').toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit 2026-06-11 finding #15 — AbortSignal propagation into processDirective
+// (the v3 "Phase 2" wire). The runner only checks its abort signal at the top
+// of each loop turn; a requestStop (seek / switch / STATE_SYNC) landing inside
+// a directive's internal awaits used to keep dispatching events onto a board
+// `dropOrphanedLocks` had just vacated (group stagger), or leave a loop
+// permanently suspended when `clearTimersAndPolling` cut the blocking
+// announcement's timer without resolving its promise.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('AnimationOrchestratorService — processDirective abort propagation (audit #15)', () => {
+  function makeOrchestrator(): AnimationOrchestratorService {
+    TestBed.configureTestingModule({
+      providers: [
+        AnimationOrchestratorService,
+        ScopeResetDispatcher,
+        DuelGameLogService,
+        { provide: DuelLogger, useClass: StubLogger },
+        { provide: ANIMATION_DATA_SOURCE, useClass: StubDataSource },
+        { provide: DuelContext, useClass: StubCtx },
+        { provide: LpAnimationTracker, useClass: StubLpTracker },
+        { provide: ChainResolutionManager, useClass: StubManager },
+        { provide: DrawSequenceManager, useClass: StubManager },
+        { provide: MoveAnimationRouter, useClass: StubManager },
+        { provide: BattleAnimationTracker, useClass: StubManager },
+        { provide: TargetIndicatorManager, useClass: StubManager },
+        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        { provide: CardTravelEngine, useValue: {} },
+        { provide: BoardEffectsService, useValue: {} },
+        { provide: FloatRegistryService, useClass: StubFloatRegistry },
+        { provide: DuelToastService, useValue: { show: () => undefined } },
+        { provide: DuelCardArtService, useValue: { getArtUrl: () => '' } },
+        { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
+      ],
+    });
+    const orch = TestBed.inject(AnimationOrchestratorService);
+    // `trace()` reads `rbs.lockedZoneKeys()` — absent from the shared StubRbs.
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { renderedBoardState: Record<string, unknown> };
+    ds.renderedBoardState['lockedZoneKeys'] = () => [];
+    return orch;
+  }
+
+  // Private-surface access: the runner normally forwards its own inner-loop
+  // signal; the specs drive `processDirective` directly with a controller
+  // they abort mid-await — the exact state a `requestStop` produces.
+  type Dispatchable = {
+    processDirective: (entry: unknown, abortSignal: AbortSignal) => Promise<'continue' | 'pause'>;
+    processEvent: (e: { type: string }) => unknown;
+  };
+
+  it('a requestStop (abort) mid-stagger stops dispatching the remaining group events', async () => {
+    const orch = makeOrchestrator();
+    const inner = orch as unknown as Dispatchable;
+    const dispatched: string[] = [];
+    inner.processEvent = e => { dispatched.push(e.type); return 0; };
+
+    const ctrl = new AbortController();
+    // staggerMs deliberately huge: if the abort stops resolving the wait
+    // early (abortableWait regression), the spec times out instead of
+    // passing after the real timer fires.
+    const entry = { kind: 'group', staggerMs: 60_000, events: [{ type: 'MSG_MOVE' }, { type: 'MSG_DRAW' }, { type: 'MSG_MOVE' }] };
+    const done = inner.processDirective(entry, ctrl.signal);
+
+    expect(dispatched).withContext('first event dispatches synchronously before the stagger').toEqual(['MSG_MOVE']);
+    ctrl.abort(); // mirror of runner.requestStop() while suspended on the stagger
+    await done;
+    expect(dispatched)
+      .withContext('post-abort events must NOT dispatch — they would lock a board dropOrphanedLocks just vacated')
+      .toEqual(['MSG_MOVE']);
+  });
+
+  it('an abort during a blocking announcement resolves the await and runs onClear', async () => {
+    const orch = makeOrchestrator();
+    const inner = orch as unknown as Dispatchable;
+    let cleared = false;
+    const ctrl = new AbortController();
+    const entry = {
+      kind: 'announcement', source: 'spec', durationMs: 60_000,
+      onShow: (): void => undefined, onClear: (): void => { cleared = true; },
+    };
+
+    const done = inner.processDirective(entry, ctrl.signal);
+    expect(cleared).toBe(false);
+
+    // Pre-fix, `clearTimersAndPolling` cut the showMs timer WITHOUT
+    // resolving the await — the inner loop stayed suspended forever and
+    // onClear never ran. The abort race must resolve + run the finally.
+    ctrl.abort();
+    const result = await done;
+    expect(result).toBe('continue');
+    expect(cleared).withContext('the finally must run onClear on abort').toBe(true);
+  });
+});

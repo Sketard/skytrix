@@ -440,6 +440,38 @@ export class AnimationOrchestratorService {
   }
 
   /**
+   * Audit 2026-06-11 #15 (v3 "Phase 2 AbortSignal propagation") — await a
+   * tracked timeout that ALSO resolves when the runner's abort signal
+   * fires. The two legs cover the two ways a hard reset can land:
+   *   · `clearTimersAndPolling` clears `animationTimeouts` first (the timer
+   *     never fires), then `runner.requestStop()` aborts — the abort
+   *     listener resolves, so the awaiting directive resumes, runs its
+   *     cleanup (`finally`), and bails on the caller's `aborted` check
+   *     instead of leaking a permanently suspended loop.
+   *   · An abort without timer clearing — the listener resolves early and
+   *     clears the timer itself.
+   * Callers MUST check `abortSignal.aborted` after the await to decide
+   * whether to bail; this helper only guarantees the await resolves.
+   */
+  private abortableWait(ms: number, abortSignal: AbortSignal): Promise<void> {
+    return new Promise<void>(resolve => {
+      if (abortSignal.aborted) {
+        resolve();
+        return;
+      }
+      const onAbort = (): void => {
+        clearTimeout(timerId);
+        resolve();
+      };
+      const timerId = this.scheduleTimeout(() => {
+        abortSignal.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      abortSignal.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
+  /**
    * β.3 Standardisation 1 (2026-05-26) — wait for a sub-phase duration,
    * then emit `AnimationPhaseCompleted({phase, msgType, ref})` on the
    * stream. Projections observing the phase boundary react via the
@@ -582,7 +614,7 @@ export class AnimationOrchestratorService {
       injector: this.injector,
       handleEntry: ev => this._dispatchEvent(ev),
       getLastDispatchedRef: () => this._transport_lastDispatchedRef,
-      processDirective: entry => this.processDirective(entry),
+      processDirective: (entry, abortSignal) => this.processDirective(entry, abortSignal),
       applyInstantAnimation: ev => this.applyInstantAnimation(ev),
       consumeDeferredSolving: () => this.chainManager.consumeDeferredSolving(),
       preReplayBuffer: () => this.replayBuffer(true),
@@ -1460,8 +1492,16 @@ export class AnimationOrchestratorService {
   /**
    * Process a single queue directive. Returns 'pause' if the queue must wait
    * for an external trigger (await-signal), 'continue' otherwise.
+   *
+   * `abortSignal` is the inner loop's controller (audit 2026-06-11 #15 —
+   * the v3 "Phase 2 AbortSignal propagation"): the cases with internal
+   * awaits (`group` stagger, blocking `announcement`) check it after each
+   * await and bail. The runner only checks its signal at the top of each
+   * loop turn — without the mid-directive checks, a `requestStop` (seek /
+   * switch / STATE_SYNC) landing inside a group kept dispatching and
+   * locking a board that `dropOrphanedLocks` had just vacated.
    */
-  private async processDirective(entry: QueueDirective): Promise<'continue' | 'pause'> {
+  private async processDirective(entry: QueueDirective, abortSignal: AbortSignal): Promise<'continue' | 'pause'> {
     switch (entry.kind) {
       case 'group': {
         this.trace('directive', { kind: 'group', count: entry.events.length, staggerMs: entry.staggerMs });
@@ -1474,7 +1514,14 @@ export class AnimationOrchestratorService {
         const pendingCompletions: Array<{ event: GameEvent; ref: number }> = [];
         for (let i = 0; i < entry.events.length; i++) {
           if (i > 0 && entry.staggerMs) {
-            await new Promise<void>(r => setTimeout(r, entry.staggerMs));
+            await this.abortableWait(entry.staggerMs, abortSignal);
+          }
+          // #15 — a requestStop mid-stagger means the board was reset under
+          // us: stop dispatching, don't lock the vacated zones. The already-
+          // launched travels settle through the zombie-safe commit path.
+          if (abortSignal.aborted) {
+            this.trace('groupAborted', { dispatched: i, total: entry.events.length });
+            return 'continue';
           }
           const result = this.processEvent(entry.events[i]);
           const rlabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}`;
@@ -1494,6 +1541,14 @@ export class AnimationOrchestratorService {
         }
         this.trace('groupAwait', { promiseCount: promises.length, inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
         if (promises.length > 0) await Promise.all(promises);
+        // #15 — aborted while awaiting the travels: the reset wiped the
+        // stream + refs, so emitting the pending AnimationCompleted now
+        // would push stale refs onto the fresh run. Bail; the loop top's
+        // abort check ends the run.
+        if (abortSignal.aborted) {
+          this.trace('groupAborted', { dispatched: entry.events.length, total: entry.events.length });
+          return 'continue';
+        }
         this.trace('groupDone', { inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
         // β.3 — emit AnimationCompleted for every event in the group
         // AFTER Promise.all resolves. DEP rules awaiting an
@@ -1579,9 +1634,13 @@ export class AnimationOrchestratorService {
         //   · `nonBlocking: false | undefined` (chain banner) — gate la
         //     queue: `prePauseMs` puis `onShow`, attente `showMs`,
         //     `onClear`, return 'continue'.
-        // Les deux timers passent par `scheduleTimeout` (tracked dans
-        // `animationTimeouts`) pour qu'un `clearTimersAndPolling`
-        // (rematch / state-sync / destroy) les coupe.
+        // Les timers non-bloquants passent par `scheduleTimeout` (tracked
+        // dans `animationTimeouts`) pour qu'un `clearTimersAndPolling`
+        // (rematch / state-sync / destroy) les coupe. Les attentes
+        // BLOQUANTES passent par `abortableWait` (#15) : couper leur timer
+        // sans résoudre la promise laissait la boucle interne suspendue à
+        // jamais et `onClear` jamais exécuté — l'abort résout l'await, le
+        // `finally` court, et la boucle bail proprement au tick suivant.
         const totalMs = this.ctx.scaledDuration(entry.durationMs);
         const preMs = entry.prePauseMs ? this.ctx.scaledDuration(entry.prePauseMs) : 0;
         const showMs = Math.max(0, totalMs - preMs);
@@ -1599,13 +1658,14 @@ export class AnimationOrchestratorService {
           return 'continue';
         }
         if (preMs > 0) {
-          await new Promise<void>(resolve => { this.scheduleTimeout(resolve, preMs); });
+          await this.abortableWait(preMs, abortSignal);
+          // #15 — aborted during the pre-pause: the board is being reset,
+          // never show the banner.
+          if (abortSignal.aborted) return 'continue';
         }
         entry.onShow();
         try {
-          await new Promise<void>(resolve => {
-            this.scheduleTimeout(resolve, showMs);
-          });
+          await this.abortableWait(showMs, abortSignal);
         } finally {
           entry.onClear();
         }

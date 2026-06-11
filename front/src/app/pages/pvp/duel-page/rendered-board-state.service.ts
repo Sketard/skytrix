@@ -90,13 +90,17 @@ export class RenderedBoardStateService implements BoardStateView {
    * and the next legitimate `notifyEnqueue` / `processEvent` closes it. Any
    * `lockZone(...)` call made while the window is open is an IIFE bailout —
    * an async handler that bailed past its `await` after the runner was
-   * stopped and is now posting a lock nobody will release. Drives the
-   * Phase 2 audit (do we need `AbortSignal` here?) without changing today's
-   * runtime behavior.
+   * stopped and is now posting a lock nobody will release.
    *
-   * The counter is monotonic-cumulative across a session ; exposed via the
-   * debug snapshot. Healthy steady-state should be 0. Bumps surface the
-   * IIFE paths that need `AbortSignal` wiring in Phase 2.
+   * Phase 2 (AbortSignal propagation) SHIPPED — audit 2026-06-11 #15. The
+   * runner's abort signal now reaches `processDirective` (group stagger +
+   * blocking announcement bail via `abortableWait` + post-await checks).
+   * This counter is the REGRESSION CANARY for that wiring: monotonic-
+   * cumulative across a session, exposed via the debug snapshot, healthy
+   * steady-state 0. A bump means a directive/handler path took a lock past
+   * a `requestStop` without checking the signal — wire it like the group
+   * case in `AnimationOrchestratorService.processDirective` instead of
+   * widening lock tolerances.
    */
   private _postRequestStopWindow = false;
   private _postRequestStopLockCount = 0;
@@ -254,7 +258,8 @@ export class RenderedBoardStateService implements BoardStateView {
     // v3 Phase 1 — instrumentation: count locks taken while the runner is
     // in its post-requestStop window. A bump here = an async handler that
     // bailed past its `await` post-abort and is now posting a lock nobody
-    // will release. Phase 2 fixes via AbortSignal propagation.
+    // will release. Phase 2 (AbortSignal into processDirective) shipped
+    // 2026-06-11 (#15) — this counter is now its regression canary.
     if (this._postRequestStopWindow) {
       this._postRequestStopLockCount++;
       this.logger?.warn(

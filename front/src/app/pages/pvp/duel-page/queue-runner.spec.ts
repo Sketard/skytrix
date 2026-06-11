@@ -375,6 +375,8 @@ interface RunnerHarness {
   watchdog: PollDropWatchdog;
   handleCalls: GameEvent[];
   directiveCalls: QueueDirective[];
+  /** #15 — the AbortSignal forwarded with each processDirective call. */
+  directiveSignals: AbortSignal[];
   isRunningHistory: boolean[];
   internalEvents: InternalTransportEvent[];
   injector: Injector;
@@ -390,6 +392,7 @@ function makeRunner(opts: {
   const ds = new MockDataSource();
   const handleCalls: GameEvent[] = [];
   const directiveCalls: QueueDirective[] = [];
+  const directiveSignals: AbortSignal[] = [];
   const isRunningHistory: boolean[] = [];
   const internalEvents: InternalTransportEvent[] = [];
   const injector = TestBed.inject(Injector);
@@ -408,8 +411,9 @@ function makeRunner(opts: {
       handleCalls.push(e);
       return opts.handleEntry ? opts.handleEntry(e) : 0;
     },
-    processDirective: async (d: QueueDirective) => {
+    processDirective: async (d: QueueDirective, abortSignal: AbortSignal) => {
       directiveCalls.push(d);
+      directiveSignals.push(abortSignal);
       return opts.processDirective ? await opts.processDirective(d) : 'continue';
     },
     applyInstantAnimation: () => undefined,
@@ -434,7 +438,7 @@ function makeRunner(opts: {
     })),
   };
   const runner = new QueueRunner(deps);
-  return { runner, ds, watchdog, handleCalls, directiveCalls, isRunningHistory, internalEvents, injector };
+  return { runner, ds, watchdog, handleCalls, directiveCalls, directiveSignals, isRunningHistory, internalEvents, injector };
 }
 
 describe('QueueRunner (loop) — Palier B', () => {
@@ -572,6 +576,24 @@ describe('QueueRunner (loop) — Palier B', () => {
       // Allow the new loop to settle.
       // (Stale promise never resolves — we're testing fresh-start health.)
       expect(runner.isRunning()).toBeTrue();
+    });
+
+    it('#15 — forwards the live inner-loop AbortSignal to processDirective (requestStop flips it)', async () => {
+      const { runner, ds, directiveSignals } = makeRunner();
+      ds.setQueue([groupDirective()]);
+      runner.notifyEnqueue();
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+
+      expect(directiveSignals.length).withContext('directive dispatched once').toBe(1);
+      expect(directiveSignals[0].aborted)
+        .withContext('signal must be live (not pre-aborted) at dispatch time').toBeFalse();
+
+      // The forwarded signal must be the runner's OWN controller — a
+      // requestStop aborts the exact object the directive is holding, which
+      // is what lets a mid-directive await bail (audit 2026-06-11 #15).
+      runner.requestStop();
+      expect(directiveSignals[0].aborted)
+        .withContext('requestStop must abort the signal handed to the directive').toBeTrue();
     });
 
     it('flips _isRunning to false through onIsRunningChange', () => {
