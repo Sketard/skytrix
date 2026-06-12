@@ -685,6 +685,15 @@ export function runReplayPreComputation(
             ingestStream(filtered);
           } else if (filtered.type === 'MSG_CONFIRM_CARDS') {
             applyChainTransition(chainStateContainer, filtered);
+            // M22 parity (2026-06-12) — same decoration as the live wire
+            // (worker-message-router stage 4 `tagConfirmCardsChainIndex`):
+            // tag mid-resolution reveals with the resolving link's index so
+            // the replay client buckets prompt reveals per-link exactly like
+            // PvP/SOLO. Surfaced by the SOLO↔Replay parity gate on the D/D/D
+            // fixture (CONFIRM carried `chainIndex` live-side only).
+            if (chainStateContainer.currentSolvingChainIndex !== null) {
+              (filtered as { chainIndex?: number }).chainIndex = chainStateContainer.currentSolvingChainIndex;
+            }
             events.push(filtered); // Push to events so the front-end can animate the reveal
             ingestStream(filtered);
           } else if (filtered.type !== 'SELECT_IDLECMD' && filtered.type !== 'SELECT_BATTLECMD') {

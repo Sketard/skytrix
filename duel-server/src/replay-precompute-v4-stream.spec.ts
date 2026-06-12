@@ -459,6 +459,65 @@ describe('runReplayPreComputation — v4 stream emission (Phase 2)', () => {
     expect(types[promptIdx + 1]).toBe('BOARD_STATE');
   });
 
+  it('M22 parity (2026-06-12) — MSG_CONFIRM_CARDS emitted mid-resolution carries the resolving chainIndex', () => {
+    // The live wire tags CONFIRM_CARDS with `session.currentSolvingChainIndex`
+    // (worker-message-router stage 4). The precompute must apply the SAME
+    // decoration from its own ChainStateContainer, or the replay client's
+    // per-link reveal bucketing (M22) silently degrades to the flat buffer.
+    // Surfaced by the SOLO↔Replay parity gate on the D/D/D fixture.
+    const chainingDto: ServerMessage = {
+      type: 'MSG_CHAINING', chainIndex: 0, cardCode: 100, cardName: 'Card',
+      player: 0, location: 8, sequence: 0, description: 0,
+    } as unknown as ServerMessage;
+    const solvingDto: ServerMessage = { type: 'MSG_CHAIN_SOLVING', chainIndex: 0 } as unknown as ServerMessage;
+    const confirmDto: ServerMessage = {
+      type: 'MSG_CONFIRM_CARDS', player: 1,
+      cards: [{ cardCode: 200, name: 'Revealed', player: 0, location: 2, sequence: 4 }],
+    } as unknown as ServerMessage;
+    const { msg, deps, port } = makeDeps([
+      { status: OcgProcessResult.CONTINUE, messages: [
+        { type: OcgMessageType.CHAINING } as unknown as OcgMessage,
+        { type: OcgMessageType.CHAIN_SOLVING } as unknown as OcgMessage,
+        { type: OcgMessageType.CONFIRM_CARDS } as unknown as OcgMessage,
+      ] },
+      { status: OcgProcessResult.END, messages: [{ type: OcgMessageType.WIN, player: 0, reason: 1 } as unknown as OcgMessage] },
+    ]);
+    (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) =>
+      m.type === OcgMessageType.CHAINING ? chainingDto
+        : m.type === OcgMessageType.CHAIN_SOLVING ? solvingDto
+          : m.type === OcgMessageType.CONFIRM_CARDS ? confirmDto
+            : null);
+
+    runReplayPreComputation(msg, deps);
+
+    const chunks = port.messages.filter((m): m is WorkerReplayStreamChunk =>
+      (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK');
+    const confirm = chunks.flatMap(c => c.messages).find(m => m.type === 'MSG_CONFIRM_CARDS');
+    expect(confirm).toBeDefined();
+    expect((confirm as { chainIndex?: number }).chainIndex).toBe(0);
+  });
+
+  it('M22 parity — MSG_CONFIRM_CARDS outside any resolution carries NO chainIndex', () => {
+    const confirmDto: ServerMessage = {
+      type: 'MSG_CONFIRM_CARDS', player: 1,
+      cards: [{ cardCode: 200, name: 'Revealed', player: 0, location: 2, sequence: 4 }],
+    } as unknown as ServerMessage;
+    const { msg, deps, port } = makeDeps([
+      { status: OcgProcessResult.CONTINUE, messages: [{ type: OcgMessageType.CONFIRM_CARDS } as unknown as OcgMessage] },
+      { status: OcgProcessResult.END, messages: [{ type: OcgMessageType.WIN, player: 0, reason: 1 } as unknown as OcgMessage] },
+    ]);
+    (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) =>
+      m.type === OcgMessageType.CONFIRM_CARDS ? confirmDto : null);
+
+    runReplayPreComputation(msg, deps);
+
+    const chunks = port.messages.filter((m): m is WorkerReplayStreamChunk =>
+      (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK');
+    const confirm = chunks.flatMap(c => c.messages).find(m => m.type === 'MSG_CONFIRM_CARDS');
+    expect(confirm).toBeDefined();
+    expect((confirm as { chainIndex?: number }).chainIndex).toBeUndefined();
+  });
+
   it('records autoResponses for SELECT_* prompts the user answered', () => {
     const selectDto: ServerMessage = {
       type: 'SELECT_IDLECMD', player: 0, idleCmds: [],
