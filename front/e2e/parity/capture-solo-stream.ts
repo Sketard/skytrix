@@ -34,6 +34,10 @@ export interface CaptureSoloStreamOptions {
   /** Max wait for the client animation queue to drain AFTER tape
    *  exhaustion. Default 30s ; dense fixtures need minutes. */
   queueDrainTimeoutMs?: number;
+  /** Étape 2 — tape pacing override forwarded to the from-replay POST
+   *  (server default: 250ms human-like). Dense fixtures can go lower
+   *  once the client runs at dev anim-speed. */
+  tapeResponseDelayMs?: number;
 }
 
 export interface CapturedSoloStream {
@@ -68,7 +72,7 @@ export async function captureSoloStream(
   // Step 1 — POST /api/duels/from-replay
   const createResp = await ctx.request.post(`${DUEL_SERVER_URL}/api/duels/from-replay`, {
     headers: { 'X-Internal-Key': INTERNAL_API_KEY, 'Content-Type': 'application/json' },
-    data: { replayId: opts.replayId },
+    data: { replayId: opts.replayId, responseDelayMs: opts.tapeResponseDelayMs },
   });
   if (!createResp.ok()) {
     throw new Error(

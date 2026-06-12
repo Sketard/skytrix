@@ -1,5 +1,6 @@
 import { Injectable, signal, type Signal } from '@angular/core';
 import type { MockDuelConnection } from './mock-duel-connection';
+import { devAnimSpeedMultiplier } from '../duel-page/duel-context';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
 import type { ReplayStreamNavEntry, TurnMeta } from '../replay-ws.types';
 
@@ -57,6 +58,14 @@ interface ReplayTransportConfig {
 }
 
 const PLAYBACK_INTERVAL = 500;
+/** Étape 2 (2026-06-12) — the auto-play step interval dominates dense-
+ *  replay wall-clock (67 nav entries × 500ms ≈ 33s on the D/D/D) and is
+ *  NOT an animation, so `scaledDuration` never touches it. Scale it by
+ *  the same dev-only override the animations use (1 in prod), floored
+ *  at 50ms so a 0.05 multiplier can't busy-loop the scheduler. */
+function playbackIntervalMs(): number {
+  return Math.max(50, Math.round(PLAYBACK_INTERVAL * devAnimSpeedMultiplier()));
+}
 /**
  * v4 Phase 5 (2026-06-05) — fixed prompt auto-dismiss delay. Replaces
  * the legacy `lastResponseTimestamp`-based `min(max(delta * 0.6, MIN), MAX)`
@@ -384,7 +393,7 @@ export class ReplayTransportService {
       this.playbackTimer = setTimeout(() => {
         this.playbackTimer = null;
         this.scheduleNext();
-      }, PLAYBACK_INTERVAL);
+      }, playbackIntervalMs());
     }
   }
 
@@ -407,7 +416,7 @@ export class ReplayTransportService {
       this.playbackTimer = setTimeout(() => {
         this.playbackTimer = null;
         this.scheduleNext();
-      }, PLAYBACK_INTERVAL);
+      }, playbackIntervalMs());
     }
   }
 

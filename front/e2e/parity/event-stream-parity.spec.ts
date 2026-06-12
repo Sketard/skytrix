@@ -47,6 +47,8 @@ interface ParityFixture {
    *  post-tape queue drain. */
   endTimeoutMs?: number;
   queueDrainTimeoutMs?: number;
+  /** Tape pacing (ms/response) — see CaptureSoloStreamOptions. */
+  tapeResponseDelayMs?: number;
 }
 
 /**
@@ -75,6 +77,9 @@ const PARITY_FIXTURES: readonly ParityFixture[] = [
     replayId: '03a953d9-1904-473b-8d5b-5ede24c007e9',
     description: 'D/D/D Imported R&D turn-1 mega combo (24 chains, 273 prompts).',
     replayPerspective: 0,
+    // 100ms tape pacing : at dev anim-speed the client keeps up, and the
+    // SOLO leg drops from ~68s of pure tape wait to ~27s.
+    tapeResponseDelayMs: 100,
     endTimeoutMs: 480_000,
     // The tape exhausts in ~70s but the CLIENT then animates the 24-chain
     // backlog for several minutes — the stability-based drain criterion
@@ -113,6 +118,7 @@ test.describe('SOLO↔Replay event stream parity', () => {
             replayId: fixture.replayId,
             endTimeoutMs: fixture.endTimeoutMs,
             queueDrainTimeoutMs: fixture.queueDrainTimeoutMs,
+            tapeResponseDelayMs: fixture.tapeResponseDelayMs,
           }),
           captureReplayStream(replayCtx, {
             replayId: fixture.replayId,
