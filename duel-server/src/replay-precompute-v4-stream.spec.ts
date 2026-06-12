@@ -303,9 +303,21 @@ describe('runReplayPreComputation — v4 stream emission (Phase 2)', () => {
     expect(initIdx).toBeLessThan(completeIdx);
   });
 
-  it('streams a synthetic BOARD_STATE on every flushState boundary (NEW_PHASE)', () => {
-    // Drive a NEW_PHASE tick : the legacy flushState is invoked, recordStreamFlush
-    // should ingest a BOARD_STATE into the stream as a result.
+  // ===========================================================================
+  // F10 unification (2026-06-12) — in-stream BOARD_STATE cadence = the LIVE
+  // worker's cadence. Two emission rules, pinned below :
+  //   · per-prompt : every SELECT_*/ANNOUNCE_*/SORT_* is followed by a
+  //     synthetic BOARD_STATE (mirror of runDuelLoop's
+  //     `BOARD_STATE (final, before prompt)` at status=WAITING) ;
+  //   · same-batch cost sync : a MSG_CHAIN_SOLVING preceded by a MSG_MOVE in
+  //     the SAME duelProcess batch gets a BOARD_STATE right before it
+  //     (shared `ChainCostSyncTracker`, also consumed by runDuelLoop).
+  // The historical per-flushNavEntry BOARD_STATE was retired : it put a sync
+  // BEFORE MSG_CHAINING where live has none, and none after mid-chain
+  // prompts where live has one (f10-parity-investigation-2026-06-12.md).
+  // ===========================================================================
+
+  it('F10 — a flush boundary WITHOUT a prompt no longer emits a BOARD_STATE (per-flush cadence retired)', () => {
     const moveDto: ServerMessage = {
       type: 'MSG_MOVE', cardCode: 100, cardName: 'Card',
       player: 0, toPlayer: 0,
@@ -314,11 +326,11 @@ describe('runReplayPreComputation — v4 stream emission (Phase 2)', () => {
       isToken: false, reason: 0,
     } as unknown as ServerMessage;
     const { msg, deps, port } = makeDeps([
-      // First : a MOVE that lands into events
+      // A MOVE that lands into events, then a NEW_PHASE that flushes it as
+      // a nav entry. No prompt, no chain → live emits no BOARD_STATE here,
+      // so neither does the precompute.
       { status: OcgProcessResult.CONTINUE, messages: [{ type: OcgMessageType.MOVE } as OcgMessage] },
-      // Then : NEW_PHASE → flushes events + records nav entry + ingest BOARD_STATE
       { status: OcgProcessResult.CONTINUE, messages: [{ type: OcgMessageType.NEW_PHASE, phase: 4 } as unknown as OcgMessage] },
-      // Then : END
       { status: OcgProcessResult.END, messages: [{ type: OcgMessageType.WIN, player: 0, reason: 1 } as unknown as OcgMessage] },
     ]);
     (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) =>
@@ -326,19 +338,125 @@ describe('runReplayPreComputation — v4 stream emission (Phase 2)', () => {
 
     runReplayPreComputation(msg, deps);
 
-    // Collect the stream chunk(s) + assert their concatenated messages contain
-    // : 1 MSG_MOVE + at least 1 BOARD_STATE (from the NEW_PHASE flushState).
     const chunks = port.messages.filter((m): m is WorkerReplayStreamChunk =>
       (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK');
     const allMessages = chunks.flatMap(c => c.messages);
     expect(allMessages.some(m => m.type === 'MSG_MOVE')).toBe(true);
-    expect(allMessages.some(m => m.type === 'BOARD_STATE')).toBe(true);
+    expect(allMessages.some(m => m.type === 'BOARD_STATE')).toBe(false);
 
-    // The navIndex from STREAM_INIT must include the Main Phase 1 entry.
+    // The nav entry itself is untouched — `boardStateSnapshot` is the seek
+    // surface, independent of the in-stream cadence.
     const init = port.messages.find((m): m is WorkerReplayStreamInit =>
       (m as { type: string }).type === 'WORKER_REPLAY_STREAM_INIT')!;
     const labels = init.navIndex.map(n => n.label);
     expect(labels).toContain('Main Phase 1');
+    expect(init.navIndex.every(n => n.boardStateSnapshot)).toBe(true);
+  });
+
+  it('F10 — every prompt is immediately followed by a synthetic BOARD_STATE (live per-prompt parity)', () => {
+    const selectDto: ServerMessage = {
+      type: 'SELECT_IDLECMD', player: 0, idleCmds: [],
+    } as unknown as ServerMessage;
+    const { msg, deps, port } = makeDeps([
+      { status: OcgProcessResult.WAITING, messages: [{ type: OcgMessageType.SELECT_IDLECMD, player: 0 } as unknown as OcgMessage] },
+      { status: OcgProcessResult.END, messages: [{ type: OcgMessageType.WIN, player: 0, reason: 1 } as unknown as OcgMessage] },
+    ], {
+      playerResponses: [{ data: { index: 0 } }],
+    });
+    (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) =>
+      m.type === OcgMessageType.SELECT_IDLECMD ? selectDto : null);
+
+    runReplayPreComputation(msg, deps);
+
+    const chunks = port.messages.filter((m): m is WorkerReplayStreamChunk =>
+      (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK');
+    const allMessages = chunks.flatMap(c => c.messages);
+    const promptIdx = allMessages.findIndex(m => m.type === 'SELECT_IDLECMD');
+    expect(promptIdx).toBeGreaterThanOrEqual(0);
+    // Live wire ships [..., SELECT_*, BOARD_STATE] — same here.
+    expect(allMessages[promptIdx + 1]?.type).toBe('BOARD_STATE');
+  });
+
+  it('F10 — same-batch cost MOVE + CHAIN_SOLVING gets the intermediate BOARD_STATE before the SOLVING', () => {
+    const moveDto: ServerMessage = {
+      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card',
+      player: 0, toPlayer: 0,
+      fromLocation: 2, fromSequence: 0, fromPosition: 1,
+      toLocation: 16, toSequence: 0, toPosition: 1,
+      isToken: false, reason: 0x40,
+    } as unknown as ServerMessage;
+    const solvingDto: ServerMessage = { type: 'MSG_CHAIN_SOLVING', chainIndex: 0 } as unknown as ServerMessage;
+    const { msg, deps, port } = makeDeps([
+      // Cost MOVE and CHAIN_SOLVING in the SAME duelProcess batch — the
+      // shared ChainCostSyncTracker case (mirrors runDuelLoop).
+      {
+        status: OcgProcessResult.CONTINUE,
+        messages: [
+          { type: OcgMessageType.MOVE } as OcgMessage,
+          { type: OcgMessageType.CHAIN_SOLVING } as unknown as OcgMessage,
+        ],
+      },
+      { status: OcgProcessResult.END, messages: [{ type: OcgMessageType.WIN, player: 0, reason: 1 } as unknown as OcgMessage] },
+    ]);
+    (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) =>
+      m.type === OcgMessageType.MOVE ? moveDto
+        : m.type === OcgMessageType.CHAIN_SOLVING ? solvingDto
+          : null);
+
+    runReplayPreComputation(msg, deps);
+
+    const chunks = port.messages.filter((m): m is WorkerReplayStreamChunk =>
+      (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK');
+    const types = chunks.flatMap(c => c.messages).map(m => m.type);
+    const solvingIdx = types.indexOf('MSG_CHAIN_SOLVING');
+    expect(solvingIdx).toBeGreaterThanOrEqual(1);
+    expect(types[solvingIdx - 1]).toBe('BOARD_STATE');
+    expect(types[solvingIdx - 2]).toBe('MSG_MOVE');
+  });
+
+  it('F10 — cross-batch cost (prompt between MOVE and SOLVING) relies on the per-prompt BOARD_STATE only', () => {
+    const moveDto: ServerMessage = {
+      type: 'MSG_MOVE', cardCode: 100, cardName: 'Card',
+      player: 0, toPlayer: 0,
+      fromLocation: 2, fromSequence: 0, fromPosition: 1,
+      toLocation: 16, toSequence: 0, toPosition: 1,
+      isToken: false, reason: 0x40,
+    } as unknown as ServerMessage;
+    const selectDto: ServerMessage = { type: 'SELECT_OPTION', player: 0, options: [] } as unknown as ServerMessage;
+    const solvingDto: ServerMessage = { type: 'MSG_CHAIN_SOLVING', chainIndex: 0 } as unknown as ServerMessage;
+    const { msg, deps, port } = makeDeps([
+      // The common case the 2026-06-12 investigation surfaced : the cost
+      // MOVE and the SOLVING straddle a prompt → two duelProcess batches.
+      // The batch-scoped tracker must NOT fire ; the prompt's own
+      // BOARD_STATE is the sync (identical to the live wire).
+      { status: OcgProcessResult.WAITING, messages: [
+        { type: OcgMessageType.MOVE } as OcgMessage,
+        { type: OcgMessageType.SELECT_OPTION, player: 0 } as unknown as OcgMessage,
+      ] },
+      { status: OcgProcessResult.CONTINUE, messages: [{ type: OcgMessageType.CHAIN_SOLVING } as unknown as OcgMessage] },
+      { status: OcgProcessResult.END, messages: [{ type: OcgMessageType.WIN, player: 0, reason: 1 } as unknown as OcgMessage] },
+    ], {
+      playerResponses: [{ data: { index: 0 } }],
+    });
+    (deps.transformMessage as ReturnType<typeof vi.fn>).mockImplementation((m: OcgMessage) =>
+      m.type === OcgMessageType.MOVE ? moveDto
+        : m.type === OcgMessageType.SELECT_OPTION ? selectDto
+          : m.type === OcgMessageType.CHAIN_SOLVING ? solvingDto
+            : null);
+
+    runReplayPreComputation(msg, deps);
+
+    const chunks = port.messages.filter((m): m is WorkerReplayStreamChunk =>
+      (m as { type: string }).type === 'WORKER_REPLAY_STREAM_CHUNK');
+    const types = chunks.flatMap(c => c.messages).map(m => m.type);
+    // Exactly ONE BOARD_STATE : the per-prompt one, right after
+    // SELECT_OPTION. (Positionally it also sits right before the SOLVING —
+    // same adjacency as the live wire when the prompt directly precedes
+    // the resolution. The pin is the COUNT : the batch-scoped tracker must
+    // not add a second one.)
+    expect(types.filter(t => t === 'BOARD_STATE')).toHaveLength(1);
+    const promptIdx = types.indexOf('SELECT_OPTION');
+    expect(types[promptIdx + 1]).toBe('BOARD_STATE');
   });
 
   it('records autoResponses for SELECT_* prompts the user answered', () => {

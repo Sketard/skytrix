@@ -23,6 +23,7 @@ import { installWasmHook, uninstallWasmHook, locateWasmMemory, snapshotAvailable
 import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, InitForkMessage } from './types.js';
 import { filterMessage } from './message-filter.js';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
+import { ChainCostSyncTracker } from './chain-cost-sync-tracker.js';
 import {
   capturePreProcessOverlays, readOverlayMaterialsForMove,
   buildSettlingSourceFifo, consumeSettlingSource,
@@ -197,6 +198,11 @@ const SNAPSHOT_TTL_MS = 30_000;
  *  emitting effect-bound events ; the chain is not finished). See
  *  `chain-snapshot-tracker.ts` for the rationale. */
 const liveChainTracker = new ChainSnapshotTracker();
+/** F10 unification (2026-06-12) — same-batch cost sync, SHARED with
+ *  `runReplayPreComputation` (replay-precompute.ts). Batch-scoped : reset
+ *  at every `duelProcess` batch (the historical `let hasCostMoves` local).
+ *  Module-level only so the instance isn't re-allocated per batch. */
+const costSyncTracker = new ChainCostSyncTracker();
 
 /**
  * P0-3bis.4 — Replace (or clear) the held rollback snapshot. Cancels any
@@ -733,7 +739,7 @@ function runDuelLoop(): void {
     dlog.debug('duelGetMessage', { count: messages.length });
 
     let hasRetry = false;
-    let hasCostMoves = false;
+    costSyncTracker.resetBatch();
     for (const msg of messages) {
       // Track state for BOARD_STATE construction
       updateState(msg);
@@ -769,7 +775,6 @@ function runDuelLoop(): void {
       if (dto) {
         if (dto.type === 'MSG_MOVE') {
           dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });
-          hasCostMoves = true;
         }
         // Track chain-resolving window + attach `boardStateAfter` snapshot to
         // BOARD_CHANGING events. Lets the client's `processEvent` hook
@@ -782,19 +787,16 @@ function runDuelLoop(): void {
         // can apply cost-related moves (e.g. cards sent to GY) before chainPhase='resolving'
         // blocks applyPendingBoardState().
         //
-        // F10 (2026-05-31) — cross-side parity. Replay precompute achieves
-        // the equivalent intermediate sync via nav-entry segmentation
-        // (`flushNavEntry` on MSG_CHAINING in replay-precompute.ts emits a
-        // synthetic BOARD_STATE). The two mechanisms differ in ORDER vs
-        // MSG_CHAINING (PvP sync arrives after MSG_CHAINING, replay before)
-        // but converge on "DECK/EXTRA pile counts + metadata up to date
-        // before chain resolution". See CLAUDE.md → "Intermediate post-cost
-        // board sync (F10)". If you remove or relocate this branch, update
-        // the replay precompute counterpart + the doctrine in lock-step.
-        if (dto.type === 'MSG_CHAIN_SOLVING' && hasCostMoves) {
+        // F10 unification (2026-06-12) — the predicate ("cost MOVE in the
+        // same batch as the SOLVING") lives in the SHARED
+        // `ChainCostSyncTracker`, also consumed at the same wire position
+        // by `runReplayPreComputation`. Cross-side parity is by shared
+        // code ; the cross-batch case (cost paid through a prompt) is
+        // covered by the per-prompt BOARD_STATE on both wires. See
+        // CLAUDE.md → "Intermediate post-cost board sync (F10)".
+        if (costSyncTracker.shouldEmitBefore(dto)) {
           dlog.debug('BOARD_STATE (intermediate, before chain solving)');
           emit.message(buildBoardState());
-          hasCostMoves = false;
         }
         dlog.debug('EMIT', { type: dto.type });
         emit.message(dto);

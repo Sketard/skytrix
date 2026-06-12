@@ -1,6 +1,7 @@
 import type { OcgCoreSync, OcgDuelHandle, OcgMessage } from '@n1xx1/ocgcore-wasm';
 import { OcgMessageType, OcgProcessResult } from '@n1xx1/ocgcore-wasm';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
+import { ChainCostSyncTracker } from './chain-cost-sync-tracker.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import {
   capturePreProcessOverlays, buildSettlingSourceFifo,
@@ -472,6 +473,11 @@ export function runReplayPreComputation(
   // Local chain tracker — replay precompute doesn't share state with cancel,
   // so a per-run instance is enough (vs `liveChainTracker` for live PvP).
   const chainTracker = new ChainSnapshotTracker();
+  // F10 unification (2026-06-12) — same-batch cost sync, SHARED with
+  // `runDuelLoop` (duel-worker.ts). Same predicate, same wire position :
+  // intermediate BOARD_STATE right before MSG_CHAIN_SOLVING when cost
+  // MOVEs happened in the same duelProcess batch.
+  const costSyncTracker = new ChainCostSyncTracker();
   // F9-bis (2026-06-04) — local chain state container driven by the same
   // `applyChainTransition` the live worker uses (`worker-message-router.ts`).
   // Embedded into every nav entry captured while a chain is open
@@ -488,23 +494,23 @@ export function runReplayPreComputation(
   // prompt, end of responses, end of duel).
   const streamBuilder = new ReplayStreamBuilder(port, duelId);
 
-  /** Helper — flush the accumulated events as a nav entry + matching
-   *  synthetic BOARD_STATE on the stream. Mirrors the legacy `flushState`
-   *  call sites 1:1 :
+  /** Helper — flush the accumulated events as a nav entry. Mirrors the
+   *  legacy `flushState` call sites 1:1 :
    *  - generates the label from `events`,
    *  - captures `boardStateSnapshot` + `chainSnapshot` from current state,
    *  - records the nav entry (skipped if label is empty — mirror of the
    *    legacy guard),
-   *  - emits a synthetic BOARD_STATE so the client mock has an authoritative
-   *    state to `updateLogical` against (matches what a live PvP worker
-   *    emits between user-visible moments),
    *  - resets the local `events[]` accumulator.
    *
-   *  The order on the stream is : events.push x N (already done in the loop)
-   *  THEN BOARD_STATE, mirroring the live PvP ordering (events FIRST, then
-   *  BOARD_STATE confirms). Empty-label batches (SELECT_/WAITING-only)
-   *  reset the accumulator without emitting anything — same as the legacy
-   *  guard in `flushState`. */
+   *  F10 unification (2026-06-12) — the flush no longer emits a synthetic
+   *  BOARD_STATE on the STREAM. The in-stream BOARD_STATE cadence is now
+   *  the live worker's, reproduced by `ingestStream` (per-prompt) +
+   *  `costSyncTracker` (same-batch pre-SOLVING) — the per-flush cadence
+   *  put a BOARD_STATE BEFORE MSG_CHAINING where live has none, and none
+   *  after mid-chain prompts where live has one (wire investigation
+   *  f10-parity-investigation-2026-06-12.md, finding 2). The
+   *  `boardStateSnapshot` captured below is unaffected : it is the SEEK
+   *  surface (nav entry restore, F9-bis), not a stream message. */
   function flushNavEntry(chainIndex?: number, labelOverride?: string): void {
     const label = labelOverride ?? generateLabel(events);
     if (!label) {
@@ -512,7 +518,6 @@ export function runReplayPreComputation(
       return;
     }
     const bs = buildBoardState() as BoardStateMsg;
-    streamBuilder.ingest({ type: 'BOARD_STATE', data: bs.data });
     streamBuilder.recordNavEntry(
       label, currentTurn, bs.data, events, responseIndex,
       buildChainSnapshot(chainStateContainer), chainIndex,
@@ -529,10 +534,22 @@ export function runReplayPreComputation(
    *  streamed". */
   let lastSelectOffset = -1;
   /** Wrapper around `streamBuilder.ingest` that detects prompt-type
-   *  messages and updates `lastSelectOffset`. */
+   *  messages and updates `lastSelectOffset`.
+   *
+   *  F10 unification (2026-06-12) — every prompt is followed by a
+   *  synthetic BOARD_STATE, mirroring the live worker's
+   *  `BOARD_STATE (final, before prompt)` (`status=WAITING` branch in
+   *  `runDuelLoop` ships `[...events, SELECT_*, BOARD_STATE]`). This
+   *  replaces the per-`flushNavEntry` BOARD_STATE cadence (retired the
+   *  same day) and makes the two wires byte-comparable — the per-prompt
+   *  sync is also what covers the CROSS-BATCH cost case the
+   *  `ChainCostSyncTracker` deliberately skips. */
   function ingestStream(msg: ServerMessage): void {
     const offset = streamBuilder.ingest(msg);
-    if (PROMPT_TYPES_STREAM.has(msg.type)) lastSelectOffset = offset;
+    if (PROMPT_TYPES_STREAM.has(msg.type)) {
+      lastSelectOffset = offset;
+      streamBuilder.ingest({ type: 'BOARD_STATE', data: (buildBoardState() as BoardStateMsg).data });
+    }
   }
   /** Auto-respond helper — pairs `lastSelectOffset` with the response data
    *  being fed to OCGCore. Guards against the "no prior SELECT_*" case. */
@@ -583,6 +600,8 @@ export function runReplayPreComputation(
 
     const messages = core.duelGetMessage(duel);
 
+    // F10 unification — batch boundary, mirror of runDuelLoop's reset.
+    costSyncTracker.resetBatch();
     for (const rawMsg of messages) {
       // Explicit MSG_RETRY detection (AC#4)
       if (rawMsg.type === OcgMessageType.RETRY) {
@@ -628,6 +647,14 @@ export function runReplayPreComputation(
           // Client's `replayBuffer` uses it to progress logical state across
           // events instead of jumping to the final chain state at commit.
           chainTracker.process(filtered, () => (buildBoardState() as BoardStateMsg).data);
+
+          // F10 unification (2026-06-12) — same-batch cost sync via the
+          // SHARED ChainCostSyncTracker, at the SAME wire position as
+          // runDuelLoop : intermediate BOARD_STATE right before
+          // MSG_CHAIN_SOLVING when cost MOVEs happened in this batch.
+          if (costSyncTracker.shouldEmitBefore(filtered)) {
+            streamBuilder.ingest({ type: 'BOARD_STATE', data: (buildBoardState() as BoardStateMsg).data });
+          }
 
           // F9-bis (2026-06-04) — chain state container transition timing.
           // The container drives `chainSnapshot` on every flushed nav entry.
