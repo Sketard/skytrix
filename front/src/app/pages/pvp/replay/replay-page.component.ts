@@ -839,6 +839,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
           togglePerspective: () => this.onTogglePerspective(),
           toggleAnimations: () => this.onToggleAnimations(),
           togglePromptMode: () => this.onTogglePromptMode(),
+          // F10-bis (2026-06-12) — harness speed-up : override the fixed
+          // 1.2s prompt auto-dismiss delay so dense replays (273 prompts
+          // on the D/D/D fixture) play in minutes, not tens of minutes.
+          // Dev-only by construction (this whole surface is isDevMode-gated).
+          setPromptDelay: (ms: number | null) => this.transport.setPromptDelayOverride(ms),
           // Read-only helpers for the harness to assert state.
           currentIndex: () => this.currentIndex(),
           computedUpTo: () => this.navIndex().length - 1,

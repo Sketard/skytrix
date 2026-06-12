@@ -149,6 +149,24 @@ describe('MockDuelConnection — Phase 1', () => {
       conn.simulatePlayerResponse({ promptType: 'SELECT_CARD', data: { indices: [0] } });
       expect(conn.pendingPrompt()).toBeNull();
     });
+
+    // F10-bis (2026-06-12) — the prompt's own offset is tracked so the
+    // auto-response lookup (`activeResponse` + the transport's dismiss)
+    // survives trailing messages dispatched past the prompt. Pre-fix both
+    // used `cursor - 1`, which broke once the trailing BOARD_STATE started
+    // dispatching before the auto-dismiss yield.
+    it('F10-bis — lastPromptOffset tracks the SELECT offset across a trailing dispatch', () => {
+      const stream = streamOf([msgDraw(), selectCard(), boardStateMsg()]);
+      stream.autoResponses.set(1, { promptType: 'SELECT_CARD', data: { indices: [2] } });
+      conn.loadStream(stream);
+      conn.dispatchNext(); // MSG_DRAW
+      conn.dispatchNext(); // SELECT_CARD — prompt offset = 1
+      expect(conn.lastPromptOffset()).toBe(1);
+      conn.dispatchNext(); // trailing BOARD_STATE (F10-bis early dispatch)
+      expect(conn.lastPromptOffset()).withContext('trailing BS must not move the prompt offset').toBe(1);
+      expect(conn.activeResponse()).withContext('activeResponse reads the tracked offset, not cursor-1').toEqual({ indices: [2] });
+      expect(conn.peekNextType()).toBeNull();
+    });
   });
 
   // ─── attachOutOfBandSink wiring ──────────────────────────────────────────

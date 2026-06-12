@@ -80,6 +80,17 @@ export class ReplayTransportService {
 
   private playbackTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** F10-bis (2026-06-12) — dev-only override of the prompt auto-dismiss
+   *  delay. Exposed via `__skytrixDebug.replay.setPromptDelay(ms)` so the
+   *  debug harness can play dense replays fast (273 prompts × 1.2s ≈ 5.5min
+   *  at the product cadence). `null` = product default
+   *  (`REPLAY_PROMPT_DELAY_MS`). NOT a product surface — the Preferences
+   *  speed control remains a separate future phase. */
+  private _promptDelayOverrideMs: number | null = null;
+  setPromptDelayOverride(ms: number | null): void {
+    this._promptDelayOverrideMs = ms;
+  }
+
   private cfg: ReplayTransportConfig | null = null;
 
   configure(config: ReplayTransportConfig): void {
@@ -433,7 +444,18 @@ export class ReplayTransportService {
       // which the `maybeAdvance` effect picks up via its subscription
       // to `mockConn.pendingPrompt()`. The loop exits naturally when
       // `dispatchNext` returns false (cursor at end or buffer drained).
-      if (mock.pendingPrompt()) return; // a prompt landed — yield to auto-dismiss
+      if (mock.pendingPrompt()) {
+        // F10-bis (2026-06-12) — a live client receives [SELECT_*,
+        // BOARD_STATE] in the same WS batch and processes the BOARD_STATE
+        // while the prompt is displayed. Mirror that here : dispatch the
+        // trailing BOARD_STATE BEFORE yielding to the auto-dismiss, so
+        // `updateLogical` lands ahead of any in-flight travel commit.
+        // Without it, a travel landing inside the 1.2s dismiss window
+        // commits against a STALE logical (rendered hole — the regenese
+        // Triple Tactics Talent tail case, post-F10 visual pass).
+        while (mock.peekNextType() === 'BOARD_STATE') mock.dispatchNext();
+        return; // yield to auto-dismiss
+      }
     }
   }
 
@@ -475,9 +497,10 @@ export class ReplayTransportService {
     const c = this.getCfg();
     this.playbackTimer = setTimeout(() => {
       this.playbackTimer = null;
-      const cursor = c.mockConn.messageCursor();
-      // The SELECT_* lives at cursor - 1 (dispatchNext advanced past it).
-      const response = c.mockConn.getAutoResponseAt(cursor - 1);
+      // F10-bis — the prompt's own offset is tracked by the mock
+      // (`lastPromptOffset`). The historical `cursor - 1` arithmetic broke
+      // once the trailing BOARD_STATE started dispatching before the yield.
+      const response = c.mockConn.getAutoResponseAt(c.mockConn.lastPromptOffset());
       if (response) {
         c.mockConn.simulatePlayerResponse(response);
       } else {
@@ -486,7 +509,7 @@ export class ReplayTransportService {
         // with a no-op payload does the right thing.
         c.mockConn.simulatePlayerResponse({ promptType: 'UNKNOWN', data: {} });
       }
-    }, REPLAY_PROMPT_DELAY_MS);
+    }, this._promptDelayOverrideMs ?? REPLAY_PROMPT_DELAY_MS);
   }
 
   private pausePlayback(): void {

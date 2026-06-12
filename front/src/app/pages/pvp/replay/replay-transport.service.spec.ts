@@ -29,6 +29,8 @@ interface MockConnStub {
   pendingPrompt: jasmine.Spy;
   messageCursor: jasmine.Spy;
   navIndex: jasmine.Spy;
+  lastPromptOffset: jasmine.Spy;
+  peekNextType: jasmine.Spy;
 }
 
 interface PhaseStub {
@@ -39,6 +41,7 @@ function makeMock(): MockConnStub {
   const m = jasmine.createSpyObj<MockConnStub>('MockDuelConnection', [
     'seekToOffset', 'dispatchNext', 'simulatePlayerResponse',
     'getAutoResponseAt', 'busy', 'pendingPrompt', 'messageCursor', 'navIndex',
+    'lastPromptOffset', 'peekNextType',
   ]);
   m.busy.and.returnValue(false);
   m.pendingPrompt.and.returnValue(null);
@@ -46,6 +49,8 @@ function makeMock(): MockConnStub {
   m.navIndex.and.returnValue([]);
   m.dispatchNext.and.returnValue(false);
   m.getAutoResponseAt.and.returnValue(null);
+  m.lastPromptOffset.and.returnValue(4);
+  m.peekNextType.and.returnValue(null);
   return m;
 }
 
@@ -219,6 +224,10 @@ describe('ReplayTransportService — maybeAdvance', () => {
     expect(mockConn.simulatePlayerResponse).toHaveBeenCalledWith({
       promptType: 'SELECT_CARD', data: { indices: [0] },
     });
+    // F10-bis — the auto-response lookup uses the mock's tracked prompt
+    // offset, NOT `cursor - 1` (broken once the trailing BOARD_STATE
+    // dispatches before the yield).
+    expect(mockConn.getAutoResponseAt).toHaveBeenCalledWith(4);
   }));
 
   it('falls back to no-op simulate when no auto-response is recorded', fakeAsync(() => {
@@ -459,6 +468,44 @@ describe('ReplayTransportService — auto-resume + lifecycle', () => {
     // scheduleNext re-checks currentIndex >= upTo → still true → pauses.
     expect(svc.isPlaying()).toBeFalse();
     expect(svc.pausedAtBoundary()).toBeTrue();
+  });
+});
+
+// =============================================================================
+// F10-bis (2026-06-12) — the BOARD_STATE following a prompt dispatches at
+// prompt APPEARANCE, not after the 1.2s auto-dismiss.
+// -----------------------------------------------------------------------------
+// A live client receives [SELECT_*, BOARD_STATE] in the same WS batch and
+// processes the BOARD_STATE while the prompt is displayed. Pre-fix, the
+// mock yielded at the SELECT_* and held the BOARD_STATE behind the dismiss
+// delay — a travel landing inside that window committed against a STALE
+// logical state (the regenese "Triple Tactics Talent stuck in hand" case,
+// post-F10 visual pass).
+// =============================================================================
+
+describe('ReplayTransportService — F10-bis trailing BOARD_STATE at prompt yield (2026-06-12)', () => {
+  it('dispatches the BOARD_STATE following a prompt BEFORE yielding to auto-dismiss', () => {
+    const nav: ReplayStreamNavEntry[] = [
+      { ...stubState('a'), messageOffset: 0 },
+      { ...stubState('b'), messageOffset: 3 },
+    ];
+    const { svc, mockConn } = setup({ states: nav, computedUpTo: 1 });
+    const types = ['SELECT_CARD', 'BOARD_STATE', 'MSG_MOVE'];
+    let cursor = 0;
+    mockConn.messageCursor.and.callFake(() => cursor);
+    mockConn.peekNextType.and.callFake(() => types[cursor] ?? null);
+    mockConn.dispatchNext.and.callFake(() => {
+      const t = types[cursor];
+      cursor++;
+      if (t === 'SELECT_CARD') mockConn.pendingPrompt.and.returnValue({ type: 'SELECT_CARD' } as never);
+      return cursor < types.length;
+    });
+
+    svc.stepForward(); // index 0 → 1, dispatch until nav[1].offset = 3
+
+    // The SELECT yields the loop — but its trailing BOARD_STATE must have
+    // been dispatched first. The next business event must NOT dispatch.
+    expect(cursor).withContext('SELECT + trailing BOARD_STATE dispatched, MSG_MOVE held').toBe(2);
   });
 });
 

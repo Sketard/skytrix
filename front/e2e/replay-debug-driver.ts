@@ -137,6 +137,7 @@ export interface SkytrixReplayDebugSurface {
   togglePerspective(): void;
   toggleAnimations(): void;
   togglePromptMode(): void;
+  setPromptDelay(ms: number | null): void;
   currentIndex(): number;
   computedUpTo(): number;
   totalBoardStates(): number;
@@ -317,6 +318,16 @@ export class ReplayDebugDriver {
         .__skytrixDebug?.replay?.toggleAnimations();
     });
     await this.awaitValueChange('animationsEnabled', prev, `toggleAnimations(was=${prev})`);
+  }
+
+  /** F10-bis (2026-06-12) — override the fixed 1.2s prompt auto-dismiss
+   *  delay. `setPromptDelay(100)` makes a 273-prompt replay play in
+   *  ~1-2 min instead of ~10. Pass `null` to restore the product default. */
+  async setPromptDelay(ms: number | null): Promise<void> {
+    await this.page.evaluate((delay) => {
+      (window as unknown as { __skytrixDebug?: { replay?: SkytrixReplayDebugSurface } })
+        .__skytrixDebug?.replay?.setPromptDelay(delay);
+    }, ms);
   }
 
   /** Toggle prompt mode (decision ↔ result). In decision mode, replay

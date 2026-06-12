@@ -140,13 +140,19 @@ export class MockDuelConnection implements AnimationDataSource {
    */
   readonly activeResponse: Signal<Record<string, unknown> | null> = computed(() => {
     if (this.pendingPrompt() === null) return null;
-    const offset = this._transport_messageCursor();
-    // The prompt was dispatched at offset `offset - 1` (the cursor
-    // already advanced past it inside `dispatchNext`). Lookup the
-    // auto-response at that earlier offset.
-    const ar = this.getAutoResponseAt(offset - 1);
+    // F10-bis (2026-06-12) — the prompt's own stream offset, tracked by
+    // `dispatchNext`. The historical `cursor - 1` arithmetic broke once
+    // the transport started dispatching the trailing BOARD_STATE before
+    // yielding (the cursor now sits past the BS, not past the SELECT).
+    const ar = this.getAutoResponseAt(this._transport_lastPromptOffset());
     return ar ? ar.data : null;
   });
+
+  /** F10-bis — stream offset of the most recently dispatched prompt
+   *  (-1 when none). Consumed by `activeResponse` above and by the
+   *  transport's `schedulePromptDismiss` auto-response lookup. */
+  private readonly _transport_lastPromptOffset = signal(-1);
+  lastPromptOffset(): number { return this._transport_lastPromptOffset(); }
 
   private _outOfBandSink?: (event: StreamEvent) => void;
 
@@ -348,10 +354,22 @@ export class MockDuelConnection implements AnimationDataSource {
    *  no replay equivalent. Unknown types log a warn. */
   dispatchNext(): boolean {
     if (this._transport_messageCursor() >= this._messages.length) return false;
-    const msg = this._messages[this._transport_messageCursor()];
+    const offset = this._transport_messageCursor();
+    const msg = this._messages[offset];
     this._dispatch(msg);
+    // F10-bis — record the prompt's own offset. Identity check : the
+    // SELECT branches of `_dispatch` set `pendingPrompt` to the message
+    // object itself, so this fires exactly when a prompt was dispatched.
+    if (this.pendingPrompt() === msg) this._transport_lastPromptOffset.set(offset);
     this._transport_messageCursor.update(n => n + 1);
     return true;
+  }
+
+  /** F10-bis — type of the message at the cursor (next `dispatchNext`),
+   *  or null at end of buffer. Lets the transport dispatch the trailing
+   *  BOARD_STATE of a prompt batch before yielding to auto-dismiss. */
+  peekNextType(): string | null {
+    return this._messages[this._transport_messageCursor()]?.type ?? null;
   }
 
   /** Simulates a player response to the current prompt. Mirror of the
@@ -425,6 +443,7 @@ export class MockDuelConnection implements AnimationDataSource {
     //    accumulators (mirror of `simulatePlayerResponse` clearing,
     //    appropriate since a seek through a prompt is "abandon answer").
     this.pendingPrompt.set(null);
+    this._transport_lastPromptOffset.set(-1);
     // F7 (2026-06-06) — restore the hint accumulator from the nav entry's
     // embedded snapshot. The precompute pins `entry.hint` whenever a hint
     // was armed at flush time (cleared on `playerResponses[]` consumption).
