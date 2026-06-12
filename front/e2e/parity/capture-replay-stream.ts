@@ -184,5 +184,33 @@ async function waitForQueueDrain(session: ReplayDebugSession, timeoutMs: number)
     if (drained) return;
     await session.page.waitForTimeout(100);
   }
-  throw new Error(`captureReplayStream: queue did not drain within ${timeoutMs}ms`);
+  // 2026-06-11 — diagnostic mode: dump the residual state and CONTINUE the
+  // capture instead of throwing. A non-drained queue at end of playback is
+  // itself a finding (cf. audit P2 "mock MSG_WIN skips processor.reset" +
+  // "last-entry auto-play stall") — we want the stream dump + this residue
+  // in the report, not a blind abort that loses both.
+  const residue = await session.page.evaluate(() => {
+    const w = window as unknown as {
+      __skytrixDebug?: {
+        snapshot?: () => {
+          animationQueue: { kind: string; preview: string }[];
+          chain: { phase: string; activeLinks: readonly unknown[] };
+          pendingPromptType?: string | null;
+        };
+      };
+    };
+    const snap = w.__skytrixDebug?.snapshot?.();
+    return snap
+      ? {
+        queue: snap.animationQueue,
+        chainPhase: snap.chain.phase,
+        activeLinks: snap.chain.activeLinks.length,
+        pendingPromptType: snap.pendingPromptType ?? null,
+      }
+      : null;
+  });
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[parity:replay] queue did NOT drain within ${timeoutMs}ms — capturing anyway. Residue: ${JSON.stringify(residue)}`,
+  );
 }
