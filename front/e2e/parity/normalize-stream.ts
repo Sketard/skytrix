@@ -131,6 +131,32 @@ function stripVolatileFields(event: RawStreamEvent): NormalizedEvent {
   for (const field of VOLATILE_FIELDS) {
     delete out[field];
   }
+  // D/D/D triage (2026-06-12) — HARNESS artifacts on `kind: 'deferred'`
+  // events (DeferredEffect / EffectReady / EffectAbandoned). The DEP keys
+  // its deferreds on the orchestrator's monotonic `ref`, which counts
+  // EVERY pushed event including mode-specific ones (SELECT_CARD pushes,
+  // boundary re-emissions…) — two runs of the same duel legitimately
+  // assign different refs to identical deferreds. Three carriers :
+  //   · `triggerRef` — the raw ref.
+  //   · `awaitingPredicate.ref` — the matcher embeds the same ref.
+  //   · `name` — every rule except `overlay-show:chain-N` suffixes the
+  //     ref into the name for uniqueness (`trigger-show:CODE:REF`,
+  //     `attack-impact:REF`, `lp-cost:REF`, `counter-pulse:REF`,
+  //     `xyz-leave:REF`). `overlay-show`'s suffix is the chainIndex
+  //     (semantic) and is kept.
+  if (out['kind'] === 'deferred') {
+    delete out['triggerRef'];
+    const pred = out['awaitingPredicate'];
+    if (typeof pred === 'object' && pred !== null) {
+      const cleaned = { ...(pred as Record<string, unknown>) };
+      delete cleaned['ref'];
+      out['awaitingPredicate'] = cleaned;
+    }
+    const name = out['name'];
+    if (typeof name === 'string' && !name.startsWith('overlay-show:')) {
+      out['name'] = name.replace(/:\d+$/, '');
+    }
+  }
   return out;
 }
 

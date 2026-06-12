@@ -38,6 +38,14 @@ export interface CaptureSoloStreamOptions {
    *  (server default: 250ms human-like). Dense fixtures can go lower
    *  once the client runs at dev anim-speed. */
   tapeResponseDelayMs?: number;
+  /** D/D/D triage (2026-06-12) — `duel-anim-speed` injected in
+   *  localStorage. Default '0.2' (5× fast anims). ⚠️ the multiplier
+   *  STRETCHES safety guards (÷multiplier ×1.5 = 7.5× at 0.2) : on
+   *  fixtures whose post-tape catch-up is bounded by safety/rescue
+   *  timers rather than by animations (D/D/D, 24 chains), '0.2' blows
+   *  the drain budget (>420s) while '1' drains in ~2 min (measured by
+   *  ddd-solo-stall-diag). Pick per fixture. */
+  animSpeed?: '0.2' | '1';
 }
 
 export interface CapturedSoloStream {
@@ -94,14 +102,14 @@ export async function captureSoloStream(
   // Inject sessionStorage BEFORE navigating to the duel page — addInitScript
   // ensures the storage is set before any Angular code runs on the new URL.
   const soloTokensKey = `solo-duel-tokens-${duelId}`;
-  await page.addInitScript(({ key, payload }: { key: string; payload: string }) => {
+  await page.addInitScript(({ key, payload, animSpeed }: { key: string; payload: string; animSpeed: string }) => {
     sessionStorage.setItem(key, payload);
-    // Étape 2 (2026-06-12) — dev-only 5× animation speed (see
+    // Étape 2 (2026-06-12) — dev-only animation speed (see
     // devAnimSpeedMultiplier). The parity gate compares stream CONTENT,
-    // not timing ; full-speed animations on dense fixtures (D/D/D :
-    // 24 chains) made the SOLO leg take 10+ minutes.
-    localStorage.setItem('duel-anim-speed', '0.2');
-  }, { key: soloTokensKey, payload: JSON.stringify({ wsToken1, activePlayer: 0, decklistId: null }) });
+    // not timing. Default 0.2 = 5× fast anims ; see `animSpeed` option
+    // docblock for the safety-guard-stretch trade-off on dense fixtures.
+    localStorage.setItem('duel-anim-speed', animSpeed);
+  }, { key: soloTokensKey, payload: JSON.stringify({ wsToken1, activePlayer: 0, decklistId: null }), animSpeed: opts.animSpeed ?? '0.2' });
 
   // Step 3 — Navigate to the duel
   await page.goto(`${BASE_URL}/pvp/duel/${duelId}?solo=true`);

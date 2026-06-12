@@ -45,7 +45,10 @@ test('D/D/D SOLO stall diagnostic — count pipeline stages', async ({ browser }
   await page.addInitScript(({ key, payload }: { key: string; payload: string }) => {
     sessionStorage.setItem(key, payload);
     localStorage.setItem('duel-log-categories', 'PIPELINE,QUEUE,CHAIN,PROC,RUNNER');
-    localStorage.setItem('duel-anim-speed', '0.2');
+    // 1 (real-time) for stall verification — 0.2 stretches the safety
+    // guards ÷0.2×1.5 = 7.5×, so any residual blockage costs 15s of
+    // wall-clock instead of 3s and the diag takes forever to converge.
+    localStorage.setItem('duel-anim-speed', '1');
   }, {
     key: `solo-duel-tokens-${duelId}`,
     payload: JSON.stringify({ wsToken1: wsTokens[0], activePlayer: 0, decklistId: null }),
