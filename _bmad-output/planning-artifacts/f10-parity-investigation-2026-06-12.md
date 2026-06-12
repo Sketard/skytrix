@@ -142,3 +142,23 @@ note stands.
    boundary filter + divergence list on full streams.
 3. THEN design the F10 hoist with the cadence decision above (per-prompt
    synthetic BOARD_STATE in precompute), validated by the harness diff.
+
+---
+
+## Addendum 2026-06-12 — finding 1 FIXED (F22, commit `e1f94dea`)
+
+`currentSpanUnfinished()` predicate added to `ReplayTransportService` ;
+`doStepForward` resumes the current entry's span without incrementing,
+`scheduleNext`/`startPlayback`/`atEnd` treat an unfinished span as
+resumable. 3 pinning specs. Harness re-run : replay capture went from 13
+to **52 raw events** — full playback, no drain residue.
+
+First COMPLETE v4 normalized diff (9 SOLO vs 10 Replay events) — the
+step-2 divergence list :
+
+| # | SOLO | Replay | Reading |
+|---|------|--------|---------|
+| 0 | MSG_DRAW (initial) | absent | Replay baseline `seekToOffset(0)` restores nav[0] via snapshot — entry 0's messages are never dispatched (by design since Phase 5 ; normalize or accept). |
+| 2 | absent | SELECT_CARD | HARNESS artifact : the tape player answers SELECT_* server-side, so the SOLO client never receives the prompt ; the replay mock dispatches it. Filter SELECT_* in normalize (or forward prompts in tape mode). |
+| 4-6 | SOLVED before DRAW+SHUFFLE | DRAW+SHUFFLE before SOLVED | Both reorder the same wire content through their chain buffer ; drain timing differs. Second-order — investigate whether the buffer drain order asymmetry is benign. |
+| 8 | straggler MSG_MOVE (20508881→GY, reason 1024) ABSENT | present | **SOLO-side anomaly** : the buffered straggler was never replayed onto the stream live-side. Next candidate to investigate (mid-chain buffer drain rescue ? capture cutoff ?). |
