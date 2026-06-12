@@ -42,6 +42,10 @@ export type ChainSlot = 'front' | 'mid' | 'back';
 
 export interface VisibleCard {
   chainIndex: number;
+  /** Receipt-side chain generation (dense-chain fix 2026-06-12). Links of
+   *  back-to-back chains can coexist with identical chainIndex — the
+   *  template track keys on `chainIndex:generation` to stay unique. */
+  generation?: number;
   cardCode: number;
   cardName: string;
   /** Layout side derived from the link's `player` via DuelContext.relativePlayer */
@@ -352,13 +356,14 @@ export class PvpChainOverlayComponent {
     const pending = this.pendingExitCard();
     const ownIdx = this.duelCtx.ownPlayerIndex();
 
-    type LinkInput = { chainIndex: number; cardCode: number; cardName: string; player: number };
+    type LinkInput = { chainIndex: number; generation?: number; cardCode: number; cardName: string; player: number };
     const inputs: LinkInput[] = links.map(l => ({
-      chainIndex: l.chainIndex, cardCode: l.cardCode, cardName: l.cardName, player: l.player,
+      chainIndex: l.chainIndex, generation: l.generation, cardCode: l.cardCode, cardName: l.cardName, player: l.player,
     }));
     if (pending) {
       inputs.push({
         chainIndex: pending.card.chainIndex,
+        generation: pending.card.generation,
         cardCode: pending.card.cardCode,
         cardName: pending.card.cardName,
         player: pending.card.player,
@@ -421,6 +426,7 @@ export class PvpChainOverlayComponent {
         : 'back';
       return {
         chainIndex: l.chainIndex,
+        generation: l.generation,
         cardCode: l.cardCode,
         cardName: l.cardName,
         side: l.side,
@@ -566,7 +572,14 @@ export class PvpChainOverlayComponent {
           // prevLinks but not in links. Pass it directly to
           // onChainLinkResolved so the snapshot is immune to Effect B /
           // cleanup races on `_resolvingCardInfo`.
-          const droppedLink = prevLinks.find(p => !links.some(l => l.chainIndex === p.chainIndex));
+          // Dense-chain fix (2026-06-12) — match on (chainIndex, generation):
+          // chain indices restart at 0 every chain, and links of the NEXT
+          // chain may coexist with the resolving one (committed by sync
+          // receipt while this chain's END is still queued). chainIndex
+          // alone would fail to identify the drop (find → undefined → no
+          // pendingExitCard, negated flag lost).
+          const droppedLink = prevLinks.find(p =>
+            !links.some(l => l.chainIndex === p.chainIndex && (l.generation ?? 0) === (p.generation ?? 0)));
           this.logger.log(DuelLogCategory.CHAIN, 'Effect A: link removed %d→%d — calling onChainLinkResolved droppedLink=%o', prevCount, currentCount, droppedLink);
           this.onChainLinkResolved(droppedLink);
         }
@@ -728,6 +741,7 @@ export class PvpChainOverlayComponent {
           negated: false,
           card: {
             chainIndex: exitingLink.chainIndex,
+            generation: exitingLink.generation,
             cardCode: exitingLink.cardCode,
             cardName: exitingLink.cardName,
             side: newSide,
@@ -977,6 +991,7 @@ export class PvpChainOverlayComponent {
           negated: droppedLink.negated,
           card: {
             chainIndex: droppedLink.chainIndex,
+            generation: droppedLink.generation,
             cardCode: droppedLink.cardCode,
             cardName: droppedLink.cardName,
             side: droppedLink.player === ownIdx ? 'left' : 'right',

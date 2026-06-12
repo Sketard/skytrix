@@ -45,7 +45,7 @@ describe('ChainResolutionManager', () => {
   /** Mirrors handleChainSolved: orchestrator calls dataSource.applyChainSolved
    *  (which keeps phase at 'resolving' until applyChainEnd) then handleSolved.
    *  Phase doesn't change here; we just delegate. */
-  function exitLink(_chainIndex = 0): 'async' {
+  function exitLink(_chainIndex = 0): number | 'async' {
     return mgr.handleSolved();
   }
 
@@ -180,6 +180,20 @@ describe('ChainResolutionManager', () => {
       enterResolving(0);
       exitLink(0);
       expect(mgr.hasBufferedEvents).toBeFalse();
+    });
+
+    // Dense-chain fix (2026-06-12), garde aval — when the orchestrator
+    // detects that no tracked link matches the SOLVED (the overlay's
+    // Effect A will never fire onChainLinkResolved, so nothing can flip
+    // chainOverlayReady), it passes hasOverlayWork=false. Arming
+    // _waitingForOverlay in that state is an unconditional deadlock: the
+    // resume effect only reacts to chainOverlayReady CHANGES.
+    it('hasOverlayWork=false: increments solvedCount, returns 0, does NOT arm waitingForOverlay', () => {
+      enterResolving(0);
+      const result = mgr.handleSolved(false);
+      expect(result).toBe(0);
+      expect(mgr.isWaitingForOverlay).toBeFalse();
+      expect(mgr.chainSolvedCount).toBe(1);
     });
   });
 

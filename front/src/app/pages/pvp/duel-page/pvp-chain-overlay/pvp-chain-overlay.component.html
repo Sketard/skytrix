@@ -35,8 +35,11 @@
         </div>
       }
 
-      <!-- Visible cards (max 5 — 3 per majority side, 2 per minority side) -->
-      @for (card of visibleCards(); track card.chainIndex; let i = $index) {
+      <!-- Visible cards (max 5 — 3 per majority side, 2 per minority side).
+           Dense-chain fix (2026-06-12) : chainIndex seul n'est plus unique
+           (les liens d'une chaîne suivante peuvent coexister avec le même
+           index, génération différente) → clé composite chainIndex:generation. -->
+      @for (card of visibleCards(); track card.chainIndex + ':' + (card.generation ?? 0); let i = $index) {
         <div class="chain-card"
              [class.chain-card--entering]="card.chainIndex === enteringCardIndex()"
              [class.chain-card--shoved]="card.chainIndex === shovedCardIndex()"

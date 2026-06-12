@@ -750,3 +750,98 @@ describe('AnimationOrchestratorService — processDirective abort propagation (a
     expect(cleared).withContext('the finally must run onClear on abort').toBe(true);
   });
 });
+
+// =============================================================================
+// Dense-chain fix (2026-06-12) — handleChainSolved garde aval
+// -----------------------------------------------------------------------------
+// `_waitingForOverlay` may ONLY be armed when the overlay will actually have
+// work to signal: the resume effect reacts to `chainOverlayReady` CHANGES,
+// and the only writer of that signal is the overlay's `onChainLinkResolved`,
+// itself fired by Effect A on an `activeChainLinks` COUNT DECREASE. If no
+// tracked link matches the dispatching SOLVED (link bookkeeping drifted —
+// the pre-fix cross-chain wipe class, or a replay-seek pruned link), arming
+// the wait deadlocks the runner on pause-external while the queue grows
+// (D/D/D fixture symptom). The orchestrator mirrors Effect A's own
+// predicate: did the link count actually decrease?
+// =============================================================================
+describe('AnimationOrchestratorService — handleChainSolved garde aval (2026-06-12)', () => {
+  class RecordingChainManager extends StubManager {
+    handleSolvedArgs: boolean[] = [];
+    handleSolved = (hasOverlayWork: boolean): number | 'async' => {
+      this.handleSolvedArgs.push(hasOverlayWork);
+      return hasOverlayWork ? 'async' : 0;
+    };
+  }
+
+  class ChainStubDataSource extends StubDataSource {
+    applyChainSolvedCalls: number[] = [];
+    applyChainSolved = (chainIndex: number): void => {
+      this.applyChainSolvedCalls.push(chainIndex);
+      // Mirror the processor: drop the matching tracked link.
+      this.activeChainLinks.set(
+        this.activeChainLinks().filter(l => (l as { chainIndex: number }).chainIndex !== chainIndex),
+      );
+    };
+  }
+
+  type SolvedDispatcher = {
+    handleChainSolved(msg: { type: 'MSG_CHAIN_SOLVED'; chainIndex: number }): number | 'async';
+  };
+
+  function makeOrchestrator(): AnimationOrchestratorService {
+    TestBed.configureTestingModule({
+      providers: [
+        AnimationOrchestratorService,
+        ScopeResetDispatcher,
+        DuelGameLogService,
+        { provide: DuelLogger, useClass: StubLogger },
+        { provide: ANIMATION_DATA_SOURCE, useClass: ChainStubDataSource },
+        { provide: DuelContext, useClass: StubCtx },
+        { provide: LpAnimationTracker, useClass: StubLpTracker },
+        { provide: ChainResolutionManager, useClass: RecordingChainManager },
+        { provide: DrawSequenceManager, useClass: StubManager },
+        { provide: MoveAnimationRouter, useClass: StubManager },
+        { provide: BattleAnimationTracker, useClass: StubManager },
+        { provide: TargetIndicatorManager, useClass: StubManager },
+        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        { provide: CardTravelEngine, useValue: {} },
+        { provide: BoardEffectsService, useValue: {} },
+        { provide: FloatRegistryService, useClass: StubFloatRegistry },
+        { provide: DuelToastService, useValue: { show: () => undefined } },
+        { provide: DuelCardArtService, useValue: { getArtUrl: () => '' } },
+        { provide: LiveAnnouncer, useValue: { announce: () => undefined } },
+      ],
+    });
+    return TestBed.inject(AnimationOrchestratorService);
+  }
+
+  it('passes hasOverlayWork=true when a tracked link matches the SOLVED', () => {
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as ChainStubDataSource;
+    const mgr = TestBed.inject(ChainResolutionManager) as unknown as RecordingChainManager;
+    ds.activeChainLinks.set([{ chainIndex: 0 } as never]);
+
+    const result = (orch as unknown as SolvedDispatcher)
+      .handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
+
+    expect(result).toBe('async');
+    expect(mgr.handleSolvedArgs).toEqual([true]);
+    expect(ds.applyChainSolvedCalls).toEqual([0]);
+  });
+
+  it('passes hasOverlayWork=false when no tracked link matches (deadlock impossible by construction)', () => {
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as ChainStubDataSource;
+    const mgr = TestBed.inject(ChainResolutionManager) as unknown as RecordingChainManager;
+    expect(ds.activeChainLinks()).toEqual([]);
+
+    const result = (orch as unknown as SolvedDispatcher)
+      .handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
+
+    // Degraded sync step — the runner advances instead of waiting on a
+    // chainOverlayReady flip that no overlay work will ever produce.
+    expect(result).toBe(0);
+    expect(mgr.handleSolvedArgs).toEqual([false]);
+    expect(ds.applyChainSolvedCalls).toEqual([0]);
+  });
+});

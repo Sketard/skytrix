@@ -253,6 +253,106 @@ describe('DuelEventProcessor', () => {
     });
   });
 
+  // ===========================================================================
+  // Dense back-to-back chains — generation scoping (2026-06-12).
+  // ---------------------------------------------------------------------------
+  // Receipt (sync) writes links; dispatch (queue runner) clears them. When
+  // chain N+1's CHAINING + SOLVING are RECEIVED while chain N's END still
+  // sits in the animation queue, the next chain's link is committed BEFORE
+  // applyChainEnd(N) runs. Pre-fix, that applyChainEnd blanket-wiped it →
+  // the overlay had no link to drop at SOLVED(N+1) dispatch → never flipped
+  // `chainOverlayReady` → the runner deadlocked on `isWaitingForOverlay`
+  // (D/D/D 24-chain fixture, trace _bmad-output/debug-solo/ddd-stall-diag/).
+  // The matrix in CLAUDE.md §F9 documents the scoped MSG_CHAIN_END client
+  // transition; the server side is untouched (it transitions at EMIT, in
+  // wire order, so generations cannot overlap there).
+  // ===========================================================================
+  describe('dense back-to-back chains — generation scoping (2026-06-12)', () => {
+    /** Wire receipt of a full chain-1 then the head of chain-2, exactly the
+     *  D/D/D interleaving: chain 2 fully received before chain 1's queued
+     *  events have been dispatched. */
+    function receiveDenseTwoChains(): void {
+      proc.processMessage(chaining(0, 100));     // chain 1 link
+      proc.processMessage(chainSolving(0));      // commits c1
+      proc.processMessage(chainSolved(0));
+      proc.processMessage(chainEnd());           // closes generation 0 (receipt side)
+      proc.processMessage(chaining(0, 200));     // chain 2 link — SAME chainIndex 0
+      proc.processMessage(chainSolving(0));      // commits c2 (generation 1)
+    }
+
+    it('a chain-2 link committed before chain 1\'s END dispatches survives applyChainEnd', () => {
+      receiveDenseTwoChains();
+      expect(proc.activeChainLinks().length).toBe(2); // c1 (gen 0) + c2 (gen 1)
+
+      // Dispatch side, FIFO — chain 1's cycle:
+      proc.applyChainSolving(0);
+      proc.applyChainSolved(0);                  // drops c1 only
+      expect(proc.activeChainLinks().length).toBe(1);
+      expect(proc.activeChainLinks()[0].cardCode).toBe(200);
+      proc.applyChainEnd();                      // closes generation 0
+      // c2 SURVIVES — pre-fix this wiped it and chain 2 deadlocked.
+      expect(proc.activeChainLinks().length).toBe(1);
+      expect(proc.activeChainLinks()[0].cardCode).toBe(200);
+      // Announced-but-not-resolving ⇒ building (mirrors the server container).
+      expect(proc.chainPhase()).toBe('building');
+
+      // Chain 2's cycle is nominal again:
+      proc.applyChainSolving(0);
+      expect(proc.activeChainLinks()[0].resolving).toBeTrue();
+      proc.applyChainSolved(0);                  // the overlay HAS a link to drop
+      expect(proc.activeChainLinks()).toEqual([]);
+      proc.applyChainEnd();
+      expect(proc.chainPhase()).toBe('idle');
+    });
+
+    it('applyChainSolving/Solved only target the dispatching generation on chainIndex collision', () => {
+      receiveDenseTwoChains();
+      // Chain 1's SOLVING(0) must not mark c2 (also chainIndex 0).
+      proc.applyChainSolving(0);
+      const [c1, c2] = proc.activeChainLinks();
+      expect(c1.cardCode).toBe(100);
+      expect(c1.resolving).toBeTrue();
+      expect(c2.resolving).toBeFalse();
+      // Chain 1's SOLVED(0) must not drop c2.
+      proc.applyChainSolved(0);
+      expect(proc.activeChainLinks().length).toBe(1);
+      expect(proc.activeChainLinks()[0].cardCode).toBe(200);
+    });
+
+    it('three stacked chains: each END clears exactly its own generation', () => {
+      receiveDenseTwoChains();
+      proc.processMessage(chainSolved(0));
+      proc.processMessage(chainEnd());           // closes generation 1
+      proc.processMessage(chaining(0, 300));     // chain 3 link (generation 2)
+      proc.processMessage(chainSolving(0));      // commits c3
+      expect(proc.activeChainLinks().length).toBe(3);
+
+      proc.applyChainSolving(0); proc.applyChainSolved(0); proc.applyChainEnd(); // chain 1
+      expect(proc.activeChainLinks().map(l => l.cardCode)).toEqual([200, 300]);
+      expect(proc.chainPhase()).toBe('building');
+      proc.applyChainSolving(0); proc.applyChainSolved(0); proc.applyChainEnd(); // chain 2
+      expect(proc.activeChainLinks().map(l => l.cardCode)).toEqual([300]);
+      expect(proc.chainPhase()).toBe('building');
+      proc.applyChainSolving(0); proc.applyChainSolved(0); proc.applyChainEnd(); // chain 3
+      expect(proc.activeChainLinks()).toEqual([]);
+      expect(proc.chainPhase()).toBe('idle');
+    });
+
+    it('reset() rebases the generation window for the next duel', () => {
+      receiveDenseTwoChains();
+      proc.reset();
+      // Fresh mono-chain cycle behaves like generation 0 again.
+      proc.processMessage(chaining(0, 999));
+      proc.processMessage(chainSolving(0));
+      proc.applyChainSolving(0);
+      expect(proc.activeChainLinks()[0].resolving).toBeTrue();
+      proc.applyChainSolved(0);
+      expect(proc.activeChainLinks()).toEqual([]);
+      proc.applyChainEnd();
+      expect(proc.chainPhase()).toBe('idle');
+    });
+  });
+
   describe('queue operations', () => {
     it('dequeueAnimation should return first entry and remove it', () => {
       proc.processMessage(msgMove());

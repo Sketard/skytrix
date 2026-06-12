@@ -280,9 +280,43 @@ non-chain no-op handling) :
 |---|---|---|
 | `MSG_CHAINING` | idle→building (push link) | idle→building (push pending) — `_processMessageInner` sync |
 | `MSG_CHAIN_NEGATED` | no phase change (add idx) | no phase change (flag link.negated) — sync |
-| `MSG_CHAIN_SOLVING` | →resolving (set currentSolvingChainIndex) | →resolving (set link.resolving) — `applyChainSolving`, from queue runner |
-| `MSG_CHAIN_SOLVED` | clear currentSolvingChainIndex (no phase change) | drop link from activeChainLinks (no phase change) — `applyChainSolved`, from queue runner |
-| `MSG_CHAIN_END` | →idle, clear links/negated/currentSolving | →idle, clear activeChainLinks — `applyChainEnd`, from queue runner |
+| `MSG_CHAIN_SOLVING` | →resolving (set currentSolvingChainIndex) | →resolving (set link.resolving, dispatching generation only) — `applyChainSolving`, from queue runner |
+| `MSG_CHAIN_SOLVED` | clear currentSolvingChainIndex (no phase change) | drop link from activeChainLinks (dispatching generation only, no phase change) — `applyChainSolved`, from queue runner |
+| `MSG_CHAIN_END` | →idle, clear links/negated/currentSolving | clear links of the closed generation only; →idle, or →building when next-chain links survive — `applyChainEnd`, from queue runner |
+
+**Dense back-to-back chains — generation scoping (2026-06-12).** The
+client machine is a hybrid: receipt (sync) COMMITS links
+(`commitPendingChainEntry` on SOLVING / WAITING_RESPONSE / SELECT_* /
+CHAIN_END receipt) while dispatch (queue runner) CLEARS them. When
+chains follow each other with no prompt in between (dense auto-play,
+from-replay tape), chain N+1's CHAINING + SOLVING are RECEIVED — and
+its link committed — while chain N's `MSG_CHAIN_END` still sits in the
+animation queue. A blanket-wipe `applyChainEnd` destroyed that link;
+the overlay then had no link to drop at SOLVED(N+1) dispatch, never
+flipped `chainOverlayReady`, and the runner deadlocked on
+`isWaitingForOverlay` (`pause-external`) while the queue grew and the
+batch locks expired in cascade (D/D/D 24-chain fixture, trace in
+`_bmad-output/debug-solo/ddd-stall-diag/`). Fix: `DuelEventProcessor`
+counts `MSG_CHAIN_END` *received* (`_chainGeneration`, tags every link
+built) and `applyChainEnd` calls (`_dispatchedEndCount`, FIFO ⇒ the Nth
+call closes generation N-1); `applyChainSolving/Solved/End` only touch
+links of the dispatching generation (chain indices restart at 0 every
+chain, so chainIndex alone is ambiguous). `reset()` rebases both
+counters; `restoreChainState` rebases them to 0 (restored links carry
+no `generation` and read as 0 via the `?? 0` fallback). The server
+needs NO generation: it transitions at EMIT in wire order, where
+`CHAIN_END(N)` always precedes `CHAINING(N+1)` — at the dispatch
+instant where the client now keeps survivor links with phase
+`'building'`, the server container holds exactly those links, so the
+boundary-parity invariant is *improved*. Defense in depth: the
+orchestrator's `handleChainSolved` passes `hasOverlayWork=false` to
+`chainManager.handleSolved` when no tracked link matched (the overlay
+can never signal → degrade to a sync 0ms step instead of arming
+`_waitingForOverlay`). Pinned by the "dense back-to-back chains"
+describe in
+[duel-event-processor.spec.ts](front/src/app/pages/pvp/duel-page/duel-event-processor.spec.ts)
++ the garde-aval describe in
+[animation-orchestrator.projections.spec.ts](front/src/app/pages/pvp/duel-page/animation-orchestrator.projections.spec.ts).
 
 **Regression risk** : evolving one side without the other (e.g. server
 adds a `pending` sub-phase, client splits `resolving` into `resolving`/

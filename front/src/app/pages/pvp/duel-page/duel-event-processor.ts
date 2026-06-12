@@ -76,6 +76,19 @@ export class DuelEventProcessor {
   // hand row can already mark a just-activated card as revealed (z-index +
   // chain badge) before the commit lands.
   private _pendingChainEntry = signal<ChainLinkState | null>(null);
+  // Dense-chain fix (2026-06-12) — the two ends of the generation window.
+  // `_chainGeneration` counts MSG_CHAIN_END *received* (sync, wire order);
+  // every link built tags the current value. `_dispatchedEndCount` counts
+  // applyChainEnd calls (queue dispatch, FIFO ⇒ the Nth call closes
+  // generation N-1). Without the scoping, chain N's END dispatch wiped the
+  // links of chain N+1 already committed by sync receipt (CHAINING(N+1) +
+  // SOLVING(N+1) received while chain N's END still sat in the animation
+  // queue) — the overlay then had no link to drop at SOLVED(N+1) dispatch,
+  // never signalled `chainOverlayReady`, and the runner deadlocked on
+  // `isWaitingForOverlay` (D/D/D 24-chain fixture, trace in
+  // _bmad-output/debug-solo/ddd-stall-diag/).
+  private _chainGeneration = 0;
+  private _dispatchedEndCount = 0;
 
   readonly activeChainLinks = this._activeChainLinks.asReadonly();
   readonly chainPhase = this._chainPhase.asReadonly();
@@ -137,6 +150,7 @@ export class DuelEventProcessor {
       negated: false,
       descriptionText: msg.descriptionText,
       handCopiesAtChaining: msg.handCopiesAtChaining,
+      generation: this._chainGeneration,
     };
   }
 
@@ -177,8 +191,12 @@ export class DuelEventProcessor {
         if (pending?.chainIndex === negMsg.chainIndex) {
           this._pendingChainEntry.set({ ...pending, negated: true });
         }
+        // Dense-chain fix — a NEGATED received now belongs to the current
+        // RECEIPT generation; don't flag a same-index link of a previous
+        // chain still awaiting its dispatch-side clear.
         this._activeChainLinks.update(links =>
-          links.map(l => l.chainIndex === negMsg.chainIndex ? { ...l, negated: true } : l),
+          links.map(l => l.chainIndex === negMsg.chainIndex && (l.generation ?? 0) === this._chainGeneration
+            ? { ...l, negated: true } : l),
         );
         this.onEvent?.(negMsg);
         break;
@@ -198,6 +216,12 @@ export class DuelEventProcessor {
       case 'MSG_CHAIN_END':
         this.logger?.log(DuelLogCategory.PROC, 'MSG_CHAIN_END');
         this.commitPendingChainEntry();
+        // Dense-chain fix — close the receipt-side generation AFTER the
+        // pending commit (a pending entry at END receipt belongs to the
+        // closing chain: wire order guarantees CHAINING(N+1) arrives after
+        // END(N)). Links built from here on belong to the next chain and
+        // survive this END's dispatch-side clear.
+        this._chainGeneration++;
         this.enqueue(msg);
         break;
       default:
@@ -233,18 +257,27 @@ export class DuelEventProcessor {
     this._animationQueue.update(q => [...q, directive]);
   }
 
+  /** Dense-chain fix — a dispatching SOLVING/SOLVED always belongs to the
+   *  generation currently being dispatched (`_dispatchedEndCount`: ENDs
+   *  dispatched so far). Matching on chainIndex alone would hit a
+   *  same-index link of the NEXT chain already committed by sync receipt
+   *  (chain indices restart at 0 every chain). */
+  private isDispatchingGenerationLink(l: ChainLinkState, chainIndex: number): boolean {
+    return l.chainIndex === chainIndex && (l.generation ?? 0) === this._dispatchedEndCount;
+  }
+
   applyChainSolving(chainIndex: number): void {
     this._chainPhase.set('resolving');
     this._activeChainLinks.update(links =>
-      links.map(l => l.chainIndex === chainIndex ? { ...l, resolving: true } : l),
+      links.map(l => this.isDispatchingGenerationLink(l, chainIndex) ? { ...l, resolving: true } : l),
     );
   }
 
   applyChainSolved(chainIndex: number): void {
     const before = this._activeChainLinks();
-    const matched = before.some(l => l.chainIndex === chainIndex);
+    const matched = before.some(l => this.isDispatchingGenerationLink(l, chainIndex));
     this._activeChainLinks.update(links =>
-      links.filter(l => l.chainIndex !== chainIndex),
+      links.filter(l => !this.isDispatchingGenerationLink(l, chainIndex)),
     );
     if (!matched) {
       // L27 — server/client chain index drift: every CHAIN_SOLVING should
@@ -257,14 +290,36 @@ export class DuelEventProcessor {
       chainIndex, this._activeChainLinks().map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence, zoneId: l.zoneId })));
   }
 
+  /**
+   * Dense-chain fix (2026-06-12) — the clear is GENERATION-SCOPED, not a
+   * blanket wipe. The Nth dispatched END closes generation N-1 (FIFO queue
+   * ⇒ dispatch order = receipt order); links of a later generation were
+   * committed for the NEXT chain (its CHAINING/SOLVING received while this
+   * END was still queued) and MUST survive, otherwise the overlay has no
+   * link to drop at the next chain's SOLVED dispatch and the runner
+   * deadlocks on `isWaitingForOverlay`. Survivors ⇒ phase 'building' (the
+   * next chain is announced but not yet resolving — mirrors the server's
+   * container, which already holds those links at this point).
+   */
   applyChainEnd(): void {
-    this._chainPhase.set('idle');
-    this._activeChainLinks.set([]);
-    this.logger?.log(DuelLogCategory.PROC, 'applyChainEnd → phase=idle, links cleared');
+    const closedGeneration = this._dispatchedEndCount++;
+    const remaining = this._activeChainLinks().filter(l => (l.generation ?? 0) > closedGeneration);
+    this._activeChainLinks.set(remaining);
+    this._chainPhase.set(remaining.length > 0 ? 'building' : 'idle');
+    this.logger?.log(DuelLogCategory.PROC, 'applyChainEnd → phase=%s, gen %d closed, %d link(s) survive',
+      this._chainPhase(), closedGeneration, remaining.length);
   }
 
   /** Restore chain state from server (reconnect CHAIN_STATE message). */
   restoreChainState(links: ChainLinkState[], phase: 'idle' | 'building' | 'resolving'): void {
+    // Dense-chain fix — rebase the generation window. Restored links carry
+    // no `generation` (the server snapshot ships raw ChainingMsg data) and
+    // read as generation 0 via the `?? 0` fallbacks, so the counters must
+    // restart at 0 for the dispatch-side matching to find them. Both
+    // restore paths (PvP CHAIN_STATE, replay seek) wiped the queue first,
+    // so no stale END dispatch can close the rebased generation early.
+    this._chainGeneration = 0;
+    this._dispatchedEndCount = 0;
     this._activeChainLinks.set(links);
     this._chainPhase.set(phase);
     this._pendingChainEntry.set(null);
@@ -297,6 +352,8 @@ export class DuelEventProcessor {
     this._activeChainLinks.set([]);
     this._chainPhase.set('idle');
     this._pendingChainEntry.set(null);
+    this._chainGeneration = 0;
+    this._dispatchedEndCount = 0;
     // β.1 — drop boundary state silently. `reset()` is hard teardown
     // (duel destroy, fresh start) — the stream subscriber dies with the
     // same scope, so emitting `*Ended` here would just pollute a stream

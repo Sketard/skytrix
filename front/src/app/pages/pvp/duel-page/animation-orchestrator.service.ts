@@ -1903,9 +1903,16 @@ export class AnimationOrchestratorService {
     return result.isSingleLink ? 0 : exitDelay + this.chainPulseDuration() + this.ctx.scaledDuration(CHAIN_SOLVING_TAIL_MS);
   }
 
-  private handleChainSolved(msg: ChainSolvedMsg): 'async' {
+  private handleChainSolved(msg: ChainSolvedMsg): number | 'async' {
+    // Dense-chain fix (2026-06-12), garde aval — if no tracked link matches
+    // this SOLVED (link bookkeeping drifted: replay seek pruned it, or a
+    // regression of the cross-chain wipe class), the overlay's Effect A will
+    // never fire `onChainLinkResolved` → nothing flips `chainOverlayReady` →
+    // arming the wait would deadlock the runner on pause-external. Degrade
+    // to a sync step instead of waiting on a signal that cannot come.
+    const hasLink = this.dataSource.activeChainLinks().some(l => l.chainIndex === msg.chainIndex);
     this.dataSource.applyChainSolved(msg.chainIndex);
-    return this.chainManager.handleSolved();
+    return this.chainManager.handleSolved(hasLink);
   }
 
   private handleChainEnd(): number {

@@ -168,13 +168,22 @@ export class ChainResolutionManager implements ResetTarget {
    *  H1 — phase stays at `'resolving'` after this returns; only `applyChainEnd`
    *  flips it back to `'idle'`. The transition assertion reads
    *  `processor.chainPhase()` via `isResolving`, so callers MUST have
-   *  applied `dataSource.applyChainSolving` before calling this. */
-  handleSolved(): 'async' {
+   *  applied `dataSource.applyChainSolving` before calling this.
+   *
+   *  `hasOverlayWork=false` (dense-chain fix, 2026-06-12) — the caller
+   *  detected that no tracked link matches this SOLVED, so the overlay's
+   *  Effect A will never fire `onChainLinkResolved` and nothing will flip
+   *  `chainOverlayReady`. Arming `_waitingForOverlay` in that state is an
+   *  unconditional deadlock (the resume effect only reacts to ready
+   *  CHANGES). Degrade to a sync 0ms step instead — the solved count still
+   *  advances so banner/exit timing for later links stays coherent. */
+  handleSolved(hasOverlayWork = true): number | 'async' {
     this.assertTransition('SOLVED', this.isResolving,
       'CHAIN_SOLVED without prior CHAIN_SOLVING — events arrived out of order?');
     this.assertTransition('SOLVED', !this._waitingForOverlay,
       'CHAIN_SOLVED while still waiting for overlay from previous link');
     this._chainSolvedCount++;
+    if (!hasOverlayWork) return 0;
     this._waitingForOverlay = true;
     return 'async';
   }

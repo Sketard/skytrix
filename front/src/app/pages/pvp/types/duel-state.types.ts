@@ -24,6 +24,13 @@ export interface ChainLinkState {
   // (typically the activated card itself, discarded for cost) has left
   // the hand, so the badge is NOT placed on any remaining copy.
   handCopiesAtChaining?: number;
+  // Dense-chain fix (2026-06-12) — receipt-side chain generation (count of
+  // MSG_CHAIN_END received when the link was built). `applyChainEnd` for
+  // chain N only clears links of generation ≤ N, so a link of chain N+1
+  // committed by sync receipt before chain N's END dispatches from the
+  // animation queue survives the clear. Absent (legacy/restored links)
+  // reads as generation 0.
+  generation?: number;
 }
 
 export const EMPTY_DUEL_STATE: DuelState = {
