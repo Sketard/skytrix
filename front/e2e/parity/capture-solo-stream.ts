@@ -31,6 +31,9 @@ export interface CaptureSoloStreamOptions {
   /** Max wait time for the duel to end after navigation. Default 60s —
    *  generous for replays with long resolutions even at tape speed. */
   endTimeoutMs?: number;
+  /** Max wait for the client animation queue to drain AFTER tape
+   *  exhaustion. Default 30s ; dense fixtures need minutes. */
+  queueDrainTimeoutMs?: number;
 }
 
 export interface CapturedSoloStream {
@@ -103,7 +106,10 @@ export async function captureSoloStream(
 
   // Belt-and-braces — wait for the queue to fully drain so the final
   // events have been pushed to the stream after the last tape response.
-  await waitForQueueDrain(page, 10_000);
+  // Dense fixtures (D/D/D: 24 chains queued at tape speed) need far more
+  // than the original 10s — the client still ANIMATES everything the tape
+  // raced through, and events only reach the stream at dispatch.
+  await waitForQueueDrain(page, opts.queueDrainTimeoutMs ?? 30_000);
 
   // Step 6 — Capture the stream
   const stream = await page.evaluate(() => {
@@ -215,17 +221,36 @@ async function waitForTapeExhaustion(
 
 async function waitForQueueDrain(page: Page, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
+  // Étape 2 (2026-06-12) — STABILITY criterion, not an instant one. The
+  // queue passes through `empty + idle` BETWEEN chains while the client is
+  // still minutes behind the (already exhausted) tape — an instant check
+  // captured the D/D/D at 122/858 stream events. Require the drained state
+  // AND a stable stream length across 3 consecutive 1s probes.
+  let stableCount = 0;
+  let lastStreamLen = -1;
   while (Date.now() < deadline) {
-    const drained = await page.evaluate(() => {
+    const probe = await page.evaluate(() => {
       const w = window as unknown as {
-        __skytrixDebug?: { snapshot?: () => { animationQueue: unknown[]; chain: { phase: string } } };
+        __skytrixDebug?: {
+          snapshot?: () => { animationQueue: unknown[]; chain: { phase: string } };
+          captureEventStream?: () => readonly unknown[];
+        };
       };
       const snap = w.__skytrixDebug?.snapshot?.();
-      if (!snap) return false;
-      return snap.animationQueue.length === 0 && snap.chain.phase === 'idle';
+      if (!snap) return null;
+      return {
+        drained: snap.animationQueue.length === 0 && snap.chain.phase === 'idle',
+        streamLen: w.__skytrixDebug?.captureEventStream?.().length ?? -1,
+      };
     });
-    if (drained) return;
-    await page.waitForTimeout(100);
+    if (probe?.drained && probe.streamLen === lastStreamLen) {
+      stableCount++;
+      if (stableCount >= 3) return;
+    } else {
+      stableCount = 0;
+    }
+    lastStreamLen = probe?.streamLen ?? -1;
+    await page.waitForTimeout(1_000);
   }
   // Not fatal — the stream may still be useful even if queue didn't drain
   // perfectly. The test will surface real divergences regardless.

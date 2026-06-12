@@ -40,6 +40,9 @@ export interface CaptureReplayStreamOptions {
    *  Default 30s — generous because some replays have long final
    *  resolutions even at skip-to-end. */
   endTimeoutMs?: number;
+  /** F10-bis — prompt auto-dismiss override (dev-only surface).
+   *  Default 100ms (harness speed) ; pass null for the product 1.2s. */
+  promptDelayMs?: number | null;
 }
 
 export interface CapturedReplayStream {
@@ -80,6 +83,12 @@ export async function captureReplayStream(
   // chunks, so we may need to wait a moment). Short replays may have as
   // few as 5-7 states, hence the low minimum threshold.
   await waitForBoardStates(session, 3);
+
+  // F10-bis (2026-06-12) — harness speed-up : the product prompt
+  // auto-dismiss is a fixed 1.2s ; dense fixtures (273 prompts on the
+  // D/D/D) would take ~10min per capture. 100ms keeps the full pipeline
+  // exercised (the BS-at-prompt dispatch included) at harness speed.
+  await driver.setPromptDelay(opts.promptDelayMs ?? 100);
 
   if (fast) {
     // Disable animations to skip the visual pipeline. The orchestrator

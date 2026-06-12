@@ -86,6 +86,13 @@ const VOLATILE_FIELDS = [
  */
 function isFilteredOut(event: RawStreamEvent): boolean {
   if (event.kind === 'animation') return true;
+  // Étape 2 (2026-06-12) — HARNESS artifact, not a pipeline divergence :
+  // the SOLO capture runs with a server-side tape player that answers
+  // SELECT_* before they reach the client, so the SOLO stream never sees
+  // the SELECT_CARD push the live PvP wire produces ; the replay mock
+  // dispatches it normally. Filter on both sides. Lift this if tape mode
+  // ever forwards prompts (parity spec doc § Backlog futur).
+  if (event.type === 'SELECT_CARD') return true;
   // v4 Phase 0 — boundary events have structurally different emission
   // patterns between Replay (re-emitted per PreComputedState) and SOLO
   // (emitted on actual delta). Defer to Phase 1+ for the pipeline fix.
@@ -137,10 +144,59 @@ function stripVolatileFields(event: RawStreamEvent): NormalizedEvent {
  * Returns a plain array suitable for `expect(a).toEqual(b)`.
  */
 export function normalizeStream(stream: readonly unknown[]): NormalizedEvent[] {
-  return stream
+  const normalized = stream
     .filter((e): e is RawStreamEvent => typeof e === 'object' && e !== null)
     .filter(e => !isFilteredOut(e))
     .map(stripVolatileFields);
+  // Étape 2 (2026-06-12) — drop the leading initial-draw run. The replay
+  // baseline `seekToOffset(0)` restores nav[0] via its boardStateSnapshot
+  // and never DISPATCHES entry 0's MSG_DRAWs (by design since Phase 5 —
+  // the viewer opens on the post-draw board) ; the SOLO client animates
+  // them. Comparing them is comparing the bootstrap UX choice, not the
+  // pipeline. Only the head-of-stream consecutive MSG_DRAW run is dropped
+  // — mid-duel draws stay compared.
+  let firstNonDraw = 0;
+  while (firstNonDraw < normalized.length && normalized[firstNonDraw]['type'] === 'MSG_DRAW') firstNonDraw++;
+  return canonicalizeResolvingWindows(normalized.slice(firstNonDraw));
+}
+
+/**
+ * Étape 2 (2026-06-12) — canonicalize the event order INSIDE each chain
+ * resolving window ([MSG_CHAIN_SOLVING .. MSG_CHAIN_END]).
+ *
+ * The order in which buffered board events drain relative to
+ * MSG_CHAIN_SOLVED is PACING-dependent, not a contract : with a human /
+ * auto-dismiss pause the queue empties and the 4a rescue drains the buffer
+ * BEFORE the SOLVED dispatch ; when the server floods (tape pacing, fast
+ * responder) the SOLVING banner keeps the queue busy and the drain happens
+ * via the overlay AFTER SOLVED. Both are legal executions of the same
+ * contract (CLAUDE.md "Mid-chain buffer drain rescue"). The gate therefore
+ * compares each window as a CANONICALLY-ORDERED MULTISET : content and
+ * multiplicities stay strict, intra-window order does not. The window
+ * head (first SOLVING) and the CHAIN_END stay anchored.
+ */
+function canonicalizeResolvingWindows(events: NormalizedEvent[]): NormalizedEvent[] {
+  const out: NormalizedEvent[] = [];
+  let i = 0;
+  while (i < events.length) {
+    const e = events[i];
+    if (e['type'] !== 'MSG_CHAIN_SOLVING') {
+      out.push(e);
+      i++;
+      continue;
+    }
+    // Window: from this SOLVING (kept as anchor) to MSG_CHAIN_END
+    // (exclusive ; kept as anchor) — or end-of-stream for truncated
+    // captures (duel cut mid-chain).
+    let j = i + 1;
+    while (j < events.length && events[j]['type'] !== 'MSG_CHAIN_END') j++;
+    const window = events.slice(i + 1, j);
+    window.sort((a, b) => JSON.stringify(a) < JSON.stringify(b) ? -1 : JSON.stringify(a) > JSON.stringify(b) ? 1 : 0);
+    out.push(e, ...window);
+    if (j < events.length) out.push(events[j]); // the CHAIN_END anchor
+    i = j + 1;
+  }
+  return out;
 }
 
 /**

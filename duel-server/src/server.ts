@@ -92,6 +92,7 @@ import {
   createForkSoloSession,
 } from './fork-handlers.js';
 import { createTapePlayer, type SessionWithTapePlayer } from './tape-player.js';
+import { normalizeReplayDeck } from './deck-load-order.js';
 import type { WorkerReplayPayload } from './types.js';
 import {
   configureClientMessageRouter,
@@ -607,7 +608,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       throw err;
     }
 
-    let parsed: { replayId: string };
+    let parsed: { replayId: string; responseDelayMs?: number };
     try {
       parsed = JSON.parse(body);
     } catch {
@@ -657,7 +658,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
         { playerId: player1Id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
         { playerId: player2Id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
       ],
-      decks: replay.decks,
+      // Étape 2 (2026-06-12) — normalise to the 'verbatim' pile convention,
+      // exactly like INIT_REPLAY/INIT_FORK do (`normalizeReplayDeck` in the
+      // worker). Legacy/imported replays (deckOrder absent — e.g. the D/D/D
+      // raw-replay import) store the pile REVERSED ; loading them verbatim
+      // under skipShuffle inverted the draws and the tape stalled on the
+      // first divergent prompt window (RETRY at cursor 7 on the D/D/D).
+      decks: [
+        normalizeReplayDeck(replay.decks[0], replay.metadata.deckOrder),
+        normalizeReplayDeck(replay.decks[1], replay.metadata.deckOrder),
+      ],
       soloMode: true,
       playerUsernames: replay.metadata.playerUsernames,
       deckNames: replay.metadata.deckNames,
@@ -669,7 +679,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     // sees it on the first SELECT_* broadcast.
     // firstPlayer=0: the precompute pipeline always uses P0 as OCGCore
     // first, which matches our SOLO bootstrap below (firstPlayer=0).
-    session.tapePlayer = createTapePlayer(replay.playerResponses, replay.seed, 0);
+    // Étape 2 (2026-06-12) — default 250ms human-like pacing so the client
+    // animation queue can empty at prompts the way it does for a real
+    // player / the replay auto-dismiss. Without it the worker floods the
+    // queue and the buffer-drain ORDER around MSG_CHAIN_SOLVED diverges
+    // from replay (pacing artifact). `responseDelayMs: 0` in the request
+    // body restores the historical flood pacing.
+    const responseDelayMs = typeof parsed.responseDelayMs === 'number' ? parsed.responseDelayMs : 250;
+    session.tapePlayer = createTapePlayer(replay.playerResponses, replay.seed, 0, responseDelayMs);
 
     // SOLO multiplex : 1 token only. The single WS multiplexes both
     // perspectives via slot routing (see CLAUDE.md "Modes — vue

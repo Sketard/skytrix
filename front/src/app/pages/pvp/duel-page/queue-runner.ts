@@ -224,6 +224,24 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
   if (input.deferredSolvingEntry !== null) {
     return { action: 'consume-deferred', entry: input.deferredSolvingEntry };
   }
+  // Étape 2 (2026-06-12) — MSG_CHAIN_END at the queue head with undrained
+  // buffered events : drain FIRST. Live-mode pushes deliver a post-SOLVED
+  // straggler (e.g. self-destroy MSG_MOVE) and MSG_CHAIN_END in the same
+  // WS batch, so the queue never empties and the 4a rescue below never
+  // fires — pre-fix, the CHAIN_END dispatch wiped the buffer
+  // (`chainManager.handleEnd → reset`) and the straggler was silently
+  // lost : no animation, no game-log line (the next BOARD_STATE healed
+  // the board, masking it). Replay never hits this case — its nav
+  // segmentation holds CHAIN_END until `chainPhase=idle`, so 4a drains
+  // first. Surfaced by the SOLO↔Replay parity harness on the radiant
+  // fixture (stream diff : straggler present in replay, absent in SOLO).
+  if (
+    input.isResolving && input.hasBufferedEvents
+    && input.queue.length > 0 && !('kind' in input.queue[0])
+    && input.queue[0].type === 'MSG_CHAIN_END'
+  ) {
+    return { action: 'pre-replay-buffer' };
+  }
   if (input.queue.length > 0) {
     return { action: 'dequeue', entry: input.queue[0] };
   }

@@ -52,6 +52,15 @@ export interface TapePlayerState {
    *  pre-duel RPS / SELECT_FIRST_PLAYER flow by calling `startDuelWithOrder`
    *  directly. */
   readonly firstPlayer: 0 | 1;
+  /** Étape 2 (2026-06-12) — pacing delay (ms) before each auto-response.
+   *  0 = setImmediate (historical behavior). A small human-like delay
+   *  (250ms default at the endpoint) lets the client animation queue
+   *  empty at prompts the way it does for a real player / the replay
+   *  auto-dismiss — without it the worker floods the queue and the
+   *  buffer-drain ORDER around MSG_CHAIN_SOLVED diverges from replay
+   *  (pacing artifact, both orders legal ; the parity diff should not
+   *  carry it). */
+  readonly responseDelayMs: number;
 }
 
 /** Marker injected on the session to identify a tape-player-driven duel.
@@ -67,6 +76,7 @@ export function createTapePlayer(
   playerResponses: readonly CapturedResponse[],
   seed: readonly string[],
   firstPlayer: 0 | 1,
+  responseDelayMs = 0,
 ): TapePlayerState {
   return {
     playerResponses,
@@ -74,6 +84,7 @@ export function createTapePlayer(
     consumed: 0,
     seed,
     firstPlayer,
+    responseDelayMs,
   };
 }
 
@@ -122,7 +133,13 @@ export function scheduleAutoResponse(
   // setImmediate so the prompt fully propagates through `broadcastMessage`
   // before we dispatch the response. Matches the natural ordering a real
   // PvP would have (prompt arrives at client → client thinks → response).
-  setImmediate(() => {
+  // With `responseDelayMs > 0` (étape 2), a real timer replaces the
+  // immediate tick — human-like pacing, see TapePlayerState docblock.
+  const fire = (cb: () => void): void => {
+    if (tape.responseDelayMs > 0) setTimeout(cb, tape.responseDelayMs);
+    else setImmediate(cb);
+  };
+  fire(() => {
     // The session might have ended during the immediate tick (e.g. DUEL_END
     // fired from another path). Guard.
     if (session.endedAt || !session.worker) {

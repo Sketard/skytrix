@@ -201,6 +201,53 @@ describe('QueueRunner.decideNextStep', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Étape 2 (2026-06-12) — CHAIN_END head with undrained buffer drains first
+  // -------------------------------------------------------------------------
+
+  describe('CHAIN_END head vs buffered straggler (étape 2, 2026-06-12)', () => {
+    const chainEnd = (): GameEvent => ({ type: 'MSG_CHAIN_END' } as unknown as GameEvent);
+
+    it('drains the buffer BEFORE dequeuing a MSG_CHAIN_END head (live straggler loss fix)', () => {
+      // Live pushes deliver [straggler MOVE → buffered, MSG_CHAIN_END] in
+      // one WS batch : the queue never empties, the 4a rescue never fires,
+      // and pre-fix the CHAIN_END dispatch wiped the buffer silently.
+      const step = decideNextStep(baseInputs({
+        isResolving: true,
+        hasBufferedEvents: true,
+        queue: [chainEnd()],
+      }));
+      expect(step.action).toBe('pre-replay-buffer');
+    });
+
+    it('dequeues MSG_CHAIN_END normally when the buffer is empty', () => {
+      const step = decideNextStep(baseInputs({
+        isResolving: true,
+        hasBufferedEvents: false,
+        queue: [chainEnd()],
+      }));
+      expect(step.action).toBe('dequeue');
+    });
+
+    it('dequeues MSG_CHAIN_END normally when not resolving (defensive)', () => {
+      const step = decideNextStep(baseInputs({
+        isResolving: false,
+        hasBufferedEvents: true,
+        queue: [chainEnd()],
+      }));
+      expect(step.action).toBe('dequeue');
+    });
+
+    it('a non-CHAIN_END head still dequeues even with a buffered backlog', () => {
+      const step = decideNextStep(baseInputs({
+        isResolving: true,
+        hasBufferedEvents: true,
+        queue: [move()],
+      }));
+      expect(step.action).toBe('dequeue');
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Empty queue — three terminal branches
   // -------------------------------------------------------------------------
 

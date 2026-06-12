@@ -42,6 +42,11 @@ interface ParityFixture {
    *  bootstraps from P0 → use perspective 0 on the replay too for direct
    *  comparison. */
   replayPerspective: 0 | 1;
+  /** Wall-clock budgets for dense fixtures (defaults suit the small
+   *  radiant fixture) : replay-side natural-end wait / SOLO-side
+   *  post-tape queue drain. */
+  endTimeoutMs?: number;
+  queueDrainTimeoutMs?: number;
 }
 
 /**
@@ -60,6 +65,21 @@ const PARITY_FIXTURES: readonly ParityFixture[] = [
     replayId: '18a55f97-7076-4716-9032-dcf88c9a86f4',
     description: 'Radiant Typhoon Vision discard cost + self-destroy chain.',
     replayPerspective: 0,
+  },
+  {
+    id: 'ddd-imported-rnd',
+    // Étape 2 (2026-06-12) — the densest replay of Axel's DB : the D/D/D
+    // raw-replay import (830 stream messages, 67 nav entries, 24 chains,
+    // 273 prompts). The real crash-test for chain buffering, XYZ/Link/
+    // Fusion travels and the F10-bis prompt-batch dispatch.
+    replayId: '03a953d9-1904-473b-8d5b-5ede24c007e9',
+    description: 'D/D/D Imported R&D turn-1 mega combo (24 chains, 273 prompts).',
+    replayPerspective: 0,
+    endTimeoutMs: 480_000,
+    // The tape exhausts in ~70s but the CLIENT then animates the 24-chain
+    // backlog for several minutes — the stability-based drain criterion
+    // needs the full budget.
+    queueDrainTimeoutMs: 420_000,
   },
 ];
 
@@ -88,11 +108,16 @@ test.describe('SOLO↔Replay event stream parity', () => {
         // roughly in half. If one throws, the other still completes
         // before Promise.all rejects.
         const [soloResult, replayResult] = await Promise.all([
-          captureSoloStream(soloCtx, { replayId: fixture.replayId }),
+          captureSoloStream(soloCtx, {
+            replayId: fixture.replayId,
+            endTimeoutMs: fixture.endTimeoutMs,
+            queueDrainTimeoutMs: fixture.queueDrainTimeoutMs,
+          }),
           captureReplayStream(replayCtx, {
             replayId: fixture.replayId,
             perspective: fixture.replayPerspective,
             tag: `parity-${fixture.id}-replay`,
+            endTimeoutMs: fixture.endTimeoutMs,
           }),
         ]);
 
