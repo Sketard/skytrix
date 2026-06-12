@@ -107,6 +107,7 @@ test.describe('SOLO↔Replay event stream parity', () => {
         // Run in parallel — each path is independent. Cuts wall-clock
         // roughly in half. If one throws, the other still completes
         // before Promise.all rejects.
+        const tFixtureStart = Date.now();
         const [soloResult, replayResult] = await Promise.all([
           captureSoloStream(soloCtx, {
             replayId: fixture.replayId,
@@ -124,7 +125,8 @@ test.describe('SOLO↔Replay event stream parity', () => {
         // eslint-disable-next-line no-console
         console.log(
           `[parity:${fixture.id}] SOLO captured ${soloResult.eventCount} events, ` +
-          `Replay captured ${replayResult.eventCount} events`,
+          `Replay captured ${replayResult.eventCount} events ` +
+          `(both captures: ${((Date.now() - tFixtureStart) / 1000).toFixed(1)}s wall-clock)`,
         );
 
         const soloNormalized = normalizeStream(soloResult.stream);

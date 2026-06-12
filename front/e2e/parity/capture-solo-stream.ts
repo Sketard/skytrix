@@ -92,6 +92,11 @@ export async function captureSoloStream(
   const soloTokensKey = `solo-duel-tokens-${duelId}`;
   await page.addInitScript(({ key, payload }: { key: string; payload: string }) => {
     sessionStorage.setItem(key, payload);
+    // Étape 2 (2026-06-12) — dev-only 5× animation speed (see
+    // devAnimSpeedMultiplier). The parity gate compares stream CONTENT,
+    // not timing ; full-speed animations on dense fixtures (D/D/D :
+    // 24 chains) made the SOLO leg take 10+ minutes.
+    localStorage.setItem('duel-anim-speed', '0.2');
   }, { key: soloTokensKey, payload: JSON.stringify({ wsToken1, activePlayer: 0, decklistId: null }) });
 
   // Step 3 — Navigate to the duel
@@ -102,7 +107,12 @@ export async function captureSoloStream(
 
   // Step 5 — Wait for tape exhaustion (server has dispatched all
   // captured responses to the worker). NOT MSG_WIN — see docstring.
+  // Étape 2 — phase timers : the wall-clock is dominated by FIXED waits
+  // (tape pacing × responses), not by animation durations — log the split
+  // so speed-tuning targets the right knob.
+  const tTapeStart = Date.now();
   await waitForTapeExhaustion(ctx, duelId, endTimeout);
+  const tTapeDone = Date.now();
 
   // Belt-and-braces — wait for the queue to fully drain so the final
   // events have been pushed to the stream after the last tape response.
@@ -110,6 +120,9 @@ export async function captureSoloStream(
   // than the original 10s — the client still ANIMATES everything the tape
   // raced through, and events only reach the stream at dispatch.
   await waitForQueueDrain(page, opts.queueDrainTimeoutMs ?? 30_000);
+  const tDrained = Date.now();
+  // eslint-disable-next-line no-console
+  console.log(`[parity:solo] timings tape=${((tTapeDone - tTapeStart) / 1000).toFixed(1)}s drain=${((tDrained - tTapeDone) / 1000).toFixed(1)}s`);
 
   // Step 6 — Capture the stream
   const stream = await page.evaluate(() => {

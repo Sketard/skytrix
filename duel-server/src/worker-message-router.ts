@@ -355,7 +355,17 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
       send(session, opponentOfTarget, { type: 'WAITING_RESPONSE', targetPlayer: opponentOfTarget });
     }
     scheduleTimerStart(session, targetPlayer);
-    startInactivityTimer(session, targetPlayer);
+    // Étape 2 (2026-06-12) — no inactivity pressure on tape-driven sessions.
+    // The tape answers every prompt except the LAST one (the original duel
+    // ended by surrender/timeout, so the final IDLECMD has no recorded
+    // response) ; the inactivity forfeit then fired while the CLIENT was
+    // still animating its multi-minute backlog (D/D/D : 24 chains at tape
+    // speed), and the DUEL_END wiped the remaining animation queue —
+    // truncating the parity capture at 122/557 events. The harness owns
+    // the session teardown (page close → SOLO orphan deadline).
+    if (!hasTapePlayer(session)) {
+      startInactivityTimer(session, targetPlayer);
+    }
     // P0-3bis.3 — a fresh IDLECMD/BATTLECMD = new rollback boundary.
     if (message.type === 'SELECT_IDLECMD' || message.type === 'SELECT_BATTLECMD') {
       session.cancelTargetPrompt[targetPlayer] = null;

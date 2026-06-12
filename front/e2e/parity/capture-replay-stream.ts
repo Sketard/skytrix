@@ -89,7 +89,12 @@ export async function captureReplayStream(
   // D/D/D) would take ~10min per capture. 100ms keeps the full pipeline
   // exercised (the BS-at-prompt dispatch included) at harness speed.
   await driver.setPromptDelay(opts.promptDelayMs ?? 100);
+  // Étape 2 — dev-only 5× animation speed. The configure closures read
+  // `devAnimSpeedMultiplier()` per call, so setting the key on the live
+  // page takes effect immediately (no reload needed).
+  await session.page.evaluate(() => localStorage.setItem('duel-anim-speed', '0.2'));
 
+  const tPlayStart = Date.now();
   if (fast) {
     // Disable animations to skip the visual pipeline. The orchestrator
     // still runs through every event (so `_eventStream` accumulates
@@ -121,7 +126,13 @@ export async function captureReplayStream(
 
   // Even with skipEnd, the pipeline may still have a few async animations
   // flushing. Wait for the queue to drain.
+  const tPlayEnd = Date.now();
   await waitForQueueDrain(session, endTimeout);
+  // Étape 2 — phase timers (cf. capture-solo-stream) : playback wall-clock
+  // is dominated by PLAYBACK_INTERVAL (500ms/nav entry) + the prompt
+  // auto-dismiss (promptDelayMs × prompts), NOT by animation durations.
+  // eslint-disable-next-line no-console
+  console.log(`[parity:replay] timings playback=${((tPlayEnd - tPlayStart) / 1000).toFixed(1)}s drain=${((Date.now() - tPlayEnd) / 1000).toFixed(1)}s`);
 
   // Capture the stream snapshot.
   const stream = await session.page.evaluate(() => {

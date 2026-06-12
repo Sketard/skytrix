@@ -36,7 +36,7 @@ import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
 import { ScopeResetDispatcher } from '../projections';
-import { DuelContext } from './duel-context';
+import { DuelContext, devAnimSpeedMultiplier } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { BattleAnimationTracker } from './battle-animation-tracker';
 import { LpAnimationTracker } from './lp-animation-tracker';
@@ -607,7 +607,9 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     });
     this.duelCtx.configure({
       ownPlayerIndex: () => this.ownPlayerIndex(),
-      speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
+      // Étape 2 (2026-06-12) — composed with the dev-only localStorage
+      // override (1 in prod ; see devAnimSpeedMultiplier docblock).
+      speedMultiplier: () => (this.activationMode() === 'off' ? 0.5 : 1) * devAnimSpeedMultiplier(),
       isBoardActive: () => this.roomState() === 'active',
     });
     // γ commit 6 — `registerContainer` moved to `PvpBoardContainerComponent.ngAfterViewInit`,

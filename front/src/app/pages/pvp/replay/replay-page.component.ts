@@ -57,7 +57,7 @@ import { AnimationOrchestratorService } from '../duel-page/animation-orchestrato
 import { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
 import { DuelToastService } from '../duel-page/duel-toast.service';
 import { ANIMATION_DATA_SOURCE } from '../duel-page/animation-data-source';
-import { DuelContext } from '../duel-page/duel-context';
+import { DuelContext, devAnimSpeedMultiplier } from '../duel-page/duel-context';
 import { DuelLogger } from '../duel-page/duel-logger';
 import { BattleAnimationTracker } from '../duel-page/battle-animation-tracker';
 import { LpAnimationTracker } from '../duel-page/lp-animation-tracker';
@@ -906,7 +906,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
     this.duelCtx.configure({
       ownPlayerIndex: () => this.perspectiveIndex(),
-      speedMultiplier: () => 1,
+      // Étape 2 (2026-06-12) — dev-only localStorage override (1 in prod).
+      speedMultiplier: () => devAnimSpeedMultiplier(),
       isBoardActive: () => true,
     });
     // F1/F6 (2026-06-06) — single source of truth for perspective. The mock

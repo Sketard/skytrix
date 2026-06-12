@@ -1,7 +1,29 @@
-import { inject, Injectable, signal, type Signal } from '@angular/core';
+import { inject, Injectable, isDevMode, signal, type Signal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { ReducedMotionService } from '../../../services/reduced-motion.service';
+
+/**
+ * Étape 2 (2026-06-12) — dev-only animation speed override, read from
+ * `localStorage['duel-anim-speed']` (same opt-in surface as
+ * `duel-log-categories`). The whole timing system is built to scale —
+ * `scaledDuration(base, min)` floors per animation, `safetyTimeout`
+ * stretches guards — so a 0.2 multiplier plays animations 5× faster
+ * without breaking invariants. Used by the parity / visual-pass harnesses
+ * to play dense replays (D/D/D : 24 chains) in minutes. Returns 1 in
+ * production builds and for any absent/invalid value ; clamped to
+ * [0.05, 10] so a typo cannot zero-out or freeze the pipeline. The
+ * host components COMPOSE it into their `configure({ speedMultiplier })`
+ * closure (multiplicative), so per-page semantics stay untouched.
+ */
+export function devAnimSpeedMultiplier(): number {
+  if (!isDevMode()) return 1;
+  const raw = localStorage.getItem('duel-anim-speed');
+  if (!raw) return 1;
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(10, Math.max(0.05, parsed));
+}
 
 /**
  * Component-level context for the animation pipeline.
