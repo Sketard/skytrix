@@ -463,6 +463,83 @@ describe('ReplayTransportService — auto-resume + lifecycle', () => {
 });
 
 // =============================================================================
+// F22 (2026-06-12) — a prompt mid-entry must not consume a nav index
+// -----------------------------------------------------------------------------
+// Repro of f10-parity-investigation-2026-06-12.md finding 1 : every prompt
+// auto-dismiss resumed via `doStepForward`, whose unconditional increment
+// burned ONE NAV INDEX PER PROMPT. On prompt-dense replays `currentIndex`
+// hit `computedUpTo` while the message cursor was mid-chain →
+// `scheduleNext` boundary-paused → playback froze mid-chain, reported as
+// end-of-replay, Play button dead. The fix : `currentSpanUnfinished()`
+// resumes the CURRENT entry's span without incrementing, in
+// doStepForward + the scheduleNext/startPlayback boundary guards + atEnd.
+// =============================================================================
+
+describe('ReplayTransportService — F22 prompt mid-entry vs nav index (2026-06-12)', () => {
+  /** 3 entries with REAL message spans : entry 0 = msgs [0..5), entry 1 =
+   *  [5..10), entry 2 = [10..20). `messageOffset` = one past the entry's
+   *  last message (the precompute records it at flush). */
+  function setupSpans(): Setup & { cursorRef: { v: number } } {
+    const nav: ReplayStreamNavEntry[] = [
+      { ...stubState('a'), messageOffset: 5 },
+      { ...stubState('b'), messageOffset: 10 },
+      { ...stubState('c'), messageOffset: 20 },
+    ];
+    const s = setup({ states: nav, computedUpTo: 2 });
+    const cursorRef = { v: 0 };
+    s.mockConn.messageCursor.and.callFake(() => cursorRef.v);
+    s.mockConn.dispatchNext.and.callFake(() => { cursorRef.v++; return true; });
+    return { ...s, cursorRef };
+  }
+
+  it('STALL REPRO — maybeAdvance at currentIndex===computedUpTo with an unfinished span resumes the dispatch instead of boundary-pausing', () => {
+    const { svc, cursorRef } = setupSpans();
+    // The state the prompt auto-response resumes into : playback active,
+    // index already at the last computed entry, cursor mid-span (12/20).
+    cursorRef.v = 12;
+    svc.currentIndex.set(2);
+    svc.isPlaying.set(true);
+
+    svc.maybeAdvance();
+
+    expect(svc.isPlaying()).withContext('must NOT boundary-pause while the span is unfinished').toBeTrue();
+    expect(svc.pausedAtBoundary()).toBeFalse();
+    expect(svc.currentIndex()).withContext('resuming a span must not consume a nav index').toBe(2);
+    expect(cursorRef.v).withContext('the remaining span messages must dispatch').toBe(20);
+  });
+
+  it('a finished span advances the index on the NEXT tick only (one entry per increment)', fakeAsync(() => {
+    const { svc, cursorRef } = setupSpans();
+    // Mid-span of entry 1 (cursor 6, span ends at 10) — e.g. a prompt at
+    // message 5 was just auto-answered.
+    cursorRef.v = 6;
+    svc.currentIndex.set(1);
+    svc.isPlaying.set(true);
+
+    svc.maybeAdvance();
+    expect(svc.currentIndex()).withContext('resume tick finishes entry 1 without incrementing').toBe(1);
+    expect(cursorRef.v).toBe(10);
+
+    // The continuation timer then advances to entry 2 normally.
+    tick(500);
+    expect(svc.currentIndex()).toBe(2);
+    expect(cursorRef.v).withContext('entry 2 span dispatched after the increment').toBe(20);
+  }));
+
+  it('Play button works when paused mid-span at the last index (pre-fix: dead button)', () => {
+    const { svc, cursorRef } = setupSpans();
+    cursorRef.v = 12;
+    svc.currentIndex.set(2);
+    // Not playing — the frozen state the bug used to leave behind.
+
+    svc.togglePlay();
+
+    expect(svc.isPlaying()).withContext('atEnd/startPlayback must treat mid-span as resumable').toBeTrue();
+    expect(cursorRef.v).withContext('togglePlay resumes the span').toBe(20);
+  });
+});
+
+// =============================================================================
 // seekToTurn
 // =============================================================================
 

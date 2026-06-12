@@ -249,10 +249,40 @@ export class ReplayTransportService {
     this.clearPlaybackTimer();
   }
 
-  /** True when the cursor has reached the last computed state. */
+  /** True when the cursor has reached the last computed state AND that
+   *  state's message span is fully dispatched (F22 — a mid-span pause at
+   *  the last index is NOT the end ; `togglePlay` must stay usable). */
   atEnd(): boolean {
     const upTo = this.getCfg().computedUpTo();
-    return upTo > 0 && this.currentIndex() >= upTo;
+    return upTo > 0 && this.currentIndex() >= upTo && !this.currentSpanUnfinished();
+  }
+
+  /**
+   * F22 (2026-06-12) — true when the CURRENT nav entry's message span is
+   * only partially dispatched, i.e. `dispatchMockUntilIndex` yielded at a
+   * SELECT_* inside the entry and the auto-response is resuming us.
+   *
+   * Load-bearing for the whole scheduler : pre-fix, every prompt
+   * auto-dismiss resumed through `doStepForward`, whose unconditional
+   * `currentIndex` increment consumed ONE NAV INDEX PER PROMPT. A nav
+   * entry can contain several prompts, so on prompt-dense replays the
+   * index hit `computedUpTo` while the message cursor was still
+   * mid-chain — `scheduleNext` took the boundary-pause branch, playback
+   * froze (MSG_CHAIN_SOLVING never dispatched), the UI reported
+   * end-of-replay and the Play button was dead (`startPlayback`
+   * early-return). Full trace :
+   * `_bmad-output/planning-artifacts/f10-parity-investigation-2026-06-12.md`
+   * finding 1.
+   *
+   * Only meaningful when animations are enabled — the animations-off
+   * path advances via `seekToOffset(index)`, which keeps index and
+   * cursor in lock-step by construction.
+   */
+  private currentSpanUnfinished(): boolean {
+    const c = this.getCfg();
+    if (!c.animationsEnabled()) return false;
+    const entry = c.mockConn.navIndex()[this.currentIndex()];
+    return entry !== undefined && c.mockConn.messageCursor() < entry.messageOffset;
   }
 
   // =============================================================================
@@ -262,7 +292,10 @@ export class ReplayTransportService {
   private startPlayback(): void {
     const c = this.getCfg();
     if (c.computedUpTo() <= 0) return;
-    if (this.currentIndex() >= c.computedUpTo()) return;
+    // F22 — `&& !currentSpanUnfinished()` : paused mid-span at the last
+    // computed index is resumable, not "at end" (pre-fix the Play button
+    // was dead in the frozen state this guard used to create).
+    if (this.currentIndex() >= c.computedUpTo() && !this.currentSpanUnfinished()) return;
     this.isPlaying.set(true);
 
     // A prompt may already be visible at the current index — let the
@@ -291,6 +324,17 @@ export class ReplayTransportService {
     // doStepForward shouldn't be called in that case — guard defensively.
     if (c.mockConn.pendingPrompt()) {
       this.schedulePromptDismiss();
+      return;
+    }
+
+    // F22 (2026-06-12) — resume the CURRENT entry's span without consuming
+    // a nav index. A prompt that yielded mid-entry resumes here after its
+    // auto-response ; incrementing would burn one index per prompt and
+    // desync index vs message cursor (see `currentSpanUnfinished`).
+    if (this.currentSpanUnfinished()) {
+      const idx = this.currentIndex();
+      this.dispatchMockUntilIndex(idx);
+      this.armContinuationTimer(idx);
       return;
     }
 
@@ -323,25 +367,32 @@ export class ReplayTransportService {
     // interval to avoid synchronous recursion.
     if (c.animationsEnabled()) {
       this.dispatchMockUntilIndex(nextIdx);
-      // F21 fix bis (2026-06-07) — if the dispatch loop didn't push any
-      // animation onto the queue (e.g. BOARD_STATE-only step) and there's
-      // no pending prompt, the `maybeAdvance` effect won't fire (none of
-      // busy/pendingPrompt/phaseAnnouncement/chainOverlayActive flips) and
-      // playback stalls silently. Re-schedule explicitly via setTimeout so
-      // the auto-play loop continues — but ONLY if there are still steps
-      // ahead, otherwise we'd loop on the boundary path. The timeout
-      // falls through to `scheduleNext` which re-checks the state and
-      // routes to either `doStepForward` (more to play), the boundary
-      // pause, or the pending-prompt branch.
-      const moreToPlay = nextIdx < c.computedUpTo();
-      if (moreToPlay && !c.mockConn.busy() && !c.mockConn.pendingPrompt()) {
-        this.playbackTimer = setTimeout(() => {
-          this.playbackTimer = null;
-          this.scheduleNext();
-        }, PLAYBACK_INTERVAL);
-      }
+      this.armContinuationTimer(nextIdx);
     } else {
       c.mockConn.seekToOffset(nextIdx);
+      this.playbackTimer = setTimeout(() => {
+        this.playbackTimer = null;
+        this.scheduleNext();
+      }, PLAYBACK_INTERVAL);
+    }
+  }
+
+  /**
+   * F21 fix bis (2026-06-07, extracted F22) — if the dispatch loop didn't
+   * push any animation onto the queue (e.g. BOARD_STATE-only step) and
+   * there's no pending prompt, the `maybeAdvance` effect won't fire (none
+   * of busy/pendingPrompt/phaseAnnouncement/chainOverlayActive flips) and
+   * playback stalls silently. Re-schedule explicitly via setTimeout so
+   * the auto-play loop continues — but ONLY if there are still steps
+   * ahead, otherwise we'd loop on the boundary path. The timeout falls
+   * through to `scheduleNext` which re-checks the state and routes to
+   * either `doStepForward` (more to play), the boundary pause, or the
+   * pending-prompt branch.
+   */
+  private armContinuationTimer(idx: number): void {
+    const c = this.getCfg();
+    const moreToPlay = idx < c.computedUpTo();
+    if (moreToPlay && !c.mockConn.busy() && !c.mockConn.pendingPrompt()) {
       this.playbackTimer = setTimeout(() => {
         this.playbackTimer = null;
         this.scheduleNext();
@@ -392,7 +443,12 @@ export class ReplayTransportService {
     const c = this.getCfg();
     if (c.mockConn.busy()) return;
 
-    if (this.currentIndex() >= c.computedUpTo()) {
+    // F22 — a prompt answered inside the LAST computed entry resumes here
+    // with `currentIndex === computedUpTo` while the entry's span is only
+    // partially dispatched. Boundary-pausing would freeze mid-entry ;
+    // fall through to `doStepForward`, whose resume branch finishes the
+    // span without consuming an index.
+    if (this.currentIndex() >= c.computedUpTo() && !this.currentSpanUnfinished()) {
       this.isPlaying.set(false);
       this.pausedAtBoundary.set(true);
       return;
