@@ -95,13 +95,17 @@ type StubRbs = {
   getSafetyTimeoutMsAssignOrder: number | null;
 };
 
-function makeStubRbs(dropOrphanedLocksCalls: { reason: string; order: number }[],
-                    setPostRequestStopWindowCalls: { value: boolean; order: number }[],
-                    nextOrder: () => number): StubRbs {
+function makeStubRbs(
+  dropOrphanedLocksCalls: { reason: string; order: number }[],
+  setPostRequestStopWindowCalls: { value: boolean; order: number }[],
+  nextOrder: () => number
+): StubRbs {
   const rbs: StubRbs = {
     commitUnlocked: (): void => undefined,
     lockZone: (): void => undefined,
-    attachFloatRegistry: (): void => { rbs.attachFloatRegistryCallOrder = nextOrder(); },
+    attachFloatRegistry: (): void => {
+      rbs.attachFloatRegistryCallOrder = nextOrder();
+    },
     // Default value mirroring the real `RenderedBoardStateService` field
     // assignment (`= () => LOCK_SAFETY_TIMEOUT_MS`). The orchestrator's
     // ctor effect MUST override this to `ctx.safetyTimeout(...)`.
@@ -148,7 +152,9 @@ class StubDataSource {
   dropOrphanedLocksCalls: { reason: string; order: number }[] = [];
   setPostRequestStopWindowCalls: { value: boolean; order: number }[] = [];
   private _nextOrder = 0;
-  nextOrder(): number { return this._nextOrder++; }
+  nextOrder(): number {
+    return this._nextOrder++;
+  }
 
   // 2026-06-05 (fix #2) — RBS held in a signal so a swap (mirror of SOLO
   // `bindSoloConnection` replacing the PvP-normal conn with a fresh
@@ -156,8 +162,12 @@ class StubDataSource {
   // observable via the `dataSource.renderedBoardState` getter. The
   // orchestrator's ctor effect tracks this signal and re-applies its
   // overrides on the new RBS.
-  readonly _rbsSignal = signal(makeStubRbs(this.dropOrphanedLocksCalls, this.setPostRequestStopWindowCalls, () => this.nextOrder()));
-  get renderedBoardState() { return this._rbsSignal(); }
+  readonly _rbsSignal = signal(
+    makeStubRbs(this.dropOrphanedLocksCalls, this.setPostRequestStopWindowCalls, () => this.nextOrder())
+  );
+  get renderedBoardState() {
+    return this._rbsSignal();
+  }
   swapRbs(): ReturnType<typeof makeStubRbs> {
     const fresh = makeStubRbs(this.dropOrphanedLocksCalls, this.setPostRequestStopWindowCalls, () => this.nextOrder());
     this._rbsSignal.set(fresh);
@@ -207,7 +217,10 @@ describe('AnimationOrchestratorService — C3 + C5 projection registry invariant
         { provide: MoveAnimationRouter, useClass: StubManager },
         { provide: BattleAnimationTracker, useClass: StubManager },
         { provide: TargetIndicatorManager, useClass: StubManager },
-        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        {
+          provide: BufferReplayBuilder,
+          useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) },
+        },
         { provide: CardTravelEngine, useValue: {} },
         { provide: BoardEffectsService, useValue: {} },
         { provide: FloatRegistryService, useClass: StubFloatRegistry },
@@ -283,7 +296,10 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
         { provide: MoveAnimationRouter, useClass: StubManager },
         { provide: BattleAnimationTracker, useClass: StubManager },
         { provide: TargetIndicatorManager, useClass: StubManager },
-        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        {
+          provide: BufferReplayBuilder,
+          useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) },
+        },
         { provide: CardTravelEngine, useValue: {} },
         { provide: BoardEffectsService, useValue: {} },
         { provide: FloatRegistryService, useClass: StubFloatRegistry },
@@ -300,15 +316,19 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
     // flux events. Booting the runner here is overkill — flip the underlying
     // `_running` signal directly as the minimal mutation for a guard-condition
     // spec. Field name pinned by `is-animating.projection.ts`.
-    const projection = (orch as unknown as {
-      isAnimating: { _running: { set: (v: boolean) => void } };
-    }).isAnimating;
+    const projection = (
+      orch as unknown as {
+        isAnimating: { _running: { set: (v: boolean) => void } };
+      }
+    ).isAnimating;
     projection._running.set(value);
   }
 
   it('returns true when chainPhase=idle AND !isAnimating (baseline)', () => {
     const orch = makeOrchestrator();
-    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as {
+      chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void };
+    };
     ds.chainPhase.set('idle');
     setAnimating(orch, false);
     expect(orch.isBoardStableForSwitch).toBeTrue();
@@ -316,7 +336,9 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
 
   it('returns true when chainPhase=building AND !isAnimating', () => {
     const orch = makeOrchestrator();
-    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as {
+      chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void };
+    };
     ds.chainPhase.set('building');
     setAnimating(orch, false);
     expect(orch.isBoardStableForSwitch).toBeTrue();
@@ -326,7 +348,9 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
     // Faimena scenario: chain resolving, runner paused on SELECT_CARD for the
     // other slot. The viewer MUST be able to switch to answer.
     const orch = makeOrchestrator();
-    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as {
+      chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void };
+    };
     ds.chainPhase.set('resolving');
     setAnimating(orch, false);
     expect(orch.isBoardStableForSwitch).toBeTrue();
@@ -334,13 +358,13 @@ describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)',
 
   it('returns false whenever isAnimating=true (regardless of phase)', () => {
     const orch = makeOrchestrator();
-    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as { chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void } };
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as {
+      chainPhase: { set: (p: 'idle' | 'building' | 'resolving') => void };
+    };
     setAnimating(orch, true);
     for (const phase of ['idle', 'building', 'resolving'] as const) {
       ds.chainPhase.set(phase);
-      expect(orch.isBoardStableForSwitch)
-        .withContext(`phase=${phase} isAnimating=true → must block`)
-        .toBeFalse();
+      expect(orch.isBoardStableForSwitch).withContext(`phase=${phase} isAnimating=true → must block`).toBeFalse();
     }
   });
 });
@@ -375,7 +399,10 @@ describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wi
         { provide: MoveAnimationRouter, useClass: StubManager },
         { provide: BattleAnimationTracker, useClass: StubManager },
         { provide: TargetIndicatorManager, useClass: StubManager },
-        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        {
+          provide: BufferReplayBuilder,
+          useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) },
+        },
         { provide: CardTravelEngine, useValue: {} },
         { provide: BoardEffectsService, useValue: {} },
         { provide: FloatRegistryService, useClass: StubFloatRegistry },
@@ -441,8 +468,12 @@ describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wi
     const newEvents = after.slice(before.length);
 
     // Ordering invariant : clear ran BEFORE the push.
-    expect(dropCountAtPush).withContext('dropOrphanedLocks must have fired before pushToStream').toBeGreaterThanOrEqual(1);
-    expect(postWindowOpenAtPush).withContext('setPostRequestStopWindow(true) must have fired before pushToStream').toBeTrue();
+    expect(dropCountAtPush)
+      .withContext('dropOrphanedLocks must have fired before pushToStream')
+      .toBeGreaterThanOrEqual(1);
+    expect(postWindowOpenAtPush)
+      .withContext('setPostRequestStopWindow(true) must have fired before pushToStream')
+      .toBeTrue();
     expect(pushSpy).toHaveBeenCalled();
 
     // P2 follow-up : the window is closed eagerly at the tail of
@@ -452,17 +483,17 @@ describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wi
     const windowCalls = ds.setPostRequestStopWindowCalls;
     expect(windowCalls.length).withContext('window must be both opened AND closed').toBeGreaterThanOrEqual(2);
     expect(windowCalls[windowCalls.length - 1].value)
-      .withContext('window must be closed (false) as the LAST call').toBeFalse();
+      .withContext('window must be closed (false) as the LAST call')
+      .toBeFalse();
 
     // Existing assertion : the event WAS pushed.
     const perspectiveEvents = newEvents.filter(
       (e): e is { kind: 'perspective'; type: 'PerspectiveSwitched'; from: 0 | 1; to: 0 | 1 } =>
-        (e as { kind?: string }).kind === 'perspective'
-        && (e as { type?: string }).type === 'PerspectiveSwitched',
+        (e as { kind?: string }).kind === 'perspective' && (e as { type?: string }).type === 'PerspectiveSwitched'
     );
     expect(perspectiveEvents.length).toBe(1);
     expect(perspectiveEvents[0]).toEqual(
-      jasmine.objectContaining({ kind: 'perspective', type: 'PerspectiveSwitched', from: 0, to: 1 }),
+      jasmine.objectContaining({ kind: 'perspective', type: 'PerspectiveSwitched', from: 0, to: 1 })
     );
   });
 });
@@ -500,7 +531,10 @@ describe('AnimationOrchestratorService — RBS config re-applied on swap (2026-0
         { provide: MoveAnimationRouter, useClass: StubManager },
         { provide: BattleAnimationTracker, useClass: StubManager },
         { provide: TargetIndicatorManager, useClass: StubManager },
-        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        {
+          provide: BufferReplayBuilder,
+          useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) },
+        },
         { provide: CardTravelEngine, useValue: {} },
         { provide: BoardEffectsService, useValue: {} },
         { provide: FloatRegistryService, useClass: StubFloatRegistry },
@@ -556,10 +590,15 @@ describe('AnimationOrchestratorService — RBS config re-applied on swap (2026-0
     void orch;
     TestBed.flushEffects();
     const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
-    const rbs = ds.renderedBoardState as unknown as { attachFloatRegistryCallOrder: number | null; getSafetyTimeoutMsAssignOrder: number | null };
+    const rbs = ds.renderedBoardState as unknown as {
+      attachFloatRegistryCallOrder: number | null;
+      getSafetyTimeoutMsAssignOrder: number | null;
+    };
 
     expect(rbs.attachFloatRegistryCallOrder).withContext('attachFloatRegistry must have fired').not.toBeNull();
-    expect(rbs.getSafetyTimeoutMsAssignOrder).withContext('getSafetyTimeoutMs must have been overridden').not.toBeNull();
+    expect(rbs.getSafetyTimeoutMsAssignOrder)
+      .withContext('getSafetyTimeoutMs must have been overridden')
+      .not.toBeNull();
     expect(rbs.attachFloatRegistryCallOrder!)
       .withContext('attachFloatRegistry must run BEFORE getSafetyTimeoutMs override')
       .toBeLessThan(rbs.getSafetyTimeoutMsAssignOrder!);
@@ -592,7 +631,10 @@ describe('AnimationOrchestratorService — inline replayBuffer latch reset (audi
         { provide: MoveAnimationRouter, useClass: StubManager },
         { provide: BattleAnimationTracker, useClass: StubManager },
         { provide: TargetIndicatorManager, useClass: StubManager },
-        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        {
+          provide: BufferReplayBuilder,
+          useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) },
+        },
         { provide: CardTravelEngine, useValue: {} },
         { provide: BoardEffectsService, useValue: {} },
         { provide: FloatRegistryService, useClass: StubFloatRegistry },
@@ -606,7 +648,10 @@ describe('AnimationOrchestratorService — inline replayBuffer latch reset (audi
     // The shared StubManager has no buffer/drain surface — patch the chain
     // manager instance so `replayBuffer` runs its real inline path.
     const chain = TestBed.inject(ChainResolutionManager) as unknown as {
-      drainBuffer: () => unknown[]; beginDrain: () => void; endDrain: () => void; clearWaiting: () => void;
+      drainBuffer: () => unknown[];
+      beginDrain: () => void;
+      endDrain: () => void;
+      clearWaiting: () => void;
     };
     chain.drainBuffer = () => [{ type: 'MSG_MOVE' }];
     chain.beginDrain = () => undefined;
@@ -684,7 +729,10 @@ describe('AnimationOrchestratorService — processDirective abort propagation (a
         { provide: MoveAnimationRouter, useClass: StubManager },
         { provide: BattleAnimationTracker, useClass: StubManager },
         { provide: TargetIndicatorManager, useClass: StubManager },
-        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        {
+          provide: BufferReplayBuilder,
+          useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) },
+        },
         { provide: CardTravelEngine, useValue: {} },
         { provide: BoardEffectsService, useValue: {} },
         { provide: FloatRegistryService, useClass: StubFloatRegistry },
@@ -712,13 +760,20 @@ describe('AnimationOrchestratorService — processDirective abort propagation (a
     const orch = makeOrchestrator();
     const inner = orch as unknown as Dispatchable;
     const dispatched: string[] = [];
-    inner.processEvent = e => { dispatched.push(e.type); return 0; };
+    inner.processEvent = e => {
+      dispatched.push(e.type);
+      return 0;
+    };
 
     const ctrl = new AbortController();
     // staggerMs deliberately huge: if the abort stops resolving the wait
     // early (abortableWait regression), the spec times out instead of
     // passing after the real timer fires.
-    const entry = { kind: 'group', staggerMs: 60_000, events: [{ type: 'MSG_MOVE' }, { type: 'MSG_DRAW' }, { type: 'MSG_MOVE' }] };
+    const entry = {
+      kind: 'group',
+      staggerMs: 60_000,
+      events: [{ type: 'MSG_MOVE' }, { type: 'MSG_DRAW' }, { type: 'MSG_MOVE' }],
+    };
     const done = inner.processDirective(entry, ctrl.signal);
 
     expect(dispatched).withContext('first event dispatches synchronously before the stagger').toEqual(['MSG_MOVE']);
@@ -735,8 +790,13 @@ describe('AnimationOrchestratorService — processDirective abort propagation (a
     let cleared = false;
     const ctrl = new AbortController();
     const entry = {
-      kind: 'announcement', source: 'spec', durationMs: 60_000,
-      onShow: (): void => undefined, onClear: (): void => { cleared = true; },
+      kind: 'announcement',
+      source: 'spec',
+      durationMs: 60_000,
+      onShow: (): void => undefined,
+      onClear: (): void => {
+        cleared = true;
+      },
     };
 
     const done = inner.processDirective(entry, ctrl.signal);
@@ -813,7 +873,10 @@ describe('AnimationOrchestratorService — handleChainSolved garde aval (2026-06
         { provide: MoveAnimationRouter, useClass: StubManager },
         { provide: BattleAnimationTracker, useClass: StubManager },
         { provide: TargetIndicatorManager, useClass: StubManager },
-        { provide: BufferReplayBuilder, useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) } },
+        {
+          provide: BufferReplayBuilder,
+          useValue: { build: (): unknown => ({ batch: [], releaseSessionLocks: () => undefined }) },
+        },
         { provide: CardTravelEngine, useValue: {} },
         { provide: BoardEffectsService, useValue: {} },
         { provide: FloatRegistryService, useClass: StubFloatRegistry },
@@ -831,8 +894,7 @@ describe('AnimationOrchestratorService — handleChainSolved garde aval (2026-06
     const mgr = TestBed.inject(ChainResolutionManager) as unknown as RecordingChainManager;
     ds.activeChainLinks.set([{ chainIndex: 0 } as never]);
 
-    const result = (orch as unknown as SolvedDispatcher)
-      .handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
+    const result = (orch as unknown as SolvedDispatcher).handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
 
     expect(result).toBe('async');
     expect(mgr.handleSolvedArgs).toEqual([true]);
@@ -845,8 +907,7 @@ describe('AnimationOrchestratorService — handleChainSolved garde aval (2026-06
     const mgr = TestBed.inject(ChainResolutionManager) as unknown as RecordingChainManager;
     expect(ds.activeChainLinks()).toEqual([]);
 
-    const result = (orch as unknown as SolvedDispatcher)
-      .handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
+    const result = (orch as unknown as SolvedDispatcher).handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
 
     // Degraded sync step — the runner advances instead of waiting on a
     // chainOverlayReady flip that no overlay work will ever produce.
@@ -871,8 +932,7 @@ describe('AnimationOrchestratorService — handleChainSolved garde aval (2026-06
     ds.dispatchedGeneration = 0; // SOLVED belongs to generation 0
     ds.activeChainLinks.set([{ chainIndex: 0, generation: 1 } as never]); // only gen-1 survives
 
-    const result = (orch as unknown as SolvedDispatcher)
-      .handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
+    const result = (orch as unknown as SolvedDispatcher).handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
 
     expect(result).toBe(0);
     expect(mgr.handleSolvedArgs).toEqual([false]);

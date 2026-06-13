@@ -11,17 +11,30 @@ import { DuelLogCategory, type DuelLogger } from '../duel-page/duel-logger';
 import { RenderedBoardStateService, type BoardStateView } from '../duel-page/rendered-board-state.service';
 import { swapBoardState } from '../board-state-swap';
 import {
-  SELECT_MODAL_MESSAGE_TYPES, SELECT_SIMPLE_MESSAGE_TYPES,
-  CHAIN_PIPELINE_CORE_TYPES, GAME_EVENT_FORWARD_TYPES,
+  SELECT_MODAL_MESSAGE_TYPES,
+  SELECT_SIMPLE_MESSAGE_TYPES,
+  CHAIN_PIPELINE_CORE_TYPES,
+  GAME_EVENT_FORWARD_TYPES,
 } from '../message-type-sets';
 import { chainingMsgsToLinkStates } from '../duel-page/chain-state-restore.utils';
 import type { HintContext, Prompt, StreamEvent } from '../types';
 import type {
-  BoardStateMsg, BoardStatePayload, CardInfo, ConfirmCardsMsg, HintMsg, Player,
-  SelectCardMsg, SelectChainMsg,
-  SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg,
-  ServerMessage, WinMsg,
-  ReplayStreamAutoResponse, ReplayStreamNavEntry,
+  BoardStateMsg,
+  BoardStatePayload,
+  CardInfo,
+  ConfirmCardsMsg,
+  HintMsg,
+  Player,
+  SelectCardMsg,
+  SelectChainMsg,
+  SelectCounterMsg,
+  SelectSumMsg,
+  SelectTributeMsg,
+  SelectUnselectCardMsg,
+  ServerMessage,
+  WinMsg,
+  ReplayStreamAutoResponse,
+  ReplayStreamNavEntry,
 } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
@@ -61,7 +74,6 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  * design rationale.
  */
 export class MockDuelConnection implements AnimationDataSource {
-
   // ══════════════════════════════════════════════════
   //  AnimationDataSource contract — pass-through to processor + rbs
   // ══════════════════════════════════════════════════
@@ -110,8 +122,7 @@ export class MockDuelConnection implements AnimationDataSource {
    * un-dispatched steps OR an active decision ; here the equivalent is
    * "animation queue not yet drained" + "prompt waiting".
    */
-  readonly busy: Signal<boolean> = computed(() =>
-    this.animationQueue().length > 0 || this.pendingPrompt() !== null);
+  readonly busy: Signal<boolean> = computed(() => this.animationQueue().length > 0 || this.pendingPrompt() !== null);
 
   /** The player index of the currently-shown prompt (mirror of
    *  `adapter.activePlayer`). Derived from `pendingPrompt.player`. */
@@ -152,19 +163,23 @@ export class MockDuelConnection implements AnimationDataSource {
    *  (-1 when none). Consumed by `activeResponse` above and by the
    *  transport's `schedulePromptDismiss` auto-response lookup. */
   private readonly _transport_lastPromptOffset = signal(-1);
-  lastPromptOffset(): number { return this._transport_lastPromptOffset(); }
+  lastPromptOffset(): number {
+    return this._transport_lastPromptOffset();
+  }
 
   private _outOfBandSink?: (event: StreamEvent) => void;
 
-  constructor(options: {
-    logger?: DuelLogger;
-    /** Same pattern as `DuelConnection.options.duelCtx` (PR2 c4.4 SOLO
-     *  multiplex). Replay precompute arrives in absolute P0 order ; when
-     *  the viewer perspective flips to 1, `BOARD_STATE.data` and the
-     *  per-event `boardStateAfter` snapshots must be swapped before the
-     *  processor / orchestrator consume them. Omit to disable swap. */
-    duelCtx?: { perspective(): Signal<0 | 1> };
-  } = {}) {
+  constructor(
+    options: {
+      logger?: DuelLogger;
+      /** Same pattern as `DuelConnection.options.duelCtx` (PR2 c4.4 SOLO
+       *  multiplex). Replay precompute arrives in absolute P0 order ; when
+       *  the viewer perspective flips to 1, `BOARD_STATE.data` and the
+       *  per-event `boardStateAfter` snapshots must be swapped before the
+       *  processor / orchestrator consume them. Omit to disable swap. */
+      duelCtx?: { perspective(): Signal<0 | 1> };
+    } = {}
+  ) {
     this._logger = options.logger;
     this._duelCtx = options.duelCtx;
     this.processor = new DuelEventProcessor();
@@ -423,14 +438,23 @@ export class MockDuelConnection implements AnimationDataSource {
   seekToOffset(index: number): void {
     const nav = this._transport_navIndex();
     if (index < 0 || index >= nav.length) {
-      this._logger?.log(DuelLogCategory.PIPELINE,
-        'mock.seekToOffset: skip out-of-range index=%d navLen=%d', index, nav.length);
+      this._logger?.log(
+        DuelLogCategory.PIPELINE,
+        'mock.seekToOffset: skip out-of-range index=%d navLen=%d',
+        index,
+        nav.length
+      );
       return;
     }
     const entry = nav[index];
-    this._logger?.log(DuelLogCategory.PIPELINE,
+    this._logger?.log(
+      DuelLogCategory.PIPELINE,
       'mock.seekToOffset: index=%d → cursor=%d label=%s hasChainSnapshot=%s',
-      index, entry.messageOffset, entry.label, !!entry.chainSnapshot);
+      index,
+      entry.messageOffset,
+      entry.label,
+      !!entry.chainSnapshot
+    );
 
     // 1. Wipe processor (queue + activeChainLinks + chainPhase)
     this.processor.reset();
@@ -521,9 +545,15 @@ export class MockDuelConnection implements AnimationDataSource {
     }
 
     if (SELECT_MODAL_TYPES.has(message.type)) {
-      this._handleSelectModal(message as
-        SelectCardMsg | SelectChainMsg | SelectTributeMsg
-        | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg);
+      this._handleSelectModal(
+        message as
+          | SelectCardMsg
+          | SelectChainMsg
+          | SelectTributeMsg
+          | SelectSumMsg
+          | SelectUnselectCardMsg
+          | SelectCounterMsg
+      );
       return;
     }
 
@@ -562,8 +592,7 @@ export class MockDuelConnection implements AnimationDataSource {
     // replay-side semantic. They never appear in a properly-precomputed
     // replay stream — if one shows up, the precompute filter has a hole.
     if (REPLAY_IGNORED_TYPES.has(message.type)) {
-      this._logger?.log(DuelLogCategory.PIPELINE,
-        'mock.dispatch: skipping replay-irrelevant type=%s', message.type);
+      this._logger?.log(DuelLogCategory.PIPELINE, 'mock.dispatch: skipping replay-irrelevant type=%s', message.type);
       return;
     }
 
@@ -587,31 +616,39 @@ export class MockDuelConnection implements AnimationDataSource {
     // internally (modulo the Option N skip during resolving + queue !=0).
     // The legacy explicit `rbs.updateLogical(data)` call is gone — it
     // would have double-updated, bypassing Option N.
-    syncAfterBoardState(this.rbs, this.processor.chainPhase(),
-      this.animationQueue().length, data, /*boardActive*/ true);
+    syncAfterBoardState(
+      this.rbs,
+      this.processor.chainPhase(),
+      this.animationQueue().length,
+      data,
+      /*boardActive*/ true
+    );
     this.processor.observeBoardState(data);
   }
 
   private _handleSelectModal(
-    message: SelectCardMsg | SelectChainMsg | SelectTributeMsg
-      | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg,
+    message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg
   ): void {
     this.processor.processMessage(message);
     // Palier 0 parity — only SELECT_CARD belongs on the EventStream
     // (game-log builder's secondary MSG_BECOME_TARGET resolver). Mirror of
     // DuelConnection._handleSelectModal.
     if (message.type === 'SELECT_CARD') this._outOfBandSink?.(message);
-    duelAssert(message.player === 0 || message.player === 1,
+    duelAssert(
+      message.player === 0 || message.player === 1,
       'MockDuelConnection._handleSelectModal',
-      `expected message.player ∈ {0,1}, got ${message.player}`);
+      `expected message.player ∈ {0,1}, got ${message.player}`
+    );
     this.pendingPrompt.set(message);
   }
 
   private _handleSelectSimple(message: Extract<Prompt, { player: 0 | 1 }>): void {
     this.processor.processMessage(message);
-    duelAssert(message.player === 0 || message.player === 1,
+    duelAssert(
+      message.player === 0 || message.player === 1,
       'MockDuelConnection._handleSelectSimple',
-      `expected message.player ∈ {0,1}, got ${message.player}`);
+      `expected message.player ∈ {0,1}, got ${message.player}`
+    );
     this.pendingPrompt.set(message);
   }
 }
@@ -658,16 +695,14 @@ const SELECT_SIMPLE_TYPES: ReadonlySet<string> = new Set(SELECT_SIMPLE_MESSAGE_T
 // them through the plain forward-to-processor branch.
 const CHAIN_PIPELINE_TYPES: ReadonlySet<string> = new Set([
   ...CHAIN_PIPELINE_CORE_TYPES,
-  'MSG_CHAINING', 'MSG_CHAIN_END',
+  'MSG_CHAINING',
+  'MSG_CHAIN_END',
 ]);
 
 // Same deviation for MSG_DRAW / MSG_CONFIRM_CARDS (PvP-side dedicated
 // methods ; mock-side plain forward + the `_lastConfirmedCards` tap in
 // `_dispatch`).
-const GAME_EVENT_TYPES: ReadonlySet<string> = new Set([
-  ...GAME_EVENT_FORWARD_TYPES,
-  'MSG_DRAW', 'MSG_CONFIRM_CARDS',
-]);
+const GAME_EVENT_TYPES: ReadonlySet<string> = new Set([...GAME_EVENT_FORWARD_TYPES, 'MSG_DRAW', 'MSG_CONFIRM_CARDS']);
 
 /** Server message types intentionally skipped in replay : they belong to
  *  live PvP bootstrap / matchmaking / per-WS lifecycle and would never
@@ -675,15 +710,26 @@ const GAME_EVENT_TYPES: ReadonlySet<string> = new Set([
  *  to the protocol doesn't silently produce `unhandled message type`
  *  warnings on legitimate skips. */
 const REPLAY_IGNORED_TYPES: ReadonlySet<string> = new Set([
-  'SESSION_TOKEN', 'SESSION_PHASE',
-  'DUEL_STARTING', 'DUEL_END',
-  'DICE_ROLL', 'DICE_RESULT',
-  'SELECT_FIRST_PLAYER', 'FIRST_PLAYER_RESULT',
-  'DECK_PREFETCH', 'EARLY_DECK_PREFETCH',
-  'TIMER_STATE', 'INACTIVITY_WARNING', 'WAITING_RESPONSE',
-  'OPPONENT_DISCONNECTED', 'OPPONENT_RECONNECTED',
-  'REMATCH_INVITATION', 'REMATCH_CANCELLED', 'REMATCH_STARTING',
-  'STATE_SYNC', 'CHAIN_STATE',
+  'SESSION_TOKEN',
+  'SESSION_PHASE',
+  'DUEL_STARTING',
+  'DUEL_END',
+  'DICE_ROLL',
+  'DICE_RESULT',
+  'SELECT_FIRST_PLAYER',
+  'FIRST_PLAYER_RESULT',
+  'DECK_PREFETCH',
+  'EARLY_DECK_PREFETCH',
+  'TIMER_STATE',
+  'INACTIVITY_WARNING',
+  'WAITING_RESPONSE',
+  'OPPONENT_DISCONNECTED',
+  'OPPONENT_RECONNECTED',
+  'REMATCH_INVITATION',
+  'REMATCH_CANCELLED',
+  'REMATCH_STARTING',
+  'STATE_SYNC',
+  'CHAIN_STATE',
   // MSG_WIN is NOT here — F2/F4 (2026-06-06) routes it via the explicit
   // branch in `_dispatch` so it reaches the EventStream + closes boundaries
   // identically to PvP `_handleDuelEnd`.

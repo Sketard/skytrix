@@ -151,7 +151,7 @@ export function syncAfterBoardState(
   chainPhase: 'idle' | 'building' | 'resolving',
   queueLength: number,
   boardState: DuelState,
-  boardActive: boolean,
+  boardActive: boolean
 ): void {
   // 2026-06-04 Option N — Skip updateLogical if the chain is resolving AND
   // there are still events in the queue. The BOARD_STATE that arrives mid-
@@ -227,14 +227,17 @@ export function peekAndDequeueMatching<T extends GameEvent>(
    * tutor cluster, 2026-06-12). Directives are skipped, not treated as
    * barriers.
    */
-  stopBefore?: (e: GameEvent) => boolean,
+  stopBefore?: (e: GameEvent) => boolean
 ): T | null {
   const queue = dataSource.animationQueue();
   let idx = -1;
   for (let i = 0; i < queue.length; i++) {
     const e = queue[i];
     if (isDirective(e)) continue;
-    if (predicate(e)) { idx = i; break; }
+    if (predicate(e)) {
+      idx = i;
+      break;
+    }
     if (stopBefore?.(e)) return null;
   }
   if (idx === -1) return null;

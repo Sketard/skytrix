@@ -40,9 +40,17 @@ interface PhaseStub {
 
 function makeMock(): MockConnStub {
   const m = jasmine.createSpyObj<MockConnStub>('MockDuelConnection', [
-    'seekToOffset', 'dispatchNext', 'simulatePlayerResponse',
-    'getAutoResponseAt', 'busy', 'pendingPrompt', 'messageCursor', 'navIndex',
-    'lastPromptOffset', 'peekNextType', 'streamComplete',
+    'seekToOffset',
+    'dispatchNext',
+    'simulatePlayerResponse',
+    'getAutoResponseAt',
+    'busy',
+    'pendingPrompt',
+    'messageCursor',
+    'navIndex',
+    'lastPromptOffset',
+    'peekNextType',
+    'streamComplete',
   ]);
   m.busy.and.returnValue(false);
   m.pendingPrompt.and.returnValue(null);
@@ -92,11 +100,13 @@ interface Setup {
   overlayActive: ReturnType<typeof signal<boolean>>;
 }
 
-function setup(opts: {
-  states?: ReplayStreamNavEntry[];
-  computedUpTo?: number;
-  animationsEnabled?: boolean;
-} = {}): Setup {
+function setup(
+  opts: {
+    states?: ReplayStreamNavEntry[];
+    computedUpTo?: number;
+    animationsEnabled?: boolean;
+  } = {}
+): Setup {
   TestBed.configureTestingModule({ providers: [ReplayTransportService] });
   const svc = TestBed.inject(ReplayTransportService);
   const mockConn = makeMock();
@@ -226,7 +236,8 @@ describe('ReplayTransportService — maybeAdvance', () => {
     expect(mockConn.simulatePlayerResponse).not.toHaveBeenCalled();
     tick(1); // total 1200ms = REPLAY_PROMPT_DELAY_MS
     expect(mockConn.simulatePlayerResponse).toHaveBeenCalledWith({
-      promptType: 'SELECT_CARD', data: { indices: [0] },
+      promptType: 'SELECT_CARD',
+      data: { indices: [0] },
     });
     // F10-bis — the auto-response lookup uses the mock's tracked prompt
     // offset, NOT `cursor - 1` (broken once the trailing BOARD_STATE
@@ -247,7 +258,8 @@ describe('ReplayTransportService — maybeAdvance', () => {
     tick(1200);
     // Falls back to a synthetic no-op so playback doesn't stall
     expect(mockConn.simulatePlayerResponse).toHaveBeenCalledWith({
-      promptType: 'UNKNOWN', data: {},
+      promptType: 'UNKNOWN',
+      data: {},
     });
   }));
 
@@ -458,8 +470,8 @@ describe('ReplayTransportService — auto-resume + lifecycle', () => {
       states: [stubState('a'), stubState('b')],
       computedUpTo: 1,
     });
-    svc.togglePlay();          // playback engages, lands at index 1
-    svc.maybeAdvance();        // first re-entry pauses via scheduleNext
+    svc.togglePlay(); // playback engages, lands at index 1
+    svc.maybeAdvance(); // first re-entry pauses via scheduleNext
     expect(svc.pausedAtBoundary()).toBeTrue();
 
     // Now manually re-arm isPlaying without going through resumeIfBoundaryWaiting,
@@ -539,7 +551,10 @@ describe('ReplayTransportService — F22 prompt mid-entry vs nav index (2026-06-
     const s = setup({ states: nav, computedUpTo: 2 });
     const cursorRef = { v: 0 };
     s.mockConn.messageCursor.and.callFake(() => cursorRef.v);
-    s.mockConn.dispatchNext.and.callFake(() => { cursorRef.v++; return true; });
+    s.mockConn.dispatchNext.and.callFake(() => {
+      cursorRef.v++;
+      return true;
+    });
     return { ...s, cursorRef };
   }
 

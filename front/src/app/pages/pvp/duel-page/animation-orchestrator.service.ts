@@ -1,30 +1,72 @@
 import { effect, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
 import type { DuelState, GameEvent, StreamEvent } from '../types';
-import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
+import type {
+  MoveMsg,
+  DrawMsg,
+  DamageMsg,
+  RecoverMsg,
+  PayLpCostMsg,
+  FlipSummoningMsg,
+  ChangePosMsg,
+  ChainingMsg,
+  ChainSolvingMsg,
+  ChainSolvedMsg,
+  ShuffleHandMsg,
+  ConfirmCardsMsg,
+  ShuffleDeckMsg,
+  BecomeTargetMsg,
+  SwapMsg,
+  AttackMsg,
+  BattleMsg,
+  TossCoinMsg,
+  TossDiceMsg,
+  EquipMsg,
+  AddCounterMsg,
+  RemoveCounterMsg,
+  ShuffleSetCardMsg,
+  SwapGraveDeckMsg,
+} from '../duel-ws.types';
 import { BOARD_CHANGING_EVENT_TYPES, LOCATION, POSITION } from '../duel-ws.types';
 import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
-import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
-import { QueueRunner, type EventResult, type QueueDecisionInputs, type QueueStep } from './queue-runner';
+import { ANIMATION_DATA_SOURCE, type QueueDirective } from './animation-data-source';
+import { QueueRunner, type EventResult } from './queue-runner';
 import {
   LOCK_SAFETY_TIMEOUT_MS,
   REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
   POLL_DROP_REGRESSION_WATCHDOG_MS,
-  BOARD_BREATHE_MS, BOARD_BREATHE_MIN_MS,
-  POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS, TARGET_PILE_FLOAT_STAGGER_MS, TARGET_PILE_FLOAT_FADE_OUT_MS,
-  CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
-  HAND_REVEAL_DETACH_MS, HAND_REVEAL_DETACH_MIN_MS,
-  CHAIN_BANNER_PAUSE_MS, CHAIN_BANNER_DEFERRED_BUDGET_MS,
-  CHAIN_END_SETTLE_MS, CHAIN_SOLVING_TAIL_MS,
-  TOSS_TOAST_MS, COUNTER_PULSE_MS,
-  SHUFFLE_SET_CARD_TRAVEL_MS, SHUFFLE_SET_CARD_TRAVEL_MIN_MS,
-  SWAP_TRAVEL_MS, SWAP_TRAVEL_MIN_MS,
-  SWAP_GRAVE_DECK_GLOW_MS, SWAP_GRAVE_DECK_GLOW_MIN_MS,
-  SWAP_GRAVE_DECK_TRAVEL_MS, SWAP_GRAVE_DECK_TRAVEL_MIN_MS,
-  SHUFFLE_DECK_MS, SHUFFLE_DECK_MIN_MS,
-  POSITION_ROTATE_MS, POSITION_ROTATE_MIN_MS,
+  BOARD_BREATHE_MS,
+  BOARD_BREATHE_MIN_MS,
+  POSITION_FLIP_MS,
+  BECOME_TARGET_PULSE_MS,
+  TARGET_PILE_FLOAT_STAGGER_MS,
+  TARGET_PILE_FLOAT_FADE_OUT_MS,
+  CHAIN_ACTIVATE_MS,
+  CHAIN_ACTIVATE_MIN_MS,
+  CHAIN_ACTIVATE_FALLBACK_MS,
+  HAND_REVEAL_DETACH_MS,
+  HAND_REVEAL_DETACH_MIN_MS,
+  CHAIN_BANNER_PAUSE_MS,
+  CHAIN_BANNER_DEFERRED_BUDGET_MS,
+  CHAIN_END_SETTLE_MS,
+  CHAIN_SOLVING_TAIL_MS,
+  TOSS_TOAST_MS,
+  COUNTER_PULSE_MS,
+  SHUFFLE_SET_CARD_TRAVEL_MS,
+  SHUFFLE_SET_CARD_TRAVEL_MIN_MS,
+  SWAP_TRAVEL_MS,
+  SWAP_TRAVEL_MIN_MS,
+  SWAP_GRAVE_DECK_GLOW_MS,
+  SWAP_GRAVE_DECK_GLOW_MIN_MS,
+  SWAP_GRAVE_DECK_TRAVEL_MS,
+  SWAP_GRAVE_DECK_TRAVEL_MIN_MS,
+  SHUFFLE_DECK_MS,
+  SHUFFLE_DECK_MIN_MS,
+  POSITION_ROTATE_MS,
+  POSITION_ROTATE_MIN_MS,
   CHAIN_PULSE_BASE_MS,
-  EQUIP_LINE_MS, EQUIP_LINE_MIN_MS,
+  EQUIP_LINE_MS,
+  EQUIP_LINE_MIN_MS,
 } from './animation-constants';
 import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
@@ -45,7 +87,17 @@ import { DuelGameLogService } from './duel-game-log.service';
 import { DeferredEffectProcessor } from './deferred-effect-processor';
 import { RULES as DEFERRED_RULES } from './deferred-effect-rules';
 import { tagAsAbsorbed, isAbsorbed } from './absorbed-event-registry';
-import { AnimatingZoneProjection, BaseProjection, CounterPulseProjection, IsAnimatingProjection, OverlayShowReadyProjection, ScopeResetDispatcher, SwapGraveDeckProjection, TargetedZoneKeysProjection, type ScopeCategory } from '../projections';
+import {
+  AnimatingZoneProjection,
+  BaseProjection,
+  CounterPulseProjection,
+  IsAnimatingProjection,
+  OverlayShowReadyProjection,
+  ScopeResetDispatcher,
+  SwapGraveDeckProjection,
+  TargetedZoneKeysProjection,
+  type ScopeCategory,
+} from '../projections';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
@@ -187,7 +239,7 @@ export class AnimationOrchestratorService {
       isAnimating: this.isAnimating.value(),
       hasPendingPrompt: this.dataSource.pendingPrompt() !== null,
     }),
-    () => this.firePollDropRegression(),
+    () => this.firePollDropRegression()
   );
   /**
    * Set while inline replayBuffer is dispatching buffered events, so
@@ -302,7 +354,7 @@ export class AnimationOrchestratorService {
     e => this.pushDeferredToStream(e),
     () => this.logger,
     undefined, // real clock (default)
-    DEFERRED_RULES, // β.2b — metier rules table
+    DEFERRED_RULES // β.2b — metier rules table
   );
 
   /**
@@ -431,7 +483,9 @@ export class AnimationOrchestratorService {
    */
   private readonly _streamProjections: BaseProjection<unknown>[] = [];
 
-  private get rbs() { return this.dataSource.renderedBoardState; }
+  private get rbs() {
+    return this.dataSource.renderedBoardState;
+  }
 
   private scheduleTimeout(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
     const id = setTimeout(fn, ms);
@@ -557,8 +611,11 @@ export class AnimationOrchestratorService {
       this.scheduleTimeout(() => {
         if (ref !== null && ref >= 0) {
           this.pushToStream({
-            kind: 'animation', type: 'AnimationPhaseCompleted',
-            phase, msgType, ref,
+            kind: 'animation',
+            type: 'AnimationPhaseCompleted',
+            phase,
+            msgType,
+            ref,
           });
         }
         resolve();
@@ -588,15 +645,18 @@ export class AnimationOrchestratorService {
     // and the announcement directive (1000ms) + BOARD_BREATHE_MS (500ms)
     // window exceeded it — same symptom class as the pre-activation pre-lock
     // orphan fix in `MoveAnimationRouter`.
-    effect(() => {
-      const rbs = this.dataSource.renderedBoardState;
-      // Wire FloatRegistry for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
-      rbs.attachFloatRegistry(this.floatRegistry);
-      // Scale RBS lock safety timeouts with playback speed so slow replay
-      // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
-      // 50% safety margin from DuelContext.safetyTimeout().
-      rbs.getSafetyTimeoutMs = () => this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS);
-    }, { injector: this.injector });
+    effect(
+      () => {
+        const rbs = this.dataSource.renderedBoardState;
+        // Wire FloatRegistry for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
+        rbs.attachFloatRegistry(this.floatRegistry);
+        // Scale RBS lock safety timeouts with playback speed so slow replay
+        // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
+        // 50% safety margin from DuelContext.safetyTimeout().
+        rbs.getSafetyTimeoutMs = () => this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS);
+      },
+      { injector: this.injector }
+    );
     // H1 — chain phase observer wiring. ChainResolutionManager.isResolving
     // becomes a pure read of dataSource.chainPhase(); no parallel state to
     // keep in sync.
@@ -632,8 +692,10 @@ export class AnimationOrchestratorService {
         // never reached the stream — skip emit.
         if (ref >= 0) {
           this.pushToStream({
-            kind: 'animation', type: 'AnimationCompleted',
-            ref, msgType: event.type,
+            kind: 'animation',
+            type: 'AnimationCompleted',
+            ref,
+            msgType: event.type,
           });
         }
       },
@@ -751,18 +813,21 @@ export class AnimationOrchestratorService {
   private firePollDropRegression(): void {
     const links = this.dataSource.activeChainLinks();
     console.error(
-      '[POLL-DROP REGRESSION] chain stuck after finalize-during-resolving for %dms. '
-      + 'activeChainLinks=%o queueLen=%d isWaitingForOverlay=%s hasBufferedEvents=%s. '
-      + 'See CLAUDE.md "Polling Removal — Regression Surface" — the dropped poll '
-      + 'mechanism would have rescued this state.',
+      '[POLL-DROP REGRESSION] chain stuck after finalize-during-resolving for %dms. ' +
+        'activeChainLinks=%o queueLen=%d isWaitingForOverlay=%s hasBufferedEvents=%s. ' +
+        'See CLAUDE.md "Polling Removal — Regression Surface" — the dropped poll ' +
+        'mechanism would have rescued this state.',
       POLL_DROP_REGRESSION_WATCHDOG_MS,
       links.map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence })),
       this.dataSource.animationQueue().length,
       this.chainManager.isWaitingForOverlay,
-      this.chainManager.hasBufferedEvents,
+      this.chainManager.hasBufferedEvents
     );
-    duelAssert(false, 'POLL-DROP-REGRESSION',
-      `chain stuck after ${POLL_DROP_REGRESSION_WATCHDOG_MS}ms — see error log above`);
+    duelAssert(
+      false,
+      'POLL-DROP-REGRESSION',
+      `chain stuck after ${POLL_DROP_REGRESSION_WATCHDOG_MS}ms — see error log above`
+    );
   }
 
   /**
@@ -795,7 +860,12 @@ export class AnimationOrchestratorService {
    */
   replayBuffer(inlineFromLoop = false): Promise<void> {
     const buffer = this.chainManager.drainBuffer();
-    this.logger.log(DuelLogCategory.REPLAY, 'replayBuffer — bufferLen=%d ownPlayer=%d', buffer.length, this.ctx.ownPlayerIndex());
+    this.logger.log(
+      DuelLogCategory.REPLAY,
+      'replayBuffer — bufferLen=%d ownPlayer=%d',
+      buffer.length,
+      this.ctx.ownPlayerIndex()
+    );
 
     if (buffer.length === 0) return Promise.resolve();
 
@@ -825,7 +895,11 @@ export class AnimationOrchestratorService {
     // (would be a no-op since the runner is already processing).
     if (inlineFromLoop) {
       batch.push({ kind: 'batch-end', resolve: cleanup });
-      this.trace('batchEnqueue', { bufferLen: buffer.length, directives: batch.filter(e => 'kind' in e).length, inline: true });
+      this.trace('batchEnqueue', {
+        bufferLen: buffer.length,
+        directives: batch.filter(e => 'kind' in e).length,
+        inline: true,
+      });
       this._isReplayingBuffer = true;
       this.dataSource.prependToQueue(batch);
       this.chainManager.clearWaiting();
@@ -845,7 +919,8 @@ export class AnimationOrchestratorService {
         resolve();
       }, this.ctx.safetyTimeout(REPLAY_BUFFER_SAFETY_TIMEOUT_MS));
       batch.push({
-        kind: 'batch-end', resolve: () => {
+        kind: 'batch-end',
+        resolve: () => {
           clearTimeout(safety);
           cleanup();
           resolve();
@@ -1216,7 +1291,6 @@ export class AnimationOrchestratorService {
     this.pushToStream({ kind: 'animation', type: 'AnimationStarted', ref, msgType });
   }
 
-
   /**
    * γ commit 5 — émission de `PerspectiveSwitched(from, to)` sur le
    * flux + dispatch `applyReset({PERSPECTIVE_LIFETIME})` via
@@ -1322,8 +1396,12 @@ export class AnimationOrchestratorService {
     // a `[v3-instr]` warn during the WAITING_RESPONSE window now means
     // an actual out-of-band lock taker, not a stale window.
     this.dataSource.renderedBoardState.setPostRequestStopWindow(false);
-    this.logger.log(DuelLogCategory.PIPELINE,
-      'notifyPerspectiveSwitch %d → %d → dispatch({PERSPECTIVE_LIFETIME})', from, to);
+    this.logger.log(
+      DuelLogCategory.PIPELINE,
+      'notifyPerspectiveSwitch %d → %d → dispatch({PERSPECTIVE_LIFETIME})',
+      from,
+      to
+    );
   }
 
   /**
@@ -1381,7 +1459,7 @@ export class AnimationOrchestratorService {
     duelAssert(
       !this.chainManager.isResolving || !this.chainManager.hasBufferedEvents,
       'onStateSync',
-      `STATE_SYNC arrived mid-chain-resolve with ${this.dataSource.animationQueue().length} queued + buffered events — possible lock orphan`,
+      `STATE_SYNC arrived mid-chain-resolve with ${this.dataSource.animationQueue().length} queued + buffered events — possible lock orphan`
     );
     // DUEL_LIFETIME — cascade hits all 4 ResetTarget managers (Lp + Log
     // included). The STATE_SYNC payload repopulates from a clean slate
@@ -1433,9 +1511,7 @@ export class AnimationOrchestratorService {
     // late-arriving chain replay (defensive — the replay path triggers
     // only mid-DUELING so boardActive is true, but the cost of the check
     // is one boolean read).
-    if (!this.ctx.isBoardActive()
-        && !this._isReplayingBuffer
-        && BOARD_CHANGING_EVENT_TYPES.has(event.type)) {
+    if (!this.ctx.isBoardActive() && !this._isReplayingBuffer && BOARD_CHANGING_EVENT_TYPES.has(event.type)) {
       this._preActivationBuffer.push(event);
       this.trace('preActivationDrain:park', { type: event.type, bufferLen: this._preActivationBuffer.length });
       return 'divert';
@@ -1467,8 +1543,7 @@ export class AnimationOrchestratorService {
     // alive; `replayBuffer()` will reuse them via its own preLockQueuedSources
     // pass (the `!has` guard prevents duplication), and MSG_CHAIN_END's
     // `releaseAllPreLocks()` is the safety net for any orphans.
-    const buffered = this.chainManager.shouldBufferDuringChain
-      && BOARD_CHANGING_EVENT_TYPES.has(event.type);
+    const buffered = this.chainManager.shouldBufferDuringChain && BOARD_CHANGING_EVENT_TYPES.has(event.type);
     if (!buffered) {
       if (event.type === 'MSG_MOVE') {
         const msg = event as MoveMsg;
@@ -1541,7 +1616,10 @@ export class AnimationOrchestratorService {
           if (ref !== null) pendingCompletions.push({ event: entry.events[i], ref });
           if (result instanceof Promise) promises.push(result);
           else if (result === 'async' && isDevMode()) {
-            this.logger.warn('[GROUP] Event %s returned async — a barrier MUST follow this group', entry.events[i].type);
+            this.logger.warn(
+              '[GROUP] Event %s returned async — a barrier MUST follow this group',
+              entry.events[i].type
+            );
           }
         }
         if (this.commitMode === 'per-event') {
@@ -1549,7 +1627,11 @@ export class AnimationOrchestratorService {
           this.lpTracker.discardPending();
           this.rbs.commitUnlocked();
         }
-        this.trace('groupAwait', { promiseCount: promises.length, inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
+        this.trace('groupAwait', {
+          promiseCount: promises.length,
+          inFlight: this.floatRegistry.inFlightCount(),
+          landed: this.floatRegistry.landedCount(),
+        });
         if (promises.length > 0) await Promise.all(promises);
         // #15 — aborted while awaiting the travels: the reset wiped the
         // stream + refs, so emitting the pending AnimationCompleted now
@@ -1559,15 +1641,20 @@ export class AnimationOrchestratorService {
           this.trace('groupAborted', { dispatched: entry.events.length, total: entry.events.length });
           return 'continue';
         }
-        this.trace('groupDone', { inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
+        this.trace('groupDone', {
+          inFlight: this.floatRegistry.inFlightCount(),
+          landed: this.floatRegistry.landedCount(),
+        });
         // β.3 — emit AnimationCompleted for every event in the group
         // AFTER Promise.all resolves. DEP rules awaiting an
         // AnimationCompleted with a specific ref now fire at the real
         // wall-clock end of the group's animations.
         for (const { event, ref } of pendingCompletions) {
           this.pushToStream({
-            kind: 'animation', type: 'AnimationCompleted',
-            ref, msgType: event.type,
+            kind: 'animation',
+            type: 'AnimationCompleted',
+            ref,
+            msgType: event.type,
           });
         }
         // β.3 Lot 2.6 + 2.2-REDO — `animatingZone` and
@@ -1613,8 +1700,10 @@ export class AnimationOrchestratorService {
           const durationMs = lpDelta?.durationMs ?? this.lpTracker.baseLpDuration;
           this.scheduleTimeout(() => {
             this.pushToStream({
-              kind: 'animation', type: 'AnimationCompleted',
-              ref, msgType,
+              kind: 'animation',
+              type: 'AnimationCompleted',
+              ref,
+              msgType,
             });
           }, durationMs);
         }
@@ -1654,7 +1743,13 @@ export class AnimationOrchestratorService {
         const totalMs = this.ctx.scaledDuration(entry.durationMs);
         const preMs = entry.prePauseMs ? this.ctx.scaledDuration(entry.prePauseMs) : 0;
         const showMs = Math.max(0, totalMs - preMs);
-        this.trace('directive', { kind: 'announcement', source: entry.source, totalMs, preMs, nonBlocking: !!entry.nonBlocking });
+        this.trace('directive', {
+          kind: 'announcement',
+          source: entry.source,
+          totalMs,
+          preMs,
+          nonBlocking: !!entry.nonBlocking,
+        });
         if (entry.nonBlocking) {
           // Non-blocking path: schedule onShow (after prePauseMs) and
           // onClear (after totalMs) via setTimeout, return immediately so
@@ -1701,7 +1796,8 @@ export class AnimationOrchestratorService {
     // currently dispatching an inline buffer replay — in that case events
     // must play through rather than be re-buffered (which would loop forever).
     if (!this._isReplayingBuffer && this.chainManager.bufferIfResolving(event)) {
-      const moveInfo = event.type === 'MSG_MOVE' ? ` card=${(event as MoveMsg).cardCode} reason=${(event as MoveMsg).reason}` : '';
+      const moveInfo =
+        event.type === 'MSG_MOVE' ? ` card=${(event as MoveMsg).cardCode} reason=${(event as MoveMsg).reason}` : '';
       this.logger.log(DuelLogCategory.CHAIN, 'Buffering %s during chain resolution%s', event.type, moveInfo);
       return 0;
     }
@@ -1752,33 +1848,59 @@ export class AnimationOrchestratorService {
     }
 
     switch (event.type) {
-      case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);
-      case 'MSG_DAMAGE':          return this.lpTracker.processLpEvent((event as DamageMsg).player, (event as DamageMsg).amount, 'damage');
-      case 'MSG_RECOVER':         return this.lpTracker.processLpEvent((event as RecoverMsg).player, (event as RecoverMsg).amount, 'recover');
-      case 'MSG_PAY_LPCOST':      return this.lpTracker.processLpEvent((event as PayLpCostMsg).player, (event as PayLpCostMsg).amount, 'damage');
-      case 'MSG_FLIP_SUMMONING':  return this.handleFlipSummoning(event as FlipSummoningMsg);
-      case 'MSG_CHANGE_POS':      return this.handleChangePos(event as ChangePosMsg);
-      case 'MSG_CHAINING':        return this.handleChaining(event as ChainingMsg);
-      case 'MSG_CHAIN_SOLVING':   return this.handleChainSolving(event as ChainSolvingMsg);
-      case 'MSG_CHAIN_SOLVED':    return this.handleChainSolved(event as ChainSolvedMsg);
-      case 'MSG_CHAIN_END':       return this.handleChainEnd();
-      case 'MSG_DRAW':            return this.drawManager.processDrawEvent(event as DrawMsg);
-      case 'MSG_SHUFFLE_HAND':    return this.drawManager.processShuffleEvent(event as ShuffleHandMsg);
-      case 'MSG_CONFIRM_CARDS':   return this.drawManager.processConfirmCardsEvent(event as ConfirmCardsMsg);
-      case 'MSG_SHUFFLE_DECK':    return this.processShuffleDeckEvent(event as ShuffleDeckMsg);
-      case 'MSG_SET':             return 0; // No animation — position change handled by BOARD_STATE
-      case 'MSG_BECOME_TARGET':   return this.handleBecomeTarget(event as BecomeTargetMsg);
-      case 'MSG_SWAP':            return this.processSwapEvent(event as SwapMsg);
-      case 'MSG_ATTACK':          return this.battleTracker.processAttackEvent(event as AttackMsg);
-      case 'MSG_BATTLE':          return this.battleTracker.processBattleEvent(event as BattleMsg);
-      case 'MSG_TOSS_COIN':       return this.handleTossCoin(event as TossCoinMsg);
-      case 'MSG_TOSS_DICE':       return this.handleTossDice(event as TossDiceMsg);
-      case 'MSG_EQUIP':           return this.handleEquip(event as EquipMsg);
+      case 'MSG_MOVE':
+        return this.moveRouter.processMoveEvent(event as MoveMsg);
+      case 'MSG_DAMAGE':
+        return this.lpTracker.processLpEvent((event as DamageMsg).player, (event as DamageMsg).amount, 'damage');
+      case 'MSG_RECOVER':
+        return this.lpTracker.processLpEvent((event as RecoverMsg).player, (event as RecoverMsg).amount, 'recover');
+      case 'MSG_PAY_LPCOST':
+        return this.lpTracker.processLpEvent((event as PayLpCostMsg).player, (event as PayLpCostMsg).amount, 'damage');
+      case 'MSG_FLIP_SUMMONING':
+        return this.handleFlipSummoning(event as FlipSummoningMsg);
+      case 'MSG_CHANGE_POS':
+        return this.handleChangePos(event as ChangePosMsg);
+      case 'MSG_CHAINING':
+        return this.handleChaining(event as ChainingMsg);
+      case 'MSG_CHAIN_SOLVING':
+        return this.handleChainSolving(event as ChainSolvingMsg);
+      case 'MSG_CHAIN_SOLVED':
+        return this.handleChainSolved(event as ChainSolvedMsg);
+      case 'MSG_CHAIN_END':
+        return this.handleChainEnd();
+      case 'MSG_DRAW':
+        return this.drawManager.processDrawEvent(event as DrawMsg);
+      case 'MSG_SHUFFLE_HAND':
+        return this.drawManager.processShuffleEvent(event as ShuffleHandMsg);
+      case 'MSG_CONFIRM_CARDS':
+        return this.drawManager.processConfirmCardsEvent(event as ConfirmCardsMsg);
+      case 'MSG_SHUFFLE_DECK':
+        return this.processShuffleDeckEvent(event as ShuffleDeckMsg);
+      case 'MSG_SET':
+        return 0; // No animation — position change handled by BOARD_STATE
+      case 'MSG_BECOME_TARGET':
+        return this.handleBecomeTarget(event as BecomeTargetMsg);
+      case 'MSG_SWAP':
+        return this.processSwapEvent(event as SwapMsg);
+      case 'MSG_ATTACK':
+        return this.battleTracker.processAttackEvent(event as AttackMsg);
+      case 'MSG_BATTLE':
+        return this.battleTracker.processBattleEvent(event as BattleMsg);
+      case 'MSG_TOSS_COIN':
+        return this.handleTossCoin(event as TossCoinMsg);
+      case 'MSG_TOSS_DICE':
+        return this.handleTossDice(event as TossDiceMsg);
+      case 'MSG_EQUIP':
+        return this.handleEquip(event as EquipMsg);
       case 'MSG_ADD_COUNTER':
-      case 'MSG_REMOVE_COUNTER':  return this.handleCounter(event as AddCounterMsg | RemoveCounterMsg);
-      case 'MSG_SHUFFLE_SET_CARD': return this.handleShuffleSetCard(event as ShuffleSetCardMsg);
-      case 'MSG_SWAP_GRAVE_DECK': return this.processSwapGraveDeckEvent(event as SwapGraveDeckMsg);
-      default:                    return 0;
+      case 'MSG_REMOVE_COUNTER':
+        return this.handleCounter(event as AddCounterMsg | RemoveCounterMsg);
+      case 'MSG_SHUFFLE_SET_CARD':
+        return this.handleShuffleSetCard(event as ShuffleSetCardMsg);
+      case 'MSG_SWAP_GRAVE_DECK':
+        return this.processSwapGraveDeckEvent(event as SwapGraveDeckMsg);
+      default:
+        return 0;
     }
   }
 
@@ -1818,8 +1940,10 @@ export class AnimationOrchestratorService {
     if (zoneId) {
       // β.3 Lot 2.6 — `animatingZone` projection self-sets on this msg.
       const zoneKey = locationToZoneKey(msg.location, msg.sequence, relPlayer);
-      if (zoneKey) return this.boardEffects.activateEffect(zoneKey, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
-        .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
+      if (zoneKey)
+        return this.boardEffects
+          .activateEffect(zoneKey, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
+          .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
     }
     if (msg.location === LOCATION.HAND) {
       const handEl = this.drawManager.resolveHandTarget(`HAND-${relPlayer}`, msg.sequence);
@@ -1849,7 +1973,10 @@ export class AnimationOrchestratorService {
         handEl.style.zIndex = '500';
         return (async () => {
           try {
-            await this.boardEffects.activateEffect(handEl, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS));
+            await this.boardEffects.activateEffect(
+              handEl,
+              this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS)
+            );
             await new Promise<void>(r => setTimeout(r, holdMs));
           } finally {
             handEl.style.zIndex = '';
@@ -1884,33 +2011,37 @@ export class AnimationOrchestratorService {
       // The single source of timing replaces the previous (handler hold
       // + phaseWait + scheduleBannerAnnounce) trio.
       const pauseMs = CHAIN_BANNER_PAUSE_MS;
-      this.dataSource.prependToQueue([{
-        kind: 'announcement',
-        source: 'chain-resolution',
-        durationMs: CHAIN_BANNER_DEFERRED_BUDGET_MS,
-        prePauseMs: pauseMs,
-        onShow: () => {
-          // F15 (2026-05-31) — single `markAnnouncePending` call now
-          // sets the unified `_announcing` signal on the manager,
-          // observed reactively by templates / Effect D and read
-          // synchronously by `handleSolving`'s predicate. The prior
-          // `pushToStream(AnimationPhaseCompleted phase=banner-announce)`
-          // was the only producer of that event ; its sole consumer
-          // (`ChainResolutionAnnounceProjection`) is retired, so the
-          // push is unreachable and removed.
-          this.chainManager.markAnnouncePending();
+      this.dataSource.prependToQueue([
+        {
+          kind: 'announcement',
+          source: 'chain-resolution',
+          durationMs: CHAIN_BANNER_DEFERRED_BUDGET_MS,
+          prePauseMs: pauseMs,
+          onShow: () => {
+            // F15 (2026-05-31) — single `markAnnouncePending` call now
+            // sets the unified `_announcing` signal on the manager,
+            // observed reactively by templates / Effect D and read
+            // synchronously by `handleSolving`'s predicate. The prior
+            // `pushToStream(AnimationPhaseCompleted phase=banner-announce)`
+            // was the only producer of that event ; its sole consumer
+            // (`ChainResolutionAnnounceProjection`) is retired, so the
+            // push is unreachable and removed.
+            this.chainManager.markAnnouncePending();
+          },
+          // The signal self-clears in `chainManager.reset()` (triggered by
+          // `handleEnd` on MSG_CHAIN_END and by the scope dispatcher's
+          // applyReset cascade). onClear is a no-op so the banner stays
+          // visible until the chain naturally ends.
+          onClear: () => undefined,
         },
-        // The signal self-clears in `chainManager.reset()` (triggered by
-        // `handleEnd` on MSG_CHAIN_END and by the scope dispatcher's
-        // applyReset cascade). onClear is a no-op so the banner stays
-        // visible until the chain naturally ends.
-        onClear: () => undefined,
-      }]);
+      ]);
       return 0;
     }
     this.dataSource.applyChainSolving(msg.chainIndex);
     const exitDelay = this.chainManager.chainSolvedCount > 0 ? this.chainExitDuration() : 0;
-    return result.isSingleLink ? 0 : exitDelay + this.chainPulseDuration() + this.ctx.scaledDuration(CHAIN_SOLVING_TAIL_MS);
+    return result.isSingleLink
+      ? 0
+      : exitDelay + this.chainPulseDuration() + this.ctx.scaledDuration(CHAIN_SOLVING_TAIL_MS);
   }
 
   private handleChainSolved(msg: ChainSolvedMsg): number | 'async' {
@@ -1986,7 +2117,7 @@ export class AnimationOrchestratorService {
 
   private handleTossCoin(msg: TossCoinMsg): number {
     if (this.ctx.reducedMotion()) return 0;
-    const lines = msg.results.map(r => r ? 'Heads ✓' : 'Tails ✗');
+    const lines = msg.results.map(r => (r ? 'Heads ✓' : 'Tails ✗'));
     this.toastService.show({ icon: '🪙', lines }, TOSS_TOAST_MS * this.ctx.speedMultiplier());
     this.ctx.announceEvent(`Coin toss: ${lines.join(', ')}`, msg.player);
     return TOSS_TOAST_MS;
@@ -2009,20 +2140,25 @@ export class AnimationOrchestratorService {
     const equipEl = this.cardTravelEngine.getZoneElement(equipKey);
     const targetEl = this.cardTravelEngine.getZoneElement(targetKey);
     const lineEl = this.cardTravelEngine.createLineBetween(equipEl, targetEl, {
-      color: EQUIP_LINE_COLOR, shadow: EQUIP_LINE_SHADOW,
+      color: EQUIP_LINE_COLOR,
+      shadow: EQUIP_LINE_SHADOW,
     });
     if (!lineEl) return 0;
     this.activeEquipLines.push(lineEl);
     const duration = this.ctx.scaledDuration(EQUIP_LINE_MS, EQUIP_LINE_MIN_MS);
     lineEl.animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }], {
-      duration: duration * 0.4, easing: 'ease-out', fill: 'forwards',
+      duration: duration * 0.4,
+      easing: 'ease-out',
+      fill: 'forwards',
     });
     return new Promise<void>(resolve => {
       this.scheduleTimeout(() => {
         const idx = this.activeEquipLines.indexOf(lineEl);
         if (idx !== -1) this.activeEquipLines.splice(idx, 1);
-        lineEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration * 0.3, easing: 'ease-in' })
-          .finished.then(() => lineEl.remove()).catch(() => lineEl.remove());
+        lineEl
+          .animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration * 0.3, easing: 'ease-in' })
+          .finished.then(() => lineEl.remove())
+          .catch(() => lineEl.remove());
         resolve();
       }, duration * 0.7);
     });
@@ -2055,7 +2191,7 @@ export class AnimationOrchestratorService {
     }
     return Promise.all(travels).then(
       () => locks.forEach(l => l.commit()),
-      () => locks.forEach(l => l.release()),
+      () => locks.forEach(l => l.release())
     );
   }
 
@@ -2074,13 +2210,16 @@ export class AnimationOrchestratorService {
     return Promise.all([
       this.cardTravelEngine.travel(key1, key2, img1, { duration, impactGlowColor: 'rgba(180,180,220,0.5)' }),
       this.cardTravelEngine.travel(key2, key1, img2, { duration, impactGlowColor: 'rgba(180,180,220,0.5)' }),
-    ]).then(() => {
-      lock1.commit();
-      lock2.commit();
-    }, () => {
-      lock1.release();
-      lock2.release();
-    });
+    ]).then(
+      () => {
+        lock1.commit();
+        lock2.commit();
+      },
+      () => {
+        lock1.release();
+        lock2.release();
+      }
+    );
   }
 
   private async processSwapGraveDeckEvent(msg: SwapGraveDeckMsg): Promise<void> {
@@ -2154,14 +2293,16 @@ export class AnimationOrchestratorService {
     const lock = this.rbs.lockZone(zoneKey);
     const anim = cardEl.animate(
       [{ transform: `rotate(${fromRotation}deg)` }, { transform: `rotate(${toRotation}deg)` }],
-      { duration, easing: 'ease-in-out', fill: 'forwards' },
+      { duration, easing: 'ease-in-out', fill: 'forwards' }
     );
-    return anim.finished.then(() => {
-      lock.commit();
-      anim.cancel();
-    }).catch(() => {
-      lock.release();
-    });
+    return anim.finished
+      .then(() => {
+        lock.commit();
+        anim.cancel();
+      })
+      .catch(() => {
+        lock.release();
+      });
   }
 
   /** Extract rotation angle (degrees) from a CSS computed transform matrix. */
@@ -2195,8 +2336,7 @@ export class AnimationOrchestratorService {
    * observes it) would both stay stuck. Refer to the audit's H1 closure.
    */
   private applyInstantAnimation(event: GameEvent): void {
-    if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_PAY_LPCOST'
-      || event.type === 'MSG_RECOVER') {
+    if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_PAY_LPCOST' || event.type === 'MSG_RECOVER') {
       this.lpTracker.applyInstant(event);
     }
   }
@@ -2206,13 +2346,15 @@ export class AnimationOrchestratorService {
   // ---------------------------------------------------------------------------
 
   private trace(action: string, detail?: Record<string, unknown>): void {
-    this.logger.log(DuelLogCategory.QUEUE,
+    this.logger.log(
+      DuelLogCategory.QUEUE,
       '[ANIM-TRACE] %s | mode=%s locks=[%s] queue=%d chainPhase=%s %o',
-      action, this.commitMode,
+      action,
+      this.commitMode,
       this.rbs.lockedZoneKeys().join(','),
       this.dataSource.animationQueue().length,
       this.dataSource.chainPhase(),
-      detail ?? {});
+      detail ?? {}
+    );
   }
-
 }

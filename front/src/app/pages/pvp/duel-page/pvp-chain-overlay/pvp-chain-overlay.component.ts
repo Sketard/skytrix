@@ -255,7 +255,7 @@ export class PvpChainOverlayComponent {
    */
   private static readonly CRAMPED_MQ = '(max-width: 767px), (max-width: 1023px) and (max-height: 500px)';
   private readonly _isShortViewport = signal<boolean>(
-    typeof window !== 'undefined' && window.matchMedia(PvpChainOverlayComponent.CRAMPED_MQ).matches,
+    typeof window !== 'undefined' && window.matchMedia(PvpChainOverlayComponent.CRAMPED_MQ).matches
   );
 
   /**
@@ -375,7 +375,11 @@ export class PvpChainOverlayComponent {
 
     type LinkInput = { chainIndex: number; generation?: number; cardCode: number; cardName: string; player: number };
     const inputs: LinkInput[] = links.map(l => ({
-      chainIndex: l.chainIndex, generation: l.generation, cardCode: l.cardCode, cardName: l.cardName, player: l.player,
+      chainIndex: l.chainIndex,
+      generation: l.generation,
+      cardCode: l.cardCode,
+      cardName: l.cardName,
+      player: l.player,
     }));
     if (pending) {
       inputs.push({
@@ -388,7 +392,7 @@ export class PvpChainOverlayComponent {
     }
 
     // Side derivation: viewer (own absolute index) → left, other → right.
-    const sideOf = (player: number): ChainSide => player === ownIdx ? 'left' : 'right';
+    const sideOf = (player: number): ChainSide => (player === ownIdx ? 'left' : 'right');
 
     // Split by side, then cap each side at 3 (majority) / 2 (minority).
     const leftLinks: LinkInput[] = [];
@@ -408,12 +412,19 @@ export class PvpChainOverlayComponent {
     const monoCap = CHAIN_OVERLAY_MONO_CAP;
     const majorityCap = CHAIN_OVERLAY_MAJORITY_CAP;
     const minorityCap = short ? CHAIN_OVERLAY_MINORITY_CAP_CRAMPED : CHAIN_OVERLAY_MINORITY_CAP;
-    let leftCap = monoCap, rightCap = monoCap;
+    let leftCap = monoCap,
+      rightCap = monoCap;
     if (leftLinks.length > 0 && rightLinks.length > 0) {
-      const leftIsMajority = leftLinks.length > rightLinks.length
-        || (leftLinks.length === rightLinks.length && leftLinks[0].chainIndex > rightLinks[0].chainIndex);
-      if (leftIsMajority) { leftCap = majorityCap; rightCap = minorityCap; }
-      else { leftCap = minorityCap; rightCap = majorityCap; }
+      const leftIsMajority =
+        leftLinks.length > rightLinks.length ||
+        (leftLinks.length === rightLinks.length && leftLinks[0].chainIndex > rightLinks[0].chainIndex);
+      if (leftIsMajority) {
+        leftCap = majorityCap;
+        rightCap = minorityCap;
+      } else {
+        leftCap = minorityCap;
+        rightCap = majorityCap;
+      }
     }
 
     const visibleLeft = leftLinks.slice(0, leftCap);
@@ -438,9 +449,7 @@ export class PvpChainOverlayComponent {
       const sameSide = allVisible.filter(x => x.side === l.side);
       const indexInSide = sameSide.findIndex(x => x.chainIndex === l.chainIndex);
       const positionFromNewest = sameSide.length - 1 - indexInSide;
-      const slot: ChainSlot = positionFromNewest === 0 ? 'front'
-        : positionFromNewest === 1 ? 'mid'
-        : 'back';
+      const slot: ChainSlot = positionFromNewest === 0 ? 'front' : positionFromNewest === 1 ? 'mid' : 'back';
       return {
         chainIndex: l.chainIndex,
         generation: l.generation,
@@ -478,11 +487,9 @@ export class PvpChainOverlayComponent {
    *     between two links — gating here would block forever in building).
    *   · `pendingExitCard()` (no active anim, just a memo).
    */
-  readonly overlayActive = computed<boolean>(() =>
-    this.enteringCardKey() !== ''
-    || this._pulseActive()
-    || this._exitPulseInFlight()
-    || this.exitingCard() !== null
+  readonly overlayActive = computed<boolean>(
+    () =>
+      this.enteringCardKey() !== '' || this._pulseActive() || this._exitPulseInFlight() || this.exitingCard() !== null
   );
 
   /** Template helper — composite key for a visible card (`chainIndex:generation`),
@@ -602,9 +609,16 @@ export class PvpChainOverlayComponent {
           // receipt while this chain's END is still queued). chainIndex
           // alone would fail to identify the drop (find → undefined → no
           // pendingExitCard, negated flag lost).
-          const droppedLink = prevLinks.find(p =>
-            !links.some(l => l.chainIndex === p.chainIndex && (l.generation ?? 0) === (p.generation ?? 0)));
-          this.logger.log(DuelLogCategory.CHAIN, 'Effect A: link removed %d→%d — calling onChainLinkResolved droppedLink=%o', prevCount, currentCount, droppedLink);
+          const droppedLink = prevLinks.find(
+            p => !links.some(l => l.chainIndex === p.chainIndex && (l.generation ?? 0) === (p.generation ?? 0))
+          );
+          this.logger.log(
+            DuelLogCategory.CHAIN,
+            'Effect A: link removed %d→%d — calling onChainLinkResolved droppedLink=%o',
+            prevCount,
+            currentCount,
+            droppedLink
+          );
           this.onChainLinkResolved(droppedLink);
         }
       });
@@ -626,10 +640,15 @@ export class PvpChainOverlayComponent {
         }
 
         const resolvingLink = links.find(l => l.resolving);
-        this.logger.log(DuelLogCategory.CHAIN, 'Effect-B phase=resolving links=%d resolvingLink=%o allLinks=%o',
+        this.logger.log(
+          DuelLogCategory.CHAIN,
+          'Effect-B phase=resolving links=%d resolvingLink=%o allLinks=%o',
           links.length,
-          resolvingLink ? { idx: resolvingLink.chainIndex, negated: resolvingLink.negated, name: resolvingLink.cardName } : null,
-          links.map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
+          resolvingLink
+            ? { idx: resolvingLink.chainIndex, negated: resolvingLink.negated, name: resolvingLink.cardName }
+            : null,
+          links.map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving }))
+        );
         if (resolvingLink) {
           this._resolvingCardInfo.set({ cardCode: resolvingLink.cardCode, cardName: resolvingLink.cardName });
           this._resolvingNegated.set(resolvingLink.negated);
@@ -654,8 +673,10 @@ export class PvpChainOverlayComponent {
 
           // Dedup: announce only for a new link, or when negation state changes (resolving→negated)
           const isNewLink = resolvingLink.chainIndex !== this._lastAnnouncedResolvingIndex();
-          const isNegationUpdate = resolvingLink.chainIndex === this._lastAnnouncedResolvingIndex()
-            && resolvingLink.negated && !this._lastAnnouncedNegated();
+          const isNegationUpdate =
+            resolvingLink.chainIndex === this._lastAnnouncedResolvingIndex() &&
+            resolvingLink.negated &&
+            !this._lastAnnouncedNegated();
           if (isNewLink || isNegationUpdate) {
             this._lastAnnouncedResolvingIndex.set(resolvingLink.chainIndex);
             this._lastAnnouncedNegated.set(resolvingLink.negated);
@@ -850,9 +871,12 @@ export class PvpChainOverlayComponent {
       // chain card. Cf. chat 2026-06-03 "prompt under overlay".
       const hold = this.duelCtx.scaledDuration(OVERLAY_ANIM_HOLD_MS, OVERLAY_ANIM_HOLD_MIN_MS);
       const tail = this.durations().overlayFadeOut;
-      this.scheduleTimeout(() => {
-        if (this.enteringCardKey() === key) this.enteringCardKey.set('');
-      }, this.durations().entry + hold + tail);
+      this.scheduleTimeout(
+        () => {
+          if (this.enteringCardKey() === key) this.enteringCardKey.set('');
+        },
+        this.durations().entry + hold + tail
+      );
       this._pendingEnterKey = '';
     }
     if (this._pendingShoveKey !== '') {
@@ -879,10 +903,7 @@ export class PvpChainOverlayComponent {
     this._overlayShownDuringBuild.set(true);
     this.overlayVisible.set(true);
     this.chainManager.chainEntryAnimating.set(true);
-    this.scheduleTimeout(
-      () => this.chainManager.chainEntryAnimating.set(false),
-      this.durations().constructAppear,
-    );
+    this.scheduleTimeout(() => this.chainManager.chainEntryAnimating.set(false), this.durations().constructAppear);
     // Release both the gate flag AND the layout freeze BEFORE applying the
     // enter/shove signals. Dropping `_frozenLinks` triggers a recompute of
     // `visibleCards()`, which switches the cards from their OLD positions
@@ -934,20 +955,23 @@ export class PvpChainOverlayComponent {
     // show sequence fires. See `gatePending` docstring.
     this.gatePending.set(true);
 
-    const ref = effect(() => {
-      const ready = this.orchestrator.overlayShowReady.value();
-      if (!ready.has(chainIndex)) return;
-      // One-shot: destroy this effect from outside the effect body to
-      // avoid re-entrance, then run the sequence in `untracked` so the
-      // signal reads inside the sequence don't tie this effect to extra
-      // dependencies (it's about to be destroyed anyway).
-      untracked(() => {
-        const stored = this._overlayShowEffectRefs.get(chainIndex);
-        stored?.destroy();
-        this._overlayShowEffectRefs.delete(chainIndex);
-        this._runOverlayShowSequence();
-      });
-    }, { injector: this.injector });
+    const ref = effect(
+      () => {
+        const ready = this.orchestrator.overlayShowReady.value();
+        if (!ready.has(chainIndex)) return;
+        // One-shot: destroy this effect from outside the effect body to
+        // avoid re-entrance, then run the sequence in `untracked` so the
+        // signal reads inside the sequence don't tie this effect to extra
+        // dependencies (it's about to be destroyed anyway).
+        untracked(() => {
+          const stored = this._overlayShowEffectRefs.get(chainIndex);
+          stored?.destroy();
+          this._overlayShowEffectRefs.delete(chainIndex);
+          this._runOverlayShowSequence();
+        });
+      },
+      { injector: this.injector }
+    );
     this._overlayShowEffectRefs.set(chainIndex, ref);
   }
 
@@ -986,8 +1010,13 @@ export class PvpChainOverlayComponent {
    * immediately after the cancel.
    */
   private async onChainLinkResolved(droppedLink: ChainLinkState | undefined): Promise<void> {
-    this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved — resolvingInFlight=%s chainOverlayReady=%s waitingForOverlay=%s',
-      this._resolvingInFlight(), this.chainManager.chainOverlayReady(), this.chainManager.isWaitingForOverlay);
+    this.logger.log(
+      DuelLogCategory.CHAIN,
+      'onChainLinkResolved — resolvingInFlight=%s chainOverlayReady=%s waitingForOverlay=%s',
+      this._resolvingInFlight(),
+      this.chainManager.chainOverlayReady(),
+      this.chainManager.isWaitingForOverlay
+    );
     if (this._resolvingInFlight()) {
       this.logger.log(DuelLogCategory.CHAIN, 'BLOCKED by resolvingInFlight guard');
       return;

@@ -1,6 +1,13 @@
 import { computed, signal } from '@angular/core';
 import { ChainLinkState, GameEvent, StreamEvent } from '../types';
-import type { BoardStatePayload, ChainingMsg, ChainNegatedMsg, ChainSolvingMsg, ChainSolvedMsg, ServerMessage } from '../duel-ws.types';
+import type {
+  BoardStatePayload,
+  ChainingMsg,
+  ChainNegatedMsg,
+  ChainSolvingMsg,
+  ChainSolvedMsg,
+  ServerMessage,
+} from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { BoundaryProcessor, type BoundaryClosureReason } from './boundary-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
@@ -19,21 +26,40 @@ import type { QueueEntry } from './animation-data-source';
 // → drop, leaving a hole in the animation sequence). Used as the runtime
 // guard for the cast in `enqueue` (audit finding L26).
 const GAME_EVENT_TYPE_MAP: Record<GameEvent['type'], true> = {
-  MSG_MOVE: true, MSG_DRAW: true, MSG_SHUFFLE_HAND: true, MSG_SHUFFLE_DECK: true,
-  MSG_DAMAGE: true, MSG_RECOVER: true, MSG_PAY_LPCOST: true,
-  MSG_CHAINING: true, MSG_CHAIN_SOLVING: true, MSG_CHAIN_SOLVED: true, MSG_CHAIN_END: true,
-  MSG_FLIP_SUMMONING: true, MSG_CHANGE_POS: true, MSG_SET: true, MSG_SWAP: true,
-  MSG_BECOME_TARGET: true, MSG_ATTACK: true, MSG_BATTLE: true, MSG_CONFIRM_CARDS: true,
-  MSG_TOSS_COIN: true, MSG_TOSS_DICE: true, MSG_EQUIP: true,
-  MSG_ADD_COUNTER: true, MSG_REMOVE_COUNTER: true,
-  MSG_SHUFFLE_SET_CARD: true, MSG_SWAP_GRAVE_DECK: true,
+  MSG_MOVE: true,
+  MSG_DRAW: true,
+  MSG_SHUFFLE_HAND: true,
+  MSG_SHUFFLE_DECK: true,
+  MSG_DAMAGE: true,
+  MSG_RECOVER: true,
+  MSG_PAY_LPCOST: true,
+  MSG_CHAINING: true,
+  MSG_CHAIN_SOLVING: true,
+  MSG_CHAIN_SOLVED: true,
+  MSG_CHAIN_END: true,
+  MSG_FLIP_SUMMONING: true,
+  MSG_CHANGE_POS: true,
+  MSG_SET: true,
+  MSG_SWAP: true,
+  MSG_BECOME_TARGET: true,
+  MSG_ATTACK: true,
+  MSG_BATTLE: true,
+  MSG_CONFIRM_CARDS: true,
+  MSG_TOSS_COIN: true,
+  MSG_TOSS_DICE: true,
+  MSG_EQUIP: true,
+  MSG_ADD_COUNTER: true,
+  MSG_REMOVE_COUNTER: true,
+  MSG_SHUFFLE_SET_CARD: true,
+  MSG_SWAP_GRAVE_DECK: true,
 };
 
 /** Runtime view of the GameEvent type union — derived from the exhaustive
  *  map. Exported for the F8 invariant spec (`BOARD_CHANGING_EVENT_TYPES`
  *  ⊆ this set). */
-export const GAME_EVENT_TYPES: ReadonlySet<GameEvent['type']> =
-  new Set(Object.keys(GAME_EVENT_TYPE_MAP) as Array<GameEvent['type']>);
+export const GAME_EVENT_TYPES: ReadonlySet<GameEvent['type']> = new Set(
+  Object.keys(GAME_EVENT_TYPE_MAP) as Array<GameEvent['type']>
+);
 
 function isGameEvent(msg: ServerMessage): msg is GameEvent {
   return GAME_EVENT_TYPES.has(msg.type as GameEvent['type']);
@@ -114,7 +140,7 @@ export class DuelEventProcessor {
    */
   private readonly boundary = new BoundaryProcessor(
     e => this.onEvent?.(e),
-    () => this.logger,
+    () => this.logger
   );
 
   // Enqueue only if `msg` is a known GameEvent — runtime guard via
@@ -157,14 +183,26 @@ export class DuelEventProcessor {
   processMessage(msg: ServerMessage): void {
     const qBefore = this._animationQueue().length;
     const phaseBefore = this._chainPhase();
-    this.logger?.log(DuelLogCategory.PIPELINE, 'processMessage in: type=%s qLen=%d phase=%s',
-      msg.type, qBefore, phaseBefore);
+    this.logger?.log(
+      DuelLogCategory.PIPELINE,
+      'processMessage in: type=%s qLen=%d phase=%s',
+      msg.type,
+      qBefore,
+      phaseBefore
+    );
     this._processMessageInner(msg);
     const qAfter = this._animationQueue().length;
     const phaseAfter = this._chainPhase();
     if (qAfter !== qBefore || phaseAfter !== phaseBefore) {
-      this.logger?.log(DuelLogCategory.PIPELINE, 'processMessage out: type=%s qLen=%d→%d phase=%s→%s',
-        msg.type, qBefore, qAfter, phaseBefore, phaseAfter);
+      this.logger?.log(
+        DuelLogCategory.PIPELINE,
+        'processMessage out: type=%s qLen=%d→%d phase=%s→%s',
+        msg.type,
+        qBefore,
+        qAfter,
+        phaseBefore,
+        phaseAfter
+      );
     }
   }
 
@@ -195,8 +233,11 @@ export class DuelEventProcessor {
         // RECEIPT generation; don't flag a same-index link of a previous
         // chain still awaiting its dispatch-side clear.
         this._activeChainLinks.update(links =>
-          links.map(l => l.chainIndex === negMsg.chainIndex && (l.generation ?? 0) === this._chainGeneration
-            ? { ...l, negated: true } : l),
+          links.map(l =>
+            l.chainIndex === negMsg.chainIndex && (l.generation ?? 0) === this._chainGeneration
+              ? { ...l, negated: true }
+              : l
+          )
         );
         this.onEvent?.(negMsg);
         break;
@@ -269,7 +310,7 @@ export class DuelEventProcessor {
   applyChainSolving(chainIndex: number): void {
     this._chainPhase.set('resolving');
     this._activeChainLinks.update(links =>
-      links.map(l => this.isDispatchingGenerationLink(l, chainIndex) ? { ...l, resolving: true } : l),
+      links.map(l => (this.isDispatchingGenerationLink(l, chainIndex) ? { ...l, resolving: true } : l))
     );
   }
 
@@ -285,18 +326,23 @@ export class DuelEventProcessor {
   applyChainSolved(chainIndex: number): boolean {
     const before = this._activeChainLinks();
     const matched = before.some(l => this.isDispatchingGenerationLink(l, chainIndex));
-    this._activeChainLinks.update(links =>
-      links.filter(l => !this.isDispatchingGenerationLink(l, chainIndex)),
-    );
+    this._activeChainLinks.update(links => links.filter(l => !this.isDispatchingGenerationLink(l, chainIndex)));
     if (!matched) {
       // L27 — server/client chain index drift: every CHAIN_SOLVING should
       // pair with a tracked link. Missing match means the link was already
       // pruned (replay edge) or the index never registered (server bug).
-      this.logger?.warn('applyChainSolved: chainIndex %d not in active links %o',
-        chainIndex, before.map(l => l.chainIndex));
+      this.logger?.warn(
+        'applyChainSolved: chainIndex %d not in active links %o',
+        chainIndex,
+        before.map(l => l.chainIndex)
+      );
     }
-    this.logger?.log(DuelLogCategory.PROC, 'applyChainSolved idx=%d → remaining links=%o',
-      chainIndex, this._activeChainLinks().map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence, zoneId: l.zoneId })));
+    this.logger?.log(
+      DuelLogCategory.PROC,
+      'applyChainSolved idx=%d → remaining links=%o',
+      chainIndex,
+      this._activeChainLinks().map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence, zoneId: l.zoneId }))
+    );
     return matched;
   }
 
@@ -316,8 +362,13 @@ export class DuelEventProcessor {
     const remaining = this._activeChainLinks().filter(l => (l.generation ?? 0) > closedGeneration);
     this._activeChainLinks.set(remaining);
     this._chainPhase.set(remaining.length > 0 ? 'building' : 'idle');
-    this.logger?.log(DuelLogCategory.PROC, 'applyChainEnd → phase=%s, gen %d closed, %d link(s) survive',
-      this._chainPhase(), closedGeneration, remaining.length);
+    this.logger?.log(
+      DuelLogCategory.PROC,
+      'applyChainEnd → phase=%s, gen %d closed, %d link(s) survive',
+      this._chainPhase(),
+      closedGeneration,
+      remaining.length
+    );
   }
 
   /** Restore chain state from server (reconnect CHAIN_STATE message). */

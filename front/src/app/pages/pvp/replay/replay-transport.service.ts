@@ -2,7 +2,7 @@ import { Injectable, signal, type Signal } from '@angular/core';
 import type { MockDuelConnection } from './mock-duel-connection';
 import { devAnimSpeedMultiplier } from '../duel-page/duel-context';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
-import type { ReplayStreamNavEntry, TurnMeta } from '../replay-ws.types';
+import type { TurnMeta } from '../replay-ws.types';
 
 /**
  * Replay playback transport — owns the player-controlled state machine
@@ -153,8 +153,12 @@ export class ReplayTransportService {
     this.getCfg().mockConn.seekToOffset(index);
   }
 
-  seek(index: number): void  { this.jumpTo(index); }
-  scrub(index: number): void { this.jumpTo(index); }
+  seek(index: number): void {
+    this.jumpTo(index);
+  }
+  scrub(index: number): void {
+    this.jumpTo(index);
+  }
 
   stepForward(): void {
     this.pausePlayback();
@@ -458,7 +462,9 @@ export class ReplayTransportService {
     const nav = mock.navIndex();
     if (targetIdx >= nav.length) {
       // Not yet streamed — dispatch as much as we have buffered.
-      while (mock.dispatchNext()) { /* drain */ }
+      while (mock.dispatchNext()) {
+        /* drain */
+      }
       // Note (F21, 2026-06-07) — no pausedAtBoundary flip here. The drain
       // loop pushes events into the animation queue → `busy()` flips true
       // → `maybeAdvance` effect re-fires when queue eventually drains →

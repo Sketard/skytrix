@@ -1,16 +1,52 @@
 import { computed, signal, type Signal, type WritableSignal } from '@angular/core';
-import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, StreamEvent } from '../types';
+import { EMPTY_DUEL_STATE, Prompt, HintContext, ConnectionStatus, StreamEvent } from '../types';
 import { syncAfterBoardState, type QueueDirective, type QueueEntry } from './animation-data-source';
 import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { BoardStateMsg, BoardStatePayload, CardInfo, ChainStateMsg, ConfirmCardsMsg, DeckPrefetchMsg, DiceResultMsg, DiceRollPromptMsg, DrawMsg, DuelEndMsg, DuelStartingMsg, EarlyDeckPrefetchMsg, ErrorMsg, FirstPlayerResultMsg, HintMsg, InactivityWarningMsg, OpponentDisconnectedMsg, PROTOCOL_VERSION, RematchCancelledMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectFirstPlayerMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionPhaseMsg, SessionTokenMsg, StateSyncMsg, TimerStateMsg, WaitingResponseMsg, WinMsg } from '../duel-ws.types';
+import {
+  BoardStateMsg,
+  BoardStatePayload,
+  CardInfo,
+  ChainStateMsg,
+  ConfirmCardsMsg,
+  DeckPrefetchMsg,
+  DiceResultMsg,
+  DiceRollPromptMsg,
+  DrawMsg,
+  DuelEndMsg,
+  DuelStartingMsg,
+  EarlyDeckPrefetchMsg,
+  ErrorMsg,
+  FirstPlayerResultMsg,
+  HintMsg,
+  InactivityWarningMsg,
+  OpponentDisconnectedMsg,
+  PROTOCOL_VERSION,
+  RematchCancelledMsg,
+  SelectCardMsg,
+  SelectChainMsg,
+  SelectCounterMsg,
+  SelectFirstPlayerMsg,
+  SelectSumMsg,
+  SelectTributeMsg,
+  SelectUnselectCardMsg,
+  ServerMessage,
+  SessionPhaseMsg,
+  SessionTokenMsg,
+  StateSyncMsg,
+  TimerStateMsg,
+  WaitingResponseMsg,
+  WinMsg,
+} from '../duel-ws.types';
 import { chainingMsgsToLinkStates } from './chain-state-restore.utils';
 import { swapBoardState } from '../board-state-swap';
 import {
-  SELECT_MODAL_MESSAGE_TYPES, SELECT_SIMPLE_MESSAGE_TYPES,
-  CHAIN_PIPELINE_CORE_TYPES, GAME_EVENT_FORWARD_TYPES,
+  SELECT_MODAL_MESSAGE_TYPES,
+  SELECT_SIMPLE_MESSAGE_TYPES,
+  CHAIN_PIPELINE_CORE_TYPES,
+  GAME_EVENT_FORWARD_TYPES,
 } from '../message-type-sets';
 import type { WebSocketFactory } from './websocket-factory.service';
 
@@ -316,15 +352,21 @@ export class DuelConnection {
   // `_duelCtx` and `logger`), TS would flag a use-before-init. Getters
   // defer resolution to first read — by then the constructor has run
   // and `this.processor` points at the final instance.
-  get animationQueue() { return this.processor.animationQueue; }
+  get animationQueue() {
+    return this.processor.animationQueue;
+  }
   readonly timerState = this._timerState.asReadonly();
   readonly timerStatePerPlayer = this._timerStatePerPlayer.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
   readonly protocolMismatch = this._protocolMismatch.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
   readonly disconnectGraceSec = this._disconnectGraceSec.asReadonly();
-  get activeChainLinks() { return this.processor.activeChainLinks; }
-  get chainPhase() { return this.processor.chainPhase; }
+  get activeChainLinks() {
+    return this.processor.activeChainLinks;
+  }
+  get chainPhase() {
+    return this.processor.chainPhase;
+  }
   readonly duelResult = this._duelResult.asReadonly();
   readonly diceResult = this._diceResult.asReadonly();
   readonly diceInProgress = this._diceInProgress.asReadonly();
@@ -372,13 +414,17 @@ export class DuelConnection {
   // Only accumulated within a streak of the same prompt type; resets on type change.
   // γ Option C (PR2 c4.2) — state lives on `_slots[player].lastSelectedCards`;
   // public getter projects slot 0 (c5 swaps to perspective-aware slotIndex).
-  get lastSelectedCards(): CardInfo[] { return this._slots[0].lastSelectedCards; }
+  get lastSelectedCards(): CardInfo[] {
+    return this._slots[0].lastSelectedCards;
+  }
 
   // --- Last confirmed/revealed cards (from MSG_CONFIRM_CARDS — excavation/reveal effects) ---
   // Flat buffer = last batch received. Used by SELECT_OPTION lastConfirmedName fallback
   // (pvp-prompt-dialog reads the last reveal regardless of which chain link it came from).
   // γ Option C (PR2 c4.2) — see comment above; slot 0 projection by default.
-  get lastConfirmedCards(): CardInfo[] { return this._slots[0].lastConfirmedCards; }
+  get lastConfirmedCards(): CardInfo[] {
+    return this._slots[0].lastConfirmedCards;
+  }
 
   // M22 — Per-chain-link buffer. MSG_CONFIRM_CARDS arriving while the server is
   // resolving a chain link is tagged with that link's chainIndex; we accumulate
@@ -399,8 +445,12 @@ export class DuelConnection {
 
   // γ commit 2 — getters (same reason as animationQueue / activeChainLinks /
   // chainPhase above): the processor is now assigned in the constructor.
-  get hasPendingChainEntry() { return this.processor.hasPendingChainEntry; }
-  get pendingChainEntry() { return this.processor.pendingChainEntry; }
+  get hasPendingChainEntry() {
+    return this.processor.hasPendingChainEntry;
+  }
+  get pendingChainEntry() {
+    return this.processor.pendingChainEntry;
+  }
 
   // --- Hint consumed flag ---
   // Set after a prompt response is sent. Prevents stale cardName from a previous
@@ -502,7 +552,7 @@ export class DuelConnection {
        *  Typically `wsService.soloModeSource`. Omitted in PvP normal
        *  and legacy tests that bypass the SOLO bootstrap. */
       soloModeSource?: Signal<boolean>;
-    },
+    }
   ) {
     if (wsUrlBase.startsWith('/')) {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -533,7 +583,9 @@ export class DuelConnection {
   }
 
   clearStorageToken(): void {
-    try { localStorage.removeItem(this.storageKey); } catch {}
+    try {
+      localStorage.removeItem(this.storageKey);
+    } catch {}
   }
 
   // --- Per-perspective slot accessors (γ Option C PR2 c4.1 + c4.2) ---
@@ -549,14 +601,30 @@ export class DuelConnection {
   // removed. Public aliases project `_slots[0]` (PvP normal equivalence);
   // c5 swaps the projection index to `slotIndex` via wsService computeds.
 
-  getPendingPromptFor(p: 0 | 1): Signal<Prompt | null> { return this._slots[p].pendingPrompt.asReadonly(); }
-  getHintContextFor(p: 0 | 1): Signal<HintContext> { return this._slots[p].hintContext.asReadonly(); }
-  getInactivityWarningFor(p: 0 | 1): Signal<InactivityWarningMsg | null> { return this._slots[p].inactivityWarning.asReadonly(); }
-  getWaitingForOpponentFor(p: 0 | 1): Signal<boolean> { return this._slots[p].waitingForOpponent.asReadonly(); }
-  getLastConfirmedCardsFor(p: 0 | 1): CardInfo[] { return this._slots[p].lastConfirmedCards; }
-  getLastSelectedCardsFor(p: 0 | 1): CardInfo[] { return this._slots[p].lastSelectedCards; }
-  getLastSelectedPromptTypeFor(p: 0 | 1): string | null { return this._slots[p].lastSelectedPromptType; }
-  getHintCardConsumedFor(p: 0 | 1): boolean { return this._slots[p].hintCardConsumed; }
+  getPendingPromptFor(p: 0 | 1): Signal<Prompt | null> {
+    return this._slots[p].pendingPrompt.asReadonly();
+  }
+  getHintContextFor(p: 0 | 1): Signal<HintContext> {
+    return this._slots[p].hintContext.asReadonly();
+  }
+  getInactivityWarningFor(p: 0 | 1): Signal<InactivityWarningMsg | null> {
+    return this._slots[p].inactivityWarning.asReadonly();
+  }
+  getWaitingForOpponentFor(p: 0 | 1): Signal<boolean> {
+    return this._slots[p].waitingForOpponent.asReadonly();
+  }
+  getLastConfirmedCardsFor(p: 0 | 1): CardInfo[] {
+    return this._slots[p].lastConfirmedCards;
+  }
+  getLastSelectedCardsFor(p: 0 | 1): CardInfo[] {
+    return this._slots[p].lastSelectedCards;
+  }
+  getLastSelectedPromptTypeFor(p: 0 | 1): string | null {
+    return this._slots[p].lastSelectedPromptType;
+  }
+  getHintCardConsumedFor(p: 0 | 1): boolean {
+    return this._slots[p].hintCardConsumed;
+  }
 
   /**
    * γ Option C (PR2 c4.1) — defensive narrowing of `Player` runtime value
@@ -591,7 +659,10 @@ export class DuelConnection {
 
   // Prompt types that form multi-step card selection sequences — accumulate across steps
   private static readonly ACCUMULATE_SELECTION_TYPES = new Set([
-    'SELECT_CARD', 'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_UNSELECT_CARD',
+    'SELECT_CARD',
+    'SELECT_TRIBUTE',
+    'SELECT_SUM',
+    'SELECT_UNSELECT_CARD',
   ]);
 
   /**
@@ -661,8 +732,13 @@ export class DuelConnection {
     // could not show whether a decline actually left the socket nor with which
     // `forPlayer` tag (load-bearing in SOLO multiplex). Log before the send so
     // the SELECT_CHAIN re-offer / "Sending…" investigations have outbound data.
-    this.logger?.log(DuelLogCategory.PIPELINE,
-      'ws.send PLAYER_RESPONSE type=%s forPlayer=%s data=%o', promptType, forPlayer ?? 'none', data);
+    this.logger?.log(
+      DuelLogCategory.PIPELINE,
+      'ws.send PLAYER_RESPONSE type=%s forPlayer=%s data=%o',
+      promptType,
+      forPlayer ?? 'none',
+      data
+    );
     if (this.safeSend(this._tagForPlayer({ type: 'PLAYER_RESPONSE', promptType, data }, forPlayer))) {
       // γ Option C (PR2 c4.3, A22) — clear the slot of the responding player.
       // F-bugB3 root-cause fix (2026-05-31) — locate the slot from the
@@ -680,9 +756,7 @@ export class DuelConnection {
       // ground truth. In SOLO multiplex `forPlayer` is always passed (=
       // `perspectiveSlot()`) and wins; this branch only matters for PvP
       // normal where the prompt's player is the unambiguous slot index.
-      const slotIdx: 0 | 1 = forPlayer !== undefined
-        ? forPlayer
-        : ((this._slots[1].pendingPrompt()?.player === 1) ? 1 : 0);
+      const slotIdx: 0 | 1 = forPlayer !== undefined ? forPlayer : this._slots[1].pendingPrompt()?.player === 1 ? 1 : 0;
       const slot = this._slots[slotIdx];
       // Capture selected cards before clearing prompt (for excluding from next prompt)
       const prompt = slot.pendingPrompt();
@@ -929,7 +1003,9 @@ export class DuelConnection {
 
   // --- Auto-select methods ---
 
-  private tryAutoRespondEmptyCards(message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg): boolean {
+  private tryAutoRespondEmptyCards(
+    message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg
+  ): boolean {
     if (message.cards.length > 0) return false;
 
     // SELECT_SUM: mustSelect is the primary selection pool, not auto-included.
@@ -974,12 +1050,16 @@ export class DuelConnection {
     // that bypass `connect()` via `(conn as any).ws = mockWs`).
     this.ws = this._wsFactory ? this._wsFactory.create(url) : new WebSocket(url);
 
-    this.armTimeout('connection', () => {
-      if (this.ws?.readyState !== WebSocket.OPEN) {
-        this.ws?.close();
-        this.handleReconnect();
-      }
-    }, 5000);
+    this.armTimeout(
+      'connection',
+      () => {
+        if (this.ws?.readyState !== WebSocket.OPEN) {
+          this.ws?.close();
+          this.handleReconnect();
+        }
+      },
+      5000
+    );
 
     this.ws.onopen = () => {
       this.clearTimeoutSlot('connection');
@@ -992,11 +1072,15 @@ export class DuelConnection {
         this._rematchState.set('idle');
       }
       // Expect SESSION_TOKEN within 5s after handshake; otherwise force-close and retry.
-      this.armTimeout('sessionToken', () => {
-        if (this._connectionStatus() !== 'connected') {
-          this.ws?.close();
-        }
-      }, 5000);
+      this.armTimeout(
+        'sessionToken',
+        () => {
+          if (this._connectionStatus() !== 'connected') {
+            this.ws?.close();
+          }
+        },
+        5000
+      );
     };
 
     this.ws.onmessage = event => {
@@ -1019,7 +1103,7 @@ export class DuelConnection {
       }
     };
 
-    this.ws.onclose = (event) => {
+    this.ws.onclose = event => {
       this.clearTimeoutSlot('connection');
       this.clearTimeoutSlot('sessionToken');
       // 4426 = protocol version mismatch — client bundle is outdated relative
@@ -1029,7 +1113,9 @@ export class DuelConnection {
       if (event.code === 4426) {
         this.reconnectToken = null;
         this.wsToken = null;
-        try { localStorage.removeItem(this.storageKey); } catch {}
+        try {
+          localStorage.removeItem(this.storageKey);
+        } catch {}
         this._hasToken.set(false);
         this._connectionStatus.set('lost');
         this._protocolMismatch.set(true);
@@ -1039,7 +1125,9 @@ export class DuelConnection {
       // 4029 = rate limited — no point retrying immediately
       if (event.code === 4029) {
         this.reconnectToken = null;
-        try { localStorage.removeItem(this.storageKey); } catch {}
+        try {
+          localStorage.removeItem(this.storageKey);
+        } catch {}
         this._hasToken.set(this.wsToken !== null);
         this._connectionStatus.set('lost');
         return;
@@ -1048,7 +1136,9 @@ export class DuelConnection {
       if (event.code === 4001) {
         if (this.reconnectToken) {
           this.reconnectToken = null;
-          try { localStorage.removeItem(this.storageKey); } catch {}
+          try {
+            localStorage.removeItem(this.storageKey);
+          } catch {}
         } else {
           this.wsToken = null;
         }
@@ -1120,46 +1210,55 @@ export class DuelConnection {
     // branch in `handleMessage`.
     const table: Record<string, (msg: ServerMessage) => void> = Object.create(null);
     const entries: Record<string, (msg: ServerMessage) => void> = {
-      'BOARD_STATE':           (m) => this._handleBoardState(m as BoardStateMsg),
-      'STATE_SYNC':            (m) => this._handleStateSyncBuffer(m as StateSyncMsg),
-      'CHAIN_STATE':           (m) => this._handleChainState(m as ChainStateMsg),
-      'DICE_ROLL':             (m) => this._handleDiceRoll(m as DiceRollPromptMsg),
-      'DICE_RESULT':           (m) => this._handleDiceResult(m as DiceResultMsg),
-      'SELECT_FIRST_PLAYER':   (m) => this._handleSelectFirstPlayer(m as SelectFirstPlayerMsg),
-      'FIRST_PLAYER_RESULT':   (m) => this._handleFirstPlayerResult(m as FirstPlayerResultMsg),
-      'DECK_PREFETCH':         (m) => this._handleDeckPrefetch(m as DeckPrefetchMsg),
-      'EARLY_DECK_PREFETCH':   (m) => this._handleEarlyDeckPrefetch(m as EarlyDeckPrefetchMsg),
-      'DUEL_STARTING':         (m) => this._handleDuelStarting(m as DuelStartingMsg),
-      'MSG_HINT':              (m) => this._handleMsgHint(m as HintMsg),
-      'TIMER_STATE':           (m) => this._handleTimerState(m as TimerStateMsg),
-      'INACTIVITY_WARNING':    (m) => this._handleInactivityWarning(m as InactivityWarningMsg),
-      'DUEL_END':              (m) => this._handleDuelEnd(m as DuelEndMsg),
-      'ERROR':                 (m) => this._handleError(m as ErrorMsg),
-      'REMATCH_INVITATION':    () => this._handleRematchInvitation(),
-      'REMATCH_CANCELLED':     (m) => this._handleRematchCancelled(m as RematchCancelledMsg),
-      'REMATCH_STARTING':      () => this._handleRematchStarting(),
-      'OPPONENT_DISCONNECTED': (m) => this._handleOpponentDisconnected(m as OpponentDisconnectedMsg),
-      'OPPONENT_RECONNECTED':  () => this._handleOpponentReconnected(),
-      'WAITING_RESPONSE':      (m) => this._handleWaitingResponse(m as WaitingResponseMsg),
-      'SESSION_TOKEN':         (m) => this._handleSessionToken(m as SessionTokenMsg),
-      'SESSION_PHASE':         (m) => this._handleSessionPhase(m as SessionPhaseMsg),
-      'MSG_CHAINING':          (m) => this._handleMsgChaining(m),
-      'MSG_CHAIN_END':         (m) => this._handleMsgChainEnd(m),
-      'MSG_CONFIRM_CARDS':     (m) => this._handleMsgConfirmCards(m as ConfirmCardsMsg),
-      'MSG_DRAW':              (m) => this._handleMsgDraw(m as DrawMsg),
+      BOARD_STATE: m => this._handleBoardState(m as BoardStateMsg),
+      STATE_SYNC: m => this._handleStateSyncBuffer(m as StateSyncMsg),
+      CHAIN_STATE: m => this._handleChainState(m as ChainStateMsg),
+      DICE_ROLL: m => this._handleDiceRoll(m as DiceRollPromptMsg),
+      DICE_RESULT: m => this._handleDiceResult(m as DiceResultMsg),
+      SELECT_FIRST_PLAYER: m => this._handleSelectFirstPlayer(m as SelectFirstPlayerMsg),
+      FIRST_PLAYER_RESULT: m => this._handleFirstPlayerResult(m as FirstPlayerResultMsg),
+      DECK_PREFETCH: m => this._handleDeckPrefetch(m as DeckPrefetchMsg),
+      EARLY_DECK_PREFETCH: m => this._handleEarlyDeckPrefetch(m as EarlyDeckPrefetchMsg),
+      DUEL_STARTING: m => this._handleDuelStarting(m as DuelStartingMsg),
+      MSG_HINT: m => this._handleMsgHint(m as HintMsg),
+      TIMER_STATE: m => this._handleTimerState(m as TimerStateMsg),
+      INACTIVITY_WARNING: m => this._handleInactivityWarning(m as InactivityWarningMsg),
+      DUEL_END: m => this._handleDuelEnd(m as DuelEndMsg),
+      ERROR: m => this._handleError(m as ErrorMsg),
+      REMATCH_INVITATION: () => this._handleRematchInvitation(),
+      REMATCH_CANCELLED: m => this._handleRematchCancelled(m as RematchCancelledMsg),
+      REMATCH_STARTING: () => this._handleRematchStarting(),
+      OPPONENT_DISCONNECTED: m => this._handleOpponentDisconnected(m as OpponentDisconnectedMsg),
+      OPPONENT_RECONNECTED: () => this._handleOpponentReconnected(),
+      WAITING_RESPONSE: m => this._handleWaitingResponse(m as WaitingResponseMsg),
+      SESSION_TOKEN: m => this._handleSessionToken(m as SessionTokenMsg),
+      SESSION_PHASE: m => this._handleSessionPhase(m as SessionPhaseMsg),
+      MSG_CHAINING: m => this._handleMsgChaining(m),
+      MSG_CHAIN_END: m => this._handleMsgChainEnd(m),
+      MSG_CONFIRM_CARDS: m => this._handleMsgConfirmCards(m as ConfirmCardsMsg),
+      MSG_DRAW: m => this._handleMsgDraw(m as DrawMsg),
     };
     Object.assign(table, entries);
     for (const t of DuelConnection._SELECT_MODAL_TYPES) {
-      table[t] = (m) => this._handleSelectModal(m as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg);
+      table[t] = m =>
+        this._handleSelectModal(
+          m as
+            | SelectCardMsg
+            | SelectChainMsg
+            | SelectTributeMsg
+            | SelectSumMsg
+            | SelectUnselectCardMsg
+            | SelectCounterMsg
+        );
     }
     for (const t of DuelConnection._SELECT_SIMPLE_TYPES) {
-      table[t] = (m) => this._handleSelectSimple(m as Extract<ServerMessage, { type: typeof t }>);
+      table[t] = m => this._handleSelectSimple(m as Extract<ServerMessage, { type: typeof t }>);
     }
     for (const t of DuelConnection._CHAIN_PIPELINE_TYPES) {
-      table[t] = (m) => this.processor.processMessage(m);
+      table[t] = m => this.processor.processMessage(m);
     }
     for (const t of DuelConnection._GAME_EVENT_TYPES) {
-      table[t] = (m) => this.processor.processMessage(m);
+      table[t] = m => this.processor.processMessage(m);
     }
     return table;
   }
@@ -1205,8 +1304,13 @@ export class DuelConnection {
     const data = this._maybeSwapBoardState(message.data);
     this._rematchStarting.set(false);
     this._justReconnected.set(false);
-    syncAfterBoardState(this.rbs, this.processor.chainPhase(),
-      this.processor.animationQueue().length, data, this._boardActive);
+    syncAfterBoardState(
+      this.rbs,
+      this.processor.chainPhase(),
+      this.processor.animationQueue().length,
+      data,
+      this._boardActive
+    );
     // β.1 — feed the BoundaryProcessor for Turn/Phase delta detection.
     // Runs after the sync tier decision so the BP's emit fires AFTER
     // the board state is reflected in the rendered/logical layers.
@@ -1247,13 +1351,17 @@ export class DuelConnection {
       this._applyStateSync(this._pendingStateSync);
     }
     this._pendingStateSync = message;
-    this.armTimeout('stateSyncFlush', () => {
-      const pending = this._pendingStateSync;
-      if (pending !== null) {
-        this._pendingStateSync = null;
-        this._applyStateSync(pending);
-      }
-    }, STATE_SYNC_FLUSH_MS);
+    this.armTimeout(
+      'stateSyncFlush',
+      () => {
+        const pending = this._pendingStateSync;
+        if (pending !== null) {
+          this._pendingStateSync = null;
+          this._applyStateSync(pending);
+        }
+      },
+      STATE_SYNC_FLUSH_MS
+    );
   }
 
   private _handleChainState(message: ChainStateMsg): void {
@@ -1265,9 +1373,7 @@ export class DuelConnection {
       // CHAIN_STATE without preceding STATE_SYNC is a true protocol
       // violation (the server-contract pairs them). Log loud but
       // best-effort restore so the user isn't stuck.
-      this.logger?.warn(
-        'CHAIN_STATE received without buffered STATE_SYNC — applying chain restore on current state'
-      );
+      this.logger?.warn('CHAIN_STATE received without buffered STATE_SYNC — applying chain restore on current state');
     } else {
       this.clearTimeoutSlot('stateSyncFlush');
       this._pendingStateSync = null;
@@ -1288,7 +1394,7 @@ export class DuelConnection {
   }
 
   private _handleSelectModal(
-    message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg,
+    message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg
   ): void {
     this.processor.processMessage(message);
     // Palier 0 — only `SELECT_CARD` belongs to the EventStream (the
@@ -1301,12 +1407,15 @@ export class DuelConnection {
     // load-bearing in SOLO multiplex; in PvP normal both should resolve
     // to slot 0 for the receiver. `cardsLen` distinguishes a real
     // re-offer (cards present) from the auto-respond empty-cards path.
-    this.logger?.log(DuelLogCategory.PIPELINE,
+    this.logger?.log(
+      DuelLogCategory.PIPELINE,
       'ws.recv %s player=%s cardsLen=%s forced=%s prevPending=%s',
-      message.type, message.player,
+      message.type,
+      message.player,
       'cards' in message ? (message as { cards: unknown[] }).cards.length : 'n/a',
       message.type === 'SELECT_CHAIN' ? (message as SelectChainMsg).forced : 'n/a',
-      this._slots[message.player].pendingPrompt()?.type ?? null);
+      this._slots[message.player].pendingPrompt()?.type ?? null
+    );
     const slot = this._slotFor(message.player, message.type);
     // Reset exclusion accumulator when the prompt type changes mid-sequence
     // (must happen before pendingPrompt.set so attachComponent reads the correct value)
@@ -1315,8 +1424,12 @@ export class DuelConnection {
       slot.lastSelectedPromptType = null;
     }
     if (this.tryAutoRespondEmptyCards(message)) {
-      this.logger?.log(DuelLogCategory.PIPELINE,
-        'ws.recv %s player=%s → auto-respond empty (cards=0)', message.type, message.player);
+      this.logger?.log(
+        DuelLogCategory.PIPELINE,
+        'ws.recv %s player=%s → auto-respond empty (cards=0)',
+        message.type,
+        message.player
+      );
       return;
     }
     slot.waitingForOpponent.set(false);
@@ -1490,7 +1603,13 @@ export class DuelConnection {
       cardName: message.cardName || (canInherit ? prev.cardName : ''),
     };
     const isBroadcast = SAFE_PUBLIC_HINT_TYPES.has(message.hintType);
-    this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o (broadcast=%s)', { hintType: message.hintType, cardName: message.cardName, value: message.value, isSelectMsg, canInherit }, merged, isBroadcast);
+    this.logger?.log(
+      DuelLogCategory.PROC,
+      'MSG_HINT raw: %o => merged: %o (broadcast=%s)',
+      { hintType: message.hintType, cardName: message.cardName, value: message.value, isSelectMsg, canInherit },
+      merged,
+      isBroadcast
+    );
     if (isBroadcast) {
       // A39-bis broadcast — write both slots so any reader surfaces it.
       for (const s of this._slots) s.hintContext.set(merged);
@@ -1502,7 +1621,10 @@ export class DuelConnection {
   private _handleTimerState(message: TimerStateMsg): void {
     this._timerState.set(message);
     this._timerStatePerPlayer.update(states => {
-      const updated: [TimerStateMsg | null, TimerStateMsg | null] = [...states] as [TimerStateMsg | null, TimerStateMsg | null];
+      const updated: [TimerStateMsg | null, TimerStateMsg | null] = [...states] as [
+        TimerStateMsg | null,
+        TimerStateMsg | null,
+      ];
       updated[message.player] = message;
       return updated;
     });
@@ -1519,9 +1641,11 @@ export class DuelConnection {
     // regression that omits `player` in SOLO would silently land the
     // warning in slot 0 = invisible to a viewer in perspective=1.
     // PvP normal keeps the fallback (legacy slot-agnostic behavior).
-    duelAssert(!this.soloMode || message.player !== undefined,
+    duelAssert(
+      !this.soloMode || message.player !== undefined,
       'INACTIVITY_WARNING',
-      'SOLO multiplex requires server to populate `player` (got undefined)');
+      'SOLO multiplex requires server to populate `player` (got undefined)'
+    );
     this._slots[message.player ?? 0].inactivityWarning.set(message);
   }
 
@@ -1576,7 +1700,9 @@ export class DuelConnection {
       s.waitingForOpponent.set(false);
       s.hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '' });
     }
-    try { localStorage.removeItem(this.storageKey); } catch {}
+    try {
+      localStorage.removeItem(this.storageKey);
+    } catch {}
   }
 
   private _handleError(message: ErrorMsg): void {
@@ -1674,9 +1800,11 @@ export class DuelConnection {
     //
     // γ-c cleanup F-2.4 (audit) — assert presence in SOLO. Same
     // rationale as `INACTIVITY_WARNING` above.
-    duelAssert(!this.soloMode || message.targetPlayer !== undefined,
+    duelAssert(
+      !this.soloMode || message.targetPlayer !== undefined,
       'WAITING_RESPONSE',
-      'SOLO multiplex requires server to populate `targetPlayer` (got undefined)');
+      'SOLO multiplex requires server to populate `targetPlayer` (got undefined)'
+    );
     // SOLO multiplex single-waiter invariant (fix #5, 2026-06-02): at any
     // instant, AT MOST one slot is in `waitingForOpponent`. The server emits
     // `WAITING_RESPONSE{targetPlayer:X}` when it has just sent a SELECT_* to
@@ -1713,7 +1841,9 @@ export class DuelConnection {
     // animations-ready-protocol-2026-06-05 — ANIMATIONS_READY emission
     // lives in `DuelLoadingEffectsService`, not here.
     if (this._autoReconnect) {
-      try { localStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
+      try {
+        localStorage.setItem(this.storageKey, this.reconnectToken);
+      } catch {}
     }
   }
 
@@ -1828,7 +1958,9 @@ export class DuelConnection {
 
     if (this._retryCount() >= this._maxRetries) {
       this.reconnectToken = null;
-      try { localStorage.removeItem(this.storageKey); } catch {}
+      try {
+        localStorage.removeItem(this.storageKey);
+      } catch {}
       this._hasToken.set(this.wsToken !== null);
       this._connectionStatus.set('lost');
       return;
@@ -1850,8 +1982,11 @@ export class DuelConnection {
     // L28 — silent send drop = duel-blocking on the server side. Prefer a
     // visible warn so a regression in caller code (e.g. sendResponse fired
     // before WS handshake completes) is debuggable instead of a frozen UI.
-    this.logger?.warn('safeSend dropped — WS not open (readyState=%d, type=%s)',
-      this.ws?.readyState ?? -1, (data as { type?: string }).type ?? '?');
+    this.logger?.warn(
+      'safeSend dropped — WS not open (readyState=%d, type=%s)',
+      this.ws?.readyState ?? -1,
+      (data as { type?: string }).type ?? '?'
+    );
     return false;
   }
 

@@ -87,10 +87,10 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     // via `bindSoloConnection`. The PvP-normal conn carries `duelCtx` for
     // BOARD_STATE swap parity (c4.4 BH-3) — never actually triggered in
     // PvP because `soloMode` stays false, but kept uniform.
-    const defaultConn = new DuelConnection(
-      environment.wsUrl, true, undefined, this.logger,
-      { duelCtx: this.duelCtx, wsFactory: this.wsFactory },
-    );
+    const defaultConn = new DuelConnection(environment.wsUrl, true, undefined, this.logger, {
+      duelCtx: this.duelCtx,
+      wsFactory: this.wsFactory,
+    });
     this.applySinks(defaultConn);
     this._transport_connection = signal<DuelConnection>(defaultConn);
   }
@@ -107,7 +107,9 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     wireConnectionDebugSinks(conn, { artService: this.artService, debugLog: this.debugLog });
     if (this._outOfBandSink) conn.attachOutOfBandSink(this._outOfBandSink);
     if (this._drawNewTurnSink) conn.onDrawNewTurn = this._drawNewTurnSink;
-    conn.onStateSync = (msg) => { this.onStateSync?.(msg); };
+    conn.onStateSync = msg => {
+      this.onStateSync?.(msg);
+    };
   }
 
   // ───────────────────────────────────────────────
@@ -150,8 +152,11 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private perspectiveSlot(): 0 | 1 {
     if (this.soloModeSource()) return this.duelCtx.perspective()();
     const idx = this.duelCtx.ownPlayerIndex();
-    duelAssert(idx === 0 || idx === 1, 'DuelWebSocketService.perspectiveSlot',
-      `ownPlayerIndex must be 0 or 1, got ${idx}`);
+    duelAssert(
+      idx === 0 || idx === 1,
+      'DuelWebSocketService.perspectiveSlot',
+      `ownPlayerIndex must be 0 or 1, got ${idx}`
+    );
     return idx === 1 ? 1 : 0;
   }
 
@@ -232,8 +237,12 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // of the chain machine + animation queue in BOTH modes (PvP normal +
   // SOLO). The old `proc()` indirection (shared processor or fallback)
   // is gone because there's no longer a separate shared instance.
-  get renderedBoardState() { return this.active().renderedBoardState; }
-  get boardStateView() { return this.active().boardStateView; }
+  get renderedBoardState() {
+    return this.active().renderedBoardState;
+  }
+  get boardStateView() {
+    return this.active().boardStateView;
+  }
   readonly animationQueue = computed(() => this.active().processor.animationQueue());
   readonly activeChainLinks = computed(() => this.active().processor.activeChainLinks());
   readonly chainPhase = computed(() => this.active().processor.chainPhase());
@@ -292,7 +301,9 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    *  PvP normal, single-user across the 2 slots in SOLO multiplex
    *  (the message describes WHICH player when relevant via `player`). */
   readonly lastError = computed(() => this.active().lastError());
-  clearLastError(): void { this.active().clearLastError(); }
+  clearLastError(): void {
+    this.active().clearLastError();
+  }
   readonly justReconnected = computed(() => this.active().justReconnected());
 
   // ───────────────────────────────────────────────

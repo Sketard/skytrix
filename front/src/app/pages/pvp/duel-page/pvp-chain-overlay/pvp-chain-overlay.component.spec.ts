@@ -76,11 +76,6 @@ describe('PvpChainOverlayComponent', () => {
     fixture.detectChanges();
   }
 
-  function setPhase(p: 'idle' | 'building' | 'resolving'): void {
-    chainPhase.set(p);
-    fixture.detectChanges();
-  }
-
   function setLinksAndPhase(links: ChainLinkState[], p: 'idle' | 'building' | 'resolving'): void {
     activeChainLinks.set(links);
     chainPhase.set(p);
@@ -97,10 +92,12 @@ describe('PvpChainOverlayComponent', () => {
     activeChainLinks = signal<ChainLinkState[]>([]);
     chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
 
-    mockOrchestrator = jasmine.createSpyObj<AnimationOrchestratorService>(
-      'AnimationOrchestratorService',
-      ['speedMultiplier', 'chainPulseDuration', 'chainExitDuration', 'replayBuffer'],
-    );
+    mockOrchestrator = jasmine.createSpyObj<AnimationOrchestratorService>('AnimationOrchestratorService', [
+      'speedMultiplier',
+      'chainPulseDuration',
+      'chainExitDuration',
+      'replayBuffer',
+    ]);
     mockOrchestrator.speedMultiplier.and.returnValue(1);
     mockOrchestrator.chainPulseDuration.and.returnValue(800);
     mockOrchestrator.chainExitDuration.and.returnValue(800);
@@ -117,7 +114,8 @@ describe('PvpChainOverlayComponent', () => {
       value: signal<ReadonlySet<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])),
       isReady: (_chainId: number) => true,
     };
-    (mockOrchestrator as unknown as { overlayShowReady: typeof overlayShowReadyStub }).overlayShowReady = overlayShowReadyStub;
+    (mockOrchestrator as unknown as { overlayShowReady: typeof overlayShowReadyStub }).overlayShowReady =
+      overlayShowReadyStub;
 
     mockChainManager = {
       chainEntryAnimating: signal(false),
@@ -212,10 +210,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should call liveAnnouncer with the new link name', () => {
       setLinksAndPhase([createLink(0, { cardName: 'Ash Blossom' })], 'building');
-      setLinks([
-        createLink(0, { cardName: 'Ash Blossom' }),
-        createLink(1, { cardName: 'Maxx C' }),
-      ]);
+      setLinks([createLink(0, { cardName: 'Ash Blossom' }), createLink(1, { cardName: 'Maxx C' })]);
       expect(mockAnnouncer.announce).toHaveBeenCalledWith('Chain Link 2: Maxx C added');
     });
 
@@ -328,10 +323,7 @@ describe('PvpChainOverlayComponent', () => {
     it('should cap mono-side stack at 2 (older links drop off the stack)', () => {
       // Mono-side cap is 2 (newest + previous). CL0 + CL1 drop off ; CL2 +
       // CL3 survive. Slot for the visible : CL3=front (newest), CL2=mid.
-      setLinksAndPhase(
-        [createLink(0), createLink(1), createLink(2), createLink(3)],
-        'building',
-      );
+      setLinksAndPhase([createLink(0), createLink(1), createLink(2), createLink(3)], 'building');
       const cards = component.visibleCards();
       expect(cards.length).toBe(2);
       expect(cards.every(c => c.side === 'left')).toBeTrue();
@@ -353,15 +345,24 @@ describe('PvpChainOverlayComponent', () => {
       // majority (2 visible), left is minority (1 or 2 visible).
       setLinksAndPhase(
         [
-          createLink(0, { player: 0 }), createLink(1, { player: 1 }),
-          createLink(2, { player: 0 }), createLink(3, { player: 1 }),
-          createLink(4, { player: 0 }), createLink(5, { player: 1 }),
+          createLink(0, { player: 0 }),
+          createLink(1, { player: 1 }),
+          createLink(2, { player: 0 }),
+          createLink(3, { player: 1 }),
+          createLink(4, { player: 0 }),
+          createLink(5, { player: 1 }),
         ],
-        'building',
+        'building'
       );
       const cards = component.visibleCards();
-      const left = cards.filter(c => c.side === 'left').map(c => c.chainIndex).sort((a, b) => b - a);
-      const right = cards.filter(c => c.side === 'right').map(c => c.chainIndex).sort((a, b) => b - a);
+      const left = cards
+        .filter(c => c.side === 'left')
+        .map(c => c.chainIndex)
+        .sort((a, b) => b - a);
+      const right = cards
+        .filter(c => c.side === 'right')
+        .map(c => c.chainIndex)
+        .sort((a, b) => b - a);
       // Right = majority side, capped at 2 (newest 2).
       expect(right).toEqual([5, 3]);
       // Left = minority side : either 1 (cramped) or 2 (desktop) visible,
@@ -380,8 +381,13 @@ describe('PvpChainOverlayComponent', () => {
         type: 'resolved',
         negated: false,
         card: {
-          chainIndex: 99, cardCode: 9999, cardName: 'Resolved',
-          side: 'left', level: 4, slot: 'front', player: 0,
+          chainIndex: 99,
+          cardCode: 9999,
+          cardName: 'Resolved',
+          side: 'left',
+          level: 4,
+          slot: 'front',
+          player: 0,
         },
       });
       const cards = component.visibleCards();
@@ -412,20 +418,14 @@ describe('PvpChainOverlayComponent', () => {
     it('should set resolvingIndex on a non-negated resolving link', () => {
       // chain-2+ to enable overlay path
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       expect(component.resolvingKey()).toBe('1:0');
       expect(component.negatedResolvingKey()).toBe('');
     });
 
     it('should set negatedResolvingIndex on a negated resolving link', () => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true, negated: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true, negated: true })], 'resolving');
       expect(component.negatedResolvingKey()).toBe('1:0');
       expect(component.resolvingKey()).toBe('');
     });
@@ -435,16 +435,10 @@ describe('PvpChainOverlayComponent', () => {
       // chain N+1's link (chainIndex 0, gen 1). Only the gen-1 link is resolving.
       // The resolving KEY must be '0:1' — a chainIndex-only marker would have
       // been '0', matching BOTH cards in the template and pulsing the wrong one.
+      setLinksAndPhase([createLink(0, { generation: 0 }), createLink(0, { generation: 1 })], 'building');
       setLinksAndPhase(
-        [createLink(0, { generation: 0 }), createLink(0, { generation: 1 })],
-        'building',
-      );
-      setLinksAndPhase(
-        [
-          createLink(0, { generation: 0 }),
-          createLink(0, { generation: 1, resolving: true }),
-        ],
-        'resolving',
+        [createLink(0, { generation: 0 }), createLink(0, { generation: 1, resolving: true })],
+        'resolving'
       );
       expect(component.resolvingKey()).withContext('key carries the resolving link generation').toBe('0:1');
       // Proof of disambiguation: the gen-0 card's key would be '0:0' — distinct,
@@ -455,10 +449,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should toggle chainOverlayReady false at resolution start, true at end', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       // Trigger link removal → onChainLinkResolved
       mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
@@ -474,10 +465,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should leave overlay hidden after onChainLinkResolved completes (no final re-show)', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
       flush();
@@ -502,10 +490,7 @@ describe('PvpChainOverlayComponent', () => {
       // overlayVisible=false at `pulse + OVERLAY_ANIM_HOLD_MS` (breathing
       // room before fade-out, cf. chat 2026-06-03 bug 4). Adjust the tick.
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       expect(component.overlayVisible()).toBeTrue();
 
       // OVERLAY_ANIM_HOLD_MS = 400 ; scaledDuration in this test stubs to
@@ -520,10 +505,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should re-fade-in overlay when next link starts resolving (with pendingExitCard visible)', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
       flush();
@@ -542,10 +524,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should call replayBuffer when hasBufferedEvents + non-negated', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       mockChainManager.hasBufferedEvents = true;
       setLinks([createLink(0)]);
       flush();
@@ -555,10 +534,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should NOT call replayBuffer for a negated resolved link', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true, negated: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true, negated: true })], 'resolving');
       mockChainManager.hasBufferedEvents = true;
       setLinks([createLink(0)]);
       flush();
@@ -574,10 +550,7 @@ describe('PvpChainOverlayComponent', () => {
   describe('resolution sequence (multi-link cascade)', () => {
     it('should populate pendingExitCard after onChainLinkResolved completes', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
       flush();
@@ -628,10 +601,7 @@ describe('PvpChainOverlayComponent', () => {
     it('should push out pendingExitCard with exit anim when next link starts resolving', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
       // Resolve link 1
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       setLinks([createLink(0)]);
       flush();
       expect(component.pendingExitCard()).not.toBeNull();
@@ -648,10 +618,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should apply pulse to new resolving link after exit anim completes', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       setLinks([createLink(0)]);
       flush();
 
@@ -673,10 +640,7 @@ describe('PvpChainOverlayComponent', () => {
     it('should NOT re-announce the same resolving link twice', () => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
       mockAnnouncer.announce.calls.reset();
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       const firstCount = mockAnnouncer.announce.calls.count();
 
       // Re-emit same link state — should NOT re-announce
@@ -687,32 +651,22 @@ describe('PvpChainOverlayComponent', () => {
     it('should re-announce when negation flips false → true on the same link', () => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
       mockAnnouncer.announce.calls.reset();
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       mockAnnouncer.announce.calls.reset();
 
       setLinks([createLink(0), createLink(1, { resolving: true, negated: true })]);
-      expect(mockAnnouncer.announce).toHaveBeenCalledWith(
-        jasmine.stringMatching(/negated/i),
-      );
+      expect(mockAnnouncer.announce).toHaveBeenCalledWith(jasmine.stringMatching(/negated/i));
     });
 
     it('should announce afresh when a new link starts resolving', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       setLinks([createLink(0)]);
       flush();
       mockAnnouncer.announce.calls.reset();
 
       setLinks([createLink(0, { resolving: true })]);
-      expect(mockAnnouncer.announce).toHaveBeenCalledWith(
-        jasmine.stringMatching(/Chain Link 1.*Card 1/i),
-      );
+      expect(mockAnnouncer.announce).toHaveBeenCalledWith(jasmine.stringMatching(/Chain Link 1.*Card 1/i));
 
       flush();
     }));
@@ -771,10 +725,7 @@ describe('PvpChainOverlayComponent', () => {
   describe('prompt mid-resolution gate (Effect E)', () => {
     it('should hide overlay + set chainPromptGateActive when prompt arrives mid-resolving', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       // Force overlay visible (resolving phase keeps it shown if overlayShownDuringBuild)
       component.overlayVisible.set(true);
       fixture.detectChanges();
@@ -789,10 +740,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should release gate after overlayFadeOut ms', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       component.overlayVisible.set(true);
       fixture.detectChanges();
       setPromptActive(true);
@@ -805,10 +753,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should release gate immediately if prompt closes before fade-out fires', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       component.overlayVisible.set(true);
       fixture.detectChanges();
       setPromptActive(true);
@@ -886,10 +831,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should reset lastAnnouncedResolvingIndex to allow re-announce in next chain', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       setLinks([createLink(0)]);
       flush();
       setLinksAndPhase([], 'idle');
@@ -897,14 +839,9 @@ describe('PvpChainOverlayComponent', () => {
       // New chain
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
       mockAnnouncer.announce.calls.reset();
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
 
-      expect(mockAnnouncer.announce).toHaveBeenCalledWith(
-        jasmine.stringMatching(/resolving/i),
-      );
+      expect(mockAnnouncer.announce).toHaveBeenCalledWith(jasmine.stringMatching(/resolving/i));
 
       flush();
     }));
@@ -934,15 +871,14 @@ describe('PvpChainOverlayComponent', () => {
   describe('reentrancy guard (resolvingInFlight)', () => {
     it('should ignore a second resolution trigger while one is in flight', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       // Slow replay so onChainLinkResolved is in-flight
       mockChainManager.hasBufferedEvents = true;
       let resolveReplay: () => void = () => undefined;
       mockOrchestrator.replayBuffer.and.returnValue(
-        new Promise<void>(r => { resolveReplay = r; }),
+        new Promise<void>(r => {
+          resolveReplay = r;
+        })
       );
       setLinks([createLink(0)]);
 
@@ -969,20 +905,14 @@ describe('PvpChainOverlayComponent', () => {
       // blocked. Two paths reset it: onChainEnd (synchronous) and the finally
       // block of onChainLinkResolved (after the AbortController fires).
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       setLinks([createLink(0)]); // triggers onChainLinkResolved
       setLinksAndPhase([], 'idle'); // hard cancel mid-flow
       flush();
 
       // Fresh chain re-enters the sequence immediately
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
 
@@ -994,10 +924,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should clear activeTimers synchronously when chain ends mid-resolution', fakeAsync(() => {
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      setLinksAndPhase(
-        [createLink(0), createLink(1, { resolving: true })],
-        'resolving',
-      );
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       mockChainManager.hasBufferedEvents = false;
       setLinks([createLink(0)]);
       const internal = component as unknown as { activeTimers: Set<unknown> };
@@ -1038,10 +965,10 @@ describe('PvpChainOverlayComponent', () => {
   describe('chain-badge side routing (DS convention)', () => {
     it('viewer-side link gets .chain-card--left; opponent-side link gets .chain-card--right', () => {
       // ownPlayerIndex stub = 0 → player 0 = viewer = left; player 1 = opp = right.
-      setLinksAndPhase([
-        createLink(0, { player: 0, cardCode: 1000 }),
-        createLink(1, { player: 1, cardCode: 2000 }),
-      ], 'building');
+      setLinksAndPhase(
+        [createLink(0, { player: 0, cardCode: 1000 }), createLink(1, { player: 1, cardCode: 2000 })],
+        'building'
+      );
 
       const host = fixture.nativeElement as HTMLElement;
       const leftCards = host.querySelectorAll<HTMLElement>('.chain-card--left');
@@ -1052,10 +979,16 @@ describe('PvpChainOverlayComponent', () => {
 
       // Every left card must own a .chain-badge (the SCSS hook for the
       // gold stroke). Same for right (default blue stroke).
-      leftCards.forEach(card => expect(card.querySelector('.chain-badge'))
-        .withContext('left chain-card missing .chain-badge child (gold stroke target)').not.toBeNull());
-      rightCards.forEach(card => expect(card.querySelector('.chain-badge'))
-        .withContext('right chain-card missing .chain-badge child (default blue stroke target)').not.toBeNull());
+      leftCards.forEach(card =>
+        expect(card.querySelector('.chain-badge'))
+          .withContext('left chain-card missing .chain-badge child (gold stroke target)')
+          .not.toBeNull()
+      );
+      rightCards.forEach(card =>
+        expect(card.querySelector('.chain-badge'))
+          .withContext('right chain-card missing .chain-badge child (default blue stroke target)')
+          .not.toBeNull()
+      );
     });
   });
 
@@ -1109,10 +1042,7 @@ describe('PvpChainOverlayComponent', () => {
     }));
 
     it('is true while the resolving pulse is playing (pulse + hold + overlayFadeOut)', fakeAsync(() => {
-      setLinksAndPhase([
-        createLink(0),
-        createLink(1, { resolving: true }),
-      ], 'resolving');
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
 
       // Effect B detects resolvingLink → applyResolvingPulse → _pulseActive=true.
       expect(component.overlayActive()).withContext('during pulse').toBeTrue();
@@ -1126,10 +1056,7 @@ describe('PvpChainOverlayComponent', () => {
     }));
 
     it('is NOT true on resolvingIndex alone after _pulseActive cleared (anti-deadlock)', fakeAsync(() => {
-      setLinksAndPhase([
-        createLink(0),
-        createLink(1, { resolving: true }),
-      ], 'resolving');
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
 
       // Let the _pulseActive timer fire (pulse + hold + overlayFadeOut).
       const d = component.durations();
@@ -1151,10 +1078,7 @@ describe('PvpChainOverlayComponent', () => {
     }));
 
     it('clears _pulseActive on onChainEnd (defense in depth)', fakeAsync(() => {
-      setLinksAndPhase([
-        createLink(0),
-        createLink(1, { resolving: true }),
-      ], 'resolving');
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
       expect(component.overlayActive()).toBeTrue();
 
       // Simulate chain end (Effect A path).
@@ -1204,13 +1128,10 @@ describe('PvpChainOverlayComponent', () => {
       // Setup : building phase reaches 2 links, then resolving phase with
       // the front link marked resolving.
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
-      tick(component.durations().pulse);  // settle entry-related timers
+      tick(component.durations().pulse); // settle entry-related timers
 
       // Move to resolving — Effect B sets resolvingIndex via applyResolvingPulse.
-      setLinksAndPhase([
-        createLink(0),
-        createLink(1, { resolving: true }),
-      ], 'resolving');
+      setLinksAndPhase([createLink(0), createLink(1, { resolving: true })], 'resolving');
 
       // Drop the front link — Effect A finds the dropped link + calls
       // onChainLinkResolved. The async flow starts.
