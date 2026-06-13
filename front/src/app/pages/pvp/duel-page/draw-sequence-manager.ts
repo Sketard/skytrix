@@ -69,6 +69,22 @@ export class DrawSequenceManager {
   private _initialDrawDone: [boolean, boolean] = [false, false];
   private _drawTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _onQueueResume: (() => void) | null = null;
+  /**
+   * Stream sink for MOVE→HAND events that `processShuffleEvent` steals out
+   * of the animation queue via `peekAndDequeueMatching` (search→shuffle
+   * pattern : a tutored card is added to hand, then the hand is shuffled —
+   * the move's travel is folded into the shuffle re-layout instead of a
+   * separate DECK→HAND animation). The stolen MOVE bypasses the
+   * orchestrator's `processEvent` (which owns `pushToStream`), so without
+   * this sink the move never reaches `_eventStream` — the journal/parity
+   * stream loses the "→ Hand" line. Wired by the orchestrator to
+   * `pushToStream`. Pacing-dependent SOLO bug : at dense tape pacing the
+   * MOVE + SHUFFLE_HAND arrive in the same WS batch so the shuffle steals
+   * the move before chain-buffer replay can dispatch it ; at human pacing
+   * the move is chain-buffered + replayed (reaching the stream) before the
+   * shuffle runs. Replay never hits the race (buffer replay drains the
+   * move before the shuffle dispatch) — this sink makes SOLO match. */
+  private _onStolenMoveForStream: ((move: MoveMsg) => void) | null = null;
 
   /**
    * Batch slot bookkeeping for replayBuffer() — one entry per player with
@@ -97,6 +113,13 @@ export class DrawSequenceManager {
   /** Register the callback to resume the orchestrator's queue loop after draws complete. */
   initQueueResumeCallback(onResume: () => void): void {
     this._onQueueResume = onResume;
+  }
+
+  /** Register the sink that records a shuffle-stolen MOVE→HAND on the
+   *  orchestrator's EventStream (see `_onStolenMoveForStream`). Wired by
+   *  the orchestrator to `pushToStream`. */
+  initStolenMoveStreamSink(sink: (move: MoveMsg) => void): void {
+    this._onStolenMoveForStream = sink;
   }
 
   // --- Hand batch (replayBuffer tutor sequencing) ---
@@ -657,14 +680,33 @@ export class DrawSequenceManager {
     const relPlayer = this.ctx.relativePlayer(msg.player);
     const handZoneKey = `HAND-${relPlayer}`;
 
+    // Only steal a MOVE→HAND from THIS shuffle's segment of the queue.
+    // At dense pacing (D/D/D tutor cluster, 2026-06-12) a later chain's
+    // tutor MOVE→HAND can already sit in the queue when this shuffle runs ;
+    // a barrier-free scan would steal it and play it inside the wrong chain
+    // window (parity break — the move surfaces N chains too early). Stop at
+    // the first chain-boundary message : a MOVE→HAND past a CHAINING /
+    // SOLVING / SOLVED / END belongs to a different chain and must stay
+    // queued for its own dispatch.
     const moveMsg = peekAndDequeueMatching<MoveMsg>(this.dataSource,
       e => e.type === 'MSG_MOVE' && (e as MoveMsg).toLocation === LOCATION.HAND,
+      e => e.type === 'MSG_CHAINING' || e.type === 'MSG_CHAIN_SOLVING'
+        || e.type === 'MSG_CHAIN_SOLVED' || e.type === 'MSG_CHAIN_END',
     );
 
     this.logger.log(DuelLogCategory.SHUFFLE, 'processShuffleEvent START relPlayer=%d', relPlayer);
 
     if (moveMsg) {
       this.logger.log(DuelLogCategory.SHUFFLE, 'moveMsg found — processing');
+      // The MOVE was pulled straight out of the animation queue, so it
+      // never went through the orchestrator's `processEvent` → never hit
+      // `pushToStream`. Record it on the EventStream now so the journal /
+      // parity stream sees the "→ Hand" event exactly once (its travel is
+      // folded into the shuffle re-layout below — no double animation).
+      // Without this the move is silently lost at dense pacing where the
+      // shuffle steals it before chain-buffer replay can dispatch it
+      // (D/D/D tutor cluster, 2026-06-12).
+      this._onStolenMoveForStream?.(moveMsg);
       const moveLock = this.rbs.lockZone(handZoneKey);
       try {
         const moveResult = this.moveRouter.processMoveEvent(moveMsg);

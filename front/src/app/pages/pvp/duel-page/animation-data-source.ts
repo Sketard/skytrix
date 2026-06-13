@@ -218,9 +218,25 @@ export function syncAfterBoardState(
 export function peekAndDequeueMatching<T extends GameEvent>(
   dataSource: AnimationDataSource,
   predicate: (e: GameEvent) => boolean,
+  /**
+   * Optional barrier : stop scanning (return null) if an event satisfying
+   * `stopBefore` is encountered before a `predicate` match. Lets a caller
+   * restrict the steal to the queue prefix that belongs to the current
+   * logical unit (e.g. the shuffle-induced MOVE→HAND steal must not reach
+   * across a chain boundary into a *future* chain's tutor move — D/D/D
+   * tutor cluster, 2026-06-12). Directives are skipped, not treated as
+   * barriers.
+   */
+  stopBefore?: (e: GameEvent) => boolean,
 ): T | null {
   const queue = dataSource.animationQueue();
-  const idx = queue.findIndex(e => !isDirective(e) && predicate(e));
+  let idx = -1;
+  for (let i = 0; i < queue.length; i++) {
+    const e = queue[i];
+    if (isDirective(e)) continue;
+    if (predicate(e)) { idx = i; break; }
+    if (stopBefore?.(e)) return null;
+  }
   if (idx === -1) return null;
   const msg = queue[idx] as T;
   dataSource.removeAnimationAt(idx);

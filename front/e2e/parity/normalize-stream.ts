@@ -86,6 +86,24 @@ const VOLATILE_FIELDS = [
  */
 function isFilteredOut(event: RawStreamEvent): boolean {
   if (event.kind === 'animation') return true;
+  // D/D/D tutor cluster (2026-06-12) — HARNESS artifact, not a pipeline
+  // divergence. `EffectAbandoned(reason='timeout')` is fired by the
+  // DeferredEffectProcessor's WALL-CLOCK `DEFERRED_TIMEOUT_MS` (5s) guard.
+  // The SOLO from-replay capture drives the client minutes behind the
+  // tape (24-chain dense fixture, post-tape catch-up), so a deferred's
+  // matching flux event routinely lands >5s after its trigger → the guard
+  // fires, THEN the real match arrives and emits `EffectReady` anyway. The
+  // deferred still RESOLVES on both sides (the `EffectReady` is present in
+  // both streams) ; only the timeout marker's stream POSITION is
+  // pacing-dependent. Both modes emit the same set of timeout abandons
+  // (verified : identical name multiset) — filtering them on both sides
+  // removes the ordering artifact without hiding a real divergence (the
+  // streams are byte-identical once these are dropped). Lift this if the
+  // harness ever paces the SOLO catch-up within the 5s deferred window.
+  if (event.kind === 'deferred' && event['type'] === 'EffectAbandoned'
+      && event['reason'] === 'timeout') {
+    return true;
+  }
   // Étape 2 (2026-06-12) — HARNESS artifact, not a pipeline divergence :
   // the SOLO capture runs with a server-side tape player that answers
   // SELECT_* before they reach the client, so the SOLO stream never sees

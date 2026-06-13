@@ -263,6 +263,43 @@ describe('peekAndDequeueMatching', () => {
     expect(result).toBeNull();
     expect(removeSpy).not.toHaveBeenCalled();
   });
+
+  describe('stopBefore barrier (D/D/D tutor cluster, 2026-06-12)', () => {
+    it('matches a target that precedes the barrier event', () => {
+      const target = ev('MSG_MOVE', 1);
+      const { source, removeSpy } = buildSource([
+        target, ev('MSG_CHAIN_END'), ev('MSG_MOVE', 2),
+      ]);
+      const result = peekAndDequeueMatching(source,
+        e => e.type === 'MSG_MOVE',
+        e => e.type === 'MSG_CHAIN_END');
+      expect(result).toBe(target);
+      expect(removeSpy).toHaveBeenCalledOnceWith(0);
+    });
+
+    it('returns null when the barrier precedes the only match', () => {
+      const future = ev('MSG_MOVE', 2);
+      const { source, removeSpy } = buildSource([
+        ev('MSG_CHAIN_END'), future,
+      ]);
+      const result = peekAndDequeueMatching(source,
+        e => e.type === 'MSG_MOVE',
+        e => e.type === 'MSG_CHAIN_END');
+      // The only MOVE sits past a chain boundary → belongs to a later
+      // chain → must NOT be stolen.
+      expect(result).toBeNull();
+      expect(removeSpy).not.toHaveBeenCalled();
+    });
+
+    it('directives do not count as barriers', () => {
+      const target = ev('MSG_MOVE', 1);
+      const { source } = buildSource([dir('barrier'), target]);
+      const result = peekAndDequeueMatching(source,
+        e => e.type === 'MSG_MOVE',
+        e => e.type === 'MSG_CHAIN_END');
+      expect(result).toBe(target);
+    });
+  });
 });
 
 // =============================================================================

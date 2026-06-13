@@ -54,6 +54,7 @@ class StubManager {
   reset = (): void => undefined;
   initResumeEffect = (): void => undefined;
   initQueueResumeCallback = (): void => undefined;
+  initStolenMoveStreamSink = (): void => undefined;
   hasDrawsInFlight = false;
   isResolving = false;
   shouldBufferDuringChain = false;

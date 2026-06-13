@@ -413,6 +413,28 @@ describe('DrawSequenceManager', () => {
       expect(pushed).toEqual([]);
       expect(mockMoveRouter.processMoveEvent).not.toHaveBeenCalled();
     }));
+
+    it('does NOT steal a MOVE→HAND that sits past a chain boundary (future chain)', fakeAsync(() => {
+      const futureMove = tutorMove();
+      // A chain-control message precedes the MOVE → the move belongs to a
+      // LATER chain and must stay queued for its own dispatch (D/D/D
+      // dense-pacing regression : a barrier-free steal played it in the
+      // wrong chain window).
+      queue.set([
+        { type: 'MSG_CHAIN_END' } as unknown as QueueEntry,
+        futureMove,
+      ]);
+      const pushed: MoveMsg[] = [];
+      manager.initStolenMoveStreamSink(m => pushed.push(m));
+
+      void manager.processShuffleEvent(shuffle());
+      flush();
+
+      expect(pushed).toEqual([]);
+      expect(mockMoveRouter.processMoveEvent).not.toHaveBeenCalled();
+      // The future move stays in the queue.
+      expect(queue().some(e => !('kind' in e) && (e as MoveMsg).cardCode === 46796664)).toBeTrue();
+    }));
   });
 
   // ---------------------------------------------------------------------------
