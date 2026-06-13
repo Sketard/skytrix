@@ -31,6 +31,7 @@ interface MockConnStub {
   navIndex: jasmine.Spy;
   lastPromptOffset: jasmine.Spy;
   peekNextType: jasmine.Spy;
+  streamComplete: jasmine.Spy;
 }
 
 interface PhaseStub {
@@ -41,7 +42,7 @@ function makeMock(): MockConnStub {
   const m = jasmine.createSpyObj<MockConnStub>('MockDuelConnection', [
     'seekToOffset', 'dispatchNext', 'simulatePlayerResponse',
     'getAutoResponseAt', 'busy', 'pendingPrompt', 'messageCursor', 'navIndex',
-    'lastPromptOffset', 'peekNextType',
+    'lastPromptOffset', 'peekNextType', 'streamComplete',
   ]);
   m.busy.and.returnValue(false);
   m.pendingPrompt.and.returnValue(null);
@@ -51,6 +52,9 @@ function makeMock(): MockConnStub {
   m.getAutoResponseAt.and.returnValue(null);
   m.lastPromptOffset.and.returnValue(4);
   m.peekNextType.and.returnValue(null);
+  // Default false — the precompute front is the boundary, more chunks may
+  // come. The terminal-stop tests opt into true explicitly.
+  m.streamComplete.and.returnValue(false);
   return m;
 }
 
@@ -583,6 +587,42 @@ describe('ReplayTransportService — F22 prompt mid-entry vs nav index (2026-06-
 
     expect(svc.isPlaying()).withContext('atEnd/startPlayback must treat mid-span as resumable').toBeTrue();
     expect(cursorRef.v).withContext('togglePlay resumes the span').toBe(20);
+  });
+
+  it('stops playback cleanly when the last entry finishes AND the stream is complete (defer #4 — non-animating tail)', () => {
+    const { svc, mockConn, cursorRef } = setupSpans();
+    // Resume into the last computed entry's tail (cursor 18/20). The tail is
+    // non-animating: dispatchNext drains to the offset but `busy` stays false
+    // (nothing enqueued) so no maybeAdvance re-fire is coming. The whole
+    // replay has streamed (REPLAY_STREAM_INIT landed) → streamComplete once
+    // the cursor reaches the total.
+    cursorRef.v = 18;
+    mockConn.streamComplete.and.callFake(() => cursorRef.v >= 20);
+    svc.currentIndex.set(2);
+    svc.isPlaying.set(true);
+
+    svc.maybeAdvance();
+
+    expect(cursorRef.v).withContext('the tail must still fully dispatch').toBe(20);
+    expect(svc.isPlaying()).withContext('end of a complete stream stops playback').toBeFalse();
+    expect(svc.pausedAtBoundary()).withContext('clean terminal boundary, togglePlay re-armable via atEnd').toBeTrue();
+    expect(svc.currentIndex()).withContext('terminal stop does not consume an index').toBe(2);
+  });
+
+  it('keeps playing at the precompute front when the stream is NOT complete (more chunks coming)', () => {
+    const { svc, mockConn, cursorRef } = setupSpans();
+    // Same last-entry resume, but the stream is still arriving — this IS the
+    // legitimate F22 boundary, not the end of the duel. Must NOT terminal-stop.
+    cursorRef.v = 18;
+    mockConn.streamComplete.and.returnValue(false);
+    svc.currentIndex.set(2);
+    svc.isPlaying.set(true);
+
+    svc.maybeAdvance();
+
+    expect(cursorRef.v).toBe(20);
+    expect(svc.isPlaying()).withContext('an incomplete stream stays playing for the next chunk').toBeTrue();
+    expect(svc.pausedAtBoundary()).toBeFalse();
   });
 });
 

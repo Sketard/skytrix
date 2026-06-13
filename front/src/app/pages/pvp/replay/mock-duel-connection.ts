@@ -287,6 +287,17 @@ export class MockDuelConnection implements AnimationDataSource {
     return this._totalMessages;
   }
 
+  /** True once the WHOLE replay has streamed (REPLAY_STREAM_INIT landed,
+   *  setting `_totalMessages`) AND playback has dispatched every message.
+   *  The transport uses this to distinguish "reached the end of the duel"
+   *  (→ stop playback cleanly) from "caught up to the precompute front, more
+   *  chunks still coming" (→ pausedAtBoundary, resume when they arrive).
+   *  Read at call time — `_totalMessages` is a plain field, so this is a
+   *  method, not a `computed`. */
+  streamComplete(): boolean {
+    return this._totalMessages !== null && this.messageCursor() >= this._totalMessages;
+  }
+
   /** Append a chunk of messages + their auto-responses + their nav entries
    *  to the internal buffer. Idempotent on the cursor (does not reset it).
    *  Called by `ReplayConnectionService` on every `REPLAY_STREAM_CHUNK`. */

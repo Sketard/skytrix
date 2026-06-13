@@ -354,6 +354,28 @@ export class ReplayTransportService {
     if (this.currentSpanUnfinished()) {
       const idx = this.currentIndex();
       this.dispatchMockUntilIndex(idx);
+      // Terminal guard (defer #4, 2026-06-13) — on the LAST computed entry,
+      // `armContinuationTimer` no-ops (`idx < computedUpTo` is false). If the
+      // resumed tail was non-animating (e.g. MSG_HINT / MSG_WIN — neither
+      // enqueues, so `busy` never flips), nothing re-fires `maybeAdvance`
+      // and playback would sit `isPlaying=true` forever (the F21 stall class
+      // on the resume path). Only safe to stop when the WHOLE stream is in
+      // (`streamComplete`) — otherwise this IS the precompute-front boundary
+      // and `pausedAtBoundary` + `resumeIfBoundaryWaiting` must keep the
+      // door open for the next chunk (the legitimate F22 case the pins
+      // protect). The boundary-pause flip mirrors `scheduleNext`'s path so
+      // the timeline shows a clean end and `togglePlay` stays usable.
+      if (
+        idx >= c.computedUpTo() &&
+        !this.currentSpanUnfinished() &&
+        !c.mockConn.pendingPrompt() &&
+        !c.mockConn.busy() &&
+        c.mockConn.streamComplete()
+      ) {
+        this.isPlaying.set(false);
+        this.pausedAtBoundary.set(true);
+        return;
+      }
       this.armContinuationTimer(idx);
       return;
     }

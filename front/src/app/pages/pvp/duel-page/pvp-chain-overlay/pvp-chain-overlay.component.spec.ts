@@ -179,7 +179,7 @@ describe('PvpChainOverlayComponent', () => {
 
     it('should NOT set enteringCardIndex for a single chain link', () => {
       setLinksAndPhase([createLink(0)], 'building');
-      expect(component.enteringCardIndex()).toBe(-1);
+      expect(component.enteringCardKey()).toBe('');
     });
   });
 
@@ -193,7 +193,7 @@ describe('PvpChainOverlayComponent', () => {
       setLinks([createLink(0), createLink(1)]);
 
       expect(component.overlayVisible()).toBeTrue();
-      expect(component.enteringCardIndex()).toBe(1);
+      expect(component.enteringCardKey()).toBe('1:0');
       expect(mockChainManager.chainEntryAnimating()).toBeTrue();
 
       flush();
@@ -223,10 +223,10 @@ describe('PvpChainOverlayComponent', () => {
       setLinksAndPhase([createLink(0)], 'building');
       setLinks([createLink(0), createLink(1)]);
       // Link 0 was at front, now shoved to mid by link 1's arrival
-      expect(component.shovedCardIndex()).toBe(0);
+      expect(component.shovedCardKey()).toBe('0:0');
 
       tick(component.durations().shove);
-      expect(component.shovedCardIndex()).toBe(-1);
+      expect(component.shovedCardKey()).toBe('');
 
       flush();
     }));
@@ -235,7 +235,7 @@ describe('PvpChainOverlayComponent', () => {
       setLinksAndPhase([createLink(0, { player: 0 })], 'building');
       // New link from opponent → arrives on the empty right side, nothing to shove
       setLinks([createLink(0, { player: 0 }), createLink(1, { player: 1 })]);
-      expect(component.shovedCardIndex()).toBe(-1);
+      expect(component.shovedCardKey()).toBe('');
 
       flush();
     }));
@@ -249,7 +249,7 @@ describe('PvpChainOverlayComponent', () => {
       setLinks([createLink(0), createLink(1), createLink(2)]);
 
       // Burst path: enteringCardIndex updates to new link, overlay still true
-      expect(component.enteringCardIndex()).toBe(2);
+      expect(component.enteringCardKey()).toBe('2:0');
       expect(component.overlayVisible()).toBeTrue();
 
       flush();
@@ -416,8 +416,8 @@ describe('PvpChainOverlayComponent', () => {
         [createLink(0), createLink(1, { resolving: true })],
         'resolving',
       );
-      expect(component.resolvingIndex()).toBe(1);
-      expect(component.negatedResolvingIndex()).toBe(-1);
+      expect(component.resolvingKey()).toBe('1:0');
+      expect(component.negatedResolvingKey()).toBe('');
     });
 
     it('should set negatedResolvingIndex on a negated resolving link', () => {
@@ -426,8 +426,31 @@ describe('PvpChainOverlayComponent', () => {
         [createLink(0), createLink(1, { resolving: true, negated: true })],
         'resolving',
       );
-      expect(component.negatedResolvingIndex()).toBe(1);
-      expect(component.resolvingIndex()).toBe(-1);
+      expect(component.negatedResolvingKey()).toBe('1:0');
+      expect(component.resolvingKey()).toBe('');
+    });
+
+    it('disambiguates same-chainIndex links by generation (defer #2 — dense back-to-back)', () => {
+      // Dense back-to-back: chain N's link (chainIndex 0, gen 0) coexists with
+      // chain N+1's link (chainIndex 0, gen 1). Only the gen-1 link is resolving.
+      // The resolving KEY must be '0:1' — a chainIndex-only marker would have
+      // been '0', matching BOTH cards in the template and pulsing the wrong one.
+      setLinksAndPhase(
+        [createLink(0, { generation: 0 }), createLink(0, { generation: 1 })],
+        'building',
+      );
+      setLinksAndPhase(
+        [
+          createLink(0, { generation: 0 }),
+          createLink(0, { generation: 1, resolving: true }),
+        ],
+        'resolving',
+      );
+      expect(component.resolvingKey()).withContext('key carries the resolving link generation').toBe('0:1');
+      // Proof of disambiguation: the gen-0 card's key would be '0:0' — distinct,
+      // so the template binding `resolvingKey() === cardKey(card)` is false for it.
+      expect(component.cardKey({ chainIndex: 0, generation: 0 })).toBe('0:0');
+      expect(component.cardKey({ chainIndex: 0, generation: 1 })).toBe('0:1');
     });
 
     it('should toggle chainOverlayReady false at resolution start, true at end', fakeAsync(() => {
@@ -636,7 +659,7 @@ describe('PvpChainOverlayComponent', () => {
       tick(component.durations().exit);
 
       expect(component.exitingCard()).toBeNull();
-      expect(component.resolvingIndex()).toBe(0);
+      expect(component.resolvingKey()).toBe('0:0');
 
       flush();
     }));
@@ -706,7 +729,7 @@ describe('PvpChainOverlayComponent', () => {
       setLinks([createLink(0), createLink(1)]);
 
       // Entry animation NOT triggered yet
-      expect(component.enteringCardIndex()).toBe(-1);
+      expect(component.enteringCardKey()).toBe('');
       expect(component.overlayVisible()).toBeFalse();
 
       flush();
@@ -718,7 +741,7 @@ describe('PvpChainOverlayComponent', () => {
       setLinks([createLink(0), createLink(1)]);
 
       setPromptActive(false);
-      expect(component.enteringCardIndex()).toBe(1);
+      expect(component.enteringCardKey()).toBe('1:0');
       expect(component.overlayVisible()).toBeTrue();
 
       flush();
@@ -734,7 +757,7 @@ describe('PvpChainOverlayComponent', () => {
 
       setPromptActive(false);
       // No entry animation kicked off
-      expect(component.enteringCardIndex()).toBe(-1);
+      expect(component.enteringCardKey()).toBe('');
       expect(component.overlayVisible()).toBeFalse();
 
       flush();
@@ -841,8 +864,8 @@ describe('PvpChainOverlayComponent', () => {
       expect(component.overlayVisible()).toBeFalse();
       expect(component.pendingExitCard()).toBeNull();
       expect(component.exitingCard()).toBeNull();
-      expect(component.resolvingIndex()).toBe(-1);
-      expect(component.negatedResolvingIndex()).toBe(-1);
+      expect(component.resolvingKey()).toBe('');
+      expect(component.negatedResolvingKey()).toBe('');
 
       flush();
     }));
@@ -1119,7 +1142,7 @@ describe('PvpChainOverlayComponent', () => {
       // in this minimal scenario (no link removed), but we assert the
       // INVARIANT : as long as `_pulseActive` is false, `overlayActive`
       // can only be true via the other contributors (none active here).
-      expect(component.resolvingIndex()).toBe(1);
+      expect(component.resolvingKey()).toBe('1:0');
       expect(component.overlayActive())
         .withContext('overlayActive must NOT track resolvingIndex alone — caused POLL-DROP deadlock pre-fix')
         .toBeFalse();
@@ -1157,7 +1180,7 @@ describe('PvpChainOverlayComponent', () => {
       // overlayVisible may still be true here. The contract is: even if
       // overlayVisible is true, overlayActive must be false once
       // enteringCardIndex is cleared (no other animation contributor).
-      expect(component.enteringCardIndex()).toBe(-1);
+      expect(component.enteringCardKey()).toBe('');
       expect(component.overlayActive())
         .withContext('overlayActive must NOT track overlayVisible alone — building stable should be passable')
         .toBeFalse();

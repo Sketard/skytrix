@@ -40,6 +40,13 @@ export type ChainLevel = 0 | 1 | 2 | 3 | 4;
  *  (highest chainIndex). */
 export type ChainSlot = 'front' | 'mid' | 'back';
 
+/** Composite identity for a chain card — `chainIndex:generation`. Dense
+ *  back-to-back chains restart chainIndex at 0, so generation disambiguates
+ *  two coexisting same-index links. Used by the overlay's per-card markers. */
+export function chainCardKey(link: { chainIndex: number; generation?: number }): string {
+  return `${link.chainIndex}:${link.generation ?? 0}`;
+}
+
 export interface VisibleCard {
   chainIndex: number;
   /** Receipt-side chain generation (dense-chain fix 2026-06-12). Links of
@@ -133,20 +140,28 @@ export class PvpChainOverlayComponent {
 
   readonly exitingCard = signal<ExitingCardState | null>(null);
 
-  /** chainIndex of the card currently playing entry animation */
-  readonly enteringCardIndex = signal(-1);
+  // Dense-chain fix (defer #2, 2026-06-13) — the "current card" markers below
+  // are composite KEYS (`chainIndex:generation`), not bare chainIndexes. In a
+  // dense back-to-back chain two cards share chainIndex 0 (indices restart
+  // each chain) and only the generation distinguishes them ; a chainIndex-only
+  // marker would apply the entering/shoved/resolving/negated class to the
+  // wrong card or both. Empty string = nothing active (the old `-1` sentinel).
+  // Use `cardKey(card)` to build the key from a VisibleCard / ChainLinkState.
 
-  /** chainIndex of the front card being resolved (pulse glow) */
-  readonly resolvingIndex = signal(-1);
+  /** key of the card currently playing entry animation */
+  readonly enteringCardKey = signal('');
 
-  /** chainIndex of the front card being resolved as negated (grey shake) */
-  readonly negatedResolvingIndex = signal(-1);
+  /** key of the front card being resolved (pulse glow) */
+  readonly resolvingKey = signal('');
 
-  /** chainIndex of the card being explicitly shoved up by an incoming new link.
+  /** key of the front card being resolved as negated (grey shake) */
+  readonly negatedResolvingKey = signal('');
+
+  /** key of the card being explicitly shoved up by an incoming new link.
    *  Read by the template to apply the `chain-card--shoved` class which plays
    *  the `chain-shove-up` keyframe (visible translation + scale-down toward
    *  the new slot). Cleared after `pushDuration` ms. */
-  readonly shovedCardIndex = signal(-1);
+  readonly shovedCardKey = signal('');
 
   /**
    * Internal flags as private signals — pattern aligned with the public state
@@ -270,8 +285,10 @@ export class PvpChainOverlayComponent {
    * the overlay even appeared — leaving the user with a card already
    * settled in its slot with no swoop animation visible.
    */
-  private _pendingEnterIndex = -1;
-  private _pendingShoveIndex = -1;
+  // Composite keys (`chainIndex:generation`), '' = nothing pending. See the
+  // `enteringCardKey` / `shovedCardKey` docblock (defer #2).
+  private _pendingEnterKey = '';
+  private _pendingShoveKey = '';
   /**
    * True between `onNewChainLink` and `_runOverlayShowSequence` — i.e.
    * while we're waiting for the DEP gate. Read by the template to apply
@@ -462,11 +479,18 @@ export class PvpChainOverlayComponent {
    *   · `pendingExitCard()` (no active anim, just a memo).
    */
   readonly overlayActive = computed<boolean>(() =>
-    this.enteringCardIndex() !== -1
+    this.enteringCardKey() !== ''
     || this._pulseActive()
     || this._exitPulseInFlight()
     || this.exitingCard() !== null
   );
+
+  /** Template helper — composite key for a visible card (`chainIndex:generation`),
+   *  compared against the `*Key` markers so dense back-to-back same-index cards
+   *  don't cross-match (defer #2). */
+  cardKey(card: { chainIndex: number; generation?: number }): string {
+    return chainCardKey(card);
+  }
 
   /** CSS variable values synced with JS durations for accelerated mode */
   readonly cssDurations = computed(() => {
@@ -596,8 +620,8 @@ export class PvpChainOverlayComponent {
 
       untracked(() => {
         if (phase !== 'resolving' || links.length === 0) {
-          this.resolvingIndex.set(-1);
-          this.negatedResolvingIndex.set(-1);
+          this.resolvingKey.set('');
+          this.negatedResolvingKey.set('');
           return;
         }
 
@@ -622,10 +646,10 @@ export class PvpChainOverlayComponent {
             this.scheduleTimeout(() => {
               this._exitPulseInFlight.set(false);
               this.exitingCard.set(null);
-              this.applyResolvingPulse(resolvingLink.chainIndex, resolvingLink.negated);
+              this.applyResolvingPulse(resolvingLink);
             }, this.durations().exit);
           } else if (!this._exitPulseInFlight()) {
-            this.applyResolvingPulse(resolvingLink.chainIndex, resolvingLink.negated);
+            this.applyResolvingPulse(resolvingLink);
           }
 
           // Dedup: announce only for a new link, or when negation state changes (resolving→negated)
@@ -767,8 +791,8 @@ export class PvpChainOverlayComponent {
     const sameSidePrev = sideLinks
       .filter(l => l.chainIndex !== newestLink.chainIndex)
       .sort((a, b) => b.chainIndex - a.chainIndex)[0];
-    this._pendingEnterIndex = newestLink.chainIndex;
-    this._pendingShoveIndex = sameSidePrev?.chainIndex ?? -1;
+    this._pendingEnterKey = chainCardKey(newestLink);
+    this._pendingShoveKey = sameSidePrev ? chainCardKey(sameSidePrev) : '';
 
     // Freeze the visible layout to the BEFORE-newcomer state. Released by
     // `_runOverlayShowSequence` when the DEP gate finally fires. The freeze
@@ -808,14 +832,14 @@ export class PvpChainOverlayComponent {
   /**
    * Apply the enter/shove signals + their clear timers. Called from
    * `_runOverlayShowSequence` (deferred path) and from the burst-detection
-   * path in `onNewChainLink`. Reads from `_pendingEnterIndex` /
-   * `_pendingShoveIndex` set by `onNewChainLink` so the right chainIndex
-   * is used even if multiple MSG_CHAINING arrived since.
+   * path in `onNewChainLink`. Reads from `_pendingEnterKey` /
+   * `_pendingShoveKey` set by `onNewChainLink` so the right card (chainIndex
+   * + generation) is used even if multiple MSG_CHAINING arrived since.
    */
   private _startEnterAndShoveAnims(): void {
-    if (this._pendingEnterIndex !== -1) {
-      const idx = this._pendingEnterIndex;
-      this.enteringCardIndex.set(idx);
+    if (this._pendingEnterKey !== '') {
+      const key = this._pendingEnterKey;
+      this.enteringCardKey.set(key);
       // Clear timer = entry + breathing-room hold + overlayFadeOut. The
       // hold lets the user perceive the card after the visual swoop ;
       // the +overlayFadeOut tail keeps `overlayActive` true UNTIL the
@@ -827,17 +851,17 @@ export class PvpChainOverlayComponent {
       const hold = this.duelCtx.scaledDuration(OVERLAY_ANIM_HOLD_MS, OVERLAY_ANIM_HOLD_MIN_MS);
       const tail = this.durations().overlayFadeOut;
       this.scheduleTimeout(() => {
-        if (this.enteringCardIndex() === idx) this.enteringCardIndex.set(-1);
+        if (this.enteringCardKey() === key) this.enteringCardKey.set('');
       }, this.durations().entry + hold + tail);
-      this._pendingEnterIndex = -1;
+      this._pendingEnterKey = '';
     }
-    if (this._pendingShoveIndex !== -1) {
-      const idx = this._pendingShoveIndex;
-      this.shovedCardIndex.set(idx);
+    if (this._pendingShoveKey !== '') {
+      const key = this._pendingShoveKey;
+      this.shovedCardKey.set(key);
       this.scheduleTimeout(() => {
-        if (this.shovedCardIndex() === idx) this.shovedCardIndex.set(-1);
+        if (this.shovedCardKey() === key) this.shovedCardKey.set('');
       }, this.durations().shove);
-      this._pendingShoveIndex = -1;
+      this._pendingShoveKey = '';
     }
   }
 
@@ -1031,8 +1055,8 @@ export class PvpChainOverlayComponent {
       this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved DONE — signaling ready');
       this._resolvingNegated.set(false);
       this._resolvingCardInfo.set(null);
-      this.resolvingIndex.set(-1);
-      this.negatedResolvingIndex.set(-1);
+      this.resolvingKey.set('');
+      this.negatedResolvingKey.set('');
       this.chainManager.chainOverlayReady.set(true);
     } finally {
       // The flag MUST be reset whether we exit via the happy path or via abort.
@@ -1065,12 +1089,13 @@ export class PvpChainOverlayComponent {
    * the resolving link always lands at `slot: 'front'` of its side.
    * No explicit glide animation is needed.
    */
-  private applyResolvingPulse(chainIndex: number, negated: boolean): void {
-    if (negated) {
-      this.negatedResolvingIndex.set(chainIndex);
-      this.resolvingIndex.set(-1);
+  private applyResolvingPulse(link: { chainIndex: number; generation?: number; negated: boolean }): void {
+    const key = chainCardKey(link);
+    if (link.negated) {
+      this.negatedResolvingKey.set(key);
+      this.resolvingKey.set('');
     } else {
-      this.resolvingIndex.set(chainIndex);
+      this.resolvingKey.set(key);
     }
     // Bounded `_pulseActive` window — gates `overlayActive` during the
     // VISIBLE part of the resolution (pulse + hold + fade-out). Clears
@@ -1114,20 +1139,20 @@ export class PvpChainOverlayComponent {
     this._pulseActive.set(false);
     this.exitingCard.set(null);
     this.pendingExitCard.set(null);
-    this.resolvingIndex.set(-1);
-    this.negatedResolvingIndex.set(-1);
+    this.resolvingKey.set('');
+    this.negatedResolvingKey.set('');
     this._resolvingCardInfo.set(null);
     this._resolvingNegated.set(false);
     this._pendingEntry.set(null);
-    this._pendingEnterIndex = -1;
-    this._pendingShoveIndex = -1;
+    this._pendingEnterKey = '';
+    this._pendingShoveKey = '';
     // Clear the live entering / shoved signals too (the pending-* fields
     // above are for entries that haven't fired yet ; these two are for
     // entries that ALREADY fired but whose clear timer hadn't expired).
-    // Without this, `overlayActive` (which tracks `enteringCardIndex !== -1`)
+    // Without this, `overlayActive` (which tracks `enteringCardKey !== ''`)
     // would stay true after chain end until the bounded clear timer ticks.
-    this.enteringCardIndex.set(-1);
-    this.shovedCardIndex.set(-1);
+    this.enteringCardKey.set('');
+    this.shovedCardKey.set('');
     this.gatePending.set(false);
     this._frozenLinks.set(null);
 

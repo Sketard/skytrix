@@ -41,10 +41,10 @@
            index, génération différente) → clé composite chainIndex:generation. -->
       @for (card of visibleCards(); track card.chainIndex + ':' + (card.generation ?? 0); let i = $index) {
         <div class="chain-card"
-             [class.chain-card--entering]="card.chainIndex === enteringCardIndex()"
-             [class.chain-card--shoved]="card.chainIndex === shovedCardIndex()"
-             [class.chain-card--resolving]="card.slot === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && resolvingIndex() === card.chainIndex"
-             [class.chain-card--negated]="card.slot === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && negatedResolvingIndex() === card.chainIndex && card.chainIndex !== enteringCardIndex()"
+             [class.chain-card--entering]="cardKey(card) === enteringCardKey()"
+             [class.chain-card--shoved]="cardKey(card) === shovedCardKey()"
+             [class.chain-card--resolving]="card.slot === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && resolvingKey() === cardKey(card)"
+             [class.chain-card--negated]="card.slot === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && negatedResolvingKey() === cardKey(card) && cardKey(card) !== enteringCardKey()"
              [class.chain-card--left]="card.side === 'left'"
              [class.chain-card--right]="card.side === 'right'"
              [class.chain-card--level-0]="card.level === 0"
