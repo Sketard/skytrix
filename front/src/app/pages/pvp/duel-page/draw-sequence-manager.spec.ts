@@ -16,7 +16,7 @@ import { DuelLogger } from './duel-logger';
 import { MoveAnimationRouter } from './move-animation-router';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
 import { EMPTY_DUEL_STATE, type DuelState } from '../types';
-import type { DrawMsg, ConfirmCardsMsg } from '../duel-ws.types';
+import type { DrawMsg, ConfirmCardsMsg, MoveMsg, ShuffleHandMsg } from '../duel-ws.types';
 import { LOCATION } from '../duel-ws.types';
 
 /** Build a DuelState whose own player (rel=0) has `handCardsCount` cards in HAND. */
@@ -42,6 +42,8 @@ describe('DrawSequenceManager', () => {
     logicalState: WritableSignal<DuelState>;
     lockZone: jasmine.Spy;
     lockedZoneKeys: jasmine.Spy;
+    commitZone: jasmine.Spy;
+    commitAll: jasmine.Spy;
   };
   let mockDataSource: AnimationDataSource;
   let mockMoveRouter: jasmine.SpyObj<MoveAnimationRouter>;
@@ -65,6 +67,8 @@ describe('DrawSequenceManager', () => {
       logicalState: signal<DuelState>(EMPTY_DUEL_STATE),
       lockZone: jasmine.createSpy('lockZone').and.returnValue({ commit: () => undefined, release: () => undefined }),
       lockedZoneKeys: jasmine.createSpy('lockedZoneKeys').and.returnValue([]),
+      commitZone: jasmine.createSpy('commitZone'),
+      commitAll: jasmine.createSpy('commitAll'),
     };
 
     mockDataSource = {
@@ -83,7 +87,7 @@ describe('DrawSequenceManager', () => {
       enqueueDirective: () => undefined,
       setAnimating: () => undefined,
       applyChainSolving: () => undefined,
-      applyChainSolved: () => undefined,
+      applyChainSolved: () => false,
       applyChainEnd: () => undefined,
     };
 
@@ -364,6 +368,51 @@ describe('DrawSequenceManager', () => {
     it('returns 0 (no-op) for an empty confirm', () => {
       expect(manager.processConfirmCardsEvent(confirm([]))).toBe(0);
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // processShuffleEvent — shuffle-stolen MOVE→HAND stream sink
+  // (D/D/D tutor cluster, 2026-06-12)
+  // ---------------------------------------------------------------------------
+
+  describe('processShuffleEvent — stolen MOVE→HAND stream sink', () => {
+    const tutorMove = (cardCode = 46796664): MoveMsg => ({
+      type: 'MSG_MOVE', cardCode, cardName: 'D/D Savant Copernicus',
+      player: 0, toPlayer: 0,
+      fromLocation: LOCATION.DECK, fromSequence: 29, fromPosition: 2,
+      toLocation: LOCATION.HAND, toSequence: 4, toPosition: 10,
+      isToken: false, reason: 64,
+    } as unknown as MoveMsg);
+    const shuffle = (): ShuffleHandMsg =>
+      ({ type: 'MSG_SHUFFLE_HAND', player: 0, cards: [] } as unknown as ShuffleHandMsg);
+
+    it('pushes a queued MOVE→HAND to the stream sink when the shuffle steals it', fakeAsync(() => {
+      const move = tutorMove();
+      queue.set([move]); // the tutor MOVE sits in the animation queue
+      const pushed: MoveMsg[] = [];
+      manager.initStolenMoveStreamSink(m => pushed.push(m));
+
+      void manager.processShuffleEvent(shuffle());
+      flush();
+
+      // The stolen MOVE was recorded on the stream exactly once, and
+      // dequeued from the animation queue (animation folded into shuffle).
+      expect(pushed).toEqual([move]);
+      expect(queue()).toEqual([]);
+      expect(mockMoveRouter.processMoveEvent).toHaveBeenCalledOnceWith(move);
+    }));
+
+    it('does not call the sink when no MOVE→HAND is queued (no steal)', fakeAsync(() => {
+      queue.set([]); // nothing to steal — the move was already dispatched
+      const pushed: MoveMsg[] = [];
+      manager.initStolenMoveStreamSink(m => pushed.push(m));
+
+      void manager.processShuffleEvent(shuffle());
+      flush();
+
+      expect(pushed).toEqual([]);
+      expect(mockMoveRouter.processMoveEvent).not.toHaveBeenCalled();
+    }));
   });
 
   // ---------------------------------------------------------------------------

@@ -462,7 +462,16 @@ export class ReplayTransportService {
         // Without it, a travel landing inside the 1.2s dismiss window
         // commits against a STALE logical (rendered hole — the regenese
         // Triple Tactics Talent tail case, post-F10 visual pass).
-        while (mock.peekNextType() === 'BOARD_STATE') mock.dispatchNext();
+        //
+        // Bounded on `targetOffset`: the trailing BOARD_STATE is part of
+        // THIS entry's [SELECT_*, BOARD_STATE] batch (cursor still < target).
+        // Without the bound a next-entry leading BOARD_STATE would be drained
+        // early, pushing the cursor past `targetOffset` → `currentSpanUnfinished`
+        // flips false and the index/cursor desync the F22 fix closed reopens
+        // in the opposite direction.
+        while (mock.messageCursor() < targetOffset && mock.peekNextType() === 'BOARD_STATE') {
+          mock.dispatchNext();
+        }
         return; // yield to auto-dismiss
       }
     }

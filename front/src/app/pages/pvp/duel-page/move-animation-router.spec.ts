@@ -97,7 +97,7 @@ describe('MoveAnimationRouter', () => {
       enqueueDirective: () => undefined,
       setAnimating: () => undefined,
       applyChainSolving: () => undefined,
-      applyChainSolved: () => undefined,
+      applyChainSolved: () => false,
       applyChainEnd: () => undefined,
     };
 

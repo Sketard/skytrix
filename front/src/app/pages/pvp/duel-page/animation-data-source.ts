@@ -122,7 +122,10 @@ export interface AnimationDataSource {
   enqueueDirective(directive: QueueDirective): void;
   setAnimating(animating: boolean): void;
   applyChainSolving(chainIndex: number): void;
-  applyChainSolved(chainIndex: number): void;
+  /** Returns whether a dispatching-generation link was actually dropped. The
+   *  overlay-arming guard MUST consume this rather than re-derive on
+   *  chainIndex alone (dense back-to-back chains share chainIndex 0). */
+  applyChainSolved(chainIndex: number): boolean;
   applyChainEnd(): void;
   /**
    * Palier 0 — attach the EventStream sink. The page bootstrap wires

@@ -871,8 +871,8 @@ export class DuelConnection {
     this.processor.applyChainSolving(chainIndex);
   }
 
-  applyChainSolved(chainIndex: number): void {
-    this.processor.applyChainSolved(chainIndex);
+  applyChainSolved(chainIndex: number): boolean {
+    return this.processor.applyChainSolved(chainIndex);
   }
 
   applyChainEnd(): void {

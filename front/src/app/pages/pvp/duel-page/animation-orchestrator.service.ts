@@ -680,6 +680,16 @@ export class AnimationOrchestratorService {
     });
     // Wire draw manager queue resume callback
     this.drawManager.initQueueResumeCallback(() => this.runner.notifyEnqueue());
+    // Wire the shuffle-stolen MOVE→HAND stream sink — `processShuffleEvent`
+    // dequeues a tutored MOVE→HAND straight out of the animation queue
+    // (folding its travel into the shuffle re-layout), bypassing
+    // `processEvent`/`pushToStream`. Push it here so the journal/parity
+    // stream records the move exactly once. Mirrors what `processEvent`
+    // would do (decorate is a no-op for non-LP MOVEs; updateLogical is
+    // handled by the shuffle's own commit path).
+    this.drawManager.initStolenMoveStreamSink(move => {
+      this.pushToStream(this.decorateLpEventForStream(move));
+    });
 
     // β.2a — auto-register the DEP with the scope-reset dispatcher so
     // STATE_SYNC / RematchStarted (DUEL_LIFETIME → cascades to
@@ -1910,9 +1920,16 @@ export class AnimationOrchestratorService {
     // never fire `onChainLinkResolved` → nothing flips `chainOverlayReady` →
     // arming the wait would deadlock the runner on pause-external. Degrade
     // to a sync step instead of waiting on a signal that cannot come.
-    const hasLink = this.dataSource.activeChainLinks().some(l => l.chainIndex === msg.chainIndex);
-    this.dataSource.applyChainSolved(msg.chainIndex);
-    return this.chainManager.handleSolved(hasLink);
+    //
+    // The guard MUST consume `applyChainSolved`'s own drop verdict — NOT a
+    // chainIndex-only pre-check. In a dense back-to-back chain a same-index
+    // link (chainIndex restarts at 0 each chain) of the NEXT generation is
+    // already committed by sync receipt, so a chainIndex-only test reports a
+    // phantom match while the generation-scoped drop removes nothing — which
+    // would arm `_waitingForOverlay` for an overlay event that can never
+    // come: the exact deadlock this guard exists to prevent.
+    const dropped = this.dataSource.applyChainSolved(msg.chainIndex);
+    return this.chainManager.handleSolved(dropped);
   }
 
   private handleChainEnd(): number {

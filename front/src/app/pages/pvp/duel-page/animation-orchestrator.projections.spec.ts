@@ -775,12 +775,21 @@ describe('AnimationOrchestratorService — handleChainSolved garde aval (2026-06
 
   class ChainStubDataSource extends StubDataSource {
     applyChainSolvedCalls: number[] = [];
-    applyChainSolved = (chainIndex: number): void => {
+    /** Generation currently being dispatched — mirrors the processor's
+     *  `_dispatchedEndCount`. Links tagged with a different generation are
+     *  NOT dropped by a SOLVED of the dispatching generation. */
+    dispatchedGeneration = 0;
+    applyChainSolved = (chainIndex: number): boolean => {
       this.applyChainSolvedCalls.push(chainIndex);
-      // Mirror the processor: drop the matching tracked link.
-      this.activeChainLinks.set(
-        this.activeChainLinks().filter(l => (l as { chainIndex: number }).chainIndex !== chainIndex),
-      );
+      // Mirror the processor: drop ONLY the matching link of the dispatching
+      // generation, and report whether anything was actually removed.
+      const isDispatching = (l: unknown): boolean => {
+        const link = l as { chainIndex: number; generation?: number };
+        return link.chainIndex === chainIndex && (link.generation ?? 0) === this.dispatchedGeneration;
+      };
+      const matched = this.activeChainLinks().some(isDispatching);
+      this.activeChainLinks.set(this.activeChainLinks().filter(l => !isDispatching(l)));
+      return matched;
     };
   }
 
@@ -843,5 +852,30 @@ describe('AnimationOrchestratorService — handleChainSolved garde aval (2026-06
     expect(result).toBe(0);
     expect(mgr.handleSolvedArgs).toEqual([false]);
     expect(ds.applyChainSolvedCalls).toEqual([0]);
+  });
+
+  it('degrades to sync when only a NEXT-generation same-index link survives (dense back-to-back phantom match)', () => {
+    // Dense back-to-back chains share chainIndex 0 (indices restart each
+    // chain). The dispatching generation's link has drifted away (replay
+    // seek prune / cross-chain wipe regression) but generation N+1's link —
+    // committed early by sync receipt — still sits in activeChainLinks with
+    // the same chainIndex 0. A chainIndex-only guard would read this as a
+    // match and arm `_waitingForOverlay` for an overlay event that never
+    // comes → runner deadlock on pause-external. The fix consumes the
+    // generation-scoped drop verdict instead, so the phantom link does NOT
+    // mask the missing dispatching link.
+    const orch = makeOrchestrator();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as ChainStubDataSource;
+    const mgr = TestBed.inject(ChainResolutionManager) as unknown as RecordingChainManager;
+    ds.dispatchedGeneration = 0; // SOLVED belongs to generation 0
+    ds.activeChainLinks.set([{ chainIndex: 0, generation: 1 } as never]); // only gen-1 survives
+
+    const result = (orch as unknown as SolvedDispatcher)
+      .handleChainSolved({ type: 'MSG_CHAIN_SOLVED', chainIndex: 0 });
+
+    expect(result).toBe(0);
+    expect(mgr.handleSolvedArgs).toEqual([false]);
+    // The gen-1 phantom link is left intact for its own SOLVED later.
+    expect(ds.activeChainLinks()).toEqual([{ chainIndex: 0, generation: 1 } as never]);
   });
 });

@@ -118,7 +118,7 @@ describe('lock-leak integration — MoveAnimationRouter handlers must not orphan
       enqueueDirective: () => undefined,
       setAnimating: () => undefined,
       applyChainSolving: () => undefined,
-      applyChainSolved: () => undefined,
+      applyChainSolved: () => false,
       applyChainEnd: () => undefined,
     };
 

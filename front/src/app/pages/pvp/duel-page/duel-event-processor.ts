@@ -273,7 +273,16 @@ export class DuelEventProcessor {
     );
   }
 
-  applyChainSolved(chainIndex: number): void {
+  /**
+   * Drops the dispatching-generation link matching `chainIndex` and returns
+   * whether a link was actually removed. The caller's overlay-arming guard
+   * MUST consume this bool rather than re-derive it on chainIndex alone — in
+   * a dense back-to-back chain a same-index link of the NEXT generation is
+   * already committed by sync receipt, so a chainIndex-only test reports a
+   * phantom match while THIS drop removes nothing, arming an overlay wait
+   * that can never resolve (runner deadlock on pause-external).
+   */
+  applyChainSolved(chainIndex: number): boolean {
     const before = this._activeChainLinks();
     const matched = before.some(l => this.isDispatchingGenerationLink(l, chainIndex));
     this._activeChainLinks.update(links =>
@@ -288,6 +297,7 @@ export class DuelEventProcessor {
     }
     this.logger?.log(DuelLogCategory.PROC, 'applyChainSolved idx=%d → remaining links=%o',
       chainIndex, this._activeChainLinks().map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence, zoneId: l.zoneId })));
+    return matched;
   }
 
   /**
@@ -315,9 +325,17 @@ export class DuelEventProcessor {
     // Dense-chain fix — rebase the generation window. Restored links carry
     // no `generation` (the server snapshot ships raw ChainingMsg data) and
     // read as generation 0 via the `?? 0` fallbacks, so the counters must
-    // restart at 0 for the dispatch-side matching to find them. Both
-    // restore paths (PvP CHAIN_STATE, replay seek) wiped the queue first,
-    // so no stale END dispatch can close the rebased generation early.
+    // restart at 0 for the dispatch-side matching to find them.
+    //
+    // The rebase is only sound on an EMPTY queue: a stale MSG_CHAIN_END left
+    // queued would dispatch later, bump `_dispatchedEndCount`, and close the
+    // freshly rebased generation 0 — wiping every restored link mid-restore.
+    // The nominal PvP path (STATE_SYNC → reset → CHAIN_STATE) and the replay
+    // seek path both clear the queue first, but the degraded "CHAIN_STATE
+    // without STATE_SYNC" branch (protocol violation, best-effort restore)
+    // does NOT — so clear it here to make the precondition self-enforcing
+    // rather than caller-dependent. Idempotent for the paths that already reset.
+    this._animationQueue.set([]);
     this._chainGeneration = 0;
     this._dispatchedEndCount = 0;
     this._activeChainLinks.set(links);

@@ -442,8 +442,8 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this.active().applyChainSolving(chainIndex);
   }
 
-  applyChainSolved(chainIndex: number): void {
-    this.active().applyChainSolved(chainIndex);
+  applyChainSolved(chainIndex: number): boolean {
+    return this.active().applyChainSolved(chainIndex);
   }
 
   applyChainEnd(): void {
