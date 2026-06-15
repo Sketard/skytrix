@@ -1677,7 +1677,12 @@ export class AnimationOrchestratorService {
       }
       case 'barrier':
         this.trace('directive', { kind: 'barrier' });
-        await this.drawManager.awaitDrawsComplete();
+        await this.drawManager.awaitDrawsComplete(abortSignal);
+        // Backlog audit — bail before committing if a seek/abort superseded
+        // this run while we waited on draws (mirror of the `group` /
+        // announcement branches above). `awaitDrawsComplete` now resolves
+        // early on abort instead of hanging the loop forever.
+        if (abortSignal.aborted) return 'continue';
         this.rbs.commitUnlocked();
         return 'continue';
       case 'lp': {

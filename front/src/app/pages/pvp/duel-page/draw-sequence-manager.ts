@@ -102,10 +102,37 @@ export class DrawSequenceManager {
   // --- Public queries ---
   get hasDrawsInFlight(): boolean { return this._drawsInFlight.size > 0; }
 
-  /** Returns a promise that resolves when all in-flight draws complete. */
-  awaitDrawsComplete(): Promise<void> | null {
+  /**
+   * Returns a promise that resolves when all in-flight draws complete, OR
+   * early when `abortSignal` fires.
+   *
+   * Backlog audit — the `barrier` directive awaits this OUTSIDE
+   * `handleEntryAndAwait`, so it gets NO `LOCK_SAFETY_TIMEOUT_MS` guard
+   * `Promise.race` (unlike a travel Promise). Without the abort listener a
+   * `requestStop()` (seek / perspective switch) mid-draw clears the draw
+   * timers — so `_notifyDrawsComplete` never fires — and the barrier's
+   * Promise never resolves : the inner loop hangs on the `await`, its
+   * `finally` never decrements `_innerLoopDepth`, and the next run trips the
+   * `depth <= 1` assert → the documented infinite-rescue stall. Resolving
+   * early on abort lets the loop reach its post-await `abortSignal.aborted`
+   * bail-out and unwind cleanly. Mirrors `abortableWait`.
+   */
+  awaitDrawsComplete(abortSignal: AbortSignal): Promise<void> | null {
     if (this._drawsInFlight.size === 0) return null;
-    return new Promise<void>(resolve => { this._drawsCompleteResolve = resolve; });
+    return new Promise<void>(resolve => {
+      if (abortSignal.aborted) { resolve(); return; }
+      const onAbort = (): void => {
+        // Drop the one-shot so a late nominal `_notifyDrawsComplete` can't
+        // resolve an already-settled Promise.
+        this._drawsCompleteResolve = null;
+        resolve();
+      };
+      this._drawsCompleteResolve = (): void => {
+        abortSignal.removeEventListener('abort', onAbort);
+        resolve();
+      };
+      abortSignal.addEventListener('abort', onAbort, { once: true });
+    });
   }
 
   // --- Wiring ---

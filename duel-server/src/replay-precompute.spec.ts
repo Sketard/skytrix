@@ -277,6 +277,23 @@ describe('runReplayPreComputation', () => {
     expect(deps.core.duelSetResponse).toHaveBeenCalledWith(deps.duel, { type: 1, action: 7 });
   });
 
+  it('duelSetResponse throw is caught, emits REPLAY_COMPUTATION_ERROR and cleans up', () => {
+    const { msg, deps, port, cleanup } = makeDeps([
+      {
+        status: OcgProcessResult.CONTINUE,
+        messages: [ocg(OcgMessageType.SELECT_IDLECMD, { player: 0 })],
+      },
+      { status: OcgProcessResult.END, messages: [ocg(OcgMessageType.WIN, { player: 0 })] },
+    ], {
+      playerResponses: [{ data: { type: 1, action: 7 }, timestamp: '100' }],
+    });
+    (deps.core.duelSetResponse as ReturnType<typeof vi.fn>).mockImplementation(() => { throw new Error('boom'); });
+    runReplayPreComputation(msg, deps);
+    const err = port.messages.find((m) => (m as { type: string }).type === 'WORKER_REPLAY_ERROR');
+    expect(err).toMatchObject({ code: 'REPLAY_COMPUTATION_ERROR', message: 'Pre-computation error: boom' });
+    expect(cleanup).toHaveBeenCalled();
+  });
+
   it('out-of-responses with SURRENDER metadata completes gracefully (no warning escalation)', () => {
     const { msg, deps, port } = makeDeps([
       {

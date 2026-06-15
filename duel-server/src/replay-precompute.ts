@@ -809,7 +809,20 @@ export function runReplayPreComputation(
         // nav entry will only carry a hint if a new MSG_HINT fires after
         // this point.
         lastHintForNav = null;
-        core.duelSetResponse(duel, response.data as never);
+        // Backlog audit — symmetric guard to the `duelProcess` try/catch
+        // above. A throw here (OCGCore crash, invalid response data) used to
+        // escape uncaught → `cleanup()` never ran → the duel + DB stayed open
+        // and the main process never received WORKER_REPLAY_ERROR, leaking
+        // the session in `activeDuels` until a grace-period teardown.
+        try {
+          core.duelSetResponse(duel, response.data as never);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          dlog.error('Replay duelSetResponse threw', { error: message, responseIndex });
+          port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_COMPUTATION_ERROR', message: `Pre-computation error: ${message}` });
+          cleanup();
+          return;
+        }
         responseIndex++;
       }
     }

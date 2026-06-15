@@ -263,14 +263,40 @@ describe('DrawSequenceManager', () => {
 
   describe('awaitDrawsComplete', () => {
     it('returns null when no draws in flight', () => {
-      expect(manager.awaitDrawsComplete()).toBeNull();
+      expect(manager.awaitDrawsComplete(new AbortController().signal)).toBeNull();
     });
 
     it('returns a Promise when draws are in flight', fakeAsync(() => {
       manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
-      const p = manager.awaitDrawsComplete();
+      const p = manager.awaitDrawsComplete(new AbortController().signal);
       expect(p).toBeInstanceOf(Promise);
       flush(); // drain the fire-and-forget launchInitialDraw coroutine
+    }));
+
+    // Backlog audit — barrier abort safety. A seek/abort mid-draw must
+    // resolve the wait early, otherwise the orchestrator's `barrier`
+    // directive hangs the inner loop forever (infinite-rescue stall).
+    it('resolves early when the abort signal fires while draws are in flight', fakeAsync(() => {
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
+      const ac = new AbortController();
+      const p = manager.awaitDrawsComplete(ac.signal);
+      let resolved = false;
+      void p!.then(() => { resolved = true; });
+
+      ac.abort();
+      flush();
+      expect(resolved).toBe(true);
+    }));
+
+    it('returns an already-resolved Promise when the signal is already aborted', fakeAsync(() => {
+      manager.processDrawEvent({ type: 'MSG_DRAW', player: 0, cards: [1] } as DrawMsg);
+      const ac = new AbortController();
+      ac.abort();
+      const p = manager.awaitDrawsComplete(ac.signal);
+      let resolved = false;
+      void p!.then(() => { resolved = true; });
+      flush();
+      expect(resolved).toBe(true);
     }));
   });
 
