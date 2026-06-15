@@ -33,6 +33,7 @@ import { ANIMATION_DATA_SOURCE, type QueueDirective } from './animation-data-sou
 import { QueueRunner, type EventResult } from './queue-runner';
 import {
   LOCK_SAFETY_TIMEOUT_MS,
+  LOCK_SAFETY_QUEUE_BUDGET_MS,
   REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
   POLL_DROP_REGRESSION_WATCHDOG_MS,
   BOARD_BREATHE_MS,
@@ -653,7 +654,19 @@ export class AnimationOrchestratorService {
         // Scale RBS lock safety timeouts with playback speed so slow replay
         // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
         // 50% safety margin from DuelContext.safetyTimeout().
-        rbs.getSafetyTimeoutMs = () => this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS);
+        //
+        // Audit cosmetic #1 (2026-06-13) — also add per-queued-entry slack
+        // scaled by the queue depth AT LOCK TIME. A pre-lock posted for an
+        // event still waiting its turn in a deep queue (dense-chain backlog)
+        // would otherwise trip the base timeout purely because the queue is
+        // long, not because the lock leaked (D/D/D : ~149 spurious "Lock
+        // safety timeout" + rescued-stall noise). The guard's job is to
+        // detect a STUCK lock ; "stuck" must account for the work queued
+        // ahead. In live PvP the queue is near-empty (human pacing) so the
+        // term is ~0 and the guard keeps its original sensitivity.
+        rbs.getSafetyTimeoutMs = () =>
+          this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS)
+          + this.dataSource.animationQueue().length * LOCK_SAFETY_QUEUE_BUDGET_MS;
       },
       { injector: this.injector }
     );

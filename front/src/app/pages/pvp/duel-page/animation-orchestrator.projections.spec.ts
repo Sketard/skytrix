@@ -554,8 +554,32 @@ describe('AnimationOrchestratorService — RBS config re-applied on swap (2026-0
     // Default stub value is 1000 ; the orchestrator overrides to
     // `ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS)`. The StubCtx returns the
     // input unchanged (`safetyTimeout = b => b`), so the override yields
-    // `LOCK_SAFETY_TIMEOUT_MS = 2000` (post-2026-06-05 bump).
+    // `LOCK_SAFETY_TIMEOUT_MS = 2000` (post-2026-06-05 bump). Queue is empty
+    // → the per-entry term is 0.
     expect(ds.renderedBoardState.getSafetyTimeoutMs()).toBe(2000);
+  });
+
+  it('scales getSafetyTimeoutMs by the animation queue depth at lock time (audit cosmetic #1)', () => {
+    const orch = makeOrchestrator();
+    void orch;
+    TestBed.flushEffects();
+    const ds = TestBed.inject(ANIMATION_DATA_SOURCE) as unknown as StubDataSource;
+
+    // Empty queue : base only (2000).
+    ds.animationQueue.set([]);
+    expect(ds.renderedBoardState.getSafetyTimeoutMs()).toBe(2000);
+
+    // A deep backlog (dense-chain catch-up) extends the budget by
+    // `queueLength × LOCK_SAFETY_QUEUE_BUDGET_MS` (250) so a pre-lock waiting
+    // its turn behind 10 queued entries doesn't trip the guard on length
+    // alone : 2000 + 10×250 = 4500.
+    ds.animationQueue.set(new Array(10).fill({ type: 'MSG_MOVE' }));
+    expect(ds.renderedBoardState.getSafetyTimeoutMs()).toBe(4500);
+
+    // The term is re-evaluated each call (the queue drains over time) :
+    // 3 entries → 2000 + 3×250 = 2750.
+    ds.animationQueue.set(new Array(3).fill({ type: 'MSG_MOVE' }));
+    expect(ds.renderedBoardState.getSafetyTimeoutMs()).toBe(2750);
   });
 
   it('re-applies getSafetyTimeoutMs on a fresh RBS after the conn is swapped (SOLO bindSoloConnection mirror)', () => {

@@ -28,6 +28,28 @@
 export const LOCK_SAFETY_TIMEOUT_MS = 2000;
 
 /**
+ * Per-queued-entry slack (ms) added to the lock safety timeout, scaled by
+ * the animation queue depth at lock time.
+ *
+ * The base `LOCK_SAFETY_TIMEOUT_MS` measures wall-clock since `lockZone()`,
+ * NOT since the locked zone actually started animating. A PRE-lock (posted
+ * by `MoveAnimationRouter.preLockQueuedSources` for an event still waiting
+ * its turn in a deep queue) therefore trips the guard purely because the
+ * queue is LONG, not because the lock leaked — the classic dense-chain
+ * "rescued-stall + 3s lock" backlog noise (D/D/D 24-chain fixture, audit
+ * cosmetic #1). The guard's real job is "detect a STUCK lock" ; "stuck"
+ * must account for how much work is queued ahead of the locked event.
+ *
+ * Adding `queueLength × this` at arm time gives a pre-lock behind N queued
+ * entries a proportionally longer budget, so the guard only fires when the
+ * queue is genuinely WEDGED (no progress), never just deep. In live PvP the
+ * queue is near-empty (human pacing), so the term is ~0 and the guard keeps
+ * its original sensitivity. 250ms/entry ≈ one travel animation's worth of
+ * dispatch headroom per queued event.
+ */
+export const LOCK_SAFETY_QUEUE_BUDGET_MS = 250;
+
+/**
  * POLL-DROP REGRESSION watchdog timeout (ms).
  *
  * Armed by AnimationOrchestratorService when the queue finalizes while
