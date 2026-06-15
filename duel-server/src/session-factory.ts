@@ -126,6 +126,7 @@ export function createInitialSessionState(opts: CreateInitialSessionStateOpts): 
     deckNames: opts.deckNames,
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
     gameLog: createSessionGameLog(),
     animationsReady: [false, false],
   };

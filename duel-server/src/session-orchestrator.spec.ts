@@ -55,6 +55,7 @@ function wireUpstreams(): void {
     requestReplayFromWorker: () => undefined,
     cleanupDuelSession: () => undefined,
     safeTerminateWorker: () => undefined,
+    getSession: () => null,
     turnTimeIncrementMs: 30_000,
     inactivityTimeoutMs: 300_000,
     inactivityWarningBeforeMs: 30_000,
@@ -62,6 +63,7 @@ function wireUpstreams(): void {
     reconnectGraceMs: 30_000,
     bothDisconnectedCleanupMs: 60_000,
     animationsDoneTimeoutMs: 10_000,
+    animationsReadyTimeoutMs: 60_000,
   });
   configureFirstPlayerCoordinator({
     sendToPlayer: () => undefined,

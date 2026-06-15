@@ -2,6 +2,7 @@ import type { ActiveDuelSession } from './types.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import { createInactivityScheduler, type InactivityScheduler } from './inactivity-timer.js';
+import { isReadyToStart } from './lifecycle-helpers.js';
 import * as logger from './logger.js';
 
 /**
@@ -43,6 +44,11 @@ export interface TimerManagementConfig {
   /** Idempotent worker.terminate() that flips `workerTerminated`. */
   safeTerminateWorker: (session: ActiveDuelSession) => void;
 
+  /** Audit v4 #13 — re-fetch the session by id at deadline fire time, so a
+   *  torn-down / replaced session is detected (mirrors H17). Returns null if
+   *  the session is gone. */
+  getSession: (duelId: string) => ActiveDuelSession | null;
+
   // Constants from types.ts (kept as config so a test can poke shorter values)
   turnTimeIncrementMs: number;
   inactivityTimeoutMs: number;
@@ -51,6 +57,10 @@ export interface TimerManagementConfig {
   reconnectGraceMs: number;
   bothDisconnectedCleanupMs: number;
   animationsDoneTimeoutMs: number;
+  /** Audit v4 #13 — deadline (ms) for the client to emit ANIMATIONS_READY
+   *  after EARLY_DECK_PREFETCH before a wedged pre-start session is torn
+   *  down. Generous (cold thumbnail prefetch) — a leak backstop, not pacing. */
+  animationsReadyTimeoutMs: number;
 }
 
 const configurable = createConfigurable<TimerManagementConfig>('timer-management');
@@ -345,6 +355,61 @@ export function clearInactivityTimer(session: ActiveDuelSession, player: Player)
 }
 
 // =============================================================================
+// Pre-start ANIMATIONS_READY deadline (audit v4 #13, 2026-06-13)
+// =============================================================================
+
+/**
+ * Arm the pre-start ANIMATIONS_READY deadline for PvP-normal / SOLO
+ * sessions. Called after EARLY_DECK_PREFETCH (fresh connect / reconnect)
+ * and on rematch reset, whenever the session is in `WAITING_PLAYERS`
+ * waiting for the gate to clear. Idempotent : clears any prior deadline
+ * before re-arming, so a reconnect / re-emit can't stack two timers.
+ *
+ * SCOPE — `WAITING_PLAYERS` only. That is precisely the PvP/SOLO
+ * "worker-not-yet-spawned, blocked on the gate" state : the worker spawn
+ * is the transition OUT of `WAITING_PLAYERS` (`startDuelWithOrder` /
+ * `startFirstPlayerPhase`), gated server-side on `ANIMATIONS_READY`. A
+ * client that connects but never emits the signal (hung prefetch, JS error
+ * mid-prefetch) would otherwise wedge the session here forever — H17
+ * (guards `isFullyDisconnected`) and the SOLO orphan deadline (only armed
+ * on a socket `close`) both miss the socket-OPEN-but-gate-never-cleared
+ * case. Fork is deliberately NOT covered here : it bootstraps in `DUELING`
+ * and is already guarded by `forkConnectionTimeout`. A live `DUELING` duel
+ * (incl. the SOLO-F5 transient disconnect audit #12 flagged) is excluded by
+ * the phase check, so this can never kill a duel in progress.
+ *
+ * Fire body re-fetches the session and re-checks `WAITING_PLAYERS &&
+ * !isReadyToStart` : a slow-but-successful prefetch that emits
+ * ANIMATIONS_READY just before the deadline (clearing the timer in
+ * `onAnimationsReady`, then advancing the phase) is never killed. Mirrors
+ * the `soloOrphanTimeout` / H17 double-check discipline.
+ */
+export function armAnimationsReadyDeadline(session: ActiveDuelSession): void {
+  clearAnimationsReadyDeadline(session);
+  if (session.phase !== 'WAITING_PLAYERS' || isReadyToStart(session)) return;
+  const c = getCfg();
+  session.animationsReadyDeadline = setTimeout(() => {
+    const s = c.getSession(session.duelId);
+    if (!s || s.phase !== 'WAITING_PLAYERS' || isReadyToStart(s)) return;
+    logger.warn('ANIMATIONS_READY deadline — gate never cleared, tearing down', {
+      duelId: s.duelId,
+      animationsReady: s.animationsReady.slice(),
+      soloMode: s.soloMode,
+    });
+    c.safeTerminateWorker(s);
+    c.cleanupDuelSession(s);
+  }, c.animationsReadyTimeoutMs);
+}
+
+/** Audit v4 #13 — disarm the pre-start ANIMATIONS_READY deadline. Idempotent. */
+export function clearAnimationsReadyDeadline(session: ActiveDuelSession): void {
+  if (session.animationsReadyDeadline) {
+    clearTimeout(session.animationsReadyDeadline);
+    session.animationsReadyDeadline = null;
+  }
+}
+
+// =============================================================================
 // Bulk cleanup
 // =============================================================================
 
@@ -376,6 +441,14 @@ export function clearAllDuelTimers(session: ActiveDuelSession): void {
   if (session.soloOrphanTimeout) {
     clearTimeout(session.soloOrphanTimeout);
     session.soloOrphanTimeout = null;
+  }
+
+  // Audit v4 #13 — the pre-start ANIMATIONS_READY deadline is a duel timer
+  // too. Any teardown must disarm it so it can't fire into an already-ended
+  // or already-started session.
+  if (session.animationsReadyDeadline) {
+    clearTimeout(session.animationsReadyDeadline);
+    session.animationsReadyDeadline = null;
   }
 }
 

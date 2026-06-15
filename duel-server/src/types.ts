@@ -483,6 +483,17 @@ export interface ActiveDuelSession extends DuelSession {
   deckNames: [string, string];
   pendingReplayResult: string | null;
   forkConnectionTimeout: ReturnType<typeof setTimeout> | null;
+  /** Audit v4 #13 (2026-06-13) — deadline for the client to emit
+   *  ANIMATIONS_READY after EARLY_DECK_PREFETCH. The worker spawn (PvP/SOLO)
+   *  / FORK_RESUME (fork) is gated on this signal ; a connected-but-silent
+   *  client (hung prefetch, JS error mid-prefetch) would otherwise wedge the
+   *  session pre-start forever — H17 (guards `isFullyDisconnected`) and
+   *  `forkConnectionTimeout` (guards "no client connected") both miss the
+   *  socket-open-but-gate-never-cleared case. Armed after EARLY_DECK_PREFETCH
+   *  (+ on rematch reset), cleared in `onAnimationsReady` once the gate
+   *  clears, and by `clearAllDuelTimers`. Fires only while `startedAt === null`
+   *  AND `!isReadyToStart` (a slow-but-successful prefetch must not be killed). */
+  animationsReadyDeadline: ReturnType<typeof setTimeout> | null;
   /** Per-perspective game-log builders, fed from every outgoing worker
    *  message. Snapshotted into STATE_SYNC so a reconnecting / F5'd client
    *  rebuilds the journal from the duel start instead of from the reconnect

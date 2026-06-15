@@ -48,6 +48,7 @@ function makeSession(duelId = 'd1'): ActiveDuelSession {
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
   } as unknown as ActiveDuelSession;
 }
 

@@ -69,6 +69,7 @@ function makeSession(overrides: Partial<ActiveDuelSession> = {}): ActiveDuelSess
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
     ...overrides,
   } as unknown as ActiveDuelSession;
 }

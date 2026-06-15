@@ -208,6 +208,7 @@ describe('worker-message-router — game-log ingestion tap', () => {
       deckNames: ['d0', 'd1'],
       pendingReplayResult: null,
       forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
       gameLog: createSessionGameLog(),
       animationsReady: [false, false],
     } as ActiveDuelSession;

@@ -126,6 +126,7 @@ function makeSession(spy: SpyHooks, opts: { withWorker?: boolean; phase?: 'DUELI
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
     animationsReady: [false, false],
   } as unknown as ActiveDuelSession & { worker: FakeWorker | null };
 }
@@ -148,6 +149,7 @@ function wireUpstreams(): void {
     requestReplayFromWorker: () => undefined,
     cleanupDuelSession: () => undefined,
     safeTerminateWorker: () => undefined,
+    getSession: () => null,
     turnTimeIncrementMs: 40_000,
     inactivityTimeoutMs: 120_000,
     inactivityWarningBeforeMs: 20_000,
@@ -155,6 +157,7 @@ function wireUpstreams(): void {
     reconnectGraceMs: 60_000,
     bothDisconnectedCleanupMs: 10_000,
     animationsDoneTimeoutMs: 30_000,
+    animationsReadyTimeoutMs: 60_000,
   });
   configureFirstPlayerCoordinator({
     sendToPlayer: () => undefined,

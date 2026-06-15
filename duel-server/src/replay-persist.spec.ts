@@ -49,6 +49,7 @@ function makeSession(p1Id = '100', p2Id = '200'): ActiveDuelSession {
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
   } as unknown as ActiveDuelSession;
 }
 

@@ -91,6 +91,7 @@ function makeSession(): ActiveDuelSession {
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
   } as unknown as ActiveDuelSession;
 }
 

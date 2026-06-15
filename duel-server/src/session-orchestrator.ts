@@ -7,7 +7,7 @@ import type { DuelSessionManager } from './duel-session-manager.js';
 import { createSessionGameLog } from './session-game-log.js';
 import { resetSessionForRematch } from './session-factory.js';
 import { disposeFirstPlayer } from './first-player-coordinator.js';
-import { clearAllDuelTimers, sendTimerStateToPlayer } from './timer-management.js';
+import { clearAllDuelTimers, sendTimerStateToPlayer, armAnimationsReadyDeadline } from './timer-management.js';
 import { filterMessage } from './message-filter.js';
 import { buildPreDuelSnapshot } from './pre-duel-snapshot.js';
 import { buildDuelStartingMessage } from './lifecycle-helpers.js';
@@ -260,6 +260,15 @@ export function startRematch(session: ActiveDuelSession): void {
   resetSessionForRematch(session);
 
   clearAllDuelTimers(session);
+
+  // Audit v4 #13 — re-arm the pre-start ANIMATIONS_READY deadline. The
+  // rematch keeps the SAME socket connected (no fresh connection to re-arm
+  // via the handler) and `resetSessionForRematch` ramped the session back to
+  // `WAITING_PLAYERS` with `animationsReady = [false, false]`. The client
+  // re-runs its prefetch on REMATCH_STARTING → re-emits ANIMATIONS_READY ;
+  // a client that hangs there now has the same leak backstop as a fresh
+  // connect (the prior `rematchTimeout` was already cleared above).
+  armAnimationsReadyDeadline(session);
 }
 
 /**

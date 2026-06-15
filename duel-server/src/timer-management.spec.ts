@@ -12,6 +12,8 @@ import {
   startGracePeriod,
   startInactivityTimer,
   shouldRunTurnTimer,
+  armAnimationsReadyDeadline,
+  clearAnimationsReadyDeadline,
   type TimerManagementConfig,
 } from './timer-management.js';
 import type { ActiveDuelSession } from './types.js';
@@ -41,6 +43,7 @@ function makeConfig(spy: SpyHooks, overrides: Partial<TimerManagementConfig> = {
     requestReplayFromWorker: (session, reason) => spy.replayRequests.push({ session, reason }),
     cleanupDuelSession: (session) => spy.cleanups.push({ session }),
     safeTerminateWorker: (session) => spy.terminations.push({ session }),
+    getSession: () => null,
     turnTimeIncrementMs: 40_000,
     inactivityTimeoutMs: 120_000,
     inactivityWarningBeforeMs: 20_000,
@@ -48,6 +51,7 @@ function makeConfig(spy: SpyHooks, overrides: Partial<TimerManagementConfig> = {
     reconnectGraceMs: 60_000,
     bothDisconnectedCleanupMs: 10_000,
     animationsDoneTimeoutMs: 30_000,
+    animationsReadyTimeoutMs: 60_000,
     ...overrides,
   };
 }
@@ -104,6 +108,7 @@ function makeSession(initialPoolMs = 300_000): ActiveDuelSession {
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
   } as unknown as ActiveDuelSession;
 }
 
@@ -952,6 +957,122 @@ describe('timer-management', () => {
       startGracePeriod(s, 0);
 
       expect(s.combinedGraceTimer).toBe(firstCombinedTimer);
+    });
+  });
+
+  // ==========================================================================
+  // Audit v4 #13 — pre-start ANIMATIONS_READY deadline
+  // ==========================================================================
+
+  describe('armAnimationsReadyDeadline', () => {
+    /** PvP-normal session parked in WAITING_PLAYERS, gate not yet cleared. */
+    function makeWaitingSession(): ActiveDuelSession {
+      const s = makeSession();
+      s.phase = 'WAITING_PLAYERS';
+      (s as unknown as { animationsReady: [boolean, boolean] }).animationsReady = [false, false];
+      return s;
+    }
+
+    it('arms a deadline while WAITING_PLAYERS and the gate is not cleared', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeWaitingSession();
+
+      armAnimationsReadyDeadline(s);
+
+      expect(s.animationsReadyDeadline).not.toBeNull();
+    });
+
+    it('fires teardown when the gate never clears (connected-but-silent)', () => {
+      const spy = makeSpy();
+      const s = makeWaitingSession();
+      // getSession returns the live session so the fire body proceeds.
+      configureTimerManagement(makeConfig(spy, {
+        getSession: () => s,
+        animationsReadyTimeoutMs: 1000,
+      }));
+
+      armAnimationsReadyDeadline(s);
+      vi.advanceTimersByTime(1000);
+
+      expect(spy.terminations).toHaveLength(1);
+      expect(spy.cleanups).toHaveLength(1);
+    });
+
+    it('does NOT fire if the gate cleared (deadline disarmed in onAnimationsReady)', () => {
+      const spy = makeSpy();
+      const s = makeWaitingSession();
+      configureTimerManagement(makeConfig(spy, { getSession: () => s, animationsReadyTimeoutMs: 1000 }));
+
+      armAnimationsReadyDeadline(s);
+      clearAnimationsReadyDeadline(s); // mirrors server.ts onAnimationsReady
+      vi.advanceTimersByTime(1000);
+
+      expect(spy.terminations).toHaveLength(0);
+      expect(spy.cleanups).toHaveLength(0);
+      expect(s.animationsReadyDeadline).toBeNull();
+    });
+
+    it('fire body bails if the session advanced past WAITING_PLAYERS (slow-but-OK prefetch)', () => {
+      const spy = makeSpy();
+      const s = makeWaitingSession();
+      configureTimerManagement(makeConfig(spy, { getSession: () => s, animationsReadyTimeoutMs: 1000 }));
+
+      armAnimationsReadyDeadline(s);
+      // The duel started just before the deadline (phase advanced).
+      s.phase = 'DUELING';
+      vi.advanceTimersByTime(1000);
+
+      expect(spy.terminations).toHaveLength(0);
+      expect(spy.cleanups).toHaveLength(0);
+    });
+
+    it('does NOT arm for a live DUELING session (e.g. SOLO-F5 transient disconnect)', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession(); // phase: 'DUELING'
+
+      armAnimationsReadyDeadline(s);
+
+      expect(s.animationsReadyDeadline).toBeNull();
+    });
+
+    it('does NOT arm once the gate is already cleared', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeWaitingSession();
+      (s as unknown as { animationsReady: [boolean, boolean] }).animationsReady = [true, true];
+
+      armAnimationsReadyDeadline(s);
+
+      expect(s.animationsReadyDeadline).toBeNull();
+    });
+
+    it('is idempotent — re-arming clears the prior deadline (no stacked timers)', () => {
+      const spy = makeSpy();
+      const s = makeWaitingSession();
+      configureTimerManagement(makeConfig(spy, { getSession: () => s, animationsReadyTimeoutMs: 1000 }));
+
+      armAnimationsReadyDeadline(s);
+      const first = s.animationsReadyDeadline;
+      armAnimationsReadyDeadline(s);
+
+      expect(s.animationsReadyDeadline).not.toBe(first);
+      // Only one teardown after the window — the first timer was cleared.
+      vi.advanceTimersByTime(1000);
+      expect(spy.cleanups).toHaveLength(1);
+    });
+
+    it('clearAllDuelTimers disarms the deadline', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeWaitingSession();
+
+      armAnimationsReadyDeadline(s);
+      expect(s.animationsReadyDeadline).not.toBeNull();
+      clearAllDuelTimers(s);
+
+      expect(s.animationsReadyDeadline).toBeNull();
     });
   });
 });

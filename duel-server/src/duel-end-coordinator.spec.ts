@@ -75,6 +75,7 @@ function makeSession(worker: FakeWorker | null = makeWorker()): ActiveDuelSessio
     deckNames: ['d0', 'd1'],
     pendingReplayResult: null,
     forkConnectionTimeout: null,
+    animationsReadyDeadline: null,
   } as unknown as ActiveDuelSession & { worker: FakeWorker | null };
 }
 

@@ -53,6 +53,7 @@ import {
   configureTimerManagement,
   isTimerManagementConfigured,
   clearAllDuelTimers,
+  clearAnimationsReadyDeadline,
 } from './timer-management.js';
 import {
   configureSolverHandlers,
@@ -273,6 +274,7 @@ configureTimerManagement({
   requestReplayFromWorker,
   cleanupDuelSession,
   safeTerminateWorker,
+  getSession: (duelId) => sessionManager.get(duelId) ?? null,
   turnTimeIncrementMs: TURN_TIME_INCREMENT_MS,
   inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
   inactivityWarningBeforeMs: INACTIVITY_WARNING_BEFORE_MS,
@@ -280,6 +282,9 @@ configureTimerManagement({
   reconnectGraceMs: RECONNECT_GRACE_MS,
   bothDisconnectedCleanupMs: BOTH_DISCONNECTED_CLEANUP_MS,
   animationsDoneTimeoutMs: ANIMATIONS_DONE_TIMEOUT_MS,
+  // Audit v4 #13 — generous (cold thumbnail prefetch on slow hardware) ;
+  // a leak backstop, not pacing. Aligns with H17's 60s connection timeout.
+  animationsReadyTimeoutMs: 60_000,
 });
 
 configureFirstPlayerCoordinator({
@@ -364,6 +369,13 @@ configureClientMessageRouter({
       clearTimeout(session.forkConnectionTimeout);
       session.forkConnectionTimeout = null;
     }
+
+    // Audit v4 #13 — the gate has now fully cleared (every required slot
+    // emitted ANIMATIONS_READY) ; disarm the pre-start deadline so it can't
+    // fire into the duel we're about to start below. Only reached when
+    // `isReadyToStart` is true, so a half-ready PvP session (one slot still
+    // pending) correctly keeps the deadline armed.
+    clearAnimationsReadyDeadline(session);
 
     // F6 review — fork sessions short-circuit BEFORE the
     // `phase === 'WAITING_PLAYERS'` check. Fork-solo sessions are

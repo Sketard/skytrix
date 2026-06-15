@@ -18,7 +18,7 @@ import { startFirstPlayerPhase } from './first-player-coordinator.js';
 import {
   pauseTurnTimer, commitPendingTimer,
   startInactivityTimer, clearInactivityTimer,
-  startGracePeriod,
+  startGracePeriod, armAnimationsReadyDeadline,
 } from './timer-management.js';
 import { handleDuelEnd, requestReplayFromWorker } from './duel-end-coordinator.js';
 import { handleClientMessage } from './client-message-router.js';
@@ -454,6 +454,13 @@ export function handlePvpConnection(ws: WebSocket, req: IncomingMessage): void {
       }
     : { type: 'EARLY_DECK_PREFETCH' as const, cardCodes: ownCardCodes };
   sendToPlayer(session, playerIndex, earlyPrefetchMsg);
+
+  // Audit v4 #13 — arm the pre-start ANIMATIONS_READY deadline now that the
+  // client has its card codes and is expected to prefetch → emit
+  // ANIMATIONS_READY. No-op if the session already cleared the gate or
+  // already started (reconnect into a live duel). Cleared in
+  // `onAnimationsReady` once the gate clears.
+  armAnimationsReadyDeadline(session);
 
   // Mark as alive for heartbeat
   (ws as AliveWebSocket).isAlive = true;
