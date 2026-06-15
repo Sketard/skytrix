@@ -184,6 +184,11 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
         }
 
         session.awaitingResponse[p] = true;
+        // Audit v4 #14 — re-arm the turn + inactivity timers on the re-sent
+        // prompt. Without this the player kept an open prompt with no
+        // running deadline after an engine reject (SOLO leak / lost PvP
+        // turn pressure). Same arming as the initial SELECT broadcast.
+        armResponseTimers(session, p);
         send(session, p, cached);
       }
       break;
@@ -236,6 +241,34 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
       logger.error('Unhandled worker message type', { type: (liveMsg as { type: string }).type });
       void _exhaustive;
     }
+  }
+}
+
+/**
+ * Re-arm the per-prompt timers when a SELECT_* prompt becomes the live
+ * outstanding prompt for `player` — both on the INITIAL broadcast and on a
+ * `WORKER_RETRY` re-send (OCGCore rejected the response, same prompt is
+ * re-issued). Audit v4 #14 (2026-06-13) : the RETRY path used to flip
+ * `awaitingResponse` + re-send WITHOUT this, so after an engine reject the
+ * player had an open prompt but NO turn timer and NO inactivity deadline —
+ * the anti-leak forfeit never re-armed (SOLO worker + session leaked
+ * forever ; PvP turn pressure silently dropped). Extracting the trio here
+ * keeps the two arming sites in lock-step (DRY).
+ *
+ * - `promptSentAt` stamps the (re-)issue time.
+ * - `scheduleTimerStart` re-arms the turn timer (no-op when
+ *   `timerContext === null`, i.e. SOLO / fork — the SOLO "no turn timer"
+ *   invariant holds by construction).
+ * - `startInactivityTimer` re-arms the 5min anti-leak forfeit. Idempotent
+ *   (the scheduler's `start` cancels any running countdown first), so a
+ *   re-arm can't stack two timers. Skipped on tape-driven sessions, same
+ *   as the broadcast path.
+ */
+function armResponseTimers(session: ActiveDuelSession, player: Player): void {
+  session.promptSentAt[player] = Date.now();
+  scheduleTimerStart(session, player);
+  if (!hasTapePlayer(session)) {
+    startInactivityTimer(session, player);
   }
 }
 
@@ -323,7 +356,6 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
       timerRunning: session.timerContext?.running,
     });
     session.awaitingResponse[targetPlayer] = true;
-    session.promptSentAt[targetPlayer] = Date.now();
     // v4 Phase 0 — tape player hook for PvP↔Replay parity test
     // (chantier `anim-pipeline-v4-replay-unification`). When the session
     // was bootstrapped via `POST /api/duels/from-replay`, auto-respond
@@ -354,18 +386,13 @@ export function broadcastMessage(session: ActiveDuelSession, message: ServerMess
     if (!hasTapePlayer(session)) {
       send(session, opponentOfTarget, { type: 'WAITING_RESPONSE', targetPlayer: opponentOfTarget });
     }
-    scheduleTimerStart(session, targetPlayer);
-    // Étape 2 (2026-06-12) — no inactivity pressure on tape-driven sessions.
-    // The tape answers every prompt except the LAST one (the original duel
-    // ended by surrender/timeout, so the final IDLECMD has no recorded
-    // response) ; the inactivity forfeit then fired while the CLIENT was
-    // still animating its multi-minute backlog (D/D/D : 24 chains at tape
-    // speed), and the DUEL_END wiped the remaining animation queue —
-    // truncating the parity capture at 122/557 events. The harness owns
-    // the session teardown (page close → SOLO orphan deadline).
-    if (!hasTapePlayer(session)) {
-      startInactivityTimer(session, targetPlayer);
-    }
+    // Turn timer + inactivity anti-leak forfeit (the latter skipped on
+    // tape-driven sessions — Étape 2, 2026-06-12 : the tape leaves the
+    // final IDLECMD unanswered and the forfeit would fire mid-backlog,
+    // wiping the animation queue and truncating the parity capture ; the
+    // harness owns teardown via the SOLO orphan deadline). Shared with the
+    // WORKER_RETRY re-send path via `armResponseTimers` (audit v4 #14).
+    armResponseTimers(session, targetPlayer);
     // P0-3bis.3 — a fresh IDLECMD/BATTLECMD = new rollback boundary.
     if (message.type === 'SELECT_IDLECMD' || message.type === 'SELECT_BATTLECMD') {
       session.cancelTargetPrompt[targetPlayer] = null;

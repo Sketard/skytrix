@@ -242,6 +242,53 @@ describe('worker-message-router', () => {
       expect(sent?.player).toBe(0);
     });
 
+    // Audit v4 #14 (2026-06-13) — the RETRY re-send MUST re-arm the
+    // per-prompt timers, exactly like the initial SELECT broadcast. Before
+    // the fix it only flipped awaitingResponse + re-sent, so after an engine
+    // reject the player had an open prompt with no inactivity deadline (SOLO
+    // worker + session leaked forever) and no turn pressure.
+    it('re-arms the inactivity timer + stamps promptSentAt on the re-send', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.lastSentPrompt[0] = { type: 'SELECT_CARD', player: 0, cards: [] } as unknown as ServerMessage;
+      expect(s.players[0].inactivitySlot).toBeNull();
+      expect(s.promptSentAt[0]).toBe(0);
+
+      handleWorkerMessage(s, { type: 'WORKER_RETRY', duelId: 'd1', playerIndex: 0 } as WorkerToMainMessage);
+
+      expect(s.players[0].inactivitySlot).not.toBeNull();
+      expect(s.promptSentAt[0]).toBeGreaterThan(0);
+    });
+
+    it('re-arms the turn timer (pending slot) on the re-send when a timer context exists', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      s.turnTimeSecs = 300;
+      // Seed a real timerContext (mirrors WORKER_DUEL_CREATED in prod).
+      handleWorkerMessage(s, { type: 'WORKER_DUEL_CREATED', duelId: 'd1' } as WorkerToMainMessage);
+      s.lastSentPrompt[1] = { type: 'SELECT_CARD', player: 1, cards: [] } as unknown as ServerMessage;
+
+      handleWorkerMessage(s, { type: 'WORKER_RETRY', duelId: 'd1', playerIndex: 1 } as WorkerToMainMessage);
+
+      // scheduleTimerStart armed the pending-turn slot for the retrying player.
+      expect(s.timerContext!.pendingPlayer).toBe(1);
+    });
+
+    it('does NOT arm the inactivity timer on a tape-driven session', () => {
+      const spy = makeSpy();
+      configureWorkerMessageRouter(makeConfig(spy));
+      const s = makeSession();
+      // Mark the session tape-driven (dev-only parity harness path).
+      (s as unknown as { tapePlayer: unknown }).tapePlayer = { responses: [], cursor: 0 };
+      s.lastSentPrompt[0] = { type: 'SELECT_CARD', player: 0, cards: [] } as unknown as ServerMessage;
+
+      handleWorkerMessage(s, { type: 'WORKER_RETRY', duelId: 'd1', playerIndex: 0 } as WorkerToMainMessage);
+
+      expect(s.players[0].inactivitySlot).toBeNull();
+    });
+
     it('no-op when there is no cached prompt', () => {
       const spy = makeSpy();
       configureWorkerMessageRouter(makeConfig(spy));
