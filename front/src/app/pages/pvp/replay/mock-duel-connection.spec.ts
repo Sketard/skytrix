@@ -9,7 +9,7 @@ import { MockDuelConnection, type ReplayStream } from './mock-duel-connection';
 import type {
   BoardStateMsg, BoardStatePayload, ChainingMsg, ChainNegatedMsg,
   DamageMsg, DrawMsg, MoveMsg, Player,
-  SelectCardMsg, ServerMessage,
+  SelectCardMsg, SelectChainMsg, SelectSumMsg, ServerMessage,
 } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import type { StreamEvent } from '../types';
@@ -63,6 +63,21 @@ const selectCard = (): SelectCardMsg => ({
   type: 'SELECT_CARD', player: 0 as Player, min: 1, max: 1, cards: [
     { cardCode: 100, name: 'Card', player: 0 as Player, location: LOCATION.HAND, sequence: 0 },
   ], cancelable: false,
+});
+
+// Empty SELECT_CHAIN — "nothing to chain" prompt. Auto-passed live (no dialog).
+const selectChainEmpty = (player: Player = 0 as Player): SelectChainMsg => ({
+  type: 'SELECT_CHAIN', player, cards: [], forced: false, hintTiming: 0,
+});
+
+// SELECT_SUM with an empty `cards` pool but a non-empty `mustSelect` — NOT
+// auto-passed (the player must still choose from `mustSelect`).
+const selectSumMustSelectOnly = (): SelectSumMsg => ({
+  type: 'SELECT_SUM', player: 0 as Player, cards: [],
+  targetSum: 4, minCards: 1, maxCards: 1, selectMax: 1,
+  mustSelect: [
+    { cardCode: 100, name: 'Card', player: 0 as Player, location: LOCATION.HAND, sequence: 0 },
+  ],
 });
 
 function streamOf(messages: ServerMessage[]): ReplayStream {
@@ -148,6 +163,38 @@ describe('MockDuelConnection — Phase 1', () => {
       expect(conn.pendingPrompt()).not.toBeNull();
       conn.simulatePlayerResponse({ promptType: 'SELECT_CARD', data: { indices: [0] } });
       expect(conn.pendingPrompt()).toBeNull();
+    });
+
+    // Parity with DuelConnection.tryAutoRespondEmptyCards — an empty-cards
+    // modal is auto-passed live (no dialog opens). Readonly replay must mirror
+    // the "no dialog" outcome instead of surfacing an empty grid. Regression
+    // guard for the dense-D/D/D "116 empty SELECT_CHAIN open empty grids" bug.
+    describe('empty-cards modal auto-pass (PvP parity)', () => {
+      it('SELECT_CHAIN with cards:[] does NOT set pendingPrompt', () => {
+        conn.loadStream(streamOf([selectChainEmpty()]));
+        conn.dispatchNext();
+        expect(conn.pendingPrompt()).toBeNull();
+      });
+
+      it('processes the empty SELECT_CHAIN through the processor (chain state) but no dialog', () => {
+        const spy = spyOn(conn.processor, 'processMessage').and.callThrough();
+        conn.loadStream(streamOf([selectChainEmpty(1 as Player)]));
+        conn.dispatchNext();
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(conn.pendingPrompt()).toBeNull();
+      });
+
+      it('SELECT_CARD with a non-empty pool still sets pendingPrompt', () => {
+        conn.loadStream(streamOf([selectCard()]));
+        conn.dispatchNext();
+        expect(conn.pendingPrompt()?.type).toBe('SELECT_CARD');
+      });
+
+      it('SELECT_SUM with empty cards but non-empty mustSelect is NOT auto-passed', () => {
+        conn.loadStream(streamOf([selectSumMustSelectOnly()]));
+        conn.dispatchNext();
+        expect(conn.pendingPrompt()?.type).toBe('SELECT_SUM');
+      });
     });
 
     // F10-bis (2026-06-12) — the prompt's own offset is tracked so the

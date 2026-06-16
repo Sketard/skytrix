@@ -634,6 +634,19 @@ export class MockDuelConnection implements AnimationDataSource {
     // (game-log builder's secondary MSG_BECOME_TARGET resolver). Mirror of
     // DuelConnection._handleSelectModal.
     if (message.type === 'SELECT_CARD') this._outOfBandSink?.(message);
+
+    // Parity with DuelConnection.tryAutoRespondEmptyCards — a modal prompt
+    // with no candidate cards is auto-passed live (the conn sends an empty
+    // response and never sets `pendingPrompt`, so no dialog appears). Readonly
+    // replay can't respond, but it MUST mirror the "no dialog" outcome — else
+    // the prompt-dialog opens on an empty grid (e.g. the 116 empty SELECT_CHAIN
+    // "nothing to chain" prompts in a dense D/D/D replay). SELECT_SUM with a
+    // non-empty `mustSelect` pool is NOT auto-passed (same carve-out as PvP).
+    const isEmptyAutoPass =
+      message.cards.length === 0 &&
+      !(message.type === 'SELECT_SUM' && ((message as SelectSumMsg).mustSelect?.length ?? 0) > 0);
+    if (isEmptyAutoPass) return;
+
     duelAssert(
       message.player === 0 || message.player === 1,
       'MockDuelConnection._handleSelectModal',
