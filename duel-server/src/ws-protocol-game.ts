@@ -103,6 +103,16 @@ export interface MoveMsg {
   fromOverlaySequence?: number;
   toOverlaySequence?: number;
   /**
+   * The HOST monster's BASE zone for an overlay attach (`toLocation` === OVERLAY):
+   * EXTRA when the material attaches during an XYZ summon (host still in the
+   * Extra Deck — the client rides the host's EXTRA→MZONE descent), MZONE when
+   * it attaches to an XYZ already on the field (Rank-Up / overlay-effect — no
+   * descent to ride). The layer-2 correlator buffers the slide ONLY for EXTRA,
+   * so a stale on-field attach can't be mis-consumed by a later non-XYZ Extra
+   * summon sharing a numeric sequence. Present only on overlay-attach legs.
+   */
+  toOverlayHostLocation?: CardLocation;
+  /**
    * Board-state snapshot captured immediately AFTER this event was applied
    * server-side. Populated by the replay precompute for BOARD_CHANGING events
    * that fire during `chainPhase === 'resolving'`, so the client's buffer

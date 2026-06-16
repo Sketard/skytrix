@@ -92,13 +92,24 @@ export class MoveAnimationRouter {
    * (`to === OVERLAY`) arrives BEFORE the host XYZ descends from the Extra
    * Deck, and carries `toSequence` = the host's EXTRA sequence (NOT a real
    * MZONE the material could slide to yet). We buffer these attaches keyed by
-   * `toSequence`; when the host's `EXTRA→MZONE` move arrives with a matching
-   * `fromSequence`, we animate the host slam + the materials sliding to the
-   * host's final MZONE in ONE parallel group (`Promise.all`). Mirrors Master
-   * Duel. Flushed on reset. Each entry holds its source ZoneLock so the
-   * material stays visible in its origin zone until the group plays.
+   * `${hostController}:${hostExtraSeq}`; when the host's `EXTRA→MZONE` move
+   * arrives with a matching key, we animate the host slam + the materials
+   * sliding to the host's final MZONE in ONE parallel group (`Promise.all`).
+   * Mirrors Master Duel. Flushed on reset. Each entry holds its source ZoneLock
+   * so the material stays visible in its origin zone until the group plays.
+   *
+   * Key includes the host CONTROLLER (not just the seq) so two simultaneous
+   * cross-player XYZ summons sharing an Extra-Deck slot can't steal each
+   * other's materials. Only EXTRA-host attaches are buffered (see the attach
+   * branch) so an attach to an on-field XYZ (Rank-Up) never lingers to be
+   * mis-consumed by a later non-XYZ Extra summon at the same numeric seq.
    */
-  private readonly _pendingXyzMaterials = new Map<number, { msg: MoveMsg; srcLock: ZoneLock }[]>();
+  private readonly _pendingXyzMaterials = new Map<string, { msg: MoveMsg; srcLock: ZoneLock }[]>();
+
+  /** Buffer key for the XYZ correlator: host controller + host base sequence. */
+  private xyzHostKey(controller: number, hostSeq: number): string {
+    return `${controller}:${hostSeq}`;
+  }
 
   /** Set once a pile-bound MSG_MOVE missing `toPlayer` is seen — keeps the
    *  fallback warning to one line per session instead of one per move. */
@@ -141,17 +152,29 @@ export class MoveAnimationRouter {
     if (!mc) return 0;
 
     // XYZ summon — material attaching to an overlay (to === OVERLAY). Buffer it
-    // keyed by the host's base-zone sequence (mc.msg.toSequence) and hold its
-    // source lock; the parallel slide animation is played when the host's
-    // EXTRA→MZONE move arrives (see `xyzSummonWithMaterials`). preDstLock is
-    // released — OVERLAY maps onto the host's MZONE which the host move locks.
+    // keyed by `${hostController}:${hostExtraSeq}` and hold its source lock; the
+    // parallel slide animation is played when the host's EXTRA→MZONE move
+    // arrives (see `xyzSummonWithMaterials`). preDstLock is released — OVERLAY
+    // maps onto the host's MZONE which the host move locks.
+    //
+    // Only buffer when the host is still in the EXTRA deck (`toOverlayHostLocation
+    // === EXTRA`). An attach to an XYZ ALREADY on the field (Rank-Up,
+    // overlay-effect — host in MZONE) has no Extra-Deck descent to ride and
+    // would otherwise linger in the buffer and be mis-consumed by a later
+    // non-XYZ Extra summon at the same numeric seq. Those attaches fall through
+    // to the no-op below (the BOARD_STATE places the overlay).
     if (mc.to === LOCATION.OVERLAY) {
       mc.preDstLock?.release();
+      if (mc.msg.toOverlayHostLocation !== LOCATION.EXTRA) {
+        // On-field attach (or legacy payload without the field): no slide.
+        mc.preSrcLock?.release();
+        return 0;
+      }
       const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
-      const hostSeq = mc.msg.toSequence;
-      const list = this._pendingXyzMaterials.get(hostSeq) ?? [];
+      const key = this.xyzHostKey(moveToPlayer(mc.msg), mc.msg.toSequence);
+      const list = this._pendingXyzMaterials.get(key) ?? [];
       list.push({ msg: mc.msg, srcLock });
-      this._pendingXyzMaterials.set(hostSeq, list);
+      this._pendingXyzMaterials.set(key, list);
       return 0;
     }
 
@@ -161,9 +184,10 @@ export class MoveAnimationRouter {
     }
 
     // XYZ summon — host descends from the Extra Deck with pending overlay
-    // materials matching its EXTRA sequence: play host + materials in parallel.
+    // materials matching its controller + EXTRA sequence: play host + materials
+    // in parallel.
     if (mc.from === LOCATION.EXTRA && mc.to === LOCATION.MZONE
-        && this._pendingXyzMaterials.has(mc.msg.fromSequence)) {
+        && this._pendingXyzMaterials.has(this.xyzHostKey(mc.msg.player, mc.msg.fromSequence))) {
       return this.xyzSummonWithMaterials(mc);
     }
 
@@ -500,8 +524,9 @@ export class MoveAnimationRouter {
    * "slide under" layering is the next iteration — see the spec.
    */
   private xyzSummonWithMaterials(mc: MoveContext): Promise<void> {
-    const materials = this._pendingXyzMaterials.get(mc.msg.fromSequence) ?? [];
-    this._pendingXyzMaterials.delete(mc.msg.fromSequence);
+    const key = this.xyzHostKey(mc.msg.player, mc.msg.fromSequence);
+    const materials = this._pendingXyzMaterials.get(key) ?? [];
+    this._pendingXyzMaterials.delete(key);
     this.ctx.announceEvent('Xyz Summon', mc.msg.player);
 
     // Host: EXTRA → MZONE slam (same as summonToField, lock held to group end).
@@ -529,8 +554,14 @@ export class MoveAnimationRouter {
       const srcKey = locationToZoneKey(msg.fromLocation, msg.fromSequence, relPlayer);
       const cardImage = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(msg.cardCode));
       const stagger = this.ctx.scaledDuration(XYZ_MATERIAL_STAGGER_MS * i, 0);
+      // `srcLockSettled` guards the material's source lock against a double
+      // commit/release: the lock is either committed when the slide starts, OR
+      // released by the stagger cleanup if `clearTimeouts` fires before the
+      // staggered slide ran (otherwise that lock leaks — the buffer entry was
+      // already deleted above so the `clearTimeouts` flush can't reach it).
+      let srcLockSettled = false;
       const slide = () => {
-        srcLock.commit(); // source card disappears now; the float carries it
+        if (!srcLockSettled) { srcLock.commit(); srcLockSettled = true; } // source card disappears; the float carries it
         return this.cardTravelEngine.travel(srcKey, mc.dstKey, cardImage, {
           duration: this.ctx.scaledDuration(XYZ_MATERIAL_SLIDE_MS, XYZ_MATERIAL_SLIDE_MIN_MS),
           baseRotateZ: this.ctx.cardBaseRotation(relPlayer),
@@ -538,7 +569,13 @@ export class MoveAnimationRouter {
         });
       };
       return stagger > 0
-        ? new Promise<void>(res => { const id = setTimeout(() => { this._pendingTimeouts.delete(id); slide().then(res, res); }, stagger); this._pendingTimeouts.set(id, () => res()); })
+        ? new Promise<void>(res => {
+            const id = setTimeout(() => { this._pendingTimeouts.delete(id); slide().then(res, res); }, stagger);
+            this._pendingTimeouts.set(id, () => {
+              if (!srcLockSettled) { srcLock.release(); srcLockSettled = true; } // slide never ran → don't leak the lock
+              res();
+            });
+          })
         : slide();
     });
 

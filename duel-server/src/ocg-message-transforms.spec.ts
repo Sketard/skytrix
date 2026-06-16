@@ -322,11 +322,25 @@ describe('transformMove (XYZ overlay — overlay_sequence decoding)', () => {
       { card: 67322708, from: loc({ location: LOCATION.MZONE as number, sequence: 0 }),
         to: loc({ location: LOCATION.EXTRA as number, sequence: 7, overlay_sequence: 1 }) },
       noOcg, lookup,
-    ) as { toLocation: number; toSequence: number; toOverlaySequence?: number; fromLocation: number };
+    ) as { toLocation: number; toSequence: number; toOverlaySequence?: number; fromLocation: number; toOverlayHostLocation?: number };
     expect(out.toLocation).toBe(LOCATION.OVERLAY);
     expect(out.toSequence).toBe(7); // host monster's sequence in its base zone
     expect(out.toOverlaySequence).toBe(1);
     expect(out.fromLocation).toBe(LOCATION.MZONE); // source untouched
+    // host base zone EXTRA → a real XYZ summon the client should animate.
+    expect(out.toOverlayHostLocation).toBe(LOCATION.EXTRA);
+  });
+
+  it('attach to an on-field host → toOverlayHostLocation MZONE (Rank-Up, no slide)', () => {
+    const { lookup } = makeMockLookup();
+    const out = transformMove(
+      // Host already on the field: binding emits MZONE|OVERLAY → location: MZONE.
+      { card: 67322708, from: loc({ location: LOCATION.HAND as number, sequence: 0 }),
+        to: loc({ location: LOCATION.MZONE as number, sequence: 2, overlay_sequence: 0 }) },
+      noOcg, lookup,
+    ) as { toLocation: number; toOverlayHostLocation?: number };
+    expect(out.toLocation).toBe(LOCATION.OVERLAY);
+    expect(out.toOverlayHostLocation).toBe(LOCATION.MZONE);
   });
 
   it('detach: from.overlay_sequence present → fromLocation OVERLAY + fromOverlaySequence forwarded', () => {

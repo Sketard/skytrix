@@ -347,11 +347,16 @@ describe('MoveAnimationRouter', () => {
   // ---------------------------------------------------------------------------
 
   describe('XYZ summon correlator', () => {
+    // An overlay attach during a real XYZ summon — host still in the Extra Deck.
+    const attach = (overrides: Partial<MoveMsg>) => buildMove({
+      toLocation: LOCATION.OVERLAY, toSequence: 7, toOverlayHostLocation: LOCATION.EXTRA, ...overrides,
+    });
+
     it('host EXTRA→MZONE with matching buffered materials → xyzSummonWithMaterials', () => {
       const spies = stubAllBranches();
       // Two materials attach to the host's EXTRA sequence (7).
-      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 2, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
-      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 0, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
+      router.processMoveEvent(attach({ fromLocation: LOCATION.MZONE, fromSequence: 2 }));
+      router.processMoveEvent(attach({ fromLocation: LOCATION.MZONE, fromSequence: 0 }));
       expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
       // Host descends from EXTRA seq 7 → triggers the parallel group.
       router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
@@ -369,7 +374,7 @@ describe('MoveAnimationRouter', () => {
 
     it('host sequence mismatch → materials stay buffered, host is a plain summon', () => {
       const spies = stubAllBranches();
-      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 0, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
+      router.processMoveEvent(attach({ fromLocation: LOCATION.MZONE, fromSequence: 0 }));
       // A different host (EXTRA seq 3) does not consume the seq-7 materials.
       router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 3, toLocation: LOCATION.MZONE, toSequence: 1 }));
       expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
@@ -382,7 +387,7 @@ describe('MoveAnimationRouter', () => {
     it('clearTimeouts releases buffered material source locks', () => {
       const releaseSpy = jasmine.createSpy('release');
       mockRbs.lockZone.and.returnValue({ commit: () => undefined, release: releaseSpy });
-      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 0, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
+      router.processMoveEvent(attach({ fromLocation: LOCATION.MZONE, fromSequence: 0 }));
       router.clearTimeouts();
       expect(releaseSpy).toHaveBeenCalled();
       // After flush, a host no longer finds the material → plain summon.
@@ -390,6 +395,55 @@ describe('MoveAnimationRouter', () => {
       router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
       expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
       expect(spies['summonToField']).toHaveBeenCalled();
+    });
+
+    // Cas A (review finding) — two players' XYZ summons sharing EXTRA seq 7 must
+    // not steal each other's materials: the buffer key includes the controller.
+    it('cross-player same-seq summons keep separate material buckets', () => {
+      const spies = stubAllBranches();
+      // Player 0 attaches a material to its host at EXTRA seq 7.
+      router.processMoveEvent(attach({ player: 0 as Player, toPlayer: 0 as Player, fromLocation: LOCATION.MZONE, fromSequence: 0 }));
+      // Player 1 attaches to ITS host, also EXTRA seq 7.
+      router.processMoveEvent(attach({ player: 1 as Player, toPlayer: 1 as Player, fromLocation: LOCATION.MZONE, fromSequence: 0 }));
+      // Player 0's host descends → consumes only player 0's bucket.
+      router.processMoveEvent(buildMove({ player: 0 as Player, toPlayer: 0 as Player, fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
+      expect(spies['xyzSummonWithMaterials']).toHaveBeenCalledTimes(1);
+      // Player 1's bucket still buffered → its host triggers its own group.
+      router.processMoveEvent(buildMove({ player: 1 as Player, toPlayer: 1 as Player, fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
+      expect(spies['xyzSummonWithMaterials']).toHaveBeenCalledTimes(2);
+    });
+
+    // Cas B (review finding) — an attach to an XYZ ALREADY on the field
+    // (toOverlayHostLocation === MZONE, e.g. Rank-Up) is NOT buffered, so a
+    // later non-XYZ Extra summon at the same numeric seq can't mis-consume it.
+    it('on-field attach (host in MZONE) is not buffered — later Extra summon is plain', () => {
+      const spies = stubAllBranches();
+      router.processMoveEvent(buildMove({
+        fromLocation: LOCATION.MZONE, fromSequence: 0,
+        toLocation: LOCATION.OVERLAY, toSequence: 2, toOverlayHostLocation: LOCATION.MZONE,
+      }));
+      // A Synchro/Fusion/Link descends from EXTRA seq 2 (numeric collision).
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 2, toLocation: LOCATION.MZONE, toSequence: 3 }));
+      expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
+      expect(spies['summonToField']).toHaveBeenCalled();
+    });
+
+    // The stagger-cleanup must release a material's source lock if clearTimeouts
+    // fires before its staggered slide started (otherwise the lock leaks — the
+    // buffer entry is already deleted by xyzSummonWithMaterials).
+    it('clearTimeouts mid-stagger releases the not-yet-slid material lock (no leak)', () => {
+      const commitSpy = jasmine.createSpy('commit');
+      const releaseSpy = jasmine.createSpy('release');
+      mockRbs.lockZone.and.returnValue({ commit: commitSpy, release: releaseSpy });
+      // Two materials → the 2nd has a non-zero stagger, so its slide is deferred.
+      router.processMoveEvent(attach({ fromLocation: LOCATION.MZONE, fromSequence: 0 }));
+      router.processMoveEvent(attach({ fromLocation: LOCATION.MZONE, fromSequence: 1 }));
+      // Real host triggers the group (do NOT stub it — exercise the real method).
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
+      releaseSpy.calls.reset();
+      router.clearTimeouts();
+      // The deferred material's lock is released (not leaked) by the cleanup.
+      expect(releaseSpy).toHaveBeenCalled();
     });
   });
 

@@ -301,6 +301,17 @@ export function transformMove(
   // material to its host (XYZ-summon animation — layer 2).
   const fromIsOverlay = msg.from.overlay_sequence !== undefined;
   const toIsOverlay = msg.to.overlay_sequence !== undefined;
+  // `msg.to.location` BEFORE the OVERLAY override is the host's BASE zone:
+  // EXTRA when the material attaches during an XYZ summon (host still in the
+  // Extra Deck), MZONE when it attaches to an XYZ ALREADY on the field
+  // (Rank-Up / overlay-effect). The client buffers the slide animation only
+  // for the EXTRA case — the MZONE case has no Extra-Deck descent to ride, so
+  // surfacing the base zone lets it skip those (closes the buffer-collision
+  // where a non-XYZ Extra summon shares a numeric sequence with a stale
+  // attach-on-field material). See the layer-2 correlator.
+  const toOverlayHostLocation = toIsOverlay
+    ? (msg.to.location as number as (typeof LOCATION)[keyof typeof LOCATION])
+    : undefined;
   const effFromLocation = (fromIsOverlay ? LOCATION.OVERLAY : msg.from.location) as number as (typeof LOCATION)[keyof typeof LOCATION];
   const effToLocation = (toIsOverlay ? LOCATION.OVERLAY : msg.to.location) as number as (typeof LOCATION)[keyof typeof LOCATION];
 
@@ -324,6 +335,7 @@ export function transformMove(
     ...(sourceMzoneSeq !== undefined ? { sourceMzoneSeq } : {}),
     ...(fromIsOverlay ? { fromOverlaySequence: msg.from.overlay_sequence } : {}),
     ...(toIsOverlay ? { toOverlaySequence: msg.to.overlay_sequence } : {}),
+    ...(toOverlayHostLocation !== undefined ? { toOverlayHostLocation } : {}),
   };
 }
 
