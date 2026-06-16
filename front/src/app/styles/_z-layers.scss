@@ -42,10 +42,13 @@ $z-pvp-chain-overlay: 950; // above $z-pvp-card-travel (900) — chain overlay m
 $z-pvp-hand-activate: 500; // referenced as z-index literal in animation-orchestrator.service.ts
 $z-pvp-card-travel: 900; // referenced as z-index literal in card-travel.service.ts
 $z-pvp-card-action-menu: 70;
-$z-pvp-prompt-sheet: 80; // used by pvp-prompt-dialog
-$z-pvp-rps-overlay: 85;
-$z-pvp-result-overlay: 90;
-$z-pvp-blocked-tab-overlay: 95;
+$z-pvp-prompt-sheet: 920; // used by pvp-prompt-dialog — above $z-pvp-card-travel (900) so traveling cards don't overlap the prompt, below $z-pvp-chain-overlay (950)
+// Full-screen modal overlays — must stay above the prompt sheet (920) and the
+// chain overlay (950) so a finished duel / blocked tab / RPS flow is never
+// pierced by a traveling card, a prompt, or the chain overlay.
+$z-pvp-rps-overlay: 955;
+$z-pvp-result-overlay: 960;
+$z-pvp-blocked-tab-overlay: 965;
 $z-pvp-timeline-popover: 1000;
 $z-pvp-orientation-lock: 9000;
 
