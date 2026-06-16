@@ -1,5 +1,6 @@
 import type { ActiveDuelSession, WorkerToMainMessage } from './types.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
+import { PROMPT_MESSAGE_TYPES } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import { filterMessage } from './message-filter.js';
 import * as duelInstr from './duel-instrumentation.js';
@@ -63,12 +64,11 @@ export const configureWorkerMessageRouter = configurable.configure;
 export const isWorkerMessageRouterConfigured = configurable.isConfigured;
 const getCfg = configurable.get;
 
+// #19 SSOT — the OCGCore prompt names come from the shared
+// `PROMPT_MESSAGE_TYPES` (ws-protocol-shared.ts), no longer hand-duplicated.
+// The 2 pre-duel coordinator prompts are router-specific and extend it here.
 const SELECT_TYPES = new Set([
-  'SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_CARD', 'SELECT_CHAIN',
-  'SELECT_EFFECTYN', 'SELECT_YESNO', 'SELECT_PLACE', 'SELECT_DISFIELD',
-  'SELECT_POSITION', 'SELECT_OPTION', 'SELECT_TRIBUTE', 'SELECT_SUM',
-  'SELECT_UNSELECT_CARD', 'SELECT_COUNTER', 'SORT_CARD', 'SORT_CHAIN',
-  'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
+  ...PROMPT_MESSAGE_TYPES,
   // Pre-duel coordinator prompts (since 2026-05-13). They're not "select" in
   // the OCGCore sense and DO NOT actually reach `broadcastMessage` in prod
   // (first-player-coordinator sends them via `sendToPlayer` direct, not via

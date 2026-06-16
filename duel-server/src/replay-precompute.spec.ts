@@ -10,6 +10,7 @@ import {
 } from './replay-precompute.js';
 import type { InitReplayMessage, ReplayMetadata } from './types.js';
 import type { ServerMessage, BoardStatePayload } from './ws-protocol.js';
+import { PROMPT_MESSAGE_TYPES } from './ws-protocol.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -124,6 +125,36 @@ function ocg(type: OcgMessageType, extra: Record<string, unknown> = {}): OcgMess
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
+
+// #19 SSOT anti-drift — the enum-keyed `SELECT_MESSAGE_TYPES` (this file) and
+// the string-keyed `PROMPT_MESSAGE_TYPES` (ws-protocol-shared) describe the
+// SAME OCGCore prompts at two referential levels. They are intentionally NOT
+// the same object (different keys ; the enum set also carries
+// ROCK_PAPER_SCISSORS, which has no post-transform string sibling). This pin
+// makes "they agree on the shared prompt names" a verified contract instead
+// of a comment, so a future edit to one set without the other breaks the build.
+describe('SELECT_MESSAGE_TYPES ↔ PROMPT_MESSAGE_TYPES parity', () => {
+  // Enum members with no post-transform string counterpart in the stream.
+  const ENUM_ONLY = new Set([OcgMessageType.ROCK_PAPER_SCISSORS]);
+
+  it('every enum prompt (except enum-only) has a matching string in PROMPT_MESSAGE_TYPES', () => {
+    const missing: string[] = [];
+    for (const t of SELECT_MESSAGE_TYPES) {
+      if (ENUM_ONLY.has(t)) continue;
+      const name = OcgMessageType[t];
+      if (!PROMPT_MESSAGE_TYPES.has(name)) missing.push(name);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('every string in PROMPT_MESSAGE_TYPES maps back to an enum prompt', () => {
+    const enumNames = new Set(
+      [...SELECT_MESSAGE_TYPES].map((t) => OcgMessageType[t] as string),
+    );
+    const orphans = [...PROMPT_MESSAGE_TYPES].filter((s) => !enumNames.has(s));
+    expect(orphans).toEqual([]);
+  });
+});
 
 describe('runReplayPreComputation', () => {
   beforeEach(() => {

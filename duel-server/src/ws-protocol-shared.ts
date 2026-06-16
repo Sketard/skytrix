@@ -232,3 +232,28 @@ export const BOARD_CHANGING_EVENT_TYPES: ReadonlySet<string> = new Set([
   'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
   'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
 ]);
+
+/**
+ * `ServerMessage.type` values that correspond to an OCGCore player-input
+ * prompt (post-`transformMessage`, i.e. string-keyed). SSOT for the
+ * string-level prompt classifiers that used to be hand-duplicated across the
+ * server (#19) :
+ *  - `replay-precompute.ts` `PROMPT_TYPES_STREAM` (drives `lastSelectOffset`)
+ *    imports this set verbatim.
+ *  - `worker-message-router.ts` `isSelectMessage` extends it with the 2
+ *    pre-duel coordinator prompts (`DICE_ROLL`, `SELECT_FIRST_PLAYER`) which
+ *    are not OCGCore selects.
+ *
+ * The `OcgMessageType`-keyed `SELECT_MESSAGE_TYPES` (replay-precompute.ts) is
+ * its enum-level sibling — it stays separate (different referential, also
+ * carries `ROCK_PAPER_SCISSORS`), but an anti-drift spec pins that the two
+ * agree on the shared prompt names.
+ */
+export const PROMPT_MESSAGE_TYPES: ReadonlySet<string> = new Set([
+  'SELECT_IDLECMD', 'SELECT_BATTLECMD',
+  'SELECT_CARD', 'SELECT_CHAIN', 'SELECT_EFFECTYN', 'SELECT_YESNO',
+  'SELECT_PLACE', 'SELECT_DISFIELD', 'SELECT_POSITION', 'SELECT_OPTION',
+  'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_UNSELECT_CARD', 'SELECT_COUNTER',
+  'SORT_CARD', 'SORT_CHAIN',
+  'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
+]);

@@ -20,7 +20,7 @@ import type {
   ReplayStreamAutoResponse,
   ReplayStreamNavEntry,
 } from './ws-protocol.js';
-import { LOCATION, POSITION } from './ws-protocol.js';
+import { LOCATION, POSITION, PROMPT_MESSAGE_TYPES } from './ws-protocol.js';
 
 /**
  * H3.5 — extracted from `duel-worker.ts`. Owns the `runReplayPreComputation`
@@ -73,19 +73,6 @@ export const SELECT_MESSAGE_TYPES = new Set([
 const TRANSITION_BOUNDARY_PROMPTS = new Set([
   OcgMessageType.SELECT_IDLECMD,
   OcgMessageType.SELECT_BATTLECMD,
-]);
-
-/** Anim-pipeline v4 (Phase 2) — `ServerMessage.type` values that correspond
- *  to a player prompt and thus trigger a `lastSelectOffset` update in the
- *  stream builder. Mirrors `SELECT_MESSAGE_TYPES` (which is keyed by
- *  `OcgMessageType`) but at the post-`transformMessage` level. */
-const PROMPT_TYPES_STREAM: ReadonlySet<string> = new Set([
-  'SELECT_IDLECMD', 'SELECT_BATTLECMD',
-  'SELECT_CARD', 'SELECT_CHAIN', 'SELECT_EFFECTYN', 'SELECT_YESNO',
-  'SELECT_PLACE', 'SELECT_DISFIELD', 'SELECT_POSITION', 'SELECT_OPTION',
-  'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_UNSELECT_CARD', 'SELECT_COUNTER',
-  'SORT_CARD', 'SORT_CHAIN',
-  'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
 ]);
 
 const PHASE_LABELS: Record<number, string> = {
@@ -546,7 +533,7 @@ export function runReplayPreComputation(
    *  `ChainCostSyncTracker` deliberately skips. */
   function ingestStream(msg: ServerMessage): void {
     const offset = streamBuilder.ingest(msg);
-    if (PROMPT_TYPES_STREAM.has(msg.type)) {
+    if (PROMPT_MESSAGE_TYPES.has(msg.type)) {
       lastSelectOffset = offset;
       streamBuilder.ingest({ type: 'BOARD_STATE', data: (buildBoardState() as BoardStateMsg).data });
     }
@@ -882,5 +869,4 @@ export const __test__ = {
   TRANSITION_BOUNDARY_PROMPTS,
   DEFAULT_MAX_ITERATIONS,
   ReplayStreamBuilder,
-  PROMPT_TYPES_STREAM,
 };
