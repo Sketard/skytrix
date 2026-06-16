@@ -14,6 +14,7 @@ import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import type { ZoneLock } from './rendered-board-state.service';
 import { REASON_DESTROY } from './ocgcore-reason-flags';
+import { XYZ_MATERIAL_SLIDE_MS, XYZ_MATERIAL_SLIDE_MIN_MS, XYZ_MATERIAL_STAGGER_MS, XYZ_HOST_ZINDEX_BOOST } from './animation-constants';
 
 /** Pre-computed context for a single MSG_MOVE event — shared across all branch methods. */
 interface MoveContext {
@@ -86,6 +87,19 @@ export class MoveAnimationRouter {
   /** Pre-acquired ZoneLock handles (src + dst) from preLockQueuedSources. */
   private readonly _preLocks = new Map<string, ZoneLock>();
 
+  /**
+   * XYZ summon correlator (layer 2, 2026-06-16). An overlay-attach MSG_MOVE
+   * (`to === OVERLAY`) arrives BEFORE the host XYZ descends from the Extra
+   * Deck, and carries `toSequence` = the host's EXTRA sequence (NOT a real
+   * MZONE the material could slide to yet). We buffer these attaches keyed by
+   * `toSequence`; when the host's `EXTRA→MZONE` move arrives with a matching
+   * `fromSequence`, we animate the host slam + the materials sliding to the
+   * host's final MZONE in ONE parallel group (`Promise.all`). Mirrors Master
+   * Duel. Flushed on reset. Each entry holds its source ZoneLock so the
+   * material stays visible in its origin zone until the group plays.
+   */
+  private readonly _pendingXyzMaterials = new Map<number, { msg: MoveMsg; srcLock: ZoneLock }[]>();
+
   /** Set once a pile-bound MSG_MOVE missing `toPlayer` is seen — keeps the
    *  fallback warning to one line per session instead of one per move. */
   private _warnedMissingToPlayer = false;
@@ -126,12 +140,31 @@ export class MoveAnimationRouter {
     const mc = this.buildMoveContext(msg);
     if (!mc) return 0;
 
-    // Re-attachment to overlay: no animation
-    if (mc.to === LOCATION.OVERLAY) { mc.preSrcLock?.release(); mc.preDstLock?.release(); return 0; }
+    // XYZ summon — material attaching to an overlay (to === OVERLAY). Buffer it
+    // keyed by the host's base-zone sequence (mc.msg.toSequence) and hold its
+    // source lock; the parallel slide animation is played when the host's
+    // EXTRA→MZONE move arrives (see `xyzSummonWithMaterials`). preDstLock is
+    // released — OVERLAY maps onto the host's MZONE which the host move locks.
+    if (mc.to === LOCATION.OVERLAY) {
+      mc.preDstLock?.release();
+      const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
+      const hostSeq = mc.msg.toSequence;
+      const list = this._pendingXyzMaterials.get(hostSeq) ?? [];
+      list.push({ msg: mc.msg, srcLock });
+      this._pendingXyzMaterials.set(hostSeq, list);
+      return 0;
+    }
 
     // XYZ overlay detach: OVERLAY -> GRAVE/BANISHED
     if (mc.from === LOCATION.OVERLAY && (mc.to === LOCATION.GRAVE || mc.to === LOCATION.BANISHED)) {
       return this.overlayDetach(mc);
+    }
+
+    // XYZ summon — host descends from the Extra Deck with pending overlay
+    // materials matching its EXTRA sequence: play host + materials in parallel.
+    if (mc.from === LOCATION.EXTRA && mc.to === LOCATION.MZONE
+        && this._pendingXyzMaterials.has(mc.msg.fromSequence)) {
+      return this.xyzSummonWithMaterials(mc);
     }
 
     const isToMZONE = mc.to === LOCATION.MZONE
@@ -308,6 +341,13 @@ export class MoveAnimationRouter {
       cleanup();
     }
     this._pendingTimeouts.clear();
+    // Flush any XYZ materials still buffered (host descent never arrived —
+    // replay truncation / reset mid-summon). Release their held source locks
+    // so the zones aren't frozen into the next duel.
+    for (const list of this._pendingXyzMaterials.values()) {
+      for (const { srcLock } of list) srcLock.release();
+    }
+    this._pendingXyzMaterials.clear();
     // Re-arm the one-shot missing-`toPlayer` warning for the next duel — the
     // router is reused across a rematch (R8, no ngOnDestroy), so a warning
     // tripped by a legacy replay must not silence a genuine live-PvP
@@ -445,6 +485,67 @@ export class MoveAnimationRouter {
       () => this.commitAndClearFloat(dstLock, mc.dstKey),
       () => dstLock.release(),
     );
+  }
+
+  /**
+   * XYZ summon (layer 2) — the host descends from the Extra Deck while its
+   * overlay materials (buffered at attach time, keyed by the host's EXTRA
+   * sequence) slide in PARALLEL from their MZONE source zones to under the
+   * host's final MZONE. Mirrors Master Duel. `mc` is the host's EXTRA→MZONE
+   * move; `mc.dstKey` is the host's final MZONE zone key — the materials'
+   * shared landing target.
+   *
+   * Prototype z-index note: materials currently land at the host's MZONE key
+   * via the same travel engine (they read as arriving on top). The overlay
+   * "slide under" layering is the next iteration — see the spec.
+   */
+  private xyzSummonWithMaterials(mc: MoveContext): Promise<void> {
+    const materials = this._pendingXyzMaterials.get(mc.msg.fromSequence) ?? [];
+    this._pendingXyzMaterials.delete(mc.msg.fromSequence);
+    this.ctx.announceEvent('Xyz Summon', mc.msg.player);
+
+    // Host: EXTRA → MZONE slam (same as summonToField, lock held to group end).
+    // `zIndexBoost` lifts the host above the materials converging on the same
+    // MZONE so it lands ON TOP (the materials slide UNDER it). Stays < 950
+    // (chain overlay).
+    mc.preSrcLock?.commit();
+    const hostLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
+    const hostP = this.cardTravelEngine.travel(mc.src, mc.dstKey, mc.cardImage, {
+      duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ, landingStyle: 'slam',
+      zIndexBoost: XYZ_HOST_ZINDEX_BOOST,
+    });
+
+    // Materials: each slides from its source MZONE to the host's MZONE, in
+    // parallel, with a light cascade stagger. The source lock is committed the
+    // instant the slide STARTS (after its stagger) so the source card vanishes
+    // and the travelling float replaces it — otherwise the card stays rendered
+    // in its origin zone for the whole travel ("card visible in two places",
+    // reported in PvP + replay 2026-06-16). The shared host MZONE lock
+    // ref-counts every material + host; the final commit (ref 0) syncs the
+    // rendered zone with the host + overlays.
+    const relPlayer = this.ctx.relativePlayer(mc.msg.player);
+    const matLock = this.rbs.lockZone(mc.dstKey); // shared landing lock for materials
+    const matPromises = materials.map(({ msg, srcLock }, i) => {
+      const srcKey = locationToZoneKey(msg.fromLocation, msg.fromSequence, relPlayer);
+      const cardImage = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(msg.cardCode));
+      const stagger = this.ctx.scaledDuration(XYZ_MATERIAL_STAGGER_MS * i, 0);
+      const slide = () => {
+        srcLock.commit(); // source card disappears now; the float carries it
+        return this.cardTravelEngine.travel(srcKey, mc.dstKey, cardImage, {
+          duration: this.ctx.scaledDuration(XYZ_MATERIAL_SLIDE_MS, XYZ_MATERIAL_SLIDE_MIN_MS),
+          baseRotateZ: this.ctx.cardBaseRotation(relPlayer),
+          landingStyle: 'soft',
+        });
+      };
+      return stagger > 0
+        ? new Promise<void>(res => { const id = setTimeout(() => { this._pendingTimeouts.delete(id); slide().then(res, res); }, stagger); this._pendingTimeouts.set(id, () => res()); })
+        : slide();
+    });
+
+    return Promise.all([hostP.then(() => undefined, () => undefined), ...matPromises]).then(() => {
+      matLock.release();
+      this.commitAndClearFloat(hostLock, mc.dstKey);
+    });
   }
 
   private tokenDissolve(mc: MoveContext): number | Promise<void> {

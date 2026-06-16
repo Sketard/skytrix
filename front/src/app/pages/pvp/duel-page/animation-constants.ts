@@ -115,6 +115,20 @@ export const BOARD_BREATHE_MIN_MS = 200;
  */
 export const GROUP_STAGGER_MS = 50;
 
+// --- XYZ summon (layer 2, 2026-06-16) — materials slide under the host XYZ
+//     in parallel with its Extra-Deck descent (Master Duel style) ---
+/** Travel duration of one material sliding from its MZONE source to under the
+ *  host XYZ's MZONE. Slightly slower than a normal move so the cascade reads. */
+export const XYZ_MATERIAL_SLIDE_MS = 450;
+export const XYZ_MATERIAL_SLIDE_MIN_MS = 220;
+/** Per-material cascade offset — material N starts N × this after material 0,
+ *  so they fan in rather than overlapping exactly. */
+export const XYZ_MATERIAL_STAGGER_MS = 80;
+/** z-index boost (above the 900 base) for the host XYZ float so it lands ON TOP
+ *  of its materials sliding to the same MZONE. Stays well below the chain
+ *  overlay (950). */
+export const XYZ_HOST_ZINDEX_BOOST = 10;
+
 // =============================================================================
 // Per-event timing budgets — base values consumed by `ctx.scaledDuration(base, min)`
 // in animation-orchestrator handlers. The `_MIN` companion is the minimum the

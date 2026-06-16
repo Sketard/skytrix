@@ -35,6 +35,13 @@ export interface TravelOptions {
    * multiple HAND landed floats to their post-shuffle DOM positions.
    */
   cardCode?: number;
+  /**
+   * Added to the float's base `z-index` (900). Lets a travel layer above its
+   * peers when several floats share a destination — e.g. an XYZ host monster
+   * (boost) landing ABOVE its overlay materials (no boost) that converge on
+   * the same MZONE. Must stay below the chain overlay (950) — keep boosts small.
+   */
+  zIndexBoost?: number;
 }
 
 /**
@@ -364,7 +371,7 @@ export class CardTravelEngine implements OnDestroy {
       position: absolute;
       pointer-events: none;
       will-change: transform, opacity;
-      z-index: 900; /* $z-pvp-card-travel — must stay below $z-pvp-chain-overlay (950) */
+      z-index: ${900 + (options.zIndexBoost ?? 0)}; /* $z-pvp-card-travel — must stay below $z-pvp-chain-overlay (950) */
       width: ${sourceRect.width}px;
       height: ${sourceRect.height}px;
       left: ${sourceRect.left}px;

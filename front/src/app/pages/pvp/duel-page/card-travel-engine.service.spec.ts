@@ -251,6 +251,20 @@ describe('CardTravelEngine', () => {
       expect(floatRegistry.inFlightCount()).toBe(0);
       expect(floatRegistry.landedCount()).toBe(1);
     });
+
+    it('float defaults to the base z-index (900) when no boost is given', async () => {
+      const p = engine.travel('SRC', 'DST', 'card.png');
+      const floatEl = container.querySelector<HTMLDivElement>('div[style*="pointer-events"]')!;
+      expect(floatEl.style.zIndex).toBe('900');
+      await p;
+    });
+
+    it('zIndexBoost lifts the float above its peers (host XYZ on top of materials)', async () => {
+      const p = engine.travel('SRC', 'DST', 'card.png', { zIndexBoost: 10 });
+      const floatEl = container.querySelector<HTMLDivElement>('div[style*="pointer-events"]')!;
+      expect(floatEl.style.zIndex).toBe('910');
+      await p;
+    });
   });
 
   describe('travel — landing style routing', () => {

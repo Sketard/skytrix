@@ -31,7 +31,7 @@ const ALL_BRANCHES = [
   'overlayDetach', 'summonToField', 'tokenDissolve', 'leaveFieldDestroy',
   'leaveFieldNonDestroy', 'bounceToHand', 'returnToDeck', 'fieldToField',
   'discardFromHand', 'handToDeck', 'deckOrExtraToPile', 'pileToHand',
-  'pileToDeck', 'pileToPile', 'fallback',
+  'pileToDeck', 'pileToPile', 'fallback', 'xyzSummonWithMaterials',
 ] as const;
 
 function buildMove(overrides: Partial<MoveMsg>): MoveMsg {
@@ -160,11 +160,12 @@ describe('MoveAnimationRouter', () => {
   // ---------------------------------------------------------------------------
 
   describe('processMoveEvent dispatch', () => {
-    it('to OVERLAY → returns 0 without calling any branch', () => {
+    it('to OVERLAY → buffers the material (returns 0, no branch yet)', () => {
       const spies = stubAllBranches();
       const result = router.processMoveEvent(buildMove({
-        fromLocation: LOCATION.MZONE, toLocation: LOCATION.OVERLAY,
+        fromLocation: LOCATION.MZONE, toLocation: LOCATION.OVERLAY, toSequence: 7,
       }));
+      // Buffered for later — no animation until the host descends.
       expect(result).toBe(0);
       for (const name of ALL_BRANCHES) expect(spies[name]).not.toHaveBeenCalled();
     });
@@ -337,6 +338,58 @@ describe('MoveAnimationRouter', () => {
         fromLocation: LOCATION.DECK, toLocation: LOCATION.DECK,
       }));
       expect(spies['fallback']).toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // XYZ summon correlator (layer 2) — overlay-attach moves buffer until the
+  // host descends from the Extra Deck, then play as one parallel group.
+  // ---------------------------------------------------------------------------
+
+  describe('XYZ summon correlator', () => {
+    it('host EXTRA→MZONE with matching buffered materials → xyzSummonWithMaterials', () => {
+      const spies = stubAllBranches();
+      // Two materials attach to the host's EXTRA sequence (7).
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 2, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 0, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
+      expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
+      // Host descends from EXTRA seq 7 → triggers the parallel group.
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
+      expect(spies['xyzSummonWithMaterials']).toHaveBeenCalledTimes(1);
+      // The plain summon branch must NOT also fire for this host.
+      expect(spies['summonToField']).not.toHaveBeenCalled();
+    });
+
+    it('host EXTRA→MZONE with NO buffered material → falls through to summonToField', () => {
+      const spies = stubAllBranches();
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
+      expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
+      expect(spies['summonToField']).toHaveBeenCalled();
+    });
+
+    it('host sequence mismatch → materials stay buffered, host is a plain summon', () => {
+      const spies = stubAllBranches();
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 0, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
+      // A different host (EXTRA seq 3) does not consume the seq-7 materials.
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 3, toLocation: LOCATION.MZONE, toSequence: 1 }));
+      expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
+      expect(spies['summonToField']).toHaveBeenCalled();
+      // The seq-7 host later still finds its materials.
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
+      expect(spies['xyzSummonWithMaterials']).toHaveBeenCalledTimes(1);
+    });
+
+    it('clearTimeouts releases buffered material source locks', () => {
+      const releaseSpy = jasmine.createSpy('release');
+      mockRbs.lockZone.and.returnValue({ commit: () => undefined, release: releaseSpy });
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.MZONE, fromSequence: 0, toLocation: LOCATION.OVERLAY, toSequence: 7 }));
+      router.clearTimeouts();
+      expect(releaseSpy).toHaveBeenCalled();
+      // After flush, a host no longer finds the material → plain summon.
+      const spies = stubAllBranches();
+      router.processMoveEvent(buildMove({ fromLocation: LOCATION.EXTRA, fromSequence: 7, toLocation: LOCATION.MZONE, toSequence: 0 }));
+      expect(spies['xyzSummonWithMaterials']).not.toHaveBeenCalled();
+      expect(spies['summonToField']).toHaveBeenCalled();
     });
   });
 
