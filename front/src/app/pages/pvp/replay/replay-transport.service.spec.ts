@@ -287,6 +287,24 @@ describe('ReplayTransportService — maybeAdvance', () => {
     expect(mockConn.getAutoResponseAt).toHaveBeenCalledWith(4);
   }));
 
+  it('dismisses non-visual IDLECMD prompts immediately (no 1200ms dead air)', fakeAsync(() => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    // IDLECMD/BATTLECMD render no dialog in replay — they must not hold
+    // playback for the human-read baseline.
+    mockConn.pendingPrompt.and.returnValue({ type: 'SELECT_IDLECMD' } as never);
+    mockConn.getAutoResponseAt.and.returnValue({ promptType: 'SELECT_IDLECMD', data: { type: 1, index: 0, action: 5 } });
+    svc.togglePlay();
+    svc.maybeAdvance();
+    tick(0);
+    expect(mockConn.simulatePlayerResponse).toHaveBeenCalledWith({
+      promptType: 'SELECT_IDLECMD',
+      data: { type: 1, index: 0, action: 5 },
+    });
+  }));
+
   it('falls back to no-op simulate when no auto-response is recorded', fakeAsync(() => {
     const { svc, mockConn } = setup({
       states: [stubState('a'), stubState('b')],

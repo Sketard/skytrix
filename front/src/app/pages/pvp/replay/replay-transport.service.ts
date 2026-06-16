@@ -2,6 +2,7 @@ import { Injectable, signal, type Signal } from '@angular/core';
 import type { MockDuelConnection } from './mock-duel-connection';
 import { devAnimSpeedMultiplier } from '../duel-page/duel-context';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
+import { IGNORED_PROMPT_TYPES } from '../duel-page/prompts/prompt.types';
 import type { TurnMeta } from '../replay-ws.types';
 
 /**
@@ -99,6 +100,14 @@ function playbackIntervalMs(): number {
  * Preferences in a later phase.
  */
 const REPLAY_PROMPT_DELAY_MS = 1200;
+/**
+ * Auto-dismiss delay for prompts that DON'T render a dialog in replay —
+ * `SELECT_IDLECMD` / `SELECT_BATTLECMD` (`IGNORED_PROMPT_TYPES`). These are
+ * board-distributed UI in PvP (no blocking modal) and replay shows no panel
+ * for them, so the 1200ms "human read time" baseline would just be dead air
+ * between phase actions. Consume the recorded response immediately instead.
+ */
+const REPLAY_NONVISUAL_PROMPT_DELAY_MS = 0;
 
 @Injectable()
 export class ReplayTransportService {
@@ -575,22 +584,40 @@ export class ReplayTransportService {
    */
   private schedulePromptDismiss(): void {
     this.clearPlaybackTimer();
-    const c = this.getCfg();
     this.playbackTimer = setTimeout(() => {
-      this.playbackTimer = null;
-      // F10-bis — the prompt's own offset is tracked by the mock
-      // (`lastPromptOffset`). The historical `cursor - 1` arithmetic broke
-      // once the trailing BOARD_STATE started dispatching before the yield.
-      const response = c.mockConn.getAutoResponseAt(c.mockConn.lastPromptOffset());
-      if (response) {
-        c.mockConn.simulatePlayerResponse(response);
-      } else {
-        // No recorded response (replay truncated mid-prompt?). Clear the
-        // prompt manually so playback doesn't stall — `simulatePlayerResponse`
-        // with a no-op payload does the right thing.
-        c.mockConn.simulatePlayerResponse({ promptType: 'UNKNOWN', data: {} });
-      }
-    }, this._promptDelayOverrideMs ?? REPLAY_PROMPT_DELAY_MS);
+      this.consumePromptResponse();
+    }, this.promptDismissDelayMs());
+  }
+
+  /** The dismiss delay for the current `pendingPrompt` — short-circuited to
+   *  ~0 for the non-visual IDLECMD/BATTLECMD prompts (no dialog rendered), the
+   *  full human-read baseline otherwise. A dev override still wins for both. */
+  private promptDismissDelayMs(): number {
+    if (this._promptDelayOverrideMs !== null) return this._promptDelayOverrideMs;
+    const prompt = this.getCfg().mockConn.pendingPrompt();
+    return prompt && IGNORED_PROMPT_TYPES.has(prompt.type)
+      ? REPLAY_NONVISUAL_PROMPT_DELAY_MS
+      : REPLAY_PROMPT_DELAY_MS;
+  }
+
+  /** Consume the recorded auto-response for the current prompt (or a no-op
+   *  fallback if the replay was truncated mid-prompt), clearing `pendingPrompt`
+   *  so the `maybeAdvance` effect resumes playback. */
+  private consumePromptResponse(): void {
+    this.playbackTimer = null;
+    const c = this.getCfg();
+    // F10-bis — the prompt's own offset is tracked by the mock
+    // (`lastPromptOffset`). The historical `cursor - 1` arithmetic broke
+    // once the trailing BOARD_STATE started dispatching before the yield.
+    const response = c.mockConn.getAutoResponseAt(c.mockConn.lastPromptOffset());
+    if (response) {
+      c.mockConn.simulatePlayerResponse(response);
+    } else {
+      // No recorded response (replay truncated mid-prompt?). Clear the
+      // prompt manually so playback doesn't stall — `simulatePlayerResponse`
+      // with a no-op payload does the right thing.
+      c.mockConn.simulatePlayerResponse({ promptType: 'UNKNOWN', data: {} });
+    }
   }
 
   private pausePlayback(): void {
