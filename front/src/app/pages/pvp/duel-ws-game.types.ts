@@ -90,6 +90,19 @@ export interface MoveMsg {
    */
   sourceMzoneSeq?: number;
   /**
+   * XYZ overlay attach/detach (2026-06-16). The ocgcore-wasm binding decodes
+   * a LOCATION_OVERLAY (0x80) position by stripping the bit from `location`
+   * and surfacing the overlay index here; `transformMove` re-derives
+   * `from/to.Location = OVERLAY` and forwards the index. `*Sequence` (the base
+   * `from/to.Sequence`) holds the HOST monster's sequence in its base zone,
+   * so the client can correlate a material to the XYZ it overlays. Present
+   * only on the overlay leg of an XYZ summon (attach: `toOverlaySequence`) or
+   * a material detach (detach: `fromOverlaySequence`). Optional + backward
+   * compatible. See `_bmad-output/planning-artifacts/xyz-overlay-move-fix-2026-06-16.md`.
+   */
+  fromOverlaySequence?: number;
+  toOverlaySequence?: number;
+  /**
    * Board-state snapshot captured immediately AFTER this event was applied
    * server-side. Populated by the replay precompute for BOARD_CHANGING events
    * that fire during `chainPhase === 'resolving'`, so the client's buffer

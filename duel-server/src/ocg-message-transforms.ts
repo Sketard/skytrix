@@ -232,8 +232,17 @@ function makeGetCardName(lookup: LookupContext): (code: number) => string {
 }
 
 export function transformMove(
-  msg: { card: number; from: { controller: 0 | 1; location: number; sequence: number; position: number };
-         to: { controller: 0 | 1; location: number; sequence: number; position: number } },
+  // `overlay_sequence` is set by the ocgcore-wasm binding (fn `p` in its
+  // decoder) when OCGCore emits a position with the LOCATION_OVERLAY (0x80)
+  // bit : the binding STRIPS the bit from `location` and moves the overlay
+  // index into this field. So an XYZ material becoming an overlay arrives as
+  // `{ location: EXTRA|MZONE (the host's base zone), overlay_sequence: N }`,
+  // NOT as `location: OVERLAY`. Without reading it we mis-route the material
+  // as a plain move to the Extra Deck (the XYZ-summon "materials fly to the
+  // Extra Deck" bug). See `_bmad-output/planning-artifacts/xyz-overlay-move-fix-2026-06-16.md`.
+  msg: { card: number;
+         from: { controller: 0 | 1; location: number; sequence: number; position: number; overlay_sequence?: number };
+         to: { controller: 0 | 1; location: number; sequence: number; position: number; overlay_sequence?: number } },
   ocg: OcgContext,
   lookup: LookupContext,
   preProcessOverlays?: Map<PreProcessOverlayKey, number[]>,
@@ -285,6 +294,16 @@ export function transformMove(
     sourceMzoneSeq = consumeSettlingSource(settlingFifo, msg.card);
   }
 
+  // Re-derive the OVERLAY location the binding decoded away (see the param
+  // docblock). `from/to.sequence` is the HOST monster's sequence in its base
+  // zone (`location`), per YGOPro `GetCard(controller, location, sequence)` ;
+  // we surface the overlay index separately so the client can correlate the
+  // material to its host (XYZ-summon animation — layer 2).
+  const fromIsOverlay = msg.from.overlay_sequence !== undefined;
+  const toIsOverlay = msg.to.overlay_sequence !== undefined;
+  const effFromLocation = (fromIsOverlay ? LOCATION.OVERLAY : msg.from.location) as number as (typeof LOCATION)[keyof typeof LOCATION];
+  const effToLocation = (toIsOverlay ? LOCATION.OVERLAY : msg.to.location) as number as (typeof LOCATION)[keyof typeof LOCATION];
+
   return {
     type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card),
     player: msg.from.controller,
@@ -293,16 +312,18 @@ export function transformMove(
     // the destination zone from this, not `player` (controlled-card-destroyed
     // → owner's GY, not controller's GY).
     toPlayer: msg.to.controller,
-    fromLocation: msg.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+    fromLocation: effFromLocation,
     fromSequence: msg.from.sequence,
     fromPosition: msg.from.position as number as Position,
-    toLocation: msg.to.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+    toLocation: effToLocation,
     toSequence: msg.to.sequence,
     toPosition: msg.to.position as number as Position,
     isToken: lookup.isTokenCard(msg.card),
     reason,
     ...(overlayMaterials ? { overlayMaterials } : {}),
     ...(sourceMzoneSeq !== undefined ? { sourceMzoneSeq } : {}),
+    ...(fromIsOverlay ? { fromOverlaySequence: msg.from.overlay_sequence } : {}),
+    ...(toIsOverlay ? { toOverlaySequence: msg.to.overlay_sequence } : {}),
   };
 }
 

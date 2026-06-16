@@ -29,6 +29,7 @@ import {
   transformHint,
   transformResponse,
   transformMessage,
+  transformMove,
   type LookupContext,
   type OcgContext,
 } from './ocg-message-transforms.js';
@@ -305,5 +306,62 @@ describe('transformMessage (CHAINING — F9-bis handCopiesAtChaining)', () => {
       noOcg, lookup, false, undefined, undefined, handCounts,
     ) as { handCopiesAtChaining?: number };
     expect(out.handCopiesAtChaining).toBeUndefined();
+  });
+});
+
+describe('transformMove (XYZ overlay — overlay_sequence decoding)', () => {
+  const noOcg: OcgContext = { core: () => null, duel: () => null };
+  const loc = (over: Partial<{ controller: 0 | 1; location: number; sequence: number; position: number; overlay_sequence: number }>) =>
+    ({ controller: 0 as 0 | 1, location: LOCATION.MZONE as number, sequence: 0, position: 1, ...over });
+
+  it('attach: to.overlay_sequence present → toLocation OVERLAY + toOverlaySequence forwarded', () => {
+    const { lookup } = makeMockLookup();
+    const out = transformMove(
+      // OCGCore emitted EXTRA|OVERLAY for an XYZ material; the binding stripped
+      // the bit → location: EXTRA, overlay_sequence: 1. We must re-derive OVERLAY.
+      { card: 67322708, from: loc({ location: LOCATION.MZONE as number, sequence: 0 }),
+        to: loc({ location: LOCATION.EXTRA as number, sequence: 7, overlay_sequence: 1 }) },
+      noOcg, lookup,
+    ) as { toLocation: number; toSequence: number; toOverlaySequence?: number; fromLocation: number };
+    expect(out.toLocation).toBe(LOCATION.OVERLAY);
+    expect(out.toSequence).toBe(7); // host monster's sequence in its base zone
+    expect(out.toOverlaySequence).toBe(1);
+    expect(out.fromLocation).toBe(LOCATION.MZONE); // source untouched
+  });
+
+  it('detach: from.overlay_sequence present → fromLocation OVERLAY + fromOverlaySequence forwarded', () => {
+    const { lookup } = makeMockLookup();
+    const out = transformMove(
+      { card: 67322708, from: loc({ location: LOCATION.MZONE as number, sequence: 2, overlay_sequence: 0 }),
+        to: loc({ location: LOCATION.GRAVE as number, sequence: 0 }) },
+      noOcg, lookup,
+    ) as { fromLocation: number; fromOverlaySequence?: number; toLocation: number };
+    expect(out.fromLocation).toBe(LOCATION.OVERLAY);
+    expect(out.fromOverlaySequence).toBe(0);
+    expect(out.toLocation).toBe(LOCATION.GRAVE);
+  });
+
+  it('plain move (no overlay_sequence) → locations untouched, no overlay fields', () => {
+    const { lookup } = makeMockLookup();
+    const out = transformMove(
+      { card: 67322708, from: loc({ location: LOCATION.HAND as number, sequence: 0 }),
+        to: loc({ location: LOCATION.MZONE as number, sequence: 1 }) },
+      noOcg, lookup,
+    ) as unknown as Record<string, unknown>;
+    expect(out.fromLocation).toBe(LOCATION.HAND);
+    expect(out.toLocation).toBe(LOCATION.MZONE);
+    expect(out.fromOverlaySequence).toBeUndefined();
+    expect(out.toOverlaySequence).toBeUndefined();
+  });
+
+  it('overlay_sequence === 0 is honored (falsy-but-present guard)', () => {
+    const { lookup } = makeMockLookup();
+    const out = transformMove(
+      { card: 1, from: loc({ location: LOCATION.MZONE as number }),
+        to: loc({ location: LOCATION.EXTRA as number, sequence: 3, overlay_sequence: 0 }) },
+      noOcg, lookup,
+    ) as { toLocation: number; toOverlaySequence?: number };
+    expect(out.toLocation).toBe(LOCATION.OVERLAY);
+    expect(out.toOverlaySequence).toBe(0);
   });
 });
