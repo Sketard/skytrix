@@ -358,6 +358,9 @@ function transportOf(fixture: ComponentFixture<ReplayPageComponent>): StubReplay
 function forkOf(fixture: ComponentFixture<ReplayPageComponent>): StubReplayFork {
   return fixture.componentRef.injector.get(ReplayForkService) as unknown as StubReplayFork;
 }
+function orchestratorOf(fixture: ComponentFixture<ReplayPageComponent>): StubAnimationOrchestrator {
+  return fixture.componentRef.injector.get(AnimationOrchestratorService) as unknown as StubAnimationOrchestrator;
+}
 
 // localStorage shim — Karma runs in a real browser, so localStorage exists.
 // We clear it per-test to keep each spec independent and predictable.
@@ -818,6 +821,7 @@ describe('ReplayPageComponent — F4 wiring', () => {
   let conn: StubReplayConnection;
   let mockConn: StubMockDuelConnection;
   let transport: StubReplayTransport;
+  let orchestrator: StubAnimationOrchestrator;
 
   beforeEach(() => {
     clearReplayPrefs();
@@ -828,6 +832,7 @@ describe('ReplayPageComponent — F4 wiring', () => {
     conn = connOf(fixture);
     mockConn = adapterOf(fixture);
     transport = transportOf(fixture);
+    orchestrator = orchestratorOf(fixture);
   });
 
   function press(key: string): KeyboardEvent {
@@ -976,6 +981,35 @@ describe('ReplayPageComponent — F4 wiring', () => {
     transport.currentIndex.set(1);
     conn.metadata.set(null);
     expect(component.endOverlayState()).toBeNull();
+  });
+
+  // The victory popup must wait for the LAST nav entry's animations to drain —
+  // showing it over an in-flight final animation (XYZ summon, LP tick…) cut the
+  // animation short (reported 2026-06-16).
+  it('endOverlayState stays null while the queue is busy at end, appears once it drains', () => {
+    mockConn.navIndex.set([makePrecomputed(1), makePrecomputed(2)]);
+    transport.currentIndex.set(1);
+    conn.metadata.set({ playerUsernames: ['AxelTest', 'Opp'], result: 'victory', turnCount: 2 } as unknown);
+
+    // At end but the animation queue still has events → hold the overlay.
+    mockConn.busy.set(true);
+    expect(component.endOverlayState()).toBeNull();
+
+    // Queue drained → overlay appears.
+    mockConn.busy.set(false);
+    expect(component.endOverlayState()).not.toBeNull();
+  });
+
+  it('endOverlayState stays null while the runner is animating at end', () => {
+    mockConn.navIndex.set([makePrecomputed(1), makePrecomputed(2)]);
+    transport.currentIndex.set(1);
+    conn.metadata.set({ playerUsernames: ['AxelTest', 'Opp'], result: 'victory', turnCount: 2 } as unknown);
+
+    orchestrator.isAnimating.value.set(true);
+    expect(component.endOverlayState()).toBeNull();
+
+    orchestrator.isAnimating.value.set(false);
+    expect(component.endOverlayState()).not.toBeNull();
   });
 
   // ── onCopyLink ────────────────────────────────────────────────────────────

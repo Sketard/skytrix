@@ -487,6 +487,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     turnCount: number; durationSec: number | null;
   } | null>(() => {
     if (!this.atEnd()) return null;
+    // Hold the end overlay until the LAST nav entry's animations have fully
+    // drained. `atEnd` flips as soon as `currentIndex` reaches the final entry,
+    // but that entry's events (sub-bullet moves, XYZ summons, LP ticks…) are
+    // still animating in the queue. Showing the victory popup over them cuts
+    // the final animation short (reported 2026-06-16). `busy` folds
+    // queue-length + pendingPrompt; `isAnimating` covers the runner's
+    // in-flight step. Once both clear, the overlay appears. (PvP shows its end
+    // screen on a server signal after animations, so this is replay-only.)
+    if (this.mockConn.busy() || this.orchestrator.isAnimating.value()) return null;
     const meta = this.replayConnection.metadata() as ReplayMetadataMsg | null;
     if (!meta) return null;
     const lastState = this.navIndex()[this.computedUpTo()];
