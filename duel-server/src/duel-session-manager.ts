@@ -176,4 +176,27 @@ export class DuelSessionManager {
   listAll(): ActiveDuelSession[] {
     return [...this.activeDuels.values()];
   }
+
+  /**
+   * Observability breakdown of the `activeDuels` map for `/status` — by
+   * mode (pvp / solo / fork) and by lifecycle (live vs ended-but-not-yet-
+   * cleaned). `ended` is the population the ended-session sweeper backstops ;
+   * a persistently non-zero `ended` is the canary for a teardown leak.
+   * Pure read — never mutates.
+   */
+  breakdown(): {
+    total: number;
+    pvp: number; solo: number; fork: number;
+    live: number; ended: number;
+  } {
+    let pvp = 0, solo = 0, fork = 0, ended = 0;
+    for (const s of this.activeDuels.values()) {
+      if (s.forkMode) fork++;
+      else if (s.soloMode) solo++;
+      else pvp++;
+      if (s.endedAt !== null) ended++;
+    }
+    const total = this.activeDuels.size;
+    return { total, pvp, solo, fork, live: total - ended, ended };
+  }
 }

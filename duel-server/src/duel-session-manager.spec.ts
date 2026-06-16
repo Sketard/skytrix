@@ -315,4 +315,34 @@ describe('DuelSessionManager', () => {
       expect(mgr.consumeReconnectToken('rB').kind).toBe('ok');
     });
   });
+
+  describe('breakdown', () => {
+    it('returns all-zero on an empty manager', () => {
+      expect(mgr.breakdown()).toEqual({ total: 0, pvp: 0, solo: 0, fork: 0, live: 0, ended: 0 });
+    });
+
+    it('classifies by mode (fork implies solo — counted as fork only)', () => {
+      const pvp = makeSession('pvp');
+      const solo = makeSession('solo'); solo.soloMode = true;
+      const fork = makeSession('fork'); fork.soloMode = true; fork.forkMode = true;
+      mgr.register(pvp, ['p0', 'p1']);
+      mgr.register(solo, ['s0']);
+      mgr.register(fork, ['f0']);
+
+      const b = mgr.breakdown();
+      expect(b).toMatchObject({ total: 3, pvp: 1, solo: 1, fork: 1 });
+    });
+
+    it('splits live vs ended on endedAt', () => {
+      const live = makeSession('live');
+      const ended = makeSession('ended'); ended.endedAt = 123;
+      mgr.register(live, ['l0', 'l1']);
+      mgr.register(ended, ['e0', 'e1']);
+
+      const b = mgr.breakdown();
+      expect(b.total).toBe(2);
+      expect(b.live).toBe(1);
+      expect(b.ended).toBe(1);
+    });
+  });
 });

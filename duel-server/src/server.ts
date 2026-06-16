@@ -45,11 +45,11 @@ import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, type ChainStateContainer } from './chain-state-tracker.js';
 import { createInitialSessionState } from './session-factory.js';
 import { DuelSessionManager } from './duel-session-manager.js';
-import { startWsRateLimitSweep } from './ws-rate-limit.js';
+import { startWsRateLimitSweep, _wsRateLimitSize } from './ws-rate-limit.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes, isHttpRoutesConfigured } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
-import { configureReplayHandlers, cleanupAllReplayState, isReplayHandlersConfigured } from './replay-handlers.js';
+import { configureReplayHandlers, cleanupAllReplayState, isReplayHandlersConfigured, replayStats } from './replay-handlers.js';
 import {
   configureTimerManagement,
   isTimerManagementConfigured,
@@ -251,6 +251,9 @@ configureHttpRoutes({
   activeDuelsSize: () => sessionManager.size(),
   totalDuelsServed: getTotalDuelsServed,
   protocolMismatchCount: () => protocolMismatchCount,
+  sessionBreakdown: () => sessionManager.breakdown(),
+  replayStats,
+  rateLimitedIps: _wsRateLimitSize,
   startTime,
   dataDir: DATA_DIR,
   dbPath,

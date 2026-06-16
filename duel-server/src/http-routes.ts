@@ -30,6 +30,12 @@ export interface HttpRoutesConfig {
   totalDuelsServed: () => number;
   /** Total WS handshakes rejected with close-code 4426 (protocol mismatch). */
   protocolMismatchCount: () => number;
+  /** Observability — session breakdown (mode + live/ended) for /status. */
+  sessionBreakdown: () => { total: number; pvp: number; solo: number; fork: number; live: number; ended: number };
+  /** Observability — live replay connections + pending fork workers. */
+  replayStats: () => { activeConnections: number; pendingForkWorkers: number };
+  /** Observability — number of IPs currently WS-rate-limited. */
+  rateLimitedIps: () => number;
   /** Process boot timestamp (ms). */
   startTime: number;
   /** Absolute path to the data dir (cards.cdb + scripts_full). */
@@ -80,6 +86,13 @@ export function handleStatus(_req: IncomingMessage, res: ServerResponse): void {
     protocolMismatchCount: c.protocolMismatchCount(),
     uptimeMs: Date.now() - c.startTime,
     memoryUsageMb: process.memoryUsage().rss / 1024 / 1024,
+    // Observability breakdown (backlog audit) — `sessions.ended` persistently
+    // non-zero is the canary for a teardown leak (the ended-session sweeper's
+    // population) ; `replay`/`rateLimitedIps` surface the previously opaque
+    // worker + rate-limit state.
+    sessions: c.sessionBreakdown(),
+    replay: c.replayStats(),
+    rateLimitedIps: c.rateLimitedIps(),
   };
   if (duelInstr.instrumentationEnabled()) {
     body['perfInstrumentation'] = {

@@ -737,3 +737,12 @@ export function cleanupAllReplayState(): void {
     pendingForkWorkers.delete(conn);
   }
 }
+
+/** Observability snapshot for `/status` — live replay connections + fork
+ *  workers still in their precompute/sanity bootstrap. Read-only. */
+export function replayStats(): { activeConnections: number; pendingForkWorkers: number } {
+  return {
+    activeConnections: activeReplayConnections.size,
+    pendingForkWorkers: pendingForkWorkers.size,
+  };
+}
