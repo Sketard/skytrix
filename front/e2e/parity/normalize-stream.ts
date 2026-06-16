@@ -65,21 +65,26 @@ const VOLATILE_FIELDS = [
  * - `kind: 'boundary'` (TurnStarted/Ended, PhaseStarted/Ended, ChainStarted/Ended)
  *   — emitted by the BoundaryProcessor. v4 Phase 0 investigation 2026-06-05
  *   revealed STRUCTURAL divergences between SOLO and Replay:
- *     · Replay `ReplayDuelAdapter.resetProcessorForTransition` calls
- *       `processor.reset()` at every idle transition, which silentResets
- *       the BoundaryProcessor's `lastTurn`/`lastPhase` state. The next
+ *     · A replay seek runs `processor.reset()` (→ `boundary.silentReset()`),
+ *       wiping the BoundaryProcessor's `lastTurn`/`lastPhase` state. The next
  *       `observeBoardState` then takes the "first BOARD_STATE" path
  *       (asymmetric, no preceding `*Ended`) and re-emits TurnStarted +
  *       PhaseStarted, even when turn/phase has not actually changed.
- *       Result : Replay emits N pairs of (TurnStarted, PhaseStarted) for
- *       N PreComputedStates, where SOLO emits only on real deltas.
+ *       Result : Replay emits extra (TurnStarted, PhaseStarted) pairs at
+ *       each seek/nav boundary, where SOLO emits only on real deltas.
  *     · SOLO emits PhaseEnded/TurnEnded on real phase/turn transitions
  *       (BP delta detection works because BP state survives in PvP/SOLO).
- *       Replay never emits them because the BP is reset between every
- *       PreComputedState before any delta is observable.
+ *       Replay never emits them because the BP is reset at the boundary
+ *       before any delta is observable.
  *   Filtered out of the v0 parity test ; the fix (don't reset BP at every
- *   idle transition in the replay adapter) is a Phase 1+ concern. Cf.
- *   the docblock at `replay-duel-adapter.ts:resetProcessorForTransition`.
+ *   idle transition on the replay side) is a Phase 1+ concern.
+ *
+ *   NB (2026-06-16) — this used to cite the v3
+ *   `ReplayDuelAdapter.resetProcessorForTransition`, retired in v4 Phase 5
+ *   (replaced by `MockDuelConnection.seekToOffset`). The reset → silentReset
+ *   behavior is unchanged (the mock's seek path still calls
+ *   `processor.reset()`), so the filter stays valid ; only the call site
+ *   moved. See CLAUDE.md "Replay = PvP readonly via MockDuelConnection".
  *
  * If we want stricter parity later, lift these to a separate stream
  * comparison pass.

@@ -462,10 +462,12 @@ describe('AnimationOrchestratorService — notifyPerspectiveSwitch v3 Phase 5 wi
       return originalPush(event);
     });
 
-    const before = orch.eventStream();
+    // eventStream() returns a stable reference mutated in place (O(1) push),
+    // so capture the length BEFORE the switch — reading `before.length` after
+    // the push would already reflect the new entries.
+    const lengthBefore = orch.eventStream().length;
     orch.notifyPerspectiveSwitch(0, 1);
-    const after = orch.eventStream();
-    const newEvents = after.slice(before.length);
+    const newEvents = orch.eventStream().slice(lengthBefore);
 
     // Ordering invariant : clear ran BEFORE the push.
     expect(dropCountAtPush)

@@ -1,4 +1,4 @@
-import { effect, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
 import type { DuelState, GameEvent, StreamEvent } from '../types';
 import type {
   MoveMsg,
@@ -330,8 +330,22 @@ export class AnimationOrchestratorService {
    * invariant "`MSG_CHAIN_NEGATED` is NOT enqueued" stays true — queue
    * and stream are two distinct objects.
    */
-  private readonly _eventStream = signal<StreamEvent[]>([]);
-  readonly eventStream = this._eventStream.asReadonly();
+  // Backlog audit — O(1) push instead of O(N) copy-on-write. The old
+  // `signal<StreamEvent[]>` did `update(s => [...s, event])` per push →
+  // O(N²) allocations + GC pressure over a duel (~557 events on the D/D/D
+  // fixture). Storage is now a mutable array mutated in place (`push` /
+  // `length = 0`) ; a monotonic `version` signal drives reactivity. Every
+  // consumer reads via `drainStream` (length + index cursor — see
+  // drain-stream.ts) or the dev parity accessor (serialized through
+  // `page.evaluate`), so NONE relies on the array being an immutable
+  // snapshot. `eventStream()` returns the SAME reference across pushes (the
+  // version bump is the change signal, not a new array identity).
+  private readonly _eventStreamData: StreamEvent[] = [];
+  private readonly _eventStreamVersion = signal(0);
+  readonly eventStream = computed<readonly StreamEvent[]>(() => {
+    this._eventStreamVersion();
+    return this._eventStreamData;
+  });
 
   /**
    * β.2a — the DeferredEffectProcessor. Plain class, instantiated here
@@ -1111,7 +1125,7 @@ export class AnimationOrchestratorService {
    */
   private attachProjection(p: BaseProjection<unknown>): void {
     this.scopeDispatcher.register(p);
-    p.attachEventStream(this._eventStream, this.injector);
+    p.attachEventStream(this.eventStream, this.injector);
     this._streamProjections.push(p);
   }
 
@@ -1218,7 +1232,10 @@ export class AnimationOrchestratorService {
     // that LEGITIMATELY needs to observe `EffectAbandoned(checkpoint)`
     // (not just as fallback) — at which point a 2-pass dispatch +
     // manual stream-effect flush will be required.
-    this._eventStream.set([]);
+    // Wipe in place + bump version so `drainStream` sees the length
+    // regress (`events.length < cursor.value` → cursor re-syncs to 0).
+    this._eventStreamData.length = 0;
+    this._eventStreamVersion.update(v => v + 1);
     // β.2b — restart the monotonic ref so a fresh duel / state-sync
     // doesn't grow the ref unboundedly. Side-channel cleared for safety
     // (the next `processEvent` resets it anyway, but a no-op dispatch
@@ -1255,7 +1272,8 @@ export class AnimationOrchestratorService {
    */
   pushToStream(event: StreamEvent): number {
     const ref = this._transport_nextStreamRef++;
-    this._eventStream.update(s => [...s, event]);
+    this._eventStreamData.push(event);
+    this._eventStreamVersion.update(v => v + 1);
     // U16 (2026-06-01) — propagate the DEP's `{absorbed}` flag. A
     // `RewriterRule` (today only `xyzLeaveWithMaterials`) that matches the
     // event via `chainTo` consumes it: the routing aval (`processEvent`
@@ -1276,7 +1294,8 @@ export class AnimationOrchestratorService {
    * downstream projections.
    */
   private pushDeferredToStream(event: StreamEvent): void {
-    this._eventStream.update(s => [...s, event]);
+    this._eventStreamData.push(event);
+    this._eventStreamVersion.update(v => v + 1);
   }
 
   /**
