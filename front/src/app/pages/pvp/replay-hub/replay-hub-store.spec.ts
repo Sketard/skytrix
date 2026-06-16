@@ -236,11 +236,15 @@ describe('ReplayHubStore', () => {
       http.expectOne({ url: '/api/replays/a', method: 'DELETE' }).flush(null);
       await promise;
 
-      expect(store.replays().map(r => r.id)).toEqual(['b']);
       // Stats refresh fires after successful delete.
       http.expectOne('/api/replays/stats').flush({
         total: 1, victories: 0, defeats: 0, draws: 0, winrate: 0,
       });
+      // Pagination re-syncs: page 0 re-fetched so the next loadNextPage
+      // doesn't skip the replay that slid across the server-side boundary.
+      http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+        .flush({ elements: [b], size: 1 });
+      expect(store.replays().map(r => r.id)).toEqual(['b']);
       expect(store.stats()?.total).toBe(1);
       expect(notify.error).not.toHaveBeenCalled();
     });

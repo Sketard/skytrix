@@ -230,6 +230,12 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
   /**
    * Optimistic delete: remove from list immediately, rollback on backend
    * error. Stats are refreshed asynchronously since the totals shift.
+   *
+   * On success we re-sync the pagination from page 0. `currentOffset` is a
+   * Spring page *index*; removing a row shifts every subsequent server-side
+   * page boundary by one, so the next `loadNextPage()` would skip the replay
+   * that slid across the boundary. Re-fetching page 0 (without the full-page
+   * skeleton — the list stays visible) rebases the offset cleanly.
    */
   async deleteReplay(id: string): Promise<void> {
     const snapshot = this.replays();
@@ -238,12 +244,27 @@ export class ReplayHubStore extends ListStore<ReplayDTO, ReplaySortMode, ReplayF
     try {
       await firstValueFrom(this.replayService.deleteReplay(id));
       this.fetchStats();
+      this.resyncPagination();
     } catch (err) {
       // Rollback
       this.items.set(snapshot);
       this.totalElements.update(n => (n === null ? null : n + 1));
       this.notify.error(err instanceof HttpErrorResponse ? err : String(err));
     }
+  }
+
+  /** Re-fetch page 0 and rebase `currentOffset` after a mutation that shifted
+   *  the server-side row ordering (delete). Keeps the list visible during the
+   *  round-trip (no `setLoading`) so the only visible effect is the deleted
+   *  row vanishing. On error we keep the optimistic list as-is. */
+  private resyncPagination(): void {
+    this.pageFetcher(0).subscribe({
+      next: page => {
+        this.items.set(page.elements);
+        this.totalElements.set(page.size);
+        this.currentOffset.set(1);
+      },
+    });
   }
 
   // ─── ListStore hooks ──────────────────────────────────────────────────────

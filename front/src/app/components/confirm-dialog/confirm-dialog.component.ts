@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { ChangeDetectionStrategy, Component, HostListener, inject } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateService } from '@ngx-translate/core';
 import { ButtonComponent } from '../button/button.component';
@@ -52,4 +52,14 @@ export interface ConfirmDialogData {
 export class ConfirmDialogComponent {
   readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
   readonly translate = inject(TranslateService);
+  private readonly dialogRef = inject<MatDialogRef<ConfirmDialogComponent, boolean>>(MatDialogRef);
+
+  /** Enter confirms the action (Escape already cancels via MatDialog's
+   *  default close-on-esc). Lets the user validate without reaching for
+   *  the mouse — applies to every consumer of the shared confirm dialog. */
+  @HostListener('document:keydown.enter', ['$event'])
+  protected onEnter(event: Event): void {
+    event.preventDefault();
+    this.dialogRef.close(true);
+  }
 }
