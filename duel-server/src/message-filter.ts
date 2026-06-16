@@ -285,11 +285,16 @@ function sanitizeOpponentBoard(board: PlayerBoardState): PlayerBoardState {
         case 'DECK':
           return { zoneId: zone.zoneId, cards: [] };
 
-        // Field zones: sanitize face-down cards
+        // Field zones: sanitize face-down cards.
+        // 'XYZ' is a pseudo-zone (an XYZ monster's overlay materials surfaced
+        // as a browsable pile). Its materials are face-up public once attached,
+        // but a face-down material is possible, so it follows the same
+        // face-down masking discipline as the field zones it derives from.
         case 'M1': case 'M2': case 'M3': case 'M4': case 'M5':
         case 'EMZ_L': case 'EMZ_R':
         case 'S1': case 'S2': case 'S3': case 'S4': case 'S5':
         case 'FIELD':
+        case 'XYZ':
           return {
             zoneId: zone.zoneId,
             cards: zone.cards.map(sanitizeFaceDownCard),

@@ -535,9 +535,12 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     }
   }
 
-  onXyzIndicatorClick(event: MouseEvent, card: CardOnField, playerIndex: number): void {
-    // Dedicated affordance: open the overlay materials pile without firing
-    // the card's own tap (action menu in PvP / inspect in replay).
+  // Dedicated affordance: open the overlay materials pile without firing the
+  // card's own gesture handlers (action menu / inspect on tap, inspect on
+  // right-click / long-press). Wired to the badge's click + contextmenu +
+  // appLongPress so all three open the pile instead of bubbling to the card.
+  onXyzIndicatorOpen(event: MouseEvent, card: CardOnField, playerIndex: number): void {
+    event.preventDefault();
     event.stopPropagation();
     if (card.overlayMaterials.length === 0) return;
     this.xyzOverlayRequest.emit({
@@ -545,6 +548,12 @@ export class PvpBoardContainerComponent implements AfterViewInit {
       playerIndex,
       sourceEvent: event,
     });
+  }
+
+  // Stop pointerdown on the badge from reaching the parent card's appLongPress
+  // directive, so a long-press on the badge doesn't also arm the card's.
+  onXyzIndicatorPointerDown(event: Event): void {
+    event.stopPropagation();
   }
 
   private getActionsForZone(zoneId: ZoneId): CardAction[] {

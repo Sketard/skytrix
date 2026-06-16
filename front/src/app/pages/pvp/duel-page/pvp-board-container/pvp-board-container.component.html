@@ -180,7 +180,10 @@
               @if (zone.card.overlayMaterials.length > 0) {
                 <button type="button" class="xyz-indicator"
                         aria-label="View XYZ materials"
-                        (click)="onXyzIndicatorClick($event, zone.card, 1)">
+                        (pointerdown)="onXyzIndicatorPointerDown($event)"
+                        (click)="onXyzIndicatorOpen($event, zone.card, 1)"
+                        (contextmenu)="onXyzIndicatorOpen($event, zone.card, 1)"
+                        (appLongPress)="onXyzIndicatorOpen($event, zone.card, 1)">
                   <span>{{ zone.card.overlayMaterials.length }}</span>
                 </button>
               }
@@ -280,7 +283,10 @@
               @if (card.overlayMaterials.length > 0) {
                 <button type="button" class="xyz-indicator"
                         aria-label="View XYZ materials"
-                        (click)="onXyzIndicatorClick($event, card, emz.isOpponent ? 1 : 0)">
+                        (pointerdown)="onXyzIndicatorPointerDown($event)"
+                        (click)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0)"
+                        (contextmenu)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0)"
+                        (appLongPress)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0)">
                   <span>{{ card.overlayMaterials.length }}</span>
                 </button>
               }
@@ -447,7 +453,10 @@
               @if (zone.card.overlayMaterials.length > 0) {
                 <button type="button" class="xyz-indicator"
                         aria-label="View XYZ materials"
-                        (click)="onXyzIndicatorClick($event, zone.card, 0)">
+                        (pointerdown)="onXyzIndicatorPointerDown($event)"
+                        (click)="onXyzIndicatorOpen($event, zone.card, 0)"
+                        (contextmenu)="onXyzIndicatorOpen($event, zone.card, 0)"
+                        (appLongPress)="onXyzIndicatorOpen($event, zone.card, 0)">
                   <span>{{ zone.card.overlayMaterials.length }}</span>
                 </button>
               }
