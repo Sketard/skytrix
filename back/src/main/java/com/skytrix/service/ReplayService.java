@@ -78,7 +78,10 @@ public class ReplayService {
      */
     @Transactional(readOnly = true)
     public CustomPageable<ReplayDTO> getFavoritedReplays(Long userId, int page, int quantity) {
-        var pageable = PageRequest.of(page, quantity, Sort.by(Sort.Direction.DESC, "createdAt"));
+        // Sort on the join alias (r), not the FROM root (u = User) — the favorites
+        // query selects Replay r but its root entity is User, so an unqualified
+        // "createdAt" resolves against User and throws UnknownPathException.
+        var pageable = PageRequest.of(page, quantity, Sort.by(Sort.Direction.DESC, "r.createdAt"));
         return buildPageWithFavorites(
                 userId,
                 () -> replayRepository.findFavoritedByUser(userId, pageable),
