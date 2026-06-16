@@ -16,7 +16,7 @@ import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, SelectBattle
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION, isActivateAction } from './idle-action-codes';
 import { buildFaceDownZoneKeys } from '../pvp-card.utils';
 import { DuelCardArtService } from './duel-card-art.service';
-import { locationToZoneId, locationToZoneKey, getZonePillCards } from '../pvp-zone.utils';
+import { locationToZoneId, locationToZoneKey, getZonePillCards, overlayMaterialsToCards } from '../pvp-zone.utils';
 import { CardDataCacheService } from './card-data-cache.service';
 import { DuelSystemStringsService } from '../duel-system-strings.service';
 import { PvpBoardContainerComponent } from './pvp-board-container/pvp-board-container.component';
@@ -1012,6 +1012,22 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       playerIndex: event.playerIndex,
       mode: 'browse',
       reversed: isPile,
+      openId: ++this.zoneBrowserOpenId,
+    });
+  }
+
+  // Opens an XYZ monster's overlay materials in the zone-browser as a
+  // browsable pile (pseudo-zone 'XYZ'). Reuses the zone-browser plumbing.
+  onXyzOverlayRequest(event: { materials: number[]; playerIndex: number; sourceEvent: MouseEvent }): void {
+    if (event.materials.length === 0) return;
+    if (this.gameLog.panelOpen()) this.gameLog.beginPanelClose();
+    this._zoneBrowserOpeningClick = event.sourceEvent;
+    this.zoneBrowserState.set({
+      zoneId: 'XYZ',
+      cards: overlayMaterialsToCards(event.materials),
+      playerIndex: event.playerIndex,
+      mode: 'browse',
+      reversed: false,
       openId: ++this.zoneBrowserOpenId,
     });
   }

@@ -266,7 +266,8 @@
                                [revealedZoneKeys]="revealedZoneKeys()"
                                [counterPulseKey]="animationService.counterPulse.value()"
                                [swapGraveDeckKeys]="animationService.swapGraveDeckKeys.value()"
-                               (cardInspectRequest)="onCardInspectRequest($event)" />
+                               (cardInspectRequest)="onCardInspectRequest($event)"
+                               (xyzOverlayRequest)="onXyzOverlayRequest($event)" />
 
       <!-- Player Hand (bottom, face-up) -->
       <app-pvp-hand-row #playerHandRow class="hand-player" data-zone="HAND-0"

@@ -38,7 +38,7 @@ import type { CardOnField, SelectPlaceMsg, SelectDisfieldMsg, PlaceOption, ZoneI
 import { buildFaceDownZoneKeys, preloadCardImages } from '../pvp-card.utils';
 import { buildHandChainBadges, buildHandRevealedCards, buildOpponentHandChainData } from '../duel-page/chain-badge.utils';
 import type { Player } from '../duel-ws.types';
-import { locationToZoneId, getZonePillCards } from '../pvp-zone.utils';
+import { locationToZoneId, getZonePillCards, overlayMaterialsToCards } from '../pvp-zone.utils';
 import { PvpBoardContainerComponent } from '../duel-page/pvp-board-container/pvp-board-container.component';
 import { PvpHandRowComponent } from '../duel-page/pvp-hand-row/pvp-hand-row.component';
 import { PvpCardInspectorWrapperComponent } from '../duel-page/pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
@@ -1248,6 +1248,19 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.zoneBrowserState.set({
       zoneId: event.zoneId,
       cards: getZonePillCards(player.zones, event.zoneId),
+      playerIndex: event.playerIndex,
+      openId: ++this.zoneBrowserOpenId,
+    });
+  }
+
+  // Opens an XYZ monster's overlay materials in the zone-browser as a
+  // browsable pile (pseudo-zone 'XYZ'). Reuses the zone-browser plumbing.
+  onXyzOverlayRequest(event: { materials: number[]; playerIndex: number; sourceEvent: MouseEvent }): void {
+    if (event.materials.length === 0) return;
+    if (this.gameLog.panelOpen()) this.gameLog.beginPanelClose();
+    this.zoneBrowserState.set({
+      zoneId: 'XYZ',
+      cards: overlayMaterialsToCards(event.materials),
       playerIndex: event.playerIndex,
       openId: ++this.zoneBrowserOpenId,
     });

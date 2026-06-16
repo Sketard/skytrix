@@ -71,6 +71,15 @@ describe('PvpZoneBrowserOverlayComponent — Direction B gesture split (2026-06-
     expect(events).toEqual([444]);
   });
 
+  it('renders the XYZ pseudo-zone with its short label + card count', () => {
+    fixture.componentRef.setInput('zoneId', 'XYZ');
+    fixture.componentRef.setInput('cards', [makeCard({ cardCode: 100 }), makeCard({ cardCode: 200 })]);
+    fixture.detectChanges();
+    expect(component.zoneLabel).toBe('XYZ');
+    const title = fixture.nativeElement.querySelector('.zone-browser__title');
+    expect(title.textContent).toContain('XYZ (2)');
+  });
+
   it('face-down card (no cardCode) is a no-op on every handler', () => {
     let any = false;
     component.cardClick.subscribe(() => { any = true; });

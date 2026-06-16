@@ -178,9 +178,11 @@
                 }
               }
               @if (zone.card.overlayMaterials.length > 0) {
-                <div class="xyz-indicator">
+                <button type="button" class="xyz-indicator"
+                        aria-label="View XYZ materials"
+                        (click)="onXyzIndicatorClick($event, zone.card, 1)">
                   <span>{{ zone.card.overlayMaterials.length }}</span>
-                </div>
+                </button>
               }
               @if (chainBadges().get(zone.zoneId + '-1'); as chainNum) {
                 <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
@@ -276,9 +278,11 @@
                 }
               }
               @if (card.overlayMaterials.length > 0) {
-                <div class="xyz-indicator">
+                <button type="button" class="xyz-indicator"
+                        aria-label="View XYZ materials"
+                        (click)="onXyzIndicatorClick($event, card, emz.isOpponent ? 1 : 0)">
                   <span>{{ card.overlayMaterials.length }}</span>
-                </div>
+                </button>
               }
               @if (chainBadges().get(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0')); as chainNum) {
                 <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10" [class.chain-badge--own]="!emz.isOpponent">{{ chainNum }}</div>
@@ -441,9 +445,11 @@
                 }
               }
               @if (zone.card.overlayMaterials.length > 0) {
-                <div class="xyz-indicator">
+                <button type="button" class="xyz-indicator"
+                        aria-label="View XYZ materials"
+                        (click)="onXyzIndicatorClick($event, zone.card, 0)">
                   <span>{{ zone.card.overlayMaterials.length }}</span>
-                </div>
+                </button>
               }
               @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
                 <!-- F9 (2026-06-04) — see BANISHED-0 site comment. -->

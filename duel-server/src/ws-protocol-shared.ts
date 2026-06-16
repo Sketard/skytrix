@@ -88,7 +88,10 @@ export type ZoneId =
   | 'S1' | 'S2' | 'S3' | 'S4' | 'S5'
   | 'FIELD'
   | 'EMZ_L' | 'EMZ_R'
-  | 'GY' | 'BANISHED' | 'EXTRA' | 'DECK' | 'HAND';
+  | 'GY' | 'BANISHED' | 'EXTRA' | 'DECK' | 'HAND'
+  // Pseudo-zone — not a real board location. Used by the zone-browser to
+  // display an XYZ monster's overlay materials as a browsable pile.
+  | 'XYZ';
 
 // =============================================================================
 // Board State Sub-Types (BOARD_STATE / STATE_SYNC)

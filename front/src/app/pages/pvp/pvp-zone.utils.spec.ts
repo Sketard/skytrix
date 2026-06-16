@@ -1,5 +1,5 @@
 import { LOCATION, type BoardZone, type CardOnField, POSITION } from './duel-ws.types';
-import { locationToZoneId, locationToZoneKey, getZonePillCards } from './pvp-zone.utils';
+import { locationToZoneId, locationToZoneKey, getZonePillCards, overlayMaterialsToCards } from './pvp-zone.utils';
 
 describe('pvp-zone.utils', () => {
 
@@ -121,6 +121,23 @@ describe('pvp-zone.utils', () => {
       const firstCodeBefore = original[0].cardCode;
       getZonePillCards(zones, 'GY');
       expect(original[0].cardCode).toBe(firstCodeBefore);
+    });
+  });
+
+  describe('overlayMaterialsToCards', () => {
+    it('should wrap each code into a minimal face-up CardOnField, preserving order', () => {
+      const cards = overlayMaterialsToCards([100, 200, 300]);
+      expect(cards.map(c => c.cardCode)).toEqual([100, 200, 300]);
+      cards.forEach(c => {
+        expect(c.position).toBe(POSITION.FACEUP_ATTACK);
+        expect(c.name).toBeNull();
+        expect(c.overlayMaterials).toEqual([]);
+        expect(c.counters).toEqual({});
+      });
+    });
+
+    it('should return an empty array for no materials', () => {
+      expect(overlayMaterialsToCards([])).toEqual([]);
     });
   });
 });

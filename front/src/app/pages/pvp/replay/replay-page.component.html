@@ -93,7 +93,8 @@
                                [preTargetZoneKeys]="emptyStringSet"
                                [revealedZoneKeys]="revealedZoneKeys()"
                                (cardInspectRequest)="onCardInspectRequest($event)"
-                               (zonePillRequest)="onZonePillRequest($event)" />
+                               (zonePillRequest)="onZonePillRequest($event)"
+                               (xyzOverlayRequest)="onXyzOverlayRequest($event)" />
 
       <!-- Right Sidebar: Zone Browser + Game Log. Rendered when either is
            open so the game-log panel (mounted inside) shares the same flex

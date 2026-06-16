@@ -9,6 +9,7 @@ const ZONE_SHORT_LABELS: Partial<Record<ZoneId, string>> = {
   GY: 'GY',
   BANISHED: 'BAN',
   EXTRA: 'ED',
+  XYZ: 'XYZ',
 };
 
 const ZONE_ICON_PATHS: Partial<Record<ZoneId, string>> = {

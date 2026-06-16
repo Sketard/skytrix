@@ -591,10 +591,14 @@
 }
 
 // === XYZ Overlay Indicator ===
+// A <button>: clicking it opens the overlay materials as a browsable pile.
+// Reset the native button chrome; the badge keeps its circular look.
 .xyz-indicator {
   position: absolute;
   bottom: 2px;
   right: 2px;
+  padding: 0;
+  border: none;
   width: clamp(14px, 2dvh, 20px);
   height: clamp(14px, 2dvh, 20px);
   border-radius: 50%;
@@ -605,7 +609,18 @@
   font-size: clamp(0.5rem, 1.2dvh, 0.7rem);
   font-weight: 700;
   color: var(--text-primary);
-  pointer-events: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+
+  &:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 2px var(--gold);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 1px;
+  }
 }
 
 // === Chain Badge (pulsing circle with chain link number) ===

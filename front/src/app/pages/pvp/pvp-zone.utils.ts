@@ -1,4 +1,4 @@
-import { LOCATION, type CardLocation, type ZoneId, type BoardZone, type CardOnField } from './duel-ws.types';
+import { LOCATION, POSITION, type CardLocation, type ZoneId, type BoardZone, type CardOnField } from './duel-ws.types';
 
 /**
  * Maps an OCGCore (location, sequence) pair to a board ZoneId.
@@ -50,4 +50,20 @@ export function getZonePillCards(zones: BoardZone[], zoneId: ZoneId): CardOnFiel
   const zone = zones.find(z => z.zoneId === zoneId);
   const cards = zone?.cards ?? [];
   return PILE_ZONES.has(zoneId) ? [...cards].reverse() : cards;
+}
+
+/**
+ * Wraps an XYZ monster's overlay material card codes into minimal
+ * `CardOnField` entries so the zone-browser overlay can render them as a
+ * browsable pile (same component as GY / Banished / Extra). Overlay
+ * materials are always face-up and carry no nested state of their own.
+ */
+export function overlayMaterialsToCards(codes: ReadonlyArray<number>): CardOnField[] {
+  return codes.map(cardCode => ({
+    cardCode,
+    name: null,
+    position: POSITION.FACEUP_ATTACK,
+    overlayMaterials: [],
+    counters: {},
+  }));
 }

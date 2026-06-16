@@ -273,6 +273,9 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number; sourceEvent: MouseEvent }>();
   readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField; forceExpanded?: boolean }>();
+  // Click on an XYZ monster's overlay-count badge — opens the overlay
+  // materials as a browsable pile. `playerIndex` is the relative owner.
+  readonly xyzOverlayRequest = output<{ materials: number[]; playerIndex: number; sourceEvent: MouseEvent }>();
   readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly revealedZoneKeys = input<ReadonlySet<string>>(new Set());
@@ -530,6 +533,18 @@ export class PvpBoardContainerComponent implements AfterViewInit {
         forceExpanded: true,
       });
     }
+  }
+
+  onXyzIndicatorClick(event: MouseEvent, card: CardOnField, playerIndex: number): void {
+    // Dedicated affordance: open the overlay materials pile without firing
+    // the card's own tap (action menu in PvP / inspect in replay).
+    event.stopPropagation();
+    if (card.overlayMaterials.length === 0) return;
+    this.xyzOverlayRequest.emit({
+      materials: card.overlayMaterials,
+      playerIndex,
+      sourceEvent: event,
+    });
   }
 
   private getActionsForZone(zoneId: ZoneId): CardAction[] {
