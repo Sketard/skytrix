@@ -145,7 +145,7 @@
                               [ownPlayerIndex]="mockConn.activePlayer()"
                               [hintContext]="mockConn.activeHint()"
                               [confirmedCards]="mockConn.activeConfirmedCards()"
-                              [overlayActive]="chainOverlay.overlayActive()"
+                              [overlayActive]="promptGateActive()"
                               (longPressInspect)="onCardInspectRequest($event)" />
 
       <!-- F4 — End overlay slides in when atEnd(). Single Restart CTA;

@@ -98,6 +98,7 @@ interface Setup {
   computedUpTo: ReturnType<typeof signal<number>>;
   animationsEnabled: ReturnType<typeof signal<boolean>>;
   overlayActive: ReturnType<typeof signal<boolean>>;
+  isAnimating: ReturnType<typeof signal<boolean>>;
 }
 
 function setup(
@@ -117,14 +118,16 @@ function setup(
   const computedUpTo = signal<number>(opts.computedUpTo ?? -1);
   const animationsEnabled = signal<boolean>(opts.animationsEnabled ?? true);
   const overlayActive = signal<boolean>(false);
+  const isAnimating = signal<boolean>(false);
   svc.configure({
     mockConn: mockConn as unknown as MockDuelConnection,
     phaseService: phase as unknown as PhaseAnnouncementService,
     computedUpTo,
     animationsEnabled,
     overlayActive,
+    isAnimating,
   });
-  return { svc, mockConn, phase, computedUpTo, animationsEnabled, overlayActive };
+  return { svc, mockConn, phase, computedUpTo, animationsEnabled, overlayActive, isAnimating };
 }
 
 // =============================================================================
@@ -220,6 +223,45 @@ describe('ReplayTransportService — maybeAdvance', () => {
     tick(2000);
     // Prompt dismiss was NOT scheduled because overlay was active
     expect(mockConn.simulatePlayerResponse).not.toHaveBeenCalled();
+  }));
+
+  it('bails when isAnimating is true (queue mid-animation, e.g. activation flash)', fakeAsync(() => {
+    const { svc, mockConn, isAnimating } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    svc.togglePlay();
+    mockConn.seekToOffset.calls.reset();
+    isAnimating.set(true);
+    mockConn.pendingPrompt.and.returnValue({ type: 'SELECT_CARD' } as never);
+    svc.maybeAdvance();
+    tick(2000);
+    // Prompt dismiss was NOT scheduled because the animation pipeline was
+    // still drawing the events preceding the prompt (2026-06-16 regression).
+    expect(mockConn.simulatePlayerResponse).not.toHaveBeenCalled();
+  }));
+
+  it('schedules prompt dismiss once isAnimating flips false (gate releases)', fakeAsync(() => {
+    const { svc, mockConn, isAnimating } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    mockConn.messageCursor.and.returnValue(5);
+    mockConn.getAutoResponseAt.and.returnValue({ promptType: 'SELECT_CARD', data: { indices: [0] } });
+    // Start playback BEFORE the prompt is up so `startPlayback`'s own
+    // pending-prompt fast-path doesn't pre-schedule the dismiss (mirrors
+    // the overlayActive test's ordering).
+    svc.togglePlay();
+    isAnimating.set(true);
+    mockConn.pendingPrompt.and.returnValue({ type: 'SELECT_CARD' } as never);
+    svc.maybeAdvance();
+    tick(2000);
+    expect(mockConn.simulatePlayerResponse).not.toHaveBeenCalled();
+    // Runner drained → gate releases → re-fire schedules the dismiss.
+    isAnimating.set(false);
+    svc.maybeAdvance();
+    tick(1200);
+    expect(mockConn.simulatePlayerResponse).toHaveBeenCalled();
   }));
 
   it('schedules prompt dismiss with REPLAY_PROMPT_DELAY_MS when prompt is up', fakeAsync(() => {

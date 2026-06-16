@@ -188,6 +188,26 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     () => this.chainOverlayRef()?.overlayActive() ?? false,
   );
 
+  /**
+   * Prompt-open gate for the replay scheduler + dialog (2026-06-16).
+   * `chainOverlayActive` (F1) only covers the chain overlay's own
+   * bounded animations ; `isAnimating` covers the rest of the queue
+   * (activation flashes, MSG_MOVE travels, draws…). The auto-play loop
+   * dispatches the whole [...events, SELECT_*] batch synchronously and
+   * sets `pendingPrompt` while those preceding animations are still in
+   * flight — so without the `isAnimating` term the dialog opens (and the
+   * auto-dismiss timer arms) on top of the still-playing animation. Both
+   * terms are bounded by construction (overlay timers + runner always
+   * stops when the queue drains), so the gate can't wedge the scheduler.
+   *
+   * PvP wires the dialog's `overlayActive` input to `chainOverlayActive`
+   * only — there the human is the rate limiter and the prompt arrives
+   * from the server post-animation, so no `isAnimating` term is needed.
+   */
+  readonly promptGateActive = computed<boolean>(
+    () => this.chainOverlayActive() || this.orchestrator.isAnimating.value(),
+  );
+
   // Transport state — owned by ReplayTransportService, re-exposed for the template (audit M10).
   readonly currentIndex = this.transport.currentIndex;
   readonly isPlaying = this.transport.isPlaying;
@@ -651,6 +671,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       computedUpTo: this.computedUpTo,
       animationsEnabled: this.animationsEnabled,
       overlayActive: this.chainOverlayActive,
+      isAnimating: this.orchestrator.isAnimating.value,
     });
 
     // v4 Phase 3 (2026-06-05) — pipe the stream chunks straight into the
@@ -745,6 +766,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       this.mockConn.pendingPrompt();
       this.phaseService.announcement();
       this.chainOverlayActive();
+      // 2026-06-16 — re-fire when the animation pipeline stops so a prompt
+      // gated behind an in-flight activation/move animation gets scheduled
+      // for dismiss the moment the runner drains (see `maybeAdvance` +
+      // `promptGateActive`). `busy` folds `pendingPrompt` in, so it stays
+      // true across the whole prompt window and can't be the release edge.
+      this.orchestrator.isAnimating.value();
       untracked(() => this.transport.maybeAdvance());
     });
 

@@ -55,6 +55,28 @@ interface ReplayTransportConfig {
    * clicks). Cf. chat 2026-06-03.
    */
   overlayActive: Signal<boolean>;
+  /**
+   * Animation-pipeline activity gate (2026-06-16). `overlayActive` only
+   * covers the CHAIN OVERLAY's own bounded animations (entry swoop /
+   * resolving pulse / exit). It does NOT cover the rest of the queue —
+   * activation flashes (`activateEffect`), MSG_MOVE travels, draws, etc.
+   *
+   * `dispatchMockUntilIndex` drains the whole [...events, SELECT_*]
+   * batch synchronously and only yields at the SELECT_* — so
+   * `pendingPrompt` is set while the queue is still animating the events
+   * that PRECEDE the prompt. Without this gate the dialog opens (and the
+   * auto-dismiss timer starts) on top of the still-playing activation
+   * animation ("the prompt pops up mid-activation"). Bail here until the
+   * runner stops ; the `maybeAdvance` effect re-fires when `isAnimating`
+   * flips false.
+   *
+   * Wired to `orchestrator.isAnimating.value` (QueueRunner `_isRunning`).
+   * Bounded by construction — the runner always stops when the queue
+   * drains — so unlike `mockConn.busy()` (which folds `pendingPrompt` in
+   * and would deadlock) or logical chain state (`resolvingIndex`, which
+   * stays true through async cleanup) it can't wedge the scheduler.
+   */
+  isAnimating: Signal<boolean>;
 }
 
 const PLAYBACK_INTERVAL = 500;
@@ -240,6 +262,15 @@ export class ReplayTransportService {
     // the gate clear.
     if (c.overlayActive()) return;
 
+    // 2026-06-16 — the animation pipeline is still drawing the events that
+    // PRECEDE this prompt (activation flash, MSG_MOVE travels, draws…).
+    // `dispatchMockUntilIndex` dispatches the whole [...events, SELECT_*]
+    // batch synchronously and sets `pendingPrompt` while the runner is
+    // mid-flight. Opening the dialog / arming the dismiss now would do it
+    // on top of the still-playing animation. Bail — the `maybeAdvance`
+    // effect re-fires when `isAnimating` flips false (runner stopped).
+    if (c.isAnimating()) return;
+
     // Decision prompt appeared → auto-dismiss after fixed delay
     if (c.mockConn.pendingPrompt()) {
       this.schedulePromptDismiss();
@@ -323,9 +354,13 @@ export class ReplayTransportService {
     this.isPlaying.set(true);
 
     // A prompt may already be visible at the current index — let the
-    // dismiss timer handle it before stepping forward.
+    // dismiss timer handle it before stepping forward. Gate on the same
+    // overlay / animation flags as `maybeAdvance` (2026-06-16) so a Play
+    // pressed while an activation animation is still drawing doesn't arm
+    // the dismiss against an invisible prompt ; the `maybeAdvance` effect
+    // re-fires when the gate releases.
     if (c.mockConn.pendingPrompt()) {
-      this.schedulePromptDismiss();
+      if (!c.overlayActive() && !c.isAnimating()) this.schedulePromptDismiss();
       return;
     }
 
