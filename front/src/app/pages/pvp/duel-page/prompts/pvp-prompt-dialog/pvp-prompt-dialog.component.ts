@@ -30,7 +30,6 @@ import {
 } from '../prompt.types';
 import { Prompt, HintContext } from '../../../types';
 import { CardInfo, LOCATION } from '../../../duel-ws.types';
-import { PromptActionListReadonlyComponent } from '../prompt-action-list-readonly/prompt-action-list-readonly.component';
 import { DuelSystemStringsService } from '../../../duel-system-strings.service';
 import { decodeDescription, resolveDescription } from '../../../duel-description.util';
 import {
@@ -303,7 +302,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     // Create & destroy one instance of each portal sub-component to force
     // Angular to register their scoped styles before first real use (prevents FOUC).
     const seen = new Set<Type<PromptSubComponent>>();
-    for (const type of [...Object.values(PROMPT_COMPONENT_MAP), PromptActionListReadonlyComponent]) {
+    for (const type of Object.values(PROMPT_COMPONENT_MAP)) {
       if (seen.has(type)) continue;
       seen.add(type);
       createComponent(type, { environmentInjector: this.envInjector, elementInjector: this.injector }).destroy();
@@ -326,19 +325,17 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   // --- Private ---
 
   private onPromptChange(prompt: Prompt | null): void {
-    if (!prompt || (IGNORED_PROMPT_TYPES.has(prompt.type) && !this.readOnly())) {
+    // IDLECMD/BATTLECMD never open the dialog — in PvP they are distributed
+    // UI on the board (clickable cards / highlighted zones, NOT a blocking
+    // prompt), and replay aligns with that: no dialog. The dialog only ever
+    // shows the genuinely blocking prompts (SELECT_CARD, SELECT_EFFECTYN, …).
+    if (!prompt || IGNORED_PROMPT_TYPES.has(prompt.type)) {
       // Keep dialog open during: RPS waiting, TP response sent, or passive message active
       if (this.wsService.diceInProgress() || this.wsService.firstPlayerResponseSent() || this.passiveMessage()) return;
 
       if (this.dialogState() !== 'closed') {
         this.closeDialog();
       }
-      return;
-    }
-
-    // In readOnly mode, IDLECMD/BATTLECMD use a dedicated read-only renderer
-    if (IGNORED_PROMPT_TYPES.has(prompt.type) && this.readOnly()) {
-      this.openForPrompt(prompt, PromptActionListReadonlyComponent);
       return;
     }
 
@@ -747,7 +744,13 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
         return t('setCardOrder', { verb: a(t('setVerb')) });
       case 'SELECT_IDLECMD':
       case 'SELECT_BATTLECMD':
-        return act ? t('itIsThePhase', { act }) : null;
+        // No hint banner — aligned with PvP, where these phase-action prompts
+        // never open the dialog (only the readonly replay renderer mounts
+        // them). The `act` here is whatever MSG_HINT was last seen, which is a
+        // stale timing/event hint (e.g. "Before the normal draw"), NOT the
+        // phase name `itIsThePhase` was written for. Suppressing the banner
+        // matches what a PvP player sees (no header on the idle action bar).
+        return null;
       case 'SELECT_YESNO':
         return descriptionText ? (q ? t('cardWithDesc', { card: q, desc: descriptionText }) : descriptionText) : q || null;
       case 'SELECT_FIRST_PLAYER':

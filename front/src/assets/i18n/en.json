@@ -393,7 +393,6 @@
         "declareCardName": "{{verb}} a card name",
         "setVerb": "Set",
         "setCardOrder": "{{verb}} card order",
-        "itIsThePhase": "It is the {{act}}.",
         "cardWithDesc": "{{card}} — {{desc}}",
         "chooseFirstPlayer": "{{verb}} who plays first",
         "rollVerb": "Roll",

@@ -649,15 +649,16 @@ describe('PvpPromptDialogComponent — HostListeners + readOnly (C2.3)', () => {
     expect(ws.sendCancelPromptSequence).not.toHaveBeenCalled();
   });
 
-  it('readOnly=true + SELECT_IDLECMD opens dialog and mounts a sub-component (replay action-list path)', () => {
+  it('readOnly=true + SELECT_IDLECMD keeps the dialog closed (no action-list panel in replay)', () => {
     fixture.componentRef.setInput('readOnly', true);
     fixture.componentRef.setInput('prompt', makeIdleCmdPrompt());
     fixture.detectChanges();
 
-    // In readOnly mode, IDLECMD is no longer ignored — it routes to
-    // PromptActionListReadonlyComponent. The dialog must open and mount.
-    expect(component.dialogState()).toBe('open');
-    expect(component.portalOutlet.hasAttached()).toBe(true);
+    // IDLECMD/BATTLECMD never open the dialog — in PvP they are distributed
+    // board UI (not a blocking prompt), and replay now aligns with that
+    // instead of showing a dedicated read-only action-list panel.
+    expect(component.dialogState()).toBe('closed');
+    expect(component.portalOutlet.hasAttached()).toBe(false);
   });
 });
 
