@@ -40,6 +40,7 @@ import {
 import { filterMessage } from './message-filter.js';
 import { validateData, initScriptsHash } from './ocg-scripts.js';
 import * as logger from './logger.js';
+import { maxEndedSessionAgeMs, selectExpiredEndedSessions } from './ended-session-sweeper.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, type ChainStateContainer } from './chain-state-tracker.js';
 import { createInitialSessionState } from './session-factory.js';
@@ -140,6 +141,7 @@ if (IS_PRODUCTION && !process.env['INTERNAL_API_KEY']) {
 const SPRING_BOOT_API_URL = process.env['SPRING_BOOT_API_URL'] ?? 'http://localhost:8080/api';
 const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key';
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const ENDED_SESSION_SWEEP_INTERVAL_MS = 60_000;
 const MAX_INVALID_RESPONSES = 5;
 let maxSolverConnections = 10; // overridden at boot from solver-config.json
 const MAX_SOLVER_CACHE_ENTRIES = 50;
@@ -915,6 +917,32 @@ const heartbeatTimer = setInterval(() => {
 }, HEARTBEAT_INTERVAL_MS);
 
 // =============================================================================
+// Ended-session sweeper (backlog audit — defense in depth)
+// =============================================================================
+// Structural backstop for an ended session whose nominal rematch-expiry timer
+// was cleared-but-never-rearmed by a future race/refactor. Margin is FAR above
+// REMATCH_EXPIRY_MS so this never preempts the legitimate rematch grace window
+// — a fire here means the nominal teardown failed. See ended-session-sweeper.ts.
+const ENDED_SESSION_MAX_AGE_MS = maxEndedSessionAgeMs(REMATCH_EXPIRY_MS);
+
+const endedSessionSweepTimer = setInterval(() => {
+  const stale = selectExpiredEndedSessions(
+    sessionManager.listAll(), Date.now(), ENDED_SESSION_MAX_AGE_MS,
+  );
+  for (const session of stale) {
+    logger.warn('Ended-session sweep — stale session never cleaned up, tearing down', {
+      duelId: session.duelId,
+      endedAt: session.endedAt,
+      ageMs: session.endedAt !== null ? Date.now() - session.endedAt : null,
+      soloMode: session.soloMode,
+      forkMode: session.forkMode,
+    });
+    safeTerminateWorker(session);
+    cleanupDuelSession(session);
+  }
+}, ENDED_SESSION_SWEEP_INTERVAL_MS);
+
+// =============================================================================
 // Replay Connection Handling
 // =============================================================================
 // Moved to replay-handlers.ts (H1-suite phase 3). server.ts owns the bridge
@@ -940,6 +968,7 @@ function shutdown(): void {
 
   clearInterval(heartbeatTimer);
   clearInterval(wsRateLimitSweepTimer);
+  clearInterval(endedSessionSweepTimer);
 
   // Terminate all active duel workers
   for (const session of sessionManager.listAll()) {
