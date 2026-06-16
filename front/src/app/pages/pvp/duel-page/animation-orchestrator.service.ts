@@ -340,12 +340,22 @@ export class AnimationOrchestratorService {
   // `page.evaluate`), so NONE relies on the array being an immutable
   // snapshot. `eventStream()` returns the SAME reference across pushes (the
   // version bump is the change signal, not a new array identity).
+  //
+  // `equal: () => false` is LOAD-BEARING : the computed returns the same
+  // `_eventStreamData` reference on every version bump, so Angular's default
+  // `Object.is` equality would mark the computed value UNCHANGED and skip
+  // every downstream `drainStream` effect after the first emit (game log +
+  // all 7 projections freeze after event #1). Forcing inequality propagates
+  // the version bump to consumers. Pinned by `drain-stream.spec.ts`.
   private readonly _eventStreamData: StreamEvent[] = [];
   private readonly _eventStreamVersion = signal(0);
-  readonly eventStream = computed<readonly StreamEvent[]>(() => {
-    this._eventStreamVersion();
-    return this._eventStreamData;
-  });
+  readonly eventStream = computed<readonly StreamEvent[]>(
+    () => {
+      this._eventStreamVersion();
+      return this._eventStreamData;
+    },
+    { equal: () => false },
+  );
 
   /**
    * β.2a — the DeferredEffectProcessor. Plain class, instantiated here

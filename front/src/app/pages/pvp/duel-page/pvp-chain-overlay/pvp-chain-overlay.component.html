@@ -49,13 +49,13 @@
           [class.chain-card--resolving]="
             card.slot === 'front' &&
             phase() === 'resolving' &&
-            exitingCard()?.card?.chainIndex !== card.chainIndex &&
+            exitingCardKey() !== cardKey(card) &&
             resolvingKey() === cardKey(card)
           "
           [class.chain-card--negated]="
             card.slot === 'front' &&
             phase() === 'resolving' &&
-            exitingCard()?.card?.chainIndex !== card.chainIndex &&
+            exitingCardKey() !== cardKey(card) &&
             negatedResolvingKey() === cardKey(card) &&
             cardKey(card) !== enteringCardKey()
           "

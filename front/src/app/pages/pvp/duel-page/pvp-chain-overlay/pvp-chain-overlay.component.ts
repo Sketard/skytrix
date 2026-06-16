@@ -218,8 +218,11 @@ export class PvpChainOverlayComponent {
   private readonly _pulseActive = signal(false);
   /** True once overlayVisible was set during building phase (chain had ≥2 links) */
   private readonly _overlayShownDuringBuild = signal(false);
-  /** Dedup guard: track last resolving link announced to prevent duplicate liveAnnouncer/buffer calls */
-  private readonly _lastAnnouncedResolvingIndex = signal(-1);
+  /** Dedup guard: track last resolving link announced (composite
+   *  `chainIndex:generation` key, '' = none) to prevent duplicate
+   *  liveAnnouncer/buffer calls. Keyed like the CSS markers so dense
+   *  back-to-back chains don't cross-match on a restarted index. */
+  private readonly _lastAnnouncedResolvingKey = signal('');
   private readonly _lastAnnouncedNegated = signal(false);
 
   private readonly activeTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -499,6 +502,15 @@ export class PvpChainOverlayComponent {
     return chainCardKey(card);
   }
 
+  /** Composite key of the card currently exiting, or '' when none. The
+   *  resolving/negated pulse guards compare against this (NOT a bare
+   *  `chainIndex`) so a dense chain where the exiting card and a still-visible
+   *  card share the restarted index don't suppress the wrong card's pulse. */
+  readonly exitingCardKey = computed(() => {
+    const exiting = this.exitingCard();
+    return exiting ? chainCardKey(exiting.card) : '';
+  });
+
   /** CSS variable values synced with JS durations for accelerated mode */
   readonly cssDurations = computed(() => {
     const d = this.durations();
@@ -671,14 +683,20 @@ export class PvpChainOverlayComponent {
             this.applyResolvingPulse(resolvingLink);
           }
 
-          // Dedup: announce only for a new link, or when negation state changes (resolving→negated)
-          const isNewLink = resolvingLink.chainIndex !== this._lastAnnouncedResolvingIndex();
+          // Dedup: announce only for a new link, or when negation state
+          // changes (resolving→negated). Keyed on the composite
+          // `chainIndex:generation` (NOT bare chainIndex) so dense
+          // back-to-back chains — where indices restart at 0 each chain —
+          // don't suppress the announcement of chain N+1's link 0 as a
+          // duplicate of chain N's. Same key contract as the CSS markers.
+          const resolvingKey = chainCardKey(resolvingLink);
+          const isNewLink = resolvingKey !== this._lastAnnouncedResolvingKey();
           const isNegationUpdate =
-            resolvingLink.chainIndex === this._lastAnnouncedResolvingIndex() &&
+            resolvingKey === this._lastAnnouncedResolvingKey() &&
             resolvingLink.negated &&
             !this._lastAnnouncedNegated();
           if (isNewLink || isNegationUpdate) {
-            this._lastAnnouncedResolvingIndex.set(resolvingLink.chainIndex);
+            this._lastAnnouncedResolvingKey.set(resolvingKey);
             this._lastAnnouncedNegated.set(resolvingLink.negated);
             const announcement = resolvingLink.negated
               ? `Chain Link ${resolvingLink.chainIndex + 1} negated: ${resolvingLink.cardName}`
@@ -1186,7 +1204,7 @@ export class PvpChainOverlayComponent {
     this._frozenLinks.set(null);
 
     this._overlayShownDuringBuild.set(false);
-    this._lastAnnouncedResolvingIndex.set(-1);
+    this._lastAnnouncedResolvingKey.set('');
     this._lastAnnouncedNegated.set(false);
   }
 

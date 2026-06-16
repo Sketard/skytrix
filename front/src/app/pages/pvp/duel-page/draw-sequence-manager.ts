@@ -66,6 +66,13 @@ export class DrawSequenceManager {
   // --- State ---
   private _drawsInFlight = new Set<number>();
   private _drawsCompleteResolve: (() => void) | null = null;
+  /** Detaches the abort listener registered by the pending `awaitDrawsComplete`
+   *  waiter, and resolves its Promise. Held alongside `_drawsCompleteResolve`
+   *  so EVERY teardown path (abort, nominal complete, reset, chain-end clear,
+   *  or a second overlapping waiter) can settle the outstanding Promise +
+   *  remove its `abort` listener — never orphan either. Null when no waiter
+   *  is pending. */
+  private _drawsCompleteCleanup: (() => void) | null = null;
   private _initialDrawDone: [boolean, boolean] = [false, false];
   private _drawTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _onQueueResume: (() => void) | null = null;
@@ -119,16 +126,41 @@ export class DrawSequenceManager {
    */
   awaitDrawsComplete(abortSignal: AbortSignal): Promise<void> | null {
     if (this._drawsInFlight.size === 0) return null;
+    // Review #2 (2026-06-16) — `_drawsCompleteResolve` is a SINGLE one-shot
+    // slot. A second overlapping waiter (two `barrier` directives in flight,
+    // or a re-entrant loop) would otherwise overwrite the slot and orphan the
+    // first Promise — it could then only ever resolve via its own abort, the
+    // exact hang class this guard targets. Settle + detach any prior waiter
+    // before installing this one so the slot is never silently clobbered.
+    if (this._drawsCompleteCleanup) {
+      duelAssert(
+        false,
+        'awaitDrawsComplete',
+        'overlapping waiter — prior draws-complete Promise settled to avoid orphan',
+      );
+      this._drawsCompleteCleanup();
+    }
     return new Promise<void>(resolve => {
       if (abortSignal.aborted) { resolve(); return; }
       const onAbort = (): void => {
         // Drop the one-shot so a late nominal `_notifyDrawsComplete` can't
         // resolve an already-settled Promise.
         this._drawsCompleteResolve = null;
+        this._drawsCompleteCleanup = null;
         resolve();
       };
       this._drawsCompleteResolve = (): void => {
         abortSignal.removeEventListener('abort', onAbort);
+        this._drawsCompleteCleanup = null;
+        resolve();
+      };
+      // Settle + detach hook usable from any reset path (reset /
+      // clearDrawsCompleteCallback) — removes the abort listener AND resolves
+      // the Promise so a non-abort teardown can't leave it dangling.
+      this._drawsCompleteCleanup = (): void => {
+        abortSignal.removeEventListener('abort', onAbort);
+        this._drawsCompleteResolve = null;
+        this._drawsCompleteCleanup = null;
         resolve();
       };
       abortSignal.addEventListener('abort', onAbort, { once: true });
@@ -656,6 +688,10 @@ export class DrawSequenceManager {
 
   reset(): void {
     this._drawsInFlight.clear();
+    // Settle + detach any pending waiter so a reset that is NOT driven by the
+    // waiter's own abort signal can't orphan its Promise + abort listener
+    // (Review #2, 2026-06-16). The cleanup nulls both slots.
+    this._drawsCompleteCleanup?.();
     this._drawsCompleteResolve = null;
     this._initialDrawDone = [false, false];
     this.handExpansionSlots.set([0, 0]);
@@ -667,6 +703,10 @@ export class DrawSequenceManager {
 
   /** Clear the one-shot draws-complete callback (called by chain end reset). Does NOT touch _initialDrawDone. */
   clearDrawsCompleteCallback(): void {
+    // Settle + detach the pending waiter (removes the abort listener +
+    // resolves the Promise) so a chain-end clear can't leave it dangling
+    // (Review #2, 2026-06-16).
+    this._drawsCompleteCleanup?.();
     this._drawsCompleteResolve = null;
   }
 
@@ -680,6 +720,9 @@ export class DrawSequenceManager {
   private _notifyDrawsComplete(): void {
     if (this._drawsInFlight.size === 0 && this._drawsCompleteResolve) {
       const resolve = this._drawsCompleteResolve;
+      // The nominal resolver already detaches its own abort listener and
+      // nulls `_drawsCompleteCleanup` ; null the slot before calling so the
+      // resolve can't re-enter a stale waiter.
       this._drawsCompleteResolve = null;
       resolve();
     }

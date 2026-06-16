@@ -286,6 +286,31 @@ describe('ReplayTransportService — maybeAdvance', () => {
     svc.maybeAdvance();
     expect(mockConn.dispatchNext).not.toHaveBeenCalled();
   });
+
+  // Review #4 (2026-06-16) — animating tail on the LAST computed entry.
+  // The tail of the final nav entry enqueued an animation (busy=true) when
+  // doStepForward last ran, so its terminal-stop branch was skipped. When
+  // the queue drains, busy() flips false → the component effect re-fires
+  // maybeAdvance. Since the span is now fully dispatched (cursor caught up)
+  // and the stream is complete, scheduleNext's boundary branch must
+  // terminal-stop (isPlaying=false + pausedAtBoundary=true) rather than
+  // leave playback wedged at isPlaying=true forever.
+  it('terminal-stops after an animating tail on the last entry drains', () => {
+    const { svc, mockConn } = setup({
+      states: [stubState('a'), stubState('b')],
+      computedUpTo: 1,
+    });
+    // Cursor caught up to the last entry's span (offset 0 for stubState) and
+    // the whole stream is in.
+    mockConn.messageCursor.and.returnValue(5);
+    mockConn.streamComplete.and.returnValue(true);
+    svc.togglePlay();
+    svc.currentIndex.set(1); // at the last computed index
+    mockConn.busy.and.returnValue(false); // queue drained
+    svc.maybeAdvance();
+    expect(svc.isPlaying()).withContext('playback must not stay wedged').toBeFalse();
+    expect(svc.pausedAtBoundary()).toBeTrue();
+  });
 });
 
 // =============================================================================
