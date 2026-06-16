@@ -53,7 +53,16 @@ function walkTs(dir, out = []) {
 
 let violations = 0;
 for (const absPath of walkTs(frontSrc)) {
-  const rel = absPath.replace(root + '\\', '').replace(/\\/g, '/').replace(root + '/', '');
+  // Normalize to a root-relative posix path. When `root` is the filesystem
+  // root (`/`, as in the duel-server Docker image where scripts/ lives at
+  // /scripts/ and the front sources are COPY'd under /front/), `root + '/'`
+  // would be `//` and never match — strip a leading slash too so the path
+  // matches the ALLOWED_PROD entries (which have no leading slash).
+  const rel = absPath
+    .replace(root + '\\', '')
+    .replace(/\\/g, '/')
+    .replace(root + '/', '')
+    .replace(/^\//, '');
   // Specs are always allowed — they legitimately mock or invoke
   // `notifyPerspectiveSwitch` to test the wiring.
   if (rel.endsWith('.spec.ts')) continue;

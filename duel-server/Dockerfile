@@ -22,8 +22,9 @@ COPY duel-server/ .
 # Le prebuild check-ws-protocol-sync.mjs résout les chemins depuis / :
 #   /duel-server/src/ws-protocol-*.ts        → symlink vers /app
 #   /front/src/app/pages/pvp/duel-ws-*.types.ts → copiés depuis le contexte racine
-# Le protocole a été splitté en 6 sous-fichiers (shared/game/prompts/system/
-# replay/solver) — le script byte-compare ces 6 paires, PAS les index.
+# Le script byte-compare 9 paires : 6 sous-fichiers protocole (shared/game/
+# prompts/system/replay/solver), 2 fichiers game-log (game-log/) et
+# ocgcore-reason-flags (duel-page/), PAS les index. Copier les 9 fronts.
 RUN ln -s /app /duel-server
 COPY front/src/app/pages/pvp/duel-ws-shared.types.ts \
      front/src/app/pages/pvp/duel-ws-game.types.ts \
@@ -32,6 +33,13 @@ COPY front/src/app/pages/pvp/duel-ws-shared.types.ts \
      front/src/app/pages/pvp/duel-ws-replay.types.ts \
      front/src/app/pages/pvp/duel-ws-solver.types.ts \
      /front/src/app/pages/pvp/
+COPY front/src/app/pages/pvp/game-log/game-log-types.ts \
+     front/src/app/pages/pvp/game-log/game-log-builder.ts \
+     /front/src/app/pages/pvp/game-log/
+COPY front/src/app/pages/pvp/duel-page/ocgcore-reason-flags.ts \
+     front/src/app/pages/pvp/duel-page/animation-orchestrator.service.ts \
+     front/src/app/pages/pvp/duel-page/solo-duel-orchestrator.service.ts \
+     /front/src/app/pages/pvp/duel-page/
 
 RUN npm run build
 
