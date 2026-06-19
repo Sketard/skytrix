@@ -284,9 +284,9 @@
                 <button type="button" class="xyz-indicator"
                         aria-label="View XYZ materials"
                         (pointerdown)="onXyzIndicatorPointerDown($event)"
-                        (click)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0)"
-                        (contextmenu)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0)"
-                        (appLongPress)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0)">
+                        (click)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0, emz.zoneId)"
+                        (contextmenu)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0, emz.zoneId)"
+                        (appLongPress)="onXyzIndicatorOpen($event, card, emz.isOpponent ? 1 : 0, emz.zoneId)">
                   <span>{{ card.overlayMaterials.length }}</span>
                 </button>
               }
@@ -454,9 +454,9 @@
                 <button type="button" class="xyz-indicator"
                         aria-label="View XYZ materials"
                         (pointerdown)="onXyzIndicatorPointerDown($event)"
-                        (click)="onXyzIndicatorOpen($event, zone.card, 0)"
-                        (contextmenu)="onXyzIndicatorOpen($event, zone.card, 0)"
-                        (appLongPress)="onXyzIndicatorOpen($event, zone.card, 0)">
+                        (click)="onXyzIndicatorOpen($event, zone.card, 0, zone.zoneId)"
+                        (contextmenu)="onXyzIndicatorOpen($event, zone.card, 0, zone.zoneId)"
+                        (appLongPress)="onXyzIndicatorOpen($event, zone.card, 0, zone.zoneId)">
                   <span>{{ zone.card.overlayMaterials.length }}</span>
                 </button>
               }

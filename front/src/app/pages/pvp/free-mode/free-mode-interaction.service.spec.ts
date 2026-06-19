@@ -336,6 +336,22 @@ describe('FreeModeInteractionService', () => {
     });
   });
 
+  describe('armInstance — overlay → arm bridge (§15)', () => {
+    it('arms a card by instanceId, re-locating its zone from live state', () => {
+      const a = makeCard();
+      place(SimZoneId.GRAVEYARD, makeCard(), a); // a is in GY (a pile)
+
+      service.armInstance(a.instanceId);
+
+      expect(service.armedInstanceId()).toBe(a.instanceId);
+    });
+
+    it('is a no-op for an unknown instanceId', () => {
+      service.armInstance('ghost');
+      expect(service.armedInstanceId()).toBeNull();
+    });
+  });
+
   describe('onInspect sink', () => {
     it('fires the registered inspect handler on double-tap', () => {
       const a = makeCard(123);
@@ -507,6 +523,19 @@ describe('FreeModeInteractionService', () => {
     it('decrement is a no-op when nothing is armed', () => {
       service.decrementCounterArmed();
       expect(service.counters().size).toBe(0);
+    });
+
+    it('resetEditorState clears all counters AND disarms (post-reset hygiene)', () => {
+      const a = makeCard();
+      armM1(a);
+      service.incrementCounterArmed();
+      expect(service.counters().size).toBe(1);
+      expect(service.armedInstanceId()).toBe(a.instanceId);
+
+      service.resetEditorState();
+
+      expect(service.counters().size).toBe(0);
+      expect(service.armedInstanceId()).toBeNull();
     });
 
     it('counters are per-card (independent across armed cards)', () => {

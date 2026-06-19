@@ -279,7 +279,10 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField; forceExpanded?: boolean; zoneId?: ZoneId }>();
   // Click on an XYZ monster's overlay-count badge — opens the overlay
   // materials as a browsable pile. `playerIndex` is the relative owner.
-  readonly xyzOverlayRequest = output<{ materials: number[]; playerIndex: number; sourceEvent: MouseEvent }>();
+  // `zoneId` (free-mode addition) — the PvP zone of the tapped XYZ host. PvP
+  // consumers ignore it (they open the materials pile from `materials`);
+  // free-mode uses it to resolve the host's sim instance for the material peek.
+  readonly xyzOverlayRequest = output<{ materials: number[]; playerIndex: number; sourceEvent: MouseEvent; zoneId?: ZoneId }>();
   // Free-mode only — tap on an empty field slot (own zones + EMZ P0). Inert in
   // PvP/replay: no parent subscribes, so `emit()` is a no-op. The opponent
   // empty slot (relPlayer 1) is intentionally NOT wired — mono-player editor.
@@ -549,7 +552,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   // card's own gesture handlers (action menu / inspect on tap, inspect on
   // right-click / long-press). Wired to the badge's click + contextmenu +
   // appLongPress so all three open the pile instead of bubbling to the card.
-  onXyzIndicatorOpen(event: MouseEvent, card: CardOnField, playerIndex: number): void {
+  onXyzIndicatorOpen(event: MouseEvent, card: CardOnField, playerIndex: number, zoneId?: ZoneId): void {
     event.preventDefault();
     event.stopPropagation();
     if (card.overlayMaterials.length === 0) return;
@@ -557,6 +560,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
       materials: card.overlayMaterials,
       playerIndex,
       sourceEvent: event,
+      zoneId,
     });
   }
 

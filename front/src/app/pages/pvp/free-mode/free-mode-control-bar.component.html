@@ -1,0 +1,11 @@
+<div class="control-bar" role="toolbar" aria-label="Contrôles édition">
+  <app-icon-button ariaLabel="Annuler (Ctrl+Z)" [disabled]="!commandStack.canUndo()" (click)="onUndo()">
+    <mat-icon>undo</mat-icon>
+  </app-icon-button>
+  <app-icon-button ariaLabel="Rétablir (Ctrl+Y)" [disabled]="!commandStack.canRedo()" (click)="onRedo()">
+    <mat-icon>redo</mat-icon>
+  </app-icon-button>
+  <app-icon-button variant="danger" ariaLabel="Réinitialiser le plateau" (click)="onReset()">
+    <mat-icon>restart_alt</mat-icon>
+  </app-icon-button>
+</div>

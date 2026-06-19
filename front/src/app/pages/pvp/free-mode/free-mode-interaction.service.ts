@@ -247,6 +247,22 @@ export class FreeModeInteractionService {
     if (this._armed()) this._attachPending.set(true);
   }
 
+  /**
+   * Arm a card by its sim instanceId, re-locating its zone from live state.
+   * Used by the overlay→arm bridge (§15 — tap a card inside a pile/search
+   * overlay → it arms + the overlay closes). No-op if the id isn't on the board.
+   */
+  armInstance(instanceId: string): void {
+    const board = this.boardState.boardState();
+    for (const zone of Object.keys(board) as SimZoneId[]) {
+      const card = board[zone].find(c => c.instanceId === instanceId);
+      if (card) {
+        this.arm({ instanceId, zone, card });
+        return;
+      }
+    }
+  }
+
   // ── Mini-bar CARTE actions (§6.1) — operate on the armed card ──────────────
 
   /** True if the armed card is currently an XYZ material (gates "Détacher"). */
@@ -316,6 +332,17 @@ export class FreeModeInteractionService {
     const armed = this._armed();
     if (!armed) return;
     this.adjustCounter(armed.instanceId, -1);
+  }
+
+  /**
+   * Clear editor state that lives OUTSIDE the command stack: counters + the
+   * armed card. Called after a board reset — `CommandStackService.reset()`
+   * rebuilds with deterministic instanceIds, so stale counters would otherwise
+   * re-bind to reborn cards (phantom counters).
+   */
+  resetEditorState(): void {
+    this._counters.set(new Map());
+    this.disarm();
   }
 
   private adjustCounter(instanceId: string, delta: number): void {

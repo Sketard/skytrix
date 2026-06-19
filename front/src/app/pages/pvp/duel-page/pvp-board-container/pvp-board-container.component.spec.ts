@@ -674,6 +674,20 @@ describe('PvpBoardContainerComponent — action dispatch + clicks (C4.2)', () =>
     expect(events).toEqual([77777]);
   });
 
+  it('onXyzIndicatorOpen emits xyzOverlayRequest carrying the host zoneId (free-mode)', () => {
+    fixture.detectChanges();
+    const events: Array<{ materials: number[]; zoneId?: ZoneId }> = [];
+    component.xyzOverlayRequest.subscribe(e => events.push({ materials: e.materials, zoneId: e.zoneId }));
+
+    const xyzHost = makeCard({ cardCode: 100, overlayMaterials: [11, 22] });
+    component.onXyzIndicatorOpen(
+      { preventDefault: () => undefined, stopPropagation: () => undefined } as unknown as MouseEvent,
+      xyzHost, 0, 'M2',
+    );
+
+    expect(events).toEqual([{ materials: [11, 22], zoneId: 'M2' }]);
+  });
+
   it('onEmzCardContextMenu preventDefaults + emits inspect forceExpanded with zoneId', () => {
     fixture.detectChanges();
     const events: Array<{ cardCode: number; forceExpanded?: boolean; zoneId?: ZoneId }> = [];

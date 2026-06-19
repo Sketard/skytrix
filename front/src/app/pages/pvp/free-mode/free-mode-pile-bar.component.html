@@ -1,0 +1,27 @@
+<div class="pile-bar" role="toolbar" aria-label="Actions pile">
+  <app-icon-button ariaLabel="Parcourir la pile" (click)="browse.emit()">
+    <mat-icon>visibility</mat-icon>
+  </app-icon-button>
+
+  @if (isDeck()) {
+    <app-icon-button ariaLabel="Mélanger le deck" (click)="shuffle.emit()">
+      <mat-icon>shuffle</mat-icon>
+    </app-icon-button>
+
+    <span class="count-field">
+      <app-input
+        type="number"
+        ariaLabel="Nombre de cartes"
+        [ngModel]="count()"
+        (ngModelChange)="count.set(+$event)" />
+    </span>
+
+    <app-icon-button ariaLabel="Défausser N cartes (mill)" (click)="emitMill()">
+      <mat-icon>delete_sweep</mat-icon>
+    </app-icon-button>
+
+    <app-icon-button ariaLabel="Révéler N cartes" (click)="emitReveal()">
+      <mat-icon>preview</mat-icon>
+    </app-icon-button>
+  }
+</div>

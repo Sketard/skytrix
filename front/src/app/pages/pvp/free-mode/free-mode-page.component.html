@@ -15,7 +15,8 @@
     [actionablePrompt]="null"
     (cardInspectRequest)="interaction.onCardTap($event)"
     (emptyZoneTap)="interaction.onEmptyZoneTap($event)"
-    (zonePillRequest)="interaction.onPileTap($event.zoneId)" />
+    (zonePillRequest)="onPileTap($event.zoneId)"
+    (xyzOverlayRequest)="onXyzOverlayRequest($event)" />
 
   <!-- Player hand (bottom). Tap a card → arm by positional index (resolves the
        duplicate-cardCode ambiguity); long-press / right-click → inspect. -->
@@ -43,6 +44,26 @@
       (incrementCounter)="interaction.incrementCounterArmed()"
       (decrementCounter)="interaction.decrementCounterArmed()" />
   }
+
+  <!-- Mini-bar PILE (§6.2 / T4) — opened by tapping a pile unarmed. -->
+  @if (activePileBarZone(); as pileZone) {
+    <app-free-mode-pile-bar
+      class="free-mode-pile-bar"
+      [zone]="pileZone"
+      (shuffle)="onPileShuffle()"
+      (mill)="onPileMill($event)"
+      (reveal)="onPileReveal($event)"
+      (browse)="onPileBrowse(pileZone)" />
+  }
+
+  <!-- Control bar (undo / redo / reset) — first migration step of the sim
+       control-bar, without the Router/back leak (chantier 2). -->
+  <app-free-mode-control-bar class="free-mode-control-bar" (didReset)="onDidReset()" />
+
+  <!-- Simulator overlays reused as-is (BoardStateService-driven, no bindings):
+       pile browse/search/reveal + XYZ material peek. -->
+  <app-sim-pile-overlay />
+  <app-sim-xyz-material-peek />
 
   <!-- PvP card inspector (T3) — opened by double-tap / long-press. -->
   @if (inspectedCard(); as card) {

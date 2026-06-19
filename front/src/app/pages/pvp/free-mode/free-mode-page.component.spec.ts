@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
@@ -31,6 +32,15 @@ function makeRouteWithParam(id: string | null): Partial<ActivatedRoute> {
   return { paramMap: of(map) };
 }
 
+function makeNavbarMock(): jasmine.SpyObj<NavbarCollapseService> {
+  // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+  const isMobile = signal(false);
+  // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+  const isMobilePortrait = signal(false);
+  return jasmine.createSpyObj<NavbarCollapseService>(
+    'NavbarCollapseService', ['setImmersiveMode'], { isMobile, isMobilePortrait });
+}
+
 describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
   let fixture: ComponentFixture<FreeModePageComponent>;
   let component: FreeModePageComponent;
@@ -40,7 +50,7 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
 
   function configure(route: Partial<ActivatedRoute>): void {
     mockDeckBuild = jasmine.createSpyObj<DeckBuildService>('DeckBuildService', ['getById']);
-    mockNavbar = jasmine.createSpyObj<NavbarCollapseService>('NavbarCollapseService', ['setImmersiveMode']);
+    mockNavbar = makeNavbarMock();
     mockRouter = jasmine.createSpyObj<Router>('Router', ['navigate']);
 
     TestBed.configureTestingModule({
@@ -165,7 +175,7 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
     } as unknown as Parameters<BoardStateService['initializeBoard']>[0];
     mockDeckBuild = jasmine.createSpyObj<DeckBuildService>('DeckBuildService', ['getById']);
     mockDeckBuild.getById.and.returnValue(of(deck));
-    mockNavbar = jasmine.createSpyObj<NavbarCollapseService>('NavbarCollapseService', ['setImmersiveMode']);
+    mockNavbar = makeNavbarMock();
     mockRouter = jasmine.createSpyObj<Router>('Router', ['navigate']);
 
     TestBed.configureTestingModule({
@@ -196,7 +206,7 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
   it('navigates to /decks when the deck load fails', () => {
     mockDeckBuild = jasmine.createSpyObj<DeckBuildService>('DeckBuildService', ['getById']);
     mockDeckBuild.getById.and.returnValue(throwError(() => new Error('boom')));
-    mockNavbar = jasmine.createSpyObj<NavbarCollapseService>('NavbarCollapseService', ['setImmersiveMode']);
+    mockNavbar = makeNavbarMock();
     mockRouter = jasmine.createSpyObj<Router>('Router', ['navigate']);
 
     TestBed.configureTestingModule({

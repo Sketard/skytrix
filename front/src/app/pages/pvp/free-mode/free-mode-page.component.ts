@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toObservable, toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, filter, map, switchMap } from 'rxjs';
@@ -10,6 +10,10 @@ import { PvpBoardContainerComponent } from '../duel-page/pvp-board-container/pvp
 import { PvpHandRowComponent } from '../duel-page/pvp-hand-row/pvp-hand-row.component';
 import { PvpCardInspectorWrapperComponent } from '../duel-page/pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
 import { FreeModeActionBarComponent } from './free-mode-action-bar.component';
+import { FreeModeControlBarComponent } from './free-mode-control-bar.component';
+import { FreeModePileBarComponent } from './free-mode-pile-bar.component';
+import { SimPileOverlayComponent } from '../../simulator/pile-overlay.component';
+import { SimXyzMaterialPeekComponent } from '../../simulator/xyz-material-peek.component';
 import { RenderedBoardStateService } from '../duel-page/rendered-board-state.service';
 import { CardTravelEngine } from '../duel-page/card-travel-engine.service';
 import { BoardEffectsService } from '../duel-page/board-effects.service';
@@ -21,9 +25,9 @@ import { DuelGameLogService } from '../duel-page/duel-game-log.service';
 import { CardInspectionService } from '../duel-page/card-inspection.service';
 import { CardDataCacheService } from '../duel-page/card-data-cache.service';
 import { ScopeResetDispatcher } from '../projections';
-import { BoardZone, CardOnField } from '../duel-ws.types';
+import { BoardZone, CardOnField, ZoneId as PvpZoneId } from '../duel-ws.types';
 import { EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
-import { cardInstancesToBoardStatePayload } from './card-instances-to-payload';
+import { cardInstancesToBoardStatePayload, pvpZoneToSim } from './card-instances-to-payload';
 import { FreeModeInteractionService, CardTapEvent } from './free-mode-interaction.service';
 
 const FREE_MODE_LP = 8000;
@@ -64,7 +68,8 @@ const FREE_MODE_LP = 8000;
   ],
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent,
-    FreeModeActionBarComponent,
+    FreeModeActionBarComponent, FreeModeControlBarComponent, FreeModePileBarComponent,
+    SimPileOverlayComponent, SimXyzMaterialPeekComponent,
   ],
 })
 export class FreeModePageComponent {
@@ -75,6 +80,7 @@ export class FreeModePageComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly boardState = inject(BoardStateService);
+  protected readonly commandStack = inject(CommandStackService);
   protected readonly duelCtx = inject(DuelContext);
   protected readonly rbs = inject(RenderedBoardStateService);
   protected readonly interaction = inject(FreeModeInteractionService);
@@ -102,6 +108,11 @@ export class FreeModePageComponent {
   protected readonly handActionableIndices = computed(
     () => new Set(this.playerHand().map((_, i) => i)),
   );
+  /** The pile zone whose mini-bar is open (null = no pile bar). */
+  // why: editor UI state outside the animation pipeline taxonomy.
+  // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+  protected readonly activePileBarZone = signal<PvpZoneId | null>(null);
+
   protected readonly emptySet = EMPTY_STRING_SET;
   // Stable identities for the inert board inputs — a literal `[]`/`new Set()` in
   // the template allocates fresh each CD pass, thrashing the OnPush child input.
@@ -156,6 +167,19 @@ export class FreeModePageComponent {
       void this.cardInspection.inspectByCode(event.cardCode, event.forceExpanded ?? false);
     });
 
+    // 5. Overlay → arm bridge (§15). The sim pile/search overlay AND the XYZ
+    //    material peek both set `boardState.selectedCard` when a card inside is
+    //    tapped. In free-mode that means "arm it + close the selector" — the
+    //    unified flow (incl. arming an XYZ material from the peek → T2 transfer).
+    effect(() => {
+      const selected = this.boardState.selectedCard();
+      if (!selected) return;
+      this.interaction.armInstance(selected.instanceId);
+      this.boardState.clearSelection();
+      this.boardState.closeOverlay();
+      this.boardState.closeMaterialPeek();
+    });
+
     // Immersive mode (hide navbar) for the editor, restored on destroy.
     this.navbarCollapse.setImmersiveMode(true);
     this.destroyRef.onDestroy(() => this.navbarCollapse.setImmersiveMode(false));
@@ -189,5 +213,80 @@ export class FreeModePageComponent {
     const key = this.interaction.armedZoneKey();
     const el = key ? this.cardTravel.getZoneElement(key) : null;
     if (el) void this.boardEffects.activateEffect(el);
+  }
+
+  // ── Pile tap → deposit (armed) OR open the pile mini-bar (unarmed, §14) ────
+
+  onPileTap(zoneId: PvpZoneId): void {
+    // Armed → deposit (the service moves the card, returns true). Unarmed →
+    // open this pile's mini-bar (shuffle/mill/reveal/browse).
+    const deposited = this.interaction.onPileTap(zoneId);
+    if (!deposited) {
+      this.activePileBarZone.set(zoneId);
+    }
+  }
+
+  closePileBar(): void {
+    this.activePileBarZone.set(null);
+  }
+
+  // ── Mini-bar PILE actions (§6.2 / T4) ─────────────────────────────────────
+
+  onPileShuffle(): void {
+    this.commandStack.shuffleDeck();
+  }
+
+  onPileMill(count: number): void {
+    this.commandStack.mill(count);
+    this.closePileBar();
+  }
+
+  onPileReveal(count: number): void {
+    this.boardState.openDeckReveal(count);
+    this.closePileBar();
+  }
+
+  onPileBrowse(zoneId: PvpZoneId): void {
+    const sim = pvpZoneToSim(zoneId);
+    if (sim) this.boardState.openOverlay(sim);
+    this.closePileBar();
+  }
+
+  // ── XYZ material peek — tap the overlay-count badge to browse materials ───
+
+  /** Open the sim XYZ material peek for the tapped host. The board emits the
+   *  host's PvP zone; we resolve its sim instanceId (single-card zone → [0]). */
+  onXyzOverlayRequest(event: { zoneId?: PvpZoneId }): void {
+    if (!event.zoneId) return;
+    const sim = pvpZoneToSim(event.zoneId);
+    if (!sim) return;
+    const host = this.boardState.boardState()[sim][0];
+    if (host) this.boardState.openMaterialPeek(host.instanceId, sim);
+  }
+
+  /** After a confirmed reset — clear editor state outside the command stack
+   *  (counters + armed card) so deterministic instanceId reuse can't re-bind
+   *  stale counters to reborn cards (review finding). */
+  onDidReset(): void {
+    this.interaction.resetEditorState();
+  }
+
+  // ── Keyboard — undo / redo (Ctrl+Z / Ctrl+Y), the safety net (§6) ─────────
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+    const ctrl = event.ctrlKey || event.metaKey;
+    if (ctrl && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      this.commandStack.undo();
+    } else if (ctrl && event.key.toLowerCase() === 'y') {
+      event.preventDefault();
+      this.commandStack.redo();
+    } else if (event.key === 'Escape') {
+      this.interaction.disarm();
+      this.closePileBar();
+    }
   }
 }
