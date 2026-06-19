@@ -443,6 +443,113 @@ describe('FreeModeInteractionService', () => {
     });
   });
 
+  describe('a11y announcements (§9 live-region)', () => {
+    let ctxSpy: jasmine.SpyObj<DuelContext>;
+
+    beforeEach(() => {
+      ctxSpy = TestBed.inject(DuelContext) as jasmine.SpyObj<DuelContext>;
+    });
+
+    function announces(): string[] {
+      return ctxSpy.announceEvent.calls.allArgs().map(a => a[0] as string);
+    }
+
+    it('announces flip face-down / face-up', () => {
+      const a = makeCard();
+      a.faceDown = false;
+      place(SimZoneId.MONSTER_1, a);
+      service.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+      ctxSpy.announceEvent.calls.reset();
+
+      service.flipArmed();
+
+      expect(announces()).toContain('Face cachée');
+    });
+
+    it('announces position attack / defense', () => {
+      const a = makeCard();
+      a.position = 'ATK';
+      place(SimZoneId.MONSTER_1, a);
+      service.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+      ctxSpy.announceEvent.calls.reset();
+
+      service.togglePositionArmed();
+
+      expect(announces()).toContain('Position défense');
+    });
+
+    it('announces the counter value on increment / decrement (incl. plural→singular)', () => {
+      const a = makeCard();
+      place(SimZoneId.MONSTER_1, a);
+      service.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+      ctxSpy.announceEvent.calls.reset();
+
+      service.incrementCounterArmed();
+      expect(announces()).toContain('1 compteur');
+      service.incrementCounterArmed();
+      expect(announces()).toContain('2 compteurs');
+      ctxSpy.announceEvent.calls.reset();
+      service.decrementCounterArmed(); // 2 → 1 (singular)
+      expect(announces()).toContain('1 compteur');
+      service.decrementCounterArmed(); // 1 → 0
+      expect(announces()).toContain('Aucun compteur');
+    });
+  });
+
+  describe('a11y announcements reflect LIVE state (not the stale arm snapshot)', () => {
+    // Uses a REAL CommandStackService so flip/toggle mutate the board — pins
+    // that a 2nd announcement reads the post-mutation state, mirroring the
+    // command-side stale-snapshot regression.
+    let realStack: CommandStackService;
+    let liveService: FreeModeInteractionService;
+    let ctxSpy: jasmine.SpyObj<DuelContext>;
+
+    beforeEach(() => {
+      ctxSpy = jasmine.createSpyObj<DuelContext>('DuelContext', ['announceEvent']);
+      realStack = new CommandStackService(board);
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          FreeModeInteractionService,
+          { provide: BoardStateService, useValue: board },
+          { provide: CommandStackService, useValue: realStack },
+          { provide: DuelContext, useValue: ctxSpy },
+        ],
+      });
+      liveService = TestBed.inject(FreeModeInteractionService);
+    });
+
+    function announces(): string[] {
+      return ctxSpy.announceEvent.calls.allArgs().map(a => a[0] as string);
+    }
+
+    it('a 2nd flip announces "Face visible" (reads live face-down state)', () => {
+      const a = makeCard();
+      a.faceDown = false;
+      place(SimZoneId.MONSTER_1, a);
+      liveService.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+
+      liveService.flipArmed(); // → face-down → "Face cachée"
+      ctxSpy.announceEvent.calls.reset();
+      liveService.flipArmed(); // → face-up → "Face visible"
+
+      expect(announces()).toContain('Face visible');
+    });
+
+    it('a 2nd position toggle announces "Position attaque" (reads live position)', () => {
+      const a = makeCard();
+      a.position = 'ATK';
+      place(SimZoneId.MONSTER_1, a);
+      liveService.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+
+      liveService.togglePositionArmed(); // → DEF
+      ctxSpy.announceEvent.calls.reset();
+      liveService.togglePositionArmed(); // → ATK
+
+      expect(announces()).toContain('Position attaque');
+    });
+  });
+
   describe('mini-bar reads LIVE state (stale-snapshot regression)', () => {
     // Uses a REAL CommandStackService so flip/toggle actually mutate the board —
     // the spy variant can't catch the stale-snapshot bug (2nd flip = no-op).

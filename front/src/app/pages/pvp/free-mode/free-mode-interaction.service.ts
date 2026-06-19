@@ -277,7 +277,9 @@ export class FreeModeInteractionService {
   flipArmed(): void {
     const live = this.liveArmedCard();
     if (!live) return;
-    this.commandStack.flipCard(live.card.instanceId, live.zone, !live.card.faceDown);
+    const faceDown = !live.card.faceDown;
+    this.commandStack.flipCard(live.card.instanceId, live.zone, faceDown);
+    this.ctx.announceEvent(faceDown ? 'Face cachée' : 'Face visible', 0);
   }
 
   /** Toggle the armed card ATK ↔ DEF (reads LIVE state — see flipArmed). */
@@ -286,6 +288,7 @@ export class FreeModeInteractionService {
     if (!live) return;
     const target = live.card.position === 'ATK' ? 'DEF' : 'ATK';
     this.commandStack.togglePosition(live.card.instanceId, live.zone, target);
+    this.ctx.announceEvent(target === 'ATK' ? 'Position attaque' : 'Position défense', 0);
   }
 
   /** Destroy the armed card → Graveyard (§5.2 Détruire). */
@@ -348,6 +351,7 @@ export class FreeModeInteractionService {
   private adjustCounter(instanceId: string, delta: number): void {
     const next = new Map(this._counters());
     const value = Math.max(0, (next.get(instanceId) ?? 0) + delta);
+    this.ctx.announceEvent(value === 0 ? 'Aucun compteur' : `${value} compteur${value > 1 ? 's' : ''}`, 0);
     if (value === 0) {
       next.delete(instanceId);
     } else {
