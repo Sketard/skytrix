@@ -1,4 +1,4 @@
-@use 'sim-tokens' as *;
+@use 'engine-tokens' as *;
 
 :host {
   display: contents;
@@ -11,8 +11,8 @@
   transform: translateY(-50%);
   width: 240px;
   max-height: 400px;
-  background: var(--sim-surface);
-  border: 1px solid var(--sim-zone-border);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
   border-radius: $sim-radius-zone;
   padding: $sim-padding-overlay;
   z-index: 50;

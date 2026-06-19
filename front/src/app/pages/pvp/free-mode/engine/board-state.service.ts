@@ -1,9 +1,9 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { Deck } from '../../core/model/deck';
-import { IndexedCardDetail } from '../../core/model/card-detail';
-import { CardImageDTO } from '../../core/model/dto/card-image-dto';
-import { resolveCardImage } from '../../core/model/shared-card-data';
-import { CardInstance, OverlayMode, ZoneId } from './simulator.models';
+import { Deck } from '../../../../core/model/deck';
+import { IndexedCardDetail } from '../../../../core/model/card-detail';
+import { CardImageDTO } from '../../../../core/model/dto/card-image-dto';
+import { resolveCardImage } from '../../../../core/model/shared-card-data';
+import { CardInstance, OverlayMode, ZoneId } from './board-models';
 
 function createEmptyBoard(): Record<ZoneId, CardInstance[]> {
   return {

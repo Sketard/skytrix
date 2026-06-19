@@ -12,9 +12,9 @@ import {
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
-import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
+import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 import { BoardStateService } from './board-state.service';
-import { CardInstance } from './simulator.models';
+import { CardInstance } from './board-models';
 
 @Component({
   selector: 'app-sim-xyz-material-peek',

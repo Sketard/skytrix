@@ -9,11 +9,11 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { FreeModePageComponent } from './free-mode-page.component';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
-import { BoardStateService } from '../../simulator/board-state.service';
-import { CommandStackService } from '../../simulator/command-stack.service';
+import { BoardStateService } from './engine/board-state.service';
+import { CommandStackService } from './engine/command-stack.service';
 import { DuelContext } from '../duel-page/duel-context';
 import { RenderedBoardStateService } from '../duel-page/rendered-board-state.service';
-import { ZoneId as SimZoneId } from '../../simulator/simulator.models';
+import { ZoneId as SimZoneId } from './engine/board-models';
 
 // =============================================================================
 // FreeModePageComponent — providers (NG0201 gate, CLAUDE.md A6) + bootstrap

@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { BoardStateService } from '../../simulator/board-state.service';
-import { CommandStackService } from '../../simulator/command-stack.service';
-import { CardInstance, ZoneId as SimZoneId, ZONE_CONFIG } from '../../simulator/simulator.models';
+import { BoardStateService } from './engine/board-state.service';
+import { CommandStackService } from './engine/command-stack.service';
+import { CardInstance, ZoneId as SimZoneId, ZONE_CONFIG } from './engine/board-models';
 import { ZoneId as PvpZoneId } from '../duel-ws.types';
 import { DuelContext } from '../duel-page/duel-context';
 import { pvpZoneToSim, simZoneToPvp } from './card-instances-to-payload';

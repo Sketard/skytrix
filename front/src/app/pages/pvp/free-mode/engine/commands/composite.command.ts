@@ -1,5 +1,5 @@
 import { isDevMode } from '@angular/core';
-import { SimCommand } from '../simulator.models';
+import { SimCommand } from '../board-models';
 
 export class CompositeCommand implements SimCommand {
   constructor(private readonly commands: SimCommand[]) {}

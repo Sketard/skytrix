@@ -1,5 +1,5 @@
 import { BoardStateService } from '../board-state.service';
-import { SimCommand, ZoneId, CardInstance } from '../simulator.models';
+import { SimCommand, ZoneId, CardInstance } from '../board-models';
 
 /**
  * Swaps two cards between their zones. Native command (free-mode §5.5) —

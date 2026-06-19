@@ -1,4 +1,4 @@
-import { CardInstance, ZoneId as SimZoneId } from '../../simulator/simulator.models';
+import { CardInstance, ZoneId as SimZoneId } from './engine/board-models';
 import { CardDetail } from '../../../core/model/card-detail';
 import { CardImageDTO } from '../../../core/model/dto/card-image-dto';
 import { BoardStatePayload, POSITION, Position } from '../duel-ws.types';

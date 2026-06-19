@@ -1,6 +1,6 @@
-import { CardDetail } from '../../core/model/card-detail';
-import { CardImageDTO } from '../../core/model/dto/card-image-dto';
-import { SharedCardData } from '../../core/model/shared-card-data';
+import { CardDetail } from '../../../../core/model/card-detail';
+import { CardImageDTO } from '../../../../core/model/dto/card-image-dto';
+import { SharedCardData } from '../../../../core/model/shared-card-data';
 
 export enum ZoneId {
   HAND = 'HAND',

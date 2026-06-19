@@ -105,9 +105,9 @@
           <mat-icon>sort</mat-icon>
           <span>{{ 'deckBuilder.sortByType' | translate }}</span>
         </button>
-        <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToSimulator()">
+        <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToFreeBoard()">
           <mat-icon>sports_esports</mat-icon>
-          <span>{{ 'deckBuilder.simulator' | translate }}</span>
+          <span>{{ 'deckBuilder.freeBoard' | translate }}</span>
         </button>
       </mat-menu>
     </div>

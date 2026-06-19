@@ -7,10 +7,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { FreeModePageComponent } from './free-mode-page.component';
 import { FreeModeInteractionService } from './free-mode-interaction.service';
-import { BoardStateService } from '../../simulator/board-state.service';
-import { CommandStackService } from '../../simulator/command-stack.service';
+import { BoardStateService } from './engine/board-state.service';
+import { CommandStackService } from './engine/command-stack.service';
 import { RenderedBoardStateService } from '../duel-page/rendered-board-state.service';
-import { CardInstance, ZoneId as SimZoneId } from '../../simulator/simulator.models';
+import { CardInstance, ZoneId as SimZoneId } from './engine/board-models';
 import { POSITION } from '../duel-ws.types';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 

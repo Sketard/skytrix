@@ -79,6 +79,7 @@
     "confirm": "Confirmer",
     "close": "Fermer",
     "clear": "Effacer",
+    "reset": "Réinitialiser",
     "copy": "Copier",
     "copied": "Copié ✓",
     "retry": "Réessayer",
@@ -571,7 +572,7 @@
     "import": "Importer",
     "sortByType": "Trier par type",
     "testHand": "Test main",
-    "simulator": "Simulateur",
+    "freeBoard": "Plateau libre",
     "pvpDuel": "Duel PvP",
     "deckPreview": "Aperçu du deck",
     "filterPanel": "Panneau de filtres",
@@ -667,21 +668,9 @@
     "banlistIllegal": "Illégal",
     "mainCount": "Main {{count}}"
   },
-  "simulator": {
-    "undo": "Annuler (Ctrl+Z)",
-    "redo": "Rétablir (Ctrl+Y)",
-    "reset": "Réinitialiser",
+  "freeMode": {
     "resetTitle": "Réinitialiser le plateau ?",
     "resetMessage": "Cela effacera l'historique et distribuera une nouvelle main.",
-    "flipFaceDown": "Mettre face verso",
-    "changeToDef": "Passer en DEF",
-    "changeToAtk": "Passer en ATK",
-    "flipUpAtk": "Retourner face recto (ATK)",
-    "flipUpDef": "Retourner face recto (DEF)",
-    "shuffle": "Mélanger",
-    "search": "Chercher",
-    "mill": "Envoyer au cimetière ({{n}})",
-    "reveal": "Révéler ({{n}})",
     "filterPlaceholder": "Filtrer..."
   },
   "a11y": {

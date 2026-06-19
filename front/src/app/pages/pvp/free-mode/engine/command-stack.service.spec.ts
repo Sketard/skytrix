@@ -1,6 +1,6 @@
 import { CommandStackService } from './command-stack.service';
 import { BoardStateService } from './board-state.service';
-import { CardInstance, ZoneId } from './simulator.models';
+import { CardInstance, ZoneId } from './board-models';
 
 // =============================================================================
 // CommandStackService — swapCards native command (free-mode §5.5)

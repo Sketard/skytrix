@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { SimCommand, ZoneId } from './simulator.models';
+import { SimCommand, ZoneId } from './board-models';
 import { BoardStateService } from './board-state.service';
 import {
   MoveCardCommand,

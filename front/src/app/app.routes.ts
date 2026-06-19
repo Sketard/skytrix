@@ -5,7 +5,6 @@ import { DeckBuilderComponent } from './pages/deck-page/components/deck-builder/
 import { ParameterPageComponent } from './pages/parameter-page/parameter-page.component';
 import { AuthService } from './services/auth.service';
 import { LoginPageComponent } from './pages/login-page/login-page.component';
-import { SimulatorPageComponent } from './pages/simulator/simulator-page.component';
 import { adminGuard } from './core/guards/admin.guard';
 import { solverDisabledGuard } from './core/guards/solver-disabled.guard';
 import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
@@ -15,7 +14,6 @@ export const routes: Routes = [
   { path: 'login', component: LoginPageComponent },
   { path: 'decks', component: DeckPageComponent, canActivate: [AuthService] },
   { path: 'decks/builder', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
-  { path: 'decks/:id/simulator', component: SimulatorPageComponent, canActivate: [AuthService] },
   {
     path: 'decks/:id/free-board',
     loadComponent: () => import('./pages/pvp/free-mode/free-mode-page.component').then(m => m.FreeModePageComponent),

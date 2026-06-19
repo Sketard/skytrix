@@ -1,0 +1,13 @@
+@use 'sass:list';
+
+// Board-editing engine SCSS tokens — the subset of the former simulator
+// `_sim-tokens.scss` still consumed by the surviving overlay components
+// (pile-overlay + xyz-material-peek) after the simulator render was removed
+// (chantier 2). The hand/board/zone tokens died with the sim render.
+
+$sim-gap-zone: 0.25rem;
+$sim-gap-card: 0.25rem;
+$sim-padding-overlay: 1rem;
+$sim-radius-zone: 0.375rem;
+$sim-radius-card: 0.25rem;
+$sim-card-aspect-ratio: list.slash(59, 86);

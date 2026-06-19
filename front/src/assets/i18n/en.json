@@ -79,6 +79,7 @@
     "confirm": "Confirm",
     "close": "Close",
     "clear": "Clear",
+    "reset": "Reset",
     "copy": "Copy",
     "copied": "Copied ✓",
     "retry": "Retry",
@@ -571,7 +572,7 @@
     "import": "Import",
     "sortByType": "Sort by type",
     "testHand": "Test hand",
-    "simulator": "Simulator",
+    "freeBoard": "Free board",
     "pvpDuel": "PvP Duel",
     "deckPreview": "Deck preview",
     "filterPanel": "Filter panel",
@@ -667,21 +668,9 @@
     "banlistIllegal": "Illegal",
     "mainCount": "Main {{count}}"
   },
-  "simulator": {
-    "undo": "Undo (Ctrl+Z)",
-    "redo": "Redo (Ctrl+Y)",
-    "reset": "Reset",
+  "freeMode": {
     "resetTitle": "Reset the board?",
     "resetMessage": "This will clear undo history and deal a new hand.",
-    "flipFaceDown": "Flip face-down",
-    "changeToDef": "Change to DEF",
-    "changeToAtk": "Change to ATK",
-    "flipUpAtk": "Flip face-up (ATK)",
-    "flipUpDef": "Flip face-up (DEF)",
-    "shuffle": "Shuffle",
-    "search": "Search",
-    "mill": "Mill ({{n}})",
-    "reveal": "Reveal ({{n}})",
     "filterPlaceholder": "Filter..."
   },
   "a11y": {

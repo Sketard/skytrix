@@ -1,4 +1,8 @@
 [
+  "src/app/pages/pvp/free-mode/engine/board-state.service.ts",
+  "src/app/pages/pvp/free-mode/engine/command-stack.service.ts",
+  "src/app/pages/pvp/free-mode/engine/pile-overlay.component.ts",
+  "src/app/pages/pvp/free-mode/engine/xyz-material-peek.component.ts",
   "src/app/pages/pvp/duel-page/animation-orchestrator.service.ts",
   "src/app/pages/pvp/duel-page/card-action-menu.service.ts",
   "src/app/pages/pvp/duel-page/card-inspection.service.ts",

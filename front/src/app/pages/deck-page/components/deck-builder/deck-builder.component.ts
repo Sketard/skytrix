@@ -422,10 +422,10 @@ export class DeckBuilderComponent implements OnDestroy {
     this.deckBuildService.toggleHandTestOpened();
   }
 
-  public navigateToSimulator() {
+  public navigateToFreeBoard() {
     const deckId = this.deckBuildService.deck().id;
     if (!deckId) return;
-    this.router.navigate(['/decks', deckId, 'simulator']);
+    this.router.navigate(['/decks', deckId, 'free-board']);
   }
 
   public navigateToPvp() {

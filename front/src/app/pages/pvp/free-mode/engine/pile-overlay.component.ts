@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, HostL
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { BoardStateService } from './board-state.service';
-import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
-import { CardComponent } from '../../components/card/card.component';
+import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './board-models';
+import { CardComponent } from '../../../../components/card/card.component';
 import { TranslatePipe } from '@ngx-translate/core';
-import { NavbarCollapseService } from '../../services/navbar-collapse.service';
-import { BottomSheetComponent } from '../../components/bottom-sheet/bottom-sheet.component';
+import { NavbarCollapseService } from '../../../../services/navbar-collapse.service';
+import { BottomSheetComponent } from '../../../../components/bottom-sheet/bottom-sheet.component';
 
 @Component({
   selector: 'app-sim-pile-overlay',

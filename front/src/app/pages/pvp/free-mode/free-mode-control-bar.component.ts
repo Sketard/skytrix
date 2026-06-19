@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, isDevMode, output } from '@
 import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
-import { CommandStackService } from '../../simulator/command-stack.service';
+import { CommandStackService } from './engine/command-stack.service';
 import { IconButtonComponent } from '../../../components/icon-button/icon-button.component';
 import { MatIcon } from '@angular/material/icon';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../components/confirm-dialog/confirm-dialog.component';
@@ -54,13 +54,13 @@ export class FreeModeControlBarComponent {
   async onReset(): Promise<void> {
     const t = await firstValueFrom(
       this.translate.get([
-        'simulator.resetTitle', 'simulator.resetMessage', 'common.confirm', 'common.cancel',
+        'freeMode.resetTitle', 'freeMode.resetMessage', 'common.confirm', 'common.cancel',
       ]),
     );
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: t['simulator.resetTitle'],
-        message: t['simulator.resetMessage'],
+        title: t['freeMode.resetTitle'],
+        message: t['freeMode.resetMessage'],
         confirmLabel: t['common.confirm'],
         cancelLabel: t['common.cancel'],
       } as ConfirmDialogData,

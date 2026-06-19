@@ -1,4 +1,4 @@
-import { CardInstance, ZoneId as SimZoneId } from '../../simulator/simulator.models';
+import { CardInstance, ZoneId as SimZoneId } from './engine/board-models';
 import {
   BoardStatePayload,
   BoardZone,

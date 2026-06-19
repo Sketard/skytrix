@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { FreeModeControlBarComponent } from './free-mode-control-bar.component';
-import { CommandStackService } from '../../simulator/command-stack.service';
+import { CommandStackService } from './engine/command-stack.service';
 
 // =============================================================================
 // FreeModeControlBarComponent — undo / redo / reset. Extracted from the sim
