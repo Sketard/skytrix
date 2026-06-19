@@ -63,6 +63,15 @@ export class FreeModeInteractionService {
   private lastTapAt = 0;
   private lastTapInstanceId: string | null = null;
 
+  /** Inspect sink — the page registers the PvP inspector here. The service stays
+   *  decoupled: it signals "inspect this card" without knowing the inspector. */
+  private inspectSink: ((event: CardTapEvent) => void) | null = null;
+
+  /** Register the inspect handler (the page wires it to CardInspectionService). */
+  onInspect(sink: (event: CardTapEvent) => void): void {
+    this.inspectSink = sink;
+  }
+
   // ── Card tap (the main entry — UX §4 ÉTAT B) ──────────────────────────────
 
   /**
@@ -131,6 +140,41 @@ export class FreeModeInteractionService {
     this.disarm();
   }
 
+  /**
+   * A HAND card was tapped (hand row `handCardAction`, carrying the positional
+   * INDEX). Resolving by index — not cardCode — disambiguates duplicate copies
+   * in hand (the étape-4 defer). Arms / re-arms / double-tap-inspects the hand
+   * card. Tapping a hand card while another is armed re-arms (§4: hand = re-arm).
+   */
+  onHandCardTap(index: number): void {
+    const cards = this.boardState.boardState()[SimZoneId.HAND];
+    const card = cards[index];
+    if (!card) return;
+    const resolved: ResolvedCard = { instanceId: card.instanceId, zone: SimZoneId.HAND, card };
+
+    const now = performance.now();
+    if (
+      this.lastTapInstanceId === resolved.instanceId &&
+      now - this.lastTapAt < DOUBLE_TAP_MS
+    ) {
+      this.disarm();
+      this.lastTapInstanceId = null;
+      this.lastTapAt = 0;
+      this.inspect({ cardCode: card.card.card.passcode ?? 0 });
+      return;
+    }
+    this.lastTapAt = now;
+    this.lastTapInstanceId = resolved.instanceId;
+
+    // Re-tap the armed hand card → disarm.
+    if (this._armed()?.instanceId === resolved.instanceId) {
+      this.disarm();
+      return;
+    }
+    // Arm / re-arm (hand always (re-)arms — §4).
+    this.arm(resolved);
+  }
+
   /** Long-press on a card → inspect, and NEVER leave a phantom arm (§5.3). */
   onCardLongPress(event: CardTapEvent): void {
     this.disarm();
@@ -180,6 +224,10 @@ export class FreeModeInteractionService {
       this._attachPending.set(false);
       this.ctx.announceEvent('Désarmée', 0);
     }
+    // Always reset the double-tap window on disarm so a follow-up tap is read as
+    // a fresh arm, never as a stale double-tap (covers all disarm paths).
+    this.lastTapInstanceId = null;
+    this.lastTapAt = 0;
   }
 
   /** Arm the mini-bar Attacher mode: the next card tap targets an XYZ host. */
@@ -218,10 +266,10 @@ export class FreeModeInteractionService {
     return false;
   }
 
-  private inspect(_event: CardTapEvent): void {
-    // Inspection is owned by the page (it re-emits to the PvP inspector). The
-    // service's role is only to ensure no phantom arm survives — already done
-    // by the caller. No state change here.
+  private inspect(event: CardTapEvent): void {
+    // The page owns the PvP inspector — fire the registered sink. The arm was
+    // already cleared by the caller, so no phantom survives.
+    this.inspectSink?.(event);
   }
 
   /**

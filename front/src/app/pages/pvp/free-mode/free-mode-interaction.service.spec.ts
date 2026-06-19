@@ -293,4 +293,70 @@ describe('FreeModeInteractionService', () => {
       expect(service.armedInstanceId()).toBeNull();
     });
   });
+
+  describe('onHandCardTap — index-based hand arming (resolves duplicate cardCode)', () => {
+    it('arms the EXACT hand card at the given index even with duplicate cardCodes', () => {
+      // Two copies of the same passcode — index disambiguates (cardCode cannot).
+      const copy1 = makeCard(777);
+      const copy2 = makeCard(777);
+      place(SimZoneId.HAND, copy1, copy2);
+
+      service.onHandCardTap(1); // the SECOND copy
+
+      expect(service.armedInstanceId()).toBe(copy2.instanceId);
+    });
+
+    it('re-arms a different hand card on tap', () => {
+      const a = makeCard();
+      const b = makeCard();
+      place(SimZoneId.HAND, a, b);
+
+      service.onHandCardTap(0);
+      service.onHandCardTap(1);
+
+      expect(service.armedInstanceId()).toBe(b.instanceId);
+    });
+
+    it('disarms when the armed hand card is re-tapped (outside the dbl-tap window)', () => {
+      const a = makeCard();
+      place(SimZoneId.HAND, a);
+
+      service.onHandCardTap(0);
+      service['lastTapAt'] = performance.now() - 1000;
+      service.onHandCardTap(0);
+
+      expect(service.armedInstanceId()).toBeNull();
+    });
+
+    it('ignores an out-of-range index', () => {
+      place(SimZoneId.HAND, makeCard());
+      service.onHandCardTap(5);
+      expect(service.armedInstanceId()).toBeNull();
+    });
+  });
+
+  describe('onInspect sink', () => {
+    it('fires the registered inspect handler on double-tap', () => {
+      const a = makeCard(123);
+      place(SimZoneId.MONSTER_1, a);
+      const inspected: number[] = [];
+      service.onInspect(e => inspected.push(e.cardCode));
+
+      service.onCardTap({ cardCode: 123, zoneId: 'M1' }); // arm
+      service.onCardTap({ cardCode: 123, zoneId: 'M1' }); // dbl-tap → inspect
+
+      expect(inspected).toEqual([123]);
+    });
+
+    it('fires the inspect handler on a forceExpanded (long-press) tap', () => {
+      const a = makeCard(456);
+      place(SimZoneId.MONSTER_1, a);
+      const inspected: Array<{ code: number; expanded?: boolean }> = [];
+      service.onInspect(e => inspected.push({ code: e.cardCode, expanded: e.forceExpanded }));
+
+      service.onCardTap({ cardCode: 456, zoneId: 'M1', forceExpanded: true });
+
+      expect(inspected).toEqual([{ code: 456, expanded: true }]);
+    });
+  });
 });

@@ -3,6 +3,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { convertToParamMap, ParamMap } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { FreeModePageComponent } from './free-mode-page.component';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
@@ -48,6 +50,8 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
         { provide: Router, useValue: mockRouter },
         { provide: DeckBuildService, useValue: mockDeckBuild },
         { provide: NavbarCollapseService, useValue: mockNavbar },
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: TranslateService, useValue: {
           currentLang: 'en',
           instant: (k: string) => k,
@@ -133,6 +137,28 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
     expect(mockNavbar.setImmersiveMode).toHaveBeenCalledWith(false);
   });
 
+  it('marks EVERY hand card actionable so a tap fires handCardAction (arm), not inspect', () => {
+    // Regression (review): with actionableCardIndices unbound (empty), the hand
+    // row routes every tap to cardInspectRequest (inspect) — the tap-to-arm flow
+    // is dead. handActionableIndices must cover all hand indices.
+    configure(makeRouteWithParam(null));
+    fixture.detectChanges();
+
+    const boardState = fixture.debugElement.injector.get(BoardStateService);
+    boardState.boardState.update(prev => ({
+      ...prev,
+      [SimZoneId.HAND]: [
+        { instanceId: 'h0', card: { card: { passcode: 1 } } as never, image: {} as never, faceDown: false, position: 'ATK' },
+        { instanceId: 'h1', card: { card: { passcode: 2 } } as never, image: {} as never, faceDown: false, position: 'ATK' },
+        { instanceId: 'h2', card: { card: { passcode: 3 } } as never, image: {} as never, faceDown: false, position: 'ATK' },
+      ],
+    }));
+    fixture.detectChanges();
+
+    const indices = (component as unknown as { handActionableIndices: () => Set<number> }).handActionableIndices();
+    expect(indices).toEqual(new Set([0, 1, 2]));
+  });
+
   it('loads the deck into BoardStateService when a valid deckId is present', () => {
     const deck = {
       mainDeck: [], extraDeck: [],
@@ -149,6 +175,8 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
         { provide: Router, useValue: mockRouter },
         { provide: DeckBuildService, useValue: mockDeckBuild },
         { provide: NavbarCollapseService, useValue: mockNavbar },
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: TranslateService, useValue: {
           currentLang: 'en', instant: (k: string) => k,
           get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
@@ -178,6 +206,8 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
         { provide: Router, useValue: mockRouter },
         { provide: DeckBuildService, useValue: mockDeckBuild },
         { provide: NavbarCollapseService, useValue: mockNavbar },
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: TranslateService, useValue: {
           currentLang: 'en', instant: (k: string) => k,
           get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),

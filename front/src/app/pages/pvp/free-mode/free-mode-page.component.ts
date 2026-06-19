@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toObservable, toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, filter, map, switchMap } from 'rxjs';
@@ -7,6 +7,8 @@ import { NavbarCollapseService } from '../../../services/navbar-collapse.service
 import { BoardStateService } from '../../simulator/board-state.service';
 import { CommandStackService } from '../../simulator/command-stack.service';
 import { PvpBoardContainerComponent } from '../duel-page/pvp-board-container/pvp-board-container.component';
+import { PvpHandRowComponent } from '../duel-page/pvp-hand-row/pvp-hand-row.component';
+import { PvpCardInspectorWrapperComponent } from '../duel-page/pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
 import { RenderedBoardStateService } from '../duel-page/rendered-board-state.service';
 import { CardTravelEngine } from '../duel-page/card-travel-engine.service';
 import { BoardEffectsService } from '../duel-page/board-effects.service';
@@ -15,10 +17,13 @@ import { DuelContext } from '../duel-page/duel-context';
 import { DuelLogger } from '../duel-page/duel-logger';
 import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DuelGameLogService } from '../duel-page/duel-game-log.service';
+import { CardInspectionService } from '../duel-page/card-inspection.service';
+import { CardDataCacheService } from '../duel-page/card-data-cache.service';
 import { ScopeResetDispatcher } from '../projections';
+import { BoardZone, CardOnField } from '../duel-ws.types';
 import { EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import { cardInstancesToBoardStatePayload } from './card-instances-to-payload';
-import { FreeModeInteractionService } from './free-mode-interaction.service';
+import { FreeModeInteractionService, CardTapEvent } from './free-mode-interaction.service';
 
 const FREE_MODE_LP = 8000;
 
@@ -53,8 +58,10 @@ const FREE_MODE_LP = 8000;
     BoardStateService, CommandStackService,
     // free-mode interaction state machine (étape 4)
     FreeModeInteractionService,
+    // card inspector (étape 5a — reused PvP inspector, T3)
+    CardInspectionService, CardDataCacheService,
   ],
-  imports: [PvpBoardContainerComponent],
+  imports: [PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent],
 })
 export class FreeModePageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -67,8 +74,28 @@ export class FreeModePageComponent {
   protected readonly duelCtx = inject(DuelContext);
   protected readonly rbs = inject(RenderedBoardStateService);
   protected readonly interaction = inject(FreeModeInteractionService);
+  protected readonly cardInspection = inject(CardInspectionService);
+  private readonly cardDataCache = inject(CardDataCacheService);
 
   protected readonly renderedState = this.rbs.renderedState;
+  protected readonly inspectedCard = this.cardInspection.inspectedCard;
+  protected readonly inspectorForceExpanded = this.cardInspection.inspectorForceExpanded;
+  /** Player hand, derived from the rendered HAND zone (same as the duel-page). */
+  protected readonly playerHand = computed<CardOnField[]>(() => {
+    const player = this.renderedState().players[0];
+    const handZone = player?.zones.find((z: BoardZone) => z.zoneId === 'HAND');
+    return handZone?.cards ?? [];
+  });
+  /**
+   * Every hand card is "actionable" so a tap fires `handCardAction` (→ arm). The
+   * hand row only emits `handCardAction` for indices in this set; an unbound
+   * (empty) set would route every tap to `cardInspectRequest` (inspect) instead,
+   * making the tap-to-arm flow dead. Long-press / right-click still inspect via
+   * `cardInspectRequest({forceExpanded:true})`.
+   */
+  protected readonly handActionableIndices = computed(
+    () => new Set(this.playerHand().map((_, i) => i)),
+  );
   protected readonly emptySet = EMPTY_STRING_SET;
   // Stable identities for the inert board inputs — a literal `[]`/`new Set()` in
   // the template allocates fresh each CD pass, thrashing the OnPush child input.
@@ -115,8 +142,35 @@ export class FreeModePageComponent {
       this.rbs.commitAll('free-mode:sync');
     });
 
+    // 4. Wire the PvP card inspector (T3). The interaction service signals
+    //    "inspect" (double-tap / long-press) through the registered sink.
+    this.cardInspection.init(this.cardDataCache);
+    this.interaction.onInspect((event: CardTapEvent) => {
+      void this.cardInspection.inspectByCode(event.cardCode, event.forceExpanded ?? false);
+    });
+
     // Immersive mode (hide navbar) for the editor, restored on destroy.
     this.navbarCollapse.setImmersiveMode(true);
     this.destroyRef.onDestroy(() => this.navbarCollapse.setImmersiveMode(false));
+  }
+
+  /** Hand card tapped (actionable path) — arm by positional index. */
+  onHandCardAction(event: { index: number; element: HTMLElement }): void {
+    this.interaction.onHandCardTap(event.index);
+  }
+
+  /**
+   * Hand card inspect gesture → PvP inspector. The hand row emits this on
+   * long-press / right-click (forceExpanded) — and, defensively, on a plain tap
+   * only if the card were ever non-actionable (it isn't here). Inspect only on
+   * the explicit inspect gesture so a plain tap can't double as inspect.
+   */
+  onHandInspect(event: { cardCode: number; forceExpanded?: boolean }): void {
+    if (!event.forceExpanded) return;
+    void this.cardInspection.inspectByCode(event.cardCode, true);
+  }
+
+  closeInspector(): void {
+    this.cardInspection.close();
   }
 }

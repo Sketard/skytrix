@@ -4,7 +4,16 @@
 }
 
 .free-mode-page {
+  position: relative;
   height: 100%;
   background: var(--surface-base);
   overflow: hidden;
+}
+
+// Player hand pinned to the bottom of the editor (mirrors the duel-page layout).
+.free-mode-hand {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
 }

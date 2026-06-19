@@ -16,4 +16,22 @@
     (cardInspectRequest)="interaction.onCardTap($event)"
     (emptyZoneTap)="interaction.onEmptyZoneTap($event)"
     (zonePillRequest)="interaction.onPileTap($event.zoneId)" />
+
+  <!-- Player hand (bottom). Tap a card → arm by positional index (resolves the
+       duplicate-cardCode ambiguity); long-press / right-click → inspect. -->
+  <app-pvp-hand-row
+    class="free-mode-hand"
+    side="player"
+    [cards]="playerHand()"
+    [actionableCardIndices]="handActionableIndices()"
+    (handCardAction)="onHandCardAction($event)"
+    (cardInspectRequest)="onHandInspect($event)" />
+
+  <!-- PvP card inspector (T3) — opened by double-tap / long-press. -->
+  @if (inspectedCard(); as card) {
+    <app-pvp-card-inspector-wrapper
+      [card]="card"
+      [initialForceExpanded]="inspectorForceExpanded()"
+      (dismissed)="closeInspector()" />
+  }
 </div>
