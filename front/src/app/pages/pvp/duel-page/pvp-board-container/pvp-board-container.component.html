@@ -257,8 +257,8 @@
                (mouseenter)="onLinkedHover(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
                (mouseleave)="onLinkedLeave()"
                (click)="onEmzCardClick($event, emz.zoneId, card)"
-               (contextmenu)="onEmzCardContextMenu($event, card)"
-               (appLongPress)="onEmzCardLongPress(card)">
+               (contextmenu)="onEmzCardContextMenu($event, emz.zoneId, card)"
+               (appLongPress)="onEmzCardLongPress(emz.zoneId, card)">
             @if (card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="card.overlayMaterials.length >= 3 ? 3 : card.overlayMaterials.length">
                 @if (card.overlayMaterials.length >= 3) {

@@ -272,7 +272,11 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number; sourceEvent: MouseEvent }>();
-  readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField; forceExpanded?: boolean }>();
+  // `zoneId` (free-mode addition) — the PvP zone the tapped card lives in. PvP
+  // inspector consumers ignore it (they read cardCode); free-mode's interaction
+  // service uses it to resolve the tapped card back to its sim instance. Absent
+  // on opponent-side taps (mono-player editor never arms those).
+  readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField; forceExpanded?: boolean; zoneId?: ZoneId }>();
   // Click on an XYZ monster's overlay-count badge — opens the overlay
   // materials as a browsable pile. `playerIndex` is the relative owner.
   readonly xyzOverlayRequest = output<{ materials: number[]; playerIndex: number; sourceEvent: MouseEvent }>();
@@ -514,7 +518,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     } else if (zone.card?.cardCode) {
       // B2 fallback (Direction B, Master Duel-style, 2026-06-05) — no action
       // available for this card right now ; primary affordance defaults to inspect.
-      this.cardInspectRequest.emit({ cardCode: zone.card.cardCode, liveCard: zone.card });
+      this.cardInspectRequest.emit({ cardCode: zone.card.cardCode, liveCard: zone.card, zoneId: zone.zoneId });
     }
   }
 
@@ -525,6 +529,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
         cardCode: zone.card.cardCode,
         liveCard: zone.card,
         forceExpanded: true,
+        zoneId: zone.zoneId,
       });
     }
   }
@@ -535,6 +540,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
         cardCode: zone.card.cardCode,
         liveCard: zone.card,
         forceExpanded: true,
+        zoneId: zone.zoneId,
       });
     }
   }
@@ -718,20 +724,20 @@ export class PvpBoardContainerComponent implements AfterViewInit {
       this.menuRequest.emit({ zoneId, element: event.currentTarget as HTMLElement, actions });
     } else if (card.cardCode) {
       // B2 fallback (Direction B, 2026-06-05).
-      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, zoneId });
     }
   }
 
-  onEmzCardContextMenu(event: MouseEvent, card: CardOnField): void {
+  onEmzCardContextMenu(event: MouseEvent, zoneId: ZoneId, card: CardOnField): void {
     event.preventDefault();
     if (card.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true });
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true, zoneId });
     }
   }
 
-  onEmzCardLongPress(card: CardOnField): void {
+  onEmzCardLongPress(zoneId: ZoneId, card: CardOnField): void {
     if (card.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true });
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card, forceExpanded: true, zoneId });
     }
   }
 

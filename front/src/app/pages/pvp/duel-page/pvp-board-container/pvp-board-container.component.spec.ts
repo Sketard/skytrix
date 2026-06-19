@@ -674,19 +674,20 @@ describe('PvpBoardContainerComponent — action dispatch + clicks (C4.2)', () =>
     expect(events).toEqual([77777]);
   });
 
-  it('onEmzCardContextMenu preventDefaults + emits inspect forceExpanded', () => {
+  it('onEmzCardContextMenu preventDefaults + emits inspect forceExpanded with zoneId', () => {
     fixture.detectChanges();
-    const events: Array<{ cardCode: number; forceExpanded?: boolean }> = [];
-    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode, forceExpanded: e.forceExpanded }));
+    const events: Array<{ cardCode: number; forceExpanded?: boolean; zoneId?: ZoneId }> = [];
+    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode, forceExpanded: e.forceExpanded, zoneId: e.zoneId }));
 
     let prevented = false;
     component.onEmzCardContextMenu(
       { preventDefault: () => { prevented = true; } } as unknown as MouseEvent,
+      'EMZ_L',
       makeCard({ cardCode: 55555 }),
     );
 
     expect(prevented).toBeTrue();
-    expect(events).toEqual([{ cardCode: 55555, forceExpanded: true }]);
+    expect(events).toEqual([{ cardCode: 55555, forceExpanded: true, zoneId: 'EMZ_L' }]);
   });
 });
 

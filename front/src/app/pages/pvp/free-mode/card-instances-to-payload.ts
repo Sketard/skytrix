@@ -62,6 +62,22 @@ const SIM_TO_PVP_FIELD_ZONES: ReadonlyArray<[SimZoneId, PvpZoneId]> = [
 ];
 
 /**
+ * PvP ZoneId → sim ZoneId. The reverse of the projection above, PLUS `DECK`
+ * (which the payload exposes count-only but the interaction layer still needs
+ * to route deposits/pile taps into). The board never emits the `XYZ`
+ * pseudo-zone as a tap target, so it has no sim mapping.
+ */
+const PVP_TO_SIM_ZONE: Partial<Record<PvpZoneId, SimZoneId>> = {
+  ...Object.fromEntries(SIM_TO_PVP_FIELD_ZONES.map(([sim, pvp]) => [pvp, sim])),
+  DECK: SimZoneId.MAIN_DECK,
+};
+
+/** Maps a board (PvP) ZoneId back to its sim ZoneId, or null if not mappable. */
+export function pvpZoneToSim(pvp: PvpZoneId): SimZoneId | null {
+  return PVP_TO_SIM_ZONE[pvp] ?? null;
+}
+
+/**
  * The inert slot-1 board. Built FRESH per call (not a shared module constant)
  * so no two payloads alias the same `zones: []` array — a downstream
  * `commitAll`/mutation on `players[1]` can't bleed across payloads.

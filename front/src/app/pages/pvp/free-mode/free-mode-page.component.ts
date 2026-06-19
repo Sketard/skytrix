@@ -18,6 +18,7 @@ import { DuelGameLogService } from '../duel-page/duel-game-log.service';
 import { ScopeResetDispatcher } from '../projections';
 import { EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import { cardInstancesToBoardStatePayload } from './card-instances-to-payload';
+import { FreeModeInteractionService } from './free-mode-interaction.service';
 
 const FREE_MODE_LP = 8000;
 
@@ -50,6 +51,8 @@ const FREE_MODE_LP = 8000;
     DuelContext, DuelLogger, DuelCardArtService, DuelGameLogService, ScopeResetDispatcher,
     // sim edit engine (the survivors — reused as-is)
     BoardStateService, CommandStackService,
+    // free-mode interaction state machine (étape 4)
+    FreeModeInteractionService,
   ],
   imports: [PvpBoardContainerComponent],
 })
@@ -63,6 +66,7 @@ export class FreeModePageComponent {
   protected readonly boardState = inject(BoardStateService);
   protected readonly duelCtx = inject(DuelContext);
   protected readonly rbs = inject(RenderedBoardStateService);
+  protected readonly interaction = inject(FreeModeInteractionService);
 
   protected readonly renderedState = this.rbs.renderedState;
   protected readonly emptySet = EMPTY_STRING_SET;

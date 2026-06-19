@@ -5,3 +5,4 @@ export { ReorderHandCommand } from './reorder-hand.command';
 export { CompositeCommand } from './composite.command';
 export { FlipCardCommand } from './flip-card.command';
 export { TogglePositionCommand } from './toggle-position.command';
+export { SwapCardsCommand } from './swap-cards.command';

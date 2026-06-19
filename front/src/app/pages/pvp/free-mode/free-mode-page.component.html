@@ -1,8 +1,9 @@
 <div class="free-mode-page">
   <!-- Board reused from PvP. v1a display: chainPhase hard 'idle' (POLL-DROP
-       watchdog), empty overlay inputs, no prompt. Interaction (tap=arm, pose,
-       swap, mini-bars) is wired in étape 4 via FreeModeInteractionService —
-       the outputs are intentionally unbound here (display-only). -->
+       watchdog), empty overlay inputs, no prompt. Interaction (étape 4) routes
+       the board outputs through FreeModeInteractionService: cardInspectRequest =
+       tap/arm (or inspect on forceExpanded long-press), emptyZoneTap = pose,
+       zonePillRequest = deposit. Mini-bars + inspector display land in étape 5. -->
   <app-pvp-board-container
     [duelState]="renderedState()"
     [readOnly]="false"
@@ -11,5 +12,8 @@
     [chainPhase]="'idle'"
     [activeChainLinks]="emptyChainLinks"
     [highlightedZones]="emptySet"
-    [actionablePrompt]="null" />
+    [actionablePrompt]="null"
+    (cardInspectRequest)="interaction.onCardTap($event)"
+    (emptyZoneTap)="interaction.onEmptyZoneTap($event)"
+    (zonePillRequest)="interaction.onPileTap($event.zoneId)" />
 </div>

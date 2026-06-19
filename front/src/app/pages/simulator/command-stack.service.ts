@@ -9,6 +9,7 @@ import {
   CompositeCommand,
   FlipCardCommand,
   TogglePositionCommand,
+  SwapCardsCommand,
 } from './commands';
 
 @Injectable()
@@ -163,6 +164,13 @@ export class CommandStackService {
 
   togglePosition(cardInstanceId: string, zoneId: ZoneId, targetPosition: 'ATK' | 'DEF'): void {
     const cmd = new TogglePositionCommand(this.boardStateService, cardInstanceId, zoneId, targetPosition);
+    this.execute(cmd);
+  }
+
+  /** Swaps two cards between their zones — atomic single undo (free-mode §5.5). */
+  swapCards(aInstanceId: string, bInstanceId: string): void {
+    if (aInstanceId === bInstanceId) return;
+    const cmd = new SwapCardsCommand(this.boardStateService, aInstanceId, bInstanceId);
     this.execute(cmd);
   }
 
