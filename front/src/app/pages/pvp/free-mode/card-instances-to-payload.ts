@@ -77,6 +77,16 @@ export function pvpZoneToSim(pvp: PvpZoneId): SimZoneId | null {
   return PVP_TO_SIM_ZONE[pvp] ?? null;
 }
 
+const SIM_TO_PVP_ZONE: Partial<Record<SimZoneId, PvpZoneId>> = {
+  ...Object.fromEntries(SIM_TO_PVP_FIELD_ZONES),
+  [SimZoneId.MAIN_DECK]: 'DECK',
+};
+
+/** Maps a sim ZoneId to its board (PvP) ZoneId, or null if not mappable. */
+export function simZoneToPvp(sim: SimZoneId): PvpZoneId | null {
+  return SIM_TO_PVP_ZONE[sim] ?? null;
+}
+
 /**
  * The inert slot-1 board. Built FRESH per call (not a shared module constant)
  * so no two payloads alias the same `zones: []` array — a downstream
@@ -103,24 +113,31 @@ function toPosition(ci: CardInstance): CardOnField['position'] {
   return isDef ? POSITION.FACEUP_DEFENSE : POSITION.FACEUP_ATTACK;
 }
 
-function toCardOnField(ci: CardInstance): CardOnField {
+/** Generic counter key used by the free-mode mini-bar (#11, v1 single type). */
+export const FREE_MODE_COUNTER_KEY = 'counter';
+
+function toCardOnField(ci: CardInstance, counters: ReadonlyMap<string, number>): CardOnField {
   const card = ci.card.card;
+  const count = counters.get(ci.instanceId) ?? 0;
   return {
     cardCode: card.passcode ?? null,
     name: card.name ?? null,
     position: toPosition(ci),
     overlayMaterials: (ci.overlayMaterials ?? []).map(m => m.card.card.passcode ?? 0),
-    counters: {},
+    counters: count > 0 ? { [FREE_MODE_COUNTER_KEY]: count } : {},
   };
 }
+
+const NO_COUNTERS: ReadonlyMap<string, number> = new Map();
 
 export function cardInstancesToBoardStatePayload(
   board: Record<SimZoneId, CardInstance[]>,
   lp: number,
+  counters: ReadonlyMap<string, number> = NO_COUNTERS,
 ): BoardStatePayload {
   const zones: BoardZone[] = SIM_TO_PVP_FIELD_ZONES.map(([sim, pvp]) => ({
     zoneId: pvp,
-    cards: board[sim].map(toCardOnField),
+    cards: board[sim].map(ci => toCardOnField(ci, counters)),
   }));
 
   const player: PlayerBoardState = {

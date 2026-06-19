@@ -4,7 +4,7 @@ import { CommandStackService } from '../../simulator/command-stack.service';
 import { CardInstance, ZoneId as SimZoneId, ZONE_CONFIG } from '../../simulator/simulator.models';
 import { ZoneId as PvpZoneId } from '../duel-ws.types';
 import { DuelContext } from '../duel-page/duel-context';
-import { pvpZoneToSim } from './card-instances-to-payload';
+import { pvpZoneToSim, simZoneToPvp } from './card-instances-to-payload';
 
 /** Double-tap window — a 2nd tap within this delay = inspect, cancelling the arm. */
 const DOUBLE_TAP_MS = 250;
@@ -57,6 +57,18 @@ export class FreeModeInteractionService {
   readonly armedInstanceId = computed(() => this._armed()?.instanceId ?? null);
   readonly armedCardName = computed(() => this._armed()?.card.card.card.name ?? null);
   readonly isAttachPending = computed(() => this._attachPending());
+  /** PvP DOM zone key of the armed card (`${pvpZone}-0`), for element lookup. */
+  readonly armedZoneKey = computed(() => {
+    const armed = this._armed();
+    if (!armed) return null;
+    const pvp = simZoneToPvp(armed.zone);
+    return pvp ? `${pvp}-0` : null;
+  });
+  /** Generic counter value on the armed card (0 = none). */
+  readonly armedCounterValue = computed(() => {
+    const armed = this._armed();
+    return armed ? (this._counters().get(armed.instanceId) ?? 0) : 0;
+  });
 
   /** Timestamp of the last card tap, for the double-tap window (no Date.now in
    *  signals; uses performance.now via a plain field — interaction is sync). */
@@ -235,6 +247,88 @@ export class FreeModeInteractionService {
     if (this._armed()) this._attachPending.set(true);
   }
 
+  // ── Mini-bar CARTE actions (§6.1) — operate on the armed card ──────────────
+
+  /** True if the armed card is currently an XYZ material (gates "Détacher"). */
+  readonly armedIsMaterial = computed(() => {
+    const armed = this._armed();
+    return armed ? this.isMaterial(armed.instanceId) : false;
+  });
+
+  /** Flip the armed card face-up ↔ face-down. Reads LIVE state by instanceId —
+   *  the `_armed.card` snapshot is captured at arm time and goes stale after a
+   *  copy-on-write command, so a 2nd flip would otherwise repeat the 1st. */
+  flipArmed(): void {
+    const live = this.liveArmedCard();
+    if (!live) return;
+    this.commandStack.flipCard(live.card.instanceId, live.zone, !live.card.faceDown);
+  }
+
+  /** Toggle the armed card ATK ↔ DEF (reads LIVE state — see flipArmed). */
+  togglePositionArmed(): void {
+    const live = this.liveArmedCard();
+    if (!live) return;
+    const target = live.card.position === 'ATK' ? 'DEF' : 'ATK';
+    this.commandStack.togglePosition(live.card.instanceId, live.zone, target);
+  }
+
+  /** Destroy the armed card → Graveyard (§5.2 Détruire). */
+  destroyArmed(): void {
+    const armed = this._armed();
+    if (!armed) return;
+    this.commandStack.moveCard(armed.instanceId, armed.zone, SimZoneId.GRAVEYARD);
+    this.ctx.announceEvent('Détruite', 0);
+    this.disarm();
+  }
+
+  /** Detach the armed XYZ material → Graveyard (§5.2 Détacher). No-op if the
+   *  armed card isn't a material. */
+  detachArmed(): void {
+    const armed = this._armed();
+    if (!armed) return;
+    const host = this.findMaterialHost(armed.instanceId);
+    if (!host) return;
+    this.commandStack.detachMaterial(armed.instanceId, host.hostId, host.zone, SimZoneId.GRAVEYARD);
+    this.ctx.announceEvent('Détachée', 0);
+    this.disarm();
+  }
+
+  // ── Counters (#11 / §5.4) — Map parallel to the sim model, OUTSIDE undo ────
+  // Generic single counter per card in v1. Lives here (not in CardInstance, not
+  // in CommandStack) → NOT undoable → decrement is MANDATORY (the only recourse
+  // after an over-click). The adapter reads this map at payload build time.
+
+  // why: editor counter state outside the animation pipeline taxonomy.
+  // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
+  private readonly _counters = signal<ReadonlyMap<string, number>>(new Map());
+  readonly counters = this._counters.asReadonly();
+
+  /** Increment the armed card's generic counter. */
+  incrementCounterArmed(): void {
+    const armed = this._armed();
+    if (!armed) return;
+    this.adjustCounter(armed.instanceId, +1);
+  }
+
+  /** Decrement the armed card's counter, floored at 0 (MANDATORY recourse — the
+   *  counter is outside undo, so a decrement is the only way to fix an over-click). */
+  decrementCounterArmed(): void {
+    const armed = this._armed();
+    if (!armed) return;
+    this.adjustCounter(armed.instanceId, -1);
+  }
+
+  private adjustCounter(instanceId: string, delta: number): void {
+    const next = new Map(this._counters());
+    const value = Math.max(0, (next.get(instanceId) ?? 0) + delta);
+    if (value === 0) {
+      next.delete(instanceId);
+    } else {
+      next.set(instanceId, value);
+    }
+    this._counters.set(next);
+  }
+
   // ── Internals ─────────────────────────────────────────────────────────────
 
   private arm(resolved: ResolvedCard): void {
@@ -256,14 +350,36 @@ export class FreeModeInteractionService {
     this.disarm();
   }
 
-  private isMaterial(instanceId: string): boolean {
+  /**
+   * Re-resolve the armed card from LIVE board state by instanceId. The
+   * `_armed.card` snapshot is captured at arm time and the sim commands are
+   * copy-on-write, so it goes stale after any mutation — actions that read
+   * mutable card state (faceDown / position) MUST use this, not the snapshot.
+   * Returns null if nothing is armed or the card has left the board.
+   */
+  private liveArmedCard(): { card: CardInstance; zone: SimZoneId } | null {
+    const armed = this._armed();
+    if (!armed) return null;
     const board = this.boardState.boardState();
     for (const zone of Object.keys(board) as SimZoneId[]) {
-      if (board[zone].some(c => c.overlayMaterials?.some(m => m.instanceId === instanceId))) {
-        return true;
-      }
+      const card = board[zone].find(c => c.instanceId === armed.instanceId);
+      if (card) return { card, zone };
     }
-    return false;
+    return null;
+  }
+
+  private isMaterial(instanceId: string): boolean {
+    return this.findMaterialHost(instanceId) !== null;
+  }
+
+  /** Find the XYZ host carrying `instanceId` as a material, with its zone. */
+  private findMaterialHost(instanceId: string): { hostId: string; zone: SimZoneId } | null {
+    const board = this.boardState.boardState();
+    for (const zone of Object.keys(board) as SimZoneId[]) {
+      const host = board[zone].find(c => c.overlayMaterials?.some(m => m.instanceId === instanceId));
+      if (host) return { hostId: host.instanceId, zone };
+    }
+    return null;
   }
 
   private inspect(event: CardTapEvent): void {

@@ -43,6 +43,7 @@ describe('FreeModeInteractionService', () => {
     board = new BoardStateService();
     stack = jasmine.createSpyObj<CommandStackService>('CommandStackService', [
       'moveCard', 'swapCards', 'attachMaterial', 'transferMaterial',
+      'flipCard', 'togglePosition', 'detachMaterial',
     ]);
     const ctx = jasmine.createSpyObj<DuelContext>('DuelContext', ['announceEvent']);
 
@@ -357,6 +358,172 @@ describe('FreeModeInteractionService', () => {
       service.onCardTap({ cardCode: 456, zoneId: 'M1', forceExpanded: true });
 
       expect(inspected).toEqual([{ code: 456, expanded: true }]);
+    });
+  });
+
+  describe('mini-bar CARTE actions (§6.1)', () => {
+    function armField(card: CardInstance, zone: SimZoneId, pvp: 'M1' | 'M2' | 'S1'): void {
+      place(zone, card);
+      service.onCardTap({ cardCode: pc(card), zoneId: pvp });
+    }
+
+    it('flipArmed flips the armed card faceDown', () => {
+      const a = makeCard();
+      a.faceDown = false;
+      armField(a, SimZoneId.MONSTER_1, 'M1');
+
+      service.flipArmed();
+
+      expect(stack.flipCard).toHaveBeenCalledWith(a.instanceId, SimZoneId.MONSTER_1, true);
+    });
+
+    it('togglePositionArmed switches ATK → DEF', () => {
+      const a = makeCard();
+      a.position = 'ATK';
+      armField(a, SimZoneId.MONSTER_1, 'M1');
+
+      service.togglePositionArmed();
+
+      expect(stack.togglePosition).toHaveBeenCalledWith(a.instanceId, SimZoneId.MONSTER_1, 'DEF');
+    });
+
+    it('destroyArmed moves the armed card to the Graveyard and disarms', () => {
+      const a = makeCard();
+      armField(a, SimZoneId.MONSTER_1, 'M1');
+
+      service.destroyArmed();
+
+      expect(stack.moveCard).toHaveBeenCalledWith(a.instanceId, SimZoneId.MONSTER_1, SimZoneId.GRAVEYARD);
+      expect(service.armedInstanceId()).toBeNull();
+    });
+
+    it('detachArmed detaches an armed XYZ material to the Graveyard', () => {
+      const mat = makeCard();
+      const host = makeCard();
+      host.overlayMaterials = [mat];
+      place(SimZoneId.MONSTER_1, host);
+      // Arm the material directly (it would be armed from the XYZ peek).
+      service['_armed'].set({ instanceId: mat.instanceId, zone: SimZoneId.MONSTER_1, card: mat });
+
+      service.detachArmed();
+
+      expect(stack.detachMaterial).toHaveBeenCalledWith(
+        mat.instanceId, host.instanceId, SimZoneId.MONSTER_1, SimZoneId.GRAVEYARD);
+    });
+
+    it('armedIsMaterial reflects whether the armed card is an XYZ material', () => {
+      const mat = makeCard();
+      const host = makeCard();
+      host.overlayMaterials = [mat];
+      place(SimZoneId.MONSTER_1, host);
+
+      service['_armed'].set({ instanceId: mat.instanceId, zone: SimZoneId.MONSTER_1, card: mat });
+      expect(service.armedIsMaterial()).toBe(true);
+
+      service.disarm();
+      const normal = makeCard();
+      armField(normal, SimZoneId.MONSTER_2, 'M2');
+      expect(service.armedIsMaterial()).toBe(false);
+    });
+  });
+
+  describe('mini-bar reads LIVE state (stale-snapshot regression)', () => {
+    // Uses a REAL CommandStackService so flip/toggle actually mutate the board —
+    // the spy variant can't catch the stale-snapshot bug (2nd flip = no-op).
+    let realStack: CommandStackService;
+    let liveService: FreeModeInteractionService;
+
+    beforeEach(() => {
+      const ctx = jasmine.createSpyObj<DuelContext>('DuelContext', ['announceEvent']);
+      realStack = new CommandStackService(board);
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          FreeModeInteractionService,
+          { provide: BoardStateService, useValue: board },
+          { provide: CommandStackService, useValue: realStack },
+          { provide: DuelContext, useValue: ctx },
+        ],
+      });
+      liveService = TestBed.inject(FreeModeInteractionService);
+    });
+
+    it('a SECOND flip toggles back (not a no-op on the stale arm snapshot)', () => {
+      const a = makeCard();
+      a.faceDown = false;
+      place(SimZoneId.MONSTER_1, a);
+      liveService.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+
+      liveService.flipArmed(); // → face-down
+      expect(board.boardState()[SimZoneId.MONSTER_1][0].faceDown).toBe(true);
+
+      liveService.flipArmed(); // → face-up again (reads live state)
+      expect(board.boardState()[SimZoneId.MONSTER_1][0].faceDown).toBe(false);
+    });
+
+    it('a SECOND position toggle flips back ATK', () => {
+      const a = makeCard();
+      a.position = 'ATK';
+      place(SimZoneId.MONSTER_1, a);
+      liveService.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+
+      liveService.togglePositionArmed(); // → DEF
+      expect(board.boardState()[SimZoneId.MONSTER_1][0].position).toBe('DEF');
+
+      liveService.togglePositionArmed(); // → ATK
+      expect(board.boardState()[SimZoneId.MONSTER_1][0].position).toBe('ATK');
+    });
+  });
+
+  describe('counters (#11 / §5.4) — hors-undo, décrément OBLIGATOIRE plancher 0', () => {
+    function armM1(card: CardInstance): void {
+      place(SimZoneId.MONSTER_1, card);
+      service.onCardTap({ cardCode: pc(card), zoneId: 'M1' });
+    }
+
+    it('increments the armed card counter', () => {
+      const a = makeCard();
+      armM1(a);
+
+      service.incrementCounterArmed();
+      service.incrementCounterArmed();
+
+      expect(service.armedCounterValue()).toBe(2);
+      expect(service.counters().get(a.instanceId)).toBe(2);
+    });
+
+    it('decrements the counter, floored at 0', () => {
+      const a = makeCard();
+      armM1(a);
+
+      service.incrementCounterArmed();
+      service.decrementCounterArmed();
+      service.decrementCounterArmed(); // already 0 — stays 0, no negative
+
+      expect(service.armedCounterValue()).toBe(0);
+      expect(service.counters().has(a.instanceId)).toBe(false); // 0 removes the entry
+    });
+
+    it('decrement is a no-op when nothing is armed', () => {
+      service.decrementCounterArmed();
+      expect(service.counters().size).toBe(0);
+    });
+
+    it('counters are per-card (independent across armed cards)', () => {
+      const a = makeCard();
+      const b = makeCard();
+      place(SimZoneId.MONSTER_1, a);
+      place(SimZoneId.MONSTER_2, b);
+
+      service.onCardTap({ cardCode: pc(a), zoneId: 'M1' });
+      service.incrementCounterArmed();
+      service.disarm();
+      service.onCardTap({ cardCode: pc(b), zoneId: 'M2' });
+      service.incrementCounterArmed();
+      service.incrementCounterArmed();
+
+      expect(service.counters().get(a.instanceId)).toBe(1);
+      expect(service.counters().get(b.instanceId)).toBe(2);
     });
   });
 });

@@ -17,3 +17,15 @@
   bottom: 0;
   z-index: 10;
 }
+
+// Mini-bar CARTE — detached, centered above the hand row (v1 bottom-bar style).
+// Width:max-content so the wrapper hugs the bar (no full-width click-blocker);
+// left:50% + translate centers it.
+.free-mode-action-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-10);
+  transform: translateX(-50%);
+  z-index: 20;
+  width: max-content;
+}

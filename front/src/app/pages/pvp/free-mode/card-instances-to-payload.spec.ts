@@ -197,6 +197,26 @@ describe('cardInstancesToBoardStatePayload', () => {
     });
   });
 
+  describe('counters (free-mode mini-bar, #11)', () => {
+    it('projects the counter map onto the matching card by instanceId', () => {
+      const board = emptySimBoard();
+      const a = makeInstance({ passcode: 1 });
+      place(board, SimZoneId.MONSTER_1, a);
+      const counters = new Map([[a.instanceId, 3]]);
+
+      const card = zoneOf(cardInstancesToBoardStatePayload(board, 8000, counters), 'M1')!.cards[0];
+      expect(card.counters).toEqual({ counter: 3 });
+    });
+
+    it('emits empty counters for a card with no counter entry', () => {
+      const board = emptySimBoard();
+      place(board, SimZoneId.MONSTER_1, makeInstance({ passcode: 1 }));
+
+      const card = zoneOf(cardInstancesToBoardStatePayload(board, 8000, new Map()), 'M1')!.cards[0];
+      expect(card.counters).toEqual({});
+    });
+  });
+
   describe('hard invariants on swap inter-types (#2 — no legality check)', () => {
     it('a monster placed in an S-zone still produces a valid CardOnField', () => {
       const board = emptySimBoard();

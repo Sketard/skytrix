@@ -1,0 +1,38 @@
+<div class="action-bar" role="toolbar" aria-label="Actions carte">
+  <app-icon-button ariaLabel="Changer de position face" (click)="flip.emit()">
+    <mat-icon>flip</mat-icon>
+  </app-icon-button>
+
+  <app-icon-button ariaLabel="Basculer ATK / DEF" (click)="togglePosition.emit()">
+    <mat-icon>crop_rotate</mat-icon>
+  </app-icon-button>
+
+  <app-icon-button ariaLabel="Activer l'effet" (click)="activate.emit()">
+    <mat-icon>bolt</mat-icon>
+  </app-icon-button>
+
+  <app-icon-button variant="danger" ariaLabel="Détruire (envoyer au cimetière)" (click)="destroy.emit()">
+    <mat-icon>delete</mat-icon>
+  </app-icon-button>
+
+  @if (isMaterial()) {
+    <app-icon-button ariaLabel="Détacher le matériau" (click)="detach.emit()">
+      <mat-icon>link_off</mat-icon>
+    </app-icon-button>
+  }
+
+  <app-icon-button ariaLabel="Attacher comme matériau XYZ" (click)="attachXyz.emit()">
+    <mat-icon>link</mat-icon>
+  </app-icon-button>
+
+  <span class="counter-group">
+    <app-icon-button ariaLabel="Retirer un compteur" [disabled]="counterValue() === 0"
+                     (click)="decrementCounter.emit()">
+      <mat-icon>remove_circle</mat-icon>
+    </app-icon-button>
+    <span class="counter-value" aria-live="polite">{{ counterValue() }}</span>
+    <app-icon-button ariaLabel="Ajouter un compteur" (click)="incrementCounter.emit()">
+      <mat-icon>add_circle</mat-icon>
+    </app-icon-button>
+  </span>
+</div>

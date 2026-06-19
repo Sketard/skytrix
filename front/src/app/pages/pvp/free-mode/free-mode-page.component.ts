@@ -9,6 +9,7 @@ import { CommandStackService } from '../../simulator/command-stack.service';
 import { PvpBoardContainerComponent } from '../duel-page/pvp-board-container/pvp-board-container.component';
 import { PvpHandRowComponent } from '../duel-page/pvp-hand-row/pvp-hand-row.component';
 import { PvpCardInspectorWrapperComponent } from '../duel-page/pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
+import { FreeModeActionBarComponent } from './free-mode-action-bar.component';
 import { RenderedBoardStateService } from '../duel-page/rendered-board-state.service';
 import { CardTravelEngine } from '../duel-page/card-travel-engine.service';
 import { BoardEffectsService } from '../duel-page/board-effects.service';
@@ -61,7 +62,10 @@ const FREE_MODE_LP = 8000;
     // card inspector (étape 5a — reused PvP inspector, T3)
     CardInspectionService, CardDataCacheService,
   ],
-  imports: [PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent],
+  imports: [
+    PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent,
+    FreeModeActionBarComponent,
+  ],
 })
 export class FreeModePageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -76,6 +80,8 @@ export class FreeModePageComponent {
   protected readonly interaction = inject(FreeModeInteractionService);
   protected readonly cardInspection = inject(CardInspectionService);
   private readonly cardDataCache = inject(CardDataCacheService);
+  private readonly cardTravel = inject(CardTravelEngine);
+  private readonly boardEffects = inject(BoardEffectsService);
 
   protected readonly renderedState = this.rbs.renderedState;
   protected readonly inspectedCard = this.cardInspection.inspectedCard;
@@ -137,7 +143,8 @@ export class FreeModePageComponent {
     // 3. Sync edit model → render payload on every board mutation. v1a: a state
     //    jump (commitAll), no lockZone (else assertNoLocks + 30s safety timeout).
     effect(() => {
-      const payload = cardInstancesToBoardStatePayload(this.boardState.boardState(), this.lp());
+      const payload = cardInstancesToBoardStatePayload(
+        this.boardState.boardState(), this.lp(), this.interaction.counters());
       this.rbs.updateLogical(payload);
       this.rbs.commitAll('free-mode:sync');
     });
@@ -172,5 +179,15 @@ export class FreeModePageComponent {
 
   closeInspector(): void {
     this.cardInspection.close();
+  }
+
+  // ── Mini-bar CARTE actions (§6.1) — route to the interaction service ───────
+
+  onActivateArmed(): void {
+    // "Activer" is anim-only (§17) — replay the activation flash on the armed
+    // card's element, no state change. Resolve the element from the zone key.
+    const key = this.interaction.armedZoneKey();
+    const el = key ? this.cardTravel.getZoneElement(key) : null;
+    if (el) void this.boardEffects.activateEffect(el);
   }
 }

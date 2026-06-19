@@ -27,6 +27,23 @@
     (handCardAction)="onHandCardAction($event)"
     (cardInspectRequest)="onHandInspect($event)" />
 
+  <!-- Mini-bar CARTE (§6.1) — shown on the armed card. v1: detached bottom bar
+       (mobile-style, works on both; anchored-desktop is a polish follow-up). -->
+  @if (interaction.armedInstanceId()) {
+    <app-free-mode-action-bar
+      class="free-mode-action-bar"
+      [isMaterial]="interaction.armedIsMaterial()"
+      [counterValue]="interaction.armedCounterValue()"
+      (flip)="interaction.flipArmed()"
+      (togglePosition)="interaction.togglePositionArmed()"
+      (activate)="onActivateArmed()"
+      (destroy)="interaction.destroyArmed()"
+      (detach)="interaction.detachArmed()"
+      (attachXyz)="interaction.beginAttachPending()"
+      (incrementCounter)="interaction.incrementCounterArmed()"
+      (decrementCounter)="interaction.decrementCounterArmed()" />
+  }
+
   <!-- PvP card inspector (T3) — opened by double-tap / long-press. -->
   @if (inspectedCard(); as card) {
     <app-pvp-card-inspector-wrapper
