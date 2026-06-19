@@ -300,7 +300,7 @@
                           [ngTemplateOutletContext]="{ $implicit: card, zoneId: emz.zoneId, relPlayer: emz.isOpponent ? 1 : 0 }"></ng-container>
           </div>
         } @else {
-          <div class="zone-empty"></div>
+          <div class="zone-empty" (click)="emz.isOpponent ? null : emptyZoneTap.emit(emz.zoneId)"></div>
         }
         @if (isHighlighted(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))) {
           <button class="zone-highlight-badge"
@@ -471,7 +471,7 @@
                           [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId, relPlayer: 0 }"></ng-container>
           </div>
         } @else {
-          <div class="zone-empty"></div>
+          <div class="zone-empty" (click)="emptyZoneTap.emit(zone.zoneId)"></div>
         }
         @if (isHighlighted(zone.zoneId + '-0')) {
           <button class="zone-highlight-badge"

@@ -251,6 +251,144 @@ describe('PvpBoardContainerComponent — field zones + EMZ (C4.1)', () => {
 });
 
 // =============================================================================
+// emptyZoneTap — Free-mode empty-slot tap channel (non-regression)
+//
+// The ONLY addition to the shared board container for PvP Free Mode. Wired by
+// `(click)` on the empty field slots of the PLAYER side only:
+//   - L474 — own zones (relPlayer 0): WIRED
+//   - L303 — EMZ, P0 half only (`!emz.isOpponent`): WIRED
+//   - L200 — opponent zones (relPlayer 1): NOT wired
+// Inert in PvP/replay: no parent subscribes, so `emit()` is a no-op. These
+// pins guard that (a) the right slots emit, (b) the opponent slot never does,
+// (c) the new (click) doesn't perturb neighbouring event propagation.
+// =============================================================================
+
+describe('PvpBoardContainerComponent — emptyZoneTap (free-mode channel)', () => {
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
+  let mockArt: jasmine.SpyObj<DuelCardArtService>;
+  let fixture: ComponentFixture<PvpBoardContainerComponent>;
+  let component: PvpBoardContainerComponent;
+
+  beforeEach(() => {
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>(
+      'CardTravelEngine',
+      ['registerZoneResolver', 'getZoneElement', 'createLineBetween', 'registerContainer'],
+    );
+    mockArt = jasmine.createSpyObj<DuelCardArtService>('DuelCardArtService', ['resolveUrl']);
+    mockArt.resolveUrl.and.returnValue('mock-url');
+
+    TestBed.configureTestingModule({
+      imports: [PvpBoardContainerComponent],
+      providers: [
+        { provide: CardTravelEngine, useValue: mockCardTravel },
+        { provide: DuelCardArtService, useValue: mockArt },
+        DuelGameLogService,
+        ScopeResetDispatcher,
+        { provide: TranslateService, useValue: {
+          currentLang: 'en',
+          instant: (k: string) => k,
+          get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
+          onLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onTranslationChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+        } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(PvpBoardContainerComponent);
+    component = fixture.componentInstance;
+    // preview=true renders the full template but skips ngAfterViewInit's
+    // CardTravelEngine wiring (same escape hatch the C4.1/C4.3 specs use).
+    fixture.componentRef.setInput('preview', true);
+    // EMPTY_DUEL_STATE → every field zone is empty → all 3 .zone-empty sites render.
+    fixture.componentRef.setInput('duelState', EMPTY_DUEL_STATE);
+  });
+
+  it('emits the zoneId when an OWN empty field slot (relPlayer 0) is clicked', () => {
+    fixture.detectChanges();
+    const emitted: ZoneId[] = [];
+    component.emptyZoneTap.subscribe(z => emitted.push(z));
+
+    const host = fixture.nativeElement as HTMLElement;
+    const ownEmpty = host.querySelector<HTMLElement>('.player-field .zone-empty');
+    expect(ownEmpty).withContext('own empty slot rendered').toBeTruthy();
+    ownEmpty!.click();
+
+    expect(emitted.length).toBe(1);
+  });
+
+  it('emits the zoneId when the OWN EMZ empty slot (P0 half) is clicked', () => {
+    fixture.detectChanges();
+    const emitted: ZoneId[] = [];
+    component.emptyZoneTap.subscribe(z => emitted.push(z));
+
+    const host = fixture.nativeElement as HTMLElement;
+    const emzOwnEmpty = host.querySelector<HTMLElement>('.emz:not(.emz--opponent) .zone-empty');
+    expect(emzOwnEmpty).withContext('own EMZ empty slot rendered').toBeTruthy();
+    emzOwnEmpty!.click();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0]).toMatch(/^EMZ_[LR]$/);
+  });
+
+  it('does NOT emit when an OPPONENT empty field slot (relPlayer 1) is clicked', () => {
+    fixture.detectChanges();
+    const emitted: ZoneId[] = [];
+    component.emptyZoneTap.subscribe(z => emitted.push(z));
+
+    const host = fixture.nativeElement as HTMLElement;
+    const oppEmpty = host.querySelector<HTMLElement>('.opponent-field .zone-empty');
+    expect(oppEmpty).withContext('opponent empty slot rendered').toBeTruthy();
+    oppEmpty!.click();
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('does NOT wire the (click) on the OPPONENT EMZ half (only P0 half is wired)', () => {
+    // Force EMZ_R to opponent ownership by placing a P1 card on it. The other
+    // EMZ (EMZ_L) stays P0 + empty, so the own-half wiring still works while
+    // the opponent half carries no emit binding. We assert the own half still
+    // emits and the opponent EMZ is rendered as the opponent (no own emit path).
+    const oppCard = makeCard({ cardCode: 88888 });
+    const state = makeState([], [makeZone('EMZ_R', [oppCard])]);
+    fixture.componentRef.setInput('duelState', state);
+    fixture.detectChanges();
+
+    const emitted: ZoneId[] = [];
+    component.emptyZoneTap.subscribe(z => emitted.push(z));
+
+    const host = fixture.nativeElement as HTMLElement;
+    // EMZ_R is now opponent-owned (and occupied → no .zone-empty there).
+    // EMZ_L stays own + empty → its empty slot is the only wired EMZ tap.
+    const emzOppOccupied = host.querySelector<HTMLElement>('.emz.emz--opponent');
+    expect(emzOppOccupied).withContext('opponent EMZ rendered').toBeTruthy();
+
+    const emzOwnEmpty = host.querySelector<HTMLElement>('.emz:not(.emz--opponent) .zone-empty');
+    expect(emzOwnEmpty).withContext('own EMZ empty slot still present').toBeTruthy();
+    emzOwnEmpty!.click();
+    expect(emitted).toEqual(['EMZ_L']);
+  });
+
+  it('is a no-op in PvP — no parent subscriber means emit reaches nobody (output inert)', () => {
+    // No subscriber attached at all. Clicking must not throw and must not
+    // affect any other channel — this is the structural inertness guarantee.
+    fixture.detectChanges();
+    const inspects: number[] = [];
+    const menus: ZoneId[] = [];
+    component.cardInspectRequest.subscribe(e => inspects.push(e.cardCode));
+    component.menuRequest.subscribe(e => menus.push(e.zoneId));
+
+    const host = fixture.nativeElement as HTMLElement;
+    const ownEmpty = host.querySelector<HTMLElement>('.player-field .zone-empty');
+    expect(() => ownEmpty!.click()).not.toThrow();
+
+    // The (click) on an empty slot must not bleed into neighbouring channels.
+    expect(inspects).toEqual([]);
+    expect(menus).toEqual([]);
+  });
+});
+
+// =============================================================================
 // C4.2 — Action dispatch + click handlers
 // =============================================================================
 

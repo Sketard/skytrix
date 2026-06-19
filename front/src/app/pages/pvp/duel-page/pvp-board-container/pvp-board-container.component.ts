@@ -276,6 +276,10 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   // Click on an XYZ monster's overlay-count badge — opens the overlay
   // materials as a browsable pile. `playerIndex` is the relative owner.
   readonly xyzOverlayRequest = output<{ materials: number[]; playerIndex: number; sourceEvent: MouseEvent }>();
+  // Free-mode only — tap on an empty field slot (own zones + EMZ P0). Inert in
+  // PvP/replay: no parent subscribes, so `emit()` is a no-op. The opponent
+  // empty slot (relPlayer 1) is intentionally NOT wired — mono-player editor.
+  readonly emptyZoneTap = output<ZoneId>();
   readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly revealedZoneKeys = input<ReadonlySet<string>>(new Set());
