@@ -58,8 +58,13 @@ front/src/app/pages/pvp/duel-page/pvp-board-container/
 └── pvp-board-container.component.html                   (+ (click) sur 2 des 3 .zone-empty : L474 propre + L303 EMZ-P0 ; L200 adverse NON câblé — §4)
 
 ROUTE :
-front/src/app/app.routes.ts                              (+ route '/free-board/:deckId')
+front/src/app/app.routes.ts                              (+ route 'decks/:id/free-board', lazy)
 ```
+
+> **Note d'impl (étape 3, 2026-06-19)** : la route retenue est `decks/:id/free-board`
+> (param `:id`, lazy `loadComponent`), PAS `/free-board/:deckId` — pour s'aligner sur
+> les routes sœurs `decks/:id/simulator` + `decks/:id/solver` et préparer le reroute
+> du simulateur (chantier 2). Le composant lit `params.get('id')`.
 
 **Réutilisé tel quel sous les providers de la page** (audit §9-bis du doc UX) :
 `<app-pvp-board-container>`, `AnimationOrchestratorService`, `RenderedBoardStateService`,

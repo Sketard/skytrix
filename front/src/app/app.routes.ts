@@ -17,6 +17,11 @@ export const routes: Routes = [
   { path: 'decks/builder', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
   { path: 'decks/:id/simulator', component: SimulatorPageComponent, canActivate: [AuthService] },
   {
+    path: 'decks/:id/free-board',
+    loadComponent: () => import('./pages/pvp/free-mode/free-mode-page.component').then(m => m.FreeModePageComponent),
+    canActivate: [AuthService],
+  },
+  {
     path: 'decks/:id/solver',
     loadComponent: () => import('./pages/solver/solver-page/solver-page.component').then(m => m.SolverPageComponent),
     canActivate: [AuthService, solverDisabledGuard],
