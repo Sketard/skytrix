@@ -121,10 +121,14 @@ describe('ReplayHubPageComponent', () => {
     expect(component['store'].replays().map(rp => rp.id)).not.toContain('xyz');
     http.expectOne({ url: '/api/replays/xyz', method: 'DELETE' }).flush(null);
     flush();
-    // Stats refresh follows.
+    // On success the store refreshes stats AND resyncs page 0 — deleting a row
+    // shifts the server-side page boundaries (see ReplayHubStore.resyncPagination).
     http.expectOne('/api/replays/stats').flush({
       total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0,
     });
+    http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+      .flush({ elements: [], size: 0 });
+    flush();
   }));
 
   it('does NOT delete when the confirm dialog is dismissed', fakeAsync(() => {
