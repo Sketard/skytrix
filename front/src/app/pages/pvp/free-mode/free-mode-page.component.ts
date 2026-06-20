@@ -11,6 +11,7 @@ import { PvpHandRowComponent } from '../duel-page/pvp-hand-row/pvp-hand-row.comp
 import { PvpCardInspectorWrapperComponent } from '../duel-page/pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
 import { FreeModeActionBarComponent } from './free-mode-action-bar.component';
 import { FreeModeControlBarComponent } from './free-mode-control-bar.component';
+import { FreeModeLpBarComponent } from './free-mode-lp-bar.component';
 import { FreeModePileBarComponent } from './free-mode-pile-bar.component';
 import { SimPileOverlayComponent } from './engine/pile-overlay.component';
 import { SimXyzMaterialPeekComponent } from './engine/xyz-material-peek.component';
@@ -68,8 +69,8 @@ const FREE_MODE_LP = 8000;
   ],
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpCardInspectorWrapperComponent,
-    FreeModeActionBarComponent, FreeModeControlBarComponent, FreeModePileBarComponent,
-    SimPileOverlayComponent, SimXyzMaterialPeekComponent,
+    FreeModeActionBarComponent, FreeModeControlBarComponent, FreeModeLpBarComponent,
+    FreeModePileBarComponent, SimPileOverlayComponent, SimXyzMaterialPeekComponent,
   ],
 })
 export class FreeModePageComponent {
@@ -118,9 +119,9 @@ export class FreeModePageComponent {
   // the template allocates fresh each CD pass, thrashing the OnPush child input.
   protected readonly emptyChainLinks = EMPTY_ARRAY;
 
-  // why: page-local editor state (player LP), wired to the inline LP editor in
-  // étape 5. Not pipeline transport, not an @Environment input, and the page is
-  // not a projection — it's plain component edit state outside the α.1 taxonomy.
+  // why: page-local editor state (player LP), wired to the inline LP bar
+  // (<app-free-mode-lp-bar>). Not pipeline transport, not an @Environment input,
+  // and the page is not a projection — plain component edit state outside α.1.
   // eslint-disable-next-line skytrix-pipeline/pipeline-signal-tagged
   protected readonly lp = signal(FREE_MODE_LP);
 
@@ -203,6 +204,12 @@ export class FreeModePageComponent {
 
   closeInspector(): void {
     this.cardInspection.close();
+  }
+
+  /** LP bar → set player LP (already floored at 0 by the bar). The board-sync
+   *  effect reads `this.lp()` and re-renders. */
+  onLpChange(value: number): void {
+    this.lp.set(value);
   }
 
   // ── Mini-bar CARTE actions (§6.1) — route to the interaction service ───────

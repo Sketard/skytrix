@@ -1,0 +1,25 @@
+<div class="lp-bar" role="toolbar" aria-label="Points de vie">
+  <mat-icon class="lp-icon" aria-hidden="true">favorite</mat-icon>
+
+  <app-icon-button ariaLabel="Retirer 1000 PV" (click)="step(-LP_STEP)">
+    <mat-icon>keyboard_double_arrow_down</mat-icon>
+  </app-icon-button>
+  <app-icon-button ariaLabel="Retirer 100 PV" (click)="step(-LP_STEP_SMALL)">
+    <mat-icon>keyboard_arrow_down</mat-icon>
+  </app-icon-button>
+
+  <span class="lp-field">
+    <app-input
+      type="number"
+      ariaLabel="Points de vie"
+      [ngModel]="lp()"
+      (ngModelChange)="setExact(+$event)" />
+  </span>
+
+  <app-icon-button ariaLabel="Ajouter 100 PV" (click)="step(LP_STEP_SMALL)">
+    <mat-icon>keyboard_arrow_up</mat-icon>
+  </app-icon-button>
+  <app-icon-button ariaLabel="Ajouter 1000 PV" (click)="step(LP_STEP)">
+    <mat-icon>keyboard_double_arrow_up</mat-icon>
+  </app-icon-button>
+</div>

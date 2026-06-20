@@ -56,6 +56,10 @@
       (browse)="onPileBrowse(pileZone)" />
   }
 
+  <!-- LP editor (§4 — a NEW free-mode capability the sim lacks). Mono-player:
+       edits player 0's LP, floored at 0. -->
+  <app-free-mode-lp-bar class="free-mode-lp-bar" [lp]="lp()" (lpChange)="onLpChange($event)" />
+
   <!-- Control bar (undo / redo / reset) — first migration step of the sim
        control-bar, without the Router/back leak (chantier 2). -->
   <app-free-mode-control-bar class="free-mode-control-bar" (didReset)="onDidReset()" />
