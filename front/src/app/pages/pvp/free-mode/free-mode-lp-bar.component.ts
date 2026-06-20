@@ -33,12 +33,19 @@ export class FreeModeLpBarComponent {
     this.emit(this.lp() + delta);
   }
 
-  protected setExact(value: number): void {
+  /** Set LP from the raw input string. Ignores a transient empty / non-numeric
+   *  value (the field being cleared to retype) instead of snapping LP to 0,
+   *  which would fight the user's edit through the [ngModel]="lp()" round-trip. */
+  protected setExact(raw: string): void {
+    const trimmed = raw.trim();
+    if (trimmed === '') return;
+    const value = Number(trimmed);
+    if (!Number.isFinite(value)) return;
     this.emit(value);
   }
 
   private emit(value: number): void {
-    this.lpChange.emit(Math.max(0, Math.floor(value || 0)));
+    this.lpChange.emit(Math.max(0, Math.floor(value)));
   }
 
   protected readonly LP_STEP = LP_STEP;

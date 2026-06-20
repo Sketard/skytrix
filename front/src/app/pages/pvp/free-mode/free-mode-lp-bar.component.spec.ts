@@ -46,15 +46,26 @@ describe('FreeModeLpBarComponent', () => {
     expect(out).toEqual([0]);
   });
 
-  it('sets an exact value, floored and integer-coerced', () => {
+  it('sets an exact value from the raw input string, floored', () => {
     const out = emitted();
-    component['setExact'](12345.9);
+    component['setExact']('12345.9');
     expect(out).toEqual([12345]);
   });
 
-  it('coerces NaN / falsy input to 0', () => {
+  it('floors an exact value at 0 (negative typed)', () => {
     const out = emitted();
-    component['setExact'](NaN);
+    component['setExact']('-50');
     expect(out).toEqual([0]);
+  });
+
+  it('ignores an empty / non-numeric input instead of snapping to 0', () => {
+    // Clearing the field to retype must NOT emit 0 (would fight the edit via
+    // the [ngModel]="lp()" round-trip). Review P6.
+    const out = emitted();
+    component['setExact']('');
+    component['setExact']('   ');
+    component['setExact']('-');
+    component['setExact']('abc');
+    expect(out).toEqual([]);
   });
 });

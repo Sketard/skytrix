@@ -112,7 +112,9 @@ export class FreeModeInteractionService {
       this.disarm();
       this.lastTapInstanceId = null;
       this.lastTapAt = 0;
-      this.inspect(event);
+      // Only inspect a card with a real cardCode — degrade gracefully (no
+      // inspector on code 0) for a token/placeholder, mirror of the hand path.
+      if (event.cardCode) this.inspect(event);
       return;
     }
     this.lastTapAt = now;

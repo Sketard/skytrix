@@ -435,6 +435,20 @@ describe('FreeModeInteractionService', () => {
 
       expect(inspected).toEqual([{ code: 456, expanded: true }]);
     });
+
+    it('P7 — board double-tap on a card with cardCode 0 does NOT inspect', () => {
+      const token = makeCard();
+      place(SimZoneId.MONSTER_1, token);
+      const inspected: number[] = [];
+      service.onInspect(e => inspected.push(e.cardCode));
+
+      // single-zone resolve picks cards[0] regardless of cardCode; the event
+      // carries 0 (token/placeholder) → the double-tap must skip inspect.
+      service.onCardTap({ cardCode: 0, zoneId: 'M1' }); // arm
+      service.onCardTap({ cardCode: 0, zoneId: 'M1' }); // dbl-tap < 250ms
+
+      expect(inspected).toEqual([]); // mirror of the hand path (P5)
+    });
   });
 
   describe('mini-bar CARTE actions (§6.1)', () => {

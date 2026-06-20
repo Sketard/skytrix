@@ -13,7 +13,7 @@
       type="number"
       ariaLabel="Points de vie"
       [ngModel]="lp()"
-      (ngModelChange)="setExact(+$event)" />
+      (ngModelChange)="setExact($event)" />
   </span>
 
   <app-icon-button ariaLabel="Ajouter 100 PV" (click)="step(LP_STEP_SMALL)">

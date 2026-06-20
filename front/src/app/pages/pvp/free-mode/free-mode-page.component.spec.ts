@@ -138,6 +138,19 @@ describe('FreeModePageComponent — providers + bootstrap (A6)', () => {
     expect(rbs.renderedState().players[0].deckCount).toBe(1);
   });
 
+  it('P8 — onLpChange drives the rendered player LP through the sync effect', () => {
+    configure(makeRouteWithParam(null));
+    fixture.detectChanges();
+
+    const rbs = fixture.debugElement.injector.get(RenderedBoardStateService);
+    expect(rbs.renderedState().players[0].lp).toBe(8000); // default
+
+    component.onLpChange(4000);
+    fixture.detectChanges();
+
+    expect(rbs.renderedState().players[0].lp).toBe(4000);
+  });
+
   it('enables immersive mode on construct and restores it on destroy', () => {
     configure(makeRouteWithParam(null));
     fixture.detectChanges();

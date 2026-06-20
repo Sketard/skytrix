@@ -729,3 +729,65 @@ décrément planché à 0 + désactivé à 0 · arbitre 3 gestes (long-press/rig
 puis inspect, pas d'arm fantôme) · input N en `<app-input>` DS (zéro `window.prompt`) · DS
 (`<app-icon-button>`, tokens, pas de `::ng-deep`) · plan de tests §8 (7 specs présents +
 intégration bonus).
+
+---
+
+## 13. Review Findings — 2e passage (auto-revue des patchs, 2026-06-19)
+
+> Seconde revue adversariale (3 couches) ciblée sur les patchs P1–P5 + le fix de
+> test de la 1re revue (`2ebca37b..HEAD`). But : ne pas auto-valider mes propres
+> correctifs. Verdict : les 5 patchs font exactement ce que §12 prescrivait, tests
+> non-tautologiques, fix replay-hub légitime. 2 faux positifs écartés (la prétendue
+> mauvaise profondeur `.card` du test P5 — la profondeur est correcte, le préfixe
+> `ResolvedCard.card` explique le 3e niveau ; et `armedIsMaterial()` qui « ne
+> flipperait pas » — c'est un computed live via `findMaterialHost`).
+
+### Patchs (sans ambiguïté)
+
+> **✅ Les 3 patchs ci-dessous ont été APPLIQUÉS + testés (2026-06-19).** `tsc` clean,
+> Karma free-mode **131/131**, suite front complète **1967/1967**. P6 : `setExact` prend
+> la string brute et ignore vide/NaN (plus de snap-à-0). P7 : garde `if (event.cardCode)`
+> ajoutée à la branche double-tap board. P8 : test page `onLpChange → renderedState LP`.
+
+- [x] [Review][Patch] **LP bar : champ vidé → snap à 0 en cours de frappe + pas de
+  plafond** [free-mode-lp-bar.component.ts] — `<app-input>` (CVA) émet la string brute ;
+  vider le champ pour retaper émet `''` → `setExact(+'')=0` → réécrit `0` via
+  `[ngModel]="lp()"`, empêchant la saisie d'une valeur exacte (ex. 4000). Fix : dans
+  `setExact`, ignorer une entrée vide / NaN (ne réécrire que sur un nombre réel) plutôt
+  que coercer en 0. Optionnel : plafond LP pour éviter un débordement de `.lp-field` (5rem).
+- [x] [Review][Patch] **P5 incomplet : le chemin BOARD inspecte encore `cardCode: 0`**
+  [free-mode-interaction.service.ts:onCardTap double-tap] — P5 n'a gardé que le chemin MAIN
+  (`onHandCardTap`). Le double-tap d'une carte board sans passcode appelle toujours
+  `this.inspect(event)` avec `event.cardCode` (potentiellement 0). Fix : même garde
+  (`if (event.cardCode) ...`) dans la branche double-tap de `onCardTap`.
+- [x] [Review][Patch] **Câblage LP page (`onLpChange` → effect) non testé** — le LP bar est
+  couvert en isolation, mais l'intégration `(lpChange) → lp.set() → effect → render` n'a
+  aucune assertion dans `free-mode-page.component.spec.ts`. Fix : 1 test page qui appelle
+  `onLpChange(N)` et vérifie que `lp()` (ou le payload rendu) reflète N.
+
+### Différés (réels, non actionnables maintenant)
+
+- [x] [Review][Defer] **Armé depuis une pile + ouverture de la mini-barre de SA pile →
+  action zone-cachée peut throw `not found in zone`** [free-mode-interaction.service.ts /
+  onPileTap guard P4] — après le guard P4, taper la pile de la carte armée ouvre la barre en
+  restant armé ; un mill/shuffle qui relocalise la carte, suivi d'un `onEmptyZoneTap`/
+  `destroyArmed` (zone cachée), peut lever une exception. Basse fréquence, robustesse.
+- [x] [Review][Defer] **Armer un matériau XYZ puis taper une zone VIDE → détache
+  silencieusement sur le terrain** [free-mode-interaction.service.ts / moveCard detach
+  branch] — comportement raisonnable en sandbox (pose = détache), mais non documenté.
+- [x] [Review][Defer] **`step()` lit `lp()` potentiellement périmé sur double-clic rapide du
+  même bouton** [free-mode-lp-bar.component.ts] — l'input-as-source-of-truth a une latence de
+  round-trip ; un incrément peut être perdu. Faible (le set signal → CD est sync en pratique).
+- [x] [Review][Defer] **Branche erreur de `resyncPagination` non testée** [replay-hub-store.ts]
+  — code pré-existant (pas mon changement) : un GET resync en échec après delete réussi laisse
+  `currentOffset` périmé sans erreur remontée. Hors scope de cette session.
+
+### Vérifié conforme
+
+P1–P5 implémentent exactement §12 (armInstance/overlayMaterials, attachPending cleared,
+self-move guard, inspect garde passcode) · tests non-tautologiques (échouent sans le fix) ·
+fix replay-hub légitime (le store fait bien `fetchStats` + `resyncPagination` après delete) ·
+LP bar DS-conforme (`<app-icon-button>`/`<app-input>`, tokens, pas de `::ng-deep`, pas de hex,
+plancher 0) · règle catalogue DS N/A (composant sous `pages/`, pas `components/` — cohérent
+avec les bars sœurs) · `commitAll` reste la dette by-design v1a (§3.2, non régressé) ·
+bookkeeping §12 correct.
