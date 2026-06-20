@@ -172,7 +172,10 @@ export class FreeModeInteractionService {
       this.disarm();
       this.lastTapInstanceId = null;
       this.lastTapAt = 0;
-      this.inspect({ cardCode: card.card.card.passcode ?? 0 });
+      // Only inspect a hand card with a real passcode — degrade gracefully
+      // (no inspector on code 0) for a token/placeholder, like the board path.
+      const passcode = card.card.card.passcode;
+      if (passcode) this.inspect({ cardCode: passcode });
       return;
     }
     this.lastTapAt = now;
@@ -205,8 +208,11 @@ export class FreeModeInteractionService {
     this.commandStack.moveCard(armed.instanceId, armed.zone, target);
     this.ctx.announceEvent(`Posée en zone ${pvpZone}`, 0);
     // Hand stays "sticky" — but the armed card just moved, so re-anchor it to
-    // its new zone (a follow-up tap on it should still work).
+    // its new zone (a follow-up tap on it should still work). Clear attach-pending:
+    // posing into a slot is NOT an XYZ host pick, so the next card tap must not
+    // be misrouted into an attach.
     this._armed.set({ ...armed, zone: target });
+    this._attachPending.set(false);
     // Reset the double-tap window: the next tap on the just-posed card must NOT
     // be misread as a double-tap of the arming tap (stale lastTapAt/Id).
     this.lastTapInstanceId = null;
@@ -222,6 +228,9 @@ export class FreeModeInteractionService {
     if (!armed) return false;
     const target = pvpZoneToSim(pvpZone);
     if (!target) return false;
+    // Depositing into the card's OWN pile is a no-op move that pollutes the undo
+    // stack. Treat it as "not deposited" so the page opens the pile bar instead.
+    if (armed.zone === target) return false;
     this.commandStack.moveCard(armed.instanceId, armed.zone, target);
     this.ctx.announceEvent(`Déposée dans ${pvpZone}`, 0);
     this.disarm();
@@ -258,6 +267,14 @@ export class FreeModeInteractionService {
       const card = board[zone].find(c => c.instanceId === instanceId);
       if (card) {
         this.arm({ instanceId, zone, card });
+        return;
+      }
+      // Also reach XYZ materials (the peek arms a material by id — its zone is
+      // the host's). Without this the T2 transfer flow from the peek is dead.
+      const host = board[zone].find(h => h.overlayMaterials?.some(m => m.instanceId === instanceId));
+      const material = host?.overlayMaterials?.find(m => m.instanceId === instanceId);
+      if (material) {
+        this.arm({ instanceId, zone, card: material });
         return;
       }
     }

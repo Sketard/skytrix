@@ -639,3 +639,93 @@ déjà absent. Le risque qu'on craignait de perdre n'existait pas.
 3. Vérifier qu'aucun autre consommateur ne dépend du vieux rendu sim.
 4. Statuer sur le `CardInstance` / `BoardStateService` : restent-ils tels quels, ou
    convergent-ils vers un modèle unique PvP à terme ? (question ouverte, post-retrait).
+
+---
+
+## 12. Review Findings (code review 2026-06-19 — branche `feat/pvp-free-mode`)
+
+> Revue adversariale 3 couches (Blind Hunter / Edge Case Hunter / Acceptance Auditor)
+> sur le diff `master...feat/pvp-free-mode`. Verdict global : implémentation
+> substantiellement conforme, invariants durs (adaptateur, `chainPhase=idle`,
+> `emptyZoneTap`, `swapCards`, compteurs hors-undo + décrément, gestes) respectés
+> et bien testés. 3 décisions à trancher, 4 patchs sans ambiguïté, 6 différés.
+
+### Décisions tranchées (Axel, 2026-06-19)
+
+- **Édition LP** → **IMPLÉMENTER** l'éditeur LP inline (étape 5 promise par le commentaire
+  L121-123). Reclassé en patch ci-dessous.
+- **Simulateur supprimé en avance** → **CONSOLIDATION ACTÉE.** On garde la suppression
+  early dans le diff v1 ; la frontière « Chantier 2 distinct » de §11 est volontairement
+  franchie. Conséquence assumée : plus de fallback simulateur si free-mode régresse.
+  Aucune action code.
+- **Attacher-XYZ sur hôte non-XYZ** → **ACCEPTÉ (sandbox total).** Cohérent avec le swap
+  inter-types déjà autorisé. Aucune validation de type ajoutée. Dismiss.
+
+### Patchs (sans ambiguïté)
+
+> **✅ Les 5 patchs ci-dessous ont été APPLIQUÉS + testés (2026-06-19).** `tsc --noEmit`
+> clean, suite Karma free-mode **128/128 verte**. P1 (LP) a livré un nouveau composant
+> `free-mode-lp-bar.component.{ts,html,scss,spec.ts}` (±1000/±100 + input DS, plancher 0,
+> mono-joueur P0) câblé dans la page — AUCUNE modif du board chaud (le board n'expose pas
+> d'output LP ; l'éditeur vit dans la page, surface board inchangée = le seul `emptyZoneTap`).
+> P2–P5 sont des fixes ciblés dans `free-mode-interaction.service.ts` + 4 tests de
+> non-régression.
+
+- [x] [Review][Patch] **Éditeur LP inline à implémenter** [free-mode-page.component.ts:125]
+  — décision Axel : LP est une capacité v1. Câbler un éditeur LP (+/− ou input DS) qui écrit
+  le signal `lp`, plus un déclencheur (tap sur la pastille LP du board ou bouton mini-barre).
+  L'effect de sync (L156-161) consomme déjà `this.lp()` → le rendu suivra. Couvrir par spec.
+- [x] [Review][Patch] **`armInstance` ne trouve pas un matériau XYZ → flow T2 mort depuis
+  le peek** [free-mode-interaction.service.ts:255-264] — `armInstance` ne scanne que les
+  zones top-level, jamais `overlayMaterials`. Or le peek XYZ `selectCard(material)`
+  (xyz-material-peek.component.ts:74) route vers `armInstance` (free-mode-page.component.ts:177).
+  Armer un matériau depuis le peek = no-op silencieux, alors que le commentaire L172-173
+  prétend que ça marche. Fix : scanner aussi `overlayMaterials` (zone = celle de l'hôte).
+- [x] [Review][Patch] **`_attachPending` survit à une pose → attach fantôme au tap suivant**
+  [free-mode-interaction.service.ts:200-214] — `onEmptyZoneTap` ré-ancre `_armed` mais ne
+  remet pas `_attachPending=false`. Séquence : armer → mini-barre Attacher → tap zone VIDE
+  (au lieu d'un hôte XYZ) → la carte se pose ET reste en attach-pending → le tap suivant sur
+  une autre carte déclenche un `attachMaterial` non demandé. Fix : `_attachPending.set(false)`
+  dans `onEmptyZoneTap`.
+- [x] [Review][Patch] **Déposer la carte armée dans sa propre pile = self-move dégénéré**
+  [free-mode-interaction.service.ts:220-229] — si `armed.zone === target` (ex. top de GY
+  redéposée en GY), `moveCard` empile une commande no-op dans l'undo + avale l'ouverture de
+  la mini-barre pile. Fix : `if (armed.zone === target) return false;`.
+- [x] [Review][Patch] **Double-tap inspect d'une carte main sans passcode → `cardCode: 0`**
+  [free-mode-interaction.service.ts:175] — la branche double-tap main fabrique
+  `cardCode: card.card.card.passcode ?? 0`, ouvrant l'inspecteur sur le code 0 au lieu de
+  dégrader. Le chemin board passe le vrai cardCode. Fix : ne pas inspecter si passcode absent.
+
+### Différés (réels, non actionnables maintenant)
+
+- [x] [Review][Defer] **Effect de synchro rebuild payload complet + `commitAll` à chaque
+  édition compteur/LP** [free-mode-page.component.ts:156-161] — différé, accepté en v1a
+  (zéro lock → `assertNoLocks` passe). À ARRACHER à l'arrivée de v1b (lock/travel) sinon
+  `commitAll` tirera sur un lock vivant.
+- [x] [Review][Defer] **Fenêtre double-tap partagée par instanceId entre `onCardTap` et
+  `onHandCardTap`** [free-mode-interaction.service.ts:75-76] — faux double-tap cross-surface
+  possible sous tap rapide. Très étroit, dur à reproduire.
+- [x] [Review][Defer] **Compteur suit la carte détruite dans le rendu GY**
+  [free-mode-interaction.service.ts:322] — un badge compteur reste visible sur la carte en
+  pile ; hors-undo (cohérent §5.4) mais artefact non documenté.
+- [x] [Review][Defer] **« Activer » flashe le mauvais élément pour un matériau armé**
+  [free-mode-page.component.ts:210-216] — `armedZoneKey` résout la zone de l'hôte ; cosmétique
+  (anim-only).
+- [x] [Review][Defer] **Mill/Reveal sur deck vide = dismiss fantôme sans feedback**
+  [free-mode-page.component.ts:239-247] — clamp interne OK, mais aucun retour utilisateur.
+- [x] [Review][Defer] **`onXyzOverlayRequest` suppose l'hôte à l'index 0 + pas de garde
+  `overlayMaterials` non vide** [free-mode-page.component.ts:259-265] — course étroite
+  badge-tap vs changement d'état concurrent.
+
+### Vérifié conforme (invariants load-bearing)
+
+Adaptateur (`overlayMaterials` toujours `[]`, `position` bitmask valide, swap inter-types,
+cardCode null → placeholder) · `chainPhase='idle'` jamais violé (POLL-DROP) ·
+`DuelState = BoardStatePayload` (alias confirmé, point ouvert #1 résolu) · `emptyZoneTap`
+câblé L474 + L303-P0, L200 intact, no-op sans abonné PvP · `commitAll` isolé au seul effect
+de sync, zéro `lockZone` · `swapCards` natif (re-locate-by-instanceId, undo atomique, PAS
+2× moveCard ; 7 commandes existantes = renames identiques) · compteurs Map hors-undo +
+décrément planché à 0 + désactivé à 0 · arbitre 3 gestes (long-press/right-click → disarm
+puis inspect, pas d'arm fantôme) · input N en `<app-input>` DS (zéro `window.prompt`) · DS
+(`<app-icon-button>`, tokens, pas de `::ng-deep`) · plan de tests §8 (7 specs présents +
+intégration bonus).

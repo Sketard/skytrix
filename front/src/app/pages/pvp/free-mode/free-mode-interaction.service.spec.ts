@@ -350,6 +350,66 @@ describe('FreeModeInteractionService', () => {
       service.armInstance('ghost');
       expect(service.armedInstanceId()).toBeNull();
     });
+
+    it('arms an XYZ MATERIAL by instanceId (peek → arm → T2 transfer entry)', () => {
+      // Review P2: armInstance only scanned top-level zones, so arming a material
+      // from the XYZ peek was a silent no-op and the T2 transfer flow was dead.
+      const mat = makeCard();
+      const host = makeCard();
+      host.overlayMaterials = [mat];
+      place(SimZoneId.MONSTER_1, host);
+
+      service.armInstance(mat.instanceId);
+
+      expect(service.armedInstanceId()).toBe(mat.instanceId);
+      expect(service.armedIsMaterial()).toBe(true); // anchored to the host's zone
+    });
+  });
+
+  describe('review regressions (P3 / P4 / P5)', () => {
+    it('P3 — posing clears attach-pending so the next tap is NOT misrouted into an attach', () => {
+      const armedCard = makeCard();
+      const other = makeCard();
+      place(SimZoneId.HAND, armedCard);
+      place(SimZoneId.MONSTER_1, other);
+
+      service.onCardTap({ cardCode: pc(armedCard), zoneId: 'HAND' }); // arm
+      service.beginAttachPending(); // arm attach-pending
+      service.onEmptyZoneTap('M2'); // pose into an empty slot (NOT an XYZ host)
+
+      expect(service.isAttachPending()).toBe(false);
+
+      // The next tap on another card must NOT attach — wait out the dbl-tap window.
+      service['lastTapAt'] = performance.now() - 1000;
+      service.onCardTap({ cardCode: pc(other), zoneId: 'M1' });
+      expect(stack.attachMaterial).not.toHaveBeenCalled();
+      expect(stack.transferMaterial).not.toHaveBeenCalled();
+    });
+
+    it('P4 — depositing the armed card into its OWN pile is not a deposit (no self-move)', () => {
+      const a = makeCard();
+      place(SimZoneId.GRAVEYARD, a);
+      service.armInstance(a.instanceId); // armed, zone = GY
+
+      const deposited = service.onPileTap('GY'); // tap its own pile
+
+      expect(deposited).toBe(false); // page opens the pile bar instead
+      expect(stack.moveCard).not.toHaveBeenCalled(); // no no-op command pushed
+      expect(service.armedInstanceId()).toBe(a.instanceId); // still armed
+    });
+
+    it('P5 — double-tap inspect on a passcode-less hand card does NOT inspect code 0', () => {
+      const token = makeCard();
+      delete (token.card as { card: { passcode?: number } }).card.passcode;
+      place(SimZoneId.HAND, token);
+      const inspected: number[] = [];
+      service.onInspect(e => inspected.push(e.cardCode));
+
+      service.onHandCardTap(0); // arm
+      service.onHandCardTap(0); // dbl-tap < 250ms
+
+      expect(inspected).toEqual([]); // degraded gracefully, no inspect on code 0
+    });
   });
 
   describe('onInspect sink', () => {
