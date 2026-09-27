@@ -1,6 +1,16 @@
 # Skytrix — Documentation Index
 
-> Generated 2026-05-10 by `/bmad-document-project` (deep scan, multi-part). Primary AI retrieval entry point. Start here.
+**Lecture** : l'index de la documentation technique de skytrix (en anglais) : une ligne par document, et par où
+commencer selon ce qu'on vient faire. Se lit par sections : `Grep "^## "`, puis `Read` par plage.
+
+## Sommaire
+
+1. Project at a glance
+2. Quick reference by part
+3. Reference documentation
+4. Existing documentation in the repo
+5. Getting started
+6. Known follow-ups (2026-05-10)
 
 ## Project at a glance
 
@@ -33,11 +43,10 @@
 - **Port:** 3001 (WebSocket + internal HTTP)
 - **Architecture:** [architecture-duel-server.md](./architecture-duel-server.md)
 
-## Generated documentation
+## Reference documentation
 
 ### Project-wide
 - [Project Overview](./project-overview.md) — what this is, where to look, repo type
-- [Source Tree Analysis](./source-tree-analysis.md) — annotated directory layout per part
 - [Integration Architecture](./integration-architecture.md) — how the 3 parts talk (REST + WS + internal HTTP)
 - [Development Guide](./development-guide.md) — prerequisites, setup, run, test, coding standards
 - [Deployment Guide](./deployment-guide.md) — Docker Compose stack, TLS, networks, healthchecks
@@ -55,10 +64,6 @@
 ### Frontend reference
 - [Component Inventory](./component-inventory-front.md) — ~75 components categorized
 
-### Machine-readable
-- [project-parts.json](./project-parts.json) — parts + integration points + shared protocol metadata
-- [project-scan-report.json](./project-scan-report.json) — workflow state snapshot
-
 ## Existing documentation in the repo
 
 - [README.md](../README.md) — minimal install / setup checklist (FR)
@@ -75,7 +80,7 @@
   - Polling removal — regression surface (`POLL-DROP REGRESSION` watchdog)
   - Server module configuration pattern (`createConfigurable<T>`)
   - WS protocol module split + boot invariant
-- [`work/project-context.md`](../work/project-context.md) — AI agent rules (regenerated alongside this scan)
+- [project-context.md](./project-context.md) — AI agent rules (naming, tests, patterns)
 - [duel-server/DATA-SETUP.md](../duel-server/DATA-SETUP.md) — `cards.cdb` + scripts setup
 
 ### Planning / R&D artifacts
@@ -119,14 +124,9 @@
 | New solver scoring | [development-guide.md](./development-guide.md#adding-a-new-card-to-the-solver-scoring) — go through the AI-assisted prompt |
 | New DB column | New Flyway migration `V016__*.sql` + adjust the entity + DTO + mapper + tests |
 
-## Verification recap (from this scan)
+## Known follow-ups (2026-05-10)
 
-- Tests / extractions executed: source-tree enumeration via 3 parallel `Explore` subagents (back / front / duel-server). Cross-referenced with `CLAUDE.md` rules and `work/project-context.md`.
-- Outstanding risks or follow-ups (see per-part anomalies):
-  - `RoomService:73` pessimistic lock around external HTTP call.
-  - `message-filter.ts:213` Story 4.2 player-index conversion not yet deployed.
-  - `work/project-context.md` was outdated (2026-02-07, pre-PvP) — refreshed by this scan.
-  - `out-of-order` Flyway is enabled; tolerable on single-node.
-- Recommended next checks before PR:
-  - If you generated this doc as part of a feature branch, re-run the scan after merge to capture changes.
-  - The `ws-protocol-*.ts` sync check is part of duel-server's prebuild — ensure it passes locally.
+- `RoomService:73` pessimistic lock around external HTTP call.
+- `message-filter.ts:213` Story 4.2 player-index conversion not yet deployed.
+- `out-of-order` Flyway is enabled; tolerable on single-node.
+- The `ws-protocol-*.ts` sync check is part of duel-server's prebuild — ensure it passes locally.

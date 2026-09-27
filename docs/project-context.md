@@ -10,7 +10,7 @@ supersedes: '2026-02-07 single-app version (PvP/replay/solver/duel-server were u
 
 # Project Context for AI Agents
 
-_Critical rules and patterns AI agents must follow when implementing code. Focus on unobvious details. For deep architectural rules (animation parity, chain state, lock contract, replay parity, polling watchdog), see [`../CLAUDE.md`](../../CLAUDE.md). For generated reference docs, see [`../docs/`](../../docs/)._
+_Critical rules and patterns AI agents must follow when implementing code. Focus on unobvious details. For deep architectural rules (animation parity, chain state, lock contract, replay parity, polling watchdog), see [`duel/README.md`](duel/README.md). For reference docs, see [`index.md`](index.md)._
 
 ---
 
@@ -140,7 +140,7 @@ Features shipped:
 - Solver connection lifecycle: `attachSolverConnection` returns `{ kind: 'limit' | 'attached' (replaced?) }`; `detachSolverConnection` is idempotent and race-safe with replace.
 - Server-side chain state: `ChainStateTracker.applyChainTransition(state, message)` is pure and tested.
 
-### PvP / Replay / Animation Rules (must read [`../CLAUDE.md`](../../CLAUDE.md))
+### PvP / Replay / Animation Rules (must read [`duel/README.md`](duel/README.md))
 
 These are the most-violated rules. Quick recap:
 
@@ -149,7 +149,7 @@ These are the most-violated rules. Quick recap:
 3. **Replay Board State Parity.** Replay must provide equivalent intermediate board states so `updateLogical()` + `syncRendered()` produce the same rendered state as PvP. Replay MUST NOT call `commitAll()` (reserved for `abort()` / `jumpToState()`); it uses `syncRendered()` to respect the lock contract.
 4. **`boardStateAfter` parity.** `ChainSnapshotTracker` (`duel-server/src/chain-snapshot-tracker.ts`) is the **same class** in `runDuelLoop` (live PvP, `duel-worker.ts`) and `runReplayPreComputation` (replay precompute, `replay-precompute.ts`). The attach predicate, field name, and timing are identical by construction.
 5. **Lock Contract.** Async event handlers in `processEvent()` MUST call `lockZone()` on ALL zones they animate (source AND destination) **synchronously before the first `await`**. `commitUnlocked()` runs immediately after `processEvent()` returns — any unlocked zone is committed.
-6. **`POLL-DROP REGRESSION` watchdog.** If you ever see `[POLL-DROP REGRESSION]` in `console.error` or a `duelAssert` fires with site `POLL-DROP-REGRESSION`, **read CLAUDE.md §"Polling Removal — Regression Surface" before investigating anything else.** Don't reintroduce the chain-poll back-off — find the missing event/signal upstream first.
+6. **`POLL-DROP REGRESSION` watchdog.** If you ever see `[POLL-DROP REGRESSION]` in `console.error` or a `duelAssert` fires with site `POLL-DROP-REGRESSION`, **read [`duel/replay.md`](duel/replay.md) §"Polling Removal — Regression Surface" before investigating anything else.** Don't reintroduce the chain-poll back-off — find the missing event/signal upstream first.
 7. **`duelAssert(condition, site, msg)`** for ALL animation-critical invariants. Never raw `if (isDevMode())`.
 8. **Animation timing constants** in `animation-constants.ts`. Naming: `*_MS` (base), `*_MIN_MS` (floor), `*_TIMEOUT_MS` (safety, wrapped in `safetyTimeout`).
 
@@ -216,7 +216,7 @@ These are the most-violated rules. Quick recap:
 - NEVER manually map DTOs in services — always MapStruct.
 - NEVER edit the `ws-protocol.ts` barrel — edit a sub-file.
 - NEVER skip the duel-server boot invariant — register `isXxxConfigured()` for new configurable modules.
-- NEVER reintroduce the chain-poll back-off (see CLAUDE.md `POLL-DROP REGRESSION`).
+- NEVER reintroduce the chain-poll back-off (see `duel/replay.md`, `POLL-DROP REGRESSION`).
 - NEVER call `commitAll()` from replay (reserved for `abort()` / `jumpToState()`).
 - NEVER read `renderedState().turnCount` or `phase` and combine with zone content during animations — use `logicalState()` instead.
 
@@ -264,8 +264,8 @@ These are the most-violated rules. Quick recap:
 **For AI agents:**
 
 - Read this file before implementing any code.
-- For PvP / replay / animation work: also read [`../../CLAUDE.md`](../../CLAUDE.md) cover-to-cover.
-- For architectural reference: see [`../docs/`](../../docs/) (generated via `/bmad-document-project`).
+- For PvP / replay / animation work: also read [`duel/README.md`](duel/README.md) and the document it points to.
+- For architectural reference: see [`index.md`](index.md).
 - Follow ALL rules exactly as documented.
 - When in doubt, prefer the more restrictive option.
 - Update this file if new patterns emerge.
@@ -276,6 +276,6 @@ These are the most-violated rules. Quick recap:
 - Update when stack or major architectural rule changes.
 - Review periodically for outdated rules.
 - Remove rules that become obvious over time.
-- Re-run `/bmad-document-project` when major features ship to refresh `docs/` and this file.
+- Refresh `docs/` and this file when major features ship.
 
 Last Updated: 2026-05-10

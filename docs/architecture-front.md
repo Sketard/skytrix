@@ -249,6 +249,5 @@ Production budgets: initial JS 1 MB warn / 2 MB error; component styles 12 KB wa
 
 - Cross-part wiring + WebSocket protocol overview: [integration-architecture.md](./integration-architecture.md)
 - Component catalogue: [component-inventory-front.md](./component-inventory-front.md)
-- Annotated source tree: [source-tree-analysis.md](./source-tree-analysis.md)
 - Dev/build/test recipes: [development-guide.md](./development-guide.md)
 - AI agent rules (animation parity, locks, chain state): [duel/README.md](duel/README.md)

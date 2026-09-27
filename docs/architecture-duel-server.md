@@ -28,7 +28,7 @@ Three things make it interesting:
 
 ## Module map
 
-The full file-by-file breakdown is in [source-tree-analysis.md](./source-tree-analysis.md#duel-server--node-websocket-server). Top-level groupings:
+Top-level groupings:
 
 | Group | Files |
 |---|---|
@@ -335,6 +335,5 @@ Single stage on `node:24-slim`. Installs curl/git/ca-certificates. Copies `scrip
 
 - HTTP + WS contracts: [api-contracts-duel-server.md](./api-contracts-duel-server.md)
 - Cross-part wiring: [integration-architecture.md](./integration-architecture.md)
-- Annotated source tree: [source-tree-analysis.md](./source-tree-analysis.md#duel-server--node-websocket-server)
 - AI agent rules (chain state, locks, animation parity, polling watchdog): [duel/README.md](duel/README.md)
 - Solver R&D logs + methodology: [`work/solver-data/`](../work/solver-data/)

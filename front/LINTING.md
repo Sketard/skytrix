@@ -21,17 +21,11 @@ npm run lint:styles:fix # stylelint --fix
 
 ## Hook pré-commit
 
-Un hook git versionné (`scripts/hooks/pre-commit`, activé via
-`core.hooksPath`) lance `lint-staged` sur les fichiers du `front/`
-réellement stagés.
+Le pre-commit lefthook (`lefthook.yml` à la racine du dépôt) lance
+`lint-staged` sur les fichiers du `front/` réellement stagés.
 
-Activation après un clone :
-
-```bash
-sh scripts/setup-hooks.sh
-```
-
-Bypass ponctuel : `git commit --no-verify`.
+Activation après un clone : `npm install` à la racine (son script
+`prepare` pose les crochets).
 
 ## Stratégie « strict + baseline »
 
