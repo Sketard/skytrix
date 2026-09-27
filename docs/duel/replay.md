@@ -115,8 +115,11 @@ shared by both modes so the doctrine stays unified.
 
 Replay must provide equivalent intermediate board states so
 `updateLogical()` + `syncRendered()` produce the same rendered state as PVP.
-Replay MUST NOT call `commitAll()` (reserved for `abort()`/`jumpToState()`);
-it uses `syncRendered()` to respect the lock contract.
+Replay's dispatch path MUST NOT call `commitAll()`: it goes through
+`syncAfterBoardState()` (`syncRendered()`) to respect the lock contract. Its
+only `commitAll()` is the seek reset, `seekToOffset()` after
+`processor.reset()` (see below); the v3 `abort()`/`jumpToState()` sites
+retired with `ReplayDuelAdapter`.
 
 `assertNoLocks()` surfaces lock leaks at transition boundaries and PvP
 reset points via `duelAssert()`. Throws in dev, `console.error`s in prod.
