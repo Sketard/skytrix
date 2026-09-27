@@ -125,6 +125,11 @@ describe('ReplayHubPageComponent', () => {
     http.expectOne('/api/replays/stats').flush({
       total: 0, victories: 0, defeats: 0, draws: 0, winrate: 0,
     });
+    // Then page 0 is re-fetched to rebase the pagination (cf. ReplayHubStore.resyncPagination).
+    http.expectOne(req => req.url === '/api/replays' && req.method === 'GET')
+      .flush({ elements: [], size: 0 });
+    flush();
+    expect(component['store'].replays()).toEqual([]);
   }));
 
   it('does NOT delete when the confirm dialog is dismissed', fakeAsync(() => {
