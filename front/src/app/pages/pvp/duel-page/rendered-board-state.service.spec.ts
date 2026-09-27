@@ -531,7 +531,7 @@ describe('RenderedBoardStateService', () => {
   // Regression net for LOCK_SAFETY_TIMEOUT_MS: a lock that is never committed
   // or released must fire duelAssert AND auto-decrement the ref-count, so a
   // single orphan lock does not poison the rest of the suite. See
-  // CLAUDE.md → "POLL-DROP REGRESSION" + LOCK_SAFETY_TIMEOUT_MS notes.
+  // docs/duel/replay.md → "POLL-DROP REGRESSION" + LOCK_SAFETY_TIMEOUT_MS notes.
   describe('lockZone safety timeout', () => {
     it('fires duelAssert with source tag + releases the lock when never committed', fakeAsync(() => {
       rbs.lockZone('M1-0', 'unit-test:orphan');

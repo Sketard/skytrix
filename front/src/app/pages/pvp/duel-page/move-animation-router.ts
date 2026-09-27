@@ -306,7 +306,7 @@ export class MoveAnimationRouter {
    * A pre-lock posed now would stay orphan across the ~1000ms announcement
    * directive + ~500ms BOARD_BREATHE_MS drain delay and trip the safety
    * timeout (1500ms scaled). `setBoardActive(true)` is called BEFORE the
-   * drain re-injects the buffered events (see CLAUDE.md "Pre-activation
+   * drain re-injects the buffered events (see docs/duel/orchestrator.md "Pre-activation
    * Buffer"), so when the runner re-enters preLockQueuedSources after
    * `notifyEnqueue`, `isBoardActive` is true and the locks are posed
    * fresh for the actual dispatch.

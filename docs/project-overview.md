@@ -98,5 +98,5 @@ See [integration-architecture.md](./integration-architecture.md) for the full in
 | Backend SQL schema | [data-models-back.md](./data-models-back.md) |
 | WebSocket protocol | [api-contracts-duel-server.md](./api-contracts-duel-server.md) |
 | Frontend components | [component-inventory-front.md](./component-inventory-front.md) |
-| AI agent rules (animation parity, chain state, lock contract) | [../CLAUDE.md](../CLAUDE.md) |
+| AI agent rules (animation parity, chain state, lock contract) | [duel/README.md](duel/README.md) |
 | Feature PRDs / epics / UX specs | [`work/planning-artifacts/`](../work/planning-artifacts/) |

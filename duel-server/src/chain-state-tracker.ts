@@ -52,7 +52,7 @@ export function emptyChainState(): ChainStateContainer {
  * `applyChainSolving`/`applyChainEnd` (driven from the queue runner).
  * Any change to the transition table here MUST be reflected on the
  * client side or the CHAIN_STATE reconnect handshake will drift
- * silently. See CLAUDE.md → "Cross-side `chainPhase` parity (F9)".
+ * silently. See docs/duel/chain.md → "Cross-side `chainPhase` parity (F9)".
  */
 export function applyChainTransition(state: ChainStateContainer, message: ServerMessage): void {
   switch (message.type) {

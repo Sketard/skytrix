@@ -352,8 +352,8 @@ export class RenderedBoardStateService implements BoardStateView {
    *     `orchestrator.resetForReplaySeek()` → `runner.requestStop()` →
    *     `dropOrphanedLocks` before `commitAll('mock:seekToOffset')`.
    *
-   * Full doctrine : CLAUDE.md "Replay Board State Parity Rule".
-   * Adding a 5th asserted site → update this list + CLAUDE.md.
+   * Full doctrine : docs/duel/replay.md "Replay Board State Parity Rule".
+   * Adding a 5th asserted site → update this list + docs/duel/replay.md.
    */
   assertNoLocks(site: string): void {
     duelAssert(this._locks.size === 0, site,

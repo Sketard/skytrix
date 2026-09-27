@@ -19,7 +19,7 @@
  * `let hasCostMoves = false` local in runDuelLoop). A cost MOVE separated
  * from its MSG_CHAIN_SOLVING by a player prompt (cross-batch — the common
  * case) deliberately does NOT trigger this sync: the per-prompt BOARD_STATE
- * the wire ships after every SELECT_* already covers it (see CLAUDE.md
+ * the wire ships after every SELECT_* already covers it (see docs/duel/chain.md
  * "Intermediate post-cost board sync (F10)" + the 2026-06-12 wire
  * investigation that established the cadence).
  */

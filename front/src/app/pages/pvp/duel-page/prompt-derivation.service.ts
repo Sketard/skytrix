@@ -29,7 +29,7 @@ interface PromptDerivationConfig {
   /** True between BOARD_STATE landing and the pre-activation buffer drain
    *  completing (initial 5-card MSG_DRAW × 2 still pending or animating).
    *  Gates SELECT_IDLECMD from flashing on top of the dice arena dismiss
-   *  and again after the draw animation. See CLAUDE.md
+   *  and again after the draw animation. See docs/duel/orchestrator.md
    *  §"Pre-activation Buffer". */
   preActivationBufferActive: () => boolean;
   ownPlayerIndex: Signal<number>;
@@ -115,7 +115,7 @@ export class PromptDerivationService {
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return new Set<string>();
     const places = (p as SelectPlaceMsg | SelectDisfieldMsg).places;
     // F6 (2026-05-31) — `pl.player` is absolute (server-side relativization
-    // is partial — see CLAUDE.md "Perspective Convention"). This service is
+    // is partial — see docs/duel/perspective.md "Perspective Convention"). This service is
     // configured by closures (two-phase init pattern) so it doesn't inject
     // DuelContext directly ; the inline `=== ownIdx ? 0 : 1` idiom is the
     // canonical conversion here. If a second absolute→relative conversion

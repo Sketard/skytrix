@@ -4,14 +4,14 @@ Consolidated history and design notes for the `anim-pipeline-v2`
 chantier on branch `feat/anim-pipeline-v2`. This document is the
 **archive** of the 5 lots' implementation details, edge cases, and
 historical context. The **invariants still active** for new
-development live inline in `CLAUDE.md` (see "Animation Pipeline v2"
+development live in [`docs/duel/animation.md`](../duel/animation.md) (see "Animation Pipeline v2"
 section there for the TOC + load-bearing rules).
 
 This file is the canonical reference when you want to understand
 **why** the pipeline has the shape it has — the reasoning behind each
 lot, the bug classes each component closed, the trade-offs that
 shaped the API. New code only needs to follow the rules pinned in
-CLAUDE.md ; this file explains where those rules came from.
+`docs/duel/animation.md` ; this file explains where those rules came from.
 
 ---
 

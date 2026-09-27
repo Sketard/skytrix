@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // U3 (audit-4-modes-2026-06-01) — Enforce the Animation Parity Rule
-// (CLAUDE.md "Animation Parity Rule") :
+// (docs/duel/animation.md "Animation Parity Rule") :
 //
 //   AnimationOrchestratorService MUST NOT import or reference
 //   `DuelWebSocketService` or `DuelConnection` directly. Everything
@@ -65,7 +65,7 @@ for (const name of FORBIDDEN) {
 if (violations.length > 0) {
   console.error(
     '\nU3 Animation Parity Rule violation : animation-orchestrator.service.ts MUST NOT reference DuelWebSocketService / DuelConnection.\n'
-    + 'See CLAUDE.md "Animation Parity Rule" — all transport access must route through ANIMATION_DATA_SOURCE so ReplayDuelAdapter parity holds.\n'
+    + 'See docs/duel/animation.md "Animation Parity Rule" — all transport access must route through ANIMATION_DATA_SOURCE so ReplayDuelAdapter parity holds.\n'
     + '\nOffending references :\n'
     + violations.map(v => `  - ${v.name} at ${target}:${v.line}`).join('\n')
     + '\n',

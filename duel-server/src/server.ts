@@ -706,7 +706,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     session.tapePlayer = createTapePlayer(replay.playerResponses, replay.seed, 0, responseDelayMs);
 
     // SOLO multiplex : 1 token only. The single WS multiplexes both
-    // perspectives via slot routing (see CLAUDE.md "Modes — vue
+    // perspectives via slot routing (see docs/duel/modes.md "Modes — vue
     // d'ensemble" table).
     sessionManager.register(session, [token0]);
 

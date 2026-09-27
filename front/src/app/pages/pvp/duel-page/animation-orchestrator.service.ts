@@ -206,7 +206,7 @@ export class AnimationOrchestratorService {
    * this refreshes the instant the runner stops. `isAnimating` subsumes the
    * non-reactive `rbs.hasLockedZones`: the runner's `finalizeAndCommit()`
    * commits every lock BEFORE `setRunning(false)` flips `isAnimating` off
-   * (CLAUDE.md invariant), so `!isAnimating` already implies "no held locks".
+   * (docs/duel/orchestrator.md invariant), so `!isAnimating` already implies "no held locks".
    */
   get isBoardStableForSwitch(): boolean {
     return !this.isAnimating.value();
@@ -811,7 +811,7 @@ export class AnimationOrchestratorService {
     // acceptable because chain-overlay's onChainEnd hides it on
     // MSG_CHAIN_END anyway).
     //
-    // Inventory (see CLAUDE.md "Projections β.3 — inventory"):
+    // Inventory (see docs/duel/animation.md "Projections β.3 — inventory"):
     //   · overlayShowReady  — β.3 Lot 1b
     //   · counterPulse      — β.3 Lot 2.3 (PERSPECTIVE_LIFETIME, SOLO switchPlayer clears)
     //   · animatingZone     — β.3 Lot 2.6 (flip/activate field zone)
@@ -844,7 +844,7 @@ export class AnimationOrchestratorService {
    * Fire callback for `pollDropWatchdog` — surfaces a genuine finalize-
    * during-resolving stall with a non-missable `console.error` (NOT
    * `logger.error`, which doesn't exist, so the marker is unfilterable by
-   * debug-category settings) + a dev-mode `duelAssert`. See CLAUDE.md
+   * debug-category settings) + a dev-mode `duelAssert`. See docs/duel/replay.md
    * "Polling Removal — Regression Surface".
    */
   private firePollDropRegression(): void {
@@ -852,7 +852,7 @@ export class AnimationOrchestratorService {
     console.error(
       '[POLL-DROP REGRESSION] chain stuck after finalize-during-resolving for %dms. ' +
         'activeChainLinks=%o queueLen=%d isWaitingForOverlay=%s hasBufferedEvents=%s. ' +
-        'See CLAUDE.md "Polling Removal — Regression Surface" — the dropped poll ' +
+        'See docs/duel/replay.md "Polling Removal — Regression Surface" — the dropped poll ' +
         'mechanism would have rescued this state.',
       POLL_DROP_REGRESSION_WATCHDOG_MS,
       links.map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence })),
@@ -1349,7 +1349,7 @@ export class AnimationOrchestratorService {
    *      (chaque projection narrow via `kind === 'perspective'`).
    *   3. `scopeDispatcher.dispatch({PERSPECTIVE_LIFETIME})` est appelé
    *      ici SYNCHRONEMENT, après le `pushToStream`. Tous les
-   *      `ResetTarget` registered (cf. CLAUDE.md "Orchestrator
+   *      `ResetTarget` registered (cf. docs/duel/orchestrator.md "Orchestrator
    *      Decomposition" + α.4b) reçoivent `applyReset` ; les
    *      projections PERSPECTIVE_LIFETIME (BattleAnimationTracker,
    *      TargetIndicatorManager [F12, 2026-05-31],
@@ -1525,7 +1525,7 @@ export class AnimationOrchestratorService {
   /**
    * Synchronous business dispatch for a queued GameEvent. Pre-activation
    * buffer divert → returns `'divert'`. Otherwise: invokes `processEvent`,
-   * releases pre-locks per CLAUDE.md rules, applies `commitMode` side
+   * releases pre-locks per docs/duel/orchestrator.md rules, applies `commitMode` side
    * effects, and returns the raw `EventResult` for the runner to await.
    *
    * The runner consumes the returned value:

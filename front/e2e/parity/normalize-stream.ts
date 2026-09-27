@@ -84,7 +84,7 @@ const VOLATILE_FIELDS = [
  *   (replaced by `MockDuelConnection.seekToOffset`). The reset → silentReset
  *   behavior is unchanged (the mock's seek path still calls
  *   `processor.reset()`), so the filter stays valid ; only the call site
- *   moved. See CLAUDE.md "Replay = PvP readonly via MockDuelConnection".
+ *   moved. See docs/duel/replay.md "Replay = PvP readonly via MockDuelConnection".
  *
  * If we want stricter parity later, lift these to a separate stream
  * comparison pass.
@@ -219,7 +219,7 @@ export function normalizeStream(stream: readonly unknown[]): NormalizedEvent[] {
  * BEFORE the SOLVED dispatch ; when the server floods (tape pacing, fast
  * responder) the SOLVING banner keeps the queue busy and the drain happens
  * via the overlay AFTER SOLVED. Both are legal executions of the same
- * contract (CLAUDE.md "Mid-chain buffer drain rescue"). The gate therefore
+ * contract (docs/duel/replay.md "Mid-chain buffer drain rescue"). The gate therefore
  * compares each window as a CANONICALLY-ORDERED MULTISET : content and
  * multiplicities stay strict, intra-window order does not. The window
  * head (first SOLVING) and the CHAIN_END stay anchored.

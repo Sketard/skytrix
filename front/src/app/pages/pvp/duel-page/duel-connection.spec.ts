@@ -932,7 +932,7 @@ describe('DuelConnection — onclose 4426 protocol mismatch (U2)', () => {
 
 // =============================================================================
 // U29 (audit-4-modes-2026-06-01) — DuelConnection.cleanup() idempotence.
-// Transport Lifecycle Invariant 1 (CLAUDE.md) requires cleanup() to be safe
+// Transport Lifecycle Invariant 1 (docs/duel/transport.md) requires cleanup() to be safe
 // to call multiple times — SOLO multiplex teardown invokes it twice
 // (orchestrator.cleanup + wsService.ngOnDestroy), and the wsService ctor
 // builds a default conn immediately replaced + cleaned by bindSoloConnection.

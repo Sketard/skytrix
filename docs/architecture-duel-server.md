@@ -170,13 +170,13 @@ Runs in a Piscina worker. Replays the captured `playerResponses` against a fresh
 }
 ```
 
-Rules (from `CLAUDE.md` + `replay-precompute.ts`):
+Rules (from [`duel/orchestrator.md`](duel/orchestrator.md) + `replay-precompute.ts`):
 1. **Turn 0 ("Setup")** — all events before the first MSG_NEW_TURN flush as Turn 0. Then `currentTurn` increments. Transition boundary prompts (`SELECT_IDLECMD`, `SELECT_BATTLECMD`) trigger automatic state flushes; other SELECT_* prompts accumulate within the same state.
 2. **MSG_CHAIN_END** flushes as its own state WITHOUT `chainIndex` — it acts as a separator between consecutive chains. The front hides it via `HIDDEN_LABELS` in `subEventSegments`.
 3. **`generateLabel`** returns `''` for batches with only non-visual events (SELECT_*, WAITING_RESPONSE, MSG_CHAIN_END, MSG_CHAIN_SOLVING, etc.). `flushState` skips empty states.
 4. **Per-event `boardStateAfter`** — `ChainSnapshotTracker` (the shared class) attaches snapshots during the chain-resolving window. Payload growth is ~50–150 KB gzipped per duel; snapshots are highly redundant.
 
-> Snapshots reflect ocgcore state at `buildBoardState()` call time (post-batch if multiple events fire in one `duelProcess` call) — strictly better than no snapshot, but not truly per-event within a single batch. See `CLAUDE.md` §"Pre-computation Timeline Rules" for the full rules.
+> Snapshots reflect ocgcore state at `buildBoardState()` call time (post-batch if multiple events fire in one `duelProcess` call) — strictly better than no snapshot, but not truly per-event within a single batch. See [`duel/orchestrator.md`](duel/orchestrator.md) §"Pre-computation Timeline Rules" for the full rules.
 
 ## Solver
 
@@ -302,9 +302,9 @@ Single stage on `node:24-slim`. Installs curl/git/ca-certificates. Copies `scrip
 
 ## Animation/state invariants and watchdogs
 
-> Refresh on these from `CLAUDE.md` before debugging anything time-sensitive.
+> Refresh on these from [`duel/README.md`](duel/README.md) before debugging anything time-sensitive.
 
-- **`POLL-DROP REGRESSION` watchdog** (`armPollDropWatchdog`) — fires `console.error('[POLL-DROP REGRESSION] ...')` and a `duelAssert(false, 'POLL-DROP-REGRESSION', ...)` if the chain stays in `'resolving'` and the queue stays empty for `POLL_DROP_REGRESSION_WATCHDOG_MS = 10 s`. **Don't reintroduce the chain-poll back-off** — find the missing event/signal upstream first. See `CLAUDE.md` §"Polling Removal — Regression Surface".
+- **`POLL-DROP REGRESSION` watchdog** (`armPollDropWatchdog`) — fires `console.error('[POLL-DROP REGRESSION] ...')` and a `duelAssert(false, 'POLL-DROP-REGRESSION', ...)` if the chain stays in `'resolving'` and the queue stays empty for `POLL_DROP_REGRESSION_WATCHDOG_MS = 10 s`. **Don't reintroduce the chain-poll back-off** — find the missing event/signal upstream first. See [`duel/replay.md`](duel/replay.md) §"Polling Removal — Regression Surface".
 - **`duelAssert(condition, site, msg)`** — throws in dev, `console.error`s in prod. **Never** raw `if (isDevMode())` for new assertions.
 - **`animation-constants.ts`** — single home for all timing magic numbers. Naming: `*_MS` (base), `*_MIN_MS` (floor), `*_TIMEOUT_MS` (safety, wrapped in `safetyTimeout` instead of `scaledDuration`).
 
@@ -336,5 +336,5 @@ Single stage on `node:24-slim`. Installs curl/git/ca-certificates. Copies `scrip
 - HTTP + WS contracts: [api-contracts-duel-server.md](./api-contracts-duel-server.md)
 - Cross-part wiring: [integration-architecture.md](./integration-architecture.md)
 - Annotated source tree: [source-tree-analysis.md](./source-tree-analysis.md#duel-server--node-websocket-server)
-- AI agent rules (chain state, locks, animation parity, polling watchdog): [../CLAUDE.md](../CLAUDE.md)
+- AI agent rules (chain state, locks, animation parity, polling watchdog): [duel/README.md](duel/README.md)
 - Solver R&D logs + methodology: [`work/solver-data/`](../work/solver-data/)

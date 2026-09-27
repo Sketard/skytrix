@@ -62,7 +62,7 @@
 ## Existing documentation in the repo
 
 - [README.md](../README.md) — minimal install / setup checklist (FR)
-- [CLAUDE.md](../CLAUDE.md) — **MUST READ** before touching PvP / replay / animation / chain code. Contains:
+- [duel/README.md](duel/README.md) — **MUST READ** before touching PvP / replay / animation / chain code. Contains:
   - Animation parity rule (DataSource interface)
   - Chain state machine (`DuelEventProcessor` as single SOT)
   - Replay parity rule (`ChainSnapshotTracker` shared on both sides)
@@ -97,7 +97,7 @@
 1. Read [project-overview.md](./project-overview.md) for the 30 000 ft view.
 2. Skim [integration-architecture.md](./integration-architecture.md) so you know which part owns what.
 3. Pick the architecture doc for the part you're working on.
-4. **If touching PvP / replay / animation, read [`../CLAUDE.md`](../CLAUDE.md) cover-to-cover first.**
+4. **If touching PvP / replay / animation, read [`duel/README.md`](duel/README.md) and the document it points to first.**
 
 ### About to build something locally
 - Follow [development-guide.md](./development-guide.md) — prerequisites, env vars, first-time card data sync.
@@ -115,7 +115,7 @@
 | New REST endpoint | [api-contracts-back.md](./api-contracts-back.md) + [architecture-back.md](./architecture-back.md) |
 | New WS message type | [api-contracts-duel-server.md](./api-contracts-duel-server.md) — edit a `ws-protocol-*.ts` sub-file (front + back) |
 | New page or feature | [architecture-front.md](./architecture-front.md) — flat routing in `app.routes.ts`, lazy if heavy |
-| New animation | [`../CLAUDE.md`](../CLAUDE.md) Animation Parity Rule — must work via `AnimationDataSource` |
+| New animation | [`duel/animation.md`](duel/animation.md) Animation Parity Rule — must work via `AnimationDataSource` |
 | New solver scoring | [development-guide.md](./development-guide.md#adding-a-new-card-to-the-solver-scoring) — go through the AI-assisted prompt |
 | New DB column | New Flyway migration `V016__*.sql` + adjust the entity + DTO + mapper + tests |
 

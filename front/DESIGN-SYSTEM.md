@@ -14,6 +14,45 @@ API). Sans ça la doc dérive — il n'y a pas de script de synchro.
 
 ---
 
+## Non-negotiable rules (Design System & Styling Conventions)
+
+The front-end has a custom Design System. **Before writing ANY UI, read
+`front/DESIGN-SYSTEM.md`** — it is the canonical component catalogue
+(triage of the 36 `components/`, per-component API, usage rules). Styling
+rules are enforced by `stylelint` + ESLint + a pre-commit hook
+(lefthook, `lefthook.yml` at the repo root); full lint reference:
+`front/LINTING.md`.
+
+Non-negotiable rules (full detail in `DESIGN-SYSTEM.md`):
+
+- **Use DS components, never ad-hoc HTML/SCSS.** Buttons / pills / chips /
+  toggles / form controls are Angular components (`<app-button>`,
+  `<app-icon-button>`, `<app-pill>`, `<app-chip>`, `<app-seg-button>`,
+  `<app-input>`, `<app-checkbox>`, `<app-toggle-switch>`, …), NOT global
+  SCSS classes. Never `<button class="…">`, never `mat-*-button` /
+  `<mat-chip>` (MDC layer). `.badge` stays a global class (`_badge.scss`,
+  single consumer).
+- **Colors** → always a token `var(--…)`. Literal hex only in
+  token-defining files (`front/src/app/styles/**`, `_sim-tokens.scss`,
+  `simulator-page.component.scss`). `--gold` = background/accent/border/
+  glow; `--gold-on-surface` = gold text/icon `color:`.
+- **`mat-icon` sizing** → `@include icon-size($size, $line-height?)` from
+  `styles/mixin.scss`. Never re-write the `font-size/width/height
+  !important` trio by hand.
+- **`::ng-deep`** → forbidden in components. Non-encapsulated CDK/Material
+  → `styles/_cdk-overrides.scss`; child component → a variant `input`.
+- **Host-wrapper contract** (button/pill/chip/seg/input/checkbox) — a
+  parent SCSS override of chrome (padding, bg, hover, `:disabled`) MUST
+  target the inner `.btn__el` / `.icon-btn__el` / etc.; size contracts
+  (`min-height`, `width`) stay on the host.
+- **`!important`** → structural cases only; any `!important` outside the
+  mixin needs a `// !important: why` comment.
+
+Maintenance: any new component added under `components/` MUST be added to
+`front/DESIGN-SYSTEM.md` (category + API) — there is no sync script.
+
+---
+
 ## 1. Avant de coder une UI — checklist
 
 1. **Bouton ?** → `<app-button>` ou `<app-icon-button>`. Jamais

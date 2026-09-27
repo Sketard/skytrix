@@ -52,6 +52,6 @@ export type InternalTransportEvent =
    * The POLL-DROP REGRESSION watchdog was just armed because finalize
    * fired during `chainPhase === 'resolving'`. The watchdog fires
    * `POLL_DROP_REGRESSION_WATCHDOG_MS` later if no event-driven re-wake
-   * arrives (cf. CLAUDE.md "Polling Removal — Regression Surface").
+   * arrives (cf. docs/duel/replay.md "Polling Removal — Regression Surface").
    */
   | { kind: 'watchdog-armed'; at: number };

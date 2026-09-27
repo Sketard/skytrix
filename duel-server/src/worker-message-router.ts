@@ -133,7 +133,7 @@ export function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMa
       // future mode (tutorial / practice) that also opts out extends the
       // predicate, not this call site. Inactivity timer stays enabled
       // (load-bearing: protects against worker leaks when the socket stays
-      // open without activity ; see CLAUDE.md → "Fork-solo unification (F5-bis)").
+      // open without activity ; see docs/duel/modes.md → "Fork-solo unification (F5-bis)").
       // All timer-management functions early-return on `timerContext === null`
       // so no further branches are required.
       if (shouldRunTurnTimer(session)) {

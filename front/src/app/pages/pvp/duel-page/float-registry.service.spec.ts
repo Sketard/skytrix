@@ -377,7 +377,7 @@ describe('FloatRegistryService', () => {
   // `$z-pvp-card-travel + 20` = 920) so the user can still drive
   // playback while a float sits on the hand.
   //
-  // Regression history: docs/CLAUDE.md — `stabilizeFloat` viewport bug fix.
+  // Regression history: docs/duel/orchestrator.md — `stabilizeFloat` viewport bug fix.
   // ---------------------------------------------------------------------------
 
   describe('stabilizeFloat', () => {
@@ -409,7 +409,7 @@ describe('FloatRegistryService', () => {
     it('falls back to (0,0) when containerRect is omitted (back-compat path)', () => {
       // The back-compat path is only correct when the container is at the
       // viewport origin (test environment, root-mounted previews). Real
-      // callers MUST pass the rect — see CLAUDE.md.
+      // callers MUST pass the rect — see docs/duel/orchestrator.md.
       const el = makeFloatWithRect(500, 400);
 
       registry.stabilizeFloat(el, '');

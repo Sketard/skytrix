@@ -30,7 +30,7 @@ import { BASE_URL, ADMIN, loginViaUI } from './helpers';
  * is reworked. The surface is dev-only (no-op in production bundles), but
  * the harness only runs in dev anyway.
  *
- * See CLAUDE.md → "Debugging Animations (...)" for the broader debug story.
+ * See docs/duel/debugging.md → "Debugging Animations (...)" for the broader debug story.
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');

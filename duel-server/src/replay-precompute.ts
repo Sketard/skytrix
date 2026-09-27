@@ -690,7 +690,7 @@ export function runReplayPreComputation(
             // counterpart to the PvP intermediate BOARD_STATE emitted in
             // duel-worker.ts after the cost MSG_MOVE. Both mechanisms surface
             // a board sync between chain cost moves (the events flushed here)
-            // and the chain entering resolving. See CLAUDE.md → "Intermediate
+            // and the chain entering resolving. See docs/duel/chain.md → "Intermediate
             // post-cost board sync (F10)".
             if (filtered.type === 'MSG_CHAINING') {
               if (events.length > 0) {

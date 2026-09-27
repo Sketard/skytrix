@@ -8,7 +8,7 @@ import { setupReplaySession } from './replay-debug-driver';
  * **Legacy "play to end" wrapper.** Now a thin shell over the generic
  * `setupReplaySession` + `ReplayDebugDriver` toolkit in
  * `replay-debug-driver.ts`. Use the toolkit directly for any scenario
- * other than "open replay, play through to end" (see CLAUDE.md →
+ * other than "open replay, play through to end" (see docs/duel/debugging.md →
  * "Debugging Animations" for the scenario-based pattern).
  *
  * Two run modes:

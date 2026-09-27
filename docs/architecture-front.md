@@ -8,7 +8,7 @@ The front-end is a **flat, standalone-first Angular app** with three lazy-loaded
 
 The **PvP/Replay/Solver** pages are the architectural centerpieces. Each has its own component-scoped service graph (40+ services for PvP), and the **animation orchestrator + chain state machine** are shared between PvP and Replay through a polymorphic `AnimationDataSource` interface (`DuelWebSocketService` for live, `ReplayDuelAdapter` for replay).
 
-> **Read [CLAUDE.md](../CLAUDE.md) before touching anything in `pages/pvp/duel-page/`.** The animation-parity rule, chain state machine, lock contract, and replay parity rule are non-negotiable.
+> **Read [docs/duel/](duel/README.md) before touching anything in `pages/pvp/duel-page/`.** The animation-parity rule, chain state machine, lock contract, and replay parity rule are non-negotiable.
 
 ## Technology stack
 
@@ -251,4 +251,4 @@ Production budgets: initial JS 1 MB warn / 2 MB error; component styles 12 KB wa
 - Component catalogue: [component-inventory-front.md](./component-inventory-front.md)
 - Annotated source tree: [source-tree-analysis.md](./source-tree-analysis.md)
 - Dev/build/test recipes: [development-guide.md](./development-guide.md)
-- AI agent rules (animation parity, locks, chain state): [../CLAUDE.md](../CLAUDE.md)
+- AI agent rules (animation parity, locks, chain state): [duel/README.md](duel/README.md)

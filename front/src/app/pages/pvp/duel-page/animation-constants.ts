@@ -62,7 +62,7 @@ export const LOCK_SAFETY_QUEUE_BUDGET_MS = 250;
  * arrival, advanceStep, chainOverlayReady signal) all complete in <2s in
  * normal play. A 10s stall is unambiguously pathological.
  *
- * See CLAUDE.md "Polling Removal — Regression Surface".
+ * See docs/duel/replay.md "Polling Removal — Regression Surface".
  */
 export const POLL_DROP_REGRESSION_WATCHDOG_MS = 10_000;
 

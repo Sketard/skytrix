@@ -793,7 +793,7 @@ function runDuelLoop(): void {
         // by `runReplayPreComputation`. Cross-side parity is by shared
         // code ; the cross-batch case (cost paid through a prompt) is
         // covered by the per-prompt BOARD_STATE on both wires. See
-        // CLAUDE.md → "Intermediate post-cost board sync (F10)".
+        // docs/duel/chain.md → "Intermediate post-cost board sync (F10)".
         if (costSyncTracker.shouldEmitBefore(dto)) {
           dlog.debug('BOARD_STATE (intermediate, before chain solving)');
           emit.message(buildBoardState());

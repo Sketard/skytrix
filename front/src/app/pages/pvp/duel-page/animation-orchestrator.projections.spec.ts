@@ -278,7 +278,7 @@ describe('AnimationOrchestratorService — C3 + C5 projection registry invariant
 //
 // The `!isAnimating` floor remains load-bearing : the runner's
 // `finalizeAndCommit` commits every lock BEFORE flipping `_isRunning` off
-// (CLAUDE.md invariant), so any phase + `!isAnimating` implies no held locks.
+// (docs/duel/orchestrator.md invariant), so any phase + `!isAnimating` implies no held locks.
 // =============================================================================
 describe('AnimationOrchestratorService — isBoardStableForSwitch (2026-06-02)', () => {
   function makeOrchestrator(): AnimationOrchestratorService {

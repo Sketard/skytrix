@@ -84,7 +84,7 @@ export interface ReplayErrorMsg {
 //
 // `MockDuelConnection` consumes the linear `ServerMessage[]` exactly the way
 // `DuelConnection` consumes a live WS feed — strict "Replay = PvP readonly"
-// doctrine. See CLAUDE.md → "Replay = PvP readonly via MockDuelConnection".
+// doctrine. See docs/duel/replay.md → "Replay = PvP readonly via MockDuelConnection".
 // Phase 6 (2026-06-06) retired the legacy `REPLAY_BOARD_STATES` + the
 // `PreComputedState[]` / `DecisionMoment` types — `ReplayStreamNavEntry`
 // now carries everything the client used to read from `PreComputedState`

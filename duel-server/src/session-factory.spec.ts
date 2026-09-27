@@ -100,7 +100,7 @@ describe('createInitialSessionState (U15)', () => {
   });
 
   it('throws when forkMode: true is paired with soloMode: false (F5-bis invariant)', () => {
-    // U15 review-fix — CLAUDE.md F5-bis: forkMode implies soloMode. Pre-fix
+    // U15 review-fix — docs/duel/modes.md F5-bis: forkMode implies soloMode. Pre-fix
     // the factory accepted the pathological pair silently, then the
     // resulting session would walk through SOLO-aware code paths without
     // the soloMode gate, surfacing as obscure runtime bugs downstream.

@@ -176,7 +176,7 @@ describe('lifecycle-helpers — γ Option C A3 + A28', () => {
 
     // Documented invariant: the whitelist is populated at PR2 c4.5 with
     // EXACTLY these 4 types. Locking the contents catches an accidental
-    // bump (a new type added requires updating CLAUDE.md + the front
+    // bump (a new type added requires updating docs/duel/modes.md + the front
     // PerspectiveSlot routing per spec §6.2).
     it('PR2 c4.5 SOLO routing whitelist contains exactly the 4 expected types', () => {
       expect(PSEUDO_PAIRWISE_SOLO_ROUTED.size).toBe(4);

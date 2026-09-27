@@ -62,7 +62,7 @@ export class ChainResolutionManager implements ResetTarget {
    *
    * Replaces the prior split-brain (β.3 Lot 3.2-REDO 2026-05-26) of a
    * `ChainResolutionAnnounceProjection` stream-observer + a private
-   * `_announcePending: boolean` sync mirror. Per the CLAUDE.md doctrine
+   * `_announcePending: boolean` sync mirror. Per the docs/duel/animation.md doctrine
    * "projection vs signal manager", this state is dérivable du STATE
    * (a manager-owned boolean toggled by a callback), not a pure
    * function of the flux — so a signal manager is the correct shape,

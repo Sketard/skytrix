@@ -63,7 +63,7 @@ export class DuelContext {
    * statique, comme replay).
    *
    * Tag α.1 `perspectiveSource` (suffix `Source`) : du POV du pipeline
-   * animation, cette valeur est un INPUT contextuel (cf. CLAUDE.md
+   * animation, cette valeur est un INPUT contextuel (cf. docs/duel/animation.md
    * "Signal tagging convention (α.1)" sub-section under
    * "Animation Pipeline v2"). L'écriture provient d'EN DEHORS
    * du pipeline : `SoloDuelOrchestratorService.switchPerspective()` et le

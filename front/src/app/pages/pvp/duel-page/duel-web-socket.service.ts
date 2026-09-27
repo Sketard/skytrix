@@ -56,7 +56,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
    *  the c5c `sendXxx forPlayer` tagging.
    *
    *  Tag α.1 `soloModeSource` — `@Environment` input from the SOLO orchestrator
-   *  (cf. CLAUDE.md "Signal tagging convention (α.1)" sub-section under
+   *  (cf. docs/duel/animation.md "Signal tagging convention (α.1)" sub-section under
    *  "Animation Pipeline v2"). Read-only from the pipeline's POV ; the SOLO
    *  orchestrator writes via `.set(true)` at init.
    *
