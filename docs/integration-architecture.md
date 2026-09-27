@@ -2,6 +2,20 @@
 
 How the three deployable parts (`back`, `front`, `duel-server`) and the database talk to each other and to the outside world.
 
+**Reading**: the cross-part wiring (network, integration points, auth, replay and solver flows, boot invariants); the
+reference for what crosses a part boundary. Read by section: `Grep "^## "`, then `Read` by range.
+
+## Contents
+
+1. Component graph
+2. Network tiers (Docker)
+3. Integration points
+4. Authentication flows
+5. Replay flow
+6. Solver flow
+7. Boot invariants
+8. Data flow summary table
+
 ## Component graph
 
 ```
@@ -171,9 +185,9 @@ After both players disconnect, the session is preserved for `BOTH_DISCONNECTED_C
   duel-server pulls the replay from back via /api/internal/replays/{id}
               runs runReplayPreComputation in a Piscina worker
               ChainSnapshotTracker (same class!) re-attaches identical snapshots
-              streams REPLAY_BOARD_STATES + REPLAY_METADATA to the front
+              sends REPLAY_METADATA, streams REPLAY_STREAM_CHUNKs, then REPLAY_STREAM_INIT (final nav index)
   front renders the timeline using the same AnimationOrchestratorService
-       (via the AnimationDataSource interface — DuelWebSocketService for live, ReplayDuelAdapter for replay)
+       (via the AnimationDataSource interface — DuelWebSocketService for live, MockDuelConnection for replay)
 ```
 
 The fact that `ChainSnapshotTracker` is the **same class** in both code paths is the parity guarantee: the field name, predicate, and timing are identical by construction.

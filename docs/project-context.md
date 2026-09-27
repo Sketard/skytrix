@@ -12,6 +12,16 @@ supersedes: '2026-02-07 single-app version (PvP/replay/solver/duel-server were u
 
 _Critical rules and patterns AI agents must follow when implementing code. Focus on unobvious details. For deep architectural rules (animation parity, chain state, lock contract, replay parity, polling watchdog), see [`duel/README.md`](duel/README.md). For reference docs, see [`index.md`](index.md)._
 
+**Reading**: the cross-cutting implementation rules of the three parts, for an agent about to write code; the duel
+rules themselves live under [`duel/`](duel/README.md). Read by section: `Grep "^## "`, then `Read` by range.
+
+## Contents
+
+1. Repository Structure
+2. Technology Stack & Versions
+3. Critical Implementation Rules
+4. Usage Guidelines
+
 ---
 
 ## Repository Structure
@@ -145,8 +155,8 @@ Features shipped:
 These are the most-violated rules. Quick recap:
 
 1. **Animation Parity Rule.** Any animation in `AnimationOrchestratorService` MUST work through the `AnimationDataSource` interface, `RenderedBoardStateService`, and `DuelEventProcessor`. The orchestrator MUST NOT import `DuelWebSocketService` or `DuelConnection` directly.
-2. **Chain Event Processing.** `DuelEventProcessor` is the single source of truth for chain state (activeChainLinks, chainPhase, animation queue). Both `DuelConnection` (PvP) and `ReplayDuelAdapter` (replay) delegate to their own processor. `MSG_CHAIN_NEGATED` is consumed silently by the processor.
-3. **Replay Board State Parity.** Replay must provide equivalent intermediate board states so `updateLogical()` + `syncRendered()` produce the same rendered state as PvP. Replay MUST NOT call `commitAll()` (reserved for `abort()` / `jumpToState()`); it uses `syncRendered()` to respect the lock contract.
+2. **Chain Event Processing.** `DuelEventProcessor` is the single source of truth for chain state (activeChainLinks, chainPhase, animation queue). Both `DuelConnection` (PvP) and `MockDuelConnection` (replay) delegate to their own processor. `MSG_CHAIN_NEGATED` is consumed silently by the processor.
+3. **Replay Board State Parity.** Replay must provide equivalent intermediate board states so `updateLogical()` + `syncRendered()` produce the same rendered state as PvP. Replay's dispatch path MUST NOT call `commitAll()`: it goes through `syncAfterBoardState()` (`syncRendered()`) to respect the lock contract; its only `commitAll()` is the seek reset, `MockDuelConnection.seekToOffset()` after `processor.reset()` (the v3 `abort()` / `jumpToState()` sites retired with `ReplayDuelAdapter`).
 4. **`boardStateAfter` parity.** `ChainSnapshotTracker` (`duel-server/src/chain-snapshot-tracker.ts`) is the **same class** in `runDuelLoop` (live PvP, `duel-worker.ts`) and `runReplayPreComputation` (replay precompute, `replay-precompute.ts`). The attach predicate, field name, and timing are identical by construction.
 5. **Lock Contract.** Async event handlers in `processEvent()` MUST call `lockZone()` on ALL zones they animate (source AND destination) **synchronously before the first `await`**. `commitUnlocked()` runs immediately after `processEvent()` returns — any unlocked zone is committed.
 6. **`POLL-DROP REGRESSION` watchdog.** If you ever see `[POLL-DROP REGRESSION]` in `console.error` or a `duelAssert` fires with site `POLL-DROP-REGRESSION`, **read [`duel/replay.md`](duel/replay.md) §"Polling Removal — Regression Surface" before investigating anything else.** Don't reintroduce the chain-poll back-off — find the missing event/signal upstream first.
@@ -196,7 +206,7 @@ These are the most-violated rules. Quick recap:
 ### Development Workflow Rules
 
 - Git: single `master` branch, no enforced branch naming.
-- No CI/CD pipeline detected.
+- CI: `.github/workflows/protocol-sync.yml` runs the three `scripts/check-*.mjs` guards (WS protocol byte-sync, perspective isolation, animation parity); no tests, no deployment. `npm run verify` runs locally, wired to the lefthook `pre-push`.
 - Frontend dev: `ng serve` with proxy to `localhost:8080`.
 - Backend: `./mvnw spring-boot:run` (port 8080) + actuator on 8081.
 - Duel server: `npm run start` after `npm run build` (port 3001).

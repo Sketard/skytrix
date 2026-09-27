@@ -2,11 +2,31 @@
 
 > Angular 21.2 single-page app. Standalone components everywhere. Signals as the canonical state primitive. OnPush change detection. Hosts four major features behind one shell: deck management, solo simulator, PvP duels, replay viewer, and combo path solver.
 
+**Reading**: the frontend's architecture (routing, pillars, service map, WebSocket layer, build and tests); the reference
+for how `front/` is organised, the duel rules themselves live under [`duel/`](duel/README.md). Read by section:
+`Grep "^## "`, then `Read` by range.
+
+## Contents
+
+1. Executive summary
+2. Technology stack
+3. Routing
+4. Architectural pillars
+5. Top-level service map
+6. State management
+7. WebSocket layer
+8. Components
+9. i18n
+10. Build, dev, test
+11. Tests
+12. Anomalies / known issues
+13. Where to look next
+
 ## Executive summary
 
 The front-end is a **flat, standalone-first Angular app** with three lazy-loaded pages (`pvp`, `pvp/replay`, `pvp/duel`, `solver`) and the rest eager. State is held in **signals** with sparse RxJS holdouts (auth refresh, deck list).
 
-The **PvP/Replay/Solver** pages are the architectural centerpieces. Each has its own component-scoped service graph (40+ services for PvP), and the **animation orchestrator + chain state machine** are shared between PvP and Replay through a polymorphic `AnimationDataSource` interface (`DuelWebSocketService` for live, `ReplayDuelAdapter` for replay).
+The **PvP/Replay/Solver** pages are the architectural centerpieces. Each has its own component-scoped service graph (40+ services for PvP), and the **animation orchestrator + chain state machine** are shared between PvP and Replay through a polymorphic `AnimationDataSource` interface (`DuelWebSocketService` for live, `MockDuelConnection` for replay).
 
 > **Read [docs/duel/](duel/README.md) before touching anything in `pages/pvp/duel-page/`.** The animation-parity rule, chain state machine, lock contract, and replay parity rule are non-negotiable.
 
@@ -69,7 +89,7 @@ PvP, Replay, and Solver each hold ~10–40 services that are **scoped to the pag
 This is the architectural centerpiece. The `AnimationOrchestratorService` (3 000+ LOC) is **completely decoupled** from PvP-vs-replay. It depends on the `AnimationDataSource` interface (`animation-data-source.ts`), which has two implementations:
 
 - `DuelWebSocketService` — live PvP, delegates to `DuelConnection` (the WS layer).
-- `ReplayDuelAdapter` — replay mode, drives the orchestrator from precomputed states.
+- `MockDuelConnection` — replay mode, dispatches the precomputed replay stream (messages + `navIndex`) through the same routing and `DuelEventProcessor` as `DuelConnection`; bound to the `ANIMATION_DATA_SOURCE` token by `ReplayPageComponent` (the legacy `ReplayDuelAdapter` was retired in v4 Phase 5).
 
 The orchestrator MUST NOT import `DuelWebSocketService` or `DuelConnection` directly. Any new state read/write goes through the interface. **Replay automatically inherits all animation features** because of this rule.
 
@@ -77,7 +97,7 @@ The shared `syncAfterBoardState()` free function (also in `animation-data-source
 
 ### 5. Chain event processing — `DuelEventProcessor`
 
-`DuelEventProcessor` is the **single source of truth** for chain state (`activeChainLinks`, `chainPhase`, the animation queue, chain entry commits). Both `DuelConnection` (PvP) and `ReplayDuelAdapter` instantiate their own processor — there is no manual PvP/replay parity needed because the processor guarantees identical behavior.
+`DuelEventProcessor` is the **single source of truth** for chain state (`activeChainLinks`, `chainPhase`, the animation queue, chain entry commits). Both `DuelConnection` (PvP) and `MockDuelConnection` (replay) instantiate their own processor — there is no manual PvP/replay parity needed because the processor guarantees identical behavior.
 
 The chain phase transitions: `idle → building → resolving → idle`. Most importantly, `'resolving'` is set by `applyChainSolving(chainIndex)` and persists across **all links of the same chain** — it only flips back to `'idle'` at MSG_CHAIN_END. While resolving, all BOARD_CHANGING events are buffered and replayed after the chain overlay hides via queue directives (group, barrier, lp, batch-end, await-signal).
 
@@ -135,9 +155,9 @@ Top categories — see `pages/pvp/duel-page/duel-page.component.ts` for the full
 
 | Service | Role |
 |---|---|
-| `ReplayConnectionService` | WS client for `?mode=replay`; metadata + boardStates signals |
-| `ReplayTransportService` | Play/pause/seek/speed, synchronizes with the connection service |
-| `ReplayDuelAdapter` | Bridge from precomputed states → `AnimationDataSource` |
+| `ReplayConnectionService` | WS client for `?mode=replay`; metadata signals, forwards the stream through `onStreamInit` / `onStreamChunk` |
+| `ReplayTransportService` | Play/pause/seek/speed; drives `MockDuelConnection` (auto-respond, `seekToOffset`) |
+| `MockDuelConnection` | The replay `AnimationDataSource`: dispatches the precomputed stream, O(1) seek from `navIndex` snapshots |
 | `ReplayForkService` | Fork-from-decision REST client |
 | (+ ~25 services reused from `duel-page/`) |  |
 
@@ -160,7 +180,7 @@ Top categories — see `pages/pvp/duel-page/duel-page.component.ts` for the full
 | Active deck | `deckState: signal<Deck>` + `_isDirty: signal` |
 | Card search | `query/page/filters` signals |
 | PvP duel | 13 signals on `DuelConnection`, exposed read-only via `DuelWebSocketService` (`renderedBoardState`, `boardStateView`, `pendingPrompt`, `hintContext`, `animationQueue`, `timerState`, `timerStatePerPlayer`, `duelResult`, `rpsResult`, `ocgPlayerIndex`, `connectionStatus`, `protocolMismatch`, `opponentDisconnected`, `inactivityWarning`) |
-| Replay | `metadata`, `boardStates[]`, `lastReceivedTurn`, `forkStatus` signals on `ReplayConnectionService`; `currentIndex`, `playing`, `speed` on `ReplayTransportService` |
+| Replay | `metadata`, `lastReceivedTurn`, `forkStatus` signals on `ReplayConnectionService`; `currentIndex`, `isPlaying`, `pausedAtBoundary` on `ReplayTransportService`; the UI surfaces (`busy`, `pendingPrompt`, `navIndex`…) on `MockDuelConnection` |
 | Solver | `solverState: signal<'idle' \| 'connecting' \| 'running' \| 'paused' \| 'done'>`, `progress`, `result`, `error`, `handtraps` |
 | UI chrome | `LoaderService.isLoading`, `NavbarCollapseService.{collapsed,drawerOpen,immersiveMode,navbarHidden}` |
 
@@ -178,8 +198,9 @@ Solo mode runs **two concurrent connections** (one per player perspective) — `
 
 Connects with `?mode=replay&replayId=<uuid>&token=<jwt>&pv=<protocolVersion>`. Receives:
 - `REPLAY_METADATA` — match info, decks, totalResponses.
-- `REPLAY_BOARD_STATES` — precomputed states per decision moment.
-- `REPLAY_FORK_CREATED` — when a fork is requested.
+- `REPLAY_STREAM_CHUNK` — a turn's precomputed messages + nav entries, handed to `MockDuelConnection` through `onStreamChunk` (replaced `REPLAY_BOARD_STATES`, retired in v4 Phase 6).
+- `REPLAY_STREAM_INIT` — the final nav index, after the last chunk (`onStreamInit`).
+- `REPLAY_FORK_READY` — when a requested fork is ready.
 - `REPLAY_ERROR` — divergence or backend issues.
 
 ### Solver — `SolverService`
@@ -241,7 +262,7 @@ Production budgets: initial JS 1 MB warn / 2 MB error; component styles 12 KB wa
 
 1. **Dual state systems for auth** — UserDTO signal + RefreshStep BehaviorSubject. Consider unifying under signals after the audit settles.
 2. **Solo-mode dual `DuelConnection`** — two instances per match; queue switching on player toggle. Necessary for dual-player orchestration but architecturally heavy. Document the state-transition edges if you touch this.
-3. **`ReplayDuelAdapter` coupling** — adapts precomputed states into the live `DuelConnection` interface. ~25 reused duel-page services. Any breaking change to `DuelConnection`'s public surface affects replay.
+3. **`MockDuelConnection` mirrors `DuelConnection`** — it reproduces the replay-relevant subset of `DuelConnection.handleMessage` (perspective swap, routing-table dispatch through the shared `message-type-sets.ts`, `chainingMsgsToLinkStates` on seek) with its own `DuelEventProcessor`; ~25 duel-page services are reused. A new dispatch branch or message type in `DuelConnection` must be checked against `MockDuelConnection`, otherwise replay silently diverges from PvP. Only the orchestrator-import rule is enforced by a script (`scripts/check-animation-parity.mjs`).
 4. **Prompt registry pattern** — `prompt-registry.ts` maps prompt-type strings to component constructors. Static type-safety trade-off for flexibility; if the prompt taxonomy keeps growing, consider a typed registry.
 5. **Solo mode broadcast overhead** — server sends all duel messages to both players; the inactive connection buffers until switch. Memory footprint grows with game length; no observed cap.
 

@@ -1,5 +1,16 @@
 # Animation Pipeline v2 — Lots shippés (α + β)
 
+**Reading**: the archive of the five `anim-pipeline-v2` lots (why the pipeline has its shape); the rules still enforced
+live in [`docs/duel/animation.md`](../duel/animation.md). Read by section: `Grep "^## "`, then `Read` by range.
+
+## Contents
+
+1. Pipeline Signal Tagging Convention (α.1, 2026-05-25)
+2. Projection Infrastructure (α.2 + α.4a, 2026-05-25)
+3. BoundaryProcessor (β.1, 2026-05-26)
+4. DeferredEffectProcessor (β.2a + β.2b, 2026-05-26)
+5. Projections β.3 (Lots 1-4, 2026-05-26)
+
 Consolidated history and design notes for the `anim-pipeline-v2`
 chantier on branch `feat/anim-pipeline-v2`. This document is the
 **archive** of the 5 lots' implementation details, edge cases, and
@@ -165,8 +176,9 @@ boundary-aware projections).
   `ChainStarted(N)` emits on the stream before `MSG_CHAINING(N)`
   reaches the orchestrator's `processEvent`.
 - `observeBoardState(payload)` — called from the WS adapter
-  (`DuelConnection` `case 'BOARD_STATE'`, `ReplayDuelAdapter`
-  `feedTransition` + `advanceStep` + `collapseRemainingSteps`)
+  (`DuelConnection` `case 'BOARD_STATE'`, `MockDuelConnection`
+  `_handleBoardState` in replay ; at β.1 time the replay side was the
+  `ReplayDuelAdapter` step queue, retired in v4 Phase 5)
   AFTER `syncAfterBoardState`. Turn/Phase deltas emit on the
   stream right after the board state lands.
 - `forceClosure(reason)` — called from the WS adapter on STATE_SYNC,

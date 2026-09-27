@@ -2,6 +2,23 @@
 
 How to set up, run, test, and develop on the skytrix monorepo locally.
 
+**Reading**: the local setup and daily commands of the three parts, the coding standards and the isolated dev stack;
+the reference for running skytrix on a workstation. Read by section: `Grep "^## "`, then `Read` by range.
+
+## Contents
+
+1. Prerequisites
+2. Environment variables
+3. First-time setup
+4. Run locally (no Docker)
+5. Run via Docker Compose
+6. Common dev commands
+7. Coding standards
+8. Git workflow
+9. Adding a new card to the solver scoring
+10. Isolated dev-stack for e2e + Claude debug (`scripts/dev-stack.mjs`)
+11. Troubleshooting
+
 ## Prerequisites
 
 | Tool | Version | Why |
