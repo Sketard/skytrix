@@ -1,6 +1,6 @@
 /**
  * β.1 — boundary events emitted by `BoundaryProcessor` (cf.
- * `_bmad-output/planning-artifacts/duel-session-chantier.md §3.8`).
+ * `work/planning-artifacts/duel-session-chantier.md §3.8`).
  *
  * Boundaries are explicit markers in the stream that delimit a causal
  * group: a chain resolution, a turn, a phase. Projections that read the

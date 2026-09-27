@@ -321,7 +321,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     const places = (prompt as SelectPlaceMsg | SelectDisfieldMsg).places;
     // F6 (2026-05-31) — pl.player is absolute. Replay configures
     // duelCtx.ownPlayerIndex = perspectiveIndex (cf. configure() in ngOnInit)
-    // so duelCtx.relativePlayer is the canonical conversion. See CLAUDE.md
+    // so duelCtx.relativePlayer is the canonical conversion. See docs/duel/perspective.md
     // → "Perspective Convention".
     const keys = places
       .map((pl: PlaceOption) => {
@@ -342,7 +342,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     if (!place) return null;
     const zoneId = locationToZoneId(place.location, place.sequence);
     // F6 (2026-05-31) — place.player is absolute. Use duelCtx.relativePlayer
-    // (replay configures it to read perspectiveIndex). See CLAUDE.md →
+    // (replay configures it to read perspectiveIndex). See docs/duel/perspective.md →
     // "Perspective Convention".
     const relPlayer = this.duelCtx.relativePlayer(place.player);
     return zoneId ? `${zoneId}-${relPlayer}` : null;

@@ -9,14 +9,14 @@ import * as path from 'path';
  * dépendance au stack dev (back/duel-server/front ng serve). Ce spec teste
  * UNIQUEMENT le comportement de Web Animations API + transform CSS parent.
  *
- * Spec source : _bmad-output/planning-artifacts/poc-projection-spec.md §4
- * Sortie JSON : _bmad-output/poc-projection/raw-{scenario}.json
- * Rapport     : _bmad-output/poc-projection/day1-findings.md (écrit manuellement
+ * Spec source : work/planning-artifacts/poc-projection-spec.md §4
+ * Sortie JSON : work/poc-projection/raw-{scenario}.json
+ * Rapport     : work/poc-projection/day1-findings.md (écrit manuellement
  *               après lecture des JSON par l'humain ou l'agent)
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const POC_OUT = path.resolve(REPO_ROOT, '_bmad-output', 'poc-projection');
+const POC_OUT = path.resolve(REPO_ROOT, 'work', 'poc-projection');
 fs.mkdirSync(POC_OUT, { recursive: true });
 
 const PAGE_HTML = `<!doctype html>

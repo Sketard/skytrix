@@ -270,7 +270,7 @@ export class DuelConnection {
    * γ Option C (PR2 c4.1, 2026-05-28) — per-perspective transport state.
    * See `PerspectiveSlot` jsdoc above for which fields and why.
    * Indexed by ABSOLUTE player (matches `message.player` from the server,
-   * which is absolute per CLAUDE.md "Perspective Convention" §3 — message-filter
+   * which is absolute per docs/duel/perspective.md "Perspective Convention" §3 — message-filter
    * swaps `players[]` + `turnPlayer` but NOT `.player` / `.controller` internals).
    *
    * Read-side access via `getXxxFor(p)` getters (added below). PvP normal
@@ -684,7 +684,7 @@ export class DuelConnection {
    * orchestrator's `switchPerspective`). In that case the server's omniscient
    * payloads arrive in absolute P0 order, and `BoardStatePayload.players[]` +
    * `.turnPlayer` must be relativized before any downstream consumer reads them
-   * (cf. CLAUDE.md "Perspective Convention" §2 + "Replay Board State Parity").
+   * (cf. docs/duel/perspective.md "Perspective Convention" §2 + "Replay Board State Parity").
    *
    * PvP normal and replay both yield false (PvP: `soloMode=false`; replay:
    * uses `MockDuelConnection` directly and never reaches this class). The
@@ -710,7 +710,7 @@ export class DuelConnection {
    * γ Option C (PR2 c4.4, A17) — swap the per-event `boardStateAfter`
    * snapshot in place (shallow-clone the event when a swap is needed).
    * BOARD_CHANGING events emitted during chain resolution carry this
-   * snapshot (cf. CLAUDE.md "Per-event boardStateAfter snapshot"). The
+   * snapshot (cf. docs/duel/orchestrator.md "Per-event boardStateAfter snapshot"). The
    * snapshot is consumed by `AnimationOrchestratorService.processEvent`
    * via `rbs.updateLogical(event.boardStateAfter)`; without swap the SOLO
    * perspective-1 view would briefly flip mid-chain.
@@ -980,7 +980,7 @@ export class DuelConnection {
    * listener removal that throws on missing listener) cannot break the
    * double-cleanup contract without ALSO removing the early-return.
    *
-   * See CLAUDE.md "Transport Lifecycle Invariants → Invariant 1".
+   * See docs/duel/transport.md "Transport Lifecycle Invariants → Invariant 1".
    */
   private _destroyed = false;
 
@@ -1332,7 +1332,7 @@ export class DuelConnection {
    *  the server-side cancel rollback (CANCEL_PROMPT_SEQUENCE). Both require
    *  a clean slate. For the FULL inventory of state slots reset on cancel
    *  (worker + server + client), see
-   *  `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+   *  `work/planning-artifacts/cancel-rollback-contract.md`.
    *  READ IT BEFORE ADDING A NEW PRIVATE FIELD TO DuelConnection that holds
    *  prompt-flow state.
    *

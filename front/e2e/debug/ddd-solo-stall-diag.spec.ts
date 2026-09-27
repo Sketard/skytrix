@@ -11,7 +11,7 @@
  *   server EMIT (duel.log) → ws.recv → processMessage in → stream push
  *
  * The stage where the count collapses is the drop site. Console dump
- * goes to _bmad-output/debug-solo/ddd-stall-diag/.
+ * goes to work/debug-solo/ddd-stall-diag/.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -22,7 +22,7 @@ import { BASE_URL, ADMIN, loginViaUI } from '../helpers';
 const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key';
 const DUEL_SERVER_URL = process.env['E2E_DUEL_SERVER_URL'] ?? 'http://localhost:3001';
 const REPLAY_ID = '03a953d9-1904-473b-8d5b-5ede24c007e9';
-const OUT_DIR = resolve(__dirname, '../../../_bmad-output/debug-solo/ddd-stall-diag');
+const OUT_DIR = resolve(__dirname, '../../../work/debug-solo/ddd-stall-diag');
 
 test('D/D/D SOLO stall diagnostic — count pipeline stages', async ({ browser }) => {
   test.setTimeout(600_000);

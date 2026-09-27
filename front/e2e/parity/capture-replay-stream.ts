@@ -33,7 +33,7 @@ export interface CaptureReplayStreamOptions {
   /** If true (default), skip-to-end via `driver.skipEnd()`. If false, run
    *  normal auto-playback to the natural end (much slower). */
   fast?: boolean;
-  /** Output folder under `_bmad-output/debug-replay/`. Defaults to a
+  /** Output folder under `work/debug-replay/`. Defaults to a
    *  parity-prefixed timestamped folder. */
   tag?: string;
   /** Max wait time after triggering end before reading the stream.

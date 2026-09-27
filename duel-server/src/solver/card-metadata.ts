@@ -19,7 +19,7 @@ import type { CardDB } from '../types.js';
 
 // YGOPro type/race/attribute constants mirrored from ygopro-core.
 // Single source of truth: duel-server/data/scripts_full/constant.lua
-// Reference doc: _bmad-output/solver-data/cards-cdb-hex-reference.md
+// Reference doc: work/solver-data/cards-cdb-hex-reference.md
 export const TYPE_MONSTER = 0x1;
 export const TYPE_SPELL = 0x2;
 export const TYPE_TRAP = 0x4;

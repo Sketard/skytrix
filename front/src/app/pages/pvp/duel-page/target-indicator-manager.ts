@@ -76,7 +76,7 @@ export class TargetIndicatorManager implements OnDestroy, ResetTarget {
       const zoneId = pileZoneIdFromLocation(target.location);
       if (!zoneId) continue; // field zones handled elsewhere
       // F6 (2026-05-31) — route absolute→relative via ctx.relativePlayer for
-      // perspective discipline. See CLAUDE.md → "Perspective Convention".
+      // perspective discipline. See docs/duel/perspective.md → "Perspective Convention".
       const relPlayer = this.ctx.relativePlayer(target.player);
       const zoneKey = `${zoneId}-${relPlayer}`;
 

@@ -1,0 +1,14 @@
+{
+  "name": "skytrix",
+  "private": true,
+  "scripts": {
+    "prepare": "node C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/install-hooks.mjs",
+    "verify": "npm run verify:duel && npm run verify:front && npm run verify:back",
+    "verify:duel": "npm --prefix duel-server run build && npm --prefix duel-server test",
+    "verify:front": "npm --prefix front run build && npm --prefix front test -- --watch=false --browsers=ChromeHeadless",
+    "verify:back": "cd back && .\\mvnw -q test"
+  },
+  "devDependencies": {
+    "lefthook": "^2.1.10"
+  }
+}

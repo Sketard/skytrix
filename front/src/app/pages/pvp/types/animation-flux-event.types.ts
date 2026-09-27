@@ -1,7 +1,7 @@
 /**
  * β.2b — animation lifecycle events emitted by the
  * `AnimationOrchestratorService` around every dispatched business event.
- * Cf. `_bmad-output/planning-artifacts/duel-session-chantier.md §3.3` +
+ * Cf. `work/planning-artifacts/duel-session-chantier.md §3.3` +
  * `beta-2-deferred-effect-processor-spec.md §1.5` (the orchestrator wrap
  * pattern — the QueueRunner stays YGO-blind, so the events are emitted
  * one layer up where the YGO `type` of the dispatched message is known).

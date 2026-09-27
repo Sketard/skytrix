@@ -7,7 +7,7 @@ import { buildPageCatalog, runResponsiveAudit, DEFAULT_VIEWPORTS } from './respo
  * 1 interactive state + EN locale, with axe enabled. Used to verify the
  * pipeline before committing to the full ~3-min full-grid run.
  *
- * Output → `_bmad-output/responsive-audit-smoke/`. Safe to nuke between runs.
+ * Output → `work/responsive-audit-smoke/`. Safe to nuke between runs.
  */
 
 test.describe('Responsive audit — smoke', () => {

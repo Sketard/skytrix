@@ -72,7 +72,7 @@ function isGameEvent(msg: ServerMessage): msg is GameEvent {
  * F9 (2026-05-31) — cross-side parity invariant. The server mirrors a
  * minimal version of this machine in
  * `duel-server/src/chain-state-tracker.ts` (`applyChainTransition`).
- * The transition table MUST stay aligned — see CLAUDE.md → "Cross-side
+ * The transition table MUST stay aligned — see docs/duel/chain.md → "Cross-side
  * `chainPhase` parity (F9)" for the full matrix. Client-side, the
  * machine is split across `_processMessageInner` (CHAINING/NEGATED
  * sync, BELOW) and `applyChainSolving`/`applyChainEnd` (driven from
@@ -112,7 +112,7 @@ export class DuelEventProcessor {
   // queue) — the overlay then had no link to drop at SOLVED(N+1) dispatch,
   // never signalled `chainOverlayReady`, and the runner deadlocked on
   // `isWaitingForOverlay` (D/D/D 24-chain fixture, trace in
-  // _bmad-output/debug-solo/ddd-stall-diag/).
+  // work/debug-solo/ddd-stall-diag/).
   private _chainGeneration = 0;
   private _dispatchedEndCount = 0;
 

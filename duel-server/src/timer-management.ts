@@ -24,7 +24,7 @@ import * as logger from './logger.js';
  * **Null-guarded by design** (U25, 2026-06-01) — every turn-timer function
  * in this module early-returns when `session.timerContext === null`. SOLO
  * multiplex and fork-solo sessions skip turn-timer allocation entirely
- * (see `shouldRunTurnTimer` below + CLAUDE.md "Turn timer disabled in
+ * (see `shouldRunTurnTimer` below + docs/duel/modes.md "Turn timer disabled in
  * SOLO + fork (F5-bis behavior change)"). The `if (!ctx) return` pattern
  * is load-bearing, not defensive — `session.timerContext` is typed
  * `TimerContext | null`, TS `strictNullChecks` enforces the guard.

@@ -15,7 +15,7 @@ import type { DuelConfig, FieldState } from '../../src/solver/solver-types.js';
 import { ALL_ZONE_IDS } from '../../src/solver/solver-types.js';
 
 const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
-const HANDS_PATH = resolve(import.meta.dirname!, '..', '..', '..', '_bmad-output', 'planning-artifacts', 'research', 'mcts-calibration-hands.json');
+const HANDS_PATH = resolve(import.meta.dirname!, '..', '..', '..', 'work', 'planning-artifacts', 'research', 'mcts-calibration-hands.json');
 
 console.log('[Debug] Booting...');
 const cardDB = loadDatabase(join(DATA_DIR, 'cards.cdb'));

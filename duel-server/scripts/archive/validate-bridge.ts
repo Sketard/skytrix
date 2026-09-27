@@ -141,7 +141,7 @@ interface CandidateEffect {
 /** Load a minimal slice of the card's effect catalog. Returns the effect
  *  with the given id, or null if the catalog is missing / effect not found. */
 function loadCatalogEffect(cardId: number, effectId: string): CandidateEffect | null {
-  const p = join(DATA_DIR, '..', '..', '_bmad-output', 'solver-data', 'card-effects-catalog', `${cardId}.json`);
+  const p = join(DATA_DIR, '..', '..', 'work', 'solver-data', 'card-effects-catalog', `${cardId}.json`);
   try {
     const content = JSON.parse(readFileSync(p, 'utf-8')) as { effects: readonly CandidateEffect[] };
     return content.effects.find(e => e.id === effectId) ?? null;
@@ -1641,7 +1641,7 @@ async function main(): Promise<void> {
     }
   } else {
     // --candidates mode: write tier-bucketed output files + diagnosis histogram.
-    const outDir = join(DATA_DIR, '..', '..', '_bmad-output', 'solver-data');
+    const outDir = join(DATA_DIR, '..', '..', 'work', 'solver-data');
     const stamp = new Date().toISOString().slice(0, 10);
     const outA = join(outDir, `candidate-bridges-tier-a-${stamp}.json`);
     const outB = join(outDir, `candidate-bridges-tier-b-${stamp}.json`);

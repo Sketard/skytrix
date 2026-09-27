@@ -1,6 +1,6 @@
 /**
  * β.2 — deferred-effect events emitted by `DeferredEffectProcessor` (cf.
- * `_bmad-output/planning-artifacts/duel-session-chantier.md §3.7` +
+ * `work/planning-artifacts/duel-session-chantier.md §3.7` +
  * `beta-2-deferred-effect-processor-spec.md`).
  *
  * The DEP materialises cross-event temporal correlations as **explicit

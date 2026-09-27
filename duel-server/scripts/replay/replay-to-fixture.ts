@@ -77,8 +77,8 @@ function loadArgs(): Args {
     apiUrl: parseArg('api-url') ?? process.env['SPRING_BOOT_API_URL'] ?? 'http://localhost:8080/api',
     apiKey: parseArg('api-key') ?? process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key',
     player,
-    decksFile: parseArg('decks-file') ?? join(repoRoot, '_bmad-output/planning-artifacts/research/solver-validation-decks.json'),
-    trajectoriesDir: parseArg('trajectories-dir') ?? join(repoRoot, '_bmad-output/planning-artifacts/research/trajectories'),
+    decksFile: parseArg('decks-file') ?? join(repoRoot, 'work/planning-artifacts/research/solver-validation-decks.json'),
+    trajectoriesDir: parseArg('trajectories-dir') ?? join(repoRoot, 'work/planning-artifacts/research/trajectories'),
     maxIterations: Number(parseArg('max-iterations') ?? '500'),
   };
 }

@@ -9,7 +9,7 @@ import type { ServerMessage } from './ws-protocol.js';
 // mirror lives at front/src/app/pages/pvp/duel-page/duel-event-processor.spec.ts.
 //
 // Any change to chain-phase semantics on EITHER side MUST update BOTH specs
-// + the transition matrix in CLAUDE.md §"Cross-side chainPhase parity (F9)".
+// + the transition matrix in docs/duel/chain.md §"Cross-side chainPhase parity (F9)".
 //
 // There is currently no automated cross-side gate. Detection of a divergence
 // happens only at runtime, only on a real reconnect mid-chain (CHAIN_STATE

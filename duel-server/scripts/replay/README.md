@@ -66,5 +66,5 @@ replay for human inspection.
 ## Status
 
 Stable production tooling. All Path β workflows go through this folder.
-See `_bmad-output/solver-data/path-beta-methodology.md` for the full
+See `work/solver-data/path-beta-methodology.md` for the full
 playbook.

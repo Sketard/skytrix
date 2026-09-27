@@ -11,7 +11,7 @@
  *
  * This spec replays the SOLO leg at the FAILING pacing (100ms) with the
  * full verbose log set and dumps console + final stream to
- * _bmad-output/debug-solo/ddd-tutor-window/ for offline correlation
+ * work/debug-solo/ddd-tutor-window/ for offline correlation
  * around the 4 Dark Contract search windows (Copernicus 46796664,
  * Gryphon 28406301, Headhunt 91781484, Eternal Darkness 9030160).
  */
@@ -24,7 +24,7 @@ import { BASE_URL, ADMIN, loginViaUI } from '../helpers';
 const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key';
 const DUEL_SERVER_URL = process.env['E2E_DUEL_SERVER_URL'] ?? 'http://localhost:3001';
 const REPLAY_ID = '03a953d9-1904-473b-8d5b-5ede24c007e9';
-const OUT_DIR = resolve(__dirname, '../../../_bmad-output/debug-solo/ddd-tutor-window');
+const OUT_DIR = resolve(__dirname, '../../../work/debug-solo/ddd-tutor-window');
 
 test('D/D/D tutor window diagnostic — tape 100ms, full verbose logs', async ({ browser }) => {
   test.setTimeout(600_000);

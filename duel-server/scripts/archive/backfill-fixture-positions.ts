@@ -17,7 +17,7 @@ const __dirname = dirname(__filename);
 
 const FIXTURE_PATH = resolve(
   __dirname,
-  '../../_bmad-output/planning-artifacts/research/solver-validation-decks.json',
+  '../../work/planning-artifacts/research/solver-validation-decks.json',
 );
 
 const ATTACK: ReadonlySet<number> = new Set([

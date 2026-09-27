@@ -168,7 +168,7 @@ export function syncAfterBoardState(
   // these zones and harmful for the dispatch-order invariant.
   //
   // Bug repro: PvP discard cost + self-destroy scenario, see spec
-  // `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+  // `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
   const skipUpdateLogical = chainPhase === 'resolving' && queueLength > 0;
   if (!skipUpdateLogical) {
     rbs.updateLogical(boardState);

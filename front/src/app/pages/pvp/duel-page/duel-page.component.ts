@@ -1072,7 +1072,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
       return;
     }
     // F6 (2026-05-31) — route absolute→relative via duelCtx.relativePlayer
-    // for perspective discipline. See CLAUDE.md → "Perspective Convention".
+    // for perspective discipline. See docs/duel/perspective.md → "Perspective Convention".
     const keys = new Set(cards.map(c => {
       const relPlayer = this.duelCtx.relativePlayer(c.player);
       return locationToZoneKey(c.location, c.sequence, relPlayer);
@@ -1199,7 +1199,7 @@ export class DuelPageComponent implements OnInit, OnDestroy {
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return;
     const prompt = p as SelectPlaceMsg | SelectDisfieldMsg;
     // F6 (2026-05-31) — route absolute→relative via duelCtx.relativePlayer
-    // for perspective discipline. See CLAUDE.md → "Perspective Convention".
+    // for perspective discipline. See docs/duel/perspective.md → "Perspective Convention".
     const place = prompt.places.find(pl => {
       const id = locationToZoneId(pl.location, pl.sequence);
       const relPlayer = this.duelCtx.relativePlayer(pl.player);

@@ -43,7 +43,7 @@
 //
 // Usage: npx tsx scripts/enumerate-edges.ts [cardId1 cardId2 ...]
 //                                            [--json=<out.json>]
-//   If cardIds omitted, reads every JSON under _bmad-output/solver-data/card-effects-catalog/.
+//   If cardIds omitted, reads every JSON under work/solver-data/card-effects-catalog/.
 //   If --json=<out.json> passed, also writes the edges array as JSON to that
 //   path (for programmatic consumption by validate-bridge --candidates).
 
@@ -153,7 +153,7 @@ interface CardProperties {
 // Load catalogs + card properties
 // =============================================================================
 
-const catalogDir = join('..', '_bmad-output', 'solver-data', 'card-effects-catalog');
+const catalogDir = join('..', 'work', 'solver-data', 'card-effects-catalog');
 const cardDb = new Database(join('data', 'cards.cdb'), { readonly: true });
 const cardStmt = cardDb.prepare('SELECT t.id, t.name, d.type, d.level, d.attribute, d.race, d.setcode FROM texts t LEFT JOIN datas d ON d.id = t.id WHERE t.id = ?');
 

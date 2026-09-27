@@ -78,12 +78,12 @@ export interface CreateInitialSessionStateOpts {
 
 export function createInitialSessionState(opts: CreateInitialSessionStateOpts): ActiveDuelSession {
   const isFork = opts.forkMode === true;
-  // U15 review-fix (audit-4-modes-2026-06-01) — enforce CLAUDE.md F5-bis
+  // U15 review-fix (audit-4-modes-2026-06-01) — enforce docs/duel/modes.md F5-bis
   // invariant: `forkMode: true` implies `soloMode: true` and is NEVER set
   // on a PvP normal session. Documented but unenforced pre-fix; a future
   // 3rd call-site (tutorial / practice mode) could violate it silently.
   if (isFork && !opts.soloMode) {
-    throw new Error('createInitialSessionState: forkMode requires soloMode (CLAUDE.md F5-bis)');
+    throw new Error('createInitialSessionState: forkMode requires soloMode (docs/duel/modes.md F5-bis)');
   }
   const phase: SessionPhase = opts.phase ?? (isFork ? 'DUELING' : 'WAITING_PLAYERS');
   const startedAt = opts.startedAt !== undefined ? opts.startedAt : (isFork ? Date.now() : null);
@@ -167,7 +167,7 @@ export function createInitialSessionState(opts: CreateInitialSessionStateOpts): 
  *
  * MUST NOT be called on a `forkMode: true` session. Fork-solo is
  * exploratory one-shot and never reaches the rematch flow — see
- * CLAUDE.md F5-bis (`worker-lifecycle.ts:165` skips the rematch arm
+ * docs/duel/modes.md F5-bis (`worker-lifecycle.ts:165` skips the rematch arm
  * when `session.forkMode`). The invariant is by-construction ; no
  * runtime assertion is added here to keep the helper pure (D2 acted
  * 2026-06-02). Calling it on a fork session would leave `forkMode: true`

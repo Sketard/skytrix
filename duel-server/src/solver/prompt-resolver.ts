@@ -4,8 +4,8 @@
 // Unifies the two parallel decision pipelines (DFS via runUntilPlayerPrompt
 // in ocgcore-adapter.ts, and plan-replay via replay-trajectory-cli.ts) behind
 // a single PromptResolver + OracleChain abstraction. See:
-//   _bmad-output/solver-data/prompt-resolver-refactor-2026-05-01.md
-//   _bmad-output/solver-data/inventory-2026-05-01.md
+//   work/solver-data/prompt-resolver-refactor-2026-05-01.md
+//   work/solver-data/inventory-2026-05-01.md
 //
 // Phase 2 scope: this module is GREENFIELD — wired but not yet called from
 // either entry point. Phase 3 migrates runUntilPlayerPrompt to call

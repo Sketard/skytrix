@@ -7,7 +7,7 @@ const fixtures = [
 ];
 
 for (const fix of fixtures) {
-  const path = `_bmad-output/solver-data/phase-1-baselines/plan-replay/${fix}.trace.jsonl`;
+  const path = `work/solver-data/phase-1-baselines/plan-replay/${fix}.trace.jsonl`;
   let lines;
   try {
     lines = readFileSync(path, 'utf-8').trim().split('\n');

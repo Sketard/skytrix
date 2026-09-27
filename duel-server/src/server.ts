@@ -602,7 +602,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   // separate test ; not in Phase 0 scope. See parity spec doc.
   //
   // NEVER exposed in production — gated on `!IS_PRODUCTION`. See
-  // `_bmad-output/planning-artifacts/pvp-replay-event-stream-parity-spec-2026-06-05.md`.
+  // `work/planning-artifacts/pvp-replay-event-stream-parity-spec-2026-06-05.md`.
   if (method === 'POST' && pathname === '/api/duels/from-replay') {
     if (IS_PRODUCTION) {
       json(res, 404, { code: 'NOT_FOUND', error: 'Not Found' });
@@ -706,7 +706,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     session.tapePlayer = createTapePlayer(replay.playerResponses, replay.seed, 0, responseDelayMs);
 
     // SOLO multiplex : 1 token only. The single WS multiplexes both
-    // perspectives via slot routing (see CLAUDE.md "Modes — vue
+    // perspectives via slot routing (see docs/duel/modes.md "Modes — vue
     // d'ensemble" table).
     sessionManager.register(session, [token0]);
 

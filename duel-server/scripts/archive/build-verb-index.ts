@@ -1,7 +1,7 @@
 // Build verb-index.json — pre-computed YGO-verb tagging for the Phase B
 // graph-ml-v2 ranker MVP v3 features.
 //
-// Reads:  _bmad-output/solver-data/card-effects-catalog/*.json
+// Reads:  work/solver-data/card-effects-catalog/*.json
 // Writes: duel-server/data/derived/verb-index.json
 //
 // Output schema (v1):
@@ -350,7 +350,7 @@ function buildStats(entries: Record<string, CardEntry>): Stats {
 // =============================================================================
 
 function main(): void {
-  const catalogDir = join(__dirname, '..', '..', '_bmad-output', 'solver-data', 'card-effects-catalog');
+  const catalogDir = join(__dirname, '..', '..', 'work', 'solver-data', 'card-effects-catalog');
   const outPath = join(__dirname, '..', 'data', 'derived', 'verb-index.json');
 
   const files = readdirSync(catalogDir).filter(f => f.endsWith('.json'));

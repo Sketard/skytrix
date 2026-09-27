@@ -18,10 +18,10 @@
 // The newcomer T-F6 (chain SOLO multiplex) exercises the cardinal γ invariant
 // in unit : the chain state survives a switchPerspective performed mid-chain,
 // because there is now ONE processor on ONE connection — not two processors
-// + a routing race. See `_bmad-output/planning-artifacts/phase-gamma-option-c-multiplex-spec.md §7.2`.
+// + a routing race. See `work/planning-artifacts/phase-gamma-option-c-multiplex-spec.md §7.2`.
 //
 // The Playwright Scenarios A-E + the SOLO reconnect × 2 e2e (T-S13) stay in
-// debt → tracked at `_bmad-output/planning-artifacts/gamma-c-playwright-c9-deferred.md`.
+// debt → tracked at `work/planning-artifacts/gamma-c-playwright-c9-deferred.md`.
 // =============================================================================
 
 import { TestBed } from '@angular/core/testing';

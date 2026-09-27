@@ -98,7 +98,7 @@ export interface MoveMsg {
    * so the client can correlate a material to the XYZ it overlays. Present
    * only on the overlay leg of an XYZ summon (attach: `toOverlaySequence`) or
    * a material detach (detach: `fromOverlaySequence`). Optional + backward
-   * compatible. See `_bmad-output/planning-artifacts/xyz-overlay-move-fix-2026-06-16.md`.
+   * compatible. See `work/planning-artifacts/xyz-overlay-move-fix-2026-06-16.md`.
    */
   fromOverlaySequence?: number;
   toOverlaySequence?: number;

@@ -27,7 +27,7 @@ const nodeBudget = Number(process.argv[2] ?? 200);
 const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
 const FIXTURES_PATH = resolve(
   import.meta.dirname!, '..', '..', '..',
-  '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
+  'work', 'planning-artifacts', 'research', 'solver-validation-decks.json',
 );
 
 const fixtureFile = JSON.parse(readFileSync(FIXTURES_PATH, 'utf-8')) as {

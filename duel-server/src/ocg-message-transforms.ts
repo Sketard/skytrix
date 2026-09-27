@@ -239,7 +239,7 @@ export function transformMove(
   // `{ location: EXTRA|MZONE (the host's base zone), overlay_sequence: N }`,
   // NOT as `location: OVERLAY`. Without reading it we mis-route the material
   // as a plain move to the Extra Deck (the XYZ-summon "materials fly to the
-  // Extra Deck" bug). See `_bmad-output/planning-artifacts/xyz-overlay-move-fix-2026-06-16.md`.
+  // Extra Deck" bug). See `work/planning-artifacts/xyz-overlay-move-fix-2026-06-16.md`.
   msg: { card: number;
          from: { controller: 0 | 1; location: number; sequence: number; position: number; overlay_sequence?: number };
          to: { controller: 0 | 1; location: number; sequence: number; position: number; overlay_sequence?: number } },

@@ -3,7 +3,7 @@ import { runReplayDebug } from './debug-replay-harness';
 
 /**
  * Regression exemplar — investigation 2026-05-26 of two XYZ visual bugs
- * documented in `_bmad-output/planning-artifacts/deferred-effects-catalogue.md`
+ * documented in `work/planning-artifacts/deferred-effects-catalogue.md`
  * (cas #12 `xyz-leave-with-materials` and the pass 3 écarté
  * `xyz-summon-materials-via-extra` candidate for the future cas #13bis).
  *
@@ -22,7 +22,7 @@ import { runReplayDebug } from './debug-replay-harness';
  *    the deferred-effects catalogue (§1bis), to be fixed in Phase β.
  *
  * Use this spec to verify the fixes in Phase β. Re-run will produce
- * fresh frames under `_bmad-output/debug-replay/2026-05-26-xyz-bug*-*`.
+ * fresh frames under `work/debug-replay/2026-05-26-xyz-bug*-*`.
  * The directory is .gitignored — only this spec is checked in.
  */
 

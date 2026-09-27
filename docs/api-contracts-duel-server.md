@@ -186,4 +186,4 @@ The orchestrator (`src/solver/solver-orchestrator.ts`) pools Piscina workers; `s
 
 - [integration-architecture.md](./integration-architecture.md) for the full back ↔ duel-server ↔ front wiring.
 - [architecture-duel-server.md](./architecture-duel-server.md) for the runtime model.
-- [`../CLAUDE.md`](../CLAUDE.md) for the chain state machine, pre-lock contract, replay parity rules, and the `POLL-DROP REGRESSION` watchdog.
+- [`duel/README.md`](duel/README.md) for the chain state machine, pre-lock contract, replay parity rules, and the `POLL-DROP REGRESSION` watchdog.

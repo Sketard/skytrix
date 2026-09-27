@@ -53,7 +53,7 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  * legitimate wait paths are now event-driven (WS message / mock dispatch
  * via notifyEnqueue, resume effect on chainOverlayReady). A POLL-DROP
  * REGRESSION watchdog
- * fires if a finalize-during-resolving stalls — see CLAUDE.md.
+ * fires if a finalize-during-resolving stalls — see docs/duel/replay.md.
  */
 export type QueueStep =
   | { action: 'pause-external' }
@@ -185,7 +185,7 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
   }
 
   // 2. Queue collapse (LP-only burst). Visual events MUST NOT be collapsed
-  // (see CLAUDE.md "Queue collapse — LP-only predicate").
+  // (see docs/duel/replay.md "Queue collapse — LP-only predicate").
   if (
     input.queue.length > QUEUE_COLLAPSE_THRESHOLD
     && input.queue.every(e => !('kind' in e)
@@ -261,7 +261,7 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
   //     be requested until `chainPhase=idle` → deadlock circulaire without
   //     an autonomous drain. PvP gets a bonus side-effect: 2 batches separated
   //     instead of one with lock GY-0 ref-count=2 shared.
-  // Voir `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+  // Voir `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
   if (input.isResolving && input.hasBufferedEvents) {
     return { action: 'pre-replay-buffer' };
   }
@@ -270,7 +270,7 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
   // Note: prior versions had a poll back-off branch here gated on
   // (commitMode === 'deferred' && isWaitingForOverlay). It was found
   // unreachable due to the wait gate above (priority 1) and dropped
-  // in 2026-05-10 — see CLAUDE.md "Polling Removal — Regression Surface".
+  // in 2026-05-10 — see docs/duel/replay.md "Polling Removal — Regression Surface".
   return { action: 'finalize' };
 }
 
@@ -663,7 +663,7 @@ export class QueueRunner {
           }
 
           case 'finalize': {
-            // INVARIANT (CLAUDE.md): finalizeAndCommit() MUST run BEFORE
+            // INVARIANT (docs/duel/replay.md): finalizeAndCommit() MUST run BEFORE
             // setRunning(false). Historical rationale: the v3 replay adapter's
             // setAnimating(false) synchronously advanced to the next state ;
             // today setAnimating is a no-op on both impls, but the ordering
@@ -861,7 +861,7 @@ export class QueueRunner {
   }
 
   private trace(action: string, detail?: Record<string, unknown>): void {
-    // CLAUDE.md "What NOT to instrument" — bind expensive payloads behind
+    // docs/duel/debugging.md "What NOT to instrument" — bind expensive payloads behind
     // `logger.isEnabled(cat)` checks so the call site cost (signal-getter +
     // object literal) is paid only when the category is on.
     if (!this.deps.logger.isEnabled(DuelLogCategory.RUNNER)) return;

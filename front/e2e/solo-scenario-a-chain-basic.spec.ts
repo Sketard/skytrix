@@ -12,7 +12,7 @@ import { runSoloPvpDebug } from './solo-pvp-harness';
  * spec walks the **live** stack to produce the visual + console artefact
  * Axel wanted post-c4.1 : ONE card travels per MSG_MOVE, no overlay
  * desync, no Lock safety timeout, no POLL-DROP REGRESSION. Output goes
- * to `_bmad-output/debug-solo/<tag>/`.
+ * to `work/debug-solo/<tag>/`.
  *
  * ## Requirements (NOT auto-validated by CI)
  *
@@ -33,7 +33,7 @@ import { runSoloPvpDebug } from './solo-pvp-harness';
  * court-circuit + F5 grace, A27+A31), E (cancel-rollback slot 1 A30),
  * and the SOLO reconnect × 2 server-side e2e (T-S13) are all deferred
  * to a dedicated "γ-c Playwright session" — cf.
- * `_bmad-output/planning-artifacts/gamma-c-playwright-c9-deferred.md`.
+ * `work/planning-artifacts/gamma-c-playwright-c9-deferred.md`.
  * Reason : each Scenario B-E needs richer scripted user actions
  * (rematch flow, F5 reload mid-grace, right-click cancel) and full
  * stack validation that doesn't fit in the c7 unitary scope.

@@ -24,7 +24,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/audit-sweep-coverage.ts \
-//     --spec=../_bmad-output/planning-artifacts/research/sweep-specs/coarse-v1.json
+//     --spec=../work/planning-artifacts/research/sweep-specs/coarse-v1.json
 // =============================================================================
 
 import { readFileSync } from 'node:fs';
@@ -116,7 +116,7 @@ async function main(): Promise<void> {
   const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
   const FIXTURE_PATH = resolve(
     import.meta.dirname!, '..', '..', '..',
-    '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
+    'work', 'planning-artifacts', 'research', 'solver-validation-decks.json',
   );
 
   const spec = JSON.parse(readFileSync(resolve(specPath), 'utf-8')) as SweepSpec;

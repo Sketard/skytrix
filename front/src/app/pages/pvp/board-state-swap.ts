@@ -15,7 +15,7 @@ import type { BoardStatePayload, Player, PlayerBoardState, ServerMessage } from 
  *    omniscient (absolute) board states; `DuelConnection.handleMessage`
  *    swaps when the user's current visual perspective is 1.
  *
- * Both call sites are documented in CLAUDE.md "Perspective Convention" §2
+ * Both call sites are documented in docs/duel/perspective.md "Perspective Convention" §2
  * and "Replay Board State Parity Rule".
  *
  * Pure function — no `this`, no closures. Caller passes the desired
@@ -34,7 +34,7 @@ export function swapBoardState(bs: BoardStatePayload, perspective: 0 | 1): Board
 
 /**
  * Relativize the per-event `boardStateAfter` snapshot attached server-side
- * to BOARD_CHANGING events during chain resolution (cf. CLAUDE.md
+ * to BOARD_CHANGING events during chain resolution (cf. docs/duel/orchestrator.md
  * "Per-event boardStateAfter snapshot"). `swapBoardState` alone only
  * covers the top-level `boardState`; the snapshot buried on each event is
  * consumed directly by `AnimationOrchestratorService.processEvent()` via

@@ -270,7 +270,7 @@ describe('QueueRunner.decideNextStep', () => {
       // dispatch). In replay, MSG_CHAIN_END is segmented into a distinct
       // state by replay-precompute.ts and won't be requested until
       // chainPhase=idle → deadlock circulaire without an autonomous drain.
-      // See `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+      // See `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
       const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: true,
@@ -309,7 +309,7 @@ describe('QueueRunner.decideNextStep', () => {
     it('returns finalize when commitMode=deferred (mid-chain queue gap, event-driven re-wake expected)', () => {
       // Mid-chain queue-empty: chainPhase='resolving' but no overlay wait.
       // The dispatcher arms the POLL-DROP REGRESSION watchdog at this point
-      // (see CLAUDE.md "Polling Removal — Regression Surface"); decideNextStep
+      // (see docs/duel/replay.md "Polling Removal — Regression Surface"); decideNextStep
       // itself just returns finalize. The watchdog catches stalls if no
       // event-driven re-wake (WS / advanceStep / chainOverlayReady) arrives
       // within POLL_DROP_REGRESSION_WATCHDOG_MS.

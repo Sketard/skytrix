@@ -3,9 +3,9 @@ import { runReplayDebug } from './debug-replay-harness';
 
 /**
  * Perf-audit run — plays replay a8859c98 end-to-end and captures a report
- * under `_bmad-output/debug-replay/<tag>/` (Markdown timeline + screenshots
+ * under `work/debug-replay/<tag>/` (Markdown timeline + screenshots
  * + JSON snapshots). Phase 0.5 / Phase 1 of the perf chantier
- * (_bmad-output/planning-artifacts/perf-audit-instrumentation-chantier.md).
+ * (work/planning-artifacts/perf-audit-instrumentation-chantier.md).
  *
  * buildFirst: false — points at the running ng serve on :4200.
  */

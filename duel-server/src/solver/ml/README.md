@@ -75,6 +75,6 @@ commit 05f687d8) for cleanliness:
 Skipped P2 (composition order schema with declarative mutual exclusions)
 per the audit — over-engineering for 4 rankers; revisit when a 5th arrives.
 
-See `_bmad-output/solver-data/ml-refactor-audit-2026-05-05.md` for the
+See `work/solver-data/ml-refactor-audit-2026-05-05.md` for the
 audit memo, and memory entries `graph-ml-v1-*`, `phase-b-*`, `arch-c-*`
 for historical context.

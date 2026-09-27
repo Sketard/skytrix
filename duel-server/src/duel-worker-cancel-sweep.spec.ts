@@ -7,7 +7,7 @@
 // contract is correctly reset.
 //
 // THE CONTRACT THIS TEST GUARDS:
-//   `_bmad-output/planning-artifacts/cancel-rollback-contract.md`
+//   `work/planning-artifacts/cancel-rollback-contract.md`
 //
 // MAINTENANCE DISCIPLINE — when adding a new mutable state slot to:
 //   - the worker module-level state, OR

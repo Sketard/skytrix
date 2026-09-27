@@ -84,7 +84,7 @@ describe('syncAfterBoardState', () => {
   // Tier 1: !boardActive → syncPileCounts (bootstrap, pre-activation buffer
   //         path — initial MSG_DRAW ×5 parked in orchestrator, must not be
   //         pre-committed by BOARD_STATE or the draw animations play on top
-  //         of cards already visible. See CLAUDE.md §syncAfterBoardState).
+  //         of cards already visible. See docs/duel/orchestrator.md §syncAfterBoardState).
   // ---------------------------------------------------------------------------
 
   it('tier 1 (!boardActive): syncPileCounts only — no commitAll/syncRendered', () => {

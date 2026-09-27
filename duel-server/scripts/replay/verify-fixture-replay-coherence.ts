@@ -12,7 +12,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/verify-fixture-replay-coherence.ts \
-//     --raw-replay=../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json \
+//     --raw-replay=../work/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json \
 //     --fixture-id=branded-dracotail-opener \
 //     --out=/tmp/coherence-branded.json
 //

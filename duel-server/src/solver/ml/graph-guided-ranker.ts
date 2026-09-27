@@ -3,7 +3,7 @@
 //
 // Plug-in ranker that biases action ordering using a learned weight map over
 // effect-level edges of the mechanical dependency graph (see
-// `_bmad-output/solver-data/card-effects-catalog/` and `enumerate-edges.ts`).
+// `work/solver-data/card-effects-catalog/` and `enumerate-edges.ts`).
 //
 // M1 scope: coarse card-level action matching (action.cardId → outgoing edges
 // of that card, summed). Effect-level matching (cardId.effectId → specific

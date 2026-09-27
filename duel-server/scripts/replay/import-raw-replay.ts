@@ -11,7 +11,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/replay/import-raw-replay.ts \
-//     --raw-replay=../_bmad-output/planning-artifacts/research/trajectories/ddd-pendulum-replay-eb8c6865.raw-replay.json \
+//     --raw-replay=../work/planning-artifacts/research/trajectories/ddd-pendulum-replay-eb8c6865.raw-replay.json \
 //     [--player1-id=1] [--player2-id=1] \
 //     [--p1-username=axel] [--p2-username=axel] \
 //     [--deck-name="D/D/D Doom Queen Machinex"] \

@@ -3,7 +3,7 @@
 //
 // Pure functions that turn (FieldState, Action) into a deck-agnostic numeric
 // feature vector consumed by `NeuralFeatureRanker`. Design doc:
-// `_bmad-output/solver-data/phase-b/day-1-design-doc.md` (round 2, §3-§4).
+// `work/solver-data/phase-b/day-1-design-doc.md` (round 2, §3-§4).
 //
 // Hard constraints:
 // - 49 state features + 46 per-action features = 95 dims, fixed order.

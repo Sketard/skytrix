@@ -17,7 +17,7 @@ import { BASE_URL, BACK_URL, ADMIN, loginViaUI } from './helpers';
  *   - C: dual locale runs (FR default + EN on critical pages)
  *   - J: axe-core a11y audit (CDN-injected, no devDep)
  *
- * Output: _bmad-output/responsive-audit-{ISO date}/
+ * Output: work/responsive-audit-{ISO date}/
  *   frames/<page>/<viewport>[-<state>][-<locale>].png  — viewport-only capture
  *   snapshots/<page>/<viewport>[-<state>][-<locale>].json — per-capture findings
  *   findings-mechanical.json — aggregate, machine-readable
@@ -30,7 +30,7 @@ import { BASE_URL, BACK_URL, ADMIN, loginViaUI } from './helpers';
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const OUTPUT_ROOT = path.resolve(REPO_ROOT, '_bmad-output');
+const OUTPUT_ROOT = path.resolve(REPO_ROOT, 'work');
 
 // axe-core injected at runtime via CDN (no devDep added per brownfield policy).
 // Pinned version so the audit is reproducible.

@@ -5,7 +5,7 @@ import { buildPageCatalog, DEFAULT_VIEWPORTS, runResponsiveAudit } from './respo
 /**
  * Full responsive audit: 11 pages × 8 viewports = 88 captures + mechanical
  * findings. Viewports include 4 mobile (2 portrait + 2 landscape), 2 tablet,
- * 2 desktop. Output → `_bmad-output/responsive-audit-{ISO date}/`.
+ * 2 desktop. Output → `work/responsive-audit-{ISO date}/`.
  *
  * Prereqs (stack must be up at the URLs in helpers.ts):
  *   - admin / admin authenticated

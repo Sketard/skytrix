@@ -105,4 +105,4 @@ This is how EDOPro maps game messages to sounds. Use this as reference when wiri
 - Suppress sounds during replay fast-forward (EDOPro does this via `isCatchingUp`)
 - Hook into `AnimationOrchestratorService.processEvent()` — each event type already routes there
 - Add volume slider + mute toggle to duel UI settings
-- Per CLAUDE.md: SoundService must work through `AnimationDataSource` interface to ensure replay parity
+- Per `docs/duel/animation.md` (Animation Parity Rule): SoundService must work through `AnimationDataSource` interface to ensure replay parity

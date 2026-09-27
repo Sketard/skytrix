@@ -72,7 +72,7 @@ const timeBudgetMs = Number(parseArg('time-budget-ms') ?? '12000');
 const maxDepth = Number(parseArg('max-depth') ?? '50');
 const fixtureFilter = parseArg('fixture-filter');
 const baselinePath = parseArg('baseline')
-  ?? resolve(import.meta.dirname!, '..', '..', '..', '_bmad-output', 'solver-data',
+  ?? resolve(import.meta.dirname!, '..', '..', '..', 'work', 'solver-data',
              'phase-1-baselines', 'canonical-eval-v2-2026-05-02.json');
 const g2Enabled = !hasFlag('no-g2');
 const configMode = g2Enabled

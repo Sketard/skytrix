@@ -69,7 +69,7 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  * matchmaking, not playback. An unknown type logs a `warn` ; the dispatch
  * is fail-soft.
  *
- * See `_bmad-output/planning-artifacts/anim-pipeline-v4-replay-unification-2026-06-05.md`
+ * See `work/planning-artifacts/anim-pipeline-v4-replay-unification-2026-06-05.md`
  * and the companion `replay-adapter-inventory-2026-06-05.md` for the full
  * design rationale.
  */
@@ -606,7 +606,7 @@ export class MockDuelConnection implements AnimationDataSource {
     // updated logical state (no syncRendered / syncPileCounts), leaving
     // DECK/EXTRA pile counts + global metadata stale between events
     // (regression doctrinale documented in
-    // `_bmad-output/planning-artifacts/anim-pipeline-v4-adversarial-findings-2026-06-06.md`
+    // `work/planning-artifacts/anim-pipeline-v4-adversarial-findings-2026-06-06.md`
     // — F3). `boardActive=true` in replay (the pre-activation buffer flow
     // is PvP-only — the replay page configures `isBoardActive: () => true`
     // at mount), so tier 1 (`!boardActive` bootstrap branch) is dead code

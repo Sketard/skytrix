@@ -202,10 +202,6 @@ Multi-stage:
 - **Build**: `maven:3.9-eclipse-temurin-21`, copies `pom.xml` + `src/`, runs `mvn package -DskipTests`.
 - **Runtime**: `eclipse-temurin:21-jre-alpine` + curl, exposes 8080. Runs `java $JAVA_OPTS -jar app.jar` with `JAVA_OPTS="-XX:+UseG1GC -Xmx512m"` from compose.
 
-## Source tree (`src/main/java/com/skytrix`)
-
-See [source-tree-analysis.md](./source-tree-analysis.md#back--spring-boot-backend).
-
 ## Anomalies / known issues
 
 1. **TODO `RoomService:73`** — pessimistic lock held during `duelServerClient.createDuel()` external HTTP call. Risk: deadlock/timeout if duel-server is slow. Fix: async or timeout wrapper around the external call, or release the lock before calling.

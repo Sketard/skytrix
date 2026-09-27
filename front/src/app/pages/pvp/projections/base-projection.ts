@@ -16,7 +16,7 @@ import type { ScopeCategory } from './scope';
  * {@link ScopeResetDispatcher} when a reset event invalidates this
  * projection's scope).
  *
- * Cf. `_bmad-output/planning-artifacts/duel-session-chantier.md
+ * Cf. `work/planning-artifacts/duel-session-chantier.md
  * §3.2 + §3.5`.
  *
  * `BaseProjection<T>` is a **strict superset** of {@link ResetTarget}: a

@@ -1,8 +1,8 @@
 // @ts-check
 /**
  * Custom ESLint plugin for the anim-pipeline-v2 chantier
- * (cf. `_bmad-output/planning-artifacts/duel-session-chantier-implementation-plan.md §1 α.1`,
- * `_bmad-output/planning-artifacts/duel-session-chantier.md §3.2`).
+ * (cf. `work/planning-artifacts/duel-session-chantier-implementation-plan.md §1 α.1`,
+ * `work/planning-artifacts/duel-session-chantier.md §3.2`).
  *
  * The chantier requires every signal in `src/app/pages/pvp/` to declare
  * its nature so a future code-reviewer can answer the §3.2 algorithm

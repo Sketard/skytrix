@@ -10,7 +10,7 @@ import { Injectable } from '@angular/core';
  * (via the `options.wsFactory` ctor field).
  *
  * **Not consumed by replay**. Two distinct surfaces : `MockDuelConnection`
- * (the animation-pipeline data source for replays, cf. CLAUDE.md "Animation
+ * (the animation-pipeline data source for replays, cf. docs/duel/animation.md "Animation
  * Parity Rule") does NOT instantiate `DuelConnection` ; and the replay
  * WebSocket itself lives in a separate service `replay-connection.service.ts`
  * which has its own `new WebSocket(url)` path. Neither reaches this factory,

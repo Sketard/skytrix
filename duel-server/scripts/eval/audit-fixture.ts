@@ -34,7 +34,7 @@ const nodeBudget = Number(parseArg('node-budget') ?? '400');
 const budgetMs = Number(parseArg('budget-ms') ?? '3600000');
 
 const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
-const DECKS_PATH = resolve(import.meta.dirname!, '..', '..', '..', '_bmad-output/planning-artifacts/research/solver-validation-decks.json');
+const DECKS_PATH = resolve(import.meta.dirname!, '..', '..', '..', 'work/planning-artifacts/research/solver-validation-decks.json');
 
 const fixture = JSON.parse(readFileSync(DECKS_PATH, 'utf-8')) as {
   decks: Record<string, { main: number[]; extra: number[] }>;

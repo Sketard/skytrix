@@ -6,11 +6,11 @@ import { BASE_URL, ADMIN, loginViaUI } from './helpers';
 /**
  * POC Projection — Demi-jour 2 : application au board PvP réel.
  *
- * Scénarios U1-U4 de _bmad-output/planning-artifacts/poc-projection-spec.md §5.
+ * Scénarios U1-U4 de work/planning-artifacts/poc-projection-spec.md §5.
  * Lance contre le stack dev déjà up (back:8080, duel:3001, front:4200).
  *
- * Sortie : _bmad-output/poc-projection/screenshots/ (PNG before/after)
- *          _bmad-output/poc-projection/raw-board-{u1..u4}.json (mesures)
+ * Sortie : work/poc-projection/screenshots/ (PNG before/after)
+ *          work/poc-projection/raw-board-{u1..u4}.json (mesures)
  *
  * NOTE U3 — "switch in-flight pendant travel réel" : timing fragile via
  *   un replay live, on l'évalue dans le rapport day2-findings.md à partir
@@ -20,7 +20,7 @@ import { BASE_URL, ADMIN, loginViaUI } from './helpers';
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const POC_OUT = path.resolve(REPO_ROOT, '_bmad-output', 'poc-projection');
+const POC_OUT = path.resolve(REPO_ROOT, 'work', 'poc-projection');
 const SHOTS = path.join(POC_OUT, 'screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 

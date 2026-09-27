@@ -30,7 +30,7 @@ export interface PollDropWatchdogState {
  * standing up the whole orchestrator (which pulls ~14 injected deps).
  *
  * Context: the legacy chain-poll back-off was removed 2026-05-10 (see
- * CLAUDE.md "Polling Removal — Regression Surface"). This watchdog is the
+ * docs/duel/replay.md "Polling Removal — Regression Surface"). This watchdog is the
  * safety net: armed at finalize-during-resolving, it fires after
  * `POLL_DROP_REGRESSION_WATCHDOG_MS` if the chain is still resolving with an
  * empty, non-animating queue — the pathological state the dropped poll would

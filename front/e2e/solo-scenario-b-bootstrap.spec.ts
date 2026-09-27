@@ -89,7 +89,7 @@ test('γ Scenario B — bootstrap SOLO + 5 MSG_DRAW initiaux', async ({ browser,
       // Asserting on the RENDERED state is what proves the bootstrap is
       // visually complete — the user sees 5 cards laid out in their fan.
       // `_preActivationBuffer` drain timer is `BOARD_BREATHE_MS = 500ms`
-      // (cf. CLAUDE.md) + per-card animation (~300-600ms) so 5 cards
+      // (cf. docs/duel/orchestrator.md) + per-card animation (~300-600ms) so 5 cards
       // visible ≈ 3-6s on a healthy box.
       const harnessPage = ctx.pages()[0];
       const deadline = Date.now() + 20_000;

@@ -2,7 +2,7 @@
 // duel-instrumentation.ts — Env-gated timing counters for the duel hot path.
 //
 // Phase 0b of the perf-audit chantier
-// (_bmad-output/planning-artifacts/perf-audit-instrumentation-chantier.md).
+// (work/planning-artifacts/perf-audit-instrumentation-chantier.md).
 //
 // Generalizes the pattern proven by `solver/solver-instrumentation.ts` (Rule of
 // Three: the solver wrote it once, the duel side is the second use → generalize

@@ -266,7 +266,7 @@ export interface WorkerReplayError {
  *
  * Emitted by `runReplayPreComputation` alongside the legacy
  * `WORKER_REPLAY_BOARD_STATES`. The replay handler relays these as
- * `REPLAY_STREAM_CHUNK` WS messages to the client. See CLAUDE.md →
+ * `REPLAY_STREAM_CHUNK` WS messages to the client. See docs/duel/replay.md →
  * "Replay = PvP readonly" doctrine.
  */
 export interface WorkerReplayStreamChunk {

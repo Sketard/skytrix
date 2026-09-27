@@ -32,7 +32,7 @@ import { normalizeStream, findFirstDivergence } from './normalize-stream';
 
 // Playwright loads spec files via pirates in CJS mode (see playwright.config.ts
 // comment) so `__dirname` is defined globally. `import.meta.url` throws here.
-const PARITY_DUMP_DIR = resolve(__dirname, '../../../_bmad-output/debug-replay/parity-dump');
+const PARITY_DUMP_DIR = resolve(__dirname, '../../../work/debug-replay/parity-dump');
 
 interface ParityFixture {
   id: string;

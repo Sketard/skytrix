@@ -1,7 +1,7 @@
 # Frontend — Protocole de mesure de performance
 
 > Phase 0c du chantier perf
-> (`_bmad-output/planning-artifacts/perf-audit-instrumentation-chantier.md`).
+> (`work/planning-artifacts/perf-audit-instrumentation-chantier.md`).
 >
 > **Pas de framework, pas de dépendance.** Le frontend skytrix est brownfield
 > sans nouvelle dépendance autorisée — l'instrumentation perf est un *protocole

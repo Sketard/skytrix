@@ -156,7 +156,7 @@ function parseCli(argv: string[]): CliOpts {
     speed: 'fast',
     outPath: resolve(
       import.meta.dirname!, '..', '..', '..',
-      '_bmad-output', 'planning-artifacts', 'research',
+      'work', 'planning-artifacts', 'research',
       'empirical-validation-2026-04-13-raw.json',
     ),
   };
@@ -257,7 +257,7 @@ async function main(): Promise<void> {
   const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
   const FIXTURE_PATH = resolve(
     import.meta.dirname!, '..', '..', '..',
-    '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
+    'work', 'planning-artifacts', 'research', 'solver-validation-decks.json',
   );
 
   console.log(`[Spike] Loading ${FIXTURE_PATH}`);

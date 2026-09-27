@@ -62,7 +62,7 @@ export const LOCK_SAFETY_QUEUE_BUDGET_MS = 250;
  * arrival, advanceStep, chainOverlayReady signal) all complete in <2s in
  * normal play. A 10s stall is unambiguously pathological.
  *
- * See CLAUDE.md "Polling Removal — Regression Surface".
+ * See docs/duel/replay.md "Polling Removal — Regression Surface".
  */
 export const POLL_DROP_REGRESSION_WATCHDOG_MS = 10_000;
 
@@ -94,7 +94,7 @@ export const REPLAY_BUFFER_SAFETY_TIMEOUT_MS = 10_000;
  * today: the deferred lifecycle is logical (a chain cost can be slow
  * to animate, but it still resolves), and a speed-scaled timeout
  * would hide an actually stuck rule under slow playback. Cf.
- * `_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md §2.3`.
+ * `work/planning-artifacts/beta-2-deferred-effect-processor-spec.md §2.3`.
  */
 export const DEFERRED_TIMEOUT_MS = 5_000;
 

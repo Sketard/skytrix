@@ -20,7 +20,7 @@
 //   cd duel-server
 //   npx tsx scripts/trace-assist.ts \
 //     --fixture=ryzeal-mitsurugi-opener \
-//     --out=../_bmad-output/planning-artifacts/research/trajectories/ryzeal-mitsurugi-opener.json
+//     --out=../work/planning-artifacts/research/trajectories/ryzeal-mitsurugi-opener.json
 //
 // Commands at each prompt:
 //   <number>        pick action by index in the printed table

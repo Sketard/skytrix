@@ -932,7 +932,7 @@ describe('DuelConnection — onclose 4426 protocol mismatch (U2)', () => {
 
 // =============================================================================
 // U29 (audit-4-modes-2026-06-01) — DuelConnection.cleanup() idempotence.
-// Transport Lifecycle Invariant 1 (CLAUDE.md) requires cleanup() to be safe
+// Transport Lifecycle Invariant 1 (docs/duel/transport.md) requires cleanup() to be safe
 // to call multiple times — SOLO multiplex teardown invokes it twice
 // (orchestrator.cleanup + wsService.ngOnDestroy), and the wsService ctor
 // builds a default conn immediately replaced + cleaned by bindSoloConnection.
@@ -963,7 +963,7 @@ describe('DuelConnection.cleanup() — idempotence (Transport Lifecycle Invarian
 // 4 lifecycle events in handleMessage / _applyStateSync mass-reset the
 // per-slot prompt-flow state. The clears differ per event; the
 // authoritative table lives in
-// `_bmad-output/planning-artifacts/phase-gamma-option-c-multiplex-spec.md`
+// `work/planning-artifacts/phase-gamma-option-c-multiplex-spec.md`
 // §4.3 A8 ("per-perspective field reset rules"). Pre-U6 the only
 // regression net was one DUEL_END test covering 3 fields out of 8. A
 // new field added on the slot or a clear silently dropped on one of
@@ -1133,7 +1133,7 @@ describe('DuelConnection — mass-reset matrix (spec §4.3 A8, U6)', () => {
       // waitingForOpponent — the server re-sends a fresh WAITING_RESPONSE
       // after the resync, and INACTIVITY_WARNING is a transport-time event
       // that does not survive a reconnect on the server side anyway.
-      // (See `_bmad-output/planning-artifacts/phase-gamma-option-c-multiplex-spec.md`
+      // (See `work/planning-artifacts/phase-gamma-option-c-multiplex-spec.md`
       // §4.3 A8 — these rows show "–" for STATE_SYNC.)
       expect(p.inactivityWarning).not.toBeNull();
       expect(p.waitingForOpponent).toBeTrue();

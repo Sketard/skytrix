@@ -22,7 +22,7 @@
 //   cd duel-server
 //   npx tsx scripts/analyze-pathbeta-v2.ts \
 //     --fixture-id=branded-dracotail-opener \
-//     [--pvp-replay=../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json]
+//     [--pvp-replay=../work/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json]
 // =============================================================================
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
@@ -361,7 +361,7 @@ function buildReport(): string {
   // PvP trajectory diff (if available)
   const pvpReplayPath = pvpReplayArg ?? join(
     REPO_ROOT,
-    '_bmad-output/planning-artifacts/research/trajectories',
+    'work/planning-artifacts/research/trajectories',
     `${fixtureId}.raw-replay.json`,
   );
   lines.push('## Trajectory diff vs PvP raw-replay');

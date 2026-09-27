@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // C4 (audit-4-modes-2026-06-01) — Enforce the Perspective Convention
-// (CLAUDE.md "Perspective Convention" + "Relativizer routing discipline (F6)") :
+// (docs/duel/perspective.md "Perspective Convention" + "Relativizer routing discipline (F6)") :
 //
 //   Any index used to build a DOM zone key `${ZONE_ID}-${X}` MUST be
 //   relative (0 = viewer, 1 = opponent). Absolute server P0/P1 indices
@@ -185,7 +185,7 @@ if (violations.length > 0) {
   const simple = violations.filter(v => !v.complex);
   const complex = violations.filter(v => v.complex);
   let msg = '\nC4 Perspective Convention violation : template literals `${ZONE_ID}-${X}` MUST use a relative player index.\n'
-    + 'See CLAUDE.md "Perspective Convention" (rule 1) + "Relativizer routing discipline (F6)".\n'
+    + 'See docs/duel/perspective.md "Perspective Convention" (rule 1) + "Relativizer routing discipline (F6)".\n'
     + '\nAllowed slot expressions (every slot must be one of) :\n'
     + `  - bare identifier in {${[...RELATIVIZER_NAMES].join(', ')}}\n`
     + `  - bare 'i' only in files: {${[...I_ALLOWED_FILE_BASENAMES].join(', ')}}\n`

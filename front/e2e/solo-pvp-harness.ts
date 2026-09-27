@@ -9,7 +9,7 @@ import { BASE_URL, BACK_URL, ADMIN, ensureAccount, loginViaUI, fetchOwnedDecks, 
  * Mirror of `debug-replay-harness.ts` (kept structurally similar so they
  * can share future refactors) but targets a live SOLO PvP "quick duel"
  * session instead of a replay file. Used for the manual T2-T10 checklist
- * of `_bmad-output/phase-gamma/test-T2-T10-manual-checklist.md`.
+ * of `work/phase-gamma/test-T2-T10-manual-checklist.md`.
  *
  * What it does :
  *   1. Logs the user in via the UI (cookies set so SPA guards pass).
@@ -23,7 +23,7 @@ import { BASE_URL, BACK_URL, ADMIN, ensureAccount, loginViaUI, fetchOwnedDecks, 
  *      surrender, wait for prompt, capture frame).
  *   5. Tears the session down on exit (surrender + sessionStorage clear).
  *
- * Output goes to `_bmad-output/debug-solo/<tag>/` :
+ * Output goes to `work/debug-solo/<tag>/` :
  *   - `report.md`    — Markdown timeline of captures + warnings.
  *   - `console.log`  — raw filtered console output.
  *   - `frames/`      — screenshots, zero-padded for chronological sort.
@@ -45,7 +45,7 @@ import { BASE_URL, BACK_URL, ADMIN, ensureAccount, loginViaUI, fetchOwnedDecks, 
  */
 
 export interface SoloPvpDebugOptions {
-  /** Captures + report tag under `_bmad-output/debug-solo/`. Defaults to
+  /** Captures + report tag under `work/debug-solo/`. Defaults to
    *  `{ISO date}-solo`. */
   tag?: string;
   /** Max wall-clock seconds before the harness gives up waiting for the
@@ -79,7 +79,7 @@ interface CapturedLine {
 }
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const OUTPUT_ROOT = path.resolve(REPO_ROOT, '_bmad-output', 'debug-solo');
+const OUTPUT_ROOT = path.resolve(REPO_ROOT, 'work', 'debug-solo');
 
 /** Filter console messages — keep the categories the harness analyses.
  *  Mirror of `debug-replay-harness.isInterestingMessage`. */

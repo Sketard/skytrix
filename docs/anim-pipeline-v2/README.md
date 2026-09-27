@@ -4,14 +4,14 @@ Consolidated history and design notes for the `anim-pipeline-v2`
 chantier on branch `feat/anim-pipeline-v2`. This document is the
 **archive** of the 5 lots' implementation details, edge cases, and
 historical context. The **invariants still active** for new
-development live inline in `CLAUDE.md` (see "Animation Pipeline v2"
+development live in [`docs/duel/animation.md`](../duel/animation.md) (see "Animation Pipeline v2"
 section there for the TOC + load-bearing rules).
 
 This file is the canonical reference when you want to understand
 **why** the pipeline has the shape it has — the reasoning behind each
 lot, the bug classes each component closed, the trade-offs that
 shaped the API. New code only needs to follow the rules pinned in
-CLAUDE.md ; this file explains where those rules came from.
+`docs/duel/animation.md` ; this file explains where those rules came from.
 
 ---
 
@@ -72,7 +72,7 @@ run via `node --test`.
 
 `front/src/app/pages/pvp/projections/` holds the base infrastructure
 for flux-state resets and read-only projections. Cf.
-`_bmad-output/planning-artifacts/duel-session-chantier.md §3.5`.
+`work/planning-artifacts/duel-session-chantier.md §3.5`.
 
 **Two contracts, layered**:
 
@@ -204,7 +204,7 @@ closures.
 cross-event temporal correlations as **explicit markers on the
 EventStream** instead of leaving each consumer to track them ad-hoc.
 Cf. `duel-session-chantier.md §3.7` + the implementation spec at
-`_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
+`work/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
 
 The processor closes the *cost-before-overlay* bug class
 **structurally** — the timing of the chain overlay vs the cost

@@ -301,7 +301,7 @@ export class RenderedBoardStateService implements BoardStateView {
         // hasn't been modified since `commitAll()`, and a proper sync when
         // it has (e.g. a subsequent `updateLogical(boardStateAfter)`).
         // Bug repro: Radiant Typhoon discard scenario, replay 18a55f97,
-        // see `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+        // see `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
         if (!this._locks.has(zoneKey)) {
           this.commitZone(zoneKey);
           return;
@@ -352,8 +352,8 @@ export class RenderedBoardStateService implements BoardStateView {
    *     `orchestrator.resetForReplaySeek()` → `runner.requestStop()` →
    *     `dropOrphanedLocks` before `commitAll('mock:seekToOffset')`.
    *
-   * Full doctrine : CLAUDE.md "Replay Board State Parity Rule".
-   * Adding a 5th asserted site → update this list + CLAUDE.md.
+   * Full doctrine : docs/duel/replay.md "Replay Board State Parity Rule".
+   * Adding a 5th asserted site → update this list + docs/duel/replay.md.
    */
   assertNoLocks(site: string): void {
     duelAssert(this._locks.size === 0, site,
@@ -447,7 +447,7 @@ export class RenderedBoardStateService implements BoardStateView {
    * actors' locks alive, no zombie. `commitAll()` is for terminal teardowns
    * only.
    *
-   * Spec : `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+   * Spec : `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
    */
   commitAll(site?: string): void {
     if (site && this._locks.size > 0) {

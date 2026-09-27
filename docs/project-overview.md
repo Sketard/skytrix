@@ -23,11 +23,10 @@ skytrix/
 ├── back/                   # Spring Boot 3.4.2 + Java 21 (REST API, PostgreSQL, JWT auth)
 ├── front/                  # Angular 21.2 (SPA: deck mgmt + simulator + PvP + replay + solver)
 ├── duel-server/            # Node + ocgcore (WebSocket: PvP duels, replay precompute, solver pool)
-├── docs/                   # Generated documentation (this directory)
-├── _bmad/                  # BMAD config + scripts
-├── _bmad-output/           # PRDs, architecture specs, UX specs, epics, retros, R&D logs
+├── docs/                   # Technical documentation (this directory)
+├── work/                   # Working folder: specs, solver R&D, captures
 ├── docker-compose.yml      # 4-service production stack (db / back / duel-server / front)
-└── CLAUDE.md               # AI agent instructions (animation parity, chain state, lock contract, ...)
+└── CLAUDE.md               # AI agent index (duel engine rules: docs/duel/)
 ```
 
 ## Repository type
@@ -92,11 +91,10 @@ See [integration-architecture.md](./integration-architecture.md) for the full in
 | Need | File |
 |---|---|
 | Click around the docs | [index.md](./index.md) |
-| Folder layout (annotated) | [source-tree-analysis.md](./source-tree-analysis.md) |
 | Run / build / deploy | [development-guide.md](./development-guide.md), [deployment-guide.md](./deployment-guide.md) |
 | Backend REST endpoints | [api-contracts-back.md](./api-contracts-back.md) |
 | Backend SQL schema | [data-models-back.md](./data-models-back.md) |
 | WebSocket protocol | [api-contracts-duel-server.md](./api-contracts-duel-server.md) |
 | Frontend components | [component-inventory-front.md](./component-inventory-front.md) |
-| AI agent rules (animation parity, chain state, lock contract) | [../CLAUDE.md](../CLAUDE.md) |
-| Feature PRDs / epics / UX specs | [`_bmad-output/planning-artifacts/`](../_bmad-output/planning-artifacts/) |
+| AI agent rules (animation parity, chain state, lock contract) | [duel/README.md](duel/README.md) |
+| Feature PRDs / epics / UX specs | [`work/planning-artifacts/`](../work/planning-artifacts/) |

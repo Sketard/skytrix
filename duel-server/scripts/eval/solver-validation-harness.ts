@@ -19,7 +19,7 @@
 //
 // =============================================================================
 // Fixture decklists (human-readable mirror — source of truth is the JSON at
-// _bmad-output/planning-artifacts/research/solver-validation-decks.json).
+// work/planning-artifacts/research/solver-validation-decks.json).
 // Keep in sync manually when the fixture changes.
 // =============================================================================
 //
@@ -390,7 +390,7 @@ async function main(): Promise<void> {
   const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
   const FIXTURE_PATH = resolve(
     import.meta.dirname!, '..', '..', '..',
-    '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
+    'work', 'planning-artifacts', 'research', 'solver-validation-decks.json',
   );
 
   console.log(`${BOLD}[Harness]${RESET} Loading ${FIXTURE_PATH}`);

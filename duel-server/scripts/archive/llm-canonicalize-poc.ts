@@ -14,7 +14,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/llm-canonicalize-poc.ts \
-//     --trajectory=../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener-recorded.json \
+//     --trajectory=../work/planning-artifacts/research/trajectories/branded-dracotail-opener-recorded.json \
 //     --out=data/llm-poc
 //
 // Phase 0 gate: read 1-2 generated prompts, manually test in Claude.ai,

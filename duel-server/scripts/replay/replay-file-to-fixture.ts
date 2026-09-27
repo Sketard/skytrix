@@ -22,7 +22,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/replay-file-to-fixture.ts \
-//     --raw-replay=../_bmad-output/planning-artifacts/research/trajectories/ddd-pendulum-replay-eb8c6865.raw-replay.json \
+//     --raw-replay=../work/planning-artifacts/research/trajectories/ddd-pendulum-replay-eb8c6865.raw-replay.json \
 //     --fixture-id=ddd-pendulum-opener-v2 \
 //     --deck-id=ddd-doom-queen-machinex-variant \
 //     --description="..." \
@@ -83,7 +83,7 @@ function loadArgs(): Args {
     deckId,
     description: parseArg('description') ?? `Auto-generated from raw-replay file ${rawReplayPath}`,
     player,
-    decksFile: parseArg('decks-file') ?? join(repoRoot, '_bmad-output/planning-artifacts/research/solver-validation-decks.json'),
+    decksFile: parseArg('decks-file') ?? join(repoRoot, 'work/planning-artifacts/research/solver-validation-decks.json'),
     outDryRun: parseArg('out-dry-run') ?? `/tmp/${fixtureId}-fixture-from-replay.json`,
     apply: process.argv.includes('--apply'),
     maxIterations: Number(parseArg('max-iterations') ?? '1500'),

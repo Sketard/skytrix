@@ -226,7 +226,7 @@ export interface PlaceOption {
  *
  * Remove a type and you silently lose snapshots + replay coverage; add one
  * without updating handlers and you queue events the orchestrator can't
- * dispatch. See CLAUDE.md "Chain Event Processing & State Machine" §4.
+ * dispatch. See docs/duel/chain.md "Chain Event Processing & State Machine" §4.
  */
 export const BOARD_CHANGING_EVENT_TYPES: ReadonlySet<string> = new Set([
   'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
