@@ -35,8 +35,8 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/raw-replay-to-trajectory.ts \
-//     --in=../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json \
-//     --out=../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener.summary.json \
+//     --in=../work/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json \
+//     --out=../work/planning-artifacts/research/trajectories/branded-dracotail-opener.summary.json \
 //     --fixture-id=branded-dracotail-opener
 // =============================================================================
 

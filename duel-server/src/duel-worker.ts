@@ -168,7 +168,7 @@ export type { WorkerSnapshot };
  *
  * For the FULL inventory of state slots reset across the cancel flow
  * (worker + server + client), see
- * `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+ * `work/planning-artifacts/cancel-rollback-contract.md`.
  * READ IT BEFORE ADDING A NEW MUTABLE MODULE-LEVEL STATE SLOT.
  */
 let lastIdleSnapshot: WorkerSnapshot | null = null;
@@ -664,7 +664,7 @@ function runDuelLoop(): void {
   // at every PLAYER_RESPONSE-driven runDuelLoop entry.
   //
   // Bug repro: PvP Krosea discard + Vision self-destroy scenario, see
-  // `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+  // `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
   // liveChainTracker.reset();  // intentionally not called here.
 
   while (true) {

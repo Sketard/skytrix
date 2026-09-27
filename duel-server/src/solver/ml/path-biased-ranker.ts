@@ -26,7 +26,7 @@
 // `pathCardsSet` is empty / `distinctActivations` is undefined), behaves
 // identically to the wrapped base ranker.
 //
-// Memo: `_bmad-output/solver-data/path-scoring-pilot-2026-05-02.md` Option B.
+// Memo: `work/solver-data/path-scoring-pilot-2026-05-02.md` Option B.
 // =============================================================================
 
 import type { ActionRanker } from '../solver-strategy.js';

@@ -237,7 +237,7 @@ The solver module is the largest in the duel-server (43 .ts files). High-level l
 
 The schema accepts `sharedOpt`, `totalUsesPerTurn`, per-effect `trigger`, and audit metadata. **The per-effect `trigger` field is critical** — the OPT-aware scorer disambiguates effects on multi-effect cards by it. Wrong/missing triggers fall back to index 0 with a runtime warning.
 
-Adding new entries goes through the AI-assisted prompt at `_bmad-output/solver-data/interruption-tag-generation-prompt.md` — see [development-guide.md](./development-guide.md#adding-a-new-card-to-the-solver-scoring).
+Adding new entries goes through the AI-assisted prompt at `work/solver-data/interruption-tag-generation-prompt.md` — see [development-guide.md](./development-guide.md#adding-a-new-card-to-the-solver-scoring).
 
 ## HTTP API
 
@@ -337,4 +337,4 @@ Single stage on `node:24-slim`. Installs curl/git/ca-certificates. Copies `scrip
 - Cross-part wiring: [integration-architecture.md](./integration-architecture.md)
 - Annotated source tree: [source-tree-analysis.md](./source-tree-analysis.md#duel-server--node-websocket-server)
 - AI agent rules (chain state, locks, animation parity, polling watchdog): [../CLAUDE.md](../CLAUDE.md)
-- Solver R&D logs + methodology: [`_bmad-output/solver-data/`](../_bmad-output/solver-data/)
+- Solver R&D logs + methodology: [`work/solver-data/`](../work/solver-data/)

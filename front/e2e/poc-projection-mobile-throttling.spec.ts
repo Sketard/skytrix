@@ -9,7 +9,7 @@ import * as path from 'path';
  * Critère §7 spec : FPS ≥ 30 sur mobile Chrome avec throttling 4×.
  */
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const POC_OUT = path.resolve(REPO_ROOT, '_bmad-output', 'poc-projection');
+const POC_OUT = path.resolve(REPO_ROOT, 'work', 'poc-projection');
 
 const PAGE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><title>POC throttled</title>

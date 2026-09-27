@@ -17,7 +17,7 @@
 // Usage:
 //   cd duel-server
 //   SOLVER_INSTRUMENT=1 npx tsx scripts/tune-weights.ts \
-//     --spec=../_bmad-output/planning-artifacts/research/sweep-specs/coarse-v1.json
+//     --spec=../work/planning-artifacts/research/sweep-specs/coarse-v1.json
 //
 // The spec fully determines fixture subset, node budget, budget-ms, axes,
 // fitness, baseline reference, and output path — no other CLI args needed.

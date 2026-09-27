@@ -849,7 +849,7 @@ export class DrawSequenceManager {
       // a subsequent discard MOVE Krosea would `consumePreLock` and call
       // `commit()` on — leading to a no-op silent skip because the wiped
       // `_locks` map made the closure orphan). See spec
-      // `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+      // `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
       this.rbs.commitZone(handZoneKey);
 
       // Retire the expansion slot reserved by `BufferReplayBuilder` BEFORE

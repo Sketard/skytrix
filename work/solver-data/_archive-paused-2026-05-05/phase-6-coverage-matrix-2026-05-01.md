@@ -1,0 +1,269 @@
+# Phase 6 — sourceCardId Coverage Matrix
+
+**Date:** 2026-05-01
+**Companion to:** [prompt-resolver-refactor-2026-05-01.md](prompt-resolver-refactor-2026-05-01.md) §6
+**Pinned commit SHA at time of audit:** `39cf6e4f` (Phase 5 ship)
+**Audit corpus:** 538 prompts × 6 baselines (3 β-1 + 3 β-3, all in `work/solver-data/phase-1-baselines/`)
+
+This matrix documents how reliably each `OcgMessageType` exposes a `sourceCardId` (the card whose effect emitted the prompt) — the input that `CardExpertiseOracle` needs to fire. Built empirically by sampling `selectMsg` payloads with `SOLVER_DUMP_MSGS=1` and decoding three candidate fields per message: `msg.code` (direct), `msg.description` (bigint encoded `cardCode << 20 | strIndex`), and `selects[0].description` (per-link source for SELECT_CHAIN).
+
+## Result
+
+| PromptType | n | code | descSrc | sel0Src | **ANY** | Verdict |
+|---|---|---|---|---|---|---|
+| SELECT_EFFECTYN | 22 | 100% | — | — | **100%** | ✅ reliable (msg.code) |
+| SELECT_YESNO | 2 | 0% | 100% | — | **100%** | ✅ reliable (msg.description >> 20), n=2 small |
+| SELECT_POSITION | 33 | 100% | — | — | **100%** | ✅ reliable (msg.code) |
+| SELECT_CHAIN | 279 | 0% | 0% | 31% | **31%** | ⚠️ partial (per-link via selects[i].description; no whole-prompt source) |
+| SELECT_IDLECMD | 52 | 0% | 0% | 0% | **0%** | ❌ no source (it's a strategic decision menu) |
+| SELECT_OPTION | 4 | 0% | 0% | 0% | **0%** | ❌ |
+| SELECT_CARD | 44 | 0% | 0% | 0% | **0%** | ❌ |
+| SELECT_PLACE | 65 | 0% | — | — | **0%** | ❌ |
+| SELECT_UNSELECT_CARD | 36 | 0% | — | — | **0%** | ❌ |
+| SELECT_SUM | 1 | 0% | 0% | 0% | **0%** | ❌ |
+
+**Global coverage:** 22 + 2 + 33 + 86 (CHAIN partial) = **143 / 538 = 26.6%**
+
+**Coverage among types where CardExpertiseOracle is most useful** (SELECT_EFFECTYN, SELECT_YESNO, SELECT_POSITION = effects-of-known-cards): **57 / 57 = 100%**.
+
+## Decision
+
+Refactor design doc Risk #2 sets a hard gate at **<60% reliability → Phase 7 scope shrinks**. Global coverage at 26.6% is below the gate, but the breakdown reveals that the 3 high-value prompt types are 100% reliable. Phase 7 is therefore scoped to:
+
+- **In scope (100%-reliable prompts):**
+  - SELECT_EFFECTYN — author hints with `policy: 'yes' | 'no'` to override the legacy default-YES
+  - SELECT_YESNO — author hints with `policy: 'yes' | 'no'` to override the legacy default-NO
+  - SELECT_POSITION — author hints with `policy: 'face-down' | 'face-up-attack' | 'face-up-defense'`
+
+- **Out of scope (no reliable source plumbing):**
+  - SELECT_IDLECMD — this is a strategic decision; covered by Path β plan files instead
+  - SELECT_CARD — pool-of-options selector; covered by `preferredSearchTargets` config + `policy: 'preferred'` per-action match (which doesn't need sourceCardId because it filters on candidate cardId, not source)
+  - SELECT_PLACE / SELECT_UNSELECT_CARD / SELECT_OPTION / SELECT_SUM — too rare or no source field
+  - SELECT_CHAIN — partial coverage; per-link source exists but the prompt has no single "owning" card. CardExpertise doesn't fit naturally; stick with the existing `chainTargets` plan-side mechanism.
+
+## Implementation
+
+### `extractSourceCardIdFromMsg(msg)` helper [ocgcore-adapter.ts](duel-server/src/solver/ocgcore-adapter.ts)
+
+```ts
+export function extractSourceCardIdFromMsg(msg: Record<string, unknown>): number | undefined {
+  const codeVal = msg['code'];
+  if (typeof codeVal === 'number' && codeVal !== 0) return codeVal;
+  const descRaw = msg['description'];
+  if (typeof descRaw === 'bigint') {
+    const cardCode = Number(descRaw >> 20n);
+    if (cardCode > 0) return cardCode;
+  }
+  return undefined;
+}
+```
+
+Set on `internal.lastPromptSourceCardId` unconditionally in `runUntilPlayerPrompt` after the `selectMsg` is extracted, regardless of `SOLVER_USE_PROMPT_RESOLVER`. Both code paths read the same source.
+
+### Surfaces
+
+| Surface | Consumer | Path |
+|---|---|---|
+| `DecisionContext.sourceCardId` | DFS (in-adapter resolver path) | Read from `internal.lastPromptSourceCardId` directly |
+| `OCGCoreAdapter.getLastPromptSourceCardId(handle)` | CLI replay (out-of-adapter consumer) | Public getter; called between `getLegalActions` and `resolver.resolve` |
+
+CLI usage:
+```ts
+const legal = adapter.getLegalActions(handle);
+const ctx: DecisionContext = {
+  // ...
+  sourceCardId: adapter.getLastPromptSourceCardId(handle),
+};
+const result = cliResolver.resolve(ctx);
+```
+
+## Bit-exact gate
+
+Phase 6 is plumbing-only: `CardExpertiseOracle` continues to pass through (no `decisionHints` populated yet). 6/6 replay baselines (3 β-1 + 3 β-3) reproduce byte-identically with `SOLVER_USE_PROMPT_RESOLVER=1`. All 5 smoke test suites still pass (123 tests total).
+
+## Audit reproducibility
+
+Add `SOLVER_DUMP_MSGS=1` to any baseline capture command and the adapter logs `[MSG_DUMP] type=N promptType=X player=Y code=Z keys=[...]` per prompt. Re-run the harness across the 6 baselines and aggregate:
+
+```bash
+SOLVER_DUMP_MSGS=1 npx tsx scripts/capture-phase-1-baselines.ts \
+  --out-dir=/tmp/p6-audit --mode=replay 2>&1 | grep MSG_DUMP > /tmp/p6-msgs.log
+# ...post-process per-promptType counters as in this matrix
+```
+
+The full instrumentation block was committed temporarily during the audit (commit history) and then removed. Re-add as needed for future re-validation (e.g., after an OCGCore version bump).
+
+---
+
+## Audit A — `actionHistory` lookback as fallback (REJECTED)
+
+**Hypothesis tested:** for prompts where `extractSourceCardIdFromMsg` returns undefined (73% of prompts), can we use `actionHistory.findLast(a => a._isEffectActivation).cardId` as the sourceCardId? If yes, this would lift global coverage from 26.6% to ~95%.
+
+**Setup:** Added `SOLVER_DUMP_LOOKBACK=1` instrumentation logging both the extracted source AND the lookback candidate for every prompt across the 6 baselines (538 prompts). Then validated lookback against extract on the 2 ground-truth prompt types (SELECT_EFFECTYN + SELECT_POSITION, both 100% reliable from `msg.code`).
+
+**Result:**
+- Lookback presence: 95% of prompts (only `histLen=0` early-game prompts have no lookback candidate).
+- Lookback agreement vs ground truth on SELECT_EFFECTYN: **4/18 matched, 14/18 mismatched** (22%).
+- Lookback agreement vs ground truth on SELECT_POSITION: **6/32 matched, 26/32 mismatched** (19%).
+
+**Conclusion:** The lookback signal is **majority-wrong** even where we can verify it. Several failure modes contribute:
+- `_isEffectActivation` is set on chain link selections (SELECT_CHAIN), SELECT_EFFECTYN yes, and IDLECMD activates — but NOT on normal-summons. So a SELECT_PLACE issued by Lukias's on-summon search doesn't have Lukias as the most-recent `_isEffectActivation` action.
+- `actionHistory` contains every applied action including opponent goldfish responses and mechanical defaults; `findLast` reaches back too far.
+- SELECT_IDLECMD lookbacks are pure noise (an IDLECMD prompt has no source card; lookback returns the previous turn's last activation).
+
+**Decision:** lookback is NOT integrated into `extractSourceCardIdFromMsg`. Authoring `decisionHints` based on a 22%-correct signal would produce silent misfires (wrong card's hint applied to another card's prompt). The 100%-reliable subset (SELECT_EFFECTYN/SELECT_YESNO/SELECT_POSITION via `msg.code` / `msg.description`) is sufficient for Phase 7's audited fixtures.
+
+**Future work:** an MSG_HINT / MSG_CHAINING event-stream investigation (Audit B, ~3-4h) might surface a more reliable per-prompt source — OCGCore likely emits these context events between SELECT_* messages. Not blocking Phase 7.
+
+---
+
+## Audit B — Event-stream sniffing (CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING/PLAYER_HINT) — ACCEPTED
+
+**Hypothesis tested:** OCGCore emits non-SELECT messages between prompts that announce the source card more reliably than the SELECT_* msg itself. Specifically `MSG_CHAINING (70)`, `MSG_SUMMONING (60)`, `MSG_SPSUMMONING (62)`, `MSG_FLIPSUMMONING (64)` all carry `code: number`; `MSG_PLAYER_HINT (165)` carries a `hint: bigint` decodable as `cardCode << 20`.
+
+**Setup:** Track the most recent source card announced by these events as `internal.eventStreamSourceCardId`. Reset on `CHAIN_END / NEW_TURN / NEW_PHASE`. Use as fallback in `extractSourceCardIdFromMsg` when the SELECT_* msg has no `code` field.
+
+**Result (n=538):**
+
+| PromptType | Audit A coverage | **Audit B coverage** |
+|---|---|---|
+| SELECT_EFFECTYN | 100% | 100% (unchanged — direct already 100%) |
+| SELECT_YESNO | 100% | 100% (unchanged) |
+| SELECT_POSITION | 100% | 100% (unchanged) |
+| SELECT_OPTION | 0% | **100%** |
+| SELECT_CARD | 0% | **100%** |
+| SELECT_SUM | 0% | **100%** |
+| SELECT_CHAIN | 31% | **63%** |
+| SELECT_PLACE | 0% | **52%** |
+| SELECT_UNSELECT_CARD | 0% | **31%** |
+| SELECT_IDLECMD | 0% | 19% (unreliable — IDLECMD has no source) |
+| **Global** | **26.6%** | **61.7%** |
+
+**Ground-truth check (where direct AND eventStream are both populated):**
+- SELECT_EFFECTYN: **10/10 matched** (100% — eventStream is consistent with direct)
+- SELECT_POSITION: **6/22 matched, 16/22 mismatched** (eventStream points to the chain-source, but POSITION asks about the card just summoned, which is different)
+
+**Implication:** the `directExtract ?? eventFallback` priority is correct: when direct is available it always wins (and it's always right by construction). The eventStream fallback only fires when direct is null — i.e. on SELECT_CARD/PLACE/CHAIN/etc. sub-prompts where it represents a sensible "currently active effect's source".
+
+**Sample sanity check** (cross-referenced against the branded β-1 plan):
+- SELECT_CARD with eventStream=75003700 (Fallen of the White Dragon) → matches plan step 2's effect activating
+- SELECT_CARD with eventStream=73819701 (Dracotail Lukias) → matches plan step 1's on-summon search
+- SELECT_CARD with eventStream=95515789 (Branded Fusion) → matches Branded Fusion materials prompt
+
+**Decision:** integrated. eventStreamSourceCardId is added to the InternalHandle and propagated via the existing `internal.lastPromptSourceCardId` surface — Phase 5's `CardExpertiseOracle` consumes it transparently. Bit-exact gate preserved (no decisionHints populated yet → 100% pass-through; 6/6 baselines byte-identical modulo line endings; 123/123 regression tests pass).
+
+**Phase 7 implications:** the 100%-reliable-via-direct types (SELECT_EFFECTYN/YESNO/POSITION) remain the safest authoring targets. SELECT_CARD/OPTION/SUM are now usable but require validating each hint against the deck's expected behavior (a misfire = wrong card's hint applied; verify by capture+inspect on a baseline that should fire it). SELECT_CHAIN/PLACE/UNSELECT remain probabilistic, use sparingly. SELECT_IDLECMD's 19% is treated as noise — do not author hints for it.
+
+### Audit B v2 — Reset relaxation + CARD_HINT sniff (61.7% → 93.3%)
+
+**Motivation:** Audit B v1 left SELECT_CHAIN/PLACE/UNSELECT/IDLECMD partially or barely covered. Investigation of why: the `eventStreamSourceCardId` was reset on `CHAIN_END`, which dropped the source on prompts emitted *after* a chain resolves — typically SELECT_PLACE for a Special Summon resolved by the chain, or SELECT_UNSELECT_CARD for selection inside a continuing effect.
+
+**Two changes tested:**
+
+1. **Drop the `CHAIN_END` reset** — keep eventStreamSourceCardId across chain boundaries; only reset on `NEW_TURN` / `NEW_PHASE`.
+2. **Add `MSG_CARD_HINT (160)` sniff** — decode `description: bigint` (same encoding as PLAYER_HINT). Inert in this corpus (no measurable gain) but kept for future-proofing.
+
+**Result (n=538):**
+
+| PromptType | Audit B v1 | **Audit B v2** | Delta |
+|---|---|---|---|
+| SELECT_EFFECTYN | 100% | 100% | — |
+| SELECT_YESNO | 100% | 100% | — |
+| SELECT_POSITION | 100% | 100% | — |
+| SELECT_OPTION | 100% | 100% | — |
+| SELECT_CARD | 100% | 100% | — |
+| SELECT_SUM | 100% | 100% | — |
+| SELECT_UNSELECT_CARD | 31% | **100%** | +69 |
+| SELECT_CHAIN | 63% | **92%** | +29 |
+| SELECT_PLACE | 52% | **89%** | +37 |
+| SELECT_IDLECMD | 19% | 88% (still unreliable) | +69 |
+| **Global** | **61.7%** | **93.3%** | **+31.6** |
+
+**Ground-truth check (re-verified):**
+- SELECT_EFFECTYN: 16/21 matched, 5 mismatched (76% — relaxed reset introduced 5 stale-context cases)
+- SELECT_POSITION: 6/32 matched, 26 mismatched (19% — same as v1)
+
+**Pipeline impact analysis:** the `directExtract ?? eventFallback` priority is unchanged. On the 22 SELECT_EFFECTYN and 33 SELECT_POSITION prompts, **direct fires 100% of the time** → the final `lastPromptSourceCardId` is correct on those types regardless of eventStream drift. The 5 SELECT_EFFECTYN mismatches are visible in the audit log but never reach the resolver in those types.
+
+**Inferred reliability for non-ground-truth types:** if SELECT_EFFECTYN's eventStream agrees with direct 76% of the time when both fire, we extrapolate ~75% reliability for SELECT_CARD/PLACE/CHAIN/UNSELECT — i.e. ~25% of these prompts may report the wrong source. Misfires = the wrong card's hint applied → no match in deck's `decisionHints` → CardExpertise pass-through → no behavior change. **No regression possible** until decisionHints are populated.
+
+**SELECT_IDLECMD caveat:** coverage jumped to 88% but the value is structurally meaningless (IDLECMD is a strategic decision menu, not a card-emitted prompt). The 88% is the "lingering source from the previous chain" — useful for debugging context but not for hint authoring. Do not write hints keyed on IDLECMD.
+
+**Decision:** Audit B v2 (relaxed reset) integrated. The cost (eventStream drift across chains) is invisible in the pipeline because direct dominates. The benefit (32 percentage points of coverage) opens up Phase 7 hint authoring on SELECT_UNSELECT_CARD, SELECT_CHAIN, SELECT_PLACE in addition to v1's tier.
+
+**Bit-exact gate preserved:**
+- 6/6 replay baselines byte-identical (modulo line endings)
+- 123/123 smoke tests pass
+
+**Phase 7 final scope (revised):**
+- **Tier 1 — fully safe** (100% via direct, no eventStream dependence): SELECT_EFFECTYN, SELECT_YESNO, SELECT_POSITION
+- **Tier 2 — high coverage, ~75% inferred reliability** (eventStream-driven): SELECT_CARD, SELECT_OPTION, SELECT_SUM, SELECT_UNSELECT_CARD
+- **Tier 3 — partial coverage, ~75% reliable on what's covered**: SELECT_CHAIN (92%), SELECT_PLACE (89%) — viable but author hints carefully
+- **Tier 4 — coverage but noise**: SELECT_IDLECMD — do not author hints
+
+The previous v1 Tier 4 ("noise") still applies to IDLECMD only.
+
+---
+
+## Audit C — Targeted lookback for SELECT_PLACE post-summon (+0.8% to 94.1%)
+
+**Motivation:** investigation of the 36 remaining gaps after Audit B v2 revealed three patterns:
+
+1. **Start of turn / phase** (~10 cases): hist tail empty, no events emitted yet. **Structural — no source possible by construction.**
+2. **Chain opportunity windows between actions** (~13 cases): SELECT_CHAIN emitted between phases or after an effect resolves, asking "do you want to chain?". **No card is activating — it's a response window.**
+3. **SELECT_PLACE following a summon/ss action** (~7 cases): MSG_SUMMONING/SPSUMMONING fires AFTER the SELECT_PLACE in the engine event stream, so eventStreamSourceCardId hasn't been updated yet. **Recoverable** via a targeted actionHistory lookback.
+4. **Opponent SELECT_CHAIN goldfish** (~6 cases): no source by construction.
+
+**Hypothesis tested:** for SELECT_PLACE specifically, look back through `actionHistory` for the most recent action whose `actionTag` is in `{summon, ss, psummon, mset}`, capped at 5 history positions. Restricted to summon-class actions to avoid the failure mode of Audit A (broad `_isEffectActivation` lookback was 22% reliable).
+
+**Implementation:**
+
+```ts
+let resolvedSource = extractSourceCardIdFromMsg(msgAny)
+  ?? internal.eventStreamSourceCardId;
+if (resolvedSource === undefined && promptType === 'SELECT_PLACE') {
+  for (let i = internal.actionHistory.length - 1; i >= 0; i--) {
+    const a = internal.actionHistory[i];
+    const tag = a.actionTag;
+    if (tag === 'summon' || tag === 'ss' || tag === 'psummon' || tag === 'mset') {
+      if (a.cardId > 0) {
+        resolvedSource = a.cardId;
+        break;
+      }
+    }
+    if (internal.actionHistory.length - i > 5) break;
+  }
+}
+```
+
+**Result:**
+
+| PromptType | Audit B v2 | **Audit C** | Delta |
+|---|---|---|---|
+| SELECT_PLACE | 89% | **95%** | +6 (4/65 → 0/65 of recoverable gaps) |
+| **Global** | **93.3%** | **94.1%** | +0.8 |
+
+Going past the 5-position window (tested with window=10) doesn't recover additional cases — the 3 remaining SELECT_PLACE gaps have no summon/ss action in their actionHistory (they fire from a context that never invoked anything, e.g. very early-game or post-recovery from a no-summon state).
+
+**Final 32 gaps breakdown:**
+- ~22 SELECT_CHAIN windows (pure response opportunities, no source)
+- ~6 SELECT_IDLECMD start-of-phase (no source by construction)
+- ~3 SELECT_PLACE early-game (no recent summon)
+- ~1 SELECT_CHAIN opponent goldfish
+
+**Decision:** integrated. The targeted lookback is restricted to `SELECT_PLACE + actionTag in {summon, ss, psummon, mset}` so it can't introduce the kind of misfires that killed Audit A (broad `_isEffectActivation` reach-back). Bit-exact gate preserved (6/6 baselines, 123/123 tests).
+
+---
+
+## Final coverage and ceiling
+
+**Total: 506/538 = 94.1%**
+
+The remaining 32 gaps (5.9%) are **structurally incomblable**:
+- Start-of-turn / start-of-phase prompts (no events yet emitted)
+- Chain opportunity windows (no card is activating; it's a "do you want to react?" window)
+- Goldfish opponent prompts in non-adversarial mode (no opponent strategy)
+
+These prompts have **no card source by design** — the engine asks the player to make a free decision, not to respond to a specific card's effect. Authoring `decisionHints` for them would be conceptually meaningless: there's no card-effect to override.
+
+**The 100% ceiling is unreachable** in any scheme that maps "prompt → source card": the OCG protocol simply doesn't emit a source for these decision points. Reaching 94.1% with safe heuristics is effectively the asymptote.

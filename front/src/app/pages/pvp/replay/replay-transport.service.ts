@@ -335,7 +335,7 @@ export class ReplayTransportService {
    * froze (MSG_CHAIN_SOLVING never dispatched), the UI reported
    * end-of-replay and the Play button was dead (`startPlayback`
    * early-return). Full trace :
-   * `_bmad-output/planning-artifacts/f10-parity-investigation-2026-06-12.md`
+   * `work/planning-artifacts/f10-parity-investigation-2026-06-12.md`
    * finding 1.
    *
    * Only meaningful when animations are enabled — the animations-off

@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 
 const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
-const CATALOG_DIR = resolve(import.meta.dirname!, '..', '..', '..', '_bmad-output', 'solver-data', 'card-effects-catalog');
+const CATALOG_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'work', 'solver-data', 'card-effects-catalog');
 const SCRIPTS_DIR = join(DATA_DIR, 'scripts_full');
 const TAGS_PATH = join(DATA_DIR, 'interruption-tags.json');
 

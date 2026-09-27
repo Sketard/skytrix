@@ -19,7 +19,7 @@ import { setupReplaySession } from './replay-debug-driver';
  *     `BASE_URL` constant from helpers). Fast but risks HMR mid-replay
  *     truncating the capture.
  *
- * The harness writes everything to `_bmad-output/debug-replay/{date}-{tag}/`:
+ * The harness writes everything to `work/debug-replay/{date}-{tag}/`:
  *   - `report.md`       — Markdown timeline + warnings + key signals
  *   - `console.log`     — raw filtered console output with timestamps
  *   - `frames/`         — screenshots tagged with timestamp + label
@@ -45,7 +45,7 @@ export interface ReplayDebugOptions {
   /** When true, runs `ng build` and serves the static output on a free port.
    *  Recommended for stable captures. Defaults to false. */
   buildFirst?: boolean;
-  /** Output tag — folder name under `_bmad-output/debug-replay/`. */
+  /** Output tag — folder name under `work/debug-replay/`. */
   tag?: string;
   /** Max wall-clock seconds to wait for the replay to finish playing.
    *  Default 120s. */

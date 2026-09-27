@@ -50,7 +50,7 @@ import * as logger from './logger.js';
  * The `WORKER_CANCEL_DONE` branch is intentionally verbose — for the
  * full inventory of state slots reset across the cancel flow (worker +
  * server + client), see
- * `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+ * `work/planning-artifacts/cancel-rollback-contract.md`.
  */
 
 export interface WorkerMessageRouterConfig {

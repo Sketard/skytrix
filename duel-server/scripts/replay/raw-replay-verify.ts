@@ -16,7 +16,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/raw-replay-verify.ts \
-//     --raw-replay=../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json \
+//     --raw-replay=../work/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json \
 //     --fixture-id=branded-dracotail-opener \
 //     --out=/tmp/branded-verify.json
 // =============================================================================

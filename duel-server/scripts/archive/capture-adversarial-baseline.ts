@@ -15,7 +15,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/capture-adversarial-baseline.ts \
-//     --out=../_bmad-output/solver-data/phase-1-baselines/adversarial-alexandrite.json
+//     --out=../work/solver-data/phase-1-baselines/adversarial-alexandrite.json
 // =============================================================================
 
 import { join, resolve, dirname } from 'node:path';

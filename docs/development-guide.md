@@ -170,7 +170,7 @@ Hard rules (enforced by review and by `CLAUDE.md`):
 
 ## Adding a new card to the solver scoring
 
-1. Open `_bmad-output/solver-data/interruption-tag-generation-prompt.md`.
+1. Open `work/solver-data/interruption-tag-generation-prompt.md`.
 2. Run the AI-assisted prompt with the cardIds you want to add.
 3. Insert the resulting JSON entries into `duel-server/data/interruption-tags.json` with `_validated: false`.
 4. Manually review and flip `_validated: true` for top-meta cards.

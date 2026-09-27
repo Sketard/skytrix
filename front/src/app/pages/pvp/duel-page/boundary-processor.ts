@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 // Detects causal-group boundaries (Chain / Turn / Phase) and emits them as
 // {@link BoundaryEvent}s on the duel's EventStream. Cf.
-// `_bmad-output/planning-artifacts/duel-session-chantier.md §3.8`.
+// `work/planning-artifacts/duel-session-chantier.md §3.8`.
 //
 // Plain class — instantiated privately by `DuelEventProcessor`, which calls
 // `observeMessage()` for every WS message in the order they arrive and

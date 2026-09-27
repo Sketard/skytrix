@@ -15,13 +15,13 @@
 //   5. adversarial         — 1 fixture (Alexandrite + 3 handtraps) via
 //                             capture-adversarial-baseline
 //
-// Output: _bmad-output/solver-data/phase-1-baselines/<category>/<fixture>.json
+// Output: work/solver-data/phase-1-baselines/<category>/<fixture>.json
 //         + manifest.json (commit SHA, timestamp, command, file list)
 //
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/capture-phase-1-baselines.ts \
-//     --out-dir=../_bmad-output/solver-data/phase-1-baselines \
+//     --out-dir=../work/solver-data/phase-1-baselines \
 //     [--mode=eval|replay|adversarial|enumerate|all (default: all)]
 //     [--skip-eval]   # eval is the slowest (~10-15min); use to iterate faster
 // =============================================================================
@@ -80,12 +80,12 @@ function gitSha(): string {
 function gitDirty(): boolean {
   const r = spawnSync('git', ['status', '--porcelain'], { cwd: REPO_ROOT, encoding: 'utf-8' });
   if (r.status !== 0) return true;
-  // Ignore untracked files in _bmad-output/solver-data/phase-1-baselines (the
+  // Ignore untracked files in work/solver-data/phase-1-baselines (the
   // very directory we're writing to) — only flag real source dirty.
   const lines = r.stdout.split('\n').filter(l => l.trim().length > 0);
   const meaningful = lines.filter(l => {
     const p = l.slice(3);
-    if (p.startsWith('_bmad-output/solver-data/phase-1-baselines')) return false;
+    if (p.startsWith('work/solver-data/phase-1-baselines')) return false;
     if (p.startsWith('.claude/')) return false;
     return true;
   });
@@ -148,7 +148,7 @@ const RAW_REPLAY_TARGETS: ReplayTarget[] = [
 ];
 
 // NOTE: snake-eye-yummy and ddd-pendulum have `.raw-replay.json` files under
-// _bmad-output/planning-artifacts/research/trajectories/ but those use the
+// work/planning-artifacts/research/trajectories/ but those use the
 // `raw-replay-v1` PvP recording format which is NOT round-trip compatible
 // with the solver (different deck-shuffle init). See the comment block in
 // scripts/raw-replay-to-trajectory.ts. They diverge at step 0 deterministically.

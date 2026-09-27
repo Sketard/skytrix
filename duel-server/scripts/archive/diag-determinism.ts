@@ -25,7 +25,7 @@
 //     [--budget-ms=6000] [--node-budget=400] [--runs=5]
 //
 // Output: log per run + summary; report path written to
-// `_bmad-output/solver-data/phase-b/determinism-investigation-2026-04-26.md`
+// `work/solver-data/phase-b/determinism-investigation-2026-04-26.md`
 // when --report is passed.
 // =============================================================================
 

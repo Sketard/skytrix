@@ -5,7 +5,7 @@ import type { ScopeCategory } from './scope';
  * processor) MUST implement to participate in the
  * {@link ScopeResetDispatcher} fan-out.
  *
- * Cf. `_bmad-output/planning-artifacts/duel-session-chantier.md §3.5`.
+ * Cf. `work/planning-artifacts/duel-session-chantier.md §3.5`.
  *
  * Two members only:
  *  - `scope` — declares which scope category this target lives in

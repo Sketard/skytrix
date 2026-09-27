@@ -75,18 +75,18 @@
   - Polling removal — regression surface (`POLL-DROP REGRESSION` watchdog)
   - Server module configuration pattern (`createConfigurable<T>`)
   - WS protocol module split + boot invariant
-- [`_bmad-output/project-context.md`](../_bmad-output/project-context.md) — AI agent rules (regenerated alongside this scan)
+- [`work/project-context.md`](../work/project-context.md) — AI agent rules (regenerated alongside this scan)
 - [duel-server/DATA-SETUP.md](../duel-server/DATA-SETUP.md) — `cards.cdb` + scripts setup
 
 ### Planning / R&D artifacts
-- [`_bmad-output/planning-artifacts/`](../_bmad-output/planning-artifacts/)
+- [`work/planning-artifacts/`](../work/planning-artifacts/)
   - PRDs: `prd.md`, `prd-pvp.md`, `prd-solver.md`
   - Architecture: `architecture.md`, `architecture-pvp.md`, `architecture-solver.md`
   - UX specs: `ux-design-specification.md`, `*-pvp.md`, `*-replay.md`, `*-solver.md`
   - Epics: `epics.md`, `epics-pvp.md`, `epics-replay.md`, `epics-solver.md`
   - References: `yugioh-game-rules.md`, `ocgcore-technical-reference.md`
   - Audits: `ux-audit-pvp-replay-2026-05-08.md`, `cancel-rollback-contract.md`, `implementation-readiness-report-*.md`
-- [`_bmad-output/solver-data/`](../_bmad-output/solver-data/)
+- [`work/solver-data/`](../work/solver-data/)
   - `interruption-tag-generation-prompt.md` — AI-assisted prompt for `interruption-tags.json` entries
   - `path-beta-methodology.md`
   - `graph-ml-v1/methodology.md`
@@ -121,11 +121,11 @@
 
 ## Verification recap (from this scan)
 
-- Tests / extractions executed: source-tree enumeration via 3 parallel `Explore` subagents (back / front / duel-server). Cross-referenced with `CLAUDE.md` rules and `_bmad-output/project-context.md`.
+- Tests / extractions executed: source-tree enumeration via 3 parallel `Explore` subagents (back / front / duel-server). Cross-referenced with `CLAUDE.md` rules and `work/project-context.md`.
 - Outstanding risks or follow-ups (see per-part anomalies):
   - `RoomService:73` pessimistic lock around external HTTP call.
   - `message-filter.ts:213` Story 4.2 player-index conversion not yet deployed.
-  - `_bmad-output/project-context.md` was outdated (2026-02-07, pre-PvP) — refreshed by this scan.
+  - `work/project-context.md` was outdated (2026-02-07, pre-PvP) — refreshed by this scan.
   - `out-of-order` Flyway is enabled; tolerable on single-node.
 - Recommended next checks before PR:
   - If you generated this doc as part of a feature branch, re-run the scan after merge to capture changes.

@@ -2,7 +2,7 @@
 // compare-trajectories.ts — Stage 2c (Phase 3 auto-discovery validation).
 //
 // Compares an authored canonical trajectory (hand-built reference, e.g.
-// `_bmad-output/planning-artifacts/research/trajectories/<fixture>-recorded.json`)
+// `work/planning-artifacts/research/trajectories/<fixture>-recorded.json`)
 // with an ML-extracted trajectory dump (Phase 3 Stage 1 output) for the same
 // fixture. Surfaces the divergence step-by-step + Levenshtein edit distance
 // over the (responseIndex, cardId) token sequence.
@@ -14,7 +14,7 @@
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/compare-trajectories.ts \
-//     --authored=../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener-recorded.json \
+//     --authored=../work/planning-artifacts/research/trajectories/branded-dracotail-opener-recorded.json \
 //     --ml=data/trajectories/phase-b-v2-mlpv3-sd7/branded-dracotail-opener.json
 // =============================================================================
 import { readFileSync } from 'node:fs';

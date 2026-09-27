@@ -25,7 +25,7 @@ skytrix/
 ├── duel-server/            # Node + ocgcore (WebSocket: PvP duels, replay precompute, solver pool)
 ├── docs/                   # Generated documentation (this directory)
 ├── _bmad/                  # BMAD config + scripts
-├── _bmad-output/           # PRDs, architecture specs, UX specs, epics, retros, R&D logs
+├── work/           # PRDs, architecture specs, UX specs, epics, retros, R&D logs
 ├── docker-compose.yml      # 4-service production stack (db / back / duel-server / front)
 └── CLAUDE.md               # AI agent instructions (animation parity, chain state, lock contract, ...)
 ```
@@ -99,4 +99,4 @@ See [integration-architecture.md](./integration-architecture.md) for the full in
 | WebSocket protocol | [api-contracts-duel-server.md](./api-contracts-duel-server.md) |
 | Frontend components | [component-inventory-front.md](./component-inventory-front.md) |
 | AI agent rules (animation parity, chain state, lock contract) | [../CLAUDE.md](../CLAUDE.md) |
-| Feature PRDs / epics / UX specs | [`_bmad-output/planning-artifacts/`](../_bmad-output/planning-artifacts/) |
+| Feature PRDs / epics / UX specs | [`work/planning-artifacts/`](../work/planning-artifacts/) |

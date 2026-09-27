@@ -1237,7 +1237,7 @@ export class AnimationOrchestratorService {
     // after the DEP's in the same `dispatch`, so their state is clean
     // even if the EffectAbandoned event is lost.
     //
-    // Backlog: see `_bmad-output/planning-artifacts/beta-3-backlog.md`
+    // Backlog: see `work/planning-artifacts/beta-3-backlog.md`
     // §"Finding #5". Triggers for re-priorisation: a future projection
     // that LEGITIMATELY needs to observe `EffectAbandoned(checkpoint)`
     // (not just as fallback) — at which point a 2-pass dispatch +

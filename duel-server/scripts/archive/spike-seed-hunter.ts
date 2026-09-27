@@ -90,7 +90,7 @@ async function main(): Promise<void> {
   const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
   const FIXTURE_PATH = resolve(
     import.meta.dirname!, '..', '..', '..',
-    '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
+    'work', 'planning-artifacts', 'research', 'solver-validation-decks.json',
   );
 
   const fixtureText = readFileSync(FIXTURE_PATH, 'utf-8');

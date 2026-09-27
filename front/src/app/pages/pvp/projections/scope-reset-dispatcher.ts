@@ -12,7 +12,7 @@ import {
 /**
  * Central registry + dispatcher for {@link ResetTarget} resets.
  *
- * Cf. `_bmad-output/planning-artifacts/duel-session-chantier.md §3.5`.
+ * Cf. `work/planning-artifacts/duel-session-chantier.md §3.5`.
  *
  * Responsibilities:
  *   1. Hold the set of targets instanciated for the current duel.

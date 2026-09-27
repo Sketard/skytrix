@@ -12,10 +12,10 @@
 // Usage:
 //   cd duel-server
 //   SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
-//     --out=../_bmad-output/planning-artifacts/research/baselines/pre-step1-baseline.json
+//     --out=../work/planning-artifacts/research/baselines/pre-step1-baseline.json
 //
 //   SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
-//     --compare=../_bmad-output/planning-artifacts/research/baselines/pre-step1-baseline.json
+//     --compare=../work/planning-artifacts/research/baselines/pre-step1-baseline.json
 //
 // Deterministic regression gate (pre-S2 infra): --node-budget=N swaps the
 // Phase L per-root-child wall-clock guard for a node-count guard, removing
@@ -23,7 +23,7 @@
 // prevent the global time budget from kicking in before the node-budget does:
 //   SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
 //     --node-budget=400 --budget-ms=3600000 \
-//     --compare=../_bmad-output/planning-artifacts/research/baselines/<baseline>.json
+//     --compare=../work/planning-artifacts/research/baselines/<baseline>.json
 // =============================================================================
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -194,13 +194,13 @@ interface HintFile {
 }
 
 /** Load canonical-path hint for `<fixtureId>-hint.json` under
- *  `_bmad-output/planning-artifacts/research/trajectories/`. Returns undefined
+ *  `work/planning-artifacts/research/trajectories/`. Returns undefined
  *  when the file does not exist (opt-in feature, silently skips fixtures
  *  without authored hints). */
 function loadHintForFixture(fixtureId: string): HintFile | undefined {
   const hintPath = resolve(
     import.meta.dirname!, '..', '..', '..',
-    '_bmad-output', 'planning-artifacts', 'research', 'trajectories',
+    'work', 'planning-artifacts', 'research', 'trajectories',
     `${fixtureId}-hint.json`,
   );
   try {
@@ -915,7 +915,7 @@ export const DATA_DIR = resolve(import.meta.dirname!, '..', '..', 'data');
 /** Absolute path to the fixture JSON used by evaluation harnesses. */
 export const FIXTURE_PATH = resolve(
   import.meta.dirname!, '..', '..', '..',
-  '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
+  'work', 'planning-artifacts', 'research', 'solver-validation-decks.json',
 );
 
 /**
@@ -1011,7 +1011,7 @@ export interface FixtureTask {
   label: string;
   /** Strategic Grammar v1 + canonical-path hint pipeline (2026-04-21). When
    *  true, runFixture looks up
-   *  `_bmad-output/planning-artifacts/research/trajectories/<fixtureId>-hint.json`
+   *  `work/planning-artifacts/research/trajectories/<fixtureId>-hint.json`
    *  and populates `SolverConfig.canonicalPath` + `bannedCardIds` from it.
    *  Opt-in — default off to preserve pre-hint baseline semantics. */
   useHints?: boolean;

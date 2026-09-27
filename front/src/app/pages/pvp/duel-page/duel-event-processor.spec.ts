@@ -262,7 +262,7 @@ describe('DuelEventProcessor', () => {
   // applyChainEnd(N) runs. Pre-fix, that applyChainEnd blanket-wiped it →
   // the overlay had no link to drop at SOLVED(N+1) dispatch → never flipped
   // `chainOverlayReady` → the runner deadlocked on `isWaitingForOverlay`
-  // (D/D/D 24-chain fixture, trace _bmad-output/debug-solo/ddd-stall-diag/).
+  // (D/D/D 24-chain fixture, trace work/debug-solo/ddd-stall-diag/).
   // The matrix in CLAUDE.md §F9 documents the scoped MSG_CHAIN_END client
   // transition; the server side is untouched (it transitions at EMIT, in
   // wire order, so generations cannot overlap there).

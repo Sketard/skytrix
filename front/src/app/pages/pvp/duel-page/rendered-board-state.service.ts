@@ -301,7 +301,7 @@ export class RenderedBoardStateService implements BoardStateView {
         // hasn't been modified since `commitAll()`, and a proper sync when
         // it has (e.g. a subsequent `updateLogical(boardStateAfter)`).
         // Bug repro: Radiant Typhoon discard scenario, replay 18a55f97,
-        // see `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+        // see `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
         if (!this._locks.has(zoneKey)) {
           this.commitZone(zoneKey);
           return;
@@ -447,7 +447,7 @@ export class RenderedBoardStateService implements BoardStateView {
    * actors' locks alive, no zombie. `commitAll()` is for terminal teardowns
    * only.
    *
-   * Spec : `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+   * Spec : `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
    */
   commitAll(site?: string): void {
     if (site && this._locks.size > 0) {

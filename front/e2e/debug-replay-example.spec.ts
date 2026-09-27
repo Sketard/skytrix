@@ -5,7 +5,7 @@ import { runReplayDebug } from './debug-replay-harness';
  * Example consumer of the replay debug harness. Copy this file when chasing
  * a new animation bug — change the replay ID, perspective, and trigger
  * substrings to suit. Each run produces a self-contained report under
- * `_bmad-output/debug-replay/<tag>/` (Markdown + screenshots + JSON
+ * `work/debug-replay/<tag>/` (Markdown + screenshots + JSON
  * snapshots).
  *
  * Default mode is `buildFirst: false` for fast iteration on the user's

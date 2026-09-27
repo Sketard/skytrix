@@ -22,7 +22,7 @@ import { ReducedMotionService } from '../../../services/reduced-motion.service';
  * by the orchestrator's `clearTimersAndPolling` for mid-duel resets. No
  * exposed signal, no flux-derived projection — nothing for the
  * dispatcher to fan out to. Cf.
- * `_bmad-output/planning-artifacts/duel-session-chantier.md §4.1`
+ * `work/planning-artifacts/duel-session-chantier.md §4.1`
  * row "BoardEffectsService — timers = transport state, pas projection".
  */
 @Injectable()

@@ -34,7 +34,7 @@ import { BASE_URL, ADMIN, loginViaUI } from './helpers';
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const OUTPUT_ROOT = path.resolve(REPO_ROOT, '_bmad-output', 'debug-replay');
+const OUTPUT_ROOT = path.resolve(REPO_ROOT, 'work', 'debug-replay');
 const FRONT_DIST = path.resolve(REPO_ROOT, 'front', 'dist', 'skytrix', 'browser');
 
 // =============================================================================
@@ -500,7 +500,7 @@ export interface ReplaySessionOptions {
   /** `true` runs `ng build` once + serves on a free port. HMR-immune,
    *  ~30s overhead. `false` (default) reuses the user's running ng serve. */
   buildFirst?: boolean;
-  /** Output folder under `_bmad-output/debug-replay/`. Defaults to a
+  /** Output folder under `work/debug-replay/`. Defaults to a
    *  timestamped + replay-shortened folder. */
   tag?: string;
   /** Substrings to capture a screenshot+snapshot on. Passed through to

@@ -23,6 +23,6 @@ import type { StreamEvent } from '../types';
  * the missing branch at compile time when the projection has a default
  * `never` arm).
  *
- * Cf. `_bmad-output/planning-artifacts/duel-session-chantier.md §3.3`.
+ * Cf. `work/planning-artifacts/duel-session-chantier.md §3.3`.
  */
 export type FluxEvent = StreamEvent;

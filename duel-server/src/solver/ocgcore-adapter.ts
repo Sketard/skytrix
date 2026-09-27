@@ -82,7 +82,7 @@ function countActivatableHandCardIds(actions: readonly Action[]): number {
 
 /** Phase 6 of prompt-resolver-refactor — extract the cardId of the card
  *  whose effect emitted this prompt, where reliable. Coverage matrix
- *  documented in _bmad-output/solver-data/phase-6-coverage-matrix-2026-05-01.md.
+ *  documented in work/solver-data/phase-6-coverage-matrix-2026-05-01.md.
  *  Returns undefined when no reliable source is available — CardExpertiseOracle
  *  passes through in that case.
  *
@@ -1090,7 +1090,7 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Phase 3 of prompt-resolver-refactor: route through PromptResolver
         // when the env flag is set. Default OFF; bit-exact gate compares
-        // _bmad-output/solver-data/phase-1-baselines/ between flag-OFF and
+        // work/solver-data/phase-1-baselines/ between flag-OFF and
         // flag-ON to ensure no regression. Phase 5+ flips the default.
         const useResolver = process.env.SOLVER_USE_PROMPT_RESOLVER === '1'
           || process.env.SOLVER_USE_PROMPT_RESOLVER === 'true';

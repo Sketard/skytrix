@@ -9,7 +9,7 @@ import { runSoloPvpDebug, captureFrame } from './solo-pvp-harness';
  * requires back 8080, duel-server 3001, and a seeded admin deck, none of
  * which CI sets up. The end-to-end T2-T10 runs are scripted manually
  * per the checklist at
- * `_bmad-output/phase-gamma/test-T2-T10-manual-checklist.md` ; running
+ * `work/phase-gamma/test-T2-T10-manual-checklist.md` ; running
  * them is the user's job (they need a live deck + chain-capable card to
  * trigger the bug-solo sequence).
  *

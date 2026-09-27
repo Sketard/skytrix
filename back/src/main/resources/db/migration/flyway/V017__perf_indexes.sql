@@ -1,5 +1,5 @@
 -- Performance indexes — lot L-BE2 of the perf-audit chantier
--- (_bmad-output/planning-artifacts/perf-audit-instrumentation-chantier.md).
+-- (work/planning-artifacts/perf-audit-instrumentation-chantier.md).
 --
 -- Three indexes, all backing measured hot-path lookups. None change schema
 -- semantics — pure read-path acceleration.

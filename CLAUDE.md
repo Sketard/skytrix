@@ -214,7 +214,7 @@ The historical per-`flushNavEntry` synthetic BOARD_STATE was retired the
 same day : it put a sync BEFORE `MSG_CHAINING` where live has none, and
 none after mid-chain prompts where live has one — the two cadences were
 disjoint, not equivalent (wire-level objectivation in
-`_bmad-output/planning-artifacts/f10-parity-investigation-2026-06-12.md`,
+`work/planning-artifacts/f10-parity-investigation-2026-06-12.md`,
 finding 2 ; the live `hasCostMoves` predicate never fired on cross-batch
 costs, the per-prompt BOARD_STATE was the real live sync all along).
 `flushNavEntry` still captures `boardStateSnapshot` per nav entry — that
@@ -296,7 +296,7 @@ the overlay then had no link to drop at SOLVED(N+1) dispatch, never
 flipped `chainOverlayReady`, and the runner deadlocked on
 `isWaitingForOverlay` (`pause-external`) while the queue grew and the
 batch locks expired in cascade (D/D/D 24-chain fixture, trace in
-`_bmad-output/debug-solo/ddd-stall-diag/`). Fix: `DuelEventProcessor`
+`work/debug-solo/ddd-stall-diag/`). Fix: `DuelEventProcessor`
 counts `MSG_CHAIN_END` *received* (`_chainGeneration`, tags every link
 built) and `applyChainEnd` calls (`_dispatchedEndCount`, FIFO ⇒ the Nth
 call closes generation N-1); `applyChainSolving/Solved/End` only touch
@@ -1661,7 +1661,7 @@ rematch effect (`wsService.rematchStarting() === true`) resets
   server-side ; the protocol bump is the structural backward-compat
   fence.
 
-Cf. `_bmad-output/planning-artifacts/animations-ready-protocol-2026-06-05.md`.
+Cf. `work/planning-artifacts/animations-ready-protocol-2026-06-05.md`.
 
 ### Pre-lock Handle Ownership
 
@@ -2001,7 +2001,7 @@ debug action ? Wire it once in the component's `bindToWindow` block AND
 add the typed wrapper on `ReplayDebugDriver` so consumers get
 auto-completion + tsc drift detection.
 
-**Common to both A and B** — output goes to `_bmad-output/debug-replay/<tag>/`:
+**Common to both A and B** — output goes to `work/debug-replay/<tag>/`:
 
 - `report.md` — timeline of captures, warnings, errors, last 100 PIPELINE
   lines. Read this first.
@@ -2470,4 +2470,4 @@ delete the dir to start fresh.
 for end-board interruption scoring. Adding/revalidating cards is a
 procedure (AI-assisted prompt + ygoprodeck oracle fetch + human
 validation flip) — see
-`_bmad-output/solver-data/interruption-tags-howto.md`.
+`work/solver-data/interruption-tags-howto.md`.

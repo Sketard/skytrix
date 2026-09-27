@@ -1332,7 +1332,7 @@ export class DuelConnection {
    *  the server-side cancel rollback (CANCEL_PROMPT_SEQUENCE). Both require
    *  a clean slate. For the FULL inventory of state slots reset on cancel
    *  (worker + server + client), see
-   *  `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+   *  `work/planning-artifacts/cancel-rollback-contract.md`.
    *  READ IT BEFORE ADDING A NEW PRIVATE FIELD TO DuelConnection that holds
    *  prompt-flow state.
    *

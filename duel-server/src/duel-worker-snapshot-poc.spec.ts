@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // Validates AC #4, #5, #7, #8 from
-// `_bmad-output/implementation-artifacts/p0-3bis-poc-1-wasm-snapshot-pvp-worker.md`.
+// `work/implementation-artifacts/p0-3bis-poc-1-wasm-snapshot-pvp-worker.md`.
 //
 // Strategy:
 //   - Skip the WS / worker_threads layer (out of POC scope).

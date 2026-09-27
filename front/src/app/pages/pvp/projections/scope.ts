@@ -1,7 +1,7 @@
 /**
  * Scope categories declared by every {@link BaseProjection} subclass.
  *
- * Cf. `_bmad-output/planning-artifacts/duel-session-chantier.md §3.5`.
+ * Cf. `work/planning-artifacts/duel-session-chantier.md §3.5`.
  *
  * Order matters: the array literal below is the **hierarchy from most
  * durable to most volatile**. A reset event that invalidates a scope

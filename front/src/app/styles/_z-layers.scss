@@ -52,7 +52,7 @@ $z-pvp-blocked-tab-overlay: 965;
 $z-pvp-timeline-popover: 1000;
 $z-pvp-orientation-lock: 9000;
 
-// Replay viewer overlays (cf. `_bmad-output/...mockup-replay-viewer`)
+// Replay viewer overlays (cf. `work/...mockup-replay-viewer`)
 // Stack from low (board-level) to high (modal-level) so a new overlay can
 // be inserted in the right slot without renumbering.
 $z-pvp-replay-swipe-flash:        4;    // edge fade when swipe-nav detects a gesture

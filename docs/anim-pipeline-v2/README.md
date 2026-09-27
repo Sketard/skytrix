@@ -72,7 +72,7 @@ run via `node --test`.
 
 `front/src/app/pages/pvp/projections/` holds the base infrastructure
 for flux-state resets and read-only projections. Cf.
-`_bmad-output/planning-artifacts/duel-session-chantier.md §3.5`.
+`work/planning-artifacts/duel-session-chantier.md §3.5`.
 
 **Two contracts, layered**:
 
@@ -204,7 +204,7 @@ closures.
 cross-event temporal correlations as **explicit markers on the
 EventStream** instead of leaving each consumer to track them ad-hoc.
 Cf. `duel-session-chantier.md §3.7` + the implementation spec at
-`_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
+`work/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
 
 The processor closes the *cost-before-overlay* bug class
 **structurally** — the timing of the chain overlay vs the cost

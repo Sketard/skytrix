@@ -17,13 +17,13 @@
 //   - Hand size leftover (F14)
 //   - Simulated F5-F14 + F_EMZ activation per fixture (§10)
 //
-// Output: `_bmad-output/solver-data/structural-investigation-<date>.json`.
+// Output: `work/solver-data/structural-investigation-<date>.json`.
 // Console: per-fixture summary + aggregate distributions.
 //
 // Usage:
 //   cd duel-server
 //   npx tsx scripts/investigate-structural.ts \
-//     --out=../_bmad-output/solver-data/structural-investigation-2026-04-18.json
+//     --out=../work/solver-data/structural-investigation-2026-04-18.json
 //
 // Serial — no Piscina pool. One-shot diagnostic, latency is not a concern.
 // =============================================================================

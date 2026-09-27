@@ -11,7 +11,7 @@
 // Usage:
 //   npx tsx scripts/macro-dfs-poc.ts \
 //     --fixture-id=ddd-pendulum-opener \
-//     --raw-replay-seed=../_bmad-output/.../ddd-pendulum-replay-eb8c6865.raw-replay.json \
+//     --raw-replay-seed=../work/.../ddd-pendulum-replay-eb8c6865.raw-replay.json \
 //     --node-budget=800 --time-budget-ms=12000 --max-depth=50 \
 //     --out=/tmp/macro-dfs-ddd.json
 // =============================================================================

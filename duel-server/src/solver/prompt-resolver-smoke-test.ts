@@ -5,7 +5,7 @@
 // Covers every existing autoRespondMechanical case + every autoRespondOpponent
 // case from ocgcore-adapter.ts (Phase 0 inventory Track A §"Mechanical default
 // layer" + §"Opponent layer"). Bit-exact target — Phase 3 gate diffs against
-// _bmad-output/solver-data/phase-1-baselines/ so any drift here surfaces
+// work/solver-data/phase-1-baselines/ so any drift here surfaces
 // immediately.
 //
 // Run: npx tsx src/solver/prompt-resolver-smoke-test.ts

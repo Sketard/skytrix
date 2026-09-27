@@ -261,7 +261,7 @@ export function decideNextStep(input: QueueDecisionInputs): QueueStep {
   //     be requested until `chainPhase=idle` → deadlock circulaire without
   //     an autonomous drain. PvP gets a bonus side-effect: 2 batches separated
   //     instead of one with lock GY-0 ref-count=2 shared.
-  // Voir `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+  // Voir `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
   if (input.isResolving && input.hasBufferedEvents) {
     return { action: 'pre-replay-buffer' };
   }

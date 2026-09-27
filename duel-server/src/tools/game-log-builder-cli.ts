@@ -12,7 +12,7 @@
 //
 // Usage:
 //   npm run game-log -- --replayId <id> --perspective 0 \
-//     --output ../_bmad-output/game-log/<id>.md
+//     --output ../work/game-log/<id>.md
 //
 // Flags:
 //   --replayId      replay UUID to render (required, unless --from-file)
@@ -86,7 +86,7 @@ function parseArgs(argv: string[]): CliArgs {
   const perspective = perspectiveRaw === '1' ? 1 : 0;
   const output =
     get('output') ??
-    resolve(HERE, `../../../_bmad-output/game-log/${replayId || 'capture'}.md`);
+    resolve(HERE, `../../../work/game-log/${replayId || 'capture'}.md`);
 
   return {
     replayId,

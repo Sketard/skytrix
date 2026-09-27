@@ -21,7 +21,7 @@ const algo = (process.argv[2] ?? 'mcts') as 'dfs' | 'mcts';
 const TIME_MS = 10000;
 
 const DATA_DIR = resolve(import.meta.dirname!, '..', '..', '..', 'data');
-const HANDS_PATH = resolve(import.meta.dirname!, '..', '..', '..', '_bmad-output', 'planning-artifacts', 'research', 'mcts-calibration-hands.json');
+const HANDS_PATH = resolve(import.meta.dirname!, '..', '..', '..', 'work', 'planning-artifacts', 'research', 'mcts-calibration-hands.json');
 
 console.log(`[Debug] Booting (algo=${algo})...`);
 const cardDB = loadDatabase(join(DATA_DIR, 'cards.cdb'));

@@ -14,7 +14,7 @@
  *   3. Hooks `page.on('console')` and `page.on('pageerror')` to capture
  *      all errors / warnings.
  *   4. Polls `__skytrixDebug.snapshot()` every 500ms for 20s.
- *   5. Dumps everything to `_bmad-output/debug-replay/solo-bootstrap-deadlock/`
+ *   5. Dumps everything to `work/debug-replay/solo-bootstrap-deadlock/`
  *      so the developer can read the raw evidence.
  *
  * Run :
@@ -84,7 +84,7 @@ export async function runSoloBootstrapDeadlockHarness(
   const pollIntervalMs = opts.pollIntervalMs ?? 500;
   const tag = opts.tag ?? 'solo-bootstrap-deadlock';
 
-  const outDir = resolve(__dirname, '../../../_bmad-output/debug-replay', tag);
+  const outDir = resolve(__dirname, '../../../work/debug-replay', tag);
   mkdirSync(outDir, { recursive: true });
 
   // Step 1 — POST /api/duels/from-replay

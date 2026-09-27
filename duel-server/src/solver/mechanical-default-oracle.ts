@@ -43,7 +43,7 @@ export class MechanicalDefaultOracle implements DecisionOracle {
 
 /** Verbatim migration of ocgcore-adapter.ts:1571-1674. Must remain bit-exact
  *  with the legacy switch — Phase 3 bit-exact gate compares pre/post on every
- *  fixture in `_bmad-output/solver-data/phase-1-baselines/`. */
+ *  fixture in `work/solver-data/phase-1-baselines/`. */
 export function autoRespondMechanicalImpl(
   msg: Record<string, unknown>,
   config?: DuelConfig,

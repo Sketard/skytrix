@@ -11,7 +11,7 @@ import { BASE_URL, ADMIN, loginViaUI } from './helpers';
  * <app-pvp-player-card> avant/après flip pour trancher mode A vs mode B.
  */
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const POC_OUT = path.resolve(REPO_ROOT, '_bmad-output', 'poc-projection');
+const POC_OUT = path.resolve(REPO_ROOT, 'work', 'poc-projection');
 const REPLAY_ID = 'a8859c98-df53-4de3-bcdb-dd1a56176f86';
 
 test('LP badge / player-card flip probe', async ({ page }) => {

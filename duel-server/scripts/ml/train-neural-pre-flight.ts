@@ -5,7 +5,7 @@
 // weight vector for `NeuralFeatureRanker` (instead of the 1038-dim per-edge
 // `GraphWeights`). Used to decide GO/NO-GO before committing ~20 h of MLP
 // training. See design doc:
-// `_bmad-output/solver-data/phase-b/day-1-design-doc.md` (round 2, §1.5).
+// `work/solver-data/phase-b/day-1-design-doc.md` (round 2, §1.5).
 //
 // Hard constraints (from design doc + checkpoint memo):
 // - Single fixture (CLI default `snake-eye-yummy-opener` — Phase 1 added 5 tags

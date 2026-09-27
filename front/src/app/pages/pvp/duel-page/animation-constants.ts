@@ -94,7 +94,7 @@ export const REPLAY_BUFFER_SAFETY_TIMEOUT_MS = 10_000;
  * today: the deferred lifecycle is logical (a chain cost can be slow
  * to animate, but it still resolves), and a speed-scaled timeout
  * would hide an actually stuck rule under slow playback. Cf.
- * `_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md §2.3`.
+ * `work/planning-artifacts/beta-2-deferred-effect-processor-spec.md §2.3`.
  */
 export const DEFERRED_TIMEOUT_MS = 5_000;
 

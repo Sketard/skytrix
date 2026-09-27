@@ -7,7 +7,7 @@ import * as logger from './logger.js';
  * Main-thread side of the cancel-rollback protocol (P0-3bis.3, post-U38
  * extraction 2026-06-01). The full cross-process contract — worker WASM
  * snapshot, server-side state slots reset, client-side processor.reset —
- * lives in `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+ * lives in `work/planning-artifacts/cancel-rollback-contract.md`.
  *
  * Two surfaces, called from different modules :
  *

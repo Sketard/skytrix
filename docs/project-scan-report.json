@@ -17,7 +17,7 @@
   ],
   "completed_steps": [
     { "step": "step_1", "status": "completed", "summary": "Classified as multi-part with 3 parts (back / front / duel-server)" },
-    { "step": "step_2", "status": "completed", "summary": "Inventoried existing docs: README.md, CLAUDE.md, _bmad-output/project-context.md, _bmad-output/planning-artifacts/* (PRDs, architectures, UX, epics, R&D)" },
+    { "step": "step_2", "status": "completed", "summary": "Inventoried existing docs: README.md, CLAUDE.md, work/project-context.md, work/planning-artifacts/* (PRDs, architectures, UX, epics, R&D)" },
     { "step": "step_3", "status": "completed", "summary": "Tech stack: Spring Boot 3.4.2 / Java 21 (back); Angular 19.1.3 / TS 5.5.4 (front); Node 24 / ocgcore-wasm / piscina (duel-server)" },
     { "step": "step_4", "status": "completed", "summary": "Conditional analysis via 3 parallel Explore subagents — REST endpoints, JPA entities, Flyway migrations, security, components, services, WS protocol, solver layout, data files" },
     { "step": "step_5", "status": "completed", "summary": "source-tree-analysis.md generated (annotated tree per part + critical paths)" },
@@ -46,7 +46,7 @@
     "docs/component-inventory-front.md",
     "docs/project-parts.json",
     "docs/project-scan-report.json",
-    "_bmad-output/project-context.md (refreshed)"
+    "work/project-context.md (refreshed)"
   ],
   "findings": {
     "project_classification": "multi-part monorepo, 3 deployables; networks split into public (front), internal (front+back+duel-server), data-only (back+db)",
@@ -64,7 +64,7 @@
     "shared_protocol_files": 6,
     "anomalies_count_total": 15
   },
-  "verification_summary": "Three Explore subagents enumerated source per part (back / front / duel-server). No source files were modified; only docs/ and _bmad-output/project-context.md were written. Documentation cross-checked against CLAUDE.md and existing project-context.md.",
+  "verification_summary": "Three Explore subagents enumerated source per part (back / front / duel-server). No source files were modified; only docs/ and work/project-context.md were written. Documentation cross-checked against CLAUDE.md and existing project-context.md.",
   "open_risks": [
     "RoomService:73 pessimistic lock around external HTTP call (potential deadlock)",
     "message-filter.ts:213 Story 4.2 absolute→relative player index conversion pending",

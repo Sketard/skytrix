@@ -5,7 +5,7 @@
  * events that are mechanically different between modes by design, so
  * the remaining events can be compared structurally with toEqual.
  *
- * See `_bmad-output/planning-artifacts/pvp-replay-event-stream-parity-spec-2026-06-05.md`
+ * See `work/planning-artifacts/pvp-replay-event-stream-parity-spec-2026-06-05.md`
  * for the underlying decisions ("strip or compare" for SELECT_*,
  * AnimationStarted/Completed, etc.).
  */

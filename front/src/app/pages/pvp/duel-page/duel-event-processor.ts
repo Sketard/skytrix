@@ -112,7 +112,7 @@ export class DuelEventProcessor {
   // queue) — the overlay then had no link to drop at SOLVED(N+1) dispatch,
   // never signalled `chainOverlayReady`, and the runner deadlocked on
   // `isWaitingForOverlay` (D/D/D 24-chain fixture, trace in
-  // _bmad-output/debug-solo/ddd-stall-diag/).
+  // work/debug-solo/ddd-stall-diag/).
   private _chainGeneration = 0;
   private _dispatchedEndCount = 0;
 

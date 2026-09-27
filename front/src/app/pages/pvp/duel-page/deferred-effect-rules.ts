@@ -15,7 +15,7 @@
 // β.2b-bis / β.3 work, with the catalogue case + the reason for
 // deferral inline.
 //
-// Cf. `_bmad-output/planning-artifacts/deferred-effects-catalogue.md`
+// Cf. `work/planning-artifacts/deferred-effects-catalogue.md`
 // (11 catalogue cases) + `beta-2-deferred-effect-processor-spec.md §3`
 // (the spec table).
 //

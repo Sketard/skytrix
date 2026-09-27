@@ -31,7 +31,7 @@
 // Usage:
 //   cd duel-server
 //   SOLVER_INSTRUMENT=1 npx tsx scripts/record-trajectory.ts \
-//     --hint=../_bmad-output/planning-artifacts/research/trajectories/ryzeal-mitsurugi-hint.json \
+//     --hint=../work/planning-artifacts/research/trajectories/ryzeal-mitsurugi-hint.json \
 //     --out=data/trajectories/ryzeal-mitsurugi-opener.json \
 //     --node-budget=800
 // =============================================================================

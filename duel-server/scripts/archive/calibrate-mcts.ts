@@ -12,10 +12,10 @@
 //   - duel-server/data/cards.cdb
 //   - duel-server/data/scripts_full/
 //   - duel-server/data/solver-config.json (overridden per run)
-//   - _bmad-output/planning-artifacts/research/mcts-calibration-hands.json
+//   - work/planning-artifacts/research/mcts-calibration-hands.json
 //
 // Outputs:
-//   - _bmad-output/planning-artifacts/research/mcts-calibration-results-{date}.json
+//   - work/planning-artifacts/research/mcts-calibration-results-{date}.json
 //   - Console summary report
 // =============================================================================
 
@@ -47,7 +47,7 @@ const HANDS_PATH = resolve(
   import.meta.dirname!,
   '..',
   '..',
-  '_bmad-output',
+  'work',
   'planning-artifacts',
   'research',
   'mcts-calibration-hands.json',
@@ -56,7 +56,7 @@ const RESULTS_PATH = resolve(
   import.meta.dirname!,
   '..',
   '..',
-  '_bmad-output',
+  'work',
   'planning-artifacts',
   'research',
   `mcts-calibration-results-${todayIso()}.json`,

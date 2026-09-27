@@ -270,7 +270,7 @@ describe('QueueRunner.decideNextStep', () => {
       // dispatch). In replay, MSG_CHAIN_END is segmented into a distinct
       // state by replay-precompute.ts and won't be requested until
       // chainPhase=idle → deadlock circulaire without an autonomous drain.
-      // See `_bmad-output/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
+      // See `work/planning-artifacts/bug-post-chain-solved-buffer-drain-2026-06-04.md`.
       const step = decideNextStep(baseInputs({
         isResolving: true,
         hasBufferedEvents: true,

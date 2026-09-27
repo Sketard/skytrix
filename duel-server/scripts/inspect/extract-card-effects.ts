@@ -2416,7 +2416,7 @@ if (cardIds.length === 0) {
   process.exit(2);
 }
 
-const outDir = join('..', '_bmad-output', 'solver-data', 'card-effects-catalog');
+const outDir = join('..', 'work', 'solver-data', 'card-effects-catalog');
 if (mode !== 'stdout' && !existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
 for (const cardId of cardIds) {

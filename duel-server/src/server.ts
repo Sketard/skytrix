@@ -602,7 +602,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   // separate test ; not in Phase 0 scope. See parity spec doc.
   //
   // NEVER exposed in production — gated on `!IS_PRODUCTION`. See
-  // `_bmad-output/planning-artifacts/pvp-replay-event-stream-parity-spec-2026-06-05.md`.
+  // `work/planning-artifacts/pvp-replay-event-stream-parity-spec-2026-06-05.md`.
   if (method === 'POST' && pathname === '/api/duels/from-replay') {
     if (IS_PRODUCTION) {
       json(res, 404, { code: 'NOT_FOUND', error: 'Not Found' });

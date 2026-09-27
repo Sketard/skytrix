@@ -5,8 +5,8 @@
 // `EffectReady` / `EffectAbandoned` markers on the duel's EventStream. The
 // projections (β.3+) consume the markers; the YGO knowledge of "what waits on
 // what" lives here, in the `RULES` table, and nowhere else. Cf.
-// `_bmad-output/planning-artifacts/duel-session-chantier.md §3.7` +
-// `_bmad-output/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
+// `work/planning-artifacts/duel-session-chantier.md §3.7` +
+// `work/planning-artifacts/beta-2-deferred-effect-processor-spec.md`.
 //
 // β.2a shipped the INFRASTRUCTURE only: the observe loop, the timer / collision
 // / checkpoint / silentReset mechanics, the `ResetTarget` integration, and an
@@ -16,7 +16,7 @@
 // synthesizing virtual events at trigger time and absorbing later events
 // (drop the routing aval). See `ARCHITECTURE GUARD` block above
 // `RewriterRule` interface. Cf. spec
-// `_bmad-output/planning-artifacts/beta-3-case-12-xyz-leave-with-materials-spec.md`.
+// `work/planning-artifacts/beta-3-case-12-xyz-leave-with-materials-spec.md`.
 //
 // **Plain class**, NOT `@Injectable`. Owned + constructed privately by the
 // `AnimationOrchestratorService` so the DEP observes the SAME `pushToStream`

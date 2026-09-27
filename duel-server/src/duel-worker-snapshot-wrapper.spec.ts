@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // Validates AC #5, #6, #7, #8 from
-// `_bmad-output/implementation-artifacts/p0-3bis-2-worker-snapshot-wrapper.md`.
+// `work/implementation-artifacts/p0-3bis-2-worker-snapshot-wrapper.md`.
 //
 // Strategy:
 //   - Boot ocgcore in-process (same fixture as the POC).
