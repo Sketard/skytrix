@@ -6,16 +6,16 @@
 //   `DuelWebSocketService` or `DuelConnection` directly. Everything
 //   goes through `AnimationDataSource` (token `ANIMATION_DATA_SOURCE`).
 //
-// The rule is what guarantees `ReplayDuelAdapter` and the PvP path can
-// share the orchestrator unchanged — adding a direct WS dependency to
-// the orchestrator silently breaks replay (the adapter does not
-// implement DuelWebSocketService, only AnimationDataSource).
+// The rule is what guarantees `MockDuelConnection` (replay) and the PvP
+// path can share the orchestrator unchanged — adding a direct WS
+// dependency to the orchestrator silently breaks replay (the mock does
+// not implement DuelWebSocketService, only AnimationDataSource).
 //
 // Pre-U3, the rule lived only in CLAUDE.md prose. A future PR that
 // adds `inject(DuelWebSocketService)` to the orchestrator for a quick
 // fix compiles cleanly — the regression surfaces only when replay
 // fails at runtime with `No provider for DuelWebSocketService` in
-// `ReplayDuelAdapter` consumers.
+// `MockDuelConnection` consumers.
 //
 // This script reads animation-orchestrator.service.ts, strips comments
 // (to ignore prose mentions in the docblock), and fails if either of
@@ -65,7 +65,7 @@ for (const name of FORBIDDEN) {
 if (violations.length > 0) {
   console.error(
     '\nU3 Animation Parity Rule violation : animation-orchestrator.service.ts MUST NOT reference DuelWebSocketService / DuelConnection.\n'
-    + 'See docs/duel/animation.md "Animation Parity Rule" — all transport access must route through ANIMATION_DATA_SOURCE so ReplayDuelAdapter parity holds.\n'
+    + 'See docs/duel/animation.md "Animation Parity Rule" — all transport access must route through ANIMATION_DATA_SOURCE so MockDuelConnection (replay) parity holds.\n'
     + '\nOffending references :\n'
     + violations.map(v => `  - ${v.name} at ${target}:${v.line}`).join('\n')
     + '\n',

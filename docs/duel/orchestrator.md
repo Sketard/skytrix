@@ -22,7 +22,7 @@ plage.
 
 `AnimationOrchestratorService` is a thin coordinator that delegates to
 8 extracted managers/classes. The processor (chain state machine +
-animation queue) lives on the `DuelConnection` / `ReplayDuelAdapter`
+animation queue) lives on the `DuelConnection` / `MockDuelConnection`
 that owns the WS / precompute feed, NOT on the orchestrator — see the
 "Chain Event Processing & State Machine" section of [chain.md](chain.md) for ownership
 rules post-c8.

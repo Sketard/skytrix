@@ -132,7 +132,7 @@ The `prebuild` step runs `scripts/check-ws-protocol-sync.mjs` which **byte-compa
 
 ## Coding standards
 
-Hard rules (enforced by review and by `CLAUDE.md`):
+Hard rules (enforced by review ; the front linters, run by the pre-commit hook, catch part of them : [front/LINTING.md](../front/LINTING.md)):
 
 ### Backend
 - All components: `@RestController` / `@Service` / `CrudRepository` + `JpaSpecificationExecutor`.
@@ -183,10 +183,12 @@ run the full duel-page / replay-page spec batch.
 ## Git workflow
 
 - Single `master` branch, no enforced naming convention for feature branches.
-- No CI/CD pipeline detected.
+- CI : `.github/workflows/protocol-sync.yml` runs the three `scripts/check-*.mjs` guards (WS protocol byte-sync, perspective isolation, animation parity) on every push to `master` / `feat/**` and on pull requests touching the protocol or duel-page files. It runs no tests and deploys nothing : `npm run verify` (build + tests of the three parts) runs locally, wired to the `pre-push` hook.
 - Commit messages follow Conventional Commits-ish style (`feat(area): ...`, `fix(area): ...`, `refactor(area): ...`, `test(area): ...`, `docs(...): ...`). Look at the recent log for tone.
 
 ## Adding a new card to the solver scoring
+
+The full procedure (how to invoke the prompt, schema notes) : [work/solver-data/interruption-tags-howto.md](../work/solver-data/interruption-tags-howto.md).
 
 1. Open `work/solver-data/interruption-tag-generation-prompt.md`.
 2. Run the AI-assisted prompt with the cardIds you want to add.

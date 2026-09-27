@@ -25,10 +25,11 @@ NOT the `player` / `controller` fields buried inside cards, zones, prompt
 entries, or chain links (see the Story 4.2 TODO at `message-filter.ts`).
 Those stay **absolute** in both PvP and Replay.
 
-**Replay-side swap is also partial by construction.** `ReplayDuelAdapter`
-precompute data arrives in absolute server order; `swapBoardState()` swaps
-`players[]` + `turnPlayer`, and `swapEventBoardStates()` swaps the
-per-event `boardStateAfter`. Anything else absolute stays absolute.
+**Replay-side swap is also partial by construction.** The replay stream
+that `MockDuelConnection` consumes arrives in absolute server order;
+`swapBoardState()` swaps `players[]` + `turnPlayer`, both on `BOARD_STATE`
+and, through a shallow clone, on each per-event `boardStateAfter`.
+Anything else absolute stays absolute.
 
 **Rules:**
 

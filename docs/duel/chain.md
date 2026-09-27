@@ -26,7 +26,7 @@ commit). Ownership rules (γ-c PR2 c8, 2026-05-29) :
   `switchPerspective` no longer routes future messages to a different
   processor — there is only one). The default conn built by the
   wsService ctor is orphaned and `cleanup()`-ed by `bindSoloConnection`.
-- **Replay** : `ReplayDuelAdapter` owns its processor outright (separate
+- **Replay** : `MockDuelConnection` owns its processor outright (separate
   scope, no SOLO/PvP interaction). γ does not touch the replay path.
 
 The `sharedProcessor` ctor option on `DuelConnection` was dropped in
