@@ -73,6 +73,7 @@ duel-server/data/*
 !duel-server/data/archetype-expertise/
 !duel-server/data/archetype-expertise/**
 !duel-server/data/bridge-validation-verdicts.json
+/node_modules/
 duel-server/node_modules/
 duel-server/dist/
 # Isolated dev-stack dataDir (cards.cdb + strings.conf copied/symlinked by scripts/dev-stack.mjs)

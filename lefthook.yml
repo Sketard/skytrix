@@ -1,0 +1,40 @@
+extends:
+  - C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/lefthook-base.yml
+lefthook: node "C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/run-lefthook.mjs"
+
+pre-commit:
+  jobs:
+    - name: ws-protocol-sync
+      glob:
+        - "duel-server/src/ws-protocol-{shared,game,prompts,system,replay,solver}.ts"
+        - "duel-server/src/game-log/game-log-{types,builder}.ts"
+        - "duel-server/src/ocgcore-reason-flags.ts"
+        - "front/src/app/pages/pvp/duel-ws-{shared,game,prompts,system,replay,solver}.types.ts"
+        - "front/src/app/pages/pvp/game-log/game-log-{types,builder}.ts"
+        - "front/src/app/pages/pvp/duel-page/ocgcore-reason-flags.ts"
+      run: node scripts/check-ws-protocol-sync.mjs
+    - name: animation-parity
+      glob: "front/src/app/pages/pvp/duel-page/animation-orchestrator.service.ts"
+      run: node scripts/check-animation-parity.mjs
+    - name: perspective-zone-key
+      glob:
+        - "front/src/app/pages/pvp/*.ts"
+        - "front/src/app/pages/pvp/**/*.ts"
+      run: node scripts/check-perspective-zone-key.mjs
+    - name: front-lint
+      root: "front/"
+      glob:
+        - "front/src/*.{ts,html,scss}"
+        - "front/src/**/*.{ts,html,scss}"
+      run: npx --no-install lint-staged
+    - name: wb-identifiers
+      glob:
+        - "{front/src,front/e2e,duel-server/src,duel-server/scripts,duel-server/test,back/src,scripts}/*.{ts,mts,js,mjs,cjs,java}"
+        - "{front/src,front/e2e,duel-server/src,duel-server/scripts,duel-server/test,back/src,scripts}/**/*.{ts,mts,js,mjs,cjs,java}"
+    - name: wb-paths
+      glob: ["*.md", "**/*.md"]
+
+pre-push:
+  jobs:
+    - name: verify
+      run: npm run verify
