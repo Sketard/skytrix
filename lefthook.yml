@@ -35,9 +35,10 @@ pre-commit:
       glob: ["*.md", "**/*.md"]
 
 # Au push, et `npm run verify` (`lefthook run pre-push --force`) ; `verify:duel`, `verify:front`, `verify:back` n'en
-# gardent que les jobs de leur tag. Les deux builds tournent côte à côte, puis les tests l'un après l'autre (un
-# lanceur de tests prend déjà la machine) ; un build en échec saute les tests. `2>&1` range stderr dans le bloc de
-# son job. Règles communes : README d'agent-workbench/git-hooks, « A parallel verify ».
+# gardent que les jobs de leur tag. Les deux builds tournent côte à côte, puis les trois suites de tests, elles aussi
+# côte à côte : elles ne partagent ni base ni port, et aucune ne remplit la machine (un Chrome, un JVM, un vitest de
+# quelques secondes). Un build en échec saute les tests. `2>&1` range stderr dans le bloc de son job. Règles
+# communes : README d'agent-workbench/git-hooks, « A parallel verify ».
 pre-push:
   piped: true
   jobs:
@@ -49,7 +50,7 @@ pre-push:
           - { name: front-build, tags: [front], root: front/, run: npm run build 2>&1 }
     - name: tests
       group:
-        piped: true
+        parallel: true
         jobs:
           - { name: duel-test, tags: [duel], root: duel-server/, run: npm test 2>&1 }
           - { name: front-test, tags: [front], root: front/, run: npm test -- --watch=false --browsers=ChromeHeadless 2>&1 }
