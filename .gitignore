@@ -113,3 +113,5 @@ Thumbs.db
 # Local Maven truststore (machine-specific, e.g. corp/Antivirus TLS interception)
 back/.mvn/cacerts
 back/.mvn/jvm.config
+.claude/settings.local.json
+.claude/settings.local.json
