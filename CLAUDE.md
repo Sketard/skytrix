@@ -9,30 +9,30 @@ captures) ; `_mockups/` = maquettes HTML, hors produit.
 
 ## Comment faire
 
-Un outil neuf ajoute sa ligne ici. La table dit **quand** ; le **comment** vit dans la cible.
+Un outil neuf ajoute sa ligne ici.
 
-| Geste                                        | Point d'entrée                                                                                                   |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Lancer en local                              | [`docs/development-guide.md`](docs/development-guide.md) « Run locally » ; données du moteur : [`duel-server/DATA-SETUP.md`](duel-server/DATA-SETUP.md) |
-| Lancer l'e2e ou déboguer sans gêner Axel     | pile isolée `node scripts/dev-stack.mjs up` (ports décalés), puis `PW_AUTO_STACK=1 npx playwright test` dans `front/` ; [`docs/development-guide.md`](docs/development-guide.md) « Isolated dev-stack » |
-| Tester une pièce                             | `front` : `npx ng test --include=<spec> --watch=false --browsers=ChromeHeadless` ; `duel-server` : `npm test` ; `back` : `mvnw test` |
-| Déboguer une animation ou un replay          | [`docs/duel/debugging.md`](docs/duel/debugging.md) (`DuelLogger`, `window.__skytrixDebug`, harnais Playwright)   |
-| Écrire de l'interface                        | lire d'abord [`front/DESIGN-SYSTEM.md`](front/DESIGN-SYSTEM.md) ; lints : [`front/LINTING.md`](front/LINTING.md) |
-| Toucher au moteur de duel (chaîne, replay, perspective, orchestrateur) | la table de [`docs/duel/README.md`](docs/duel/README.md) dit quel document lire          |
-| Ajouter une carte au score du solveur        | [`docs/development-guide.md`](docs/development-guide.md) « Adding a new card to the solver scoring »             |
-| Déployer                                     | `scripts/deploy.sh` ; [`docs/deployment-guide.md`](docs/deployment-guide.md)                                    |
-| Orchestrer un chantier par sous-agents       | skill `workbench:orchestrate`                                                                                    |
-| Vérifier avant de finir                      | `npm run verify` à la racine                                                                                     |
+| Geste | Point d'entrée |
+| --- | --- |
+| Lancer en local | [`docs/development-guide.md`](docs/development-guide.md) « Run locally » ; données du moteur : [`duel-server/DATA-SETUP.md`](duel-server/DATA-SETUP.md) |
+| Lancer l'e2e ou déboguer sans gêner Axel | pile isolée `node scripts/dev-stack.mjs up` (ports décalés), puis `PW_AUTO_STACK=1 npx playwright test` dans `front/` ; [`docs/development-guide.md`](docs/development-guide.md) « Isolated dev-stack » |
+| Tester une pièce | `front` : `npx ng test --include=<spec> --watch=false --browsers=ChromeHeadless` ; `duel-server` : `npm test` ; `back` : `mvnw test` |
+| Déboguer une animation ou un replay | [`docs/duel/debugging.md`](docs/duel/debugging.md) (`DuelLogger`, `window.__skytrixDebug`, harnais Playwright) |
+| Écrire de l'interface | lire d'abord [`front/DESIGN-SYSTEM.md`](front/DESIGN-SYSTEM.md) ; lints : [`front/LINTING.md`](front/LINTING.md) |
+| Toucher au moteur de duel (chaîne, replay, perspective, orchestrateur) | la table de [`docs/duel/README.md`](docs/duel/README.md) dit quel document lire |
+| Ajouter une carte au score du solveur | [`docs/development-guide.md`](docs/development-guide.md) « Adding a new card to the solver scoring » |
+| Déployer | `scripts/deploy.sh` ; [`docs/deployment-guide.md`](docs/deployment-guide.md) |
+| Orchestrer un chantier par sous-agents | skill `workbench:orchestrate` |
+| Vérifier avant de finir | `npm run verify` à la racine |
 
 ## Chantiers
 
-| Sujet                                          | État                   | Fait foi                                                                                          |
-| ---------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------- |
-| Moteur de duel (modes, chaîne, replay, perspective) | référence         | [`docs/duel/README.md`](docs/duel/README.md)                                                      |
-| Pipeline d'animation v2 (lots α, β)            | livré, règles en vigueur | [`docs/duel/animation.md`](docs/duel/animation.md) ; détail : [`docs/anim-pipeline-v2/README.md`](docs/anim-pipeline-v2/README.md) |
-| Design system du front                          | référence              | [`front/DESIGN-SYSTEM.md`](front/DESIGN-SYSTEM.md)                                                 |
-| Solveur de combos (R&D)                        | en pause               | `work/solver-data/` ; ne pas l'étendre sans rouvrir la R&D                                         |
-| Specs et audits des chantiers                   | voir chaque document   | `work/planning-artifacts/`                                                                         |
+| Sujet | État | Fait foi |
+| --- | --- | --- |
+| Moteur de duel (modes, chaîne, replay, perspective) | référence | [`docs/duel/README.md`](docs/duel/README.md) |
+| Pipeline d'animation v2 (lots α, β) | livré, règles en vigueur | [`docs/duel/animation.md`](docs/duel/animation.md) ; détail : [`docs/anim-pipeline-v2/README.md`](docs/anim-pipeline-v2/README.md) |
+| Design system du front | référence | [`front/DESIGN-SYSTEM.md`](front/DESIGN-SYSTEM.md) |
+| Solveur de combos (R&D) | en pause | `work/solver-data/` ; ne pas l'étendre sans rouvrir la R&D |
+| Specs et audits des chantiers | voir chaque document | `work/planning-artifacts/` |
 
 ## Infra
 
@@ -47,10 +47,7 @@ Un outil neuf ajoute sa ligne ici. La table dit **quand** ; le **comment** vit d
 ## Garde-fous
 
 - **Fini = `npm run verify` vert**, câblé au `pre-push`.
-- **Commits** : Conventional Commits, description en français, scope par pièce ou par sujet (`anim`, `replay`,
-  `build`…).
-- **Documents** : un document de plus de ~100 lignes suit le skill `workbench:doc-standards`. **Règle du scout** :
-  qui modifie un document fréquemment touché le met à la convention dans le même changement.
+- **Commits** : Conventional Commits, scope par pièce ou par sujet (`anim`, `replay`, `build`…).
 - 🚨 **Protocole WS** : un fichier `ws-protocol-*.ts` du duel-server et son miroir `duel-ws-*.types.ts` du front
   changent **dans le même commit**, octet pour octet (`check-ws-protocol-sync`).
 - 🚨 **Parité d'animation** : l'orchestrateur ne passe que par `AnimationDataSource`, jamais par
