@@ -36,8 +36,12 @@ pre-commit:
       group:
         parallel: true
         jobs:
+          # Les gabarits Angular et le SCSS aussi (lus par le socle depuis le Q324 de son carnet-Q) : seul
+          # `front/src` en tient parmi les dossiers jugés ; `_mockups/` et `work/` restent dehors.
           - name: wb-identifiers
-            glob: "{front/src,front/e2e,duel-server/src,duel-server/scripts,duel-server/test,back/src,scripts}/*.{ts,mts,js,mjs,cjs,java}"
+            glob:
+              - "{front/src,front/e2e,duel-server/src,duel-server/scripts,duel-server/test,back/src,scripts}/*.{ts,mts,js,mjs,cjs,java}"
+              - "front/src/*.{html,scss}"
           - name: wb-paths
             glob: "*.md"
           - name: wb-deps
