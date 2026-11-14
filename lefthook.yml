@@ -25,12 +25,19 @@ pre-commit:
       root: "front/"
       glob: "front/src/*.{ts,html,scss}"
       run: npx --no-install lint-staged
-    - name: wb-identifiers
-      glob: "{front/src,front/e2e,duel-server/src,duel-server/scripts,duel-server/test,back/src,scripts}/*.{ts,mts,js,mjs,cjs,java}"
-    - name: wb-paths
-      glob: "*.md"
-    - name: wb-deps
-      glob: ["package.json", "*/package.json"]
+    # Les réglages des jobs `wb-` du socle, dans son groupe parallèle `ratchets` (décision 273 du carnet-Q
+    # d'agent-workbench) : lefthook ne fusionne un job par son nom qu'au même niveau, un réglage resté au premier
+    # niveau ne l'atteindrait pas (`wb-config` le refuse). Le groupe passe après les jobs ci-dessus.
+    - name: ratchets
+      group:
+        parallel: true
+        jobs:
+          - name: wb-identifiers
+            glob: "{front/src,front/e2e,duel-server/src,duel-server/scripts,duel-server/test,back/src,scripts}/*.{ts,mts,js,mjs,cjs,java}"
+          - name: wb-paths
+            glob: "*.md"
+          - name: wb-deps
+            glob: ["package.json", "*/package.json"]
 
 # Au push, et `npm run verify` (`lefthook run pre-push --force`) ; `verify:duel`, `verify:front`, `verify:back` n'en
 # gardent que les jobs de leur tag. Les deux builds tournent côte à côte, puis les trois suites de tests, elles aussi
