@@ -1,5 +1,9 @@
 extends:
   - C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/lefthook-base.yml
+  # `wb-shellcheck` au pre-commit sur les `.sh` stagés : un constat warning ou error de shellcheck sur une ligne ajoutée
+  # ou changée refuse le commit. Le binaire (0.11.0) n'est sur aucun `PATH` : la clé `shellcheck` de `wb-hooks.json`
+  # le nomme.
+  - C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/lefthook-shellcheck.yml
 lefthook: node "C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/run-lefthook.mjs"
 
 pre-commit:
@@ -39,7 +43,7 @@ pre-commit:
           - name: wb-deps
             glob: ["package.json", "*/package.json"]
 
-# Au push, et `npm run verify` (`lefthook run pre-push --force`) ; `verify:duel`, `verify:front`, `verify:back` n'en
+# Au push, et `npm run verify` (le sous-verbe `verify` du lanceur, qui joue `run pre-push --force`) ; `verify:duel`, `verify:front`, `verify:back` n'en
 # gardent que les jobs de leur tag. Les deux builds tournent côte à côte, puis les trois suites de tests, elles aussi
 # côte à côte : elles ne partagent ni base ni port, et aucune ne remplit la machine (un Chrome, un JVM, un vitest de
 # quelques secondes). Un build en échec saute les tests. `2>&1` range stderr dans le bloc de son job. Règles
