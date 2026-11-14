@@ -3,12 +3,12 @@
   "private": true,
   "scripts": {
     "prepare": "node C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/install-hooks.mjs",
-    "verify": "lefthook run pre-push --force --no-auto-install",
-    "verify:duel": "lefthook run pre-push --force --no-auto-install --tag duel",
-    "verify:front": "lefthook run pre-push --force --no-auto-install --tag front",
-    "verify:back": "lefthook run pre-push --force --no-auto-install --tag back"
+    "verify": "node C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/run-lefthook.mjs verify",
+    "verify:duel": "node C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/run-lefthook.mjs verify --tag duel",
+    "verify:front": "node C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/run-lefthook.mjs verify --tag front",
+    "verify:back": "node C:/Users/Axel/Desktop/dev/agent-workbench/git-hooks/run-lefthook.mjs verify --tag back"
   },
   "devDependencies": {
-    "lefthook": "^2.1.10"
+    "lefthook": "^2.1.14"
   }
 }
