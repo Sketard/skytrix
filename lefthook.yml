@@ -43,11 +43,11 @@ pre-commit:
           - name: wb-deps
             glob: ["package.json", "*/package.json"]
 
-# Au push, et `npm run verify` (le sous-verbe `verify` du lanceur, qui joue `run pre-push --force`) ; `verify:duel`, `verify:front`, `verify:back` n'en
-# gardent que les jobs de leur tag. Les deux builds tournent côte à côte, puis les trois suites de tests, elles aussi
-# côte à côte : elles ne partagent ni base ni port, et aucune ne remplit la machine (un Chrome, un JVM, un vitest de
-# quelques secondes). Un build en échec saute les tests. `2>&1` range stderr dans le bloc de son job. Règles
-# communes : README d'agent-workbench/git-hooks, « A parallel verify ».
+# Au push, et `npm run verify` (le sous-verbe `verify` du lanceur, qui joue `run pre-push --force`) ;
+# `verify:duel`, `verify:front`, `verify:back` n'en gardent que les jobs de leur tag. Les deux builds tournent côte à
+# côte, puis les trois suites de tests, elles aussi côte à côte : elles ne partagent ni base ni port, et aucune ne
+# remplit la machine (un Chrome, un JVM, un vitest de quelques secondes). Un build en échec saute les tests. `2>&1`
+# range stderr dans le bloc de son job. Règles communes : README d'agent-workbench/git-hooks, « A parallel verify ».
 pre-push:
   piped: true
   jobs:
