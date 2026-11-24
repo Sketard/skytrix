@@ -96,7 +96,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    mem_limit: 128m
+    # 128m faisait tuer le process (OOM) pendant le `git pull` de CardScripts
+    # lancé par /api/update-data ; le pool du solver consomme aussi ~400 Mo.
+    mem_limit: 768m
     cpus: 0.5
 
   # Frontend Angular servi par Nginx
