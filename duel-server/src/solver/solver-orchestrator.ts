@@ -120,6 +120,20 @@ export class SolverOrchestrator {
       workerTerminateTimeout: configFile.timeBudgetOptimalMs * 2,
     } as ConstructorParameters<typeof Piscina>[0]);
 
+    // Piscina emits 'error' on the pool when a worker fails outside a task —
+    // notably when solver-worker.ts throws at module load (e.g. a missing
+    // data/*.json). With no listener, EventEmitter rethrows it and the whole
+    // duel server crashes (crash loop in prod when the duel_data volume lacked
+    // interruption-weights.json). Keep a permanent listener so a stray worker
+    // error is logged instead of fatal; during boot it also fails the init.
+    let rejectBoot!: (err: unknown) => void;
+    const bootFailure = new Promise<never>((_, reject) => { rejectBoot = reject; });
+    bootFailure.catch(() => { /* consumed by the race below */ });
+    this.pool.on('error', (err: unknown) => {
+      console.error('[Solver] worker error', err instanceof Error ? err.message : err);
+      rejectBoot(err);
+    });
+
     console.log('[Solver] pool-ready', {
       poolSize: this.poolSize,
       memoryPerWorkerMb: memPerWorker,
@@ -127,16 +141,26 @@ export class SolverOrchestrator {
     });
 
     // Health check: dispatch a no-op task and verify it resolves within the
-    // configured pool-health-check window.
+    // configured pool-health-check window. A worker crashing during bootstrap
+    // never runs the task (piscina stops respawning bootstrap failures), so
+    // race against the pool 'error' too: that case destroys the pool and
+    // throws, letting callers disable the solver instead of keeping a dead pool.
+    let timer: NodeJS.Timeout | undefined;
     try {
       const healthPromise = this.pool.run({ type: 'health-check' });
-      const timeout = new Promise<'timeout'>(r => setTimeout(() => r('timeout'), POOL_HEALTH_CHECK_MS));
-      const race = await Promise.race([healthPromise, timeout]);
+      // pool.destroy() below rejects this still-pending task after the race
+      // has settled — mark it handled so it is not an unhandled rejection.
+      healthPromise.catch(() => { /* surfaced through the race */ });
+      const timeout = new Promise<'timeout'>(r => { timer = setTimeout(() => r('timeout'), POOL_HEALTH_CHECK_MS); });
+      const race = await Promise.race([healthPromise, timeout, bootFailure]);
       if (race === 'timeout') {
         console.warn('[Solver] pool-degraded — worker boot failed (timeout)');
       }
     } catch (err) {
-      console.warn('[Solver] pool-degraded — worker boot failed', err);
+      await this.pool.destroy().catch(() => { /* pool already unusable */ });
+      throw new Error(`Solver worker boot failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      clearTimeout(timer);
     }
   }
 

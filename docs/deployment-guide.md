@@ -119,7 +119,7 @@ Multi-stage:
 
 ### Frontend (`front/Dockerfile`)
 Multi-stage:
-- **Build**: `node:20-alpine`, `npm ci --include=dev`, `npm run build` → `dist/skytrix/browser/`.
+- **Build**: `node:24-alpine`, `npm ci --include=dev`, `npm run build` → `dist/skytrix/browser/`.
 - **Runtime**: `nginx:alpine`, copies built static files into `/usr/share/nginx/html`, copies `nginx.conf` to `/etc/nginx/conf.d/default.conf`. Exposes 80 + 443.
 
 ### Duel server (`duel-server/Dockerfile`)
@@ -128,7 +128,9 @@ Single stage:
 - Installs `curl`, `git`, `ca-certificates`.
 - Copies `scripts/check-ws-protocol-sync.mjs` from repo root, then `package*.json` and `duel-server/`.
 - Runs `npm ci` + `npm run build` (which runs the protocol sync check first).
-- Exposes 3001. CMD: `node dist/server.js`.
+- Embeds the versioned solver config (`data/*.json`, `data/archetype-expertise/`) in `/app/data-defaults/`.
+- Exposes 3001. ENTRYPOINT `docker-entrypoint.sh` copies `/app/data-defaults/` over the `duel_data` volume at every start (a named volume is only seeded from the image when first created, so new/changed config never reached it otherwise), then runs CMD `node dist/server.js`.
+- `mem_limit: 768m` — the `git pull` of CardScripts in `/api/update-data` got the container OOM-killed at 128m, and the solver pool needs ~400 MB.
 
 ## Volumes
 
@@ -136,7 +138,7 @@ Single stage:
 |---|---|---|
 | `postgres_data` | `db:/var/lib/postgresql/data` | DB persistence |
 | `images_data` | `back:/app/images` | Card images cache (small + big) |
-| `duel_data` | `duel-server:/app/data` | `cards.cdb`, scripts, solver-config, ML weights, etc. |
+| `duel_data` | `duel-server:/app/data` | Runtime data: `cards.cdb`, `strings.conf`, `scripts_full/` (refreshed by `/api/update-data`), `training-logs/`. Solver config JSONs are overwritten from the image at each start. |
 | `./logs/back` | `back:/app/logs` | App logs (rotated by app) |
 | `./logs/nginx` | `front:/var/log/nginx` | Access + error logs (rotated by `logrotate-nginx.conf`) |
 | `${TLS_CERT_DIR}` | `front:/etc/nginx/certs:ro` | TLS certs |

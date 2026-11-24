@@ -43,6 +43,15 @@ COPY front/src/app/pages/pvp/duel-page/ocgcore-reason-flags.ts \
 
 RUN npm run build
 
+# Config versionnée du solver, recopiée dans le volume /app/data à chaque
+# démarrage par docker-entrypoint.sh (voir le commentaire dans ce script).
+COPY duel-server/data/*.json /app/data-defaults/
+COPY duel-server/data/archetype-expertise/ /app/data-defaults/archetype-expertise/
+COPY duel-server/docker-entrypoint.sh /usr/local/bin/skytrix-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/skytrix-entrypoint.sh && \
+    chmod +x /usr/local/bin/skytrix-entrypoint.sh
+
 EXPOSE 3001
 
+ENTRYPOINT ["skytrix-entrypoint.sh"]
 CMD ["node", "dist/server.js"]
