@@ -1,11 +1,13 @@
 package com.skytrix.service;
 
 import com.skytrix.mapper.CardMapper;
+import com.skytrix.model.dto.yugipedia.YugipediaTranslationDTO;
 import com.skytrix.model.dto.yugipro.YugiproCardDTO;
 import com.skytrix.model.entity.Card;
 import com.skytrix.model.entity.CardImage;
 import com.skytrix.repository.CardImageRepository;
 import com.skytrix.repository.CardRepository;
+import com.skytrix.requester.YugipediaRequester;
 import com.skytrix.requester.YugiproRequester;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +44,9 @@ import static java.lang.Thread.sleep;
 public class YugiproApiService {
     @Inject
     private YugiproRequester requester;
+
+    @Inject
+    private YugipediaRequester yugipediaRequester;
 
     @Inject
     private CardMapper cardMapper;
@@ -65,10 +71,9 @@ public class YugiproApiService {
     @Transactional
     public void fetchAll() {
         var fetchedCardsEn = requester.fetchAll(EN);
-        var fetchedCardsFr = requester.fetchAll(FR);
+        var yugipediaFr = fetchYugipediaFrenchSafely();
 
         var fetchedCardsEnMap = fetchedCardsEn.stream().collect(Collectors.toMap(YugiproCardDTO::getId, Function.identity()));
-        var fetchedCardsFrMap = fetchedCardsFr.stream().collect(Collectors.toMap(YugiproCardDTO::getId, Function.identity()));
 
         var allSavedCardsMap = cardRepository.findAll().stream().collect(Collectors.toMap(Card::getPasscode, Function.identity()));
 
@@ -148,11 +153,8 @@ public class YugiproApiService {
                     updatedCards.add(value);
                 }
             }
-            // Add or update FR translation
-            var frCard = fetchedCardsFrMap.get(key);
-            if (frCard != null) {
-                value.addTranslation(frCard, FR);
-            }
+            // French text comes from Yugipedia only
+            applyFrenchTranslation(value, yugipediaFr);
         });
 
         if (!updatedCards.isEmpty()) {
@@ -161,14 +163,39 @@ public class YugiproApiService {
         }
 
         var newCards = mapToList(missing, cardDTO -> cardMapper.toCard(cardDTO, EN));
-        newCards.forEach(newCard -> {
-            var tradCard = fetchedCardsFrMap.getOrDefault(newCard.getPasscode(), null);
-            newCard.addTranslation(tradCard, FR);
-        });
+        newCards.forEach(newCard -> applyFrenchTranslation(newCard, yugipediaFr));
 
         if (!newCards.isEmpty()) {
             cardRepository.saveAll(newCards);
             log.info("Added {} new cards", newCards.size());
+        }
+    }
+
+    /**
+     * Yugipedia is the only source of French texts. It is a community wiki behind Cloudflare:
+     * if it is unreachable the sync goes on and the French texts already stored stay as they are.
+     * <p>The whole French pool is fetched in bulk (~30 requests of 500 cards): Yugipedia caps a
+     * passcode list at 12 per query, so asking card by card would take far more requests.
+     */
+    private Map<Long, YugipediaTranslationDTO> fetchYugipediaFrenchSafely() {
+        try {
+            var translations = yugipediaRequester.fetchFrenchTranslations();
+            log.info("Fetched {} French texts from Yugipedia", translations.size());
+            return translations;
+        } catch (Exception e) {
+            log.warn("Yugipedia French fetch failed, stored French texts left unchanged: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    /**
+     * Cards Yugipedia has no French text for (Rush Duel cards, a few others) keep the French
+     * translation already stored, if any; otherwise the card falls back to English on display.
+     */
+    private void applyFrenchTranslation(Card card, Map<Long, YugipediaTranslationDTO> yugipediaFr) {
+        var yugipedia = yugipediaFr.get(card.getPasscode());
+        if (yugipedia != null && yugipedia.description() != null && !yugipedia.description().isBlank()) {
+            card.addTranslation(yugipedia.name(), yugipedia.description(), FR);
         }
     }
 
