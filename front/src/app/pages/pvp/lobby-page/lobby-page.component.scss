@@ -53,8 +53,22 @@
   grid-template-columns: 1fr;
   gap: var(--space-3);
 
+  // Create (primary) on its own row, booster + sandbox side by side; one
+  // row of three on wide screens.
   @media (min-width: 480px) {
-    grid-template-columns: 1.4fr 1fr;
+    grid-template-columns: 1fr 1fr;
+
+    > app-button:first-child {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (min-width: 900px) {
+    grid-template-columns: 1.4fr 1fr 1fr;
+
+    > app-button:first-child {
+      grid-column: auto;
+    }
   }
 }
 
@@ -330,6 +344,10 @@ app-button.btn--lg {
   gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--success); // applies to .pulse-dot child via currentColor
+}
+
+.room-mode {
+  margin-left: var(--space-1);
 }
 
 .room-status-text {

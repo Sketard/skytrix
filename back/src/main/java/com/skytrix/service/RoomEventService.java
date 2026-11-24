@@ -107,6 +107,21 @@ public class RoomEventService {
     }
 
     /**
+     * Booster room: a player marked themselves ready (or went back to
+     * editing). Each subscribed participant receives their own RoomDTO with
+     * the new ready flags. Streams stay open.
+     */
+    public void sendRoomUpdated(String roomCode, Map<Long, RoomDTO> dtoByUser) {
+        var roomEmitters = emitters.get(roomCode);
+        if (roomEmitters == null) return;
+        for (var entry : roomEmitters.entrySet()) {
+            var dto = dtoByUser.get(entry.getKey());
+            if (dto == null) continue;
+            sendOnEmitter(roomCode, entry.getKey(), entry.getValue(), "room-updated", dto);
+        }
+    }
+
+    /**
      * Creator booted the joiner from a READY room → notify only the
      * kicked user. Their client redirects to /pvp with an error toast,
      * which closes the EventSource naturally — no need to complete the

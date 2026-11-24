@@ -22,6 +22,12 @@ public class RoomMapper {
         dto.setPlayer2(room.getPlayer2() != null ? userMapper.toShortUserDTO(room.getPlayer2()) : null);
         dto.setDuelServerId(room.getDuelServerId());
         dto.setCreatedAt(room.getCreatedAt());
+        dto.setMode(room.getMode());
+        dto.setBoosterSetName(room.getBoosterSetName());
+        dto.setBoosterCount(room.getBoosterCount());
+        dto.setMinMainDeckSize(room.getMinMainDeckSize());
+        dto.setPlayer1Ready(room.isPlayer1Ready());
+        dto.setPlayer2Ready(room.isPlayer2Ready());
 
         if (requestingUserId != null) {
             if (room.getPlayer1() != null && requestingUserId.equals(room.getPlayer1().getId())) {

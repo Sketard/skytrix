@@ -8,19 +8,25 @@ import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.skytrix.model.dto.booster.BoosterDeckDTO;
+import com.skytrix.model.dto.booster.BoosterStateDTO;
+import com.skytrix.model.dto.booster.PulledCardDTO;
 import com.skytrix.model.dto.room.CreateRoomDTO;
 import com.skytrix.model.dto.room.JoinRoomDTO;
 import com.skytrix.model.dto.room.RoomDTO;
 import com.skytrix.security.AuthService;
+import com.skytrix.service.BoosterService;
 import com.skytrix.service.RoomEventService;
 import com.skytrix.service.RoomLobbyEventService;
 import com.skytrix.service.RoomService;
@@ -37,6 +43,7 @@ public class RoomController {
     private final AuthService authService;
     private final RoomEventService roomEventService;
     private final RoomLobbyEventService roomLobbyEventService;
+    private final BoosterService boosterService;
 
     @PostMapping
     @ResponseStatus(code = HttpStatus.CREATED)
@@ -109,6 +116,41 @@ public class RoomController {
     public void kickPlayer(
             @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
         roomService.kickPlayer(roomCode);
+    }
+
+    // ---------- Booster mode ----------
+
+    /** The connected player's pulls, deck and ready flag in a booster room. */
+    @GetMapping("/{roomCode}/boosters")
+    @ResponseStatus(code = HttpStatus.OK)
+    public BoosterStateDTO getBoosterState(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        return boosterService.getState(roomCode);
+    }
+
+    /** Opens the connected player's next booster and returns its cards. */
+    @PostMapping("/{roomCode}/boosters/open")
+    @ResponseStatus(code = HttpStatus.OK)
+    public List<PulledCardDTO> openBooster(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        return boosterService.openNextBooster(roomCode);
+    }
+
+    /** Submits the deck built from the pulls and marks the player ready. */
+    @PutMapping("/{roomCode}/boosters/deck")
+    @ResponseStatus(code = HttpStatus.OK)
+    public RoomDTO submitBoosterDeck(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode,
+            @RequestBody @Valid BoosterDeckDTO dto) {
+        return boosterService.submitDeck(roomCode, dto);
+    }
+
+    /** The player goes back to editing their deck. */
+    @DeleteMapping("/{roomCode}/boosters/ready")
+    @ResponseStatus(code = HttpStatus.OK)
+    public RoomDTO unreadyBooster(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        return boosterService.unready(roomCode);
     }
 
     /** Notify the room creator that a non-participant is picking a deck (i.e.

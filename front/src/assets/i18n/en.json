@@ -135,7 +135,9 @@
     "REPLAY_DIVERGED_UNEXPECTED": "Unexpected replay state",
     "SOLO_SESSION_EXPIRED": "Solo duel session expired",
     "CONNECTION_LOST_LOBBY": "Connection lost — returning to lobby",
-    "ROOM_EXPIRED": "Room expired"
+    "ROOM_EXPIRED": "Room expired",
+    "BOOSTER_OPEN_FAILED": "Could not open the booster",
+    "BOOSTER_DECK_FAILED": "Could not submit the deck"
   },
   "success": {
     "LINK_COPIED": "Link copied!",
@@ -1189,6 +1191,74 @@
     "rng": {
       "heads": "Heads",
       "tails": "Tails"
+    }
+  },
+  "booster": {
+    "title": "Booster mode",
+    "loading": "Loading boosters…",
+    "loadFailed": "Could not load your boosters.",
+    "progress": "Boosters {{opened}} / {{total}}",
+    "cardsPulled": "{{count}} cards",
+    "packCards": "5 cards",
+    "tapToOpen": "Tap to open",
+    "revealed": "Booster cards",
+    "skipHint": "Tap the cards to reveal them all",
+    "extra": "Extra",
+    "openNext": "Open booster {{index}} / {{total}}",
+    "openAll": "Open all ({{count}})",
+    "buildDeck": "Build my deck",
+    "seeBoosters": "Boosters",
+    "addAll": "Add all",
+    "clear": "Clear",
+    "mainCount": "Main {{count}} ({{min}}–{{max}})",
+    "extraCount": "Extra {{count}} / {{max}}",
+    "readyBanner": "Deck submitted — waiting for the duel to start.",
+    "editDeck": "Edit my deck",
+    "pool": "Your cards",
+    "poolHint": "Click: details · right-click: add",
+    "deck": "Your deck",
+    "mainDeck": "Main Deck",
+    "extraDeck": "Extra Deck",
+    "deckHint": "Click: details · right-click: remove",
+    "emptyMain": "No card in the Main Deck",
+    "emptyExtra": "No card in the Extra Deck",
+    "addCard": "Add {{name}}",
+    "removeCard": "Remove {{name}}",
+    "viewCard": "View {{name}}",
+    "inDeck": "In deck",
+    "markReady": "I'm ready",
+    "lobbyBadge": "Booster ×{{count}}",
+    "problem": {
+      "mainTooSmall": "The Main Deck needs at least {{min}} cards.",
+      "mainTooLarge": "The Main Deck cannot exceed {{max}} cards.",
+      "extraTooLarge": "The Extra Deck cannot exceed {{maxExtra}} cards."
+    },
+    "waiting": {
+      "title": "Booster mode",
+      "subtitle": "Open {{count}} \"{{set}}\" boosters, build your deck from your pulls, then face your opponent.",
+      "building": "Building a deck",
+      "deckReady": "Deck ready",
+      "bothMustBeReady": "Both players must submit their deck before the duel can start."
+    },
+    "create": {
+      "cta": "Booster mode",
+      "title": "Create a Booster room",
+      "subtitle": "Each player opens boosters of the same set and builds a deck from the cards they pull.",
+      "set": "Set to open",
+      "searchSet": "Search a set (name or code)",
+      "loadingSets": "Loading sets…",
+      "loadSetsFailed": "Could not load the sets.",
+      "noSet": "No set matches",
+      "moreSets": "+ {{count}} more sets — refine the search",
+      "cardCount": "{{count}} cards",
+      "boosterCount": "Boosters per player",
+      "boosterCountHint": "{{cards}} cards per booster, {{total}} cards in all",
+      "minMainDeck": "Minimum Main Deck",
+      "minMainDeckHint": "At most {{max}} with these boosters",
+      "decrease": "Decrease",
+      "increase": "Increase",
+      "rules": "No ban-list and no copy limit: every card you pull can be played. Cards are drawn at random among the set's cards.",
+      "confirm": "Create room"
     }
   }
 }

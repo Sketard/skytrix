@@ -19,6 +19,33 @@ export interface RoomDTO {
   wsToken: string | null;
   decklistId: number | null;
   createdAt: string;
+  mode: RoomMode;
+  // --- BOOSTER mode only (null otherwise) ---
+  boosterSetName: string | null;
+  boosterCount: number | null;
+  minMainDeckSize: number | null;
+  /** The player submitted a deck built from their pulls. */
+  player1Ready: boolean;
+  player2Ready: boolean;
+}
+
+/** STANDARD = each player brings a saved deck; BOOSTER = decks are built
+ *  in the room from boosters opened there. */
+export type RoomMode = 'STANDARD' | 'BOOSTER';
+
+/** Settings of a booster room, chosen at creation. */
+export interface BoosterRoomSettings {
+  boosterSetName: string;
+  boosterCount: number;
+  minMainDeckSize: number;
+}
+
+/** Mirror of back BoosterService.CARDS_PER_BOOSTER. */
+export const CARDS_PER_BOOSTER = 5;
+
+/** Mirror of back RoomCleanupScheduler TTLs — the waiting-room countdown. */
+export function roomTtlMinutes(mode: RoomMode | undefined): number {
+  return mode === 'BOOSTER' ? 90 : 30;
 }
 
 export const SHARE_TEXT_TEMPLATE = (roomCode: string, baseUrl: string) =>

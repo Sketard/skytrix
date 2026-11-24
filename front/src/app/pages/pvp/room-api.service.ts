@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { RoomDTO } from './room.types';
+import { BoosterRoomSettings, RoomDTO } from './room.types';
+import { BoosterDeckDTO, BoosterSetDTO, BoosterStateDTO, PulledCardDTO } from './booster/booster.types';
 
 export interface QuickDuelResponse {
   roomCode: string;
@@ -31,6 +32,38 @@ export class RoomApiService {
     return this.http.post<RoomDTO>('/api/rooms', { decklistId });
   }
 
+  /** Booster room: no deck up front — both players build one from the
+   *  boosters they open in the room. */
+  createBoosterRoom(settings: BoosterRoomSettings): Observable<RoomDTO> {
+    return this.http.post<RoomDTO>('/api/rooms', { mode: 'BOOSTER', ...settings });
+  }
+
+  /** Sets that can be opened in a booster room. */
+  getBoosterSets(): Observable<BoosterSetDTO[]> {
+    return this.http.get<BoosterSetDTO[]>('/api/card-sets/boosters');
+  }
+
+  /** The connected player's pulls, deck and ready flag. */
+  getBoosterState(roomCode: string): Observable<BoosterStateDTO> {
+    return this.http.get<BoosterStateDTO>(`/api/rooms/${roomCode}/boosters`);
+  }
+
+  /** Opens the connected player's next booster and returns its cards. */
+  openBooster(roomCode: string): Observable<PulledCardDTO[]> {
+    return this.http.post<PulledCardDTO[]>(`/api/rooms/${roomCode}/boosters/open`, {});
+  }
+
+  /** Submits the deck built from the pulls and marks the player ready. The
+   *  other participant receives a `room-updated` SSE event. */
+  submitBoosterDeck(roomCode: string, deck: BoosterDeckDTO): Observable<RoomDTO> {
+    return this.http.put<RoomDTO>(`/api/rooms/${roomCode}/boosters/deck`, deck);
+  }
+
+  /** The player goes back to editing their deck. */
+  unreadyBooster(roomCode: string): Observable<RoomDTO> {
+    return this.http.delete<RoomDTO>(`/api/rooms/${roomCode}/boosters/ready`);
+  }
+
   getRoom(roomCode: string): Observable<RoomDTO> {
     return this.http.get<RoomDTO>(`/api/rooms/${roomCode}`);
   }
@@ -39,7 +72,8 @@ export class RoomApiService {
     return this.http.get<RoomDTO[]>('/api/rooms');
   }
 
-  joinRoom(roomCode: string, decklistId: number): Observable<RoomDTO> {
+  /** `decklistId` is null for a booster room (no deck up front). */
+  joinRoom(roomCode: string, decklistId: number | null): Observable<RoomDTO> {
     return this.http.post<RoomDTO>(`/api/rooms/${roomCode}/join`, { decklistId });
   }
 
@@ -93,6 +127,8 @@ export class RoomApiService {
    *     status flipped to READY (creator-side only). Stream stays open.
    *   - `{ kind: 'kicked' }`             — creator kicked the joiner
    *     (joiner-side only). Subscriber should redirect to /pvp.
+   *   - `{ kind: 'updated', room }`      — booster room: a player marked
+   *     themselves ready or went back to editing. Stream stays open.
    *   - `{ kind: 'ready', room }`        — duel is starting; subscriber
    *     completes after this. Both sides receive their own RoomDTO with
    *     their own wsToken.
@@ -104,6 +140,7 @@ export class RoomApiService {
         'opponent-left-browsing': () => ({ kind: 'left-browsing' }),
         'room-joined-ready':      data => ({ kind: 'joined-ready', room: data as RoomDTO }),
         'kicked':                 () => ({ kind: 'kicked' }),
+        'room-updated':           data => ({ kind: 'updated', room: data as RoomDTO }),
         'room-ready':             data => ({ kind: 'ready', room: data as RoomDTO }),
       },
       // The lifecycle is open until `room-ready` (or `kicked` for the
@@ -188,4 +225,5 @@ export type RoomEvent =
   | { kind: 'left-browsing' }
   | { kind: 'joined-ready'; room: RoomDTO }
   | { kind: 'kicked' }
+  | { kind: 'updated'; room: RoomDTO }
   | { kind: 'ready'; room: RoomDTO };

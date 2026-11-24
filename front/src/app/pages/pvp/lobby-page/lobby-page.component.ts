@@ -11,7 +11,9 @@ import { NotificationService } from '../../../core/services/notification.service
 import { AuthService } from '../../../services/auth.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
-import { RoomDTO } from '../room.types';
+import { BoosterRoomSettings, RoomDTO } from '../room.types';
+import { BoosterRoomDialogComponent, boosterRoomDialogConfig } from '../booster/booster-room-dialog.component';
+import { PillComponent } from '../../../components/pill/pill.component';
 import { RoomApiService } from '../room-api.service';
 import { DeckPickerDialogComponent, DeckPickerContext, deckPickerDialogConfig } from './deck-picker-dialog.component';
 import { AvatarComponent } from '../../../shared/avatar';
@@ -44,7 +46,7 @@ const LOBBY_SORT_MODES: readonly LobbySortMode[] = ['newest', 'oldest', 'pseudoA
     ScrollingModule,
     RelativeTimePipe, TranslatePipe,
     AvatarComponent, RoomCardSkeletonComponent, ErrorBannerComponent,
-    EmptyStateComponent, SectionHeaderComponent, ButtonComponent, IconButtonComponent,
+    EmptyStateComponent, SectionHeaderComponent, ButtonComponent, IconButtonComponent, PillComponent,
   ],
 })
 export class LobbyPageComponent implements OnInit {
@@ -152,6 +154,25 @@ export class LobbyPageComponent implements OnInit {
     });
   }
 
+  /** Booster room: pick a set and the boosters per player — no deck up front. */
+  createBoosterRoom(): void {
+    const dialogRef = this.dialog.open(BoosterRoomDialogComponent, boosterRoomDialogConfig());
+    dialogRef.afterClosed().subscribe((settings: BoosterRoomSettings | undefined) => {
+      if (!settings) return;
+      this.creatingRoom.set(true);
+      this.roomApi.createBoosterRoom(settings).subscribe({
+        next: room => {
+          this.creatingRoom.set(false);
+          this.router.navigate(['/pvp/duel', room.roomCode]);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.creatingRoom.set(false);
+          this.notify.error(err.status === 422 ? err : 'error.ROOM_CREATE_FAILED');
+        },
+      });
+    });
+  }
+
   quickDuel(): void {
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
       ...deckPickerDialogConfig(),
@@ -178,6 +199,11 @@ export class LobbyPageComponent implements OnInit {
   }
 
   joinRoom(room: RoomDTO): void {
+    if (room.mode === 'BOOSTER') {
+      // No deck to pick: the joiner builds one in the room.
+      this.submitJoin(room, null);
+      return;
+    }
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
       ...deckPickerDialogConfig(),
       data: { context: 'join' satisfies DeckPickerContext },
@@ -185,27 +211,31 @@ export class LobbyPageComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe((result: { id: number; name: string } | undefined) => {
       if (!result) return;
-      this.joiningRoomCode.set(room.roomCode);
-      this.store.setSuppressPollFallback(true);
-      this.roomApi.joinRoom(room.roomCode, result.id).subscribe({
-        next: () => {
-          this.router.navigate(['/pvp/duel', room.roomCode], {
-            state: { deckName: result.name },
-          });
-        },
-        error: (err: HttpErrorResponse) => {
-          this.joiningRoomCode.set(null);
-          this.store.setSuppressPollFallback(false);
-          if (err.status === 409) {
-            this.notify.error('error.ROOM_FULL');
-            this.store.removeRoom(room.roomCode);
-          } else if (err.status === 422) {
-            this.notify.error(err);
-          } else {
-            this.notify.error('error.ROOM_JOIN_FAILED');
-          }
-        },
-      });
+      this.submitJoin(room, result);
+    });
+  }
+
+  private submitJoin(room: RoomDTO, deck: { id: number; name: string } | null): void {
+    this.joiningRoomCode.set(room.roomCode);
+    this.store.setSuppressPollFallback(true);
+    this.roomApi.joinRoom(room.roomCode, deck?.id ?? null).subscribe({
+      next: () => {
+        this.router.navigate(['/pvp/duel', room.roomCode], {
+          state: deck ? { deckName: deck.name } : {},
+        });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.joiningRoomCode.set(null);
+        this.store.setSuppressPollFallback(false);
+        if (err.status === 409) {
+          this.notify.error('error.ROOM_FULL');
+          this.store.removeRoom(room.roomCode);
+        } else if (err.status === 422) {
+          this.notify.error(err);
+        } else {
+          this.notify.error('error.ROOM_JOIN_FAILED');
+        }
+      },
     });
   }
 }

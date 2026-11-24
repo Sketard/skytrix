@@ -30,11 +30,25 @@ public class RoomCleanupScheduler {
     @Value("${replay.retention-days:30}")
     private int replayRetentionDays;
 
+    /** Standard rooms close after 30 min without a duel. */
+    public static final int ROOM_TTL_MINUTES = 30;
+    /** Booster rooms get longer: players open boosters and build a deck first. */
+    public static final int BOOSTER_ROOM_TTL_MINUTES = 90;
+
+    /** Rooms in {@code status} older than their mode's lifetime. */
+    private java.util.List<com.skytrix.model.entity.Room> expiredRooms(RoomStatus status) {
+        var now = Instant.now();
+        var boosterThreshold = now.minus(BOOSTER_ROOM_TTL_MINUTES, ChronoUnit.MINUTES);
+        return roomRepository.findByStatusAndCreatedAtBefore(status, now.minus(ROOM_TTL_MINUTES, ChronoUnit.MINUTES))
+                .stream()
+                .filter(room -> !room.isBooster() || room.getCreatedAt().isBefore(boosterThreshold))
+                .toList();
+    }
+
     @Scheduled(fixedRate = 300_000)
     @Transactional
     public void cleanupOrphanedWaitingRooms() {
-        var threshold = Instant.now().minus(30, ChronoUnit.MINUTES);
-        var orphanedRooms = roomRepository.findByStatusAndCreatedAtBefore(RoomStatus.WAITING, threshold);
+        var orphanedRooms = expiredRooms(RoomStatus.WAITING);
 
         for (var room : orphanedRooms) {
             room.setStatus(RoomStatus.CLOSED);
@@ -72,10 +86,9 @@ public class RoomCleanupScheduler {
     @Transactional
     public void cleanupOrphanedReadyRooms() {
         // READY = both decks picked, awaiting creator's "start duel" click.
-        // Same 30-min ceiling as WAITING — if the creator never clicks start,
+        // Same ceiling as WAITING (90 min for a booster room) — if the creator never clicks start,
         // we reap the room so the joiner isn't held captive forever.
-        var threshold = Instant.now().minus(30, ChronoUnit.MINUTES);
-        var orphanedRooms = roomRepository.findByStatusAndCreatedAtBefore(RoomStatus.READY, threshold);
+        var orphanedRooms = expiredRooms(RoomStatus.READY);
 
         for (var room : orphanedRooms) {
             room.setStatus(RoomStatus.CLOSED);

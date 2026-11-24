@@ -7,10 +7,14 @@ import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import com.skytrix.model.dto.booster.BoosterSetDTO;
 import com.skytrix.repository.CardSetRepository;
 
 @Service
 public class CardSetService {
+
+    /** A booster holds 5 cards; smaller sets can't fill one without repeats only. */
+    public static final int MIN_BOOSTER_SET_CARDS = 5;
 
     @Inject
     private CardSetRepository cardSetRepository;
@@ -24,5 +28,23 @@ public class CardSetService {
     @Cacheable("cardSetNames")
     public List<String> findAllNames() {
         return cardSetRepository.findDistinctNames();
+    }
+
+    /**
+     * Sets that booster mode can open. Static between two card syncs, so
+     * cached like {@link #findAllNames}; YugiproApiService.fetchAll evicts it.
+     */
+    @Cacheable("boosterSets")
+    public List<BoosterSetDTO> findBoosterSets() {
+        return cardSetRepository.findBoosterSets(MIN_BOOSTER_SET_CARDS).stream()
+                .map(p -> new BoosterSetDTO(p.getName(), setPrefix(p.getCode()), p.getCardCount()))
+                .toList();
+    }
+
+    /** "LOB-EN001" → "LOB". */
+    private static String setPrefix(String code) {
+        if (code == null || code.isBlank()) return null;
+        var dash = code.indexOf('-');
+        return dash > 0 ? code.substring(0, dash) : code;
     }
 }

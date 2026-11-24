@@ -2,6 +2,7 @@ package com.skytrix.model.entity;
 
 import java.time.Instant;
 
+import com.skytrix.model.enums.RoomMode;
 import com.skytrix.model.enums.RoomStatus;
 
 import jakarta.persistence.Column;
@@ -48,6 +49,20 @@ public class Room {
     @Enumerated(EnumType.STRING)
     private RoomStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RoomMode mode = RoomMode.STANDARD;
+
+    // --- BOOSTER mode only ---
+    private String boosterSetName;
+    private Integer boosterCount;
+    private Integer minMainDeckSize;
+    /** The player has submitted a deck built from their pulls. */
+    @Column(name = "player1_ready", nullable = false)
+    private boolean player1Ready;
+    @Column(name = "player2_ready", nullable = false)
+    private boolean player2Ready;
+
     private String duelServerId;
     private String wsToken1;
     private String wsToken2;
@@ -58,6 +73,10 @@ public class Room {
     protected void onCreate() {
         createdAt = Instant.now();
         updatedAt = Instant.now();
+    }
+
+    public boolean isBooster() {
+        return mode == RoomMode.BOOSTER;
     }
 
     @PreUpdate

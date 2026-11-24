@@ -14,7 +14,9 @@
        branch internally on `isCreator()` / `isJoiner()`. -->
   @if (roomState() === 'waiting' || roomState() === 'ready') {
     @if (room(); as r) {
-      <div class="waiting-container" role="region" [attr.aria-label]="'duel.waiting.title' | translate">
+      <div class="waiting-container" role="region"
+           [class.waiting-container--booster]="isBooster()"
+           [attr.aria-label]="'duel.waiting.title' | translate">
         <button type="button" class="waiting-back-btn"
                 [attr.aria-label]="'duel.waiting.backToLobby' | translate"
                 (click)="leaveRoom()">
@@ -27,8 +29,13 @@
           {{ 'duel.waiting.roomCreated' | translate }}
         </span>
 
-        <h1 class="waiting-title">{{ 'duel.waiting.title' | translate }}</h1>
-        <p class="waiting-subtitle">{{ 'duel.waiting.subtitleLong' | translate }}</p>
+        @if (isBooster()) {
+          <h1 class="waiting-title">{{ 'booster.waiting.title' | translate }}</h1>
+          <p class="waiting-subtitle">{{ 'booster.waiting.subtitle' | translate: { count: r.boosterCount, set: r.boosterSetName } }}</p>
+        } @else {
+          <h1 class="waiting-title">{{ 'duel.waiting.title' | translate }}</h1>
+          <p class="waiting-subtitle">{{ 'duel.waiting.subtitleLong' | translate }}</p>
+        }
 
         <div class="duelists-card">
           <div class="duelists-row">
@@ -38,7 +45,15 @@
                           size="xl">
               </app-avatar>
               <span class="duelist-name">{{ r.player1.pseudo }}</span>
-              <span class="duelist-state duelist-state--ready">{{ 'duel.waiting.ready' | translate }}</span>
+              @if (isBooster()) {
+                <span class="duelist-state"
+                      [class.duelist-state--ready]="r.player1Ready"
+                      [class.duelist-state--waiting]="!r.player1Ready">
+                  {{ (r.player1Ready ? 'booster.waiting.deckReady' : 'booster.waiting.building') | translate }}
+                </span>
+              } @else {
+                <span class="duelist-state duelist-state--ready">{{ 'duel.waiting.ready' | translate }}</span>
+              }
             </div>
 
             <div class="duelist-vs" aria-hidden="true">VS</div>
@@ -61,7 +76,15 @@
                   }
                 </div>
                 <span class="duelist-name">{{ r.player2.pseudo }}</span>
-                <span class="duelist-state duelist-state--ready">{{ 'duel.waiting.ready' | translate }}</span>
+                @if (isBooster()) {
+                  <span class="duelist-state"
+                        [class.duelist-state--ready]="r.player2Ready"
+                        [class.duelist-state--waiting]="!r.player2Ready">
+                    {{ (r.player2Ready ? 'booster.waiting.deckReady' : 'booster.waiting.building') | translate }}
+                  </span>
+                } @else {
+                  <span class="duelist-state duelist-state--ready">{{ 'duel.waiting.ready' | translate }}</span>
+                }
               } @else {
                 @if (browsingOpponent(); as opp) {
                   <app-avatar class="duelist-avatar-wrapper"
@@ -82,6 +105,7 @@
           </div>
         </div>
 
+        @if (!isBooster() || !r.player2) {
         <div class="room-code-section">
           <div class="room-code-label">{{ 'duel.waiting.roomCodeLabel' | translate }}</div>
           <div class="room-code-value-row">
@@ -107,6 +131,7 @@
           </div>
           <div class="room-code-hint">{{ 'duel.waiting.shareHint' | translate }}</div>
         </div>
+        }
 
         @if (countdown(); as cd) {
           <div class="waiting-countdown"
@@ -120,10 +145,21 @@
           </div>
         }
 
+        @if (isBooster()) {
+          <app-booster-draft [roomCode]="r.roomCode" (roomUpdated)="onBoosterRoomUpdated($event)" />
+        }
+
         @if (roomState() === 'ready' && isCreator()) {
+          @if (isBooster() && !bothBoosterDecksReady()) {
+            <p class="waiting-host-hint" aria-live="polite">
+              <mat-icon>hourglass_empty</mat-icon>
+              {{ 'booster.waiting.bothMustBeReady' | translate }}
+            </p>
+          }
           <div class="waiting-actions waiting-actions--ready">
             <button type="button"
                     class="waiting-start-btn"
+                    [disabled]="isBooster() && !bothBoosterDecksReady()"
                     [attr.aria-label]="'duel.waiting.startDuel' | translate"
                     (click)="startDuel()">
               <mat-icon>play_arrow</mat-icon>

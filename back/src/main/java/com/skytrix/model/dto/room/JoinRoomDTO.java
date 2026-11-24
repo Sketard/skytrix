@@ -1,6 +1,5 @@
 package com.skytrix.model.dto.room;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -8,6 +7,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class JoinRoomDTO {
 
-    @NotNull
+    /** Required to join a STANDARD room, ignored for a BOOSTER room. */
     private Long decklistId;
 }

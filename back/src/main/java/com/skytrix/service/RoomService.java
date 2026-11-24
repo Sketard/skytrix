@@ -24,9 +24,11 @@ import com.skytrix.model.dto.room.JoinRoomDTO;
 import com.skytrix.model.dto.room.QuickDuelDTO;
 import com.skytrix.model.dto.room.QuickDuelResponseDTO;
 import com.skytrix.model.dto.room.RoomDTO;
+import com.skytrix.model.entity.Card;
 import com.skytrix.model.entity.CardDeckIndex;
 import com.skytrix.model.entity.Room;
 import com.skytrix.model.enums.DeckKeyword;
+import com.skytrix.model.enums.RoomMode;
 import com.skytrix.model.enums.RoomStatus;
 import com.skytrix.repository.CardDeckIndexRepository;
 import com.skytrix.repository.CardRepository;
@@ -56,6 +58,7 @@ public class RoomService {
     private final RoomMapper roomMapper;
     private final RoomEventService roomEventService;
     private final RoomLobbyEventService roomLobbyEventService;
+    private final BoosterService boosterService;
 
     // Self-injection — lets startDuel() call its own @Transactional phase
     // methods THROUGH the Spring proxy (a plain `this.prepareDuelStart()` would
@@ -71,12 +74,19 @@ public class RoomService {
     @Transactional
     public RoomDTO createRoom(CreateRoomDTO dto) {
         var user = authService.getConnectedUser();
-        validateDeck(dto.getDecklistId(), user.getId());
 
         var room = new Room();
+        if (dto.getMode() == RoomMode.BOOSTER) {
+            applyBoosterSettings(room, dto);
+        } else {
+            if (dto.getDecklistId() == null) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "A deck is required");
+            }
+            validateDeck(dto.getDecklistId(), user.getId());
+            room.setPlayer1DecklistId(dto.getDecklistId());
+        }
         room.setRoomCode(generateUniqueRoomCode());
         room.setPlayer1(user);
-        room.setPlayer1DecklistId(dto.getDecklistId());
         room.setStatus(RoomStatus.WAITING);
 
         roomRepository.save(room);
@@ -91,6 +101,32 @@ public class RoomService {
         afterCommit(() -> roomLobbyEventService.broadcastRoomCreated(dtoForBroadcast));
 
         return roomMapper.toRoomDTO(room, user.getId());
+    }
+
+    /**
+     * Booster room settings: the set must hold playable cards, and the
+     * boosters must be able to fill the minimum Main Deck.
+     */
+    private void applyBoosterSettings(Room room, CreateRoomDTO dto) {
+        var setName = dto.getBoosterSetName();
+        if (setName == null || setName.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "A booster set is required");
+        }
+        if (dto.getBoosterCount() == null || dto.getMinMainDeckSize() == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Booster count and minimum Main Deck size are required");
+        }
+        if (dto.getMinMainDeckSize() > dto.getBoosterCount() * BoosterService.CARDS_PER_BOOSTER) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    dto.getBoosterCount() + " boosters cannot fill a Main Deck of " + dto.getMinMainDeckSize() + " cards");
+        }
+        if (boosterService.playablePool(setName).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "No card of the set " + setName + " is playable");
+        }
+        room.setMode(RoomMode.BOOSTER);
+        room.setBoosterSetName(setName);
+        room.setBoosterCount(dto.getBoosterCount());
+        room.setMinMainDeckSize(dto.getMinMainDeckSize());
     }
 
     /**
@@ -126,10 +162,17 @@ public class RoomService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot join your own room");
         }
 
-        validateDeck(dto.getDecklistId(), user.getId());
+        // A booster room has no deck up front: the joiner builds one from
+        // the boosters they open in the room.
+        if (!room.isBooster()) {
+            if (dto.getDecklistId() == null) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "A deck is required");
+            }
+            validateDeck(dto.getDecklistId(), user.getId());
+            room.setPlayer2DecklistId(dto.getDecklistId());
+        }
 
         room.setPlayer2(user);
-        room.setPlayer2DecklistId(dto.getDecklistId());
         room.setStatus(RoomStatus.READY);
         roomRepository.save(room);
 
@@ -212,18 +255,37 @@ public class RoomService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Room is not ready to start");
         }
 
-        var deck1Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer1DecklistId());
-        var deck2Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer2DecklistId());
-        var deck1 = extractDeck(deck1Cards);
-        var deck2 = extractDeck(deck2Cards);
-        validatePasscodesOrThrow(deck1, deck1Cards, deck2, deck2Cards);
+        DuelDeckDTO deck1;
+        DuelDeckDTO deck2;
+        String deck1Name;
+        String deck2Name;
+        if (room.isBooster()) {
+            // No ban-list in booster mode: the decks are what each player
+            // built from their pulls, checked when they marked ready.
+            if (!room.isPlayer1Ready() || !room.isPlayer2Ready()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Both players must be ready");
+            }
+            var built1 = boosterService.buildDeck(room.getId(), room.getPlayer1().getId());
+            var built2 = boosterService.buildDeck(room.getId(), room.getPlayer2().getId());
+            deck1 = built1.deck();
+            deck2 = built2.deck();
+            validatePasscodesOrThrow(deck1, built1.cards(), deck2, built2.cards());
+            deck1Name = "Booster · " + room.getBoosterSetName();
+            deck2Name = deck1Name;
+        } else {
+            var deck1Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer1DecklistId());
+            var deck2Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer2DecklistId());
+            deck1 = extractDeck(deck1Cards);
+            deck2 = extractDeck(deck2Cards);
+            validatePasscodesOrThrow(deck1, cardsOf(deck1Cards), deck2, cardsOf(deck2Cards));
 
-        // Noms propagés au duel-server pour alimenter la metadata du replay
-        // persisté (sinon : fallbacks "1"/"Deck" → noms inutiles dans le hub).
-        var deck1Name = deckRepository.findById(room.getPlayer1DecklistId())
-                .map(d -> d.getName()).orElse(null);
-        var deck2Name = deckRepository.findById(room.getPlayer2DecklistId())
-                .map(d -> d.getName()).orElse(null);
+            // Noms propagés au duel-server pour alimenter la metadata du replay
+            // persisté (sinon : fallbacks "1"/"Deck" → noms inutiles dans le hub).
+            deck1Name = deckRepository.findById(room.getPlayer1DecklistId())
+                    .map(d -> d.getName()).orElse(null);
+            deck2Name = deckRepository.findById(room.getPlayer2DecklistId())
+                    .map(d -> d.getName()).orElse(null);
+        }
 
         room.setStatus(RoomStatus.CREATING_DUEL);
         roomRepository.save(room);
@@ -268,12 +330,18 @@ public class RoomService {
     /**
      * Step 3b — duel-server failed: roll the room back to WAITING and drop
      * the joiner (short tx), so the creator can wait for someone else rather
-     * than be stranded in CREATING_DUEL.
+     * than be stranded in CREATING_DUEL. A booster room goes back to READY
+     * instead: both players keep their pulls and decks and can retry.
      */
     @Transactional
     public void rollbackDuelStart(String roomCode) {
         var room = roomRepository.findByRoomCodeForUpdate(roomCode).orElse(null);
         if (room == null) return;
+        if (room.isBooster()) {
+            room.setStatus(RoomStatus.READY);
+            roomRepository.save(room);
+            return;
+        }
         room.setStatus(RoomStatus.WAITING);
         room.setPlayer2(null);
         room.setPlayer2DecklistId(null);
@@ -299,6 +367,10 @@ public class RoomService {
         }
 
         var kickedUserId = room.getPlayer2().getId();
+        if (room.isBooster()) {
+            boosterService.discardPulls(room.getId(), kickedUserId);
+            room.setPlayer2Ready(false);
+        }
         room.setPlayer2(null);
         room.setPlayer2DecklistId(null);
         room.setStatus(RoomStatus.WAITING);
@@ -338,8 +410,8 @@ public class RoomService {
             // Swap deck order so the chosen player's deck becomes player 0.
             var firstDeck = extractDeck(p2First ? deckCards2 : deckCards1);
             var secondDeck = extractDeck(p2First ? deckCards1 : deckCards2);
-            validatePasscodesOrThrow(firstDeck, p2First ? deckCards2 : deckCards1,
-                    secondDeck, p2First ? deckCards1 : deckCards2);
+            validatePasscodesOrThrow(firstDeck, cardsOf(p2First ? deckCards2 : deckCards1),
+                    secondDeck, cardsOf(p2First ? deckCards1 : deckCards2));
 
             // Noms propagés au duel-server (cf. startDuel) — en solo, même
             // pseudo des deux côtés mais 2 deckNames distincts.
@@ -601,8 +673,12 @@ public class RoomService {
      * Validates that all passcodes in both decks exist in the duel server's cards.cdb.
      * Throws a 422 with card names if any are missing.
      */
-    private void validatePasscodesOrThrow(DuelDeckDTO deck1, List<CardDeckIndex> deck1Cards,
-                                          DuelDeckDTO deck2, List<CardDeckIndex> deck2Cards) {
+    private static List<Card> cardsOf(List<CardDeckIndex> deckCards) {
+        return deckCards.stream().map(CardDeckIndex::getCard).toList();
+    }
+
+    private void validatePasscodesOrThrow(DuelDeckDTO deck1, List<Card> deck1Cards,
+                                          DuelDeckDTO deck2, List<Card> deck2Cards) {
         var allPasscodes = new java.util.ArrayList<Integer>();
         for (int code : deck1.getMain()) allPasscodes.add(code);
         for (int code : deck1.getExtra()) allPasscodes.add(code);
@@ -632,8 +708,8 @@ public class RoomService {
         allCards.addAll(deck2Cards);
         var passcodeToName = allCards.stream()
                 .collect(Collectors.toMap(
-                        c -> c.getCard().getPasscode().intValue(),
-                        c -> c.getCard().getName(),
+                        c -> c.getPasscode().intValue(),
+                        c -> c.getName(),
                         (a, b) -> a
                 ));
 

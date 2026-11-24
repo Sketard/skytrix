@@ -47,6 +47,9 @@ export class CardInspectorComponent {
   readonly position = input<'left' | 'right' | 'top'>('left');
   readonly ownedCount = model<number | undefined>(undefined);
   readonly isFavorite = input<boolean>(false);
+  /** Show the projected panel (`<ng-content>`) without the personal metadata
+   *  (owned count, favorite) — e.g. a deck +/- control in booster mode. */
+  readonly projectedPanel = input<boolean>(false);
 
   readonly dismissed = output<void>();
   readonly favoriteChange = output<boolean>();

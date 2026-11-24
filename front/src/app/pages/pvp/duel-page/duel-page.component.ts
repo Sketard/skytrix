@@ -70,6 +70,8 @@ import { SystemOverlayComponent } from '../../../components/system-overlay/syste
 import { ButtonComponent } from '../../../components/button/button.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { WaitingRoomSkeletonComponent } from '../../../shared/skel';
+import { BoosterDraftComponent } from '../booster/booster-draft.component';
+import { RoomDTO } from '../room.types';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -106,6 +108,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
     SystemOverlayComponent,
     OrientationLockComponent,
     AvatarComponent, WaitingRoomSkeletonComponent,
+    BoosterDraftComponent,
     TranslatePipe,
     ButtonComponent,
   ],
@@ -166,6 +169,8 @@ export class DuelPageComponent implements OnInit, OnDestroy {
   readonly canShare = this.roomService.canShare;
   readonly isCreator = this.roomService.isCreator;
   readonly isJoiner = this.roomService.isJoiner;
+  readonly isBooster = this.roomService.isBooster;
+  readonly bothBoosterDecksReady = this.roomService.bothBoosterDecksReady;
 
   // Pseudos resolved for the player HUD — `ownPlayerIndex` is absolute
   // (0 = creator = player1, 1 = joiner = player2), so the mapping is direct.
@@ -890,6 +895,11 @@ export class DuelPageComponent implements OnInit, OnDestroy {
 
   leaveRoom(): void {
     this.roomService.leaveRoom();
+  }
+
+  /** Booster room: the player marked ready / went back to editing. */
+  onBoosterRoomUpdated(room: RoomDTO): void {
+    this.roomService.applyRoomUpdate(room);
   }
 
   startDuel(): void {

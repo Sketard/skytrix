@@ -7,7 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { TranslateService } from '@ngx-translate/core';
 import { NotificationService } from '../../../core/services/notification.service';
-import { RoomDTO } from '../room.types';
+import { RoomDTO, roomTtlMinutes } from '../room.types';
 import { RoomApiService, type BrowsingUser } from '../room-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
@@ -75,7 +75,7 @@ export class RoomStateMachineService {
     this.countdownTick();
     const r = this.room();
     if (!r) return null;
-    const expiresAt = new Date(r.createdAt).getTime() + 30 * 60 * 1000;
+    const expiresAt = new Date(r.createdAt).getTime() + roomTtlMinutes(r.mode) * 60 * 1000;
     const remaining = Math.max(0, expiresAt - Date.now());
     const totalSeconds = Math.floor(remaining / 1000);
     const display = `${totalSeconds}s`;
@@ -152,6 +152,20 @@ export class RoomStateMachineService {
     return !!r && !!uid && r.player1.id === uid;
   });
 
+  /** Booster room: decks are built in the room from opened boosters. */
+  readonly isBooster = computed(() => this.room()?.mode === 'BOOSTER');
+
+  /** Booster room: both players submitted a deck — the creator may start. */
+  readonly bothBoosterDecksReady = computed(() => {
+    const r = this.room();
+    return !!r && r.player1Ready && r.player2Ready;
+  });
+
+  /** Booster room: the room DTO returned by a ready / unready call. */
+  applyRoomUpdate(room: RoomDTO): void {
+    this.room.set(room);
+  }
+
   /** True when the connected user is the joiner (player2). */
   readonly isJoiner = computed(() => {
     const r = this.room();
@@ -168,6 +182,9 @@ export class RoomStateMachineService {
         if (isParticipant) {
           this.roomState.set('waiting');
           this.startSseSubscription(room.roomCode);
+        } else if (room.mode === 'BOOSTER') {
+          // No deck to pick: the joiner builds one in the room.
+          this.joinBoosterRoom(room.roomCode);
         } else {
           this.openDeckPickerForJoin(room.roomCode);
         }
@@ -257,6 +274,21 @@ export class RoomStateMachineService {
     });
   }
 
+  private joinBoosterRoom(roomCode: string): void {
+    this.roomApiService.joinRoom(roomCode, null).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: room => {
+        this.room.set(room);
+        this.roomId = room.id;
+        this.handleRoomStatus(room);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.redirectWithError(err.status === 409 ? 'error.ROOM_FULL' : 'error.ROOM_JOIN_FAILED');
+      },
+    });
+  }
+
   connectWhenReady(room: RoomDTO): void {
     if (!room.wsToken) {
       // M17 fix: must redirect-with-cleanup BEFORE flipping state, otherwise
@@ -303,6 +335,10 @@ export class RoomStateMachineService {
             this.browsingOpponent.set(null);
             this.room.set(event.room);
             this.roomState.set('ready');
+            break;
+          case 'updated':
+            // Booster room: a player marked ready / went back to editing.
+            this.room.set(event.room);
             break;
           case 'kicked':
             // Creator booted us. Bounce to /pvp with an error toast —
@@ -413,8 +449,10 @@ export class RoomStateMachineService {
           // WAITING and dropped player2. The creator's next event
           // will be `getRoom` on the next state push; surface a toast
           // and bounce back to waiting.
+          // A booster room keeps both players (and their decks) and
+          // returns to READY so the creator can retry.
           this.notify.error('error.DUEL_CONNECT_FAILED');
-          this.roomState.set('waiting');
+          this.roomState.set(this.isBooster() ? 'ready' : 'waiting');
         } else {
           this.redirectWithError('error.DUEL_CONNECT_FAILED');
         }

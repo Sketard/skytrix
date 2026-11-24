@@ -70,8 +70,8 @@ public class YugiproApiService {
     @Value("${document.folder.image.big}")
     private String bigImageFolder;
 
-    // Evict the cardSetNames cache (B-C5) — a full sync may add/rename sets.
-    @CacheEvict(value = "cardSetNames", allEntries = true)
+    // Evict the set caches (B-C5, booster mode) — a full sync may add/rename sets.
+    @CacheEvict(value = {"cardSetNames", "boosterSets"}, allEntries = true)
     @Transactional
     public void fetchAll() {
         var fetchedCardsEn = requester.fetchAll(EN);

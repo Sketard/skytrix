@@ -27,6 +27,13 @@
       <span>{{ 'lobby.createRoom' | translate }}</span>
     </app-button>
     <app-button variant="secondary" size="lg" cta full
+            [ariaLabel]="'booster.create.cta' | translate"
+            [disabled]="creatingRoom()"
+            (click)="createBoosterRoom()">
+      <mat-icon>auto_awesome</mat-icon>
+      <span>{{ 'booster.create.cta' | translate }}</span>
+    </app-button>
+    <app-button variant="secondary" size="lg" cta full
             [ariaLabel]="'a11y.sandbox' | translate"
             [disabled]="creatingRoom()"
             (click)="quickDuel()">
@@ -143,6 +150,12 @@
           <div class="room-status">
             <span class="pulse-dot" aria-hidden="true"></span>
             <span class="room-status-text">{{ 'lobby.waitingOpponent' | translate }}</span>
+            @if (room.mode === 'BOOSTER') {
+              <app-pill class="room-mode" variant="cyan" size="xs" icon="auto_awesome"
+                        [attr.title]="room.boosterSetName">
+                {{ 'booster.lobbyBadge' | translate: { count: room.boosterCount } }}
+              </app-pill>
+            }
           </div>
         </div>
         @if (isAdmin()) {

@@ -1,0 +1,115 @@
+<app-bottom-sheet-handle />
+
+<div class="bd-header">
+  <h2 class="bd-title" [id]="titleId">
+    <mat-icon class="bd-title-icon">auto_awesome</mat-icon>
+    {{ 'booster.create.title' | translate }}
+  </h2>
+  <p class="bd-subtitle">{{ 'booster.create.subtitle' | translate }}</p>
+</div>
+
+<mat-dialog-content class="bd-content">
+  <section class="bd-section">
+    <div class="bd-section-head">
+      <span class="bd-section-label">{{ 'booster.create.set' | translate }}</span>
+      @if (selectedSet(); as set) {
+        <app-pill variant="gold" size="sm" icon="check">{{ set.name }}</app-pill>
+      }
+    </div>
+
+    <app-input type="search"
+               [placeholder]="'booster.create.searchSet' | translate"
+               [ariaLabel]="'booster.create.searchSet' | translate"
+               [ngModel]="query()"
+               (ngModelChange)="query.set($event)" />
+
+    <div class="bd-set-list" role="listbox" [attr.aria-label]="'booster.create.set' | translate">
+      @if (loading()) {
+        <p class="bd-set-empty">{{ 'booster.create.loadingSets' | translate }}</p>
+      } @else if (loadError()) {
+        <p class="bd-set-empty">{{ 'booster.create.loadSetsFailed' | translate }}</p>
+      } @else {
+        @for (set of filteredSets(); track set.name) {
+          <button type="button"
+                  class="bd-set"
+                  role="option"
+                  [class.bd-set--active]="selectedSet()?.name === set.name"
+                  [attr.aria-selected]="selectedSet()?.name === set.name"
+                  (click)="selectSet(set)">
+            <span class="bd-set-name">{{ set.name }}</span>
+            <span class="bd-set-meta">
+              @if (set.code) {
+                <span class="bd-set-code">{{ set.code }}</span>
+              }
+              <span>{{ 'booster.create.cardCount' | translate: { count: set.cardCount } }}</span>
+            </span>
+          </button>
+        } @empty {
+          <p class="bd-set-empty">{{ 'booster.create.noSet' | translate }}</p>
+        }
+        @if (hiddenSetCount() > 0) {
+          <p class="bd-set-more">{{ 'booster.create.moreSets' | translate: { count: hiddenSetCount() } }}</p>
+        }
+      }
+    </div>
+  </section>
+
+  <section class="bd-section bd-steppers">
+    <div class="bd-stepper">
+      <div class="bd-stepper-text">
+        <span class="bd-section-label">{{ 'booster.create.boosterCount' | translate }}</span>
+        <span class="bd-stepper-hint">{{ 'booster.create.boosterCountHint' | translate: { cards: cardsPerBooster, total: totalCards() } }}</span>
+      </div>
+      <div class="bd-stepper-control">
+        <app-icon-button variant="framed" round
+                         [ariaLabel]="'booster.create.decrease' | translate"
+                         [disabled]="boosterCount() <= boosterCountMin"
+                         (click)="stepBoosters(-1)">
+          <mat-icon>remove</mat-icon>
+        </app-icon-button>
+        <span class="bd-stepper-value" aria-live="polite">{{ boosterCount() }}</span>
+        <app-icon-button variant="framed" round
+                         [ariaLabel]="'booster.create.increase' | translate"
+                         [disabled]="boosterCount() >= boosterCountMax"
+                         (click)="stepBoosters(1)">
+          <mat-icon>add</mat-icon>
+        </app-icon-button>
+      </div>
+    </div>
+
+    <div class="bd-stepper">
+      <div class="bd-stepper-text">
+        <span class="bd-section-label">{{ 'booster.create.minMainDeck' | translate }}</span>
+        <span class="bd-stepper-hint">{{ 'booster.create.minMainDeckHint' | translate: { max: mainDeckCeiling() } }}</span>
+      </div>
+      <div class="bd-stepper-control">
+        <app-icon-button variant="framed" round
+                         [ariaLabel]="'booster.create.decrease' | translate"
+                         [disabled]="minMainDeckSize() <= mainDeckMinFloor"
+                         (click)="stepMinMainDeck(-5)">
+          <mat-icon>remove</mat-icon>
+        </app-icon-button>
+        <span class="bd-stepper-value" aria-live="polite">{{ minMainDeckSize() }}</span>
+        <app-icon-button variant="framed" round
+                         [ariaLabel]="'booster.create.increase' | translate"
+                         [disabled]="minMainDeckSize() >= mainDeckCeiling()"
+                         (click)="stepMinMainDeck(5)">
+          <mat-icon>add</mat-icon>
+        </app-icon-button>
+      </div>
+    </div>
+
+    <p class="bd-rules">
+      <mat-icon>info</mat-icon>
+      {{ 'booster.create.rules' | translate }}
+    </p>
+  </section>
+</mat-dialog-content>
+
+<mat-dialog-actions class="bd-actions">
+  <app-button variant="ghost" (click)="cancel()">{{ 'common.cancel' | translate }}</app-button>
+  <app-button variant="primary" [disabled]="!canConfirm()" (click)="confirm()">
+    <mat-icon>add_circle</mat-icon>
+    {{ 'booster.create.confirm' | translate }}
+  </app-button>
+</mat-dialog-actions>

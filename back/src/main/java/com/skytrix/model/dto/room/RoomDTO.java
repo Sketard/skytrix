@@ -3,6 +3,7 @@ package com.skytrix.model.dto.room;
 import java.time.Instant;
 
 import com.skytrix.model.dto.user.ShortUserDTO;
+import com.skytrix.model.enums.RoomMode;
 import com.skytrix.model.enums.RoomStatus;
 
 import lombok.Data;
@@ -21,4 +22,12 @@ public class RoomDTO {
     private String wsToken;
     private Long decklistId;
     private Instant createdAt;
+
+    private RoomMode mode;
+    // --- BOOSTER mode only ---
+    private String boosterSetName;
+    private Integer boosterCount;
+    private Integer minMainDeckSize;
+    private boolean player1Ready;
+    private boolean player2Ready;
 }

@@ -97,6 +97,15 @@
   align-items: center;
   gap: 28px;
   padding: 24px var(--space-fluid-md, 16px);
+
+  // Booster room: the opening + deck-building panel needs the width.
+  &--booster {
+    // `margin: 0 auto` cancels the flex stretch, so without an explicit
+    // width the container would follow its content and resize as cards
+    // move between the pool and the deck.
+    width: 100%;
+    max-width: 1100px;
+  }
 }
 
 .waiting-back-btn {
@@ -553,12 +562,19 @@
     @include icon-size(20px);
   }
 
-  &:hover {
+  &:hover:not(:disabled) {
     box-shadow: 0 0 28px rgba(212, 164, 55, 0.45);
     transform: translateY(-1px);
   }
 
   &:active { transform: translateY(0); }
+
+  // Booster room: disabled until both players are ready.
+  &:disabled {
+    opacity: var(--opacity-disabled);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
 }
 
 // ── Kick badge on the joiner's avatar (creator view only) ─────────────────

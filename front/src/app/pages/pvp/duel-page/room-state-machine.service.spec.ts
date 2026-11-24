@@ -32,6 +32,12 @@ function makeRoom(overrides: Partial<RoomDTO> = {}): RoomDTO {
     wsToken: null,
     decklistId: 10,
     createdAt: new Date().toISOString(),
+    mode: 'STANDARD',
+    boosterSetName: null,
+    boosterCount: null,
+    minMainDeckSize: null,
+    player1Ready: false,
+    player2Ready: false,
     ...overrides,
   };
 }
@@ -90,6 +96,53 @@ describe('RoomStateMachineService', () => {
       expect(service.roomState()).toBe('active');
       service.forceState('duel-loading');
       expect(service.roomState()).toBe('duel-loading');
+    });
+  });
+
+  describe('booster room', () => {
+    const booster: Partial<RoomDTO> = {
+      mode: 'BOOSTER', decklistId: null, boosterSetName: 'Set', boosterCount: 8, minMainDeckSize: 20,
+    };
+
+    it('WAITING + non-participant → joins directly, without the deck picker', () => {
+      auth.user.set({ id: 200 });
+      roomApi.getRoom.and.returnValue(of(makeRoom({ ...booster, status: 'WAITING' })));
+      roomApi.joinRoom.and.returnValue(of(makeRoom({
+        ...booster, status: 'READY', player2: { id: 200, pseudo: 'p2', role: 'USER' },
+      })));
+
+      service.fetchRoom('ABC123');
+
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(roomApi.joinRoom).toHaveBeenCalledWith('ABC123', null);
+      expect(service.roomState()).toBe('ready');
+    });
+
+    it('room-updated SSE event → refreshes the ready flags', () => {
+      roomApi.getRoom.and.returnValue(of(makeRoom({ ...booster, status: 'READY' })));
+      service.fetchRoom('ABC123');
+      expect(service.bothBoosterDecksReady()).toBeFalse();
+
+      sseSubject.next({ kind: 'updated', room: makeRoom({ ...booster, status: 'READY', player1Ready: true, player2Ready: true }) });
+
+      expect(service.bothBoosterDecksReady()).toBeTrue();
+      expect(service.roomState()).toBe('ready');
+    });
+
+    it('startDuel 503 → back to ready (players and decks are kept)', () => {
+      roomApi.getRoom.and.returnValue(of(makeRoom({ ...booster, status: 'READY' })));
+      roomApi.startDuel.and.returnValue(throwError(() => new HttpErrorResponse({ status: 503 })));
+      service.fetchRoom('ABC123');
+
+      service.startDuel();
+
+      expect(service.roomState()).toBe('ready');
+    });
+
+    it('countdown runs on the 90-minute booster lifetime', () => {
+      roomApi.getRoom.and.returnValue(of(makeRoom({ ...booster, createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString() })));
+      service.fetchRoom('ABC123');
+      expect(service.countdown()?.expired).toBeFalse();
     });
   });
 

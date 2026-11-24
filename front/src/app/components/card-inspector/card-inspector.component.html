@@ -171,10 +171,12 @@
           <div class="inspector-body">
             <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
             <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
-            @if (showPersonalMetadata()) {
+            @if (showPersonalMetadata() || projectedPanel()) {
               <div class="inspector-personal-row">
                 <ng-content></ng-content>
-                <ng-container *ngTemplateOutlet="ownedMini"></ng-container>
+                @if (showPersonalMetadata()) {
+                  <ng-container *ngTemplateOutlet="ownedMini"></ng-container>
+                }
               </div>
             }
           </div>
@@ -207,10 +209,12 @@
       <div class="inspector-body">
         <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
         <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
-        @if (showPersonalMetadata()) {
+        @if (showPersonalMetadata() || projectedPanel()) {
           <div class="inspector-personal-row">
             <ng-content></ng-content>
-            <ng-container *ngTemplateOutlet="ownedMini"></ng-container>
+            @if (showPersonalMetadata()) {
+              <ng-container *ngTemplateOutlet="ownedMini"></ng-container>
+            }
           </div>
         }
       </div>

@@ -1,0 +1,248 @@
+@if (loadError()) {
+  <p class="bdraft-message">{{ 'booster.loadFailed' | translate }}</p>
+} @else if (state(); as s) {
+  <section class="bdraft" [attr.aria-label]="'booster.title' | translate">
+    <header class="bdraft-head">
+      <div class="bdraft-head-text">
+        <span class="bdraft-kicker">{{ 'booster.title' | translate }}</span>
+        <h2 class="bdraft-set">{{ s.setName }}</h2>
+      </div>
+      <div class="bdraft-progress">
+        <app-pill variant="gold" size="md" icon="inventory_2">
+          {{ 'booster.progress' | translate: { opened: openedBoosters(), total: boosterCount() } }}
+        </app-pill>
+        <app-pill variant="cyan" size="md" icon="style">
+          {{ 'booster.cardsPulled' | translate: { count: s.cards.length } }}
+        </app-pill>
+      </div>
+    </header>
+
+    @if (view() === 'open') {
+      <div class="stage">
+        @if (opening() || revealStage() === 'idle' || revealStage() === 'tearing') {
+          <button type="button"
+                  class="pack"
+                  [class.pack--waiting]="opening()"
+                  [class.pack--tearing]="revealStage() === 'tearing' && !opening()"
+                  [disabled]="busy() || allOpened() || locked()"
+                  [attr.aria-label]="'booster.openNext' | translate: { index: openedBoosters() + 1, total: boosterCount() }"
+                  (click)="openNext()">
+            <span class="pack__flap" aria-hidden="true"></span>
+            <span class="pack__body" aria-hidden="true">
+              <span class="pack__sheen"></span>
+              <span class="pack__code">{{ packCode() }}</span>
+              <span class="pack__name">{{ s.setName }}</span>
+              <span class="pack__count">{{ 'booster.packCards' | translate }}</span>
+            </span>
+            @if (!allOpened()) {
+              <span class="pack__hint">{{ 'booster.tapToOpen' | translate }}</span>
+            }
+          </button>
+        } @else {
+          <div class="reveal-row"
+               role="group"
+               [attr.aria-label]="'booster.revealed' | translate"
+               [attr.tabindex]="revealStage() === 'revealed' ? null : 0"
+               (click)="skipReveal()"
+               (keydown.enter)="skipReveal()"
+               (keydown.space)="skipReveal(); $event.preventDefault()">
+            @for (c of revealed(); track c.pull.id; let i = $index) {
+              <div class="reveal-card"
+                   [style.--i]="i"
+                   [class.is-flipped]="i < flippedCount()">
+                <div class="reveal-card__inner">
+                  <img class="reveal-card__face reveal-card__face--back"
+                       src="assets/images/card_back.jpg" alt="" width="59" height="86">
+                  <div class="reveal-card__face reveal-card__face--front">
+                    <app-card [card]="c.shared" (clicked)="inspectPull(c.pull)" />
+                    @if (c.extra) {
+                      <app-pill class="reveal-card__tag" variant="cyan" size="xs">{{ 'booster.extra' | translate }}</app-pill>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+          @if (revealStage() !== 'revealed') {
+            <p class="stage-hint">{{ 'booster.skipHint' | translate }}</p>
+          }
+        }
+      </div>
+
+      <div class="bdraft-actions">
+        @if (allOpened()) {
+          <app-button variant="primary" size="lg" cta (click)="goToBuild()">
+            <mat-icon>construction</mat-icon>
+            {{ 'booster.buildDeck' | translate }}
+          </app-button>
+        } @else {
+          <app-button variant="primary" size="lg" cta
+                      [loading]="opening()"
+                      [disabled]="busy() || locked()"
+                      (click)="openNext()">
+            <mat-icon>auto_awesome</mat-icon>
+            {{ 'booster.openNext' | translate: { index: openedBoosters() + 1, total: boosterCount() } }}
+          </app-button>
+          @if (remainingBoosters() > 1) {
+            <app-button variant="ghost"
+                        [loading]="openingAll()"
+                        [disabled]="busy() || locked()"
+                        (click)="openAll()">
+              <mat-icon>fast_forward</mat-icon>
+              {{ 'booster.openAll' | translate: { count: remainingBoosters() } }}
+            </app-button>
+          }
+        }
+      </div>
+
+      <app-card-inspector [card]="inspected()" mode="dismissable" position="right" (dismissed)="closeInspector()" />
+    } @else {
+      <div class="build">
+        <div class="build-bar">
+          <div class="build-counters">
+            <app-pill size="md"
+                      [variant]="problem() === 'mainTooSmall' || problem() === 'mainTooLarge' ? 'invalid' : 'valid'">
+              {{ 'booster.mainCount' | translate: { count: deck().main.length, min: limits().minMain, max: limits().maxMain } }}
+            </app-pill>
+            <app-pill size="md" [variant]="problem() === 'extraTooLarge' ? 'invalid' : 'neutral'">
+              {{ 'booster.extraCount' | translate: { count: deck().extra.length, max: limits().maxExtra } }}
+            </app-pill>
+          </div>
+          @if (!ready()) {
+            <div class="build-tools">
+              <app-button variant="ghost" size="sm" [disabled]="locked()" (click)="backToOpening()">
+                <mat-icon>inventory_2</mat-icon>
+                {{ 'booster.seeBoosters' | translate }}
+              </app-button>
+              <app-button variant="ghost" size="sm" [disabled]="locked()" (click)="addEverything()">
+                <mat-icon>playlist_add</mat-icon>
+                {{ 'booster.addAll' | translate }}
+              </app-button>
+              <app-button variant="ghost" size="sm" [disabled]="locked() || deck().main.length + deck().extra.length === 0" (click)="clearDeck()">
+                <mat-icon>delete_sweep</mat-icon>
+                {{ 'booster.clear' | translate }}
+              </app-button>
+            </div>
+          }
+        </div>
+
+        @if (ready()) {
+          <div class="build-ready" aria-live="polite">
+            <mat-icon>verified</mat-icon>
+            <span>{{ 'booster.readyBanner' | translate }}</span>
+            <app-button variant="secondary" size="sm" [loading]="submitting()" [disabled]="locked()" (click)="editDeck()">
+              <mat-icon>edit</mat-icon>
+              {{ 'booster.editDeck' | translate }}
+            </app-button>
+          </div>
+        }
+
+        <div class="build-columns" [class.build-columns--locked]="ready() || locked()">
+          <section class="build-zone" [attr.aria-label]="'booster.pool' | translate">
+            <h3 class="build-zone-title">
+              {{ 'booster.pool' | translate }}
+              <span class="build-zone-hint">{{ 'booster.poolHint' | translate }}</span>
+            </h3>
+            <div class="tile-grid">
+              @for (entry of pool(); track entry.cardId) {
+                <div class="tile"
+                     [class.tile--used]="entry.inDeck === entry.copyIds.length"
+                     [class.tile--selected]="inspectedCardId() === entry.cardId">
+                  <button type="button" class="tile__hit"
+                          [attr.aria-label]="'booster.viewCard' | translate: { name: entry.detail.card.name }"
+                          (click)="inspectEntry(entry)"
+                          (contextmenu)="addFromContextMenu($event, entry)">
+                    <app-card [card]="sharedOf(entry)" />
+                  </button>
+                  <span class="tile__count">{{ entry.copyIds.length - entry.inDeck }}/{{ entry.copyIds.length }}</span>
+                  @if (entry.zone === 'EXTRA') {
+                    <app-pill class="tile__tag" variant="cyan" size="xs">{{ 'booster.extra' | translate }}</app-pill>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="build-zone build-zone--deck" [attr.aria-label]="'booster.deck' | translate">
+            <h3 class="build-zone-title">
+              {{ 'booster.mainDeck' | translate }}
+              <span class="build-zone-hint">{{ 'booster.deckHint' | translate }}</span>
+            </h3>
+            <div class="tile-grid tile-grid--deck">
+              @for (entry of mainEntries(); track entry.cardId) {
+                <ng-container *ngTemplateOutlet="deckTile; context: { $implicit: entry }" />
+              } @empty {
+                <p class="build-empty">{{ 'booster.emptyMain' | translate }}</p>
+              }
+            </div>
+
+            <h3 class="build-zone-title">{{ 'booster.extraDeck' | translate }}</h3>
+            <div class="tile-grid tile-grid--deck">
+              @for (entry of extraEntries(); track entry.cardId) {
+                <ng-container *ngTemplateOutlet="deckTile; context: { $implicit: entry }" />
+              } @empty {
+                <p class="build-empty">{{ 'booster.emptyExtra' | translate }}</p>
+              }
+            </div>
+          </section>
+
+          <!-- Like the deck builder: the card picked on one side is shown
+               over the other column (here the deck), with a +/- control. -->
+          <app-card-inspector [card]="inspected()" mode="dismissable" position="right"
+                              [projectedPanel]="!!inspectedEntry()"
+                              (dismissed)="closeInspector()">
+            @if (inspectedEntry(); as entry) {
+              <div class="inspector-deck-panel">
+                <span class="inspector-deck-panel__label">{{ 'booster.inDeck' | translate }}</span>
+                <div class="inspector-deck-panel__control">
+                  <app-icon-button size="sm" variant="framed"
+                                   [disabled]="ready() || locked() || entry.inDeck === 0"
+                                   [ariaLabel]="'booster.removeCard' | translate: { name: entry.detail.card.name }"
+                                   (click)="remove(entry)">
+                    <mat-icon>remove</mat-icon>
+                  </app-icon-button>
+                  <span class="inspector-deck-panel__count">{{ entry.inDeck }} / {{ entry.copyIds.length }}</span>
+                  <app-icon-button size="sm" variant="framed"
+                                   [disabled]="ready() || locked() || entry.inDeck === entry.copyIds.length"
+                                   [ariaLabel]="'booster.addCard' | translate: { name: entry.detail.card.name }"
+                                   (click)="add(entry)">
+                    <mat-icon>add</mat-icon>
+                  </app-icon-button>
+                </div>
+              </div>
+            }
+          </app-card-inspector>
+        </div>
+
+        @if (!ready()) {
+          <div class="bdraft-actions">
+            @if (problem(); as p) {
+              <p class="build-problem">{{ 'booster.problem.' + p | translate: { min: limits().minMain, max: limits().maxMain, maxExtra: limits().maxExtra } }}</p>
+            }
+            <app-button variant="primary" size="lg" cta shimmer
+                        [loading]="submitting()"
+                        [disabled]="!!problem() || locked()"
+                        (click)="markReady()">
+              <mat-icon>check_circle</mat-icon>
+              {{ 'booster.markReady' | translate }}
+            </app-button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <ng-template #deckTile let-entry>
+    <div class="tile" [class.tile--selected]="inspectedCardId() === entry.cardId">
+      <button type="button" class="tile__hit"
+              [attr.aria-label]="'booster.viewCard' | translate: { name: entry.detail.card.name }"
+              (click)="inspectEntry(entry)"
+              (contextmenu)="removeFromContextMenu($event, entry)">
+        <app-card [card]="sharedOf(entry)" />
+      </button>
+      <span class="tile__count tile__count--deck">×{{ entry.inDeck }}</span>
+    </div>
+  </ng-template>
+} @else {
+  <p class="bdraft-message">{{ 'booster.loading' | translate }}</p>
+}
