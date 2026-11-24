@@ -1,5 +1,8 @@
 package com.skytrix.model.entity;
 
+import com.skytrix.model.enums.ImageSource;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -30,4 +33,13 @@ public class CardImage {
     @ManyToOne
     private Card card;
     private boolean tcgUpdated;
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ImageSource source = ImageSource.YGOPRODECK;
+    /** Yugipedia file name of the scan this image was built from ({@link ImageSource#YUGIPEDIA} only). */
+    private String sourceFile;
+
+    public boolean isFromYgoprodeck() {
+        return source == null || source == ImageSource.YGOPRODECK;
+    }
 }

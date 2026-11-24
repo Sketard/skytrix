@@ -17,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,6 +25,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -72,7 +74,15 @@ public class Card {
 
     @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @BatchSize(size = 100)
+    // Stable order: YGOPRODeck images (older rows) before the Yugipedia artworks added later.
+    @OrderBy("id ASC")
     private List<CardImage> images = new ArrayList<>();
+
+    /** Last time the Yugipedia artwork list of this card was processed; null = never. */
+    private Instant yugipediaArtworksCheckedAt;
+
+    /** Number of artworks Yugipedia listed at that time; a changed page is processed again only if it grows. */
+    private Integer yugipediaArtworkCount;
 
     @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @BatchSize(size = 100)
@@ -117,6 +127,18 @@ public class Card {
 
     public boolean hasTranslation(Language language) {
         return translations.stream().anyMatch( t -> t.getLanguage() == language);
+    }
+
+    /**
+     * Default artwork of the card: the YGOPRODeck image whose id is the passcode (the original art),
+     * else the first YGOPRODeck image, else the first image. Never a Yugipedia artwork while a
+     * YGOPRODeck render exists.
+     */
+    public CardImage getMainImage() {
+        return images.stream().filter(i -> passcode != null && passcode.equals(i.getImageId())).findFirst()
+                .or(() -> images.stream().filter(CardImage::isFromYgoprodeck).findFirst())
+                .or(() -> images.stream().findFirst())
+                .orElse(null);
     }
 
     public void setImages(List<CardImage> newImages) {

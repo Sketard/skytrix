@@ -524,7 +524,7 @@
     "updateCardsDesc": "Sync from YGOProDeck",
     "images": "Images",
     "originalImages": "Original images",
-    "originalImagesDesc": "Download card images",
+    "originalImagesDesc": "Download card images, then the missing alternate artworks from Yugipedia",
     "resume": "Resume",
     "pause": "Pause",
     "translatedImages": "Translated images",

@@ -9,6 +9,7 @@ import com.skytrix.repository.CardImageRepository;
 import com.skytrix.repository.CardRepository;
 import com.skytrix.requester.YugipediaRequester;
 import com.skytrix.requester.YugiproRequester;
+import com.skytrix.service.artwork.YugipediaArtworkService;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,6 +48,9 @@ public class YugiproApiService {
 
     @Inject
     private YugipediaRequester yugipediaRequester;
+
+    @Inject
+    private YugipediaArtworkService yugipediaArtworkService;
 
     @Inject
     private CardMapper cardMapper;
@@ -249,7 +253,7 @@ public class YugiproApiService {
             // up again.
             reconcileImageFlags();
 
-            var firstPage = cardImageRepository.findAllBySmallLocalOrLocal(false, false, PageRequest.of(0, 100));
+            var firstPage = cardImageRepository.findYgoproImagesBySmallLocalOrLocal(false, false, PageRequest.of(0, 100));
             task.start((int) firstPage.getTotalElements());
             var consecutiveFailures = new AtomicInteger(0);
             var page = firstPage;
@@ -264,9 +268,12 @@ public class YugiproApiService {
                     task.fail("Circuit breaker: " + MAX_CONSECUTIVE_FAILURES + " échecs consécutifs");
                     return;
                 }
-                page = cardImageRepository.findAllBySmallLocalOrLocal(false, false, PageRequest.of(0, 100));
+                page = cardImageRepository.findYgoproImagesBySmallLocalOrLocal(false, false, PageRequest.of(0, 100));
                 log.info("Finished images page {}. Succeeded: {}, Failed: {}", pageCount++, results.succeeded, results.failed);
             }
+            // Second phase, same task: alternate artworks YGOPRODeck lacks, from Yugipedia scans. It compares
+            // with the local YGOPRODeck images, hence after the download above.
+            yugipediaArtworkService.importNewArtworks(task);
             task.complete();
         } catch (Exception e) {
             task.fail(e.getMessage());
@@ -292,7 +299,7 @@ public class YugiproApiService {
         var dirty = new ArrayList<CardImage>();
         org.springframework.data.domain.Page<CardImage> page;
         do {
-            page = cardImageRepository.findAllBySmallLocalOrLocal(true, true,
+            page = cardImageRepository.findYgoproImagesBySmallLocalOrLocal(true, true,
                     PageRequest.of(pageIndex, pageSize));
             for (var cardImage : page.getContent()) {
                 var changed = false;
@@ -325,7 +332,7 @@ public class YugiproApiService {
         var executor = Executors.newFixedThreadPool(IMAGE_THREAD_POOL_SIZE);
         try {
             log.info("Starting fetching images TCG");
-            var cards = cardImageRepository.findAllByTcgUpdatedAndCardFirstTcgReleaseIsNotNull(false);
+            var cards = cardImageRepository.findYgoproImagesToUpdateForTcg();
             task.start(cards.size());
             fetchAllAndSaveParallel(cards, true, executor, new AtomicInteger(0), task);
             task.complete();
@@ -342,7 +349,7 @@ public class YugiproApiService {
     public void refreshCardImages(Long cardId) {
         log.info("Refreshing images for card ID: {}", cardId);
         var card = cardRepository.findById(cardId).orElseThrow(() -> new NoSuchElementException("Card not found with ID: " + cardId));
-        var cardImages = card.getImages();
+        var cardImages = card.getImages().stream().filter(CardImage::isFromYgoprodeck).toList();
         for (CardImage cardImage : cardImages) {
             fetchAndSaveImages(cardImage, true);
         }

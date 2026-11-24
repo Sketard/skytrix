@@ -57,7 +57,7 @@ public class DocumentService {
         if (card == null || card.getImages().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No image for passcode " + passcode);
         }
-        return getFileContent(card.getImages().get(0).getSmallUrl());
+        return getFileContent(card.getMainImage().getSmallUrl());
     }
 
     private byte[] getCardImage(Long id, Function<CardImage, String> getter) {

@@ -524,7 +524,7 @@
     "updateCardsDesc": "Synchronise depuis YGOProDeck",
     "images": "Images",
     "originalImages": "Images originales",
-    "originalImagesDesc": "Télécharge les images des cartes",
+    "originalImagesDesc": "Télécharge les images des cartes, puis les artworks alternatifs manquants depuis Yugipedia",
     "resume": "Reprendre",
     "pause": "Pause",
     "translatedImages": "Images traduites",

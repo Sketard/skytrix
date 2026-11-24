@@ -14,12 +14,21 @@ import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.IntConsumer;
 
 /**
- * Reads French card names and texts from Yugipedia through its Semantic MediaWiki
- * {@code action=ask} API.
+ * Reads Yugipedia: French card names and texts through its Semantic MediaWiki {@code action=ask} API,
+ * card pages and file URLs through the MediaWiki {@code action=query} API, and card scans.
  *
  * <p>Two constraints of that API shape this class:
  * <ul>
@@ -54,6 +63,16 @@ public class YugipediaRequester extends Requester {
     @Value("${yugipedia.challenge-backoff-ms:90000}")
     private long challengeBackoffMs;
 
+    /** Scans come from img.yugipedia.com, a CDN that did not challenge during the prototype; still spaced. */
+    @Value("${yugipedia.image-delay-ms:300}")
+    private long imageDelayMs;
+
+    /** Batch size of MediaWiki {@code titles=} parameters (API limit for regular clients). */
+    public static final int TITLES_PER_REQUEST = 50;
+    /** SMW refuses a {@code [[Password::a||b||…]]} condition past ~12 values ("restrictions on query size"). */
+    static final int PASSCODES_PER_ASK = 10;
+    private static final DateTimeFormatter SMW_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneOffset.UTC);
+
     /**
      * Fetches every OCG/TCG card that has a French name on Yugipedia.
      *
@@ -61,25 +80,207 @@ public class YugipediaRequester extends Requester {
      */
     public Map<Long, YugipediaTranslationDTO> fetchFrenchTranslations() {
         var result = new HashMap<Long, YugipediaTranslationDTO>();
-        for (int digit = 0; digit <= 9; digit++) {
-            int offset = 0;
-            while (true) {
-                var page = fetchPage(digit, offset);
-                var results = page.path("query").path("results");
-                results.properties().forEach(entry -> addResult(result, entry.getKey(), entry.getValue().path("printouts")));
-                var next = page.path("query-continue-offset");
-                if (next.isMissingNode() || next.asInt() <= offset) {
-                    break;
-                }
-                offset = next.asInt();
-                if (offset > MAX_OFFSET) {
-                    // Rows past this point would be lost: the bucket must be split further.
-                    throw new InternalServerError("Yugipedia bucket " + digit + "* exceeds " + MAX_OFFSET + " cards");
-                }
+        askByPasscodeDigit("[[French name::+]]",
+                "|?" + PROP_PASSWORD + "|?" + PROP_NAME + "|?" + PROP_LORE + "|?" + PROP_PENDULUM,
+                (title, printouts) -> addResult(result, title, printouts),
+                digit -> log.info("Yugipedia: passcodes {}* done, {} French texts so far", digit, result.size()));
+        return result;
+    }
+
+    /**
+     * Page title of every OCG/TCG card on Yugipedia, French name or not.
+     *
+     * @return page titles keyed by passcode
+     */
+    public Map<Long, String> fetchPageTitles() {
+        var result = new HashMap<Long, String>();
+        askByPasscodeDigit("", "|?" + PROP_PASSWORD, (title, printouts) -> {
+            var passcode = parsePasscode(first(printouts, PROP_PASSWORD));
+            if (passcode != null) {
+                result.putIfAbsent(passcode, title);
             }
-            log.info("Yugipedia: passcodes {}* done, {} French texts so far", digit, result.size());
+        }, digit -> log.info("Yugipedia: passcodes {}* done, {} card pages so far", digit, result.size()));
+        return result;
+    }
+
+    /**
+     * Page title of the given cards only, {@value #PASSCODES_PER_ASK} per request: cheaper than
+     * {@link #fetchPageTitles()} (~30 requests) when only a few cards are new.
+     */
+    public Map<Long, String> fetchPageTitles(Collection<Long> passcodes) {
+        var list = new ArrayList<>(passcodes);
+        var result = new HashMap<Long, String>();
+        for (int i = 0; i < list.size(); i += PASSCODES_PER_ASK) {
+            var values = list.subList(i, Math.min(i + PASSCODES_PER_ASK, list.size())).stream()
+                    .map(YugipediaRequester::passwordText).toList();
+            var query = "[[Concept:CG cards]][[Password::" + String.join("||", values) + "]]|?" + PROP_PASSWORD
+                    + "|limit=" + PAGE_SIZE;
+            getJson(buildAskUri(query)).path("query").path("results").properties().forEach(entry -> {
+                var passcode = parsePasscode(first(entry.getValue().path("printouts"), PROP_PASSWORD));
+                if (passcode != null) {
+                    result.putIfAbsent(passcode, entry.getKey());
+                }
+            });
         }
         return result;
+    }
+
+    /**
+     * OCG/TCG card pages edited since {@code since} (any edit: new print, text fix, new artwork…).
+     *
+     * @return page titles keyed by passcode
+     */
+    public Map<Long, String> fetchCardsModifiedSince(Instant since) {
+        var condition = "[[Modification date::>" + SMW_DATE.format(since) + "]]";
+        var result = new HashMap<Long, String>();
+        BiConsumer<String, JsonNode> collect = (title, printouts) -> {
+            var passcode = parsePasscode(first(printouts, PROP_PASSWORD));
+            if (passcode != null) {
+                result.putIfAbsent(passcode, title);
+            }
+        };
+        // Usually a few hundred pages: one query. After a long pause it may pass the 5000 offset cap,
+        // then the digit buckets take over.
+        if (!askPaginated("[[Concept:CG cards]]" + condition, "|?" + PROP_PASSWORD, collect)) {
+            result.clear();
+            askByPasscodeDigit(condition, "|?" + PROP_PASSWORD, collect, digit -> { });
+        }
+        log.info("Yugipedia: {} card pages edited since {}", result.size(), since);
+        return result;
+    }
+
+    /** Yugipedia stores passwords as 8-digit text: 32864 is "00032864". */
+    static String passwordText(long passcode) {
+        return String.format("%08d", passcode);
+    }
+
+    /**
+     * Wikitext of up to {@link #TITLES_PER_REQUEST} pages.
+     *
+     * @return wikitext keyed by the title as given; pages that do not exist are absent
+     */
+    public Map<String, String> fetchWikitexts(List<String> titles) {
+        var params = new LinkedHashMap<String, String>();
+        params.put("action", "query");
+        params.put("prop", "revisions");
+        params.put("rvprop", "content");
+        params.put("rvslots", "main");
+        params.put("titles", String.join("|", titles));
+        var json = getJson(buildQueryUri(params));
+        var canonical = canonicalTitles(json, titles);
+        var byTitle = new HashMap<String, String>();
+        json.path("query").path("pages").forEach(page -> {
+            var content = page.path("revisions").path(0).path("slots").path("main").path("*");
+            if (!content.isMissingNode()) {
+                byTitle.put(page.path("title").asText(), content.asText());
+            }
+        });
+        var result = new HashMap<String, String>();
+        canonical.forEach((asked, title) -> {
+            if (byTitle.containsKey(title)) {
+                result.put(asked, byTitle.get(title));
+            }
+        });
+        return result;
+    }
+
+    /**
+     * Download URL of up to {@link #TITLES_PER_REQUEST} files. Thumbnails are not requested: Yugipedia refuses to
+     * generate them for clients outside its pages ({@code thumbsize-blocked}).
+     *
+     * @param files file names without the {@code File:} prefix
+     * @return URL keyed by the file name as given; missing files are absent
+     */
+    public Map<String, String> fetchFileUrls(List<String> files) {
+        var asked = files.stream().map(file -> "File:" + file).toList();
+        var params = new LinkedHashMap<String, String>();
+        params.put("action", "query");
+        params.put("prop", "imageinfo");
+        params.put("iiprop", "url");
+        params.put("titles", String.join("|", asked));
+        var json = getJson(buildQueryUri(params));
+        var canonical = canonicalTitles(json, asked);
+        var urlByTitle = new HashMap<String, String>();
+        json.path("query").path("pages").forEach(page -> {
+            var url = page.path("imageinfo").path(0).path("url");
+            if (!url.isMissingNode()) {
+                urlByTitle.put(page.path("title").asText(), url.asText());
+            }
+        });
+        var result = new HashMap<String, String>();
+        for (int i = 0; i < files.size(); i++) {
+            var url = urlByTitle.get(canonical.get(asked.get(i)));
+            if (url != null) {
+                result.put(files.get(i), url);
+            }
+        }
+        return result;
+    }
+
+    /** Downloads a scan; {@code null} when the server does not answer 200. */
+    public byte[] downloadFile(String url) {
+        pause(imageDelayMs);
+        var request = HttpRequest.newBuilder()
+                .uri(buildUri(url))
+                .timeout(Duration.ofSeconds(60))
+                .header("User-Agent", userAgent)
+                .GET()
+                .build();
+        var response = sendRequestByteArray(request);
+        if (response.statusCode() != 200) {
+            log.warn("Yugipedia file returned HTTP {}: {}", response.statusCode(), url);
+            return null;
+        }
+        return response.body();
+    }
+
+    /** MediaWiki rewrites titles (underscores, first letter) and lists the rewrites under query.normalized. */
+    private static Map<String, String> canonicalTitles(JsonNode json, List<String> asked) {
+        var normalized = new HashMap<String, String>();
+        json.path("query").path("normalized").forEach(n -> normalized.put(n.path("from").asText(), n.path("to").asText()));
+        var result = new LinkedHashMap<String, String>();
+        asked.forEach(title -> result.put(title, normalized.getOrDefault(title, title)));
+        return result;
+    }
+
+    /**
+     * Runs an {@code ask} query over every OCG/TCG card, one bucket per first passcode digit.
+     *
+     * @param extraConditions SMW conditions added to the card filter (may be empty)
+     * @param printouts       {@code |?Property} list
+     */
+    private void askByPasscodeDigit(String extraConditions, String printouts,
+                                    BiConsumer<String, JsonNode> onResult, IntConsumer onBucketDone) {
+        for (int digit = 0; digit <= 9; digit++) {
+            var conditions = "[[Concept:CG cards]]" + extraConditions + "[[Password::~" + digit + "*]]";
+            if (!askPaginated(conditions, printouts, onResult)) {
+                // Rows past the cap would be lost: the bucket must be split further.
+                throw new InternalServerError("Yugipedia bucket " + digit + "* exceeds " + MAX_OFFSET + " cards");
+            }
+            onBucketDone.accept(digit);
+        }
+    }
+
+    /**
+     * Pages through an {@code ask} query, 500 rows at a time.
+     *
+     * @return false when the results go past the offset cap (5000), i.e. some rows were not read
+     */
+    private boolean askPaginated(String conditions, String printouts, BiConsumer<String, JsonNode> onResult) {
+        int offset = 0;
+        while (true) {
+            var page = getJson(buildAskUri(conditions + printouts + "|limit=" + PAGE_SIZE + "|offset=" + offset));
+            page.path("query").path("results").properties()
+                    .forEach(entry -> onResult.accept(entry.getKey(), entry.getValue().path("printouts")));
+            var next = page.path("query-continue-offset");
+            if (next.isMissingNode() || next.asInt() <= offset) {
+                return true;
+            }
+            offset = next.asInt();
+            if (offset > MAX_OFFSET) {
+                return false;
+            }
+        }
     }
 
     private void addResult(Map<Long, YugipediaTranslationDTO> result, String pageTitle, JsonNode printouts) {
@@ -106,12 +307,9 @@ public class YugipediaRequester extends Requester {
         return "[ Pendulum Effect ] \n" + pendulum + "\n\n[ Monster Effect ] \n" + (lore == null ? "" : lore);
     }
 
-    private JsonNode fetchPage(int digit, int offset) {
-        var query = "[[Concept:CG cards]][[French name::+]][[Password::~" + digit + "*]]"
-                + "|?" + PROP_PASSWORD + "|?" + PROP_NAME + "|?" + PROP_LORE + "|?" + PROP_PENDULUM
-                + "|limit=" + PAGE_SIZE + "|offset=" + offset;
+    private JsonNode getJson(String uri) {
         var request = HttpRequest.newBuilder()
-                .uri(buildUri(buildAskUri(query)))
+                .uri(buildUri(uri))
                 .timeout(Duration.ofSeconds(60))
                 .header("User-Agent", userAgent)
                 .header("Accept", "application/json")
@@ -160,7 +358,18 @@ public class YugipediaRequester extends Requester {
      * query was rejected ("[[ not closed").
      */
     static String buildAskUri(String query) {
-        return BASE_URI + "?action=ask&format=json&query=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
+        var params = new LinkedHashMap<String, String>();
+        params.put("action", "ask");
+        params.put("query", query);
+        return buildQueryUri(params);
+    }
+
+    /** {@code format=json} plus the given parameters, each value form-encoded (see {@link #buildAskUri}). */
+    static String buildQueryUri(Map<String, String> params) {
+        var uri = new StringBuilder(BASE_URI).append("?format=json");
+        params.forEach((key, value) -> uri.append("&").append(key).append("=")
+                .append(URLEncoder.encode(value, StandardCharsets.UTF_8)));
+        return uri.toString();
     }
 
     private static String first(JsonNode printouts, String property) {

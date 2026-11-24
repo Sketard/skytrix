@@ -1,8 +1,11 @@
 package com.skytrix.repository;
 
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -35,4 +38,21 @@ public interface CardRepository extends CrudRepository<Card, Long>, JpaSpecifica
 		   "LIMIT :lim",
 		   nativeQuery = true)
 	List<Object[]> searchNamesByQuery(@Param("query") String query, @Param("lim") int limit);
+
+	/** {@code [card id, passcode]} of every card whose Yugipedia artworks were never processed. */
+	@Query("SELECT c.id, c.passcode FROM Card c WHERE c.yugipediaArtworksCheckedAt IS NULL ORDER BY c.id")
+	List<Object[]> findIdAndPasscodeOfCardsNeverCheckedForArtworks();
+
+	/** {@code [card id, passcode, artwork count]} of the already processed cards among {@code passcodes}. */
+	@Query("SELECT c.id, c.passcode, c.yugipediaArtworkCount FROM Card c"
+			+ " WHERE c.passcode IN :passcodes AND c.yugipediaArtworksCheckedAt IS NOT NULL")
+	List<Object[]> findArtworkCheckOfCheckedCards(@Param("passcodes") Collection<Long> passcodes);
+
+	/** End of the last Yugipedia artwork sync, as far as the cards tell; null before the first one. */
+	@Query("SELECT MAX(c.yugipediaArtworksCheckedAt) FROM Card c")
+	Instant findLastYugipediaArtworksCheck();
+
+	@Modifying
+	@Query("UPDATE Card c SET c.yugipediaArtworksCheckedAt = :at, c.yugipediaArtworkCount = :count WHERE c.id = :id")
+	int markYugipediaArtworksChecked(@Param("id") Long id, @Param("count") Integer count, @Param("at") Instant at);
 }

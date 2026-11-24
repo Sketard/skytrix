@@ -9,7 +9,13 @@ class YugipediaRequesterTest {
     @Test
     void askQueryEncodesPlusSoTheServerDoesNotReadASpace() {
         var uri = YugipediaRequester.buildAskUri("[[French name::+]]|limit=500");
-        assertEquals("https://yugipedia.com/api.php?action=ask&format=json&query=%5B%5BFrench+name%3A%3A%2B%5D%5D%7Climit%3D500", uri);
+        assertEquals("https://yugipedia.com/api.php?format=json&action=ask&query=%5B%5BFrench+name%3A%3A%2B%5D%5D%7Climit%3D500", uri);
+    }
+
+    @Test
+    void passwordsAreEightDigitTextOnYugipedia() {
+        assertEquals("00032864", YugipediaRequester.passwordText(32864));
+        assertEquals("300302004", YugipediaRequester.passwordText(300302004));
     }
 
     @Test
